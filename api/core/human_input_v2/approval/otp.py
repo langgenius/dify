@@ -9,12 +9,14 @@ Plaintext codes are transient method inputs and are never retained or serialized
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Protocol, TypedDict
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.entities import HumanInputAuthorizationProofType, HumanInputOTPChallengeStatus
-from core.human_input_v2.shared import ContactId, NormalizedEmail, OTPChallengeId, UtcTimestamp
+from core.human_input_v2.shared import ContactId, NormalizedEmail, OTPChallengeId
 
 from .grants import ApproverGrantRef, OTPChallengeRef
 
@@ -22,6 +24,10 @@ OTP_EXPIRY = timedelta(minutes=10)
 OTP_RESEND_COOLDOWN = timedelta(seconds=60)
 OTP_MAX_SEND_COUNT = 5
 OTP_MAX_ATTEMPT_COUNT = 5
+
+
+def _utc_isoformat(value: datetime) -> str:
+    return f"{value.isoformat()}Z"
 
 
 def _validate_sha256(value: str, *, label: str) -> None:
@@ -32,7 +38,7 @@ def _validate_sha256(value: str, *, label: str) -> None:
 class Clock(Protocol):
     """Narrow clock port used to make all lifecycle boundaries deterministic."""
 
-    def now(self) -> UtcTimestamp: ...
+    def now(self) -> NaiveDatetime: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,7 +129,7 @@ class VerifiedEmailOTPProof:
     challenge_ref: OTPChallengeRef
     subject: EmailOTPSubject
     normalized_email: NormalizedEmail
-    verified_at: UtcTimestamp
+    verified_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if isinstance(self.subject, EmailAddressOTPSubject) and self.subject.normalized_email != self.normalized_email:
@@ -143,7 +149,7 @@ class VerifiedEmailOTPProof:
             "subject_type": subject_type,
             "contact_id": contact_id,
             "verified_email": str(self.normalized_email),
-            "verified_at": self.verified_at.to_primitive(),
+            "verified_at": _utc_isoformat(self.verified_at),
         }
 
 
@@ -191,14 +197,14 @@ class OTPChallenge:
     challenge_token_hash: str = field(repr=False)
     code_hash: OTPCodeHash = field(repr=False)
     status: HumanInputOTPChallengeStatus
-    expires_at: UtcTimestamp
-    resend_after: UtcTimestamp
+    expires_at: NaiveDatetime
+    resend_after: NaiveDatetime
     send_count: int
     attempt_count: int
-    verified_at: UtcTimestamp | None
-    invalidated_at: UtcTimestamp | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    verified_at: NaiveDatetime | None
+    invalidated_at: NaiveDatetime | None
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         _validate_sha256(self.challenge_token_hash, label="challenge token hash")
@@ -208,11 +214,11 @@ class OTPChallenge:
             raise ValueError("OTP send count is outside the supported range")
         if not 0 <= self.attempt_count <= OTP_MAX_ATTEMPT_COUNT:
             raise ValueError("OTP attempt count is outside the supported range")
-        if self.resend_after.value != self.created_at.value + OTP_RESEND_COOLDOWN:
+        if self.resend_after != self.created_at + OTP_RESEND_COOLDOWN:
             raise ValueError("OTP resend_after must equal created_at plus the resend cooldown")
-        if self.expires_at.value != self.created_at.value + OTP_EXPIRY:
+        if self.expires_at != self.created_at + OTP_EXPIRY:
             raise ValueError("OTP expires_at must equal created_at plus the expiry duration")
-        if self.updated_at.value < self.created_at.value:
+        if self.updated_at < self.created_at:
             raise ValueError("OTP updated_at must not precede created_at")
         if self.status is HumanInputOTPChallengeStatus.VERIFIED:
             if self.verified_at is None or self.invalidated_at is not None:
@@ -246,8 +252,8 @@ class OTPChallenge:
             challenge_token_hash=challenge_token_hash,
             code_hash=code_hasher.hash_code(plaintext_code),
             status=HumanInputOTPChallengeStatus.PENDING,
-            expires_at=UtcTimestamp(now.value + OTP_EXPIRY),
-            resend_after=UtcTimestamp(now.value + OTP_RESEND_COOLDOWN),
+            expires_at=now + OTP_EXPIRY,
+            resend_after=now + OTP_RESEND_COOLDOWN,
             send_count=send_count,
             attempt_count=0,
             verified_at=None,
@@ -256,7 +262,7 @@ class OTPChallenge:
             updated_at=now,
         )
 
-    def state_at(self, now: UtcTimestamp) -> OTPChallengeState:
+    def state_at(self, now: NaiveDatetime) -> OTPChallengeState:
         match self.status:
             case HumanInputOTPChallengeStatus.VERIFIED:
                 return OTPChallengeState(self.status, OTPChallengeRejectionReason.ALREADY_VERIFIED)
@@ -265,7 +271,7 @@ class OTPChallenge:
             case HumanInputOTPChallengeStatus.EXPIRED:
                 return OTPChallengeState(self.status, OTPChallengeRejectionReason.EXPIRED)
             case HumanInputOTPChallengeStatus.PENDING:
-                if now.value >= self.expires_at.value:
+                if now >= self.expires_at:
                     return OTPChallengeState(HumanInputOTPChallengeStatus.EXPIRED, OTPChallengeRejectionReason.EXPIRED)
                 return OTPChallengeState(self.status, None)
         raise AssertionError(f"unsupported OTP challenge status: {self.status}")
@@ -297,7 +303,7 @@ class OTPChallenge:
             return OTPReplacementDecision(self, None, state.rejection)
         if self.send_count >= OTP_MAX_SEND_COUNT:
             return OTPReplacementDecision(self, None, OTPChallengeRejectionReason.SEND_LIMIT_REACHED)
-        if now.value < self.resend_after.value:
+        if now < self.resend_after:
             return OTPReplacementDecision(self, None, OTPChallengeRejectionReason.RESEND_COOLDOWN)
         replacement_challenge = self.issue(
             challenge_ref=challenge_ref,
@@ -385,10 +391,10 @@ class OTPChallenge:
             "email": str(self.normalized_email),
             "send_count": self.send_count,
             "attempt_count": self.attempt_count,
-            "expires_at": self.expires_at.to_primitive(),
-            "resend_after": self.resend_after.to_primitive(),
-            "verified_at": self.verified_at.to_primitive() if self.verified_at is not None else None,
-            "invalidated_at": self.invalidated_at.to_primitive() if self.invalidated_at is not None else None,
+            "expires_at": _utc_isoformat(self.expires_at),
+            "resend_after": _utc_isoformat(self.resend_after),
+            "verified_at": _utc_isoformat(self.verified_at) if self.verified_at is not None else None,
+            "invalidated_at": _utc_isoformat(self.invalidated_at) if self.invalidated_at is not None else None,
         }
 
 

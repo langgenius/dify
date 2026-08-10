@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from core.human_input_v2.im_message_inbox import IMMessageInboxRepository, InboxProcessingStatus
-from core.human_input_v2.shared import UtcTimestamp
 
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
 from .wakeup import InboxWakeup, InboxWakeupError
@@ -28,7 +28,7 @@ class IMInboxRecovery:
 
     _repository: IMMessageInboxRepository
     _wakeup: InboxWakeup
-    _clock: Callable[[], UtcTimestamp]
+    _clock: Callable[[], datetime]
     _batch_size: int
     _metrics: IMInboxMetrics
 
@@ -37,7 +37,7 @@ class IMInboxRecovery:
         *,
         repository: IMMessageInboxRepository,
         wakeup: InboxWakeup,
-        clock: Callable[[], UtcTimestamp],
+        clock: Callable[[], datetime],
         batch_size: int,
         metrics: IMInboxMetrics,
     ) -> None:

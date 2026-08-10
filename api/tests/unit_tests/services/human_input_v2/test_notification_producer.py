@@ -1,14 +1,14 @@
 import base64
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     CanonicalSubjectKey,
     DeliveryAttemptData,
     EmailAddressApprovalSubject,
     EmailEndpointPlan,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointPlan,
     MatchedRecipientSource,
@@ -27,7 +27,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_v2.notification_producer import (
@@ -36,7 +35,7 @@ from services.human_input_v2.notification_producer import (
     deserialize_rendered_email_request,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 31, 8)
 
 
 class Identifiers:
@@ -95,17 +94,15 @@ def _creation(*, second_email: bool = False):
     return HumanInputForm.create_from_plan(
         ref=FormRef(WorkspaceId("workspace-1"), FormId("form-1")),
         app_id=AppId("app-1"),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        display_in_ui=True,
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         workflow_pause_id="pause-1",
         node_execution_id="execution-1",
@@ -154,7 +151,7 @@ def test_producer_persists_one_protected_email_attempt_and_ignores_im() -> None:
     assert request.subject == "Approve request"
     assert "Please review request" in request.html
     assert "plaintext-form-token" in request.html
-    assert request.delivery_id.value == "attempt-1"
+    assert request.delivery_id == "attempt-1"
 
 
 def test_producer_isolates_one_endpoint_materialization_failure() -> None:

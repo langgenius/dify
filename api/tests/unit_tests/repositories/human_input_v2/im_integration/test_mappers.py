@@ -1,6 +1,6 @@
 """Bidirectional mapping tests for every IM Control Plane record."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -32,7 +32,6 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from repositories.human_input_v2.im_integration.mappers import (
@@ -48,7 +47,7 @@ from repositories.human_input_v2.im_integration.mappers import (
     sync_run_to_record,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
 
 

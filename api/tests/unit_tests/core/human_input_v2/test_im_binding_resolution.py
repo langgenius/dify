@@ -1,6 +1,6 @@
 """Effective IM binding resolution tests."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.contact_directory import Contact, ContactSnapshot
 from core.human_input_v2.entities import IMBindingScope, IMProvider
@@ -18,11 +18,10 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 

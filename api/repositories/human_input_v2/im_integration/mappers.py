@@ -1,8 +1,8 @@
 """Explicit bidirectional mappings for IM domain values and ORM records."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
-from pydantic import TypeAdapter
+from pydantic import NaiveDatetime, TypeAdapter
 
 from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
 from core.human_input_v2.im_integration import (
@@ -27,9 +27,9 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
@@ -46,10 +46,10 @@ from models.human_input_v2 import (
 _CREDENTIAL_ADAPTER: TypeAdapter[IMIntegrationEncryptedCredentials] = TypeAdapter(IMIntegrationEncryptedCredentials)
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
+def _timestamp(value: datetime) -> NaiveDatetime:
     """Interpret database-naive timestamps as UTC, matching Dify persistence."""
 
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+    return ensure_naive_utc(value)
 
 
 def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
@@ -95,11 +95,11 @@ def integration_to_record(integration: IMIntegration) -> HumanInputIMIntegration
         ),
         callback_url=integration.callback_url,
         safe_status_reason=integration.safe_status_reason,
-        last_checked_at=integration.last_checked_at.value if integration.last_checked_at is not None else None,
+        last_checked_at=integration.last_checked_at if integration.last_checked_at is not None else None,
     )
     record.id = str(integration.id)
-    record.created_at = integration.created_at.value
-    record.updated_at = integration.updated_at.value
+    record.created_at = integration.created_at
+    record.updated_at = integration.updated_at
     return record
 
 
@@ -140,11 +140,11 @@ def identity_to_record(identity: IMIdentity) -> HumanInputIMIdentity:
         last_seen_sync_run_id=(
             str(identity.last_seen_sync_run_id) if identity.last_seen_sync_run_id is not None else None
         ),
-        last_seen_at=identity.last_seen_at.value if identity.last_seen_at is not None else None,
+        last_seen_at=identity.last_seen_at if identity.last_seen_at is not None else None,
     )
     record.id = str(identity.id)
-    record.created_at = identity.created_at.value
-    record.updated_at = identity.updated_at.value
+    record.created_at = identity.created_at
+    record.updated_at = identity.updated_at
     return record
 
 
@@ -178,8 +178,8 @@ def binding_to_record(binding: IMBinding) -> HumanInputIMBinding:
         bound_by_account_id=str(binding.bound_by_account_id) if binding.bound_by_account_id is not None else None,
     )
     record.id = str(binding.id)
-    record.created_at = binding.created_at.value
-    record.updated_at = binding.updated_at.value
+    record.created_at = binding.created_at
+    record.updated_at = binding.updated_at
     return record
 
 
@@ -224,14 +224,14 @@ def sync_run_to_record(run: IMSyncRun) -> HumanInputIMSyncRun:
         removed_count=run.removed_count,
         skipped_count=run.skipped_count,
         started_by_account_id=str(run.started_by_account_id) if run.started_by_account_id is not None else None,
-        started_at=run.started_at.value if run.started_at is not None else None,
-        finished_at=run.finished_at.value if run.finished_at is not None else None,
+        started_at=run.started_at if run.started_at is not None else None,
+        finished_at=run.finished_at if run.finished_at is not None else None,
         error_code=run.error_code,
         error_message=run.error_message,
     )
     record.id = str(run.id)
-    record.created_at = run.created_at.value
-    record.updated_at = run.updated_at.value
+    record.created_at = run.created_at
+    record.updated_at = run.updated_at
     return record
 
 
@@ -333,6 +333,6 @@ def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
         ),
     )
     record.id = str(result.id)
-    record.created_at = result.created_at.value
-    record.updated_at = result.updated_at.value
+    record.created_at = result.created_at
+    record.updated_at = result.updated_at
     return record

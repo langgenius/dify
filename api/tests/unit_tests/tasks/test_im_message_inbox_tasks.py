@@ -15,7 +15,7 @@ from core.human_input_v2.im_message_inbox import (
     InboxProcessingPolicy,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from dify_app import DifyApp
 from extensions.ext_celery import init_app as init_celery_app
 from models.human_input_v2 import IMMessageInbox
@@ -74,12 +74,12 @@ class _Consumer:
 
 
 class _FixedClock:
-    current: UtcTimestamp
+    current: datetime
 
-    def __init__(self, current: UtcTimestamp) -> None:
+    def __init__(self, current: datetime) -> None:
         self.current = current
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         return self.current
 
 
@@ -144,7 +144,7 @@ def test_processing_task_passes_only_typed_record_id_to_configured_processor() -
 
 
 def test_processing_task_runs_repository_backed_worker_and_fenced_finalizes(sqlite_engine: Engine) -> None:
-    now = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+    now = datetime(2026, 8, 2, 8, tzinfo=UTC)
     inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
     IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)

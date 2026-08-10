@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -22,7 +22,7 @@ from core.human_input_v2.im_provider import (
     CredentialTestSuccess,
     SlackIMIntegrationCredentials,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import (
     SlackIMCredentialProtector,
@@ -34,7 +34,7 @@ _CONTEXT = HumanInputChannelManagementContext(
     actor_account_id=AccountId("account-1"),
     actor_email=NormalizedEmail("operator@example.com"),
 )
-_NOW = UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 6, 8)
 
 
 def _candidate() -> SlackIMCandidate:

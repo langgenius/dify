@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import fields
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,7 +29,6 @@ from core.human_input_v2.shared import (
     ContactId,
     FormId,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from models.human_input_v2 import (
@@ -47,7 +47,7 @@ from repositories.human_input_v2.approval.repository import (
     SQLAlchemyOTPChallengeRepository,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 _FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
 _GRANT_REF = _FORM_REF.grant(ApproverGrantId("grant-1"))
@@ -66,16 +66,16 @@ _AUDIT_TABLE = sa.Table(
 
 
 class _MutableClock:
-    current: UtcTimestamp
+    current: NaiveDatetime
 
     def __init__(self) -> None:
         self.current = _NOW
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> NaiveDatetime:
         return self.current
 
     def advance(self, delta: timedelta) -> None:
-        self.current = UtcTimestamp(self.current.value + delta)
+        self.current = self.current + delta
 
 
 class _DeterministicHasher:
@@ -119,7 +119,7 @@ class _TransactionalAuditWriter:
                     str(fact.previous_challenge_id) if fact.previous_challenge_id is not None else None
                 ),
                 send_count=fact.send_count,
-                occurred_at=fact.occurred_at.value,
+                occurred_at=fact.occurred_at,
             )
         )
 
@@ -133,15 +133,6 @@ def repository_context(
     _MutableClock,
     _DeterministicHasher,
 ]:
-    tables = (
-        HumanInputContact.__table__,
-        HumanInputV2Form.__table__,
-        HumanInputV2FormApproverGrant.__table__,
-        HumanInputV2FormOTPChallenge.__table__,
-    )
-    for table in tables:
-        assert isinstance(table, sa.Table)
-        table.create(sqlite_engine)
     _AUDIT_TABLE.create(sqlite_engine)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     _seed_contact_form_and_grant(session_maker)
@@ -169,10 +160,10 @@ def _seed_contact_form_and_grant(session_maker: sessionmaker[Session]) -> None:
     form = HumanInputV2Form(
         tenant_id="workspace-1",
         app_id="app-1",
-        form_definition=HumanInputV2FormDefinition(form_content="Approve"),
+        form_definition=HumanInputV2FormDefinition(),
         rendered_content="Approve",
-        node_timeout_at=_NOW.value + timedelta(hours=1),
-        global_expires_at=_NOW.value + timedelta(hours=2),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         form_kind=HumanInputV2FormKind.DELIVERY_TEST,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id=None,

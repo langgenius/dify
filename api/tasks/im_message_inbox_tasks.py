@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from celery import shared_task
@@ -19,7 +19,6 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxProcessingPolicy
-from core.human_input_v2.shared import UtcTimestamp
 from dify_app import DifyApp
 from extensions.ext_database import db
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -114,7 +113,7 @@ def _build_recovery() -> IMInboxRecovery:
     return IMInboxRecovery(
         repository=repository,
         wakeup=CeleryIMInboxWakeup(process_im_message_inbox_record),
-        clock=UtcTimestamp.now,
+        clock=lambda: datetime.now(UTC),
         batch_size=dify_config.IM_MESSAGE_INBOX_RECOVERY_BATCH_SIZE,
         metrics=OpenTelemetryIMInboxMetrics(),
     )

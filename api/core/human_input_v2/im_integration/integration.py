@@ -7,10 +7,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.entities import IMIntegrationStatus, IMProvider
-from core.human_input_v2.shared import AccountId, IntegrationId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, WorkspaceId
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,9 +117,9 @@ class IMIntegration:
     config_version: int
     status: IMIntegrationStatus
     safe_status_reason: str | None
-    last_checked_at: UtcTimestamp | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    last_checked_at: NaiveDatetime | None
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if self.config_version < 1:
@@ -135,7 +135,7 @@ class IMIntegration:
         encrypted_credentials: EncryptedCredentials,
         configured_by_account_id: AccountId | None,
         callback_url: str | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> IMIntegration:
         return cls(
             id=integration_id,
@@ -164,7 +164,7 @@ class IMIntegration:
         encrypted_credentials: EncryptedCredentials,
         configured_by_account_id: AccountId | None,
         callback_url: str | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
         replacement_integration_id: IntegrationId | None = None,
     ) -> ConfigurationTransition | StaleRevision:
         """Plan a confirmed rotation or replacement without performing I/O."""
@@ -223,7 +223,7 @@ class IMIntegration:
         *,
         status: IMIntegrationStatus,
         safe_status_reason: str | None,
-        checked_at: UtcTimestamp,
+        checked_at: NaiveDatetime,
     ) -> IMIntegration:
         """Update connection diagnostics without advancing configuration."""
 

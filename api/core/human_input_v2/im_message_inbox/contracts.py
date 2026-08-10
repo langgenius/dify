@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import NewType, Protocol
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 
 IM_INBOX_PROVIDER_METADATA_MAX_LENGTH = 128
 
@@ -221,17 +221,21 @@ class IMInboxConsumer(Protocol):
 
 
 class IMMessageInboxRepository(Protocol):
-    """Persistence port; implementations own all session and locking details."""
+    """Persistence port; ``now`` values are timezone-aware UTC instants.
+
+    Implementations own all session and locking details and may normalize those
+    instants to the database timestamp representation at the persistence edge.
+    """
 
     def insert_or_resolve(
-        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: UtcTimestamp
+        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime
     ) -> InboxAcceptance:
         """Commit a new record or resolve its identified duplicate."""
 
-    def claim_by_id(self, record_id: IMInboxRecordId, *, now: UtcTimestamp) -> InboxClaimResult | None:
+    def claim_by_id(self, record_id: IMInboxRecordId, *, now: datetime) -> InboxClaimResult | None:
         """Acquire an available record in a short transaction."""
 
-    def claim_available(self, *, now: UtcTimestamp, limit: int) -> tuple[InboxClaimResult, ...]:
+    def claim_available(self, *, now: datetime, limit: int) -> tuple[InboxClaimResult, ...]:
         """Acquire a bounded available batch using the same claim contract."""
 
     def renew(
@@ -239,7 +243,7 @@ class IMMessageInboxRepository(Protocol):
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         """Renew the current unexpired fenced lease."""
 
@@ -248,14 +252,14 @@ class IMMessageInboxRepository(Protocol):
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> RetryResult:
         """Return a current claim to pending or exhaust it to terminal failure."""
 
-    def succeed(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: UtcTimestamp) -> TransitionResult:
+    def succeed(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: datetime) -> TransitionResult:
         """Finalize current work successfully."""
 
-    def ignore(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: UtcTimestamp) -> TransitionResult:
+    def ignore(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: datetime) -> TransitionResult:
         """Finalize current work as intentionally ignored."""
 
     def fail(
@@ -263,12 +267,12 @@ class IMMessageInboxRepository(Protocol):
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         """Finalize current work as a terminal failure."""
 
-    def recoverable_record_ids(self, *, now: UtcTimestamp, limit: int) -> tuple[IMInboxRecordId, ...]:
+    def recoverable_record_ids(self, *, now: datetime, limit: int) -> tuple[IMInboxRecordId, ...]:
         """Return payload-free available pending and expired-processing IDs."""
 
-    def backlog(self, *, now: UtcTimestamp) -> InboxBacklog:
+    def backlog(self, *, now: datetime) -> InboxBacklog:
         """Return payload-free backlog observations."""

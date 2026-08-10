@@ -17,7 +17,16 @@ from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from controllers.common.human_input_channel_management import SaveChannelRequest, save_channel_command
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.channel_management import (
     ChannelKind,
     ChannelProvider,
@@ -47,7 +56,6 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageReference,
     MessageSendingError,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -55,8 +63,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
-from core.workflow.nodes.human_input import ParagraphInputConfig, StringSource, ValueSourceType
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import SlackIMProviderConfigurationPort
 
@@ -142,23 +149,18 @@ def _signed_request(
 
 def _card_intent(
     *,
-    rendered_content: str = "Sanitized rendered content",
-    inputs: tuple[Mapping[str, object], ...] = (),
-    actions: tuple[FrozenFormAction, ...] | None = None,
-    defaults: Mapping[str, object] | None = None,
-    node_title: str | None = "Sanitized title",
-) -> NormalizedCardIntent:
+    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Sanitized rendered content"),),
+    actions: tuple[ResolvedFormAction, ...] | None = None,
+    title: str | None = "Sanitized title",
+) -> ResolvedForm:
     if actions is None:
-        actions = (FrozenFormAction("approve", "Approve", "primary"),)
-    definition = FrozenFormDefinition(
-        form_content="Sanitized form content",
-        inputs=tuple(dict(input_definition) for input_definition in inputs),
-        actions=actions,
-        default_values=dict(defaults or {}),
-        node_title=node_title,
-        display_in_ui=True,
+        actions = (ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),)
+    return ResolvedForm(
+        title=title,
+        blocks=blocks,
+        user_actions=actions,
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent(rendered_content, definition)
 
 
 def _slack_candidate(*, preserve_app_token: bool = False) -> SlackIMCandidate:
@@ -213,13 +215,10 @@ def test_webhook_authentication_delegates_exact_body_to_official_sdk_verifier(mo
 def test_decoded_provider_json_boundaries_use_mapping_abstractions() -> None:
     authenticated_hints = get_type_hints(slack_adapter_module._authenticated_event)
     tenant_hints = get_type_hints(slack_adapter_module._provider_tenant_id)
-    input_hints = get_type_hints(slack_adapter_module._input_unrepresentable_reason)
 
     assert _annotation_contains_mapping(authenticated_hints["body"])
     assert _annotation_contains_mapping(authenticated_hints["serialized_body"])
     assert _annotation_contains_mapping(tenant_hints["body"])
-    assert _annotation_contains_mapping(input_hints["input_definition"])
-    assert _annotation_contains_mapping(input_hints["defaults"])
 
 
 def test_credential_test_normalizes_unexpected_failure_without_secret_leak(mocker: MockerFixture) -> None:
@@ -346,7 +345,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
         ),
         configured_by_account_id=AccountId("sanitized-account"),
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     resolved_credentials: list[SlackIMIntegrationCredentials] = []
     revealed_credentials: list[EncryptedCredentials] = []
@@ -416,7 +415,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
         ),
         configured_by_account_id=AccountId("sanitized-account"),
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
 
     with pytest.raises(IMProviderConfigurationError, match="slack_preserved_secret_unavailable"):
@@ -470,7 +469,7 @@ def test_provider_port_fails_closed_for_candidate_and_secret_boundary_errors() -
         ),
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     port = SlackIMProviderConfigurationPort(_FailingProtector(), adapter_factory=_SuccessfulAdapter)
 
@@ -742,37 +741,14 @@ def test_message_acceptance_requires_a_persistently_round_trippable_locator(
     client.chat_postMessage.assert_called_once()
 
 
-def test_card_assessment_rejects_defaults_that_cannot_be_preserved(mocker: MockerFixture) -> None:
-    client = mocker.Mock(spec=WebClient)
-    adapter = _adapter(mocker, client)
-    intent = _card_intent(defaults={"orphaned_default": "sanitized-value"})
-
-    assessment = adapter.dynamic_card_messaging.assess(intent)
-
-    assert assessment.representable is False
-    client.chat_postMessage.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    "resolved_defaults",
-    [{}, {"comment": "Sanitized preserved default"}],
-    ids=("constant-source-only", "matching-resolved-default"),
-)
-def test_real_paragraph_constant_default_is_preserved_and_rendered(
-    mocker: MockerFixture,
-    resolved_defaults: Mapping[str, object],
-) -> None:
-    paragraph = ParagraphInputConfig(
-        output_variable_name="comment",
-        default=StringSource(
-            type=ValueSourceType.CONSTANT,
-            selector=(),
-            value="Sanitized preserved default",
-        ),
+def test_real_paragraph_resolved_default_is_preserved_and_rendered(mocker: MockerFixture) -> None:
+    intent = _card_intent(
+        blocks=(
+            MarkdownText("Before input"),
+            ParagraphInput("comment", "Sanitized preserved default"),
+            MarkdownText("After input"),
+        )
     )
-    paragraph_values = paragraph.model_dump(mode="json")
-    intent = _card_intent(inputs=(paragraph_values,), defaults=resolved_defaults)
-    preserved_input = dict(intent.form_definition.inputs[0])
     client = mocker.Mock(spec=WebClient)
     client.auth_test.return_value = _successful_auth_response()
     client.chat_postMessage.return_value = _SlackResponse(
@@ -793,153 +769,62 @@ def test_real_paragraph_constant_default_is_preserved_and_rendered(
         block for block in client.chat_postMessage.call_args.kwargs["blocks"] if block["type"] == "input"
     )
     assert input_block["element"]["initial_value"] == "Sanitized preserved default"
-    assert intent.form_definition.inputs[0] == preserved_input == paragraph_values
-
-
-@pytest.mark.parametrize(
-    ("default_source", "resolved_defaults"),
-    [
-        ("not-a-source", {}),
-        ({"type": "constant", "selector": []}, {}),
-        ({"type": "constant", "selector": [], "value": 1}, {}),
-        (
-            {"type": "constant", "selector": [], "value": "Sanitized local default"},
-            {"comment": "Sanitized conflicting default"},
-        ),
-        ({"type": "constant", "selector": [], "value": "x" * 3_001}, {}),
-        ({"type": "variable", "selector": ["node"], "value": "Sanitized stale value"}, {}),
-        ({"type": "variable", "selector": ["node", "output"], "value": 1}, {}),
-        ({"type": "unsupported", "selector": [], "value": "Sanitized value"}, {}),
-    ],
-    ids=(
-        "non-mapping-source",
-        "incomplete-source",
-        "non-string-constant",
-        "conflicting-resolved-default",
-        "oversized-constant",
-        "short-variable-selector",
-        "non-string-variable-value",
-        "unsupported-source",
-    ),
-)
-def test_paragraph_default_rejection_is_whole_intent_and_side_effect_free(
-    mocker: MockerFixture,
-    default_source: object,
-    resolved_defaults: Mapping[str, object],
-) -> None:
-    intent = _card_intent(
-        inputs=(
-            {
-                "type": "paragraph",
-                "output_variable_name": "comment",
-                "default": default_source,
-            },
-        ),
-        defaults=resolved_defaults,
-    )
-    preserved_input = dict(intent.form_definition.inputs[0])
-    client = mocker.Mock(spec=WebClient)
-    adapter = _adapter(mocker, client)
-
-    assessment = adapter.dynamic_card_messaging.assess(intent)
-
-    assert assessment.representable is False
-    with pytest.raises(DynamicCardMessagingError):
-        adapter.dynamic_card_messaging.send_card(
-            ProviderUserId("sanitized-user"),
-            intent,
-            CorrelationToken("sanitized-correlation"),
-        )
-    assert intent.form_definition.inputs[0] == preserved_input
-    client.auth_test.assert_not_called()
-    client.chat_postMessage.assert_not_called()
+    assert [block["type"] for block in client.chat_postMessage.call_args.kwargs["blocks"]] == [
+        "header",
+        "markdown",
+        "input",
+        "markdown",
+        "actions",
+    ]
 
 
 @pytest.mark.parametrize(
     "intent",
     [
-        _card_intent(rendered_content=""),
-        _card_intent(rendered_content="x" * 20_000),
-        _card_intent(node_title="x" * 151),
+        _card_intent(blocks=(), actions=(), title=None),
+        _card_intent(blocks=(MarkdownText(""),)),
+        _card_intent(blocks=(MarkdownText("x" * 20_000),)),
+        _card_intent(title="x" * 151),
+        _card_intent(blocks=tuple(ParagraphInput(f"input_{index}", None) for index in range(49))),
         _card_intent(
-            inputs=tuple({"type": "paragraph", "output_variable_name": f"input_{index}"} for index in range(49))
-        ),
-        _card_intent(
-            actions=tuple(FrozenFormAction(f"action_{index}", f"Action {index}", "default") for index in range(26))
-        ),
-        _card_intent(
-            inputs=(
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-            )
-        ),
-        _card_intent(actions=(FrozenFormAction("x" * 256, "Action", "default"),)),
-        _card_intent(actions=(FrozenFormAction("action", "Action", "unsupported"),)),
-        _card_intent(inputs=({"type": "unknown", "output_variable_name": "input"},)),
-        _card_intent(inputs=({"type": "paragraph", "output_variable_name": "x" * 256},)),
-        _card_intent(
-            inputs=({"type": "paragraph", "output_variable_name": "input"},),
-            defaults={"input": 1},
-        ),
-        _card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "variable", "value": ["One"]},
-                },
+            actions=tuple(
+                ResolvedFormAction(f"action_{index}", f"Action {index}", ButtonStyle.DEFAULT) for index in range(26)
             )
         ),
         _card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": []},
-                },
+            blocks=(
+                ParagraphInput("duplicate", None),
+                ParagraphInput("duplicate", None),
             )
         ),
-        _card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": [""]},
-                },
-            )
-        ),
-        _card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": ["One"]},
-                },
-            ),
-            defaults={"input": "Two"},
-        ),
+        _card_intent(actions=(ResolvedFormAction("x" * 256, "Action", ButtonStyle.DEFAULT),)),
+        _card_intent(actions=(ResolvedFormAction("action", "Action", ButtonStyle.GHOST),)),
+        _card_intent(blocks=(FileInput("attachment", (), (), ()),)),
+        _card_intent(blocks=(ParagraphInput("x" * 256, None),)),
+        _card_intent(blocks=(ParagraphInput("input", "x" * 3_001),)),
+        _card_intent(blocks=(SelectInput("input", (), None),)),
+        _card_intent(blocks=(SelectInput("input", ("",), None),)),
     ],
     ids=(
-        "empty-content",
-        "oversized-content",
+        "empty-card",
+        "empty-markdown",
+        "oversized-markdown",
         "oversized-title",
         "block-count",
         "action-count",
         "duplicate-input",
         "action-identifier",
         "action-style",
-        "input-definition",
+        "file-input",
         "input-identifier",
         "paragraph-default",
-        "select-source",
         "select-count",
         "select-option",
-        "select-default",
     ),
 )
 def test_card_assessment_rejects_slack_representation_boundaries(
     mocker: MockerFixture,
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
 ) -> None:
     client = mocker.Mock(spec=WebClient)
     adapter = _adapter(mocker, client)
@@ -965,13 +850,13 @@ def test_card_render_preserves_optional_sections_and_default_action_style(mocker
     )
     adapter = _adapter(mocker, client)
     paragraph_intent = _card_intent(
-        inputs=({"type": "paragraph", "output_variable_name": "comment"},),
+        blocks=(ParagraphInput("comment", None),),
         actions=(),
-        node_title=None,
+        title=None,
     )
     default_action_intent = _card_intent(
-        actions=(FrozenFormAction("continue", "Continue", "default"),),
-        node_title=None,
+        actions=(ResolvedFormAction("continue", "Continue", ButtonStyle.DEFAULT),),
+        title=None,
     )
 
     paragraph_result = adapter.dynamic_card_messaging.send_card(

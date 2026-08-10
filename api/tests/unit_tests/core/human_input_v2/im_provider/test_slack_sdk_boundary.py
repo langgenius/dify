@@ -13,13 +13,21 @@ from typing import override
 from urllib.parse import parse_qs, urlencode
 
 import pytest
-from pydantic import JsonValue
 from slack_sdk.errors import SlackClientError
 from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.channel_management import (
     FeishuIMCandidate,
     HumanInputChannelManagementContext,
@@ -46,7 +54,6 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageReference,
     MessageSendingError,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -54,8 +61,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
-from core.workflow.nodes.human_input import ParagraphInputConfig, StringSource, ValueSourceType
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services import human_input_slack_channel as slack_service_module
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import (
@@ -211,48 +217,40 @@ def _candidate(*, preserve_app_token: bool = False) -> SlackIMCandidate:
     )
 
 
-def _intent(*, input_type: str = "select") -> NormalizedCardIntent:
-    input_definition: dict[str, JsonValue] = {
-        "type": input_type,
-        "output_variable_name": "decision",
-    }
-    default: str = "Sanitized initial value"
+def _intent(*, input_type: str = "select") -> ResolvedForm:
     if input_type == "select":
-        input_definition["option_source"] = {"type": "constant", "value": ["Approve", "Reject"]}
-        default = "Approve"
-    definition = FrozenFormDefinition(
-        form_content="Sanitized form content",
-        inputs=(dict(input_definition),),
-        actions=(
-            FrozenFormAction("approve", "Approve", "primary"),
-            FrozenFormAction("reject", "Reject", "accent"),
+        input_block = SelectInput("decision", ("Approve", "Reject"), "Approve")
+    else:
+        input_block = ParagraphInput("decision", "Sanitized initial value")
+    return ResolvedForm(
+        title="Sanitized title",
+        blocks=(
+            MarkdownText("Sanitized rendered content"),
+            input_block,
+            MarkdownText("Sanitized trailing content"),
         ),
-        default_values={"decision": default},
-        node_title="Sanitized title",
-        display_in_ui=True,
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        ),
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent("Sanitized rendered content", definition)
 
 
 def _custom_intent(
     *,
-    rendered_content: str = "Sanitized rendered content",
-    inputs: tuple[Mapping[str, JsonValue], ...] = (),
-    actions: tuple[FrozenFormAction, ...] | None = None,
-    defaults: Mapping[str, JsonValue] | None = None,
-    node_title: str | None = "Sanitized title",
-) -> NormalizedCardIntent:
+    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Sanitized rendered content"),),
+    actions: tuple[ResolvedFormAction, ...] | None = None,
+    title: str | None = "Sanitized title",
+) -> ResolvedForm:
     if actions is None:
-        actions = (FrozenFormAction("approve", "Approve", "primary"),)
-    definition = FrozenFormDefinition(
-        form_content="Sanitized form content",
-        inputs=tuple(dict(input_definition) for input_definition in inputs),
-        actions=actions,
-        default_values=dict(defaults or {}),
-        node_title=node_title,
-        display_in_ui=True,
+        actions = (ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),)
+    return ResolvedForm(
+        title=title,
+        blocks=blocks,
+        user_actions=actions,
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent(rendered_content, definition)
 
 
 def _adapter(monkeypatch: pytest.MonkeyPatch, server: _SlackApiServer) -> tuple[SlackIMProviderAdapter, WebClient]:
@@ -365,14 +363,14 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
     card_parameters = state.requests_for("chat.postMessage")[1].parameters()
     assert set(card_parameters) == {"blocks", "channel", "text"}
     assert card_parameters["channel"] == "sanitized-user-2"
-    assert card_parameters["text"] == card_intent.rendered_content
+    assert card_parameters["text"] == "Sanitized title"
     assert "markdown_text" not in card_parameters
     blocks = card_parameters["blocks"]
     if isinstance(blocks, str):
         blocks = json.loads(blocks)
     assert blocks == [
         {"type": "header", "text": {"type": "plain_text", "text": "Sanitized title"}},
-        {"type": "markdown", "text": card_intent.rendered_content},
+        {"type": "markdown", "text": "Sanitized rendered content"},
         {
             "type": "input",
             "block_id": "decision",
@@ -390,6 +388,7 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
                 },
             },
         },
+        {"type": "markdown", "text": "Sanitized trailing content"},
         {
             "type": "actions",
             "elements": [
@@ -685,71 +684,34 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
 @pytest.mark.parametrize(
     "intent",
     [
-        _custom_intent(rendered_content=""),
-        _custom_intent(rendered_content="x" * 20_000),
-        _custom_intent(node_title="x" * 151),
+        _custom_intent(blocks=(), actions=(), title=None),
+        _custom_intent(blocks=(MarkdownText(""),)),
+        _custom_intent(blocks=(MarkdownText("x" * 20_000),)),
+        _custom_intent(title="x" * 151),
+        _custom_intent(blocks=tuple(ParagraphInput(f"input_{index}", None) for index in range(49))),
         _custom_intent(
-            inputs=tuple({"type": "paragraph", "output_variable_name": f"input_{index}"} for index in range(49))
-        ),
-        _custom_intent(
-            actions=tuple(FrozenFormAction(f"action_{index}", f"Action {index}", "default") for index in range(26))
-        ),
-        _custom_intent(
-            inputs=(
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-            )
-        ),
-        _custom_intent(actions=(FrozenFormAction("x" * 256, "Action", "default"),)),
-        _custom_intent(actions=(FrozenFormAction("action", "Action", "unsupported"),)),
-        _custom_intent(inputs=({"type": "file", "output_variable_name": "attachment"},)),
-        _custom_intent(inputs=({"type": "unknown", "output_variable_name": "input"},)),
-        _custom_intent(inputs=({"type": "paragraph", "output_variable_name": "x" * 256},)),
-        _custom_intent(
-            inputs=({"type": "paragraph", "output_variable_name": "input"},),
-            defaults={"input": 1},
-        ),
-        _custom_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "variable", "value": ["One"]},
-                },
+            actions=tuple(
+                ResolvedFormAction(f"action_{index}", f"Action {index}", ButtonStyle.DEFAULT) for index in range(26)
             )
         ),
         _custom_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": []},
-                },
+            blocks=(
+                ParagraphInput("duplicate", None),
+                ParagraphInput("duplicate", None),
             )
         ),
-        _custom_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": [""]},
-                },
-            )
-        ),
-        _custom_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "input",
-                    "option_source": {"type": "constant", "value": ["One"]},
-                },
-            ),
-            defaults={"input": "Two"},
-        ),
+        _custom_intent(actions=(ResolvedFormAction("x" * 256, "Action", ButtonStyle.DEFAULT),)),
+        _custom_intent(actions=(ResolvedFormAction("action", "Action", ButtonStyle.GHOST),)),
+        _custom_intent(blocks=(FileInput("attachment", (), (), ()),)),
+        _custom_intent(blocks=(ParagraphInput("x" * 256, None),)),
+        _custom_intent(blocks=(ParagraphInput("input", "x" * 3_001),)),
+        _custom_intent(blocks=(SelectInput("input", (), None),)),
+        _custom_intent(blocks=(SelectInput("input", ("",), None),)),
     ],
     ids=(
-        "empty-content",
-        "oversized-content",
+        "empty-card",
+        "empty-markdown",
+        "oversized-markdown",
         "oversized-title",
         "block-count",
         "action-count",
@@ -757,19 +719,16 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
         "action-identifier",
         "action-style",
         "file-input",
-        "input-definition",
         "input-identifier",
         "paragraph-default",
-        "select-source",
         "select-count",
         "select-option",
-        "select-default",
     ),
 )
 def test_card_assessment_rejects_sdk_representation_boundaries_without_http(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
 ) -> None:
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
@@ -785,7 +744,7 @@ def test_card_assessment_rejects_sdk_representation_boundaries_without_http(
     assert slack_api_server.state.requests == []
 
 
-def test_real_paragraph_constant_default_survives_sdk_serialization(
+def test_real_paragraph_resolved_default_survives_sdk_serialization(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
@@ -796,16 +755,11 @@ def test_real_paragraph_constant_default_survives_sdk_serialization(
         headers=(("X-OAuth-Scopes", "chat:write,users:read,users:read.email"),),
     )
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
-    paragraph = ParagraphInputConfig(
-        output_variable_name="comment",
-        default=StringSource(
-            type=ValueSourceType.CONSTANT,
-            selector=(),
-            value="Sanitized preserved default",
-        ),
+    intent = _custom_intent(
+        blocks=(ParagraphInput("comment", "Sanitized preserved default"),),
+        actions=(),
+        title=None,
     )
-    paragraph_values = paragraph.model_dump(mode="json")
-    intent = _custom_intent(inputs=(paragraph_values,), actions=(), defaults={}, node_title=None)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
 
     assessment = adapter.dynamic_card_messaging.assess(intent)
@@ -823,49 +777,6 @@ def test_real_paragraph_constant_default_survives_sdk_serialization(
     assert isinstance(blocks, list)
     input_element = next(block["element"] for block in blocks if block["type"] == "input")
     assert input_element["initial_value"] == "Sanitized preserved default"
-    assert intent.form_definition.inputs[0] == paragraph_values
-
-
-def test_invalid_paragraph_default_sources_fail_before_sdk_io(
-    monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
-) -> None:
-    adapter, _ = _adapter(monkeypatch, slack_api_server)
-    cases: tuple[tuple[JsonValue, Mapping[str, JsonValue]], ...] = (
-        ("not-a-source", {}),
-        ({"type": "constant", "selector": []}, {}),
-        ({"type": "constant", "selector": [], "value": 1}, {}),
-        (
-            {"type": "constant", "selector": [], "value": "Sanitized local default"},
-            {"comment": "Sanitized conflicting default"},
-        ),
-        ({"type": "constant", "selector": [], "value": "x" * 3_001}, {}),
-        ({"type": "variable", "selector": ["node"], "value": "Sanitized stale value"}, {}),
-        ({"type": "variable", "selector": ["node", "output"], "value": 1}, {}),
-        ({"type": "unsupported", "selector": [], "value": "Sanitized value"}, {}),
-    )
-
-    for default_source, resolved_defaults in cases:
-        intent = _custom_intent(
-            inputs=(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "comment",
-                    "default": default_source,
-                },
-            ),
-            defaults=resolved_defaults,
-        )
-        assessment = adapter.dynamic_card_messaging.assess(intent)
-        assert assessment.representable is False
-        with pytest.raises(DynamicCardMessagingError):
-            adapter.dynamic_card_messaging.send_card(
-                ProviderUserId("sanitized-user"),
-                intent,
-                CorrelationToken("sanitized-correlation"),
-            )
-
-    assert slack_api_server.state.requests == []
 
 
 def test_real_web_client_renders_optional_card_sections(
@@ -882,13 +793,13 @@ def test_real_web_client_renders_optional_card_sections(
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000002"})
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     paragraph_intent = _custom_intent(
-        inputs=({"type": "paragraph", "output_variable_name": "comment"},),
+        blocks=(ParagraphInput("comment", None),),
         actions=(),
-        node_title=None,
+        title=None,
     )
     default_action_intent = _custom_intent(
-        actions=(FrozenFormAction("continue", "Continue", "default"),),
-        node_title=None,
+        actions=(ResolvedFormAction("continue", "Continue", ButtonStyle.DEFAULT),),
+        title=None,
     )
 
     paragraph_result = adapter.dynamic_card_messaging.send_card(
@@ -1422,7 +1333,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
     port = SlackIMProviderConfigurationPort(
         protector,
         adapter_factory=SlackIMProviderAdapter,
-        clock=lambda: UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        clock=lambda: datetime(2026, 8, 6, 8),
     )
 
     confirmed = port.prepare(context, _candidate(), None)
@@ -1434,7 +1345,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
         encrypted_credentials=confirmed.encrypted_credentials,
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     preserved = port.prepare(context, _candidate(preserve_app_token=True), current)
 
@@ -1540,7 +1451,7 @@ def test_service_port_normalizes_protection_and_reveal_failures(
         ),
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     monkeypatch.setattr(slack_service_module.encrypter, "decrypt_token", _fail_secret_operation)
     with pytest.raises(IMProviderConfigurationError) as reveal_failure:

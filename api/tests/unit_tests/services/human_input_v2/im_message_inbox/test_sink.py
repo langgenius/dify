@@ -14,14 +14,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError, InboxProcessingPolicy
 from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
 from services.human_input_v2.im_message_inbox.telemetry import IMInboxMetricKind
 from services.human_input_v2.im_message_inbox.wakeup import InboxWakeup, InboxWakeupError
 
-_NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _PAYLOAD = ' {"secret":"must-not-log"}\n'
 
 
@@ -35,7 +35,7 @@ def _policy() -> InboxProcessingPolicy:
 
 
 class _FixedClock:
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         return _NOW
 
 

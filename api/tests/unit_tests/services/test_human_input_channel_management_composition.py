@@ -1,7 +1,7 @@
 """Composition tests for independent Email and IM management state."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.channel_management import (
     ChannelHandlerRegistry,
@@ -38,7 +38,6 @@ from core.human_input_v2.shared import (
     EmailProviderId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_channel_management_service import HumanInputChannelManagementService
@@ -49,8 +48,8 @@ from services.human_input_im_channel_manager import (
     build_human_input_im_channel_handlers,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 28, 8, tzinfo=UTC))
-_LATER = UtcTimestamp(datetime(2026, 7, 28, 9, tzinfo=UTC))
+_NOW = datetime(2026, 7, 28, 8)
+_LATER = datetime(2026, 7, 28, 9)
 _CONTEXT = HumanInputChannelManagementContext(
     workspace_id=WorkspaceId("workspace-1"),
     actor_account_id=AccountId("account-1"),

@@ -15,8 +15,9 @@ from core.human_input_v2.contact_directory import (
     ContactDirectorySnapshot,
     ContactRejectionCode,
 )
-from core.human_input_v2.shared import AccountId, ContactId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, WorkspaceId
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
@@ -44,7 +45,7 @@ def test_concurrent_organization_writes_serialize_on_dify_setup(flask_req_ctx, s
             account_id=AccountId(setup_account.id),
             name="Concurrent Account",
             email="concurrent@example.com",
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
         barrier.wait()
         try:
@@ -143,7 +144,7 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
                         account_id=AccountId(organization_account_id),
                         name="Concurrent Organization Account",
                         email=normalized_email,
-                        now=UtcTimestamp.now(),
+                        now=naive_utc_now(),
                     )
                 )
             except ContactDirectoryError as error:
@@ -226,7 +227,7 @@ def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) 
             account_id=AccountId(setup_account.id),
             name="Concurrent Platform Account",
             email="concurrent-platform@example.com",
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
     )
     barrier = Barrier(2)
@@ -286,7 +287,7 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
             account_id=AccountId(setup_account.id),
             name="Snapshot Account",
             email="snapshot-account@example.com",
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
     )
     contact_query_finished = Event()

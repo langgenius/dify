@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal, Self, cast
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -43,6 +44,10 @@ from core.human_input_v2.email_channel import (
 from core.human_input_v2.shared import NormalizedEmail
 from fields.base import ResponseModel
 from libs.helper import EmailStr
+
+
+def _utc_isoformat(value: datetime) -> str:
+    return f"{value.isoformat()}Z"
 
 
 class _StrictRequest(BaseModel):
@@ -369,7 +374,7 @@ def channel_view_response(view: ChannelView) -> ChannelViewResponse:
         capabilities=sorted(view.capabilities, key=str),
         summary=summary,
         safe_status_reason=view.safe_status_reason,
-        last_checked_at=view.last_checked_at.to_primitive() if view.last_checked_at is not None else None,
+        last_checked_at=_utc_isoformat(view.last_checked_at) if view.last_checked_at is not None else None,
     )
 
 
@@ -392,7 +397,7 @@ def channel_test_response(result: ChannelTestResult) -> ChannelTestResultRespons
         status=result.status,
         summary=summary,
         safe_status_reason=result.safe_status_reason,
-        checked_at=result.checked_at.to_primitive(),
+        checked_at=_utc_isoformat(result.checked_at),
     )
 
 

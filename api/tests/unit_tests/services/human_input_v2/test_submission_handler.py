@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     ApproverGrant,
     AuthorizationContext,
@@ -16,8 +18,6 @@ from core.human_input_v2.approval import (
     CurrentContactAuthorizationFacts,
     FormAuthorizationAuditEvent,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     RetryableSubmissionPersistenceError,
     SubjectSnapshot,
@@ -35,7 +35,6 @@ from core.human_input_v2.shared import (
     ContactId,
     FormId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_v2.submission import (
@@ -46,7 +45,7 @@ from services.human_input_v2.submission import (
     WorkflowResumeIdentity,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ACCOUNT_ID = AccountId("account-1")
@@ -80,17 +79,15 @@ def _context(
     form = HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        display_in_ui=True,
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=kind,
         status=status,
         workflow_pause_id=workflow_pause_id,

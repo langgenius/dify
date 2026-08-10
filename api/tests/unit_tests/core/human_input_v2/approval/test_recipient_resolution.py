@@ -1,6 +1,6 @@
 """Behavior tests for the single-entry recipient resolver."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -39,11 +39,10 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 
 

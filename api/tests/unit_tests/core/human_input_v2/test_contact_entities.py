@@ -1,7 +1,7 @@
 """Domain tests for canonical Contact identity and ownership."""
 
 from dataclasses import FrozenInstanceError, replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -19,12 +19,11 @@ from core.human_input_v2.shared import (
     ContactId,
     DeploymentScope,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
     WorkspaceScope,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25)
 
 
 def test_organization_account_contact_has_deployment_owner() -> None:

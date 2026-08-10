@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -29,11 +29,10 @@ from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 31, 8)
 _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 
 

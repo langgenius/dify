@@ -27,7 +27,6 @@ from .contracts import (
     MessageSendingError,
     MessageSendingResult,
     MSTeamsIMIntegrationCredentials,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -35,6 +34,7 @@ from .contracts import (
     StaticCardIntent,
     WebhookRequest,
     WebhookResponse,
+    WeComIMIntegrationCredentials,
 )
 
 __all__ = [
@@ -64,12 +64,12 @@ __all__ = [
     "MessageReference",
     "MessageSendingError",
     "MessageSendingResult",
-    "NormalizedCardIntent",
     "ProviderUserId",
     "ReplacementError",
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
+    "WeComIMIntegrationCredentials",
     "WebhookRequest",
     "WebhookResponse",
 ]

@@ -13,14 +13,13 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.shared import (
     ApproverGrantId,
     AuditEventId,
     DeliveryEndpointId,
     SubmissionId,
-    UtcTimestamp,
 )
 
 from .grants import FormRef
@@ -57,7 +56,7 @@ class AuthorizedSubmissionCommit:
         form_ref: FormRef,
         approver_grant_id: ApproverGrantId,
         endpoint_id: DeliveryEndpointId | None,
-        submitted_at: UtcTimestamp,
+        submitted_at: NaiveDatetime,
     ) -> FormSubmission:
         """Build the immutable record value after owner-scope validation."""
 

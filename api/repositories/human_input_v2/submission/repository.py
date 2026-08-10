@@ -224,7 +224,7 @@ class SQLAlchemySubmissionTransaction:
                 self._session.add(submission_to_record(submission))
                 self._session.flush()
                 form_record.status = HumanInputV2FormStatus.SUBMITTED
-                form_record.updated_at = occurred_at.value
+                form_record.updated_at = occurred_at
                 self._session.flush()
         except IntegrityError as error:
             if self._is_form_submission_unique_conflict(error):

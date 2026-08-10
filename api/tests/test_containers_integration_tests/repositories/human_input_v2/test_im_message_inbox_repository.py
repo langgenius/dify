@@ -32,7 +32,7 @@ from core.human_input_v2.im_message_inbox import (
     TransitionApplied,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent, SlackIMIntegrationCredentials, WebhookRequest
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox import (
@@ -45,7 +45,7 @@ from services.human_input_v2.im_message_inbox import (
     RenewableLeaseHeartbeat,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _RECEIVED_AT = datetime(2026, 8, 2, 8)
 _INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000001")
 _SLACK_SIGNING_SECRET = "sanitized-signing-material"
@@ -84,7 +84,7 @@ class _ThreadSafeWakeup:
 
 
 class _FixedClock:
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         return _NOW
 
 
@@ -367,20 +367,20 @@ def test_postgres_lease_reclaim_renewal_and_stale_token_fencing(
     renewed = repository.renew(
         first.record_id,
         first.claim_token,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=5)),
+        now=_NOW + timedelta(seconds=5),
     )
     assert isinstance(renewed, TransitionApplied)
 
     second = repository.claim_by_id(
         accepted.record_id,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=16)),
+        now=_NOW + timedelta(seconds=16),
     )
     assert isinstance(second, IMInboxDelivery)
     assert second.claim_origin is InboxClaimOrigin.EXPIRED_PROCESSING
     stale = repository.succeed(
         first.record_id,
         first.claim_token,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=17)),
+        now=_NOW + timedelta(seconds=17),
     )
 
     assert isinstance(stale, LostLease)
@@ -398,14 +398,14 @@ def test_postgres_retry_backoff_has_the_same_direct_and_recovery_visibility_boun
     accepted = repository.insert_or_resolve(_INTEGRATION_ID, _event("event-backoff"), now=_NOW)
     first = repository.claim_by_id(accepted.record_id, now=_NOW)
     assert isinstance(first, IMInboxDelivery)
-    retry_at = UtcTimestamp(_NOW.value + timedelta(seconds=1))
+    retry_at = _NOW + timedelta(seconds=1)
     assert repository.retry(first.record_id, first.claim_token, now=retry_at) == RetryScheduled(first.record_id)
 
-    before_boundary = UtcTimestamp(retry_at.value + timedelta(seconds=4, microseconds=999999))
+    before_boundary = retry_at + timedelta(seconds=4, microseconds=999999)
     assert repository.claim_by_id(accepted.record_id, now=before_boundary) is None
     assert repository.recoverable_record_ids(now=before_boundary, limit=10) == ()
 
-    at_boundary = UtcTimestamp(retry_at.value + timedelta(seconds=5))
+    at_boundary = retry_at + timedelta(seconds=5)
     assert repository.recoverable_record_ids(now=at_boundary, limit=10) == (accepted.record_id,)
     second = repository.claim_by_id(accepted.record_id, now=at_boundary)
     assert isinstance(second, IMInboxDelivery)
@@ -423,7 +423,7 @@ def test_postgres_expired_claim_at_attempt_limit_is_atomically_failed_before_con
     accepted = repository.insert_or_resolve(_INTEGRATION_ID, _event("event-exhausted"), now=_NOW)
     first = repository.claim_by_id(accepted.record_id, now=_NOW)
     assert isinstance(first, IMInboxDelivery)
-    after_lease = UtcTimestamp(_NOW.value + timedelta(seconds=11))
+    after_lease = _NOW + timedelta(seconds=11)
     assert repository.recoverable_record_ids(now=after_lease, limit=10) == (accepted.record_id,)
 
     exhausted = repository.claim_by_id(accepted.record_id, now=after_lease)
@@ -536,7 +536,7 @@ def test_postgres_slack_receiver_reaches_terminal_worker_outcome(
             "type": "event_callback",
             "team_id": _SLACK_PROVIDER_TENANT_ID,
             "event_id": "sanitized-postgres-event",
-            "event_time": int(_NOW.value.timestamp()),
+            "event_time": int(_NOW.timestamp()),
             "event": {"type": "message", "text": "Sanitized text"},
         },
         separators=(",", ":"),

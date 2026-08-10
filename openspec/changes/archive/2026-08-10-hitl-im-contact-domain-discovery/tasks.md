@@ -28,4 +28,4 @@
 
 - [x] 4.1 用 `design.md` 中的业务场景与产品、架构、安全逐条走查并记录最终结论（见 `design.md` §12 走查结果）
 - [x] 4.2 将 manual sync、Contact 权限、`ABSENT` omit/404、CE / SaaS 与 External hard-delete、EE no-retain、Service API request-scoped `end_user`、CLI initiator unavailable、OTP 同步提交、external contact 重建 / email 变更，以及并发提交场景纳入首批验收用例（见 `design.md` §10）
-- [ ] 4.3 基于已确认场景执行 `/opsx:apply`
+- [x] 4.3 基于已确认场景执行 `/opsx:apply`

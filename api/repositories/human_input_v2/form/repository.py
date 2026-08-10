@@ -108,8 +108,7 @@ class SQLAlchemyFormRepository:
                     form_ref=form.ref,
                     grant=grant_from_record(grant_record),
                     endpoint=endpoint_from_record(endpoint_record),
-                    definition=form.definition,
-                    rendered_content=form.rendered_content,
+                    resolved_form=form.resolved_form,
                 )
         except SQLAlchemyError as error:
             raise FormPersistenceError("failed to load Human Input delivery projection") from error
@@ -137,8 +136,8 @@ class SQLAlchemyFormRepository:
                 return FormDefinitionProjection(
                     form_ref=form.ref,
                     endpoint_ref=endpoint_from_record(endpoint_record).ref,
-                    definition=form.definition,
-                    rendered_content=form.rendered_content,
+                    resolved_form=form.resolved_form,
+                    display_in_ui=form.display_in_ui,
                     status=form.status,
                     node_timeout_at=form.node_timeout_at,
                     global_expires_at=form.global_expires_at,

@@ -17,7 +17,7 @@ from core.human_input_v2.im_message_inbox import (
     InboxProcessingPolicy,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.recovery import IMInboxRecovery
@@ -32,7 +32,7 @@ from services.human_input_v2.im_message_inbox.worker import (
     InboxWorkerOutcome,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 
 
 def _policy(*, maximum_attempts: int = 3) -> InboxProcessingPolicy:
@@ -45,12 +45,12 @@ def _policy(*, maximum_attempts: int = 3) -> InboxProcessingPolicy:
 
 
 class _MutableClock:
-    current: UtcTimestamp
+    current: datetime
 
-    def __init__(self, current: UtcTimestamp = _NOW) -> None:
+    def __init__(self, current: datetime = _NOW) -> None:
         self.current = current
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         return self.current
 
 
@@ -237,7 +237,7 @@ def test_lost_lease_prevents_stale_terminal_write_and_allows_reclaim(sqlite_engi
     record_id = _accept(repository)
 
     outcome = worker.process(record_id)
-    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
+    clock.current = _NOW + timedelta(seconds=31)
     reclaimed = repository.claim_by_id(record_id, now=clock.current)
 
     assert outcome is InboxWorkerOutcome.LOST_LEASE
@@ -261,7 +261,7 @@ def test_retry_exhaustion_is_terminal_and_not_automatically_replayed(sqlite_engi
     record_id = _accept(repository)
 
     first = worker.process(record_id)
-    clock.current = UtcTimestamp(_NOW.value + timedelta(hours=1))
+    clock.current = _NOW + timedelta(hours=1)
     replay = worker.process(record_id)
 
     assert first is InboxWorkerOutcome.FAILED
@@ -298,7 +298,7 @@ def test_pending_retry_is_not_reported_as_expired_lease_reclaim(sqlite_engine: E
     record_id = _accept(repository)
     assert worker.process(record_id) is InboxWorkerOutcome.RETRIED
     consumer.decision = ConsumerDecision.SUCCEEDED
-    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=5))
+    clock.current = _NOW + timedelta(seconds=5)
 
     outcome = worker.process(record_id)
 
@@ -314,7 +314,7 @@ def test_side_effect_before_lost_finalize_can_be_delivered_again(sqlite_engine: 
     )
     record_id = _accept(repository)
     first = worker.process(record_id)
-    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
+    clock.current = _NOW + timedelta(seconds=31)
     second_consumer = _Consumer(ConsumerDecision.SUCCEEDED)
     metrics = _Metrics()
     second_worker = IMInboxWorker(
@@ -350,7 +350,7 @@ def test_worker_crash_is_recovered_after_the_claim_lease_expires(sqlite_engine: 
         now=clock.now(),
     )
     assert abandoned is not None
-    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
+    clock.current = _NOW + timedelta(seconds=31)
 
     outcome = worker.process(record_id)
 
@@ -377,7 +377,7 @@ def test_worker_atomically_fails_expired_claim_at_attempt_limit_without_calling_
     record_id = _accept(repository)
     abandoned = repository.claim_by_id(record_id, now=clock.now())
     assert abandoned is not None
-    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
+    clock.current = _NOW + timedelta(seconds=31)
     wakeup_record_ids: list[IMInboxRecordId] = []
     recovery = IMInboxRecovery(
         repository=repository,

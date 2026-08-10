@@ -29,11 +29,11 @@ from core.human_input_v2.im_message_inbox import (
     TransitionApplied,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 
-_NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _PAYLOAD = ' {"token":"sensitive","sequence":1}\n'
 
 
@@ -101,14 +101,14 @@ def test_repository_owns_processing_policy_and_returns_typed_retry_results(sqlit
     assert scheduled == RetryScheduled(first.record_id)
     second = repository.claim_by_id(
         accepted.record_id,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=5)),
+        now=_NOW + timedelta(seconds=5),
     )
     assert isinstance(second, IMInboxDelivery)
 
     exhausted = repository.retry(
         second.record_id,
         second.claim_token,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=6)),
+        now=_NOW + timedelta(seconds=6),
     )
     assert exhausted == RetryExhausted(second.record_id)
 
@@ -237,12 +237,12 @@ def test_claim_reconstructs_event_and_renews_only_current_token(sqlite_engine: E
     renewed = repository.renew(
         delivery.record_id,
         delivery.claim_token,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=20)),
+        now=_NOW + timedelta(seconds=20),
     )
     stale = repository.renew(
         delivery.record_id,
         ClaimToken("stale"),
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=20)),
+        now=_NOW + timedelta(seconds=20),
     )
 
     assert delivery.event == _event()
@@ -265,7 +265,7 @@ def test_renew_uses_repository_owned_lease_duration(sqlite_engine: Engine) -> No
     accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
     delivery = repository.claim_by_id(accepted.record_id, now=_NOW)
     assert isinstance(delivery, IMInboxDelivery)
-    renewed_at = UtcTimestamp(_NOW.value + timedelta(seconds=1))
+    renewed_at = _NOW + timedelta(seconds=1)
 
     renewed = repository.renew(delivery.record_id, delivery.claim_token, now=renewed_at)
 
@@ -286,10 +286,10 @@ def test_expired_lease_is_reclaimed_and_stale_owner_cannot_finalize(sqlite_engin
 
     second = repository.claim_by_id(
         accepted.record_id,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=11)),
+        now=_NOW + timedelta(seconds=11),
     )
     assert isinstance(second, IMInboxDelivery)
-    stale = repository.succeed(first.record_id, first.claim_token, now=UtcTimestamp(_NOW.value + timedelta(seconds=12)))
+    stale = repository.succeed(first.record_id, first.claim_token, now=_NOW + timedelta(seconds=12))
 
     assert second.claim_token != first.claim_token
     assert second.claim_origin is InboxClaimOrigin.EXPIRED_PROCESSING
@@ -320,14 +320,14 @@ def test_retry_is_bounded_and_terminal_records_are_not_reclaimed(sqlite_engine: 
 
     second = repository.claim_by_id(
         first.record_id,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=1)),
+        now=_NOW + timedelta(seconds=1),
     )
     assert isinstance(second, IMInboxDelivery)
     assert second.claim_origin is InboxClaimOrigin.PENDING
     exhausted = repository.retry(
         second.record_id,
         second.claim_token,
-        now=UtcTimestamp(_NOW.value + timedelta(seconds=2)),
+        now=_NOW + timedelta(seconds=2),
     )
 
     assert retried == RetryScheduled(first.record_id)
@@ -335,7 +335,7 @@ def test_retry_is_bounded_and_terminal_records_are_not_reclaimed(sqlite_engine: 
     assert (
         repository.claim_by_id(
             first.record_id,
-            now=UtcTimestamp(_NOW.value + timedelta(hours=1)),
+            now=_NOW + timedelta(hours=1),
         )
         is None
     )
@@ -353,17 +353,17 @@ def test_retry_backoff_hides_pending_work_from_direct_claim_and_recovery_until_b
     direct = repository.insert_or_resolve(IntegrationId("integration-1"), _event("event-direct"), now=_NOW)
     recovered = repository.insert_or_resolve(IntegrationId("integration-1"), _event("event-recovery"), now=_NOW)
     first_claims = repository.claim_available(now=_NOW, limit=2)
-    retry_at = UtcTimestamp(_NOW.value + timedelta(seconds=1))
+    retry_at = _NOW + timedelta(seconds=1)
     for claim in first_claims:
         assert isinstance(claim, IMInboxDelivery)
         assert repository.retry(claim.record_id, claim.claim_token, now=retry_at) == RetryScheduled(claim.record_id)
 
-    before_boundary = UtcTimestamp(retry_at.value + timedelta(seconds=4, microseconds=999999))
+    before_boundary = retry_at + timedelta(seconds=4, microseconds=999999)
     assert repository.claim_by_id(direct.record_id, now=before_boundary) is None
     assert repository.claim_available(now=before_boundary, limit=10) == ()
     assert repository.recoverable_record_ids(now=before_boundary, limit=10) == ()
 
-    at_boundary = UtcTimestamp(retry_at.value + timedelta(seconds=5))
+    at_boundary = retry_at + timedelta(seconds=5)
     assert set(repository.recoverable_record_ids(now=at_boundary, limit=10)) == {
         direct.record_id,
         recovered.record_id,
@@ -390,10 +390,10 @@ def test_retry_backoff_uses_attempt_specific_delay_and_caps_at_maximum(sqlite_en
     for completed_attempt, delay_seconds in enumerate((5, 10, 20, 20), start=1):
         assert claim.attempt == completed_attempt
         assert repository.retry(claim.record_id, claim.claim_token, now=current) == RetryScheduled(claim.record_id)
-        before_boundary = UtcTimestamp(current.value + timedelta(seconds=delay_seconds, microseconds=-1))
+        before_boundary = current + timedelta(seconds=delay_seconds, microseconds=-1)
         assert repository.claim_by_id(accepted.record_id, now=before_boundary) is None
 
-        current = UtcTimestamp(current.value + timedelta(seconds=delay_seconds))
+        current += timedelta(seconds=delay_seconds)
         next_claim = repository.claim_by_id(accepted.record_id, now=current)
         assert isinstance(next_claim, IMInboxDelivery), completed_attempt
         claim = next_claim
@@ -412,7 +412,7 @@ def test_expired_claims_at_attempt_limit_are_atomically_failed_for_direct_and_ba
     batch = repository.insert_or_resolve(IntegrationId("integration-1"), _event("event-batch"), now=_NOW)
     initial_claims = repository.claim_available(now=_NOW, limit=2)
     assert all(not isinstance(claim, InboxClaimExhausted) for claim in initial_claims)
-    after_lease = UtcTimestamp(_NOW.value + timedelta(seconds=11))
+    after_lease = _NOW + timedelta(seconds=11)
 
     direct_result = repository.claim_by_id(direct.record_id, now=after_lease)
     batch_results = repository.claim_available(now=after_lease, limit=10)
@@ -434,7 +434,7 @@ def test_recovery_and_backlog_queries_do_not_require_payload_selection(sqlite_en
     second = repository.insert_or_resolve(IntegrationId("integration-1"), _event("event-2"), now=_NOW)
     claimed = repository.claim_by_id(second.record_id, now=_NOW)
     assert claimed is not None
-    later = UtcTimestamp(_NOW.value + timedelta(seconds=6))
+    later = _NOW + timedelta(seconds=6)
 
     recoverable = repository.recoverable_record_ids(now=later, limit=10)
     backlog = repository.backlog(now=later)

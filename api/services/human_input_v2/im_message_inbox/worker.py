@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
 
@@ -24,7 +25,6 @@ from core.human_input_v2.im_message_inbox import (
     LostLease,
     RetryExhausted,
 )
-from core.human_input_v2.shared import UtcTimestamp
 
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
 
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class WorkerClock(Protocol):
     """Injectable UTC clock shared by claim and finalize operations."""
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         """Return the current UTC timestamp."""
 
 

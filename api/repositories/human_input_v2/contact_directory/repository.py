@@ -8,8 +8,6 @@ never cross this boundary.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import sqlalchemy as sa
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -29,7 +27,8 @@ from core.human_input_v2.contact_directory import (
     PlatformWorkspaceEntry,
     WorkspaceMemberOwner,
 )
-from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, WorkspaceId
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
@@ -128,7 +127,7 @@ class SQLAlchemyContactDirectoryRepository:
                     contact_id=ContactId(str(uuidv7())),
                     name=name,
                     email=email,
-                    now=UtcTimestamp(datetime.now(UTC)),
+                    now=naive_utc_now(),
                 )
                 self._ensure_identity_available(session, contact)
                 record = contact_to_record(contact)
@@ -172,7 +171,7 @@ class SQLAlchemyContactDirectoryRepository:
                     raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
 
                 if enabled:
-                    now = UtcTimestamp(datetime.now(UTC))
+                    now = naive_utc_now()
                     self._insert_platform_entry_idempotently(
                         session,
                         PlatformWorkspaceEntry(
@@ -406,7 +405,7 @@ class SQLAlchemyContactDirectoryRepository:
         record.email = contact.email
         record.normalized_email = str(contact.normalized_email) if contact.normalized_email is not None else None
         record.avatar_file_id = contact.avatar_file_id
-        record.updated_at = contact.updated_at.value
+        record.updated_at = contact.updated_at
 
     @staticmethod
     def _domain_error(code: ContactRejectionCode) -> ContactDirectoryError:

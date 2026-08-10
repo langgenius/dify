@@ -11,6 +11,7 @@ because their model relationships use ``lazy="raise"``.
 from __future__ import annotations
 
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
@@ -57,7 +58,6 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from libs.uuid_utils import uuidv7
@@ -182,7 +182,7 @@ class SQLAlchemyIMControlPlaneRepository:
         *,
         sync_run_id: IMSyncRunId,
         started_by_account_id: AccountId | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> ActiveRunDecision:
         """Serialize trigger decisions by locking the owning Integration row."""
 
@@ -268,7 +268,7 @@ class SQLAlchemyIMControlPlaneRepository:
                 ),
             )
 
-    def apply_reconciliation(self, plan: ReconciliationPlan, *, now: UtcTimestamp) -> ApplyReconciliationResult:
+    def apply_reconciliation(self, plan: ReconciliationPlan, *, now: NaiveDatetime) -> ApplyReconciliationResult:
         """Idempotently apply one plan using the persisted run capture as authority."""
 
         with self._session_maker() as session, session.begin():
@@ -300,11 +300,11 @@ class SQLAlchemyIMControlPlaneRepository:
                 self._append_result_record(session, stale_result)
                 run_record.status = IMSyncRunStatus.FAILED
                 run_record.failed_count = 1
-                run_record.started_at = run_record.started_at or now.value
-                run_record.finished_at = now.value
+                run_record.started_at = run_record.started_at or now
+                run_record.finished_at = now
                 run_record.error_code = "stale_integration_revision"
                 run_record.error_message = "Integration configuration changed before reconciliation apply."
-                run_record.updated_at = now.value
+                run_record.updated_at = now
                 session.flush()
                 return ApplyReconciliationResult(
                     ApplyReconciliationStatus.STALE_REVISION,
@@ -329,9 +329,9 @@ class SQLAlchemyIMControlPlaneRepository:
             run_record.failed_count = sum(result.result_type is IMSyncResultType.FAILED for result in results)
             run_record.removed_count = sum(result.result_type is IMSyncResultType.REMOVED for result in results)
             run_record.skipped_count = sum(result.result_type is IMSyncResultType.SKIPPED for result in results)
-            run_record.started_at = run_record.started_at or now.value
-            run_record.finished_at = now.value
-            run_record.updated_at = now.value
+            run_record.started_at = run_record.started_at or now
+            run_record.finished_at = now
+            run_record.updated_at = now
             session.flush()
             return ApplyReconciliationResult(
                 ApplyReconciliationStatus.APPLIED,
@@ -491,7 +491,7 @@ class SQLAlchemyIMControlPlaneRepository:
         session: Session,
         plan: ReconciliationPlan,
         action: ReconciliationAction,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> SyncResultFact:
         identity_record: HumanInputIMIdentity | None = None
         binding_record: HumanInputIMBinding | None = None
@@ -584,7 +584,7 @@ class SQLAlchemyIMControlPlaneRepository:
         record: HumanInputIMIdentity,
         action: ReconciliationAction,
         plan: ReconciliationPlan,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> None:
         record.provider_user_id = action.entry.provider_user_id
         record.display_name = action.entry.display_name
@@ -595,15 +595,15 @@ class SQLAlchemyIMControlPlaneRepository:
 
         record.raw_payload = IMIdentityRawPayload(action.entry.raw_payload.to_mapping())
         record.last_seen_sync_run_id = str(plan.sync_run_id)
-        record.last_seen_at = now.value
-        record.updated_at = now.value
+        record.last_seen_at = now
+        record.updated_at = now
 
     def _remove_identity(
         self,
         session: Session,
         plan: ReconciliationPlan,
         identity_id: IMIdentityId,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> tuple[SyncResultFact, ...]:
         record = session.scalar(
             select(HumanInputIMIdentity).where(
@@ -673,7 +673,7 @@ class SQLAlchemyIMControlPlaneRepository:
         return tuple(results)
 
     @staticmethod
-    def _stale_result(plan: ReconciliationPlan, now: UtcTimestamp) -> SyncResultFact:
+    def _stale_result(plan: ReconciliationPlan, now: NaiveDatetime) -> SyncResultFact:
         return SyncResultFact(
             id=IMSyncResultId(str(uuidv7())),
             integration_id=plan.integration_revision.integration_id,

@@ -38,15 +38,17 @@ from core.human_input_v2.im_message_inbox import (
     validate_inbox_event,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import IMMessageInbox
 
 from .mappers import delivery_from_record, event_record
 
 
-def _naive_utc(timestamp: UtcTimestamp) -> datetime:
-    return timestamp.value.astimezone(UTC).replace(tzinfo=None)
+def _naive_utc(timestamp: datetime) -> datetime:
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise ValueError("timestamp must be timezone-aware")
+    return timestamp.astimezone(UTC).replace(tzinfo=None)
 
 
 class SQLAlchemyIMMessageInboxRepository:
@@ -60,7 +62,7 @@ class SQLAlchemyIMMessageInboxRepository:
         self._policy = policy
 
     def insert_or_resolve(
-        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: UtcTimestamp
+        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime
     ) -> InboxAcceptance:
         """Commit all event facts atomically, resolving only real-ID conflicts."""
 
@@ -96,7 +98,7 @@ class SQLAlchemyIMMessageInboxRepository:
             raise InboxPersistenceError("duplicate IM event could not be resolved")
         return InboxAcceptance(IMInboxRecordId(existing_id), AcceptanceKind.DUPLICATE)
 
-    def claim_by_id(self, record_id: IMInboxRecordId, *, now: UtcTimestamp) -> InboxClaimResult | None:
+    def claim_by_id(self, record_id: IMInboxRecordId, *, now: datetime) -> InboxClaimResult | None:
         """Claim one available record and return only after the transaction commits."""
 
         with self._session_maker() as session, session.begin():
@@ -111,7 +113,7 @@ class SQLAlchemyIMMessageInboxRepository:
             session.flush()
         return claim_result
 
-    def claim_available(self, *, now: UtcTimestamp, limit: int) -> tuple[InboxClaimResult, ...]:
+    def claim_available(self, *, now: datetime, limit: int) -> tuple[InboxClaimResult, ...]:
         """Claim a bounded batch ordered by record age."""
 
         if limit < 1:
@@ -133,7 +135,7 @@ class SQLAlchemyIMMessageInboxRepository:
     def _claim_locked_record(
         self,
         record: IMMessageInbox,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> InboxClaimResult:
         if record.status is InboxProcessingStatus.PROCESSING and record.attempt_count >= self._policy.maximum_attempts:
             current = _naive_utc(now)
@@ -159,7 +161,7 @@ class SQLAlchemyIMMessageInboxRepository:
             return InboxClaimOrigin.EXPIRED_PROCESSING
         raise ValueError(f"record has non-claimable status: {record.status.value}")
 
-    def _available(self, now: UtcTimestamp) -> sa.ColumnElement[bool]:
+    def _available(self, now: datetime) -> sa.ColumnElement[bool]:
         current = _naive_utc(now)
         pending_retry_states = tuple(
             sa.and_(
@@ -182,7 +184,7 @@ class SQLAlchemyIMMessageInboxRepository:
         )
 
     @staticmethod
-    def _assign_claim(record: IMMessageInbox, now: UtcTimestamp, lease_duration: timedelta) -> None:
+    def _assign_claim(record: IMMessageInbox, now: datetime, lease_duration: timedelta) -> None:
         record.status = InboxProcessingStatus.PROCESSING
         record.attempt_count += 1
         record.claim_token = str(uuid4())
@@ -194,7 +196,7 @@ class SQLAlchemyIMMessageInboxRepository:
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         values = {
             "lease_expires_at": _naive_utc(now) + self._policy.lease_duration,
@@ -202,10 +204,10 @@ class SQLAlchemyIMMessageInboxRepository:
         }
         return self._fenced_update(record_id, claim_token, now=now, values=values)
 
-    def succeed(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: UtcTimestamp) -> TransitionResult:
+    def succeed(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: datetime) -> TransitionResult:
         return self._finalize(record_id, claim_token, InboxProcessingStatus.SUCCEEDED, now=now)
 
-    def ignore(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: UtcTimestamp) -> TransitionResult:
+    def ignore(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: datetime) -> TransitionResult:
         return self._finalize(record_id, claim_token, InboxProcessingStatus.IGNORED, now=now)
 
     def fail(
@@ -213,7 +215,7 @@ class SQLAlchemyIMMessageInboxRepository:
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         return self._finalize(record_id, claim_token, InboxProcessingStatus.FAILED, now=now)
 
@@ -223,7 +225,7 @@ class SQLAlchemyIMMessageInboxRepository:
         claim_token: ClaimToken,
         status: InboxProcessingStatus,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         current = _naive_utc(now)
         return self._fenced_update(
@@ -244,7 +246,7 @@ class SQLAlchemyIMMessageInboxRepository:
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> RetryResult:
         """Return current work to pending or fail it after bounded attempts."""
 
@@ -293,7 +295,7 @@ class SQLAlchemyIMMessageInboxRepository:
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
         values: Mapping[str, object],
     ) -> TransitionResult:
         try:
@@ -314,7 +316,7 @@ class SQLAlchemyIMMessageInboxRepository:
             raise InboxPersistenceError("failed fenced IM inbox transition") from error
         return TransitionApplied(record_id)
 
-    def recoverable_record_ids(self, *, now: UtcTimestamp, limit: int) -> tuple[IMInboxRecordId, ...]:
+    def recoverable_record_ids(self, *, now: datetime, limit: int) -> tuple[IMInboxRecordId, ...]:
         """Return only record IDs; payload is not selected or sent to the broker."""
 
         with self._session_maker() as session:
@@ -326,7 +328,7 @@ class SQLAlchemyIMMessageInboxRepository:
             )
             return tuple(IMInboxRecordId(record_id) for record_id in record_ids)
 
-    def backlog(self, *, now: UtcTimestamp) -> InboxBacklog:
+    def backlog(self, *, now: datetime) -> InboxBacklog:
         """Measure backlog without reading or filtering Provider payloads."""
 
         with self._session_maker() as session:
@@ -342,5 +344,5 @@ class SQLAlchemyIMMessageInboxRepository:
         age = None
         if oldest_pending is not None:
             oldest = oldest_pending.replace(tzinfo=UTC) if oldest_pending.tzinfo is None else oldest_pending
-            age = max(now.value - oldest, timedelta())
+            age = max(_naive_utc(now).replace(tzinfo=UTC) - oldest, timedelta())
         return InboxBacklog(counts, age)

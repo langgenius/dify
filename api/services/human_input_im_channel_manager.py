@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.channel_management import (
     ChannelCapability,
     ChannelFailureCategory,
@@ -36,7 +38,8 @@ from core.human_input_v2.im_integration import (
     ProviderTenantIdentity,
     StaleRevision,
 )
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import IntegrationId, WorkspaceId
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 
@@ -56,7 +59,7 @@ class IMProviderTestResult:
     provider_tenant_id: str
     status: IMIntegrationStatus
     safe_status_reason: str | None
-    checked_at: UtcTimestamp
+    checked_at: NaiveDatetime
 
 
 class IMProviderConfigurationError(Exception):
@@ -120,7 +123,7 @@ class HumanInputIMChannelManager:
         repository: IMControlPlaneRepository,
         provider_port: IMProviderConfigurationPort,
         *,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
         id_factory: Callable[[], str] = lambda: str(uuidv7()),
     ) -> None:
         if ref not in _SUPPORTED_IM_REFS:
@@ -324,7 +327,7 @@ def build_human_input_im_channel_handlers(
     repository: IMControlPlaneRepository,
     provider_port: IMProviderConfigurationPort,
     *,
-    clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+    clock: Callable[[], NaiveDatetime] = naive_utc_now,
     id_factory: Callable[[], str] = lambda: str(uuidv7()),
 ) -> tuple[HumanInputIMChannelManager, ...]:
     """Build one independently addressable handler per supported IM provider."""

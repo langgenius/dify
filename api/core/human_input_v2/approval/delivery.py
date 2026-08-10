@@ -14,7 +14,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import assert_never
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity
@@ -36,9 +36,9 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 
 from .grants import ApproverGrantRef, DeliveryEndpointRef
 from .recipient_resolution import (
@@ -128,8 +128,8 @@ class DeliveryEndpoint:
     configuration: DeliveryEndpointConfiguration
     address_hash: str
     access_capability: EndpointAccessCapability | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         _validate_sha256(self.address_hash, label="endpoint address hash")
@@ -156,7 +156,7 @@ class DeliveryEndpoint:
         grant_ref: ApproverGrantRef,
         endpoint_plan: DeliveryEndpointPlan,
         access_capability: EndpointAccessCapability | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> DeliveryEndpoint:
         endpoint_ref = grant_ref.endpoint(endpoint_id)
         configuration: DeliveryEndpointConfiguration
@@ -208,15 +208,15 @@ class DeliveryAttempt:
     endpoint_ref: DeliveryEndpointRef
     attempt_number: int
     status: HumanInputDeliveryAttemptStatus
-    scheduled_at: UtcTimestamp
-    started_at: UtcTimestamp | None
-    finished_at: UtcTimestamp | None
+    scheduled_at: NaiveDatetime
+    started_at: NaiveDatetime | None
+    finished_at: NaiveDatetime | None
     provider_message_id: str | None
     failure_code: str | None
     failure_reason: str | None
     provider_response: Mapping[str, JsonValue] | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if self.attempt_number < 1:
@@ -340,7 +340,7 @@ def delivery_attempt_data_from_mapping(
             raise ValueError("delivery configuration snapshot is malformed")
         snapshot = ConfigurationSnapshotIdentity(
             EmailProviderId(str(snapshot_mapping["configuration_id"])),
-            UtcTimestamp(datetime.fromisoformat(str(snapshot_mapping["updated_at"]))),
+            ensure_naive_utc(datetime.fromisoformat(str(snapshot_mapping["updated_at"]))),
         )
     outcome_mapping = value.get("outcome")
     outcome = None
@@ -392,8 +392,8 @@ class EmailProviderConfiguration:
     sender_name: str
     encrypted_credentials: Mapping[str, JsonValue]
     configured_by_account_id: AccountId | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -413,8 +413,8 @@ class UploadCapability:
     endpoint_ref: DeliveryEndpointRef
     app_id: AppId
     token_hash: str
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         _validate_sha256(self.token_hash, label="upload token hash")
@@ -431,8 +431,8 @@ class UploadFileAssociation:
     id: UploadFileAssociationId
     capability_ref: UploadCapabilityRef
     upload_file_id: str
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not self.upload_file_id.strip():

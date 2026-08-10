@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.approval import (
     AuthorizedSubmissionCommit,
@@ -32,7 +32,7 @@ from core.human_input_v2.approval import (
     SubmissionRepository,
 )
 from core.human_input_v2.entities import HumanInputV2FormKind
-from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, WorkspaceId
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +76,7 @@ class SubmitFormCommand:
     authorization_audit_event_id: AuditEventId
     rejection_audit_event_id: AuditEventId
     resume_identity: WorkflowResumeIdentity | None
-    now: UtcTimestamp
+    now: NaiveDatetime
 
 
 class SubmitFormResultStatus(StrEnum):

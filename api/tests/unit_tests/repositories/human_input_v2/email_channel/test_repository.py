@@ -1,7 +1,7 @@
 """SQLite contract tests for Email channel persistence."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 import sqlalchemy as sa
@@ -20,7 +20,6 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from models.account import Tenant
@@ -31,8 +30,8 @@ from repositories.human_input_v2.email_channel.mappers import (
 )
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 
-_NOW = UtcTimestamp(datetime(2026, 7, 28, 8, tzinfo=UTC))
-_EARLIER = UtcTimestamp(datetime(2026, 7, 28, 7, tzinfo=UTC))
+_NOW = datetime(2026, 7, 28, 8)
+_EARLIER = datetime(2026, 7, 28, 7)
 _WORKSPACE_ID = WorkspaceId("00000000-0000-0000-0000-000000000001")
 
 
@@ -104,7 +103,7 @@ def test_update_uses_identity_and_timestamp_and_advances_equal_clock(sqlite_engi
 
     assert result.status is UpdateEmailConfigurationStatus.UPDATED
     assert result.configuration is not None
-    assert result.configuration.updated_at.value > current.updated_at.value
+    assert result.configuration.updated_at > current.updated_at
     assert stale.status is UpdateEmailConfigurationStatus.STALE
     assert repository.load(_WORKSPACE_ID) == result.configuration
 

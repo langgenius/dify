@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import assert_never
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, NaiveDatetime, TypeAdapter
 
 from core.human_input_v2.approval import (
     AccountSubmissionActor,
@@ -46,9 +46,9 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
     AccountSessionAuthorizationProof,
     EmailOTPAuthorizationProof,
@@ -65,8 +65,8 @@ from models.human_input_v2 import (
 _JSON_OBJECT_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+def _timestamp(value: datetime) -> NaiveDatetime:
+    return ensure_naive_utc(value)
 
 
 def proof_to_record_value(proof: VerifiedSubmissionProof) -> FormAuthorizationProof:
@@ -91,7 +91,7 @@ def proof_to_record_value(proof: VerifiedSubmissionProof) -> FormAuthorizationPr
                 subject_type=subject_type,
                 contact_id=contact_id,
                 verified_email=str(email_proof.normalized_email),
-                verified_at=email_proof.verified_at.value,
+                verified_at=email_proof.verified_at,
             )
         case VerifiedIMIdentityProof() as im_proof:
             return IMIdentityAuthorizationProof(
@@ -211,15 +211,15 @@ def submission_to_record(submission: FormSubmission) -> HumanInputV2FormSubmissi
         selected_action_id=submission.selected_action_id,
         input_snapshot=FormInputSnapshot(_json_object(submission.input_snapshot)),
         canonical_values=FormCanonicalValues(_json_object(submission.canonical_values)),
-        submitted_at=submission.submitted_at.value,
+        submitted_at=submission.submitted_at,
         actor_account_id=actor_fields.account_id,
         actor_end_user_id=actor_fields.end_user_id,
         actor_normalized_email=actor_fields.normalized_email,
         endpoint_id=str(submission.endpoint_id) if submission.endpoint_id is not None else None,
     )
     record.id = str(submission.id)
-    record.created_at = submission.created_at.value
-    record.updated_at = submission.updated_at.value
+    record.created_at = submission.created_at
+    record.updated_at = submission.updated_at
     return record
 
 
@@ -254,7 +254,7 @@ def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2For
         tenant_id=str(event.form_ref.workspace_id),
         form_id=str(event.form_ref.form_id),
         event_type=event.event_type.value,
-        occurred_at=event.occurred_at.value,
+        occurred_at=event.occurred_at,
         approver_grant_id=str(event.approver_grant_id) if event.approver_grant_id is not None else None,
         endpoint_id=str(event.endpoint_id) if event.endpoint_id is not None else None,
         channel=event.channel,
@@ -266,8 +266,8 @@ def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2For
         event_payload=FormAuditEventPayload(_json_object(event.payload)) if event.payload is not None else None,
     )
     record.id = str(event.id)
-    record.created_at = event.created_at.value
-    record.updated_at = event.updated_at.value
+    record.created_at = event.created_at
+    record.updated_at = event.updated_at
     return record
 
 

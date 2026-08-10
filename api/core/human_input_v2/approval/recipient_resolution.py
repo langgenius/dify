@@ -84,7 +84,7 @@ class ContactApprovalSubject:
         return HumanInputApproverGrantSubjectType.CONTACT
 
     def to_primitive(self) -> dict[str, object]:
-        return {"type": self.subject_type.value, "contact_id": self.contact_id.to_primitive()}
+        return {"type": self.subject_type.value, "contact_id": self.contact_id}
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +98,7 @@ class EndUserApprovalSubject:
         return HumanInputApproverGrantSubjectType.END_USER
 
     def to_primitive(self) -> dict[str, object]:
-        return {"type": self.subject_type.value, "end_user_id": self.end_user_id.to_primitive()}
+        return {"type": self.subject_type.value, "end_user_id": self.end_user_id}
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,11 +187,11 @@ class IMEndpointPlan:
     def to_primitive(self) -> dict[str, object]:
         return {
             "channel": self.channel.value,
-            "integration_id": self.integration_id.to_primitive(),
+            "integration_id": self.integration_id,
             "provider": self.provider.value,
             "provider_tenant_id": self.provider_tenant_id,
-            "identity_id": self.identity_id.to_primitive(),
-            "binding_id": self.binding_id.to_primitive() if self.binding_id is not None else None,
+            "identity_id": self.identity_id,
+            "binding_id": self.binding_id,
             "provider_user_id": self.provider_user_id,
         }
 
@@ -471,13 +471,12 @@ class RecipientResolver:
                 position,
                 specification.contact_id,
             )
-            try:
-                contact_id = ContactId(specification.contact_id)
-            except ValueError:
+            if not specification.contact_id.strip():
                 rejected_recipients.append(
                     RejectedRecipient(source, RecipientRejectionReason.INVALID_CONTACT_ID, specification.contact_id)
                 )
                 return
+            contact_id = ContactId(specification.contact_id)
             RecipientResolver._resolve_contact(
                 contact_id,
                 source,
@@ -616,7 +615,7 @@ class RecipientResolver:
         contact = directory.find(contact_id)
         if resolution is ContactResolution.ABSENT or contact is None:
             rejected_recipients.append(
-                RejectedRecipient(source, RecipientRejectionReason.CONTACT_UNAVAILABLE, contact_id.value)
+                RejectedRecipient(source, RecipientRejectionReason.CONTACT_UNAVAILABLE, contact_id)
             )
             return
         RecipientResolver._add_contact_approver(contact, source, capabilities, pending_approvers)
@@ -644,7 +643,7 @@ class RecipientResolver:
 
         matching_contacts = sorted(
             (contact for contact in directory.contacts if contact.normalized_email == normalized_email),
-            key=lambda contact: contact.id.value,
+            key=lambda contact: contact.id,
         )
         for contact in matching_contacts:
             try:
@@ -763,9 +762,9 @@ def _endpoint_sort_key(endpoint: DeliveryEndpointPlan) -> tuple[int, str, str, s
     if isinstance(endpoint, IMEndpointPlan):
         return (
             channel_order,
-            endpoint.integration_id.value,
+            endpoint.integration_id,
             endpoint.provider.value,
-            endpoint.identity_id.value,
+            endpoint.identity_id,
         )
     return channel_order, "", "", ""
 

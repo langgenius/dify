@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, fields
 from datetime import datetime
+from typing import get_type_hints
 
 import pytest
 from pydantic import ValidationError
 
-from core.human_input_v2 import im_provider
+from core.human_input_v2 import ResolvedForm, im_provider
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
+    IMDynamicCardMessaging,
     IMEventStream,
     IMStreamStartError,
     IMStreamStopError,
@@ -95,3 +97,9 @@ def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
 def test_provider_contract_does_not_export_superseded_inbox_types() -> None:
     assert not hasattr(im_provider, "ProviderNativePayload")
     assert not hasattr(im_provider, "IMEventSink")
+
+
+def test_dynamic_card_contract_consumes_resolved_form_without_runtime_wrapper() -> None:
+    assert get_type_hints(IMDynamicCardMessaging.assess)["intent"] is ResolvedForm
+    assert get_type_hints(IMDynamicCardMessaging.send_card)["intent"] is ResolvedForm
+    assert not hasattr(im_provider, "NormalizedCardIntent")

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.approval import (
     ContactOTPSubject,
@@ -25,13 +26,12 @@ from core.human_input_v2.shared import (
     FormId,
     NormalizedEmail,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_ISSUED_AT = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
-_EXPIRES_AT = UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10))
-_RESEND_AFTER = UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60))
+_ISSUED_AT = datetime(2026, 7, 25, 8)
+_EXPIRES_AT = _ISSUED_AT + timedelta(minutes=10)
+_RESEND_AFTER = _ISSUED_AT + timedelta(seconds=60)
 _RAW_CODE = "123456"
 _ENCODED_HASH = "test-sha256$8d969eef6ecad3c29a3a629280e686cff8ca4a8d"
 _TOKEN_HASH = "a" * 64
@@ -42,16 +42,16 @@ _SUBJECT = ContactOTPSubject(ContactId("contact-1"))
 
 
 class _MutableClock:
-    current: UtcTimestamp
+    current: NaiveDatetime
 
-    def __init__(self, current: UtcTimestamp = _ISSUED_AT) -> None:
+    def __init__(self, current: NaiveDatetime = _ISSUED_AT) -> None:
         self.current = current
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> NaiveDatetime:
         return self.current
 
     def advance(self, delta: timedelta) -> None:
-        self.current = UtcTimestamp(self.current.value + delta)
+        self.current = self.current + delta
 
 
 class _DeterministicHasher:
@@ -94,8 +94,8 @@ def _issue(
 
 def _construct_challenge(
     *,
-    expires_at: UtcTimestamp = _EXPIRES_AT,
-    resend_after: UtcTimestamp = _RESEND_AFTER,
+    expires_at: NaiveDatetime = _EXPIRES_AT,
+    resend_after: NaiveDatetime = _RESEND_AFTER,
 ) -> OTPChallenge:
     return OTPChallenge(
         ref=_GRANT_REF.challenge(OTPChallengeId("challenge-direct")),
@@ -123,8 +123,8 @@ def test_issue_uses_injected_clock_and_hash_port_without_retaining_plaintext() -
 
     assert hasher.hash_calls == [_RAW_CODE]
     assert challenge.created_at == clock.now()
-    assert challenge.expires_at == UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10))
-    assert challenge.resend_after == UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60))
+    assert challenge.expires_at == _ISSUED_AT + timedelta(minutes=10)
+    assert challenge.resend_after == _ISSUED_AT + timedelta(seconds=60)
     assert _RAW_CODE not in repr(challenge)
     assert _RAW_CODE not in challenge.to_public_primitive().values()
     assert "code_hash" not in challenge.to_public_primitive()
@@ -134,15 +134,15 @@ def test_issue_uses_injected_clock_and_hash_port_without_retaining_plaintext() -
 def test_challenge_expires_at_the_exact_ten_minute_boundary() -> None:
     challenge = _issue()
 
-    before = challenge.state_at(UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10, microseconds=-1)))
-    exact = challenge.state_at(UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10)))
+    before = challenge.state_at(_ISSUED_AT + timedelta(minutes=10, microseconds=-1))
+    exact = challenge.state_at(_ISSUED_AT + timedelta(minutes=10))
 
     assert before.rejection is None
     assert exact.rejection is OTPChallengeRejectionReason.EXPIRED
 
 
 def test_replacement_rejects_before_cooldown_without_incrementing_send_count() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=59, microseconds=999999)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=59, microseconds=999999))
     challenge = _issue()
 
     decision = challenge.replace(
@@ -160,7 +160,7 @@ def test_replacement_rejects_before_cooldown_without_incrementing_send_count() -
 
 
 def test_replacement_is_allowed_at_exact_cooldown_and_invalidates_previous() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=60))
     challenge = _issue()
 
     decision = challenge.replace(
@@ -186,7 +186,7 @@ def test_replacement_is_allowed_at_exact_cooldown_and_invalidates_previous() -> 
     ids=["exact-boundary", "past-boundary"],
 )
 def test_expired_replacement_returns_expired_previous_without_hashing(elapsed: timedelta) -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + elapsed))
+    clock = _MutableClock(_ISSUED_AT + elapsed)
     hasher = _DeterministicHasher()
     challenge = _issue()
 
@@ -208,7 +208,7 @@ def test_expired_replacement_returns_expired_previous_without_hashing(elapsed: t
 
 
 def test_fifth_send_is_allowed_and_further_send_is_rejected_without_hashing() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=60))
     fourth = _issue(send_count=4)
     fifth_hasher = _DeterministicHasher()
 
@@ -248,7 +248,7 @@ def test_terminal_challenge_rejects_replacement_without_incrementing_counters(
     terminal_status: HumanInputOTPChallengeStatus,
     expected_reason: OTPChallengeRejectionReason,
 ) -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=60))
     pending = _issue()
     if terminal_status is HumanInputOTPChallengeStatus.VERIFIED:
         challenge = pending.verify(
@@ -259,7 +259,7 @@ def test_terminal_challenge_rejects_replacement_without_incrementing_counters(
     elif terminal_status is HumanInputOTPChallengeStatus.INVALIDATED:
         challenge = pending.invalidate(clock=clock)
     else:
-        expiry_clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10)))
+        expiry_clock = _MutableClock(_ISSUED_AT + timedelta(minutes=10))
         challenge = pending.verify(
             plaintext_code=_RAW_CODE,
             clock=expiry_clock,
@@ -301,7 +301,7 @@ def test_five_invalid_attempts_are_consumed_and_sixth_is_rejected_without_hashin
 
 
 def test_successful_verification_consumes_one_attempt_and_returns_immutable_limited_proof() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=30)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=30))
     hasher = _DeterministicHasher()
     challenge = _issue()
 
@@ -336,7 +336,7 @@ def test_successful_verification_consumes_one_attempt_and_returns_immutable_limi
 
 
 def test_verified_and_invalidated_challenges_reject_further_verification_without_counter_changes() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=30)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=30))
     hasher = _DeterministicHasher()
     verified = _issue().verify(plaintext_code=_RAW_CODE, clock=clock, code_hasher=hasher).challenge
     invalidated = _issue().invalidate(clock=clock)
@@ -351,7 +351,7 @@ def test_verified_and_invalidated_challenges_reject_further_verification_without
 
 
 def test_expired_verification_does_not_consume_an_attempt_or_call_hash_port() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(minutes=10))
     hasher = _DeterministicHasher()
     challenge = _issue()
 
@@ -364,7 +364,7 @@ def test_expired_verification_does_not_consume_an_attempt_or_call_hash_port() ->
 
 
 def test_submission_boundary_rejects_raw_code_and_accepts_only_current_verified_identity() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=30)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=30))
     proof = _issue().verify(plaintext_code=_RAW_CODE, clock=clock, code_hasher=_DeterministicHasher()).proof
     assert proof is not None
     current_identity = CurrentEmailOTPIdentity(_GRANT_REF, _SUBJECT, _EMAIL)
@@ -411,7 +411,7 @@ def test_submission_boundary_rejects_changed_deleted_recreated_or_wrong_grant_id
     current_identity: CurrentEmailOTPIdentity,
     expected_reason: OTPChallengeRejectionReason,
 ) -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=30)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=30))
     proof = _issue().verify(plaintext_code=_RAW_CODE, clock=clock, code_hasher=_DeterministicHasher()).proof
     assert proof is not None
 
@@ -458,7 +458,7 @@ def test_state_result_exposes_usable_and_rejected_branches() -> None:
     challenge = _issue()
 
     assert challenge.state_at(_ISSUED_AT).is_usable is True
-    assert challenge.state_at(UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10))).is_usable is False
+    assert challenge.state_at(_ISSUED_AT + timedelta(minutes=10)).is_usable is False
 
 
 def test_challenge_rejects_malformed_persistence_state() -> None:
@@ -469,7 +469,7 @@ def test_challenge_rejects_malformed_persistence_state() -> None:
     with pytest.raises(ValueError, match="expires_at"):
         replace(challenge, expires_at=_ISSUED_AT)
     with pytest.raises(ValueError, match="updated_at"):
-        replace(challenge, updated_at=UtcTimestamp(_ISSUED_AT.value - timedelta(seconds=1)))
+        replace(challenge, updated_at=_ISSUED_AT - timedelta(seconds=1))
     with pytest.raises(ValueError, match="requires only verified_at"):
         replace(challenge, status=HumanInputOTPChallengeStatus.VERIFIED)
     with pytest.raises(ValueError, match="requires only invalidated_at"):
@@ -481,12 +481,12 @@ def test_challenge_rejects_malformed_persistence_state() -> None:
 @pytest.mark.parametrize(
     "resend_after",
     [
-        UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=59, microseconds=999999)),
-        UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=60, microseconds=1)),
+        _ISSUED_AT + timedelta(seconds=59, microseconds=999999),
+        _ISSUED_AT + timedelta(seconds=60, microseconds=1),
     ],
     ids=["short", "long"],
 )
-def test_direct_construction_requires_exact_resend_cooldown(resend_after: UtcTimestamp) -> None:
+def test_direct_construction_requires_exact_resend_cooldown(resend_after: NaiveDatetime) -> None:
     with pytest.raises(ValueError, match="resend_after"):
         _construct_challenge(resend_after=resend_after)
 
@@ -494,18 +494,18 @@ def test_direct_construction_requires_exact_resend_cooldown(resend_after: UtcTim
 @pytest.mark.parametrize(
     "expires_at",
     [
-        UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10, microseconds=-1)),
-        UtcTimestamp(_ISSUED_AT.value + timedelta(minutes=10, microseconds=1)),
+        _ISSUED_AT + timedelta(minutes=10, microseconds=-1),
+        _ISSUED_AT + timedelta(minutes=10, microseconds=1),
     ],
     ids=["short", "long"],
 )
-def test_direct_construction_requires_exact_expiry(expires_at: UtcTimestamp) -> None:
+def test_direct_construction_requires_exact_expiry(expires_at: NaiveDatetime) -> None:
     with pytest.raises(ValueError, match="expires_at"):
         _construct_challenge(expires_at=expires_at)
 
 
 def test_invalidating_a_terminal_challenge_is_idempotent() -> None:
-    clock = _MutableClock(UtcTimestamp(_ISSUED_AT.value + timedelta(seconds=30)))
+    clock = _MutableClock(_ISSUED_AT + timedelta(seconds=30))
     verified = (
         _issue()
         .verify(

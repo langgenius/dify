@@ -10,6 +10,7 @@ because their tracebacks may contain event payloads or connection credentials.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Protocol, override
 
 from core.human_input_v2.entities import IMProvider
@@ -22,7 +23,7 @@ from core.human_input_v2.im_message_inbox import (
     validate_inbox_provider_tenant_id,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 
 from . import wakeup
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 class InboxClock(Protocol):
     """Injectable UTC clock for deterministic acceptance timestamps."""
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         """Return the current UTC timestamp."""
 
 

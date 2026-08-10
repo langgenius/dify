@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from importlib import import_module
 from inspect import unwrap
 from types import SimpleNamespace
@@ -33,7 +33,7 @@ from core.human_input_v2.channel_management import (
     ResendChannelSummary,
     ResendChannelTestSummary,
 )
-from core.human_input_v2.shared import AccountId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
 from enums.deployment_edition import DeploymentEdition
 
 _CONTEXT = HumanInputChannelManagementContext(
@@ -244,7 +244,7 @@ def test_resend_test_dispatches_and_returns_candidate_result(
     app: Flask,
     monkeypatch,
 ) -> None:
-    checked_at = UtcTimestamp(datetime(2026, 7, 31, 10, tzinfo=UTC))
+    checked_at = datetime(2026, 7, 31, 10)
 
     class Service:
         def test_channel(self, context, command):

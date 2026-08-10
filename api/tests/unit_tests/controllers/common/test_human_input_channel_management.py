@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 from pydantic import ValidationError
@@ -43,7 +43,7 @@ from core.human_input_v2.channel_management import (
     SaveIMChannelCommand,
 )
 from core.human_input_v2.email_channel import RetainExistingAPIKey
-from core.human_input_v2.shared import IntegrationId, NormalizedEmail, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId, NormalizedEmail
 
 
 def test_only_supported_complete_refs_are_accepted() -> None:
@@ -302,7 +302,7 @@ def test_persisted_and_test_responses_are_distinct_and_credential_free() -> None
             sender_email=NormalizedEmail("sender@example.com"),
             sender_name="Sender",
         ),
-        checked_at=UtcTimestamp(datetime(2026, 7, 30, tzinfo=UTC)),
+        checked_at=datetime(2026, 7, 30),
     )
 
     view_payload = channel_view_response(view).model_dump(mode="json")

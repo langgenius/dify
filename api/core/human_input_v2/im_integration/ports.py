@@ -9,13 +9,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
     IMSyncRunId,
     IntegrationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
@@ -99,7 +100,7 @@ class IMControlPlaneRepository(Protocol):
         *,
         sync_run_id: IMSyncRunId,
         started_by_account_id: AccountId | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> ActiveRunDecision:
         """Lock Integration and return at most one active run."""
         ...
@@ -108,7 +109,7 @@ class IMControlPlaneRepository(Protocol):
         """Load current identities, bindings, and eligible Contact facts."""
         ...
 
-    def apply_reconciliation(self, plan: ReconciliationPlan, *, now: UtcTimestamp) -> ApplyReconciliationResult:
+    def apply_reconciliation(self, plan: ReconciliationPlan, *, now: NaiveDatetime) -> ApplyReconciliationResult:
         """Apply one plan using its persisted sync run capture as CAS authority."""
         ...
 

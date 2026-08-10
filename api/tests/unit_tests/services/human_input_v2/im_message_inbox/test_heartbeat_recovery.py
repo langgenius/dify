@@ -21,7 +21,7 @@ from core.human_input_v2.im_message_inbox import (
     TransitionResult,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.heartbeat import RenewableLeaseHeartbeat
@@ -43,8 +43,8 @@ def _policy(*, lease_duration: timedelta = timedelta(seconds=1)) -> InboxProcess
 
 
 class _SystemClock:
-    def now(self) -> UtcTimestamp:
-        return UtcTimestamp.now()
+    def now(self) -> datetime:
+        return datetime.now(UTC)
 
 
 class _TrackingRepository(SQLAlchemyIMMessageInboxRepository):
@@ -60,7 +60,7 @@ class _TrackingRepository(SQLAlchemyIMMessageInboxRepository):
         record_id: IMInboxRecordId,
         claim_token: ClaimToken,
         *,
-        now: UtcTimestamp,
+        now: datetime,
     ) -> TransitionResult:
         result = super().renew(
             record_id,
@@ -160,7 +160,7 @@ def test_recovery_is_bounded_and_broker_failure_preserves_database_backlog(sqlit
         session_maker,
         _policy(lease_duration=timedelta(seconds=5)),
     )
-    now = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+    now = datetime(2026, 8, 2, 8, tzinfo=UTC)
     accepted = [
         repository.insert_or_resolve(IntegrationId("integration-1"), _event(f"event-{index}"), now=now)
         for index in range(3)

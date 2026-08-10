@@ -13,7 +13,7 @@ from typing import Literal, NewType, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
 
-from core.human_input_v2.approval.form import FrozenFormDefinition
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
 
 
@@ -78,6 +78,26 @@ class MSTeamsIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
         min_length=1,
         repr=False,
         description="Resolved Microsoft Teams application client secret.",
+    )
+
+
+class WeComIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+    """Resolved WeCom credentials bound for one adapter lifetime."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    provider: Literal[IMProvider.WE_COM] = Field(description="WeCom credential discriminator.")
+    corp_id: str = Field(min_length=1, pattern=r"\S", description="WeCom corporation identifier.")
+    agent_id: str = Field(
+        min_length=1,
+        pattern=r"^[1-9][0-9]*$",
+        description="WeCom application agent identifier.",
+    )
+    secret: str = Field(
+        min_length=1,
+        pattern=r"\S",
+        repr=False,
+        description="Resolved WeCom application secret.",
     )
 
 
@@ -147,14 +167,6 @@ class IMDirectory(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class NormalizedCardIntent:
-    """Complete rendered content and immutable HITL form definition."""
-
-    rendered_content: str
-    form_definition: FrozenFormDefinition
-
-
-@dataclass(frozen=True, slots=True)
 class StaticCardIntent:
     """Caller-rendered non-interactive replacement presentation."""
 
@@ -217,14 +229,14 @@ class DynamicCardMessagingError(Exception):
 class IMDynamicCardMessaging(Protocol):
     """Adapter-bound complete dynamic card capability."""
 
-    def assess(self, intent: NormalizedCardIntent) -> CardAssessment:
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
         """Assess every intent fact without provider I/O or side effects."""
         ...
 
     def send_card(
         self,
         provider_user_id: ProviderUserId,
-        intent: NormalizedCardIntent,
+        intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
         """Attempt one complete card creation and preserve callback identity."""
@@ -367,12 +379,12 @@ __all__ = [
     "MessageReference",
     "MessageSendingError",
     "MessageSendingResult",
-    "NormalizedCardIntent",
     "ProviderUserId",
     "ReplacementError",
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
+    "WeComIMIntegrationCredentials",
     "WebhookRequest",
     "WebhookResponse",
 ]

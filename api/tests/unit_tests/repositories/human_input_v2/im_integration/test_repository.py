@@ -1,7 +1,7 @@
 """Transaction contract tests for the SQLAlchemy IM Control Plane adapter."""
 
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 import sqlalchemy as sa
@@ -37,7 +37,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from models.account import Account, AccountStatus
@@ -54,8 +53,8 @@ from repositories.human_input_v2.contact_directory.mappers import contact_to_rec
 from repositories.human_input_v2.im_integration.mappers import binding_to_record, identity_to_record
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
-_LATER = UtcTimestamp(datetime(2026, 7, 25, 9, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
+_LATER = datetime(2026, 7, 25, 9)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 
 

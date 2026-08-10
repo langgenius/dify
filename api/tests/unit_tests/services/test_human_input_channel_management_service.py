@@ -30,7 +30,8 @@ from core.human_input_v2.channel_management import (
 )
 from core.human_input_v2.channel_management import TestEmailChannelCommand as EmailTestCommand
 from core.human_input_v2.email_channel import NewAPIKey, ResendCandidate
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from libs.datetime_utils import naive_utc_now
 from services.human_input_channel_management_service import HumanInputChannelManagementService
 
 _CONTEXT = HumanInputChannelManagementContext(
@@ -102,7 +103,7 @@ class FakeHandler:
                 scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id)),
                 status=ChannelStatus.CONNECTED,
                 summary=summary,
-                checked_at=UtcTimestamp.now(),
+                checked_at=naive_utc_now(),
             )
         )
 

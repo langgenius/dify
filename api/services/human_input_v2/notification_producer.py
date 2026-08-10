@@ -9,6 +9,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from hashlib import sha256
 
+from pydantic import NaiveDatetime
+
 from core.helper import encrypter
 from core.human_input_v2.approval import (
     DeliveryAttempt,
@@ -29,7 +31,8 @@ from core.human_input_v2.delivery_runtime import (
     fingerprint_rendered_email,
 )
 from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus
-from core.human_input_v2.shared import DeliveryAttemptId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import DeliveryAttemptId, NormalizedEmail, WorkspaceId
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 _RESEND_EMAIL_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
@@ -84,7 +87,7 @@ class HumanInputV2NotificationProducer:
         *,
         token_issuer: EndpointAccessTokenIssuer | None = None,
         attempt_id_factory: Callable[[], str] = lambda: str(uuidv7()),
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._repository = repository
         self._protector = protector

@@ -6,10 +6,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import override
 
+from pydantic import NaiveDatetime
+
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.approval import (
     FormRef,
     FormSnapshotIdentifierFactory,
-    FrozenFormDefinition,
     HumanInputForm,
     ResolvedApprovalPlan,
 )
@@ -18,9 +20,9 @@ from core.human_input_v2.shared import (
     AppId,
     ApproverGrantId,
     DeliveryEndpointId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .delivery_publisher import DeliveryPublicationResult, HumanInputV2DueAttemptPublisher
@@ -41,10 +43,10 @@ class DefaultFormSnapshotIdentifierFactory(FormSnapshotIdentifierFactory):
 class HumanInputV2FormCreationRequest:
     form_ref: FormRef
     app_id: AppId
-    definition: FrozenFormDefinition
-    rendered_content: str
-    node_timeout_at: UtcTimestamp
-    global_expires_at: UtcTimestamp
+    resolved_form: ResolvedForm
+    display_in_ui: bool | None
+    node_timeout_at: NaiveDatetime
+    global_expires_at: NaiveDatetime
     kind: HumanInputV2FormKind
     workflow_pause_id: str | None
     node_execution_id: str | None
@@ -68,7 +70,7 @@ class HumanInputV2FormCreationService:
         publisher: HumanInputV2DueAttemptPublisher,
         *,
         identifier_factory: FormSnapshotIdentifierFactory | None = None,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._producer = producer
         self._publisher = publisher
@@ -85,8 +87,8 @@ class HumanInputV2FormCreationService:
         creation = HumanInputForm.create_from_plan(
             ref=request.form_ref,
             app_id=request.app_id,
-            definition=request.definition,
-            rendered_content=request.rendered_content,
+            resolved_form=request.resolved_form,
+            display_in_ui=request.display_in_ui,
             node_timeout_at=request.node_timeout_at,
             global_expires_at=request.global_expires_at,
             kind=request.kind,

@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -17,7 +19,6 @@ from core.human_input_v2.shared import (
     DirectoryScope,
     NormalizedEmail,
     PlatformEntryId,
-    UtcTimestamp,
     WorkspaceId,
     WorkspaceScope,
 )
@@ -74,8 +75,8 @@ class Contact:
     email: str | None
     normalized_email: NormalizedEmail | None
     avatar_file_id: str | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         expected_owner_type = {
@@ -113,9 +114,9 @@ class Contact:
         owner: ContactOwner,
         name: str,
         email: str | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
         avatar_file_id: str | None = None,
-        created_at: UtcTimestamp | None = None,
+        created_at: NaiveDatetime | None = None,
     ) -> Contact:
         normalized_email: NormalizedEmail | None = None
         if email is not None:
@@ -144,7 +145,7 @@ class Contact:
         account_id: AccountId,
         name: str,
         email: str | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> Contact:
         return cls.create(
             contact_id=contact_id,
@@ -164,7 +165,7 @@ class Contact:
         account_id: AccountId,
         name: str,
         email: str | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> Contact:
         return cls.create(
             contact_id=contact_id,
@@ -183,7 +184,7 @@ class Contact:
         workspace_id: WorkspaceId,
         name: str,
         email: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
         avatar_file_id: str | None = None,
     ) -> Contact:
         return cls.create(
@@ -225,5 +226,5 @@ class PlatformWorkspaceEntry:
     workspace_id: WorkspaceId
     contact_id: ContactId
     added_by_account_id: AccountId
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime

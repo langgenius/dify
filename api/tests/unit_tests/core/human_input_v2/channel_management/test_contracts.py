@@ -30,7 +30,8 @@ from core.human_input_v2.channel_management import (
     SlackIMCandidate,
 )
 from core.human_input_v2.im_integration import EncryptedCredentials
-from core.human_input_v2.shared import IntegrationId, NormalizedEmail, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId, NormalizedEmail
+from libs.datetime_utils import naive_utc_now
 
 
 def test_channel_ref_rejects_kind_provider_mismatch() -> None:
@@ -123,7 +124,7 @@ def test_operation_result_requires_exactly_one_outcome() -> None:
             NormalizedEmail("sender@example.com"),
             "Sender",
         ),
-        checked_at=UtcTimestamp.now(),
+        checked_at=naive_utc_now(),
     )
 
     with pytest.raises(ValueError, match="exactly one"):
@@ -168,7 +169,7 @@ def test_candidate_test_result_rejects_persisted_view_semantics() -> None:
             scope=ChannelScope(ChannelScopeKind.WORKSPACE, "workspace-1"),
             status=ChannelStatus.NOT_CONFIGURED,
             summary=IMChannelTestSummary("tested-tenant"),
-            checked_at=UtcTimestamp.now(),
+            checked_at=naive_utc_now(),
         )
 
 

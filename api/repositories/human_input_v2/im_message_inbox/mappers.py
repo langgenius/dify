@@ -5,12 +5,14 @@ from datetime import UTC, datetime
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_message_inbox import ClaimToken, IMInboxDelivery, IMInboxRecordId, InboxClaimOrigin
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 
 
-def _naive_utc(timestamp: UtcTimestamp) -> datetime:
-    return timestamp.value.astimezone(UTC).replace(tzinfo=None)
+def _naive_utc(timestamp: datetime) -> datetime:
+    if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+        raise ValueError("timestamp must be timezone-aware")
+    return timestamp.astimezone(UTC).replace(tzinfo=None)
 
 
 def event_record(
@@ -18,7 +20,7 @@ def event_record(
     record_id: IMInboxRecordId,
     integration_id: IntegrationId,
     event: AuthenticatedIMEvent,
-    now: UtcTimestamp,
+    now: datetime,
 ) -> IMMessageInbox:
     """Create one detached pending record containing all immutable event facts."""
 

@@ -7,12 +7,13 @@ import json
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.channel_identity import ChannelKind, ChannelRef
 from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 
@@ -31,12 +32,12 @@ class ProviderCredential:
 @dataclass(frozen=True, slots=True)
 class ConfigurationSnapshotIdentity:
     configuration_id: EmailProviderId
-    updated_at: UtcTimestamp
+    updated_at: NaiveDatetime
 
     def to_mapping(self) -> dict[str, str]:
         return {
             "configuration_id": str(self.configuration_id),
-            "updated_at": self.updated_at.value.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }
 
 

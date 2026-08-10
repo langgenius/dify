@@ -27,7 +27,7 @@ from core.human_input_v2.im_provider import (
     SlackIMIntegrationCredentials,
     WebhookRequest,
 )
-from core.human_input_v2.shared import IntegrationId, UtcTimestamp
+from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox import IMMessageInboxSink, NoopIMInboxMetrics
@@ -37,7 +37,7 @@ _SIGNING_SECRET = "sanitized-signing-material"
 _PROVIDER_TENANT_ID = "sanitized-team"
 _INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000001")
 _RECEIVED_AT = datetime(2026, 8, 6, 8)
-_NOW = UtcTimestamp(_RECEIVED_AT.replace(tzinfo=UTC))
+_NOW = _RECEIVED_AT.replace(tzinfo=UTC)
 
 
 def _policy() -> InboxProcessingPolicy:
@@ -50,7 +50,7 @@ def _policy() -> InboxProcessingPolicy:
 
 
 class _FixedClock:
-    def now(self) -> UtcTimestamp:
+    def now(self) -> datetime:
         return _NOW
 
 
@@ -98,7 +98,7 @@ def _event_body(event_id: str) -> bytes:
             "type": "event_callback",
             "team_id": _PROVIDER_TENANT_ID,
             "event_id": event_id,
-            "event_time": int(_NOW.value.timestamp()),
+            "event_time": int(_NOW.timestamp()),
             "event": {"type": "message", "text": "Sanitized text"},
         },
         separators=(",", ":"),

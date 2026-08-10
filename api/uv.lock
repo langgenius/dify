@@ -1438,6 +1438,8 @@ dependencies = [
     { name = "httpx", extra = ["socks"] },
     { name = "httpx-sse" },
     { name = "json-repair" },
+    { name = "lark-oapi" },
+    { name = "markdown-it-py" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-flask" },
@@ -1455,6 +1457,7 @@ dependencies = [
     { name = "sendgrid" },
     { name = "slack-sdk" },
     { name = "sseclient-py" },
+    { name = "wechatpy" },
     { name = "zstandard" },
 ]
 
@@ -1727,6 +1730,8 @@ requires-dist = [
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
     { name = "json-repair", specifier = "==0.60.1" },
+    { name = "lark-oapi", specifier = "==1.7.2" },
+    { name = "markdown-it-py", specifier = ">=4.0.0,<5.0.0" },
     { name = "opentelemetry-distro", specifier = "==0.62b1" },
     { name = "opentelemetry-instrumentation-celery", specifier = "==0.62b1" },
     { name = "opentelemetry-instrumentation-flask", specifier = "==0.62b1" },
@@ -1744,6 +1749,7 @@ requires-dist = [
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
     { name = "slack-sdk", specifier = ">=3.43.0,<4.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
+    { name = "wechatpy", specifier = ">=1.8.18,<2.0.0" },
     { name = "zstandard", specifier = "==0.25.0" },
 ]
 
@@ -1769,7 +1775,7 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "ruff", specifier = ">=0.15.12" },
     { name = "scipy-stubs", specifier = ">=1.17.1.4" },
-    { name = "testcontainers", specifier = ">=4.14.2" },
+    { name = "testcontainers", specifier = ">=4.15.0,<4.16" },
     { name = "types-aiofiles", specifier = ">=25.1.0" },
     { name = "types-beautifulsoup4", specifier = ">=4.12.0" },
     { name = "types-cachetools", specifier = ">=7.0.0.20260503" },
@@ -3812,6 +3818,22 @@ wheels = [
 ]
 
 [[package]]
+name = "lark-oapi"
+version = "1.7.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pycryptodome" },
+    { name = "requests" },
+    { name = "requests-toolbelt" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/63/02/9992aa997e7085507237554ba5b49b998d77a6f8971e05ce105b04fbc324/lark_oapi-1.7.2.tar.gz", hash = "sha256:deee5ed90f6b54448e00af6749af90a1ac72f212050c24a6c619f5a12c542774", size = 2328627, upload-time = "2026-08-05T09:22:52.805Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/34/151efd46acca34d086a2db86d1820ec2452a72d1a8281bb73d5991f03505/lark_oapi-1.7.2-py3-none-any.whl", hash = "sha256:d73cbcac28d8e7cd75efe64a8c350da50b1a45be046c5e5b8382701ea8bb764c", size = 7629022, upload-time = "2026-08-05T09:22:50.485Z" },
+]
+
+[[package]]
 name = "librt"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4737,6 +4759,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a3/b9/f6c7e41cb6c02f6e68fde9b6dacf377dcf42079cdbaf891f9fecf4dc958b/opik-1.11.2.tar.gz", hash = "sha256:79e054595b29e1ca8a4fd67d023249f0cf355ea9efbe3e00c28f51628d053d63", size = 871557, upload-time = "2026-04-10T10:48:14.965Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/2d/e5536a2a1b6fdd920d995e09315523be53bde5fe01f104894d9ba7421a8c/opik-1.11.2-py3-none-any.whl", hash = "sha256:1016b6db7563d847e50e463a2ae09e595b6921372dd52edeada660b82036e1b2", size = 1451056, upload-time = "2026-04-10T10:48:12.927Z" },
+]
+
+[[package]]
+name = "optionaldict"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/8b/cb72b1d40d21963ad1923ce529ae1f9ba49a13c18c7e6c47081c3dc1211f/optionaldict-0.1.2.tar.gz", hash = "sha256:175b62ee8259af703def42e0b44b413ea55e7b0732456cb2fd5cbbc998605966", size = 3454, upload-time = "2021-01-15T07:52:20.311Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/c2/408eb8d1ddacc36c6c31e0b0640b8493a4b3e88e26670bdd2b3a8ad7d704/optionaldict-0.1.2-py2.py3-none-any.whl", hash = "sha256:278d9b79b3d6a55b1b8ff5f9017bff6383a33426348d09e699ff50162bbcdab7", size = 3756, upload-time = "2021-01-15T07:52:18.69Z" },
 ]
 
 [[package]]
@@ -6539,7 +6570,7 @@ wheels = [
 
 [[package]]
 name = "testcontainers"
-version = "4.14.2"
+version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker" },
@@ -6548,9 +6579,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ca/ac/a597c3a0e02b26cbed6dd07df68be1e57684766fd1c381dee9b170a99690/testcontainers-4.14.2.tar.gz", hash = "sha256:1340ccf16fe3acd9389a6c9e1d9ab21d9fe99a8afdf8165f89c3e69c1967d239", size = 166841, upload-time = "2026-03-18T05:19:16.696Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/13/2cc466bddf26d0085f30a2b2bd56b7f8708b54a54db833eec97c5c69129b/testcontainers-4.15.0.tar.gz", hash = "sha256:085cde086337632e19002719460b7b80bbab2bdd51bb3ea04f77d0de96504706", size = 95340, upload-time = "2026-07-24T23:08:01.731Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/2d/26b8b30067d94339afee62c3edc9b803a6eb9332f521ba77d8aaab5de873/testcontainers-4.14.2-py3-none-any.whl", hash = "sha256:0d0522c3cd8f8d9627cda41f7a6b51b639fa57bdc492923c045117933c668d68", size = 125712, upload-time = "2026-03-18T05:19:15.29Z" },
+    { url = "https://files.pythonhosted.org/packages/00/7e/424aac8b355597835deb333e757a0e94b5ccf38ad00f07fe6ed1f4e17c88/testcontainers-4.15.0-py3-none-any.whl", hash = "sha256:8796c14e76604031ad39cf0ed3b8e9806283a1fbf5270965c2b1c594caa31b74", size = 160771, upload-time = "2026-07-24T23:08:00.13Z" },
 ]
 
 [[package]]
@@ -7615,6 +7646,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5e/f6/7c9c964681fb148e0293e6860108d378e09ccab2218f9063fd3eb87f840a/webvtt-py-0.5.1.tar.gz", hash = "sha256:2040dd325277ddadc1e0c6cc66cbc4a1d9b6b49b24c57a0c3364374c3e8a3dc1", size = 55128, upload-time = "2024-05-30T13:40:17.189Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/ed/aad7e0f5a462d679f7b4d2e0d8502c3096740c883b5bbed5103146480937/webvtt_py-0.5.1-py3-none-any.whl", hash = "sha256:9d517d286cfe7fc7825e9d4e2079647ce32f5678eb58e39ef544ffbb932610b7", size = 19802, upload-time = "2024-05-30T13:40:14.661Z" },
+]
+
+[[package]]
+name = "wechatpy"
+version = "1.8.18"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "optionaldict" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+    { name = "six" },
+    { name = "xmltodict" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/34/849aaa2a03dc41b002e224006746bdb2eea729435225709139c4b3a95d2b/wechatpy-1.8.18.tar.gz", hash = "sha256:b356d0181abcf8487268e5759f942c4ffbb5090c00197858109e90000a301d08", size = 107318, upload-time = "2021-11-11T15:12:32.716Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/d6/a49a4571affd12dbb88067d7c3a874dc069ffa471c29fd3a8e2771e7f0c2/wechatpy-1.8.18-py2.py3-none-any.whl", hash = "sha256:bfd0457dfd3f4623a490534cc9cb9c29b53f9397b3ebbee0f11ee7925b9b71f6", size = 159152, upload-time = "2021-11-11T15:12:31.564Z" },
 ]
 
 [[package]]

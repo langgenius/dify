@@ -1,9 +1,19 @@
 """Explicit mapper tests for the Human Input v2 form persistence boundary."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    SelectInput,
+)
 from core.human_input_v2.approval import (
     ApprovalSubject,
     ApproverGrant,
@@ -18,8 +28,6 @@ from core.human_input_v2.approval import (
     EndpointAccessCapability,
     EndUserApprovalSubject,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointPlan,
     MatchedRecipientSource,
@@ -55,9 +63,9 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from graphon.file.enums import FileTransferMethod, FileType
 from models.human_input_v2 import HumanInputV2FormApproverGrant, HumanInputV2FormDeliveryEndpoint
 from repositories.human_input_v2.form.mappers import (
     delivery_attempt_from_record,
@@ -76,24 +84,33 @@ from repositories.human_input_v2.form.mappers import (
     upload_file_to_record,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 
 
-def _definition() -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content="Approve",
-        inputs=(
-            {
-                "type": "paragraph",
-                "output_variable_name": "reason",
-                "default": {"type": "constant", "selector": [], "value": "default"},
-            },
+def _resolved_form() -> ResolvedForm:
+    return ResolvedForm(
+        title="Review",
+        blocks=(
+            MarkdownText("Review "),
+            ParagraphInput("reason", "default"),
+            SelectInput("decision", ("approve", "reject"), "approve"),
+            FileInput(
+                "attachment",
+                (FileType.DOCUMENT, FileType.CUSTOM),
+                ("pdf", "md"),
+                (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
+            ),
+            FileListInput(
+                "evidence",
+                (FileType.IMAGE,),
+                (),
+                (FileTransferMethod.LOCAL_FILE,),
+                3,
+            ),
         ),
-        actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values={"reason": "default", "nested": {"items": [1, 2]}},
-        node_title="Review",
-        display_in_ui=True,
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="Review {{#$output.reason#}}",
     )
 
 
@@ -159,10 +176,10 @@ def _form() -> HumanInputForm:
     return HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        resolved_form=_resolved_form(),
+        display_in_ui=True,
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id="pause-1",
@@ -188,10 +205,21 @@ def test_form_grant_and_endpoint_round_trip() -> None:
     assert restored_form == form
     assert restored_grant == grant
     assert restored_endpoint == endpoint
-    assert restored_form.definition.default_values == {
-        "nested": {"items": [1, 2]},
-        "reason": "default",
-    }
+    assert restored_form.resolved_form == _resolved_form()
+    assert restored_form.resolved_form.blocks[3].allowed_file_types == (FileType.DOCUMENT, FileType.CUSTOM)
+    assert restored_form.resolved_form.blocks[3].allowed_file_upload_methods == (
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.REMOTE_URL,
+    )
+    assert form_record.form_definition.user_actions[0].button_style is ButtonStyle.PRIMARY
+    assert form_record.rendered_content == _resolved_form().legacy_form_content
+    assert [block.type for block in form_record.form_definition.blocks] == [
+        "markdown",
+        "paragraph",
+        "select",
+        "file",
+        "file-list",
+    ]
     assert restored_grant.matched_sources == grant.matched_sources
 
 
@@ -280,8 +308,8 @@ def test_mappers_reject_malformed_subject_and_endpoint_records() -> None:
         subject_key="contact:contact-1",
     )
     grant_record.id = "grant-1"
-    grant_record.created_at = _NOW.value
-    grant_record.updated_at = _NOW.value
+    grant_record.created_at = _NOW
+    grant_record.updated_at = _NOW
     endpoint_record = HumanInputV2FormDeliveryEndpoint(
         tenant_id="workspace-1",
         form_id="form-1",
@@ -290,8 +318,8 @@ def test_mappers_reject_malformed_subject_and_endpoint_records() -> None:
         address_hash="a" * 64,
     )
     endpoint_record.id = "endpoint-1"
-    endpoint_record.created_at = _NOW.value
-    endpoint_record.updated_at = _NOW.value
+    endpoint_record.created_at = _NOW
+    endpoint_record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="contact_id"):
         grant_from_record(grant_record)

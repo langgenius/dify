@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import timedelta
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.approval import DeliveryAttemptRepository, RenderedEmailRequestProtector
 from core.human_input_v2.delivery_runtime import (
     DeliveryOutcome,
@@ -13,7 +15,8 @@ from core.human_input_v2.delivery_runtime import (
     HumanInputRenderedEmailDeliveryRuntime,
     fingerprint_rendered_email,
 )
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
+from libs.datetime_utils import naive_utc_now
 
 from .notification_producer import deserialize_rendered_email_request
 
@@ -25,7 +28,7 @@ class HumanInputV2DeliveryWorker:
         protector: RenderedEmailRequestProtector,
         runtime: HumanInputRenderedEmailDeliveryRuntime,
         *,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
         max_worker_retries: int = 5,
         default_retry_delay_seconds: float = 5,
         idempotency_horizon_seconds: float = 23 * 60 * 60,
@@ -49,7 +52,7 @@ class HumanInputV2DeliveryWorker:
         if claim is None:
             return
         now = self._clock()
-        if claim.attempt.started_at is not None and claim.attempt.started_at.value < now.value - timedelta(
+        if claim.attempt.started_at is not None and claim.attempt.started_at < now - timedelta(
             seconds=self._idempotency_horizon_seconds
         ):
             self._repository.complete(
@@ -124,7 +127,7 @@ class HumanInputV2DeliveryWorker:
         self._repository.requeue(
             bound_claim,
             outcome=outcome,
-            scheduled_at=UtcTimestamp(now.value + timedelta(seconds=delay)),
+            scheduled_at=now + timedelta(seconds=delay),
             now=now,
         )
 

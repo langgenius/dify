@@ -22,8 +22,9 @@ from core.human_input_v2.im_integration import (
     ReconciliationPlan,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, IntegrationId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, IntegrationId, WorkspaceId
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import (
     HumanInputContact,
@@ -52,7 +53,7 @@ def _integration(integration_id: str, workspace_id: str | None) -> IMIntegration
         ),
         configured_by_account_id=AccountId(str(uuidv7())),
         callback_url=None,
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
 
 
@@ -132,7 +133,7 @@ def test_concurrent_configuration_cas_has_exactly_one_winner(flask_req_ctx) -> N
             ),
             configured_by_account_id=None,
             callback_url=None,
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
         assert isinstance(decision, ConfigurationTransition)
         barrier.wait()
@@ -162,7 +163,7 @@ def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx) -
             integration.revision,
             sync_run_id=IMSyncRunId(str(uuidv7())),
             started_by_account_id=None,
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
 
     try:
@@ -192,7 +193,7 @@ def test_concurrent_worker_retry_applies_one_sync_run_idempotently(flask_req_ctx
         integration.revision,
         sync_run_id=IMSyncRunId(str(uuidv7())),
         started_by_account_id=None,
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
     assert run_decision.run is not None
     contact_id = ContactId(str(uuidv7()))
@@ -201,7 +202,7 @@ def test_concurrent_worker_retry_applies_one_sync_run_idempotently(flask_req_ctx
         account_id=AccountId(str(uuidv7())),
         name="Concurrent Retry Reviewer",
         email=f"concurrent-retry-{uuidv7()}@example.com",
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
     with session_maker.begin() as session:
         session.add(contact_to_record(contact))
@@ -230,7 +231,7 @@ def test_concurrent_worker_retry_applies_one_sync_run_idempotently(flask_req_ctx
 
     def apply(_index: int):
         barrier.wait()
-        return SQLAlchemyIMControlPlaneRepository(session_maker).apply_reconciliation(plan, now=UtcTimestamp.now())
+        return SQLAlchemyIMControlPlaneRepository(session_maker).apply_reconciliation(plan, now=naive_utc_now())
 
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
@@ -279,7 +280,7 @@ def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_
         integration.revision,
         sync_run_id=IMSyncRunId(str(uuidv7())),
         started_by_account_id=None,
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
     assert run_decision.run is not None
     rotation = integration.reconfigure(
@@ -288,7 +289,7 @@ def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_
         encrypted_credentials=EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": "rotated"}),
         configured_by_account_id=None,
         callback_url=None,
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
     assert isinstance(rotation, ConfigurationTransition)
     repository.compare_and_swap_configuration(rotation)
@@ -301,7 +302,7 @@ def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_
     )
 
     try:
-        result = repository.apply_reconciliation(plan, now=UtcTimestamp.now())
+        result = repository.apply_reconciliation(plan, now=naive_utc_now())
 
         assert result.status is ApplyReconciliationStatus.STALE_REVISION
         with session_maker() as session:

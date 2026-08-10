@@ -1,6 +1,6 @@
 """IM handler contract tests proving aggregate-owned CAS and replacement."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.channel_management import (
     ChannelCapability,
@@ -30,7 +30,7 @@ from core.human_input_v2.im_integration import (
     ProviderTenantIdentity,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services.human_input_im_channel_manager import (
     ConfirmedIMConfiguration,
     HumanInputIMChannelManager,
@@ -39,8 +39,8 @@ from services.human_input_im_channel_manager import (
     build_human_input_im_channel_handlers,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 28, 8, tzinfo=UTC))
-_LATER = UtcTimestamp(datetime(2026, 7, 28, 9, tzinfo=UTC))
+_NOW = datetime(2026, 7, 28, 8)
+_LATER = datetime(2026, 7, 28, 9)
 _CONTEXT = HumanInputChannelManagementContext(
     WorkspaceId("workspace-1"),
     AccountId("account-1"),

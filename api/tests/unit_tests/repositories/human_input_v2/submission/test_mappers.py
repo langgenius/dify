@@ -1,6 +1,6 @@
 """Explicit domain/record mapping contracts for submission and shared audit facts."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -40,7 +40,6 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from models.human_input_v2 import (
@@ -59,7 +58,7 @@ from repositories.human_input_v2.submission.mappers import (
     submission_to_record,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ENDPOINT_ID = DeliveryEndpointId("endpoint-1")
@@ -158,15 +157,15 @@ def test_submission_mapper_rejects_malformed_actor_columns() -> None:
         selected_action_id="approve",
         input_snapshot=FormInputSnapshot({"value": 1}),
         canonical_values=FormCanonicalValues({"value": 1}),
-        submitted_at=_NOW.value,
+        submitted_at=_NOW,
         actor_account_id="account-1",
         actor_end_user_id="end-user-1",
         actor_normalized_email=None,
         endpoint_id=None,
     )
     record.id = "submission-1"
-    record.created_at = _NOW.value
-    record.updated_at = _NOW.value
+    record.created_at = _NOW
+    record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="actor columns"):
         submission_from_record(record)
@@ -261,7 +260,7 @@ def test_audit_mapper_rejects_authorized_event_without_verified_proof() -> None:
         tenant_id="workspace-1",
         form_id="form-1",
         event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED.value,
-        occurred_at=_NOW.value,
+        occurred_at=_NOW,
         approver_grant_id="grant-1",
         endpoint_id=None,
         channel=HumanInputDeliveryChannel.WEB,
@@ -271,8 +270,8 @@ def test_audit_mapper_rejects_authorized_event_without_verified_proof() -> None:
         event_payload=None,
     )
     record.id = "audit-1"
-    record.created_at = _NOW.value
-    record.updated_at = _NOW.value
+    record.created_at = _NOW
+    record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="verified proof"):
         audit_event_from_record(record)
@@ -298,7 +297,7 @@ def test_email_proof_mapper_rejects_inconsistent_subject_columns(
         subject_type=subject_type,
         contact_id=contact_id,
         verified_email=str(_EMAIL),
-        verified_at=_NOW.value,
+        verified_at=_NOW,
     )
 
     with pytest.raises(ValueError, match=expected):
@@ -314,7 +313,7 @@ def test_email_proof_mapper_rejects_unsupported_subject_type() -> None:
         subject_type="end_user",
         contact_id=None,
         verified_email=str(_EMAIL),
-        verified_at=_NOW.value,
+        verified_at=_NOW,
     )
 
     with pytest.raises(ValueError, match="unsupported subject type"):
@@ -397,7 +396,7 @@ def test_audit_mapper_read_rejects_authorized_email_proof_from_another_owner(
         tenant_id="workspace-1",
         form_id="form-1",
         event_type=FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED.value,
-        occurred_at=_NOW.value,
+        occurred_at=_NOW,
         approver_grant_id="grant-1",
         endpoint_id=None,
         channel=HumanInputDeliveryChannel.EMAIL,
@@ -411,13 +410,13 @@ def test_audit_mapper_read_rejects_authorized_email_proof_from_another_owner(
             subject_type=HumanInputApproverGrantSubjectType.CONTACT,
             contact_id="contact-1",
             verified_email=str(_EMAIL),
-            verified_at=_NOW.value,
+            verified_at=_NOW,
         ),
         event_payload=None,
     )
     record.id = "audit-1"
-    record.created_at = _NOW.value
-    record.updated_at = _NOW.value
+    record.created_at = _NOW
+    record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="proof owner"):
         audit_event_from_record(record)
@@ -428,7 +427,7 @@ def test_audit_mapper_rejects_unknown_event_type_and_malformed_payload() -> None
         tenant_id="workspace-1",
         form_id="form-1",
         event_type="unknown",
-        occurred_at=_NOW.value,
+        occurred_at=_NOW,
         approver_grant_id="grant-1",
         endpoint_id=None,
         channel=HumanInputDeliveryChannel.WEB,
@@ -438,8 +437,8 @@ def test_audit_mapper_rejects_unknown_event_type_and_malformed_payload() -> None
         event_payload=None,
     )
     record.id = "audit-1"
-    record.created_at = _NOW.value
-    record.updated_at = _NOW.value
+    record.created_at = _NOW
+    record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="unsupported event type"):
         audit_event_from_record(record)

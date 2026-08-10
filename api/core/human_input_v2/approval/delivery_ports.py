@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryOutcome
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
 
 from .delivery import DeliveryAttempt, DeliveryAttemptData
 
@@ -18,9 +20,9 @@ class ClaimedDeliveryAttempt:
 
 
 class DeliveryAttemptRepository(Protocol):
-    def list_due_ids(self, *, now: UtcTimestamp, limit: int) -> tuple[DeliveryAttemptId, ...]: ...
+    def list_due_ids(self, *, now: NaiveDatetime, limit: int) -> tuple[DeliveryAttemptId, ...]: ...
 
-    def claim(self, attempt_id: DeliveryAttemptId, *, now: UtcTimestamp) -> ClaimedDeliveryAttempt | None: ...
+    def claim(self, attempt_id: DeliveryAttemptId, *, now: NaiveDatetime) -> ClaimedDeliveryAttempt | None: ...
 
     def bind_prepared(
         self,
@@ -28,7 +30,7 @@ class DeliveryAttemptRepository(Protocol):
         *,
         snapshot: ConfigurationSnapshotIdentity,
         payload_fingerprint: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> ClaimedDeliveryAttempt | None: ...
 
     def requeue(
@@ -36,8 +38,8 @@ class DeliveryAttemptRepository(Protocol):
         claim: ClaimedDeliveryAttempt,
         *,
         outcome: DeliveryOutcome,
-        scheduled_at: UtcTimestamp,
-        now: UtcTimestamp,
+        scheduled_at: NaiveDatetime,
+        now: NaiveDatetime,
     ) -> bool: ...
 
     def complete(
@@ -45,15 +47,15 @@ class DeliveryAttemptRepository(Protocol):
         claim: ClaimedDeliveryAttempt,
         *,
         outcome: DeliveryOutcome,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> bool: ...
 
     def recover_stale(
         self,
         *,
-        stale_before: UtcTimestamp,
-        idempotency_cutoff: UtcTimestamp,
-        now: UtcTimestamp,
+        stale_before: NaiveDatetime,
+        idempotency_cutoff: NaiveDatetime,
+        now: NaiveDatetime,
         limit: int,
     ) -> int: ...
 

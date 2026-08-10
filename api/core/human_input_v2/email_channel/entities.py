@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 
@@ -73,7 +74,7 @@ class EmailConfigurationSnapshot:
     """Complete internal token guarding a validated configuration write."""
 
     configuration_id: EmailProviderId
-    updated_at: UtcTimestamp
+    updated_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,8 +87,8 @@ class EmailChannelConfiguration:
     sender_name: str
     protected_api_key: ProtectedAPIKey = field(repr=False)
     configured_by_account_id: AccountId | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
     provider: EmailProviderType = EmailProviderType.RESEND
 
     def __post_init__(self) -> None:

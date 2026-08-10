@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 
+from pydantic import NaiveDatetime
+
 from core.helper import encrypter
 from core.human_input_v2.channel_management import (
     ChannelCapability,
@@ -42,7 +44,8 @@ from core.human_input_v2.email_channel import (
     RetainExistingAPIKey,
     UpdateEmailConfigurationStatus,
 )
-from core.human_input_v2.shared import EmailProviderId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import EmailProviderId, NormalizedEmail, WorkspaceId
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 
@@ -75,7 +78,7 @@ class HumanInputEmailChannelManager:
         validator: EmailProviderValidator,
         protector: EmailCredentialProtector,
         *,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
         id_factory: Callable[[], str] = lambda: str(uuidv7()),
     ) -> None:
         self._repository = repository
