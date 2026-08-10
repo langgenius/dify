@@ -77,6 +77,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         messages = [
             ModelRequest(
                 parts=[
+                    SystemPromptPart("   "),
                     SystemPromptPart("request system"),
                     UserPromptPart("hello"),
                     ToolReturnPart(
