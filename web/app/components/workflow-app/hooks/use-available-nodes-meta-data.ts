@@ -1,6 +1,7 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -14,6 +15,7 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
 import { docPathProductAvailability } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
@@ -31,6 +33,7 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
+  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
   const shouldUseAgentV2 = agentV2Enabled && !isChatMode
 
   const startNodeMetaData = useMemo(
@@ -45,11 +48,12 @@ export const useAvailableNodesMetaData = () => {
   )
 
   const mergedNodesMetaData = useMemo(() => {
-    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
-      shouldUseAgentV2
+    const commonNodes = WORKFLOW_COMMON_NODES.filter((node) => {
+      if (!knowledgeFsEnabled && node.metaData.type === BlockEnum.KnowledgeRetrievalV2) return false
+      return shouldUseAgentV2
         ? node.metaData.type !== BlockEnum.Agent
-        : node.metaData.type !== BlockEnum.AgentV2,
-    )
+        : node.metaData.type !== BlockEnum.AgentV2
+    })
 
     return [
       ...commonNodes,
@@ -64,7 +68,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatMode, shouldUseAgentV2, startNodeMetaData])
+  }, [isChatMode, knowledgeFsEnabled, shouldUseAgentV2, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(
     () =>

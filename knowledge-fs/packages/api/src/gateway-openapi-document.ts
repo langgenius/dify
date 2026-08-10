@@ -108,6 +108,15 @@ function addTraceHeaderContract(
 }
 
 function maxResponseBytes(operation: unknown): number {
+  if (isRecord(operation)) {
+    const declaredLimit = operation["x-knowledge-fs-max-response-bytes"];
+    if (declaredLimit !== undefined) {
+      if (!Number.isSafeInteger(declaredLimit) || (declaredLimit as number) <= 0) {
+        throw new Error("OpenAPI response byte limits must be positive safe integers");
+      }
+      return declaredLimit as number;
+    }
+  }
   const mediaTypes = responseMediaTypes(operation);
   if (mediaTypes.includes("text/event-stream")) {
     return DEFAULT_STREAM_RESPONSE_BYTES;

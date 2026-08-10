@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from typing import Annotated, Literal
+
+from pydantic import Field, field_validator
+
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
+from services.knowledge_fs.product_dto import KnowledgeFSRetrievalMetadataFilters
+
+KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"
+
+ControlSpaceId = Annotated[str, Field(min_length=1, max_length=1_000)]
+VariableSelectorPart = Annotated[str, Field(min_length=1, max_length=255)]
+
+
+class KnowledgeRetrievalV2NodeData(BaseNodeData):
+    """Bounded, KnowledgeFS-native workflow node configuration."""
+
+    type: NodeType = KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
+    control_space_ids: list[ControlSpaceId] = Field(min_length=1, max_length=10)
+    query_variable_selector: list[VariableSelectorPart] = Field(min_length=2, max_length=10)
+    mode: Literal["deep", "fast", "research"] | None = None
+    top_n: int = Field(default=10, ge=1, le=100)
+    metadata_filters: KnowledgeFSRetrievalMetadataFilters | None = None
+
+    @field_validator("control_space_ids")
+    @classmethod
+    def normalize_control_space_ids(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("KnowledgeFS control-space ids must be non-empty")
+        return list(dict.fromkeys(normalized))
+
+    @field_validator("query_variable_selector")
+    @classmethod
+    def normalize_query_variable_selector(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("KnowledgeFS query variable selector must be non-empty")
+        return normalized
+
+
+__all__ = [
+    "KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE",
+    "KnowledgeRetrievalV2NodeData",
+]

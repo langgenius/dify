@@ -83,6 +83,11 @@ export const BLOCKS = [
   },
   {
     classification: BlockClassification.Default,
+    type: BlockEnum.KnowledgeRetrievalV2,
+    title: 'Knowledge Retrieval v2',
+  },
+  {
+    classification: BlockClassification.Default,
     type: BlockEnum.End,
     title: 'End',
   },

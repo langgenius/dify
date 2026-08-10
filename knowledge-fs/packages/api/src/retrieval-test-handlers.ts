@@ -11,6 +11,7 @@ import {
   type RetrievalExecutionLeaseCoordinator,
   RetrievalExecutionLeaseLostError,
 } from "./retrieval-execution-lease";
+import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
 import {
   type RetrievalTestExecutor,
   RetrievalTestUnavailableError,
@@ -131,6 +132,8 @@ export function registerRetrievalTestHandlers({
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
             : {}),
           knowledgeSpaceId,
+          ...(body.filters ? { filters: normalizeRetrievalMetadataFilters(body.filters) } : {}),
+          includeText: body.includeText,
           mode,
           permissionScope,
           projectionSnapshot: runtimeSnapshot.projectionSnapshot,

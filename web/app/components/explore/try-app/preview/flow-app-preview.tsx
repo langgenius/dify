@@ -31,6 +31,7 @@ const blockTypeMap: Record<string, BlockEnum> = {
   'iteration-start': BlockEnum.IterationStart,
   'knowledge-index': BlockEnum.KnowledgeBase,
   'knowledge-retrieval': BlockEnum.KnowledgeRetrieval,
+  'knowledge-retrieval-v2': BlockEnum.KnowledgeRetrievalV2,
   'list-operator': BlockEnum.ListFilter,
   llm: BlockEnum.LLM,
   loop: BlockEnum.Loop,

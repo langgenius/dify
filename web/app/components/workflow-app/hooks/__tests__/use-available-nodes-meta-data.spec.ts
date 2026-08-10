@@ -4,6 +4,15 @@ import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
+const mockKnowledgeFsEnabled = vi.hoisted(() => vi.fn(() => true))
+
+vi.mock('jotai', () => ({
+  useAtomValue: () => mockKnowledgeFsEnabled(),
+}))
+
+vi.mock('@/features/system-features/state', () => ({
+  knowledgeFsEnabledAtom: {},
+}))
 
 vi.mock('../use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
@@ -21,6 +30,7 @@ describe('useAvailableNodesMetaData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(true)
+    mockKnowledgeFsEnabled.mockReturnValue(true)
   })
 
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
@@ -111,5 +121,15 @@ describe('useAvailableNodesMetaData', () => {
     expect(nodeTypes).not.toContain(BlockEnum.AgentV2)
     expect(result.current.nodesMap?.[BlockEnum.Agent]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.AgentV2]).toBeUndefined()
+  })
+
+  it('should hide Knowledge Retrieval v2 when KnowledgeFS is disabled', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+    mockKnowledgeFsEnabled.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.KnowledgeRetrieval]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.KnowledgeRetrievalV2]).toBeUndefined()
   })
 })

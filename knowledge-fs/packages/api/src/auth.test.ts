@@ -10,6 +10,12 @@ describe("JWT authentication", () => {
     );
   });
 
+  it("classifies evidence-only retrieval tests as read-only", () => {
+    expect(getRequiredScope("POST", "/knowledge-spaces/space-1/retrieval-tests")).toBe(
+      "knowledge-spaces:read",
+    );
+  });
+
   it("derives server-trusted caller and subject claims from signed JWTs", async () => {
     const secret = "test-secret-with-at-least-32-bytes";
     const token = await new SignJWT({

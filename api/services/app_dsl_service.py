@@ -32,6 +32,7 @@ from core.workflow.llm_environment_variable import (
     should_resolve_llm_model_selector,
 )
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.knowledge_retrieval_v2.validation import missing_control_space_ids
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
@@ -554,6 +555,23 @@ class AppDslService:
                                 )
                             )
                         ]
+                missing_knowledge_fs_spaces = missing_control_space_ids(
+                    session=self._session,
+                    tenant_id=app.tenant_id,
+                    graph=graph,
+                )
+                for control_space_id in missing_knowledge_fs_spaces:
+                    self._warnings.append(
+                        DslImportWarning(
+                            code="knowledge_fs_space_unresolved",
+                            path="workflow.graph.nodes",
+                            message=(
+                                "A KnowledgeFS Space reference is unavailable in the target workspace "
+                                "and must be reselected before publishing."
+                            ),
+                            details={"control_space_id": control_space_id},
+                        )
+                    )
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")

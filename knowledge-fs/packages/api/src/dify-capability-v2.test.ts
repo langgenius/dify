@@ -258,6 +258,11 @@ describe("Dify Capability v2 request guard", () => {
         "/knowledge-spaces/{id}/quality/traces",
         "quality.traces.list",
       ],
+      runRetrievalTest: [
+        "POST",
+        "/knowledge-spaces/{id}/retrieval-tests",
+        "queries.retrieval_test",
+      ],
       listKnowledgeSpaceResearchTasks: [
         "GET",
         "/knowledge-spaces/{id}/research-tasks",

@@ -22,6 +22,10 @@ export const knowledgeFsUploadEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).knowledge_fs_upload_enabled
 })
 
+export const knowledgeFsEnabledAtom = atom((get) => {
+  return get(systemFeaturesAtom).knowledge_fs_enabled
+})
+
 export const rbacEnabledAtom = atom((get) => {
   return get(systemFeaturesAtom).rbac_enabled
 })

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Protocol
 
 import sqlalchemy as sa
@@ -196,6 +197,137 @@ class KnowledgeFSAppBindingManagementService:
                 binding.revoked_by_account_id = None
                 authorization_revision.external_access_epoch += 1
             return _response(binding)
+
+    def sync_workflow_bindings(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        app_id: str,
+        control_space_ids: builtins.list[str] | tuple[str, ...],
+        session: Session | None = None,
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
+        """Make published Workflow bindings exactly match one validated graph snapshot."""
+
+        normalized_space_ids = list(dict.fromkeys(space_id.strip() for space_id in control_space_ids))
+        if any(not space_id for space_id in normalized_space_ids):
+            raise KnowledgeFSAppBindingManagementError("KnowledgeFS control-space ids must be non-empty")
+        if len(normalized_space_ids) > 10:
+            raise KnowledgeFSAppBindingManagementError("A workflow can bind at most 10 KnowledgeFS Spaces")
+
+        # Authorize every desired target before opening the mutation transaction. A failure therefore
+        # cannot leave a partially updated set of published Workflow bindings.
+        for control_space_id in normalized_space_ids:
+            self._authorize(
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                control_space_id=control_space_id,
+            )
+
+        if session is not None:
+            return self._sync_workflow_bindings_in_session(
+                session=session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                app_id=app_id,
+                normalized_space_ids=normalized_space_ids,
+            )
+
+        with self._session_maker.begin() as managed_session:
+            return self._sync_workflow_bindings_in_session(
+                session=managed_session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                app_id=app_id,
+                normalized_space_ids=normalized_space_ids,
+            )
+
+    def _sync_workflow_bindings_in_session(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        actor_account_id: str,
+        app_id: str,
+        normalized_space_ids: builtins.list[str],
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
+        desired = set(normalized_space_ids)
+        responses_by_space: dict[str, KnowledgeFSAppBindingResponse] = {}
+        if not self._apps.supports_binding(
+            session=session,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        ):
+            raise KnowledgeFSAppBindingManagementError("App is not eligible for the KnowledgeFS workflow channel")
+        existing = tuple(
+            session.scalars(
+                sa.select(AppKnowledgeFSSpaceJoin)
+                .where(
+                    AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
+                    AppKnowledgeFSSpaceJoin.app_id == app_id,
+                    AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                )
+                .with_for_update()
+            )
+        )
+        bindings_by_space = {binding.control_space_id: binding for binding in existing}
+
+        for control_space_id in normalized_space_ids:
+            binding = bindings_by_space.get(control_space_id)
+            if binding is None:
+                authorization_revision = _authorization_revision(
+                    session,
+                    tenant_id=tenant_id,
+                    control_space_id=control_space_id,
+                )
+                binding = AppKnowledgeFSSpaceJoin(
+                    tenant_id=tenant_id,
+                    control_space_id=control_space_id,
+                    app_id=app_id,
+                    join_type=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                    created_by_account_id=actor_account_id,
+                )
+                session.add(binding)
+                session.flush()
+                authorization_revision.external_access_epoch += 1
+                bindings_by_space[control_space_id] = binding
+            elif binding.status is KnowledgeFSAppSpaceJoinStatus.REVOKED:
+                authorization_revision = _authorization_revision(
+                    session,
+                    tenant_id=tenant_id,
+                    control_space_id=control_space_id,
+                )
+                binding.status = KnowledgeFSAppSpaceJoinStatus.ACTIVE
+                binding.revision += 1
+                binding.revoked_at = None
+                binding.revoked_by_account_id = None
+                authorization_revision.external_access_epoch += 1
+            responses_by_space[control_space_id] = _response(binding)
+
+        for binding in existing:
+            if binding.control_space_id in desired or binding.status is KnowledgeFSAppSpaceJoinStatus.REVOKED:
+                continue
+            authorization_revision = _authorization_revision(
+                session,
+                tenant_id=tenant_id,
+                control_space_id=binding.control_space_id,
+            )
+            binding.status = KnowledgeFSAppSpaceJoinStatus.REVOKED
+            binding.revision += 1
+            binding.revoked_at = naive_utc_now()
+            binding.revoked_by_account_id = actor_account_id
+            authorization_revision.external_access_epoch += 1
+            self._revocations.enqueue_principal_grants(
+                session=session,
+                tenant_id=tenant_id,
+                control_space_id=binding.control_space_id,
+                subject=f"dify-app:{app_id}",
+                reason_code="app_binding_revoked",
+                caller_kinds=(KnowledgeFSAppSpaceJoinType.WORKFLOW.value,),
+            )
+
+        return [responses_by_space[space_id] for space_id in normalized_space_ids]
 
     def revoke(
         self,

@@ -13,6 +13,8 @@ from services.knowledge_fs.capability_broker import KnowledgeFSCapabilityBroker,
 from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskResponse,
+    KnowledgeFSRetrievalTestPayload,
+    KnowledgeFSRetrievalTestResponse,
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
@@ -121,6 +123,50 @@ class KnowledgeFSAppExecutionCapabilityService:
             )
         )
         return KnowledgeFSResearchTaskResponse.model_validate(raw)
+
+    def run_retrieval(
+        self,
+        *,
+        run_context: DifyRunContext,
+        caller_kind: KnowledgeFSAppSpaceJoinType,
+        resource: KnowledgeResourceRef,
+        payload: KnowledgeFSRetrievalTestPayload,
+    ) -> KnowledgeFSRetrievalTestResponse:
+        """Retrieve bounded evidence without invoking KnowledgeFS answer generation."""
+
+        operation_id = "retrieveEvidence"
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        if (
+            not is_product_operation_ready(operation_id)
+            or operation.transport != "json"
+            or operation.kfs_path != "/knowledge-spaces/{id}/retrieval-tests"
+        ):
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS app evidence retrieval is unavailable")
+        issued = self.issue(
+            tenant_id=run_context.tenant_id,
+            app_id=run_context.app_id,
+            control_space_id=resource.control_space_id,
+            caller_kind=caller_kind,
+            operation_id=operation_id,
+            trace_id=run_context.trace_session_id,
+        )
+        remote_payload = cast(
+            dict[str, JsonValue],
+            payload.model_dump(mode="json", exclude_none=True, by_alias=True),
+        )
+        raw = self._remote.execute_json(
+            KnowledgeFSRemoteJSONRequest(
+                operation_id=operation_id,
+                method=operation.method,
+                path=operation.kfs_path.replace("{id}", issued.knowledge_space_id),
+                namespace_id=run_context.tenant_id,
+                knowledge_space_id=issued.knowledge_space_id,
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                payload=remote_payload,
+            )
+        )
+        return KnowledgeFSRetrievalTestResponse.model_validate(raw)
 
 
 __all__ = ["KnowledgeFSAppExecutionCapabilityService", "KnowledgeResourceRef"]

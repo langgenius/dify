@@ -1889,6 +1889,177 @@ class KnowledgeFSQueryResponse(ResponseModel):
     trace_id: str | None = None
 
 
+KnowledgeFSRetrievalFilterValue = Annotated[str, Field(min_length=1, max_length=512)]
+
+
+class KnowledgeFSRetrievalMetadataFilters(BaseModel):
+    created_after: str | None = Field(
+        default=None,
+        max_length=64,
+        validation_alias=AliasChoices("created_after", "createdAfter"),
+        serialization_alias="createdAfter",
+    )
+    created_before: str | None = Field(
+        default=None,
+        max_length=64,
+        validation_alias=AliasChoices("created_before", "createdBefore"),
+        serialization_alias="createdBefore",
+    )
+    document_types: list[KnowledgeFSRetrievalFilterValue] | None = Field(
+        default=None,
+        max_length=100,
+        validation_alias=AliasChoices("document_types", "documentTypes"),
+        serialization_alias="documentTypes",
+    )
+    entities: list[KnowledgeFSRetrievalFilterValue] | None = Field(default=None, max_length=100)
+    freshness_statuses: list[KnowledgeFSRetrievalFilterValue] | None = Field(
+        default=None,
+        max_length=100,
+        validation_alias=AliasChoices("freshness_statuses", "freshnessStatuses"),
+        serialization_alias="freshnessStatuses",
+    )
+    languages: list[KnowledgeFSRetrievalFilterValue] | None = Field(default=None, max_length=100)
+    node_kinds: list[Literal["chunk", "section", "table", "image", "summary"]] | None = Field(
+        default=None,
+        max_length=100,
+        validation_alias=AliasChoices("node_kinds", "nodeKinds"),
+        serialization_alias="nodeKinds",
+    )
+    source_ids: list[KnowledgeFSRetrievalFilterValue] | None = Field(
+        default=None,
+        max_length=100,
+        validation_alias=AliasChoices("source_ids", "sourceIds"),
+        serialization_alias="sourceIds",
+    )
+    tags: list[KnowledgeFSRetrievalFilterValue] | None = Field(default=None, max_length=100)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
+    @field_validator("created_after", "created_before")
+    @classmethod
+    def validate_date_filter(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        try:
+            datetime.fromisoformat(normalized)
+        except ValueError as exc:
+            raise ValueError("Retrieval date filters must be valid ISO date strings") from exc
+        return normalized
+
+    @field_validator(
+        "document_types",
+        "entities",
+        "freshness_statuses",
+        "languages",
+        "source_ids",
+        "tags",
+    )
+    @classmethod
+    def normalize_string_filters(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        normalized = [value.strip() for value in values]
+        if any(not value for value in normalized):
+            raise ValueError("Retrieval filter values must be non-empty")
+        return list(dict.fromkeys(normalized))
+
+    @field_validator("node_kinds")
+    @classmethod
+    def deduplicate_node_kinds(
+        cls,
+        values: list[Literal["chunk", "section", "table", "image", "summary"]] | None,
+    ) -> list[Literal["chunk", "section", "table", "image", "summary"]] | None:
+        return None if values is None else list(dict.fromkeys(values))
+
+
+class KnowledgeFSRetrievalTestPayload(BaseModel):
+    query: str = Field(min_length=1, max_length=16_000)
+    mode: Literal["deep", "fast", "research"] | None = None
+    include_text: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("include_text", "includeText"),
+        serialization_alias="includeText",
+    )
+    filters: KnowledgeFSRetrievalMetadataFilters | None = None
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Retrieval query is required")
+        return normalized
+
+
+class KnowledgeFSRetrievalCitationResponse(ResponseModel):
+    artifact_hash: str = Field(
+        min_length=1,
+        max_length=128,
+        validation_alias=AliasChoices("artifact_hash", "artifactHash"),
+    )
+    document_asset_id: str = Field(
+        min_length=1,
+        max_length=512,
+        validation_alias=AliasChoices("document_asset_id", "documentAssetId"),
+    )
+    document_version: int = Field(
+        gt=0,
+        validation_alias=AliasChoices("document_version", "documentVersion"),
+    )
+    section_path: list[str] = Field(
+        max_length=64,
+        validation_alias=AliasChoices("section_path", "sectionPath"),
+    )
+    page_number: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("page_number", "pageNumber"),
+    )
+    start_offset: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("start_offset", "startOffset"),
+    )
+    end_offset: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("end_offset", "endOffset"),
+    )
+
+
+class KnowledgeFSRetrievalTestItemResponse(ResponseModel):
+    citation: KnowledgeFSRetrievalCitationResponse
+    node_id: str = Field(min_length=1, max_length=512, validation_alias=AliasChoices("node_id", "nodeId"))
+    projection_ids: list[str] = Field(
+        max_length=128,
+        validation_alias=AliasChoices("projection_ids", "projectionIds"),
+    )
+    # The final score is profile-defined (for example rerank relevance or RRF fusion), so the
+    # KnowledgeFS contract intentionally guarantees only a finite number rather than [0, 1].
+    score: float = Field(allow_inf_nan=False)
+    sources: list[Literal["dense", "fts", "pageindex", "visual"]] = Field(max_length=4)
+    text: str | None = Field(default=None, max_length=8_192)
+
+
+class KnowledgeFSRetrievalTestMetricsResponse(ResponseModel):
+    total_ms: float = Field(ge=0, validation_alias=AliasChoices("total_ms", "totalMs"))
+    degradation_flags: list[str] = Field(
+        default_factory=list,
+        max_length=32,
+        validation_alias=AliasChoices("degradation_flags", "degradationFlags"),
+    )
+
+
+class KnowledgeFSRetrievalTestResponse(ResponseModel):
+    items: list[KnowledgeFSRetrievalTestItemResponse] = Field(max_length=100)
+    metrics: KnowledgeFSRetrievalTestMetricsResponse
+    mode: Literal["deep", "fast", "research"]
+    trace_id: str = Field(min_length=1, max_length=512, validation_alias=AliasChoices("trace_id", "traceId"))
+
+
 class KnowledgeFSResearchTaskLimits(BaseModel):
     max_retrieval_steps: int | None = Field(default=None, ge=1, alias="maxRetrievalSteps")
     max_scanned_resources: int | None = Field(default=None, ge=1, alias="maxScannedResources")
