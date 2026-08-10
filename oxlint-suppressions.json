@@ -97,12 +97,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -123,12 +117,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -281,14 +269,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/app-publisher/sections.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -824,12 +804,6 @@
   },
   "web/app/components/base/chat/chat/citation/index.tsx": {
     "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -1841,14 +1815,6 @@
   },
   "web/app/components/base/svg-gallery/index.tsx": {
     "node-js/prefer-global/buffer": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/tab-slider-new/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5517,12 +5483,6 @@
     }
   },
   "web/app/reset-password/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5543,12 +5503,6 @@
     }
   },
   "web/app/signin/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -5564,12 +5518,6 @@
     }
   },
   "web/app/signup/check-code/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }

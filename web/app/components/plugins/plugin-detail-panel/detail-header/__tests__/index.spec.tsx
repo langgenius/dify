@@ -45,10 +45,8 @@ vi.mock('@/utils/var', () => ({
 }))
 
 vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) => (
-    <button data-testid="close-button" onClick={onClick}>
-      {children}
-    </button>
+  default: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
   ),
 }))
 
@@ -219,7 +217,7 @@ describe('DetailHeader', () => {
     render(<DetailHeader detail={createDetail()} onHide={onHide} onUpdate={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
-    fireEvent.click(screen.getByTestId('close-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(onHide).toHaveBeenCalled()

@@ -42,7 +42,7 @@ describe('ChangePasswordForm', () => {
 
     it('renders the password form', () => {
       render(<ChangePasswordForm />)
-      expect(screen.getByText('login.changePassword')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
     })
 
     it('submits with T2 (from validity response), NOT T1 (from URL)', async () => {
@@ -81,7 +81,7 @@ describe('ChangePasswordForm', () => {
 
     it('shows invalid token state and no form', () => {
       render(<ChangePasswordForm />)
-      expect(screen.getByText('login.invalid')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.invalid')
       expect(
         screen.queryByRole('button', { name: /common\.operation\.reset/ }),
       ).not.toBeInTheDocument()

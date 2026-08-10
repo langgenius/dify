@@ -98,6 +98,27 @@ describe('CheckCode', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Space', ' '],
+  ])('supports going back with the %s key', async (_, key) => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const backButton = screen.getByRole('button', { name: 'login.back' })
+    expect(backButton).toHaveProperty('tabIndex', 0)
+    backButton.focus()
+    expect(backButton).toHaveFocus()
+    await user.keyboard(key)
+
+    expect(navigationMocks.back).toHaveBeenCalledOnce()
+  })
+
   describe('Post-login profile bootstrap', () => {
     it('should resolve an inactive profile query before navigating to the console home', async () => {
       const user = userEvent.setup()
