@@ -75,6 +75,25 @@ describe('ShareQRCode', () => {
       expect(canvas).toBeInTheDocument()
     })
 
+    it('lets panel interactions bubble without closing the panel', async () => {
+      const user = userEvent.setup()
+      const onClick = vi.fn()
+      const { container } = render(<ShareQRCode content={content} />)
+      container.addEventListener('click', onClick)
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'appOverview.overview.appInfo.qrcode.title',
+        }),
+      )
+      onClick.mockClear()
+
+      await user.click(screen.getByText('appOverview.overview.appInfo.qrcode.scan'))
+
+      expect(onClick).toHaveBeenCalledOnce()
+      expect(screen.getByRole('img')).toBeInTheDocument()
+    })
+
     it('calls downloadUrl when clicking download', async () => {
       const user = userEvent.setup()
       const originalToDataURL = HTMLCanvasElement.prototype.toDataURL

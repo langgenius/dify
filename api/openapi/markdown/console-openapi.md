@@ -24795,19 +24795,9 @@ FastOpenAPI proof of concept for Dify API
 | setup_at | string | Setup completion time (ISO format) | No |
 | step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
 
-###### VersionFeatures
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| can_replace_logo | boolean | Whether logo replacement is supported | Yes |
-| model_load_balancing_enabled | boolean | Whether model load balancing is enabled | Yes |
-
 ###### VersionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| can_auto_update | boolean | Whether auto-update is supported | Yes |
-| features | [VersionFeatures](#versionfeatures) | Feature flags and capabilities | Yes |
-| release_date | string | Release date of latest version | Yes |
 | release_notes | string | Release notes for latest version | Yes |
 | version | string | Latest version number | Yes |

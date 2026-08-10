@@ -74,9 +74,7 @@ describe('AddExternalAPIModal', () => {
 
     it('should render close button', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
-      // Close button is rendered in a portal
-      const closeButton = document.body.querySelector('.action-btn')
-      expect(closeButton)!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -388,9 +386,7 @@ describe('AddExternalAPIModal', () => {
       const onCancel = vi.fn()
       render(<AddExternalAPIModal {...defaultProps} onCancel={onCancel} />)
 
-      // Close button is rendered in a portal
-      const closeButton = document.body.querySelector('.action-btn')!
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onCancel).toHaveBeenCalledTimes(1)
     })

@@ -61,9 +61,9 @@ export default function CheckCode() {
         <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">
+        <h1 className="title-4xl-semi-bold text-text-primary">
           {t(($) => $.resetPassword, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           {t(($) => $.resetPasswordDesc, { ns: 'login' })}
         </p>

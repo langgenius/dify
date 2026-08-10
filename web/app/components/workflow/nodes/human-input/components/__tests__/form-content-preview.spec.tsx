@@ -22,15 +22,6 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => mockUseNodes(),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  __esModule: true,
-  default: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
-    <button type="button" aria-label="close-preview" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
   __esModule: true,
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
@@ -140,7 +131,7 @@ describe('FormContentPreview', () => {
       <FormContentPreview content="content" formInputs={[]} userActions={[]} onClose={onClose} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'close-preview' }))
+    fireEvent.click(screen.getByRole('button', { name: 'operation.close' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

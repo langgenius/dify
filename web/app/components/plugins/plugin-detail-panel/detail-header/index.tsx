@@ -310,7 +310,10 @@ const DetailHeader = ({
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
-            <ActionButton onClick={onHide}>
+            <ActionButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onHide}
+            >
               <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
