@@ -3,13 +3,15 @@ import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklis
 import type { CommonEdgeType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
+import { CHECKLIST_AWAIT_RECHECK_STATE } from '@/app/components/workflow-copilot/types'
 import { useCopilotSession } from '@/app/components/workflow-copilot/use-copilot-session'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { useChecklist } from '@/app/components/workflow/hooks/use-checklist'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowRefreshDraft } from '@/app/components/workflow/hooks/use-workflow-refresh-draft'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -88,6 +90,22 @@ function WorkflowCopilotPanel() {
       baseUrl: API_PREFIX,
       workspaceId: currentWorkspace.id,
     })
+
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
+
+  // The copilot applies checklist repairs to the *server* draft (via the
+  // backend adapter), not the local canvas, so `nodes`/`useChecklist` above
+  // stay on the stale pre-fix graph until something pulls the draft back in.
+  // When the session hands control back for a re-check
+  // (`checklist.await_recheck`), refresh the draft into the canvas once per
+  // entry into that state, so the re-check reflects the copilot's applied
+  // fix. This can't clobber unsaved user edits: the canvas is read-only for
+  // the duration of the session, and the editor's own autosave only pushes
+  // local changes to the draft, never pulls.
+  useEffect(() => {
+    if (view?.State === CHECKLIST_AWAIT_RECHECK_STATE) handleRefreshWorkflowDraft()
+  }, [view?.State, handleRefreshWorkflowDraft])
 
   const resolvedRunId = manualRunId.trim() || latestFailedRun?.id || ''
   const canStartFix = !!appId && !!currentWorkspace.id && !!resolvedRunId
@@ -204,6 +222,7 @@ function WorkflowCopilotPanel() {
             fixableChecklistItems={fixableChecklistItems}
             unfixableChecklistItems={unfixableChecklistItems}
             onRecheck={handleRecheck}
+            isRefreshingDraftForRecheck={isSyncingWorkflowDraft}
           />
         )}
         {lastError && (
