@@ -553,6 +553,21 @@ export const zWorkflowRunExportResponse = z.object({
 })
 
 /**
+ * WorkflowAgentSandboxDownloadPayload
+ */
+export const zWorkflowAgentSandboxDownloadPayload = z.object({
+  node_execution_id: z.string().min(1),
+  path: z.string().min(1),
+})
+
+/**
+ * SandboxDownloadResponse
+ */
+export const zSandboxDownloadResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -561,21 +576,6 @@ export const zSandboxReadResponse = z.object({
   size: z.int().nullish(),
   text: z.string().nullish(),
   truncated: z.boolean(),
-})
-
-/**
- * WorkflowAgentSandboxUploadPayload
- */
-export const zWorkflowAgentSandboxUploadPayload = z.object({
-  node_execution_id: z.string().min(1),
-  path: z.string().min(1),
-})
-
-/**
- * SandboxUploadResponse
- */
-export const zSandboxUploadResponse = z.object({
-  url: z.string(),
 })
 
 /**
@@ -657,18 +657,6 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
  * DefaultBlockConfigResponse
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
-
-/**
- * SyncDraftWorkflowPayload
- */
-export const zSyncDraftWorkflowPayload = z.object({
-  _is_collaborative: z.boolean().optional().default(false),
-  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string().nullish(),
-})
 
 /**
  * SyncDraftWorkflowResponse
@@ -2086,6 +2074,26 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
+ * SyncEnvironmentVariablePatchPayload
+ */
+export const zSyncEnvironmentVariablePatchPayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * SyncDraftWorkflowPayload
+ */
+export const zSyncDraftWorkflowPayload = z.object({
+  _is_collaborative: z.boolean().optional().default(false),
+  conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+  environment_variable_patch: zSyncEnvironmentVariablePatchPayload.nullish(),
+  features: z.record(z.string(), z.unknown()),
+  graph: z.record(z.string(), z.unknown()),
+  hash: z.string().nullish(),
+})
+
+/**
  * ConversationVariableItemPayload
  */
 export const zConversationVariableItemPayload = z.object({
@@ -2141,7 +2149,9 @@ export const zEnvironmentVariableItemPayload = z.object({
  * EnvironmentVariableUpdatePayload
  */
 export const zEnvironmentVariableUpdatePayload = z.object({
+  deleted_environment_variable_ids: z.array(z.string()).optional(),
   environment_variables: z.array(zEnvironmentVariableItemPayload),
+  patch: z.boolean().optional().default(false),
 })
 
 /**
@@ -3663,6 +3673,13 @@ export const zAgentModelResponseFormatConfig = z.object({
 
 /**
  * AgentSoulModelSettings
+ *
+ * Model parameters for the Agent Soul model.
+ *
+ * Model plugins can declare arbitrary parameters via ``parameter_rules``
+ * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+ * fields typed below, so extra keys must round-trip through persistence
+ * rather than being dropped.
  */
 export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
@@ -4068,6 +4085,14 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 
 /**
  * AgentKnowledgeMetadataCondition
+ *
+ * One manual metadata filter clause.
+ *
+ * ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+ * every save (a stable row key and a reference to the selected metadata
+ * field). They are persisted here for round-tripping the composer's draft
+ * state but are stripped before building the Agent runtime request, whose
+ * DTO only accepts ``name``/``comparison_operator``/``value``.
  */
 export const zAgentKnowledgeMetadataCondition = z.object({
   comparison_operator: z.enum([
@@ -4090,6 +4115,8 @@ export const zAgentKnowledgeMetadataCondition = z.object({
     '≤',
     '≥',
   ]),
+  id: z.string().nullish(),
+  metadata_id: z.string().nullish(),
   name: z.string().min(1).max(255),
   value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
 })
@@ -5579,6 +5606,15 @@ export const zPutAppsByAppIdServerPath = z.object({
  */
 export const zPutAppsByAppIdServerResponse = zAppMcpServerResponse
 
+export const zPostAppsByAppIdServerRefreshPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * MCP server refreshed successfully
+ */
+export const zPostAppsByAppIdServerRefreshResponse = zAppMcpServerResponse
+
 export const zPostAppsByAppIdSiteBody = zAppSiteUpdatePayload
 
 export const zPostAppsByAppIdSitePath = z.object({
@@ -5993,6 +6029,22 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse =
   zSandboxListResponse
 
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadBody =
+  zWorkflowAgentSandboxDownloadPayload
+
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadPath =
+  z.object({
+    app_id: z.uuid(),
+    node_id: z.string(),
+    workflow_run_id: z.uuid(),
+  })
+
+/**
+ * Download URL returned
+ */
+export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse =
+  zSandboxDownloadResponse
+
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadPath =
   z.object({
     app_id: z.uuid(),
@@ -6011,22 +6063,6 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
  */
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse =
   zSandboxReadResponse
-
-export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody =
-  zWorkflowAgentSandboxUploadPayload
-
-export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath =
-  z.object({
-    app_id: z.uuid(),
-    node_id: z.string(),
-    workflow_run_id: z.uuid(),
-  })
-
-/**
- * Uploaded
- */
-export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse =
-  zSandboxUploadResponse
 
 export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
   app_id: z.uuid(),
@@ -6839,12 +6875,3 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
  * API key deleted successfully
  */
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.void()
-
-export const zGetAppsByServerIdServerRefreshPath = z.object({
-  server_id: z.uuid(),
-})
-
-/**
- * MCP server refreshed successfully
- */
-export const zGetAppsByServerIdServerRefreshResponse = zAppMcpServerResponse

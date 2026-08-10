@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from controllers.console.snippets import snippet_workflow_draft_variable as module
 from graphon.variables import StringSegment
+from graphon.variables.types import SegmentType
 from models.account import Account, AccountStatus
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
@@ -254,6 +255,7 @@ def test_variable_patch_returns_persisted_variable_without_committing_when_no_ch
         with app.test_request_context("/", method="PATCH", json={}):
             result = handler(
                 api,
+                module.WorkflowDraftVariableUpdatePayload(),
                 _make_account(),
                 snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
                 variable_id="var-1",
@@ -331,7 +333,7 @@ def test_environment_variables_returns_workflow_environment_variables(
         name="API_KEY",
         description="secret",
         selector=["env", "API_KEY"],
-        value_type=SimpleNamespace(exposed_type=Mock(return_value=SimpleNamespace(value="secret"))),
+        value_type=SegmentType.SECRET,
         value="sk-test",
     )
     monkeypatch.setattr(

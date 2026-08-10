@@ -24,7 +24,9 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
+from controllers.console.workspace.rbac import _RolesListQuery
 
 
 @pytest.fixture
@@ -174,7 +176,24 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"page": 1, "limit": 2, "include_owner": 1}),
+            )
+
+        owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
+        valid_owner_permission_keys = []
+        for permission_key in owner_permission_keys:
+            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+                continue
+            valid_owner_permission_keys.append(permission_key)
+
+        admin_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]
+        valid_admin_permission_keys = []
+        for permission_key in admin_permission_keys:
+            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+                continue
+            valid_admin_permission_keys.append(permission_key)
 
         assert response["data"] == [
             {
@@ -185,7 +204,7 @@ class TestPaginationMapping:
                 "name": "owner",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"])),
+                "permission_keys": valid_owner_permission_keys,
                 "role_tag": "owner",
             },
             {
@@ -196,7 +215,7 @@ class TestPaginationMapping:
                 "name": "admin",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"])),
+                "permission_keys": valid_admin_permission_keys,
                 "role_tag": "",
             },
         ]
@@ -215,7 +234,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -227,7 +246,10 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"include_owner": 1}),
+            )
 
         names = [r["name"] for r in response["data"]]
         assert "owner" in names
@@ -239,7 +261,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -252,7 +274,10 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"page": 2, "limit": 50, "reverse": True, "include_owner": 1}),
+            )
 
         _, kwargs = mock_list.call_args
         options = kwargs["options"]

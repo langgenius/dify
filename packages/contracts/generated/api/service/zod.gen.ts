@@ -872,6 +872,8 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
+  error_code: z.string().nullish(),
+  estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
   indexing_status: z.string(),
   parsing_completed_at: z.int().nullable(),
@@ -880,6 +882,7 @@ export const zDocumentStatusResponse = z.object({
   splitting_completed_at: z.int().nullable(),
   stopped_at: z.int().nullable(),
   total_segments: z.int().nullish(),
+  vector_space_limit_mb: z.int().nullish(),
 })
 
 /**
@@ -1001,6 +1004,13 @@ export const zFileListInputConfig = z.object({
   output_variable_name: z.string(),
   type: z.literal('file-list').optional().default('file-list'),
 })
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HitTestingChildChunk
@@ -1180,6 +1190,8 @@ export const zHumanInputFormSubmissionData = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
@@ -1188,11 +1200,24 @@ export const zHumanInputFormSubmitPayload = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayloadWithUser = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue2),
   user: z.string(),
+})
+
+/**
+ * HumanInputV2ServiceFormSubmitRequest
+ *
+ * Trusted Service API submit payload without public-web OTP proof fields.
+ */
+export const zHumanInputV2ServiceFormSubmitRequest = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue2),
+  user: z.string().min(1),
 })
 
 /**
@@ -1691,6 +1716,15 @@ export const zProcessRule = z.object({
 })
 
 /**
+ * ServiceFormQuery
+ *
+ * Query params for reading one service-api human-input form.
+ */
+export const zServiceFormQuery = z.object({
+  user: z.string().min(1),
+})
+
+/**
  * SimpleAccountResponse
  */
 export const zSimpleAccountResponse = z.object({
@@ -1944,6 +1978,19 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
   zFileInputConfig.extend({ type: z.literal('file') }),
   zFileListInputConfig.extend({ type: z.literal('file-list') }),
 ])
+
+/**
+ * FormDefinitionResponse
+ *
+ * Response body containing a resolved human-input form definition.
+ */
+export const zFormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  form_content: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  resolved_default_values: z.record(z.string(), z.string()).optional(),
+  user_actions: z.array(zUserActionConfig).optional(),
+})
 
 /**
  * HumanInputFormDefinition
@@ -2312,6 +2359,13 @@ export const zWorkflowRunResponse = z.object({
   total_tokens: z.int().nullish(),
   workflow_id: z.string(),
 })
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * GeneratedAppResponse
@@ -3202,21 +3256,45 @@ export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
 
-/**
- * Form contents retrieved successfully.
- */
-export const zGetFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
+export const zGetFormHumanInputByFormTokenQuery = z.object({
+  user: z.string(),
+})
 
-export const zPostFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayloadWithUser
+/**
+ * Form retrieved successfully
+ */
+export const zGetFormHumanInputByFormTokenResponse = zFormDefinitionResponse
+
+export const zPostFormHumanInputByFormTokenBody = zHumanInputV2ServiceFormSubmitRequest
 
 export const zPostFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
 
 /**
+ * Form submitted successfully
+ */
+export const zPostFormHumanInputByFormTokenResponse = zFormSubmitResponse
+
+export const zGetFormHumanInputByFormToken2Path = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form contents retrieved successfully.
+ */
+export const zGetFormHumanInputByFormToken2Response = zHumanInputFormDefinitionResponse
+
+export const zPostFormHumanInputByFormToken2Body = zHumanInputFormSubmitPayloadWithUser
+
+export const zPostFormHumanInputByFormToken2Path = z.object({
+  form_token: z.string(),
+})
+
+/**
  * Form submitted successfully. The response body is an empty object.
  */
-export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitResponse
+export const zPostFormHumanInputByFormToken2Response = zHumanInputFormSubmitResponse
 
 /**
  * Basic information of the application.

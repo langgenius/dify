@@ -45,7 +45,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
   return (
     <div className="flex w-56 justify-end gap-1">
       <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
-        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
+        <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="i-ri-add-line size-3" aria-hidden />
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.importFromUrl'], { ns: 'tools' })}
@@ -74,7 +74,7 @@ const GetSchema: FC<Props> = ({ onChange }) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
-        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
+        <DropdownMenuTrigger render={<Button size="small" />}>
           <span className="system-xs-medium text-text-secondary">
             {t(($) => $['createTool.examples'], { ns: 'tools' })}
           </span>

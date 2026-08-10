@@ -8,7 +8,7 @@ import pytest
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue
 from pydantic_ai import Tool
-from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import (
     ToolReturnPart,
     ModelMessage,
@@ -22,6 +22,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 from pydantic_ai.settings import ModelSettings
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
@@ -60,10 +61,12 @@ from dify_agent.protocol.schemas import (
     LayerExitSignals,
     PydanticAIStreamRunEvent,
     RunComposition,
+    RunFailedEvent,
+    RunFailureType,
     RunLayerSpec,
     RunSucceededEvent,
 )
-from dify_agent.runtime.event_sink import InMemoryRunEventSink
+from dify_agent.runtime.event_sink import InMemoryRunEventSink, emit_run_cancelled
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
     AgentRunRunner,
@@ -178,18 +181,20 @@ def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
         {"error_type": "InvokeRateLimitError", "message": "quota exceeded"},
     )
 
-    message, reason = _run_failed_error_payload(exc)
+    message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "quota exceeded"
+    assert error_type is None
     assert reason == "InvokeRateLimitError"
 
 
 def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() -> None:
     exc = ModelHTTPError(429, "gpt-4o-mini", {"message": "too many requests"})
 
-    message, reason = _run_failed_error_payload(exc)
+    message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "too many requests"
+    assert error_type is None
     assert reason == "InvokeRateLimitError"
 
 
@@ -201,10 +206,21 @@ def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
         retryable=False,
     )
 
-    message, reason = _run_failed_error_payload(exc)
+    message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
+    assert error_type is None
     assert reason == "dataset_not_found"
+
+
+def test_run_failed_error_payload_classifies_usage_limit() -> None:
+    exc = UsageLimitExceeded("The next request would exceed the request_limit of 100")
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "The next request would exceed the request_limit of 100"
+    assert error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert reason is None
 
 
 def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
@@ -226,7 +242,12 @@ def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
             async def fail_after_cancel() -> RunSuccessOutcome:
                 nonlocal cancelled
                 cancelled = True
-                await sink.update_status("run-cancelled", "cancelled", "workflow stopped")
+                _ = await emit_run_cancelled(
+                    sink,
+                    run_id="run-cancelled",
+                    reason="workflow_aborted",
+                    message="workflow stopped",
+                )
                 raise RuntimeError("late model failure")
 
             monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
@@ -234,7 +255,7 @@ def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
 
         assert sink.statuses["run-cancelled"] == "cancelled"
         assert sink.errors["run-cancelled"] == "workflow stopped"
-        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started", "run_cancelled"]
 
     asyncio.run(scenario())
 
@@ -601,6 +622,36 @@ def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPa
     assert terminal.data.output is None
     assert terminal.data.deferred_tool_call is None
     assert sink.statuses["run-null-output"] == "succeeded"
+
+
+def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
+            usage_limits = cast(UsageLimits, kwargs["usage_limits"])
+            assert usage_limits.request_limit == 100
+            return FakeAgentRunResult("done", [])
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-explicit-step-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-explicit-step-limit"] == "succeeded"
 
 
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1919,6 +1970,37 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
     assert sink.statuses["run-history-failure"] == "failed"
     assert request.session_snapshot is not None
     assert _history_messages_from_snapshot(request.session_snapshot) == stored_history
+
+
+def test_runner_persists_usage_limit_failure_type_in_event_and_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+
+            async def exceed_limit() -> RunSuccessOutcome:
+                raise UsageLimitExceeded("The next request would exceed the request_limit of 100")
+
+            monkeypatch.setattr(runner, "_run_agent", exceed_limit)
+            with pytest.raises(UsageLimitExceeded):
+                await runner.run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-limit"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert sink.statuses["run-limit"] == "failed"
+    assert sink.error_types["run-limit"] is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
 
 
 def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:

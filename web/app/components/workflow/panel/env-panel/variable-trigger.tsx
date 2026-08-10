@@ -30,7 +30,7 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
       <PopoverTrigger
         render={
           <Button variant="primary">
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             <span className="system-sm-medium">
               {t(($) => $['env.envPanelButton'], { ns: 'workflow' })}
             </span>

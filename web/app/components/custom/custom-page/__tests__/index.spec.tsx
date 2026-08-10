@@ -7,7 +7,8 @@ import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CustomPage from '../index'
 
 vi.mock('@/config', async (importOriginal) => {
@@ -17,8 +18,15 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {
+    remove_webapp_brand: false,
+    replace_webapp_logo: null,
+  })
+
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       deployment_edition: 'CLOUD',
       branding: {
@@ -27,6 +35,7 @@ const render = (ui: ReactElement) =>
       },
     },
   })
+}
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {

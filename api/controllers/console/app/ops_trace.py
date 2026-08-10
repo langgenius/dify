@@ -1,6 +1,5 @@
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
@@ -14,6 +13,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
 )
@@ -74,12 +74,11 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
-    def get(self, app_model: App):
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-
+    @model_validate(TraceProviderQuery)
+    def get(self, req_data: TraceProviderQuery, app_model: App):
         try:
             trace_config = OpsService.get_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session()
+                app_id=app_model.id, tracing_provider=req_data.tracing_provider, session=db.session()
             )
             if not trace_config:
                 return {"has_not_configured": True}
@@ -104,15 +103,14 @@ class TraceAppConfigApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
-    def post(self, app_model: App):
+    @model_validate(TraceConfigPayload)
+    def post(self, req_data: TraceConfigPayload, app_model: App):
         """Create a new trace app configuration"""
-        args = TraceConfigPayload.model_validate(console_ns.payload)
-
         try:
             result = OpsService.create_tracing_app_config(
                 app_id=app_model.id,
-                tracing_provider=args.tracing_provider,
-                tracing_config=args.tracing_config,
+                tracing_provider=req_data.tracing_provider,
+                tracing_config=req_data.tracing_config,
                 session=db.session(),
             )
             if not result:
@@ -140,15 +138,14 @@ class TraceAppConfigApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
-    def patch(self, app_model: App):
+    @model_validate(TraceConfigPayload)
+    def patch(self, req_data: TraceConfigPayload, app_model: App):
         """Update an existing trace app configuration"""
-        args = TraceConfigPayload.model_validate(console_ns.payload)
-
         try:
             result = OpsService.update_tracing_app_config(
                 app_id=app_model.id,
-                tracing_provider=args.tracing_provider,
-                tracing_config=args.tracing_config,
+                tracing_provider=req_data.tracing_provider,
+                tracing_config=req_data.tracing_config,
                 session=db.session(),
             )
             if not result:
@@ -170,13 +167,12 @@ class TraceAppConfigApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
-    def delete(self, app_model: App):
+    @model_validate(TraceProviderQuery)
+    def delete(self, req_data: TraceProviderQuery, app_model: App):
         """Delete an existing trace app configuration"""
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
-
         try:
             result = OpsService.delete_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session()
+                app_id=app_model.id, tracing_provider=req_data.tracing_provider, session=db.session()
             )
             if not result:
                 raise TracingConfigNotExist()

@@ -1,7 +1,7 @@
 import type { NodeProps } from 'reactflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { TabType } from '@/app/components/workflow/block-selector/types'
@@ -11,14 +11,12 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
   const { t } = useTranslation()
   const { handleReplaceNode } = useReplaceDataSourceNode(id)
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <Button variant="primary" className="w-full">
-        <span aria-hidden className="mr-1 i-ri-add-line size-4" />
-        {t(($) => $['nodes.dataSource.add'], { ns: 'workflow' })}
-      </Button>
-    )
-  }, [t])
+  const triggerElement = (
+    <Button variant="primary" className="w-full">
+      <span aria-hidden className="i-ri-add-line size-4" />
+      {t(($) => $['nodes.dataSource.add'], { ns: 'workflow' })}
+    </Button>
+  )
 
   return (
     <div
@@ -43,7 +41,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         <div className={cn('flex items-center rounded-t-2xl p-3')}>
           <BlockSelector
             onSelect={handleReplaceNode}
-            trigger={renderTrigger}
+            trigger={triggerElement}
             standalonePanel={TabType.Sources}
             popupClassName="w-[320px]"
             placement="bottom-start"

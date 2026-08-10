@@ -722,6 +722,8 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
+  error_code?: string | null
+  estimated_vector_space_mb?: number | null
   id: string
   indexing_status: string
   parsing_completed_at: number | null
@@ -730,6 +732,7 @@ export type DocumentStatusResponse = {
   splitting_completed_at: number | null
   stopped_at: number | null
   total_segments?: number | null
+  vector_space_limit_mb?: number | null
 }
 
 export type DocumentTextCreatePayload = {
@@ -838,6 +841,16 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
+export type FormDefinitionResponse = {
+  expiration_time: number
+  form_content?: string | null
+  inputs?: Array<FormInputConfig>
+  resolved_default_values?: {
+    [key: string]: string
+  }
+  user_actions?: Array<UserActionConfig>
+}
+
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -851,6 +864,10 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+
+export type FormSubmitResponse = {
+  [key: string]: unknown
+}
 
 export type GeneratedAppResponse = JsonValue
 
@@ -998,6 +1015,14 @@ export type HumanInputFormSubmitPayloadWithUser = {
 
 export type HumanInputFormSubmitResponse = {
   [key: string]: never
+}
+
+export type HumanInputV2ServiceFormSubmitRequest = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue2
+  }
+  user: string
 }
 
 export type I18nObject = {
@@ -1431,6 +1456,10 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
+export type ServiceFormQuery = {
+  user: string
+}
+
 export type SimpleAccountResponse = {
   email: string
   id: string
@@ -1689,6 +1718,10 @@ export type WorkflowRunResponse = {
   total_steps?: number | null
   total_tokens?: number | null
   workflow_id: string
+}
+
+export type FormSubmitResponseWritable = {
+  [key: string]: unknown
 }
 
 export type GeneratedAppResponseWritable = JsonValue
@@ -2414,6 +2447,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   400: unknown
   401: unknown
   403: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
@@ -2461,6 +2495,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   400: unknown
   401: unknown
   403: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
@@ -2681,6 +2716,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
@@ -2966,6 +3002,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
@@ -3017,6 +3054,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
   401: unknown
   403: unknown
   404: unknown
+  413: unknown
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
@@ -3403,25 +3441,67 @@ export type GetFormHumanInputByFormTokenData = {
   path: {
     form_token: string
   }
-  query?: never
-  url: '/form/human_input/{form_token}'
+  query: {
+    user: string
+  }
+  url: '/form/human-input/{form_token}'
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
-  401: unknown
   403: unknown
-  404: unknown
-  412: unknown
 }
 
 export type GetFormHumanInputByFormTokenResponses = {
-  200: HumanInputFormDefinitionResponse
+  200: FormDefinitionResponse
 }
 
 export type GetFormHumanInputByFormTokenResponse =
   GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
+  body: HumanInputV2ServiceFormSubmitRequest
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/{form_token}'
+}
+
+export type PostFormHumanInputByFormTokenErrors = {
+  403: unknown
+}
+
+export type PostFormHumanInputByFormTokenResponses = {
+  200: FormSubmitResponse
+}
+
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+
+export type GetFormHumanInputByFormToken2Data = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human_input/{form_token}'
+}
+
+export type GetFormHumanInputByFormToken2Errors = {
+  401: unknown
+  403: unknown
+  404: unknown
+  412: unknown
+}
+
+export type GetFormHumanInputByFormToken2Responses = {
+  200: HumanInputFormDefinitionResponse
+}
+
+export type GetFormHumanInputByFormToken2Response =
+  GetFormHumanInputByFormToken2Responses[keyof GetFormHumanInputByFormToken2Responses]
+
+export type PostFormHumanInputByFormToken2Data = {
   body: HumanInputFormSubmitPayloadWithUser
   path: {
     form_token: string
@@ -3430,7 +3510,7 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
-export type PostFormHumanInputByFormTokenErrors = {
+export type PostFormHumanInputByFormToken2Errors = {
   400: unknown
   401: unknown
   403: unknown
@@ -3438,12 +3518,12 @@ export type PostFormHumanInputByFormTokenErrors = {
   412: unknown
 }
 
-export type PostFormHumanInputByFormTokenResponses = {
+export type PostFormHumanInputByFormToken2Responses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse =
-  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormToken2Response =
+  PostFormHumanInputByFormToken2Responses[keyof PostFormHumanInputByFormToken2Responses]
 
 export type GetInfoData = {
   body?: never

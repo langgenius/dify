@@ -60,21 +60,16 @@ export default function Form({ onSuccess }: Props) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             id="email"
+            name="email"
             type="email"
             autoComplete="email"
+            spellCheck={false}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={1}
           />
         </div>
       </div>
       <div className="mb-2">
-        <Button
-          tabIndex={2}
-          variant="primary"
-          type="submit"
-          disabled={isPending || !email}
-          className="w-full"
-        >
+        <Button variant="primary" type="submit" disabled={isPending || !email} className="w-full">
           {t(($) => $['signup.verifyMail'], { ns: 'login' })}
         </Button>
       </div>

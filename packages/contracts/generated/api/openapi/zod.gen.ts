@@ -326,6 +326,8 @@ export const zJsonValue = z.unknown()
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),

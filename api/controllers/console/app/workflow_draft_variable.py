@@ -1,12 +1,12 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, TypedDict, override
+from typing import Any, Concatenate, Self, TypedDict, override
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -22,11 +22,13 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
 )
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories import variable_factory
@@ -109,6 +111,35 @@ class EnvironmentVariableUpdatePayload(BaseModel):
         ...,
         description="Environment variables for the draft workflow",
     )
+    patch: bool = Field(
+        default=False,
+        description="Treat environment_variables as per-ID upserts instead of replacing the full collection",
+    )
+    deleted_environment_variable_ids: list[str] = Field(
+        default_factory=list,
+        description="Environment variable IDs to delete when patch is true",
+    )
+
+    @model_validator(mode="after")
+    def validate_patch(self) -> Self:
+        """Validate the per-variable patch contract without changing legacy replacement requests."""
+        if not self.patch:
+            if self.deleted_environment_variable_ids:
+                raise ValueError("deleted_environment_variable_ids requires patch=true")
+            return self
+
+        upsert_ids = [variable.id for variable in self.environment_variables]
+        if any(not variable_id for variable_id in upsert_ids):
+            raise ValueError("patched environment variables require an id")
+        if len(set(upsert_ids)) != len(upsert_ids):
+            raise ValueError("patched environment variable ids must be unique")
+        if any(not variable_id for variable_id in self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must not be empty")
+        if len(set(self.deleted_environment_variable_ids)) != len(self.deleted_environment_variable_ids):
+            raise ValueError("deleted environment variable ids must be unique")
+        if set(upsert_ids).intersection(self.deleted_environment_variable_ids):
+            raise ValueError("an environment variable cannot be upserted and deleted in the same patch")
+        return self
 
 
 class EnvironmentVariableItemResponse(ResponseModel):
@@ -329,11 +360,11 @@ class WorkflowVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    def get(self, current_user: Account, app_model: App):
+    @model_validate(WorkflowDraftVariableListQuery)
+    def get(self, req_data: WorkflowDraftVariableListQuery, current_user: Account, app_model: App):
         """
         Get draft workflow
         """
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -348,8 +379,8 @@ class WorkflowVariableCollectionApi(Resource):
             )
             workflow_vars = draft_var_srv.list_variables_without_values(
                 app_id=app_model.id,
-                page=args.page,
-                limit=args.limit,
+                page=req_data.page,
+                limit=req_data.limit,
                 user_id=current_user.id,
             )
 
@@ -449,7 +480,14 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, current_user: Account, app_model: App, variable_id: UUID):
+    @model_validate(WorkflowDraftVariableUpdatePayload)
+    def patch(
+        self,
+        req_data: WorkflowDraftVariableUpdatePayload,
+        current_user: Account,
+        app_model: App,
+        variable_id: UUID,
+    ):
         # Request payload for file types:
         #
         # Local File:
@@ -474,7 +512,6 @@ class VariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         variable_id_str = str(variable_id)
         variable = ensure_variable_access(
@@ -484,8 +521,8 @@ class VariableApi(Resource):
             current_user_id=current_user.id,
         )
 
-        new_name = args_model.name
-        raw_value = args_model.value
+        new_name = req_data.name
+        raw_value = req_data.value
         if new_name is None and raw_value is None:
             return variable
 
@@ -630,13 +667,13 @@ class ConversationVariableCollectionApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    def post(self, current_user: Account, app_model: App):
-        payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
+    @model_validate(ConversationVariableUpdatePayload)
+    def post(self, req_data: ConversationVariableUpdatePayload, current_user: Account, app_model: App):
 
         workflow_service = WorkflowService()
 
         conversation_variables_list = [
-            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.conversation_variables
+            variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.conversation_variables
         ]
         conversation_variables = [
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
@@ -698,7 +735,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": str(v.value_type.exposed_type()),
+                    "value_type": environment_variable_value_type(v),
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,
@@ -725,23 +762,32 @@ class EnvironmentVariableCollectionApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def post(self, current_user: Account, app_model: App):
-        payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
+    @model_validate(EnvironmentVariableUpdatePayload)
+    def post(self, req_data: EnvironmentVariableUpdatePayload, current_user: Account, app_model: App):
 
         workflow_service = WorkflowService()
 
         environment_variables_list = [
-            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.environment_variables
+            variable.model_dump(mode="json", exclude_unset=True) for variable in req_data.environment_variables
         ]
         environment_variables = [
             variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]
 
-        workflow_service.update_draft_workflow_environment_variables(
-            app_model=app_model,
-            account=current_user,
-            environment_variables=environment_variables,
-            session=db.session(),
-        )
+        if req_data.patch:
+            workflow_service.patch_draft_workflow_environment_variables(
+                app_model=app_model,
+                account=current_user,
+                environment_variables=environment_variables,
+                deleted_environment_variable_ids=req_data.deleted_environment_variable_ids,
+                session=db.session(),
+            )
+        else:
+            workflow_service.update_draft_workflow_environment_variables(
+                app_model=app_model,
+                account=current_user,
+                environment_variables=environment_variables,
+                session=db.session(),
+            )
 
         return {"result": "success"}

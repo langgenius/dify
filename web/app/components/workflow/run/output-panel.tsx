@@ -53,7 +53,9 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
       )}
       {!isRunning && error && (
         <div className="px-4">
-          <StatusContainer status="failed">{error}</StatusContainer>
+          <StatusContainer status="failed" copyContent={error}>
+            {error}
+          </StatusContainer>
         </div>
       )}
       {!isRunning && !outputs && (
@@ -82,7 +84,7 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
           <CodeEditor
             showFileList
             readOnly
-            title={<div tabIndex={0}>Output</div>}
+            title="Output"
             language={CodeLanguage.json}
             value={JSON.stringify(outputs, null, 2)}
             isJSONStringifyBeauty

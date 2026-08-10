@@ -701,7 +701,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
                 "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
-                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "file, include the returned `public_download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
@@ -836,7 +836,12 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        conditions=cast(
+            Any,
+            metadata_filtering.conditions.model_dump(
+                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
+            ),
+        )
         if metadata_filtering.conditions is not None
         else None,
     )

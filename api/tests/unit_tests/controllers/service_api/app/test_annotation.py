@@ -110,25 +110,28 @@ class TestAppModelPatterns:
 
     def test_app_model_has_required_fields(self):
         """Test App model has required fields for annotation operations."""
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
-        app.status = "normal"
-        app.enable_api = True
+        app = App(
+            id=str(uuid.uuid4()),
+            status="normal",
+            enable_api=True,
+        )
         assert app.id is not None
         assert app.status == "normal"
         assert app.enable_api
 
     def test_app_model_disabled_api(self):
         """Test app with disabled API access."""
-        app = Mock(spec=App)
-        app.enable_api = False
+        app = App(
+            enable_api=False,
+        )
 
         assert not app.enable_api
 
     def test_app_model_archived_status(self):
         """Test app with archived status."""
-        app = Mock(spec=App)
-        app.status = "archived"
+        app = App(
+            status="archived",
+        )
         assert app.status == "archived"
 
 

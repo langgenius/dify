@@ -4,7 +4,7 @@ import ExternalDataToolModal from '../external-data-tool-modal'
 const mockToastError = vi.fn()
 
 let mockLocale = 'en-US'
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

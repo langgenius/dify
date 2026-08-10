@@ -1,8 +1,9 @@
 'use client'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmountedRef } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -15,6 +16,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
@@ -30,6 +32,11 @@ type Props = Readonly<{
   loc: string
 }>
 
+const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+  isAboutToExpire: allow_refresh ?? false,
+  isEducationAccount: is_student ?? false,
+})
+
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -40,9 +47,14 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const router = useRouter()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
-    useProviderContext()
-  const isAboutToExpire = allowRefreshEducationVerify
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: educationStatus } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: selectEducationPlanStatus,
+    }),
+  )
+  const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const { type } = plan
   const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
@@ -94,9 +106,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
           <div className="flex shrink-0 items-center gap-1">
             {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                <span className="i-ri-graduation-cap-line size-4" />
                 {t(($) => $.toVerified, { ns: 'education' })}
-                {isPending && <Loading className="ml-1 animate-spin-slow" />}
+                {isPending && <Loading className="animate-spin-slow" />}
               </Button>
             )}
             {isCloudEdition &&
@@ -109,9 +121,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                  <span className="i-ri-graduation-cap-line size-4" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
             {isCloudEdition && !isEnterprisePlan && (

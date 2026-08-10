@@ -22,17 +22,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-    variant?: string
-  }) => <button onClick={onClick}>{children}</button>,
-}))
-
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: vi.fn(() => true),
 }))

@@ -50,6 +50,7 @@ from core.app.entities.task_entities import (
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
@@ -103,7 +104,7 @@ class TestWorkflowGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=5,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 5}),
             node_run_steps=2,
         )
 

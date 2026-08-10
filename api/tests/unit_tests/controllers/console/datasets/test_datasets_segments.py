@@ -1,3 +1,4 @@
+from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import Any, cast
@@ -8,9 +9,11 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.datasets_segments import (
+    BatchImportPayload,
     ChildChunkAddApi,
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateApi,
@@ -19,6 +22,8 @@ from controllers.console.datasets.datasets_segments import (
     DatasetDocumentSegmentBatchImportApi,
     DatasetDocumentSegmentListApi,
     DatasetDocumentSegmentUpdateApi,
+    SegmentCreatePayload,
+    SegmentUpdatePayload,
 )
 from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -42,16 +47,17 @@ def _segment():
         word_count=1,
         tokens=1,
         created_by="u1",
+        answer="a",
+        keywords=["test"],
+        index_node_id="n1",
+        index_node_hash="h",
+        status=SegmentStatus.COMPLETED,
+        updated_by="u1",
     )
+
     segment.id = "seg-1"
-    segment.answer = "a"
-    segment.keywords = ["test"]
-    segment.index_node_id = "n1"
-    segment.index_node_hash = "h"
-    segment.status = SegmentStatus.COMPLETED
     segment.created_at = naive_utc_now()
     segment.updated_at = naive_utc_now()
-    segment.updated_by = "u1"
     return segment
 
 
@@ -65,9 +71,9 @@ def _child_chunk():
         content="child",
         word_count=1,
         created_by="u1",
+        type=SegmentType.CUSTOMIZED,
     )
     child_chunk.id = "cc-1"
-    child_chunk.type = SegmentType.CUSTOMIZED
     child_chunk.created_at = naive_utc_now()
     child_chunk.updated_at = naive_utc_now()
     return child_chunk
@@ -353,7 +359,9 @@ class TestDatasetDocumentSegmentAddApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, SegmentCreatePayload(content="test content"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 200
         assert response["data"]["id"] == "seg-1"
 
@@ -377,7 +385,9 @@ class TestDatasetDocumentSegmentAddApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
@@ -399,7 +409,9 @@ class TestDatasetDocumentSegmentAddApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
 
 class TestDatasetDocumentSegmentUpdateApi:
@@ -440,7 +452,9 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1", "seg-1")
+            response, status = method(
+                api, SegmentUpdatePayload(content="test content"), session, "tenant-1", user, "ds-1", "doc-1", "seg-1"
+            )
         assert status == 200
         assert "data" in response
 
@@ -466,7 +480,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_patch_segment_not_found(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -494,7 +517,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -524,7 +556,16 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    SegmentUpdatePayload(content="test content"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
 
 class TestDatasetDocumentSegmentBatchImportApi:
@@ -532,8 +573,19 @@ class TestDatasetDocumentSegmentBatchImportApi:
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
         payload = {"upload_file_id": "file-1"}
-        upload_file = MagicMock(spec=UploadFile)
-        upload_file.name = "test.csv"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="test-key",
+            name="test.csv",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
         user = MagicMock(id="u1")
         session = MagicMock()
         session.scalar.return_value = upload_file
@@ -552,7 +604,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 200
         assert response["job_status"] == "waiting"
 
@@ -569,7 +623,15 @@ class TestDatasetDocumentSegmentBatchImportApi:
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_post_document_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -587,7 +649,15 @@ class TestDatasetDocumentSegmentBatchImportApi:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_post_upload_file_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -607,7 +677,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_invalid_file_type(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -629,7 +701,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_post_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -653,7 +727,9 @@ class TestDatasetDocumentSegmentBatchImportApi:
                 "controllers.console.datasets.datasets_segments.redis_client.setnx", side_effect=Exception("redis down")
             ),
         ):
-            response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 500
         assert "error" in response
 
@@ -735,7 +811,9 @@ class TestChildChunkAddApi:
                 return_value=child_chunk,
             ),
         ):
-            response, status = method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+            response, status = method(
+                api, ChildChunkCreatePayload(content="child"), MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1"
+            )
         assert status == 200
         assert response["data"]["id"] == "cc-1"
 
@@ -766,7 +844,16 @@ class TestChildChunkAddApi:
             ),
         ):
             with pytest.raises(ChildChunkIndexingError):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    ChildChunkCreatePayload(content="child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
     def test_post_permission_denied(self, app: Flask):
         api = ChildChunkAddApi()
@@ -787,7 +874,16 @@ class TestChildChunkAddApi:
             ),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1")
+                method(
+                    api,
+                    ChildChunkCreatePayload(content="child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                )
 
 
 class TestChildChunkUpdateApi:
@@ -910,7 +1006,17 @@ class TestChildChunkUpdateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+                method(
+                    api,
+                    ChildChunkUpdatePayload(content="updated child"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                    "seg-1",
+                    "cc-1",
+                )
 
 
 class TestSegmentListAdvancedCases:
@@ -1035,7 +1141,9 @@ class TestSegmentOperationCases:
             ),
         ):
             with pytest.raises(ProviderTokenNotInitError):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, SegmentCreatePayload(content="test content"), MagicMock(), "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_batch_import_with_document_not_found(self, app: Flask):
         """Test batch import with document not found"""
@@ -1051,7 +1159,15 @@ class TestSegmentOperationCases:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api,
+                    BatchImportPayload(upload_file_id="test-file-id"),
+                    MagicMock(),
+                    "tenant-1",
+                    user,
+                    "ds-1",
+                    "doc-1",
+                )
 
     def test_batch_import_with_invalid_file(self, app: Flask):
         """Test batch import with invalid file type"""
@@ -1071,7 +1187,9 @@ class TestSegmentOperationCases:
             patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
         ):
             with pytest.raises(NotFound):
-                method(api, session, "tenant-1", user, "ds-1", "doc-1")
+                method(
+                    api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+                )
 
     def test_batch_import_with_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -1079,8 +1197,20 @@ class TestSegmentOperationCases:
         user = MagicMock(is_dataset_editor=True)
         dataset = MagicMock()
         document = MagicMock()
-        upload_file = MagicMock(spec=UploadFile, extension="csv", id="file-1")
-        upload_file.name = "test.csv"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="test-key",
+            name="test.csv",
+            size=0,
+            extension="csv",
+            mime_type="text/csv",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
+        upload_file.id = "file-1"
         payload = {"upload_file_id": "file-1"}
         session = MagicMock()
         session.scalar.return_value = upload_file
@@ -1098,7 +1228,9 @@ class TestSegmentOperationCases:
                 side_effect=Exception("Task failed"),
             ),
         ):
-            response, status = method(api, session, "tenant-1", user, "ds-1", "doc-1")
+            response, status = method(
+                api, BatchImportPayload(upload_file_id="test-file-id"), session, "tenant-1", user, "ds-1", "doc-1"
+            )
         assert status == 500
         assert "error" in response
 

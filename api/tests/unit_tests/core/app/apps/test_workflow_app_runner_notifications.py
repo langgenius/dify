@@ -20,9 +20,6 @@ class _DummyQueueManager:
 class _DummyRuntimeState:
     variable_pool = object()
 
-    def get_paused_nodes(self):
-        return ["node-1"]
-
 
 class _DummyGraphEngine:
     def __init__(self):

@@ -285,8 +285,26 @@ export const zForgotPasswordSendPayload = z.object({
  * Response body returned after creating one OTP challenge.
  */
 export const zFormAccessRequestResponse = z.object({
+  challenge_token: z.string(),
   expires_in_seconds: z.int(),
   resend_after_seconds: z.int(),
+})
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * FormUploadTokenResponse
+ *
+ * Response body returned when issuing a Human Input v2 upload token.
+ */
+export const zFormUploadTokenResponse = z.object({
+  expires_at: z.int(),
+  upload_token: z.string(),
 })
 
 /**
@@ -365,10 +383,24 @@ export const zHumanInputFormSubmissionData = z.object({
 
 /**
  * HumanInputFormSubmitPayload
+ *
+ * Legacy Human Input v1 submit payload shared by existing runtime surfaces.
  */
 export const zHumanInputFormSubmitPayload = z.object({
   action: z.string(),
   inputs: z.record(z.string(), zJsonValue2),
+})
+
+/**
+ * HumanInputV2FormSubmitRequest
+ *
+ * Public Human Input v2 submit payload, independent from the v1 form contract.
+ */
+export const zHumanInputV2FormSubmitRequest = z.object({
+  action: z.string(),
+  challenge_token: z.string().nullish(),
+  inputs: z.record(z.string(), zJsonValue2),
+  otp_code: z.string().nullish(),
 })
 
 /**
@@ -522,6 +554,11 @@ export const zRetrieverResource = z.object({
   summary: z.string().nullish(),
   word_count: z.int().nullish(),
 })
+
+/**
+ * SSOProtocol
+ */
+export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
 
 /**
  * SavedMessageCreatePayload
@@ -717,6 +754,19 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
 ])
 
 /**
+ * FormDefinitionResponse
+ *
+ * Response body containing a resolved human-input form definition.
+ */
+export const zFormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  form_content: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  resolved_default_values: z.record(z.string(), z.string()).optional(),
+  user_actions: z.array(zUserActionConfig).optional(),
+})
+
+/**
  * HumanInputFormDefinition
  */
 export const zHumanInputFormDefinition = z.object({
@@ -756,7 +806,7 @@ export const zVerificationTokenResponse = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: z.string().default(''),
+  protocol: zSsoProtocol.nullable(),
 })
 
 /**
@@ -768,7 +818,7 @@ export const zWebAppAuthModel = z.object({
   allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
-  sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
+  sso_config: zWebAppAuthSsoModel,
 })
 
 /**
@@ -806,15 +856,8 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: z.string().default(''),
-  webapp_auth: zWebAppAuthModel.default({
-    allow_email_code_login: false,
-    allow_email_password_login: false,
-    allow_public_access: true,
-    allow_sso: false,
-    enabled: false,
-    sso_config: { protocol: '' },
-  }),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**
@@ -942,6 +985,13 @@ export const zWorkflowRunPayload = z.object({
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * FormSubmitResponse
+ *
+ * Empty response body returned after a Human Input v2 form submission.
+ */
+export const zFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * GeneratedAppResponse
@@ -1126,6 +1176,26 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  */
 export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
 
+export const zGetFormHumanInputByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetFormHumanInputByFormTokenResponse = zFormDefinitionResponse
+
+export const zPostFormHumanInputByFormTokenBody = zHumanInputV2FormSubmitRequest
+
+export const zPostFormHumanInputByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputByFormTokenResponse = zFormSubmitResponse
+
 export const zPostFormHumanInputByFormTokenAccessRequestPath = z.object({
   form_token: z.string(),
 })
@@ -1135,34 +1205,43 @@ export const zPostFormHumanInputByFormTokenAccessRequestPath = z.object({
  */
 export const zPostFormHumanInputByFormTokenAccessRequestResponse = zFormAccessRequestResponse
 
-export const zGetFormHumanInputByFormTokenPath = z.object({
+export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputByFormTokenUploadTokenResponse = zFormUploadTokenResponse
+
+export const zGetFormHumanInputByFormToken2Path = z.object({
   form_token: z.string(),
 })
 
 /**
  * Form retrieved successfully
  */
-export const zGetFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
+export const zGetFormHumanInputByFormToken2Response = zHumanInputFormDefinitionResponse
 
-export const zPostFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayload
+export const zPostFormHumanInputByFormToken2Body = zHumanInputFormSubmitPayload
 
-export const zPostFormHumanInputByFormTokenPath = z.object({
+export const zPostFormHumanInputByFormToken2Path = z.object({
   form_token: z.string(),
 })
 
 /**
  * Form submitted successfully
  */
-export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitResponse
+export const zPostFormHumanInputByFormToken2Response = zHumanInputFormSubmitResponse
 
-export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
+export const zPostFormHumanInputByFormTokenUploadToken2Path = z.object({
   form_token: z.string(),
 })
 
 /**
  * Upload token issued successfully
  */
-export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
+export const zPostFormHumanInputByFormTokenUploadToken2Response = zHumanInputUploadTokenResponse
 
 /**
  * File uploaded successfully

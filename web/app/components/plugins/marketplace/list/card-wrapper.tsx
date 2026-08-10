@@ -86,11 +86,11 @@ const CardWrapperComponent = ({
               : t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
           <Button
-            className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"
+            className="min-w-0 flex-1 shadow-xs backdrop-blur-[5px]"
             onClick={handleOpenMarketplaceDetail}
           >
             {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
-            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-4" />
+            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
           </Button>
         </div>
         {isShowInstallFromMarketplace && (

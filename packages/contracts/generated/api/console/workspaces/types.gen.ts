@@ -8,22 +8,6 @@ export type TenantListResponse = {
   workspaces: Array<TenantListItemResponse>
 }
 
-export type TenantInfoResponse = {
-  created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse | null
-  id: string
-  in_trial?: boolean | null
-  name?: string | null
-  next_credit_reset_date?: number | null
-  plan?: string | null
-  role?: string | null
-  status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
-}
-
 export type AgentProviderResponse = {
   [key: string]: unknown
 }
@@ -162,31 +146,131 @@ export type EndpointUpdatePayload = {
   }
 }
 
-export type ListContactsResponse = {
-  data: Array<HumanInputContact>
-  has_more: boolean
+export type ChannelCollectionResponse = {
+  channels: Array<ChannelViewResponse>
+  failures: Array<ChannelCollectionFailureResponse>
+}
+
+export type ChannelViewResponse = {
+  capabilities: Array<ChannelCapability>
+  configured: boolean
+  kind: ChannelKind
+  last_checked_at?: string | null
+  provider: ChannelProvider
+  safe_status_reason?: string | null
+  scope: ChannelScopeResponse
+  status: ChannelStatus
+  summary:
+    | ({
+        provider: 'resend'
+      } & ResendChannelSummaryResponse)
+    | ({
+        provider: 'ding_talk' | 'feishu' | 'slack'
+      } & ImChannelSummaryResponse)
+}
+
+export type ChannelErrorResponse = {
+  error: ChannelFailureResponse
+}
+
+export type SaveChannelRequest = {
+  candidate:
+    | ({
+        provider: 'resend'
+      } & ResendChannelCandidateRequest)
+    | ({
+        provider: 'slack'
+      } & SlackChannelCandidateRequest)
+    | ({
+        provider: 'feishu'
+      } & FeishuChannelCandidateRequest)
+    | ({
+        provider: 'ding_talk'
+      } & DingTalkChannelCandidateRequest)
+  expected_config_version?: number | null
+  expected_integration_id?: string | null
+}
+
+export type TestChannelRequest = {
+  candidate:
+    | ({
+        provider: 'resend'
+      } & ResendChannelCandidateRequest)
+    | ({
+        provider: 'slack'
+      } & SlackChannelCandidateRequest)
+    | ({
+        provider: 'feishu'
+      } & FeishuChannelCandidateRequest)
+    | ({
+        provider: 'ding_talk'
+      } & DingTalkChannelCandidateRequest)
+}
+
+export type ChannelTestResultResponse = {
+  checked_at: string
+  kind: ChannelKind
+  provider: ChannelProvider
+  safe_status_reason?: string | null
+  scope: ChannelScopeResponse
+  status: ChannelStatus
+  summary:
+    | ({
+        provider: 'resend'
+      } & ResendChannelTestSummaryResponse)
+    | ({
+        provider: 'ding_talk' | 'feishu' | 'slack'
+      } & ImChannelTestSummaryResponse)
+}
+
+export type ListContactOptionsResponse = {
+  data: Array<ContactOption>
   limit: number
   page: number
   total: number
 }
 
-export type ExternalContactRequest = {
+export type BatchGetContactOptionsResponse = {
+  data: Array<ContactOption>
+}
+
+export type ListContactsResponse = {
+  data: Array<HumanInputContact>
+  limit: number
+  page: number
+  total: number
+}
+
+export type BatchGetContactsResponse = {
+  data: Array<HumanInputContactSummary>
+}
+
+export type ExternalContactCreateRequest = {
   avatar?: string | null
   email: string
   name: string
 }
 
-export type ContactResponse = {
+export type ExternalContactCreateResponse = {
+  contact: HumanInputContact
+}
+
+export type ExternalContactUpdateRequest = {
+  avatar?: string | null
+  email?: string | null
+  name?: string | null
+}
+
+export type ExternalContactUpdateResponse = {
   contact: HumanInputContact
 }
 
 export type AddPlatformContactsRequest = {
-  member_ids: Array<string>
+  candidate_ids: Array<string>
 }
 
 export type AddPlatformContactsResponse = {
   data: Array<HumanInputContact>
-  total: number
 }
 
 export type RemoveContactsRequest = {
@@ -195,6 +279,22 @@ export type RemoveContactsRequest = {
 
 export type RemoveContactsResponse = {
   removed_contact_ids: Array<string>
+}
+
+export type GetContactResponse = {
+  contact: HumanInputContact
+}
+
+export type DeleteImBindingResponse = {
+  [key: string]: unknown
+}
+
+export type CreateImBindingRequest = {
+  identity_id: string
+}
+
+export type CreateImBindingResponse = {
+  contact: HumanInputContact
 }
 
 export type ResetContactImOverrideResponse = {
@@ -211,7 +311,6 @@ export type SetContactImOverrideResponse = {
 
 export type ListImIdentitiesResponse = {
   data: Array<ImIdentity>
-  has_more: boolean
   limit: number
   page: number
   total: number
@@ -227,6 +326,9 @@ export type UpdateImIntegrationRequest = {
         provider: 'feishu'
       } & FeishuImIntegrationCredentials)
     | ({
+        provider: 'lark'
+      } & LarkImIntegrationCredentials)
+    | ({
         provider: 'slack'
       } & SlackImIntegrationCredentials)
     | ({
@@ -238,9 +340,8 @@ export type UpdateImIntegrationRequest = {
     | ({
         provider: 'we_com'
       } & WeComImIntegrationCredentials)
-    | ({
-        provider: 'lark'
-      } & LarkImIntegrationCredentials)
+  expected_config_version?: number | null
+  expected_integration_id?: string | null
 }
 
 export type UpdateImIntegrationResponse = {
@@ -253,6 +354,9 @@ export type TestImIntegrationRequest = {
         provider: 'feishu'
       } & FeishuImIntegrationCredentials)
     | ({
+        provider: 'lark'
+      } & LarkImIntegrationCredentials)
+    | ({
         provider: 'slack'
       } & SlackImIntegrationCredentials)
     | ({
@@ -264,9 +368,6 @@ export type TestImIntegrationRequest = {
     | ({
         provider: 'we_com'
       } & WeComImIntegrationCredentials)
-    | ({
-        provider: 'lark'
-      } & LarkImIntegrationCredentials)
 }
 
 export type TestImIntegrationResponse = {
@@ -274,30 +375,38 @@ export type TestImIntegrationResponse = {
   status: ImIntegrationStatus
 }
 
-export type ListImSyncRunsResponse = {
-  data: Array<ImSyncRun>
-  has_more: boolean
+export type CreateImSyncRunResponse = {
+  run: ImSyncRun
+}
+
+export type GetLatestImSyncRunResponse = {
+  run: ImSyncRun
+}
+
+export type ListLatestImSyncRunResultsResponse = {
+  data: Array<ImSyncResultItem>
   limit: number
   page: number
   total: number
 }
 
-export type CreateImSyncRunResponse = {
-  run: ImSyncRun
+export type NodeDataMigrationPayload = {
+  nodes: Array<NodeDataMigrationInput>
 }
 
-export type GetImSyncRunResponse = {
-  added?: Array<ImSyncItem>
-  failed?: Array<ImSyncItem>
-  not_matched?: Array<ImSyncItem>
-  removed?: Array<ImSyncItem>
-  run: ImSyncRun
-  skipped?: Array<ImSyncItem>
+export type NodeDataMigrationResponse = {
+  data: Array<NodeDataMigrationResult>
+}
+
+export type NodeDataMigrationFailureResponse = {
+  blockers: Array<NodeDataMigrationBlocker>
+  code?: 'hitl_node_data_migration_failure'
+  message: string
+  status?: 400
 }
 
 export type ListOrganizationCandidatesResponse = {
   data: Array<OrganizationCandidate>
-  has_more: boolean
   limit: number
   page: number
   total: number
@@ -366,6 +475,24 @@ export type MemberRoleUpdatePayload = {
 
 export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
+}
+
+export type ModelProviderCreditsResponse = {
+  exhausted_at: number | null
+  is_exhausted: boolean
+  is_unlimited: boolean
+  next_credit_reset_date: number | null
+  pool_type: 'paid' | 'trial' | null
+  quota_limit: number | null
+  quota_used: number | null
+  remaining_credits: number | null
+}
+
+export type ModelProviderSummaryListResponse = {
+  data: Array<ModelProviderSummaryResponse>
+  plugins: {
+    [key: string]: ModelProviderPluginSummaryResponse
+  }
 }
 
 export type ModelProviderPaymentCheckoutUrlResponse = {
@@ -556,6 +683,10 @@ export type PluginInstallTaskStartResponse = {
 
 export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
+}
+
+export type PluginInstalledIdsResponse = {
+  plugin_ids: Array<string>
 }
 
 export type PluginListResponse = {
@@ -775,6 +906,14 @@ export type AccessMatrixItem = {
 export type WorkspaceAccessMatrix = {
   items?: Array<AccessMatrixItem>
   pagination?: Pagination | null
+}
+
+export type CurrentWorkspaceSummaryResponse = {
+  credits: number | null
+  id: string
+  name: string
+  plan: string | null
+  role: TenantAccountRole
 }
 
 export type ToolLabelListResponse = Array<ToolLabel>
@@ -1142,6 +1281,11 @@ export type TriggerOAuthAuthorizeResponse = {
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
 
+export type WorkspaceCustomConfigResponse = {
+  remove_webapp_brand?: boolean | null
+  replace_webapp_logo?: string | null
+}
+
 export type WorkspaceCustomConfigPayload = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
@@ -1177,11 +1321,6 @@ export type TenantListItemResponse = {
   name?: string | null
   plan?: string | null
   status?: string | null
-}
-
-export type WorkspaceCustomConfigResponse = {
-  remove_webapp_brand?: boolean | null
-  replace_webapp_logo?: string | null
 }
 
 export type SnippetListItemResponse = {
@@ -1297,11 +1436,114 @@ export type EndpointListItemResponse = {
   url: string
 }
 
-export type HumanInputContact = {
-  email?: string | null
+export type ChannelCollectionFailureResponse = {
+  error: ChannelFailureResponse
+  kind: ChannelKind
+  provider: ChannelProvider
+}
+
+export type ChannelCapability =
+  | 'configure'
+  | 'delete'
+  | 'provider_replacement'
+  | 'secret_retention'
+  | 'test'
+
+export type ChannelKind = 'email' | 'im'
+
+export type ChannelProvider = 'ding_talk' | 'feishu' | 'resend' | 'slack'
+
+export type ChannelScopeResponse = {
+  id: string
+  kind: ChannelScopeKind
+}
+
+export type ChannelStatus = 'configured' | 'connected' | 'error' | 'not_configured'
+
+export type ResendChannelSummaryResponse = {
+  api_key_configured: boolean
+  provider?: 'resend'
+  sender_email: string | null
+  sender_name: string | null
+}
+
+export type ImChannelSummaryResponse = {
+  config_version: number | null
+  integration_id: string | null
+  provider: 'ding_talk' | 'feishu' | 'slack'
+  provider_tenant_id: string | null
+}
+
+export type ChannelFailureResponse = {
+  category: ChannelFailureCategory
+  code?: string | null
+}
+
+export type ResendChannelCandidateRequest = {
+  api_key?: string | null
+  provider: 'resend'
+  sender_email: string
+  sender_name?: string
+}
+
+export type SlackChannelCandidateRequest = {
+  app_token: SlackSecretValue
+  bot_token: SlackSecretValue
+  client_id: string
+  client_secret: SlackSecretValue
+  provider: 'slack'
+  signing_secret: SlackSecretValue
+}
+
+export type FeishuChannelCandidateRequest = {
+  app_id: string
+  app_secret: string
+  encrypt_key?: string | null
+  provider: 'feishu'
+  verification_token?: string | null
+}
+
+export type DingTalkChannelCandidateRequest = {
+  client_id: string
+  client_secret: string
+  corp_id: string
+  provider: 'ding_talk'
+}
+
+export type ResendChannelTestSummaryResponse = {
+  provider?: 'resend'
+  recipient_email: string
+  sender_email: string
+  sender_name: string
+}
+
+export type ImChannelTestSummaryResponse = {
+  provider: 'ding_talk' | 'feishu' | 'slack'
+  provider_tenant_id: string
+}
+
+export type ContactOption = {
+  avatar_url?: string | null
   id: string
   name: string
   type: HumanInputContactType
+}
+
+export type HumanInputContact = {
+  avatar_url?: string
+  created_at: number
+  email?: string | null
+  id: string
+  im_bindings?: Array<ImBinding>
+  name: string
+  type: HumanInputContactType
+}
+
+export type HumanInputContactSummary = {
+  avatar_url?: string
+  created_at: number
+  id: string
+  name: string
 }
 
 export type ImIdentity = {
@@ -1315,7 +1557,9 @@ export type ImIdentity = {
 
 export type ImIntegration = {
   callback_url?: string | null
+  config_version?: number | null
   configured_at?: number | null
+  integration_id?: string | null
   permission_hint?: string | null
   provider?: ImProvider | null
   status: ImIntegrationStatus
@@ -1324,29 +1568,39 @@ export type ImIntegration = {
 
 export type FeishuImIntegrationCredentials = {
   app_id: string
-  app_secret: string
-  encrypt_key?: string | null
+  app_secret: string | PreserveOriginalValue
+  encrypt_key?: string | PreserveOriginalValue | null
   provider: 'feishu'
-  verification_token?: string | null
+  verification_token?: string | PreserveOriginalValue | null
+}
+
+export type LarkImIntegrationCredentials = {
+  app_id: string
+  app_secret: string | PreserveOriginalValue
+  encrypt_key?: string | PreserveOriginalValue | null
+  provider: 'lark'
+  verification_token?: string | PreserveOriginalValue | null
 }
 
 export type SlackImIntegrationCredentials = {
-  bot_token: string
+  app_token: string | PreserveOriginalValue
+  bot_token: string | PreserveOriginalValue
   client_id: string
-  client_secret: string
+  client_secret: string | PreserveOriginalValue
   provider: 'slack'
-  signing_secret: string
+  signing_secret: string | PreserveOriginalValue
 }
 
 export type DingTalkImIntegrationCredentials = {
   client_id: string
-  client_secret: string
+  client_secret: string | PreserveOriginalValue
+  corp_id: string
   provider: 'ding_talk'
 }
 
 export type MsTeamsImIntegrationCredentials = {
   client_id: string
-  client_secret: string
+  client_secret: string | PreserveOriginalValue
   provider: 'ms_teams'
   tenant_id: string
 }
@@ -1355,15 +1609,7 @@ export type WeComImIntegrationCredentials = {
   agent_id: string
   corp_id: string
   provider: 'we_com'
-  secret: string
-}
-
-export type LarkImIntegrationCredentials = {
-  app_id: string
-  app_secret: string
-  encrypt_key?: string | null
-  provider: 'lark'
-  verification_token?: string | null
+  secret: string | PreserveOriginalValue
 }
 
 export type ImIntegrationStatus =
@@ -1378,17 +1624,58 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  integration_config_version: number
+  integration_id: string
+  provider: ImProvider
+  result_counts: ImSyncRunResultCounts
   started_at?: number | null
   status: ImSyncRunStatus
-  triggered_by?: string | null
 }
 
-export type ImSyncItem = {
-  contact_id?: string | null
-  display_name?: string | null
-  email?: string | null
-  provider_user_id: string
-  reason?: ImSyncReason | null
+export type ImSyncResultItem = {
+  id: string
+  result:
+    | ({
+        type: 'added'
+      } & ImSyncResultAdded)
+    | ({
+        type: 'removed'
+      } & ImSyncResultRemoved)
+    | ({
+        type: 'failed'
+      } & ImSyncResultFailed)
+    | ({
+        type: 'not_matched'
+      } & ImSyncResultNotMatched)
+    | ({
+        type: 'skipped'
+      } & ImSyncResultSkipped)
+}
+
+export type NodeDataMigrationInput = {
+  node_data: LegacyHitLv1NodeData
+  node_id: string
+}
+
+export type NodeDataMigrationResult = {
+  node_data: HumanInputNodeData
+  node_id: string
+}
+
+export type NodeDataMigrationBlocker = {
+  code:
+    | 'configured-disabled-method'
+    | 'conflicting-email-templates'
+    | 'invalid-email'
+    | 'invalid-email-configuration'
+    | 'missing-recipients'
+    | 'unresolved-member'
+    | 'unsupported-delivery-method'
+    | 'unsupported-version'
+  method_id?: string | null
+  node_id: string
+  node_title: string
+  value?: string | null
 }
 
 export type OrganizationCandidate = {
@@ -1432,6 +1719,30 @@ export type ProviderResponse = {
   supported_model_types: Array<ModelType>
   system_configuration: SystemConfigurationResponse
   tenant_id: string
+}
+
+export type ModelProviderSummaryResponse = {
+  configurate_methods: Array<ConfigurateMethod>
+  custom_configuration: ModelProviderCustomConfigurationSummaryResponse
+  description?: I18nObject | null
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  is_configured: boolean
+  label: I18nObject
+  plugin_id: string
+  preferred_provider_type: ProviderType
+  provider: string
+  supported_model_types: Array<ModelType>
+  system_configuration: ModelProviderSystemConfigurationSummaryResponse
+}
+
+export type ModelProviderPluginSummaryResponse = {
+  installation_id: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  version: string
 }
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
@@ -1745,6 +2056,8 @@ export type AccessPolicyRole = {
   role_tag?: string
 }
 
+export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
+
 export type ToolLabel = {
   icon: string
   label: I18nObject
@@ -1904,6 +2217,22 @@ export type TriggerProviderSubscriptionApiEntity = {
   workflows_in_use: number
 }
 
+export type TenantInfoResponse = {
+  created_at?: number | null
+  custom_config?: WorkspaceCustomConfigResponse | null
+  id: string
+  in_trial?: boolean | null
+  name?: string | null
+  next_credit_reset_date?: number | null
+  plan?: string | null
+  role?: string | null
+  status?: string | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -1939,21 +2268,132 @@ export type EndpointProviderDeclarationResponse = {
   settings?: Array<EndpointProviderConfigResponse>
 }
 
+export type ChannelScopeKind = 'deployment' | 'organization' | 'workspace'
+
+export type ChannelFailureCategory =
+  | 'channel_failure'
+  | 'conflict'
+  | 'not_configured'
+  | 'provider_failure'
+  | 'stale_configuration'
+  | 'unsupported_channel'
+  | 'unsupported_operation'
+  | 'validation_failure'
+
+export type SlackSecretValue = string | PreserveOriginalValue
+
 export type HumanInputContactType = 'external' | 'platform' | 'workspace'
+
+export type ImBinding = {
+  id: string
+  provider: ImProvider
+  scope: ImBindingScope
+}
 
 export type ImIdentityBindingStatus = 'bound' | 'unbound'
 
 export type ImProvider = 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
 
+export type PreserveOriginalValue = {
+  tag?: 'preserve_original_value'
+}
+
+export type ImSyncRunResultCounts = {
+  added: number
+  failed: number
+  not_matched: number
+  removed: number
+  skipped: number
+}
+
 export type ImSyncRunStatus = 'failed' | 'queued' | 'running' | 'succeeded'
 
-export type ImSyncReason =
-  | 'binding_removed'
-  | 'matched_by_email'
-  | 'matched_by_provider_user_id'
-  | 'provider_error'
-  | 'skipped_by_rule'
-  | 'unmatched_identity'
+export type ImSyncResultAdded = {
+  contact: HumanInputContactSummary
+  entry: ImDirectoryEntry
+  type?: 'added'
+}
+
+export type ImSyncResultRemoved = {
+  contact: HumanInputContactSummary
+  last_known_identity: ImIdentitySnapshot
+  reason: ImSyncRemovalReason
+  type?: 'removed'
+}
+
+export type ImSyncResultFailed = {
+  entry?: ImDirectoryEntry | null
+  reason: string
+  type?: 'failed'
+}
+
+export type ImSyncResultNotMatched = {
+  entry?: ImDirectoryEntry | null
+  type?: 'not_matched'
+}
+
+export type ImSyncResultSkipped = {
+  contact: HumanInputContactSummary
+  entry?: ImDirectoryEntry | null
+  type?: 'skipped'
+}
+
+export type LegacyHitLv1NodeData = {
+  default_value?: Array<DefaultValue> | null
+  delivery_methods?: Array<
+    | ({
+        type: 'webapp'
+      } & InteractiveSurfaceDeliveryMethod)
+    | ({
+        type: 'email'
+      } & EmailDeliveryMethod)
+    | ({
+        type: 'im'
+      } & InstantMessageDeliveryMethod)
+  >
+  desc?: string | null
+  error_strategy?: ErrorStrategy | null
+  form_content?: string
+  inputs?: Array<FormInputConfig>
+  retry_config?: RetryConfig
+  timeout?: number
+  timeout_unit?: TimeoutUnit
+  title?: string
+  type?: NodeType
+  user_actions?: Array<UserActionConfig>
+  version?: '1'
+}
+
+export type HumanInputNodeData = {
+  debug_mode: DebugModeConfig
+  default_value?: Array<DefaultValue> | null
+  desc?: string | null
+  error_strategy?: ErrorStrategy | null
+  form_content?: string
+  inputs?: Array<FormInputConfig>
+  message_template: MessageTemplateConfig
+  recipients_spec: Array<
+    | ({
+        type: 'contact'
+      } & Contact)
+    | ({
+        type: 'dynamic_email'
+      } & DynamicEmail)
+    | ({
+        type: 'onetime_email'
+      } & OnetimeEmail)
+    | ({
+        type: 'initiator'
+      } & Initiator)
+  >
+  retry_config?: RetryConfig
+  timeout?: number
+  timeout_unit?: TimeoutUnit
+  title?: string
+  type?: NodeType
+  user_actions?: Array<UserActionConfig>
+  version?: string
+}
 
 export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
 
@@ -1987,6 +2427,21 @@ export type SystemConfigurationResponse = {
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
 }
+
+export type ModelProviderCustomConfigurationSummaryResponse = {
+  available_credentials: Array<CredentialConfiguration>
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  current_credential_usable: boolean
+  has_custom_models: boolean
+  status: CustomConfigurationStatus
+}
+
+export type ModelProviderSystemConfigurationSummaryResponse = {
+  enabled: boolean
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
 
 export type ModelFeature =
   | 'agent-thought'
@@ -2157,8 +2612,6 @@ export type PluginInstallTaskPluginStatus = {
 }
 
 export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
-
-export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
 
 export type PluginDeclarationResponse = {
   agent_strategy?: {
@@ -2359,6 +2812,114 @@ export type EndpointProviderConfigResponse = {
   scope?: EndpointProviderConfigScope | null
   type: ProviderConfigType
   url?: string | null
+}
+
+export type ImBindingScope = 'organization' | 'workspace'
+
+export type ImDirectoryEntry = {
+  display_name?: string | null
+  email?: string | null
+  provider_user_id: string
+}
+
+export type ImIdentitySnapshot = {
+  display_name?: string | null
+  email?: string | null
+  identity_id: string
+  provider_user_id: string
+}
+
+export type ImSyncRemovalReason =
+  | 'binding_invalidated'
+  | 'binding_replaced'
+  | 'not_present_in_directory'
+
+export type DefaultValue = {
+  key: string
+  type: DefaultValueType
+  value?: unknown
+}
+
+export type InteractiveSurfaceDeliveryMethod = {
+  config?: InteractiveSurfaceDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'webapp'
+}
+
+export type EmailDeliveryMethod = {
+  config: EmailDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'email'
+}
+
+export type InstantMessageDeliveryMethod = {
+  config: InstantMessageDeliveryConfig
+  enabled?: boolean
+  id?: string
+  type?: 'im'
+}
+
+export type ErrorStrategy = 'default-value' | 'fail-branch'
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
+export type RetryConfig = {
+  max_retries?: number
+  retry_enabled?: boolean
+  retry_interval?: number
+}
+
+export type TimeoutUnit = 'day' | 'hour'
+
+export type NodeType = string
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type DebugModeConfig = {
+  channels: Array<Channel>
+  enabled?: boolean
+}
+
+export type MessageTemplateConfig = {
+  body: string
+  subject: string
+}
+
+export type Contact = {
+  contact_id: string
+  type?: 'contact'
+}
+
+export type DynamicEmail = {
+  selector: Array<string>
+  type?: 'dynamic_email'
+}
+
+export type OnetimeEmail = {
+  email: string
+  type?: 'onetime_email'
+}
+
+export type Initiator = {
+  type?: 'initiator'
 }
 
 export type UnaddedModelConfiguration = {
@@ -2580,6 +3141,65 @@ export type EndpointProviderConfigScope =
   | 'vision'
   | 'workflow'
 
+export type DefaultValueType =
+  | 'array[file]'
+  | 'array[number]'
+  | 'array[object]'
+  | 'array[string]'
+  | 'number'
+  | 'object'
+  | 'string'
+
+export type InteractiveSurfaceDeliveryConfig = {
+  [key: string]: unknown
+}
+
+export type EmailDeliveryConfig = {
+  body: string
+  debug_mode?: boolean
+  recipients: EmailRecipients
+  subject: string
+}
+
+export type InstantMessageDeliveryConfig = {
+  message?: string | null
+  provider: InstantMessageProvider
+  recipients?: InstantMessageRecipients
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+
 export type FormOption = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   show_on?: Array<FormShowOnObject>
@@ -2656,8 +3276,75 @@ export type Tool = {
 
 export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
+export type EmailRecipients = {
+  include_bound_group?: boolean
+  items?: Array<
+    | ({
+        type: 'member'
+      } & BoundRecipient)
+    | ({
+        type: 'external'
+      } & ExternalRecipient)
+  >
+}
+
+export type InstantMessageProvider = 'discord' | 'slack' | 'teams'
+
+export type InstantMessageRecipients = {
+  items?: Array<
+    | ({
+        type: 'channel'
+      } & InstantMessageChannelRecipient)
+    | ({
+        type: 'user'
+      } & InstantMessageUserRecipient)
+  >
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type BoundRecipient = {
+  reference_id: string
+  type?: 'member'
+}
+
+export type ExternalRecipient = {
+  email: string
+  type?: 'external'
+}
+
+export type InstantMessageChannelRecipient = {
+  channel_id: string
+  type?: 'channel'
+}
+
+export type InstantMessageUserRecipient = {
+  type?: 'user'
+  user_id: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
+
 export type AccountWithRoleListResponseWritable = {
   accounts: Array<AccountWithRoleResponseWritable>
+}
+
+export type DeleteImBindingResponseWritable = {
+  [key: string]: unknown
 }
 
 export type AccountWithRoleResponseWritable = {
@@ -2675,6 +3362,10 @@ export type AccountWithRoleResponseWritable = {
   status: string
 }
 
+export type InteractiveSurfaceDeliveryConfigWritable = {
+  [key: string]: unknown
+}
+
 export type GetWorkspacesData = {
   body?: never
   path?: never
@@ -2687,20 +3378,6 @@ export type GetWorkspacesResponses = {
 }
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
-
-export type PostWorkspacesCurrentData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current'
-}
-
-export type PostWorkspacesCurrentResponses = {
-  200: TenantInfoResponse
-}
-
-export type PostWorkspacesCurrentResponse =
-  PostWorkspacesCurrentResponses[keyof PostWorkspacesCurrentResponses]
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   body?: never
@@ -3160,6 +3837,135 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
 
+export type GetWorkspacesCurrentHumanInputChannelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/channels'
+}
+
+export type GetWorkspacesCurrentHumanInputChannelsResponses = {
+  200: ChannelCollectionResponse
+}
+
+export type GetWorkspacesCurrentHumanInputChannelsResponse =
+  GetWorkspacesCurrentHumanInputChannelsResponses[keyof GetWorkspacesCurrentHumanInputChannelsResponses]
+
+export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
+  body?: never
+  path: {
+    kind: string
+    provider: string
+  }
+  query?: {
+    expected_config_version?: number
+    expected_integration_id?: string
+  }
+  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
+}
+
+export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
+  200: ChannelViewResponse
+}
+
+export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
+  DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
+
+export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
+  body?: never
+  path: {
+    kind: string
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
+}
+
+export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors = {
+  400: ChannelErrorResponse
+  404: ChannelErrorResponse
+  409: ChannelErrorResponse
+  502: ChannelErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderError =
+  GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors[keyof GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors]
+
+export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
+  200: ChannelViewResponse
+}
+
+export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
+  GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
+
+export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
+  body: SaveChannelRequest
+  path: {
+    kind: string
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
+}
+
+export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
+  200: ChannelViewResponse
+}
+
+export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
+  PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
+
+export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestData = {
+  body: TestChannelRequest
+  path: {
+    kind: string
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/channels/{kind}/{provider}/test'
+}
+
+export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses = {
+  200: ChannelTestResultResponse
+}
+
+export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponse =
+  PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses[keyof PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses]
+
+export type GetWorkspacesCurrentHumanInputContactOptionsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+  }
+  url: '/workspaces/current/human-input/contact-options'
+}
+
+export type GetWorkspacesCurrentHumanInputContactOptionsResponses = {
+  200: ListContactOptionsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputContactOptionsResponse =
+  GetWorkspacesCurrentHumanInputContactOptionsResponses[keyof GetWorkspacesCurrentHumanInputContactOptionsResponses]
+
+export type GetWorkspacesCurrentHumanInputContactOptionsBatchData = {
+  body?: never
+  path?: never
+  query: {
+    contact_ids: Array<string>
+  }
+  url: '/workspaces/current/human-input/contact-options/batch'
+}
+
+export type GetWorkspacesCurrentHumanInputContactOptionsBatchResponses = {
+  200: BatchGetContactOptionsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputContactOptionsBatchResponse =
+  GetWorkspacesCurrentHumanInputContactOptionsBatchResponses[keyof GetWorkspacesCurrentHumanInputContactOptionsBatchResponses]
+
 export type GetWorkspacesCurrentHumanInputContactsData = {
   body?: never
   path?: never
@@ -3179,22 +3985,38 @@ export type GetWorkspacesCurrentHumanInputContactsResponses = {
 export type GetWorkspacesCurrentHumanInputContactsResponse =
   GetWorkspacesCurrentHumanInputContactsResponses[keyof GetWorkspacesCurrentHumanInputContactsResponses]
 
+export type GetWorkspacesCurrentHumanInputContactsBatchData = {
+  body?: never
+  path?: never
+  query: {
+    contact_ids: Array<string>
+  }
+  url: '/workspaces/current/human-input/contacts/batch'
+}
+
+export type GetWorkspacesCurrentHumanInputContactsBatchResponses = {
+  200: BatchGetContactsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputContactsBatchResponse =
+  GetWorkspacesCurrentHumanInputContactsBatchResponses[keyof GetWorkspacesCurrentHumanInputContactsBatchResponses]
+
 export type PostWorkspacesCurrentHumanInputContactsExternalData = {
-  body: ExternalContactRequest
+  body: ExternalContactCreateRequest
   path?: never
   query?: never
   url: '/workspaces/current/human-input/contacts/external'
 }
 
 export type PostWorkspacesCurrentHumanInputContactsExternalResponses = {
-  200: ContactResponse
+  200: ExternalContactCreateResponse
 }
 
 export type PostWorkspacesCurrentHumanInputContactsExternalResponse =
   PostWorkspacesCurrentHumanInputContactsExternalResponses[keyof PostWorkspacesCurrentHumanInputContactsExternalResponses]
 
 export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdData = {
-  body: ExternalContactRequest
+  body: ExternalContactUpdateRequest
   path: {
     contact_id: string
   }
@@ -3203,7 +4025,7 @@ export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdData = {
 }
 
 export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponses = {
-  200: ContactResponse
+  200: ExternalContactUpdateResponse
 }
 
 export type PatchWorkspacesCurrentHumanInputContactsExternalByContactIdResponse =
@@ -3236,6 +4058,60 @@ export type PostWorkspacesCurrentHumanInputContactsRemoveResponses = {
 
 export type PostWorkspacesCurrentHumanInputContactsRemoveResponse =
   PostWorkspacesCurrentHumanInputContactsRemoveResponses[keyof PostWorkspacesCurrentHumanInputContactsRemoveResponses]
+
+export type GetWorkspacesCurrentHumanInputContactsByContactIdData = {
+  body?: never
+  path: {
+    contact_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/contacts/{contact_id}'
+}
+
+export type GetWorkspacesCurrentHumanInputContactsByContactIdErrors = {
+  404: unknown
+}
+
+export type GetWorkspacesCurrentHumanInputContactsByContactIdResponses = {
+  200: GetContactResponse
+}
+
+export type GetWorkspacesCurrentHumanInputContactsByContactIdResponse =
+  GetWorkspacesCurrentHumanInputContactsByContactIdResponses[keyof GetWorkspacesCurrentHumanInputContactsByContactIdResponses]
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsData = {
+  body?: never
+  path: {
+    contact_id: string
+  }
+  query: {
+    binding_id: string
+  }
+  url: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings'
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses = {
+  200: DeleteImBindingResponse
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponse =
+  DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses[keyof DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses]
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsData = {
+  body: CreateImBindingRequest
+  path: {
+    contact_id: string
+  }
+  query?: never
+  url: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings'
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses = {
+  200: CreateImBindingResponse
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponse =
+  PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses[keyof PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses]
 
 export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideData = {
   body?: never
@@ -3276,7 +4152,6 @@ export type GetWorkspacesCurrentHumanInputImIdentitiesData = {
     keyword?: string
     limit?: number
     page?: number
-    provider?: 'ding_talk' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
   }
   url: '/workspaces/current/human-input/im-identities'
 }
@@ -3287,6 +4162,23 @@ export type GetWorkspacesCurrentHumanInputImIdentitiesResponses = {
 
 export type GetWorkspacesCurrentHumanInputImIdentitiesResponse =
   GetWorkspacesCurrentHumanInputImIdentitiesResponses[keyof GetWorkspacesCurrentHumanInputImIdentitiesResponses]
+
+export type DeleteWorkspacesCurrentHumanInputImIntegrationData = {
+  body?: never
+  path?: never
+  query: {
+    expected_config_version: number
+    expected_integration_id: string
+  }
+  url: '/workspaces/current/human-input/im-integration'
+}
+
+export type DeleteWorkspacesCurrentHumanInputImIntegrationResponses = {
+  204: void
+}
+
+export type DeleteWorkspacesCurrentHumanInputImIntegrationResponse =
+  DeleteWorkspacesCurrentHumanInputImIntegrationResponses[keyof DeleteWorkspacesCurrentHumanInputImIntegrationResponses]
 
 export type GetWorkspacesCurrentHumanInputImIntegrationData = {
   body?: never
@@ -3330,23 +4222,6 @@ export type PostWorkspacesCurrentHumanInputImIntegrationTestResponses = {
 export type PostWorkspacesCurrentHumanInputImIntegrationTestResponse =
   PostWorkspacesCurrentHumanInputImIntegrationTestResponses[keyof PostWorkspacesCurrentHumanInputImIntegrationTestResponses]
 
-export type GetWorkspacesCurrentHumanInputImSyncRunsData = {
-  body?: never
-  path?: never
-  query?: {
-    limit?: number
-    page?: number
-  }
-  url: '/workspaces/current/human-input/im-sync-runs'
-}
-
-export type GetWorkspacesCurrentHumanInputImSyncRunsResponses = {
-  200: ListImSyncRunsResponse
-}
-
-export type GetWorkspacesCurrentHumanInputImSyncRunsResponse =
-  GetWorkspacesCurrentHumanInputImSyncRunsResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsResponses]
-
 export type PostWorkspacesCurrentHumanInputImSyncRunsData = {
   body?: never
   path?: never
@@ -3361,21 +4236,58 @@ export type PostWorkspacesCurrentHumanInputImSyncRunsResponses = {
 export type PostWorkspacesCurrentHumanInputImSyncRunsResponse =
   PostWorkspacesCurrentHumanInputImSyncRunsResponses[keyof PostWorkspacesCurrentHumanInputImSyncRunsResponses]
 
-export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdData = {
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestData = {
   body?: never
-  path: {
-    sync_run_id: string
-  }
+  path?: never
   query?: never
-  url: '/workspaces/current/human-input/im-sync-runs/{sync_run_id}'
+  url: '/workspaces/current/human-input/im-sync-runs/latest'
 }
 
-export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses = {
-  200: GetImSyncRunResponse
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResponses = {
+  200: GetLatestImSyncRunResponse
 }
 
-export type GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponse =
-  GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsBySyncRunIdResponses]
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResponse =
+  GetWorkspacesCurrentHumanInputImSyncRunsLatestResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsLatestResponses]
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsData = {
+  body?: never
+  path?: never
+  query: {
+    limit?: number
+    page?: number
+    result: 'added' | 'failed' | 'not_matched' | 'removed' | 'skipped'
+  }
+  url: '/workspaces/current/human-input/im-sync-runs/latest/results'
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsResponses = {
+  200: ListLatestImSyncRunResultsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsResponse =
+  GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsResponses[keyof GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsResponses]
+
+export type PostWorkspacesCurrentHumanInputNodeDataMigrationData = {
+  body: NodeDataMigrationPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/node-data-migration'
+}
+
+export type PostWorkspacesCurrentHumanInputNodeDataMigrationErrors = {
+  400: NodeDataMigrationFailureResponse
+}
+
+export type PostWorkspacesCurrentHumanInputNodeDataMigrationError =
+  PostWorkspacesCurrentHumanInputNodeDataMigrationErrors[keyof PostWorkspacesCurrentHumanInputNodeDataMigrationErrors]
+
+export type PostWorkspacesCurrentHumanInputNodeDataMigrationResponses = {
+  200: NodeDataMigrationResponse
+}
+
+export type PostWorkspacesCurrentHumanInputNodeDataMigrationResponse =
+  PostWorkspacesCurrentHumanInputNodeDataMigrationResponses[keyof PostWorkspacesCurrentHumanInputNodeDataMigrationResponses]
 
 export type GetWorkspacesCurrentHumanInputOrganizationCandidatesData = {
   body?: never
@@ -3521,6 +4433,34 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
+
+export type GetWorkspacesCurrentModelProvidersCreditsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/credits'
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
+  200: ModelProviderCreditsResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponse =
+  GetWorkspacesCurrentModelProvidersCreditsResponses[keyof GetWorkspacesCurrentModelProvidersCreditsResponses]
+
+export type GetWorkspacesCurrentModelProvidersSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/summary'
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
+  200: ModelProviderSummaryListResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponse =
+  GetWorkspacesCurrentModelProvidersSummaryResponses[keyof GetWorkspacesCurrentModelProvidersSummaryResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never
@@ -4068,6 +5008,22 @@ export type PostWorkspacesCurrentPluginInstallPkgResponses = {
 export type PostWorkspacesCurrentPluginInstallPkgResponse =
   PostWorkspacesCurrentPluginInstallPkgResponses[keyof PostWorkspacesCurrentPluginInstallPkgResponses]
 
+export type GetWorkspacesCurrentPluginInstalledIdsData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/installed-ids'
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
+  200: PluginInstalledIdsResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponse =
+  GetWorkspacesCurrentPluginInstalledIdsResponses[keyof GetWorkspacesCurrentPluginInstalledIdsResponses]
+
 export type GetWorkspacesCurrentPluginListData = {
   body?: never
   path?: never
@@ -4381,8 +5337,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }
@@ -5118,6 +6077,24 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse =
   GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
+
+export type GetWorkspacesCurrentSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/summary'
+}
+
+export type GetWorkspacesCurrentSummaryErrors = {
+  409: unknown
+}
+
+export type GetWorkspacesCurrentSummaryResponses = {
+  200: CurrentWorkspaceSummaryResponse
+}
+
+export type GetWorkspacesCurrentSummaryResponse =
+  GetWorkspacesCurrentSummaryResponses[keyof GetWorkspacesCurrentSummaryResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never
@@ -6017,6 +6994,20 @@ export type GetWorkspacesCurrentTriggersResponses = {
 
 export type GetWorkspacesCurrentTriggersResponse =
   GetWorkspacesCurrentTriggersResponses[keyof GetWorkspacesCurrentTriggersResponses]
+
+export type GetWorkspacesCustomConfigData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/custom-config'
+}
+
+export type GetWorkspacesCustomConfigResponses = {
+  200: WorkspaceCustomConfigResponse
+}
+
+export type GetWorkspacesCustomConfigResponse =
+  GetWorkspacesCustomConfigResponses[keyof GetWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigData = {
   body: WorkspaceCustomConfigPayload

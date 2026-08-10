@@ -42,27 +42,28 @@ class TestAccountAssociatedDataFactory:
         account_id: str = "user-123",
         email: str = "test@example.com",
         name: str = "Test User",
-        status: str = "active",
+        status: AccountStatus | str = AccountStatus.ACTIVE,
         password: str = "hashed_password",
         password_salt: str = "salt",
         interface_language: str = "en-US",
         interface_theme: str = "light",
         timezone: str = "UTC",
-    ) -> MagicMock:
-        """Create a mock account with specified attributes."""
-        account = MagicMock(spec=Account)
+    ) -> Account:
+        """Create an account with specified attributes."""
+        account = Account(
+            name=name,
+            email=email,
+            password=password,
+            password_salt=password_salt,
+            interface_language=interface_language,
+            interface_theme=interface_theme,
+            timezone=timezone,
+            status=AccountStatus(status),
+            initialized_at=None,
+        )
         account.id = account_id
-        account.email = email
-        account.name = name
-        account.status = status
-        account.password = password
-        account.password_salt = password_salt
-        account.interface_language = interface_language
-        account.interface_theme = interface_theme
-        account.timezone = timezone
         # Set last_active_at to a datetime object that's older than 10 minutes
         account.last_active_at = datetime.now() - timedelta(minutes=15)
-        account.initialized_at = None
         return account
 
 
@@ -455,14 +456,11 @@ class TestAccountService:
         sqlite_session.add(tenant_join)
         sqlite_session.commit()
 
-        with (
-            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
-            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
-        ):
+        with patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active:
             result = AccountService.load_user(account.id, sqlite_session)
 
             assert result is account
-            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
+            assert result.current_tenant_id == tenant.id
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session) -> None:
@@ -517,6 +515,54 @@ class TestAccountService:
             assert persisted_tenant_join is not None
             assert persisted_tenant_join.current is True
             assert persisted_tenant_join.last_opened_at == mock_now
+
+    def test_load_user_switches_from_archived_current_tenant(self, sqlite_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        archived_tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
+        available_tenant = Tenant(name="Available Workspace")
+        sqlite_session.add_all([account, archived_tenant, available_tenant])
+        sqlite_session.flush()
+        archived_join = TenantAccountJoin(
+            tenant_id=archived_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=True,
+        )
+        available_join = TenantAccountJoin(
+            tenant_id=available_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=False,
+        )
+        sqlite_session.add_all([archived_join, available_join])
+        sqlite_session.commit()
+
+        with patch.object(AccountService, "_refresh_account_last_active"):
+            result = AccountService.load_user(account.id, sqlite_session)
+
+        assert result is account
+        assert result.current_tenant_id == available_tenant.id
+        assert archived_join.current is False
+        assert available_join.current is True
+
+    def test_load_user_returns_none_without_normal_tenant(self, sqlite_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        archived_tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
+        sqlite_session.add_all([account, archived_tenant])
+        sqlite_session.flush()
+        archived_join = TenantAccountJoin(
+            tenant_id=archived_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=True,
+        )
+        sqlite_session.add(archived_join)
+        sqlite_session.commit()
+
+        result = AccountService.load_user(account.id, sqlite_session)
+
+        assert result is None
+        assert archived_join.current is False
 
     def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
@@ -809,10 +855,7 @@ class TestTenantService:
                 tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
                 assert tenant is not None
                 tenant_id = tenant.id
-                mock_account.set_current_tenant_with_session.assert_called_once_with(
-                    tenant,
-                    session=service_session,
-                )
+                assert mock_account.current_tenant_id == tenant.id
                 mock_tenant_was_created.assert_called_once_with(tenant)
 
         mock_rsa_dependencies.assert_called_once_with(tenant_id)
@@ -1095,14 +1138,14 @@ class TestTenantService:
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
 
-        mock_tenant = MagicMock()
+        mock_tenant = Tenant(name="RBAC User's Workspace")
         mock_tenant.id = "tenant-rbac"
-        mock_tenant.name = "RBAC User's Workspace"
+        sqlite_session.add(mock_tenant)
+        sqlite_session.flush()
 
         with (
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
-            patch("services.account_service.TenantService.create_tenant_member"),
             patch(
                 "services.account_service.AccountService._resolve_legacy_role_id",
                 return_value="rbac-owner-id",
@@ -1509,7 +1552,7 @@ class TestRegisterService:
 
             assert result == mock_account
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
-            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
     def test_create_account_and_tenant_does_not_call_default_workspace_join_when_enterprise_disabled(
         self,
@@ -1579,7 +1622,7 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
 
-            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
     def test_register_success(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -1657,7 +1700,7 @@ class TestRegisterService:
             )
 
             assert result == mock_account
-            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
     def test_register_does_not_call_default_workspace_join_when_enterprise_disabled(
         self,
@@ -1730,7 +1773,7 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
 
-            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
     def test_register_still_calls_default_workspace_join_when_workspace_limit_exceeded(
         self,
@@ -1770,7 +1813,7 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
 
-            mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
+            mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
     def test_register_with_oauth(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -1798,8 +1841,17 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.tenant_was_created") as mock_event,
             ):
-                mock_tenant = MagicMock()
+                mock_tenant = Tenant(name="Test User's Workspace")
+                sqlite_session.add(mock_tenant)
+                sqlite_session.flush()
                 mock_create_tenant.return_value = mock_tenant
+                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
+                    TenantAccountJoin(
+                        tenant_id=tenant.id,
+                        account_id=account.id,
+                        role=TenantAccountRole(role),
+                    )
+                )
 
                 # Execute test
                 result = RegisterService.register(
@@ -1839,8 +1891,17 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.tenant_was_created") as mock_event,
             ):
-                mock_tenant = MagicMock()
+                mock_tenant = Tenant(name="Test User's Workspace")
+                sqlite_session.add(mock_tenant)
+                sqlite_session.flush()
                 mock_create_tenant.return_value = mock_tenant
+                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
+                    TenantAccountJoin(
+                        tenant_id=tenant.id,
+                        account_id=account.id,
+                        role=TenantAccountRole(role),
+                    )
+                )
 
                 # Execute test with pending status
                 from models.account import AccountStatus

@@ -3,19 +3,21 @@ import type { FC } from 'react'
 import type { Category } from './types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
+  ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { consoleQuery } from '@/service/client'
 import { NoiseBottom, NoiseTop } from './assets'
 import Footer from './footer'
 import Header from './header'
@@ -29,7 +31,13 @@ type PricingProps = {
 }
 
 const Pricing: FC<PricingProps> = ({ onCancel }) => {
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const shouldDefaultToYearly =
     isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
@@ -51,7 +59,7 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
       }}
     >
       <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
-        <ScrollAreaRoot className="relative h-full w-full overflow-hidden">
+        <ScrollArea className="relative h-full w-full overflow-hidden">
           <ScrollAreaViewport className="overscroll-contain">
             <ScrollAreaContent className="min-h-full min-w-300">
               <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
@@ -85,7 +93,7 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
             <ScrollAreaThumb className="rounded-full" />
           </ScrollAreaScrollbar>
           <ScrollAreaCorner className="bg-saas-background" />
-        </ScrollAreaRoot>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )
