@@ -13,11 +13,15 @@ from core.rag.models.document import Document
 def _build_fake_opensearch_modules():
     opensearchpy = types.ModuleType("opensearchpy")
     opensearch_helpers = types.ModuleType("opensearchpy.helpers")
+    opensearch_exceptions = types.ModuleType("opensearchpy.exceptions")
 
     class BulkIndexError(Exception):
         def __init__(self, errors):
             super().__init__("bulk error")
             self.errors = errors
+
+    class NotFoundError(Exception):
+        pass
 
     class OpenSearch:
         def __init__(self, **kwargs):
@@ -36,6 +40,7 @@ def _build_fake_opensearch_modules():
 
     opensearch_helpers.BulkIndexError = BulkIndexError
     opensearch_helpers.bulk = MagicMock()
+    opensearch_exceptions.NotFoundError = NotFoundError
 
     opensearchpy.OpenSearch = OpenSearch
     opensearchpy.helpers = opensearch_helpers
@@ -43,6 +48,7 @@ def _build_fake_opensearch_modules():
     return {
         "opensearchpy": opensearchpy,
         "opensearchpy.helpers": opensearch_helpers,
+        "opensearchpy.exceptions": opensearch_exceptions,
     }
 
 
@@ -219,7 +225,7 @@ def test_delete_and_text_exists(lindorm_module):
     vector._client.indices.delete.assert_not_called()
 
     assert vector.text_exists("id-1") is True
-    vector._client.get.side_effect = RuntimeError("missing")
+    vector._client.get.side_effect = lindorm_module.NotFoundError("missing")
     assert vector.text_exists("id-1") is False
 
 

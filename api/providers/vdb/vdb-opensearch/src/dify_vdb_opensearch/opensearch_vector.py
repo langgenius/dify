@@ -4,6 +4,7 @@ from typing import Any, override
 from uuid import uuid4
 
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
+from opensearchpy.exceptions import NotFoundError
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from typing_extensions import TypedDict
@@ -191,7 +192,7 @@ class OpenSearchVector(BaseVector):
         try:
             self._client.get(index=self._collection_name.lower(), id=id)
             return True
-        except:
+        except NotFoundError:
             return False
 
     @override
