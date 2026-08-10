@@ -23,32 +23,19 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { CrawlPreviewPageSelection } from './crawl-selection-form'
+import { isValidWebsiteSourceDraft, NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH } from './routes'
 import {
-  isValidWebsiteSourceDraft,
-  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
-  NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
-} from './routes'
-
-const sourceTypes = [
-  { icon: 'i-ri-global-line', value: 'websiteCrawl' },
-  { icon: 'i-ri-file-text-line', value: 'onlineDocuments' },
-  { icon: 'i-ri-hard-drive-3-line', value: 'onlineDrive' },
-] as const
+  SourceConnectionRequiredCard,
+  SourceNameField,
+  SourceProviderRadioGroup,
+  SourceSyncPolicyField,
+  SourceTypeSelector,
+} from './source-setup-fields'
 
 const DEFAULT_INCLUDE_SUBPAGES = true
 const DEFAULT_MAX_PAGES = 100
@@ -133,86 +120,21 @@ function ConnectedSourceConfiguration({
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
-
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <Field name="sourceName" className="gap-1.5">
-        <FieldLabel>
-          {t(($) => $['newKnowledge.sourceName'])}
-          <span aria-hidden className="ml-0.5 text-text-destructive">
-            *
-          </span>
-        </FieldLabel>
-        <FieldControl
-          type="text"
-          autoComplete="off"
-          disabled={disabled}
-          maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
-          value={draft.sourceName}
-          placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-          size="medium"
-          onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.preventDefault()
-          }}
-        />
-      </Field>
-      <SyncPolicySelect disabled={disabled} draft={draft} onDraftChange={onDraftChange} />
-    </div>
-  )
-}
-
-function SyncPolicySelect({
-  className,
-  disabled,
-  draft,
-  onDraftChange,
-  size = 'medium',
-}: {
-  className?: string
-  disabled: boolean
-  draft: NewKnowledgeSourceDraft
-  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  size?: 'large' | 'medium'
-}) {
-  const { t } = useTranslation('dataset')
-
-  return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <Select<NewKnowledgeSourceDraft['syncPolicy']>
-        name="syncPolicy"
+      <SourceNameField
         disabled={disabled}
-        value={draft.syncPolicy}
-        onValueChange={(value) => {
-          if (value) onDraftChange({ ...draft, syncPolicy: value })
-        }}
-      >
-        <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-        <SelectTrigger size={size}>
-          {t(($) =>
-            draft.syncPolicy === 'provider'
-              ? $['newKnowledge.syncPolicyProvider']
-              : draft.syncPolicy === 'daily'
-                ? $['newKnowledge.syncPolicyDaily']
-                : $['newKnowledge.syncPolicyManual'],
-          )}
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="provider">
-            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="daily">
-            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="manual">
-            <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        </SelectContent>
-      </Select>
+        draft={draft}
+        preventSubmitOnEnter
+        size="medium"
+        onDraftChange={onDraftChange}
+      />
+      <SourceSyncPolicyField
+        disabled={disabled}
+        draft={draft}
+        size="medium"
+        onDraftChange={onDraftChange}
+      />
     </div>
   )
 }
@@ -254,26 +176,14 @@ function NotionSourceConfiguration({
   }
 
   return (
-    <section className="flex h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
-      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
-        <span aria-hidden className="i-custom-public-common-notion size-4.5" />
-      </span>
-      <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.notionNotConnected'])}
-      </h3>
-      <p className="max-w-xl system-xs-regular leading-3.75 text-text-tertiary">
-        {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
-      </p>
-      <Button
-        type="button"
-        variant="primary"
-        disabled={disabled}
-        className="mt-auto"
-        onClick={onConnect}
-      >
-        {t(($) => $['newKnowledge.connectNotion'])}
-      </Button>
-    </section>
+    <SourceConnectionRequiredCard
+      actionLabel={t(($) => $['newKnowledge.connectNotion'])}
+      description={t(($) => $['newKnowledge.notionNotConnectedDescription'])}
+      disabled={disabled}
+      icon={<span aria-hidden className="i-custom-public-common-notion size-4.5" />}
+      title={t(($) => $['newKnowledge.notionNotConnected'])}
+      onConnect={onConnect}
+    />
   )
 }
 
@@ -427,36 +337,15 @@ export function CreateSourceSetup({
 
   return (
     <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
-      <Fieldset disabled={disabled}>
-        <FieldsetLegend className="mb-1.25 py-0 system-xs-medium">
-          {t(($) => $['newKnowledge.sourceTypeLabel'])}
-        </FieldsetLegend>
-        <RadioGroup<NewKnowledgeSourceDraft['sourceType']>
-          value={sourceType}
-          disabled={disabled}
-          className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
-          onValueChange={(value) => {
-            setBackendBoundaryVisible(false)
-            onSourceTypeChange(value)
-          }}
-        >
-          {sourceTypes.map((option) => (
-            <RadioItem<NewKnowledgeSourceDraft['sourceType']>
-              key={option.value}
-              value={option.value}
-              className={cn(
-                'relative flex min-h-7 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden',
-                'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs',
-                'data-disabled:cursor-not-allowed data-disabled:opacity-60',
-              )}
-            >
-              <span aria-hidden className={`${option.icon} size-4`} />
-              {t(($) => $[`newKnowledge.${option.value}`])}
-            </RadioItem>
-          ))}
-        </RadioGroup>
-      </Fieldset>
+      <SourceTypeSelector
+        appearance="embedded"
+        disabled={disabled}
+        value={sourceType}
+        onChange={(value) => {
+          setBackendBoundaryVisible(false)
+          onSourceTypeChange(value)
+        }}
+      />
 
       <Fieldset disabled={disabled}>
         <FieldsetLegend className="sr-only">
@@ -478,33 +367,17 @@ export function CreateSourceSetup({
             <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </Button>
         </div>
-        <RadioGroup<string>
+        <SourceProviderRadioGroup
           value={activeProvider}
           disabled={disabled}
-          className={cn(
-            'grid grid-cols-2 gap-2',
-            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
-          )}
-          onValueChange={selectProvider}
-        >
-          {providers[sourceType].map((provider) => {
-            return (
-              <RadioItem<string>
-                key={provider.label}
-                value={provider.label}
-                className={cn(
-                  'relative flex h-8.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle bg-background-default px-2.5 system-xs-medium text-text-secondary outline-hidden',
-                  'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                  'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
-                  'data-disabled:cursor-not-allowed data-disabled:opacity-60',
-                )}
-              >
-                <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
-                <span className="truncate">{provider.label}</span>
-              </RadioItem>
-            )
-          })}
-        </RadioGroup>
+          layout={sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
+          options={providers[sourceType].map((provider) => ({
+            icon: <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />,
+            value: provider.label,
+          }))}
+          surface="default"
+          onChange={selectProvider}
+        />
       </Fieldset>
 
       {draft.sourceType === 'websiteCrawl' && (
@@ -534,29 +407,14 @@ export function CreateSourceSetup({
                 }}
               />
             </Field>
-            <Field name="sourceName" className="gap-1.5">
-              <FieldLabel className="py-0.5">
-                {t(($) => $['newKnowledge.sourceName'])}
-                <span aria-hidden className="ml-0.5 text-text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <FieldControl
-                type="text"
-                autoComplete="off"
-                disabled={disabled}
-                maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
-                value={draft.sourceName}
-                placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                size="large"
-                onValueChange={(value) => {
-                  updateDraft({ ...draft, sourceName: value })
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') event.preventDefault()
-                }}
-              />
-            </Field>
+            <SourceNameField
+              disabled={disabled}
+              draft={draft}
+              labelClassName="py-0.5"
+              preventSubmitOnEnter
+              size="large"
+              onDraftChange={updateDraft}
+            />
           </div>
           <Collapsible
             open={optionsExpanded}
@@ -735,7 +593,7 @@ export function CreateSourceSetup({
             )}
           </section>
           {crawlState === 'success' && (
-            <SyncPolicySelect
+            <SourceSyncPolicyField
               className="w-full sm:w-75.25"
               disabled={disabled}
               draft={draft}

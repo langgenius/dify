@@ -28,6 +28,20 @@ export const DOCUMENT_UPLOAD_ACCEPT = DOCUMENT_UPLOAD_EXTENSIONS.map(
 
 export type DocumentUploadIssue = 'fileSize' | 'fileType'
 
+export function documentUploadFingerprint(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`
+}
+
+export function uniqueDocumentUploadFiles(current: File[], candidates: File[]) {
+  const fingerprints = new Set(current.map(documentUploadFingerprint))
+  return candidates.filter((file) => {
+    const fingerprint = documentUploadFingerprint(file)
+    if (fingerprints.has(fingerprint)) return false
+    fingerprints.add(fingerprint)
+    return true
+  })
+}
+
 export function documentUploadFileExtension(name: string) {
   const normalizedName = name.trim().toLocaleLowerCase()
   const dotIndex = normalizedName.lastIndexOf('.')
