@@ -183,6 +183,17 @@ export const zAccountPasswordPayload = z.object({
 })
 
 /**
+ * AccountProfilePatchPayload
+ */
+export const zAccountProfilePatchPayload = z.object({
+  avatar: z.string().nullish(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.enum(['dark', 'light']).nullish(),
+  name: z.string().min(3).max(30).nullish(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * AccountTimezonePayload
  */
 export const zAccountTimezonePayload = z.object({
@@ -358,6 +369,13 @@ export const zPostAccountPasswordResponse = zAccountResponse
  * Success
  */
 export const zGetAccountProfileResponse = zAccountResponse
+
+export const zPatchAccountProfileBody = zAccountProfilePatchPayload
+
+/**
+ * Success
+ */
+export const zPatchAccountProfileResponse = zAccountResponse
 
 export const zPostAccountTimezoneBody = zAccountTimezonePayload
 
