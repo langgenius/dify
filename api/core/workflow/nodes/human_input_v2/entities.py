@@ -76,8 +76,10 @@ class HumanInputNodeData(BaseNodeData):
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
-    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT
-    version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION
+    # The linter suppression below is used to
+    # ensure that we could mark node data as frozen.
+    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT  # pyrefly: ignore[bad-override]
+    version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION  # pyrefly: ignore[bad-override]
 
     recipients_spec: list[RecipientConfig]
 
