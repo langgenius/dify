@@ -913,7 +913,7 @@ type MarkdownBodySegment =
       type: 'reference'
     }
 
-export function parseMarkdownBodyReferences(body: string): MarkdownBodySegment[] {
+function parseMarkdownBodyReferences(body: string): MarkdownBodySegment[] {
   const segments: MarkdownBodySegment[] = []
   const referencePattern = /\[([^\]]+)\]\(<([^>\n]+)>\)/g
   let lastIndex = 0

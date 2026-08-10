@@ -453,27 +453,46 @@ export function FileEditor({
   )
   const handleSaveConflictReload = useCallback(async () => {
     let latestDetail = saveConflictReloadDetail
+    let useFetchedDetail = false
     try {
-      latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
+      const fetchedDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
         updateCache: false,
       })
+      if (!latestDetail || fetchedDetail.updated_at >= latestDetail.updated_at) {
+        useFetchedDetail = true
+        latestDetail = fetchedDetail
+      }
     } catch {
       // Keep the snapshot fetched when the conflict was detected as a fallback.
     }
 
     const latestFile = latestDetail ? findFileByPath(latestDetail.files ?? [], filePath) : undefined
+    const fallbackContent = saveConflictReloadContentRef.current ?? saveConflictReloadContent
     const latestContent =
-      latestFile && isTextFile(latestFile) && latestFile.content != null
+      useFetchedDetail && latestFile && isTextFile(latestFile) && latestFile.content != null
         ? normalizeSkillDraftContentForEditing(latestFile.content)
-        : saveConflictReloadContent
+        : fallbackContent
     if (latestContent == null) return
 
     if (latestDetail) {
-      detailRef.current = latestDetail
-      fileMutationCoordinator.latestDetail = latestDetail
-      if (latestFile) fileRef.current = latestFile
-      setSkillDetailCache(queryClient, skillId, latestDetail)
-      onDraftDetailChange(latestDetail)
+      const detailToApply = {
+        ...latestDetail,
+        files: (latestDetail.files ?? []).map((candidateFile) =>
+          candidateFile.path === filePath && isTextFile(candidateFile)
+            ? {
+                ...candidateFile,
+                content: latestContent,
+                size: latestContent.length,
+              }
+            : candidateFile,
+        ),
+      }
+      detailRef.current = detailToApply
+      fileMutationCoordinator.latestDetail = detailToApply
+      const appliedFile = findFileByPath(detailToApply.files ?? [], filePath)
+      if (appliedFile) fileRef.current = appliedFile
+      setSkillDetailCache(queryClient, skillId, detailToApply)
+      onDraftDetailChange(detailToApply)
     }
     draftContentRef.current = latestContent
     lastSavedContentRef.current = latestContent
