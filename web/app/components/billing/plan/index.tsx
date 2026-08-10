@@ -122,7 +122,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
               </Button>
             )}
             {isCloudEdition &&
-              !EDUCATION_DISCOUNT_TEMPORARILY_PAUSED &&
               enableEducationPlan &&
               isEducationAccount &&
               type === Plan.sandbox &&
