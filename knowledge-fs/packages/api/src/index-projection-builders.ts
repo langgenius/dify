@@ -471,6 +471,54 @@ export function createFtsProjectionBuilder({
         }),
       );
 
+      const getManyProjections = projections.getMany;
+      if (generationId && !generateId && getManyProjections) {
+        const knowledgeSpaceId = ftsProjections[0]?.knowledgeSpaceId;
+        if (!knowledgeSpaceId) {
+          throw new Error("FTS projection batch knowledgeSpaceId is required");
+        }
+        const existing = await getManyProjections({
+          ids: ftsProjections.map((projection) => projection.id),
+          knowledgeSpaceId,
+        });
+        const incomingById = new Map(
+          ftsProjections.map((projection) => [projection.id, projection]),
+        );
+        const reusableByNodeId = new Map<string, IndexProjection>();
+        for (const projection of existing) {
+          const incoming = incomingById.get(projection.id);
+          if (
+            !incoming ||
+            projection.publicationGenerationId !== generationId ||
+            projection.nodeId !== incoming.nodeId ||
+            projection.projectionVersion !== projectionVersion ||
+            projection.model !== "database-fts@1" ||
+            projection.status !== projectionStatus ||
+            projection.type !== "fts" ||
+            projection.metadata.artifactHash !== incoming.metadata.artifactHash ||
+            projection.metadata.documentAssetId !== incoming.metadata.documentAssetId ||
+            projection.metadata.parseArtifactId !== incoming.metadata.parseArtifactId
+          ) {
+            throw new Error(
+              `Persisted generation-scoped FTS projection id=${projection.id} cannot be reused`,
+            );
+          }
+          reusableByNodeId.set(projection.nodeId, projection);
+        }
+        const missing = ftsProjections.filter(
+          (projection) => !reusableByNodeId.has(projection.nodeId),
+        );
+        const created = missing.length > 0 ? await projections.createMany(missing) : [];
+        const createdByNodeId = new Map(
+          created.map((projection) => [projection.nodeId, projection]),
+        );
+        return parsedNodes.map((node) =>
+          cloneIndexProjection(
+            reusableByNodeId.get(node.id) ?? requiredProjection(createdByNodeId, node.id),
+          ),
+        );
+      }
+
       return projections
         .createMany(ftsProjections)
         .then((items) => items.map(cloneIndexProjection));
@@ -516,8 +564,28 @@ export function createVisualEmbeddingProjectionBuilder({
         return [];
       }
 
+      const reusableByNodeId =
+        generationId && !generateId && projections.getManyByNodeIds
+          ? await loadReusableVisualProjections({
+              candidates,
+              generationId,
+              getManyByNodeIds: projections.getManyByNodeIds,
+              knowledgeSpaceId: parsedNodes[0]?.knowledgeSpaceId ?? "",
+              projectionStatus,
+              projectionVersion,
+            })
+          : new Map<string, IndexProjection>();
+      const candidatesToEmbed = candidates.filter(
+        (candidate) => !reusableByNodeId.has(candidate.asset.nodeId),
+      );
+      if (candidatesToEmbed.length === 0) {
+        return candidates.map((candidate) =>
+          cloneIndexProjection(requiredProjection(reusableByNodeId, candidate.asset.nodeId)),
+        );
+      }
+
       const result = await provider.embedAssets({
-        assets: candidates.map((candidate) => candidate.asset),
+        assets: candidatesToEmbed.map((candidate) => candidate.asset),
         model,
         ...(signal ? { signal } : {}),
         ...(tenantId ? { tenantId } : {}),
@@ -532,9 +600,9 @@ export function createVisualEmbeddingProjectionBuilder({
         ? new Map(result.embeddedNodeIds.map((nodeId, index) => [nodeId, result.dense[index]]))
         : undefined;
 
-      if (!vectorByNodeId && result.dense.length !== candidates.length) {
+      if (!vectorByNodeId && result.dense.length !== candidatesToEmbed.length) {
         throw new Error(
-          `Visual embedding provider returned ${result.dense.length} vectors for ${candidates.length} assets`,
+          `Visual embedding provider returned ${result.dense.length} vectors for ${candidatesToEmbed.length} assets`,
         );
       }
 
@@ -553,8 +621,8 @@ export function createVisualEmbeddingProjectionBuilder({
           : undefined;
 
       const embeddableCandidates = vectorByNodeId
-        ? candidates.filter((candidate) => vectorByNodeId.has(candidate.asset.nodeId))
-        : candidates;
+        ? candidatesToEmbed.filter((candidate) => vectorByNodeId.has(candidate.asset.nodeId))
+        : candidatesToEmbed;
 
       if (embeddableCandidates.length === 0) {
         return [];
@@ -607,11 +675,69 @@ export function createVisualEmbeddingProjectionBuilder({
       });
 
       signal?.throwIfAborted();
-      return projections
-        .createMany(visualProjections)
-        .then((items) => items.map(cloneIndexProjection));
+      const created = await projections.createMany(visualProjections);
+      const createdByNodeId = new Map(created.map((projection) => [projection.nodeId, projection]));
+      return candidates.flatMap((candidate) => {
+        const projection =
+          reusableByNodeId.get(candidate.asset.nodeId) ??
+          createdByNodeId.get(candidate.asset.nodeId);
+        return projection ? [cloneIndexProjection(projection)] : [];
+      });
     },
   };
+}
+
+async function loadReusableVisualProjections({
+  candidates,
+  generationId,
+  getManyByNodeIds,
+  knowledgeSpaceId,
+  projectionStatus,
+  projectionVersion,
+}: {
+  readonly candidates: readonly VisualEmbeddingAssetCandidate[];
+  readonly generationId: string;
+  readonly getManyByNodeIds: NonNullable<IndexProjectionRepository["getManyByNodeIds"]>;
+  readonly knowledgeSpaceId: string;
+  readonly projectionStatus: ProjectionBuildStatus;
+  readonly projectionVersion: number;
+}): Promise<Map<string, IndexProjection>> {
+  if (!knowledgeSpaceId) {
+    throw new Error("Visual projection batch knowledgeSpaceId is required");
+  }
+  const candidateByNodeId = new Map(
+    candidates.map((candidate) => [candidate.asset.nodeId, candidate]),
+  );
+  const existing = await getManyByNodeIds({
+    knowledgeSpaceId,
+    nodeIds: [...candidateByNodeId.keys()],
+    projectionVersion,
+    publicationGenerationId: generationId,
+    type: "dense-vector",
+  });
+  const reusable = new Map<string, IndexProjection>();
+  for (const projection of existing) {
+    const multimodal = projection.metadata.multimodal;
+    if (!isPlainObject(multimodal) || multimodal.projectionRole !== "visual-asset") continue;
+    const candidate = candidateByNodeId.get(projection.nodeId);
+    if (
+      !candidate ||
+      reusable.has(projection.nodeId) ||
+      projection.publicationGenerationId !== generationId ||
+      projection.projectionVersion !== projectionVersion ||
+      projection.status !== projectionStatus ||
+      projection.type !== "dense-vector" ||
+      projection.metadata.artifactHash !== candidate.node.artifactHash ||
+      projection.metadata.documentAssetId !== candidate.asset.documentAssetId ||
+      projection.metadata.parseArtifactId !== candidate.node.parseArtifactId
+    ) {
+      throw new Error(
+        `Persisted generation-scoped Visual projection id=${projection.id} cannot be reused`,
+      );
+    }
+    reusable.set(projection.nodeId, projection);
+  }
+  return reusable;
 }
 
 export function createTextSurrogateVisualEmbeddingProvider({

@@ -53,6 +53,15 @@ function createRecordingProjectionRepository() {
         const projection = persisted.get(id);
         return projection?.knowledgeSpaceId === knowledgeSpaceId ? [{ ...projection }] : [];
       }),
+    getManyByNodeIds: async (input) =>
+      Array.from(persisted.values()).filter(
+        (projection) =>
+          projection.knowledgeSpaceId === input.knowledgeSpaceId &&
+          projection.publicationGenerationId === input.publicationGenerationId &&
+          projection.projectionVersion === input.projectionVersion &&
+          projection.type === input.type &&
+          input.nodeIds.includes(projection.nodeId),
+      ),
     listReadyBySpace: async () => ({ items: [] }),
     pruneInactiveVersions: async () => 0,
     publishVersion: async () => ({ published: 0, staled: 0 }),
@@ -100,6 +109,7 @@ describe("index projection builders", () => {
     const denseRepository = createRecordingProjectionRepository();
     const ftsRepository = createRecordingProjectionRepository();
     const visualRepository = createRecordingProjectionRepository();
+    let visualEmbedCalls = 0;
     const denseBuilder = createDenseVectorProjectionBuilder({
       embeddings: {
         embed: async () => ({
@@ -121,11 +131,14 @@ describe("index projection builders", () => {
       maxBatchSize: 1,
       projections: visualRepository.repository,
       provider: {
-        embedAssets: async () => ({
-          dense: [[0.3, 0.4]],
-          metadata: { model: "clip@1", provider: "static-vision" },
-          model: "clip@1",
-        }),
+        embedAssets: async () => {
+          visualEmbedCalls += 1;
+          return {
+            dense: [[visualEmbedCalls === 1 ? 0.3 : 0.9, 0.4]],
+            metadata: { model: "clip@1", provider: "static-vision" },
+            model: "clip@1",
+          };
+        },
       },
     });
     const imageNode = knowledgeNode({
@@ -187,6 +200,7 @@ describe("index projection builders", () => {
     expect(visualRepository.created[0]?.[0]?.publicationGenerationId).toBe(
       PUBLICATION_GENERATION_A,
     );
+    expect(visualEmbedCalls).toBe(3);
   });
 
   it("builds dense projections through the embedding provider with stable metadata", async () => {
@@ -345,6 +359,73 @@ describe("index projection builders", () => {
     expect(created).toHaveLength(1);
     expect(replay).toEqual(first);
     expect(replay[0]?.metadata.denseVector).toEqual([0.1, 0.2]);
+  });
+
+  it("reuses persisted generation-scoped FTS projections", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createFtsProjectionBuilder({ maxBatchSize: 1, projections: repository });
+    const input = {
+      nodes: [knowledgeNode()],
+      projectionVersion: 1,
+      publicationGenerationId: PUBLICATION_GENERATION_A,
+      status: "building" as const,
+    };
+
+    const first = await builder.build(input);
+    const replay = await builder.build(input);
+
+    expect(created).toHaveLength(1);
+    expect(replay).toEqual(first);
+  });
+
+  it("reuses only the Visual projection when a node also has a text Dense projection", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const imageNode = knowledgeNode({
+      kind: "image",
+      metadata: { assetRef: { contentType: "image/png", objectKey: "assets/chart.png" } },
+      text: "Revenue chart",
+    });
+    const denseBuilder = createDenseVectorProjectionBuilder({
+      embeddings: {
+        embed: async () => ({
+          dense: [[0.1, 0.2]],
+          metadata: { model: "text@1", provider: "static" },
+          model: "text@1",
+        }),
+        kind: "static",
+        models: async () => [],
+      },
+      maxBatchSize: 1,
+      projections: repository,
+    });
+    let visualEmbedCalls = 0;
+    const visualBuilder = createVisualEmbeddingProjectionBuilder({
+      maxBatchSize: 1,
+      projections: repository,
+      provider: {
+        embedAssets: async () => {
+          visualEmbedCalls += 1;
+          return {
+            dense: [[0.3, 0.4]],
+            metadata: { model: "clip@1", provider: "static-vision" },
+            model: "clip@1",
+          };
+        },
+      },
+    });
+    const common = {
+      nodes: [imageNode],
+      projectionVersion: 1,
+      publicationGenerationId: PUBLICATION_GENERATION_A,
+    };
+
+    await denseBuilder.build({ ...common, model: "text" });
+    const first = await visualBuilder.build({ ...common, model: "clip" });
+    const replay = await visualBuilder.build({ ...common, model: "clip" });
+
+    expect(visualEmbedCalls).toBe(1);
+    expect(created).toHaveLength(2);
+    expect(replay).toEqual(first);
   });
 
   it("uses a frozen candidate profile without rereading or mutating the active manifest", async () => {

@@ -43,6 +43,14 @@ export interface GetManyIndexProjectionsInput {
   readonly knowledgeSpaceId: string;
 }
 
+export interface GetManyIndexProjectionsByNodeIdsInput {
+  readonly knowledgeSpaceId: string;
+  readonly nodeIds: readonly string[];
+  readonly projectionVersion: number;
+  readonly publicationGenerationId: string;
+  readonly type: IndexProjection["type"];
+}
+
 export interface ListReadyIndexProjectionsInput {
   readonly cursor?: IndexProjectionCursor | undefined;
   readonly knowledgeSpaceId: string;
@@ -109,6 +117,7 @@ export interface IndexProjectionRepository {
   createMany(projections: readonly IndexProjection[]): Promise<IndexProjection[]>;
   deleteByNodeIds(input: DeleteIndexProjectionsByNodeIdsInput): Promise<number>;
   getMany?(input: GetManyIndexProjectionsInput): Promise<IndexProjection[]>;
+  getManyByNodeIds?(input: GetManyIndexProjectionsByNodeIdsInput): Promise<IndexProjection[]>;
   listReadyBySpace(input: ListReadyIndexProjectionsInput): Promise<ListIndexProjectionsResult>;
   pruneInactiveVersions(input: PruneInactiveIndexProjectionVersionsInput): Promise<number>;
   publishVersion(input: IndexProjectionVersionInput): Promise<PublishIndexProjectionVersionResult>;
@@ -256,6 +265,20 @@ export function createInMemoryIndexProjectionRepository({
           (projection) =>
             projection.knowledgeSpaceId === knowledgeSpaceId && selected.has(projection.id),
         )
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map(cloneIndexProjection);
+    },
+    getManyByNodeIds: async (input) => {
+      validateKnowledgeNodeBatchIds(input.nodeIds, maxBatchSize);
+      const nodeIds = new Set(uniqueStrings(input.nodeIds));
+      return Array.from(projections.values())
+        .filter((projection) => projection.knowledgeSpaceId === input.knowledgeSpaceId)
+        .filter(
+          (projection) => projection.publicationGenerationId === input.publicationGenerationId,
+        )
+        .filter((projection) => projection.projectionVersion === input.projectionVersion)
+        .filter((projection) => projection.type === input.type)
+        .filter((projection) => nodeIds.has(projection.nodeId))
         .sort((left, right) => left.id.localeCompare(right.id))
         .map(cloneIndexProjection);
     },
@@ -602,6 +625,30 @@ export function createDatabaseIndexProjectionRepository({
         tableName,
       });
 
+      return result.rows.map(mapIndexProjectionRow);
+    },
+    getManyByNodeIds: async (input) => {
+      validateKnowledgeNodeBatchIds(input.nodeIds, maxBatchSize);
+      const nodeIds = uniqueStrings(input.nodeIds);
+      if (nodeIds.length === 0) return [];
+      const params: DatabaseQueryValue[] = [
+        input.knowledgeSpaceId,
+        input.publicationGenerationId,
+        input.type,
+        input.projectionVersion,
+        ...nodeIds,
+      ];
+      const nodePlaceholders = nodeIds
+        .map((_, index) => databasePlaceholder(database, index + 5))
+        .join(", ");
+      const maxRows = nodeIds.length * 2;
+      const result = await database.execute({
+        maxRows,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, tableName)} WHERE ${quoteDatabaseIdentifier(database, "knowledge_space_id")} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(database, "publication_generation_id")} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(database, "type")} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(database, "projection_version")} = ${databasePlaceholder(database, 4)} AND ${quoteDatabaseIdentifier(database, "node_id")} IN (${nodePlaceholders}) ORDER BY ${quoteDatabaseIdentifier(database, "node_id")} ASC, ${quoteDatabaseIdentifier(database, "id")} ASC LIMIT ${maxRows};`,
+        tableName,
+      });
       return result.rows.map(mapIndexProjectionRow);
     },
     listReadyBySpace: async ({
