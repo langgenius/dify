@@ -11,6 +11,8 @@
   "batchAction.enable": "Kích hoạt",
   "batchAction.reIndex": "Tái lập chỉ mục",
   "batchAction.selected": "Chọn",
+  "batchAction.sync": "Đồng bộ",
+  "batchAction.syncAll": "Đồng bộ tất cả",
   "chunkingMode.general": "Tổng quát",
   "chunkingMode.graph": "Đồ thị",
   "chunkingMode.parentChild": "Cha mẹ-con cái",

@@ -99,6 +99,7 @@ from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
+from tasks.document_indexing_sync_task import document_indexing_sync_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
@@ -2176,6 +2177,67 @@ class DocumentService:
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
         sync_website_document_indexing_task.delay(dataset.id, document.id)
+
+    @staticmethod
+    def batch_sync_documents(
+        *,
+        dataset_id: str,
+        document_ids: Sequence[str],
+        tenant_id: str,
+        current_user: Account,
+        session: Session,
+    ) -> int:
+        """Re-sync the given documents from their original data source.
+
+        Only Notion and website documents can be synced; documents of any other source, and archived
+        or disabled documents, are skipped. A website document that is already syncing is skipped
+        rather than failing the whole batch (Notion syncs carry no such lock, matching the existing
+        per-document Notion sync endpoint). Returns the number of documents queued for syncing.
+        """
+        dataset = DatasetService.get_dataset(dataset_id, session)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        document_id_list: list[str] = [str(document_id) for document_id in document_ids]
+        documents = DocumentService.get_documents_by_ids(dataset_ref, document_id_list, session)
+        documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
+
+        missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
+        if missing_document_ids:
+            raise NotFound("Document not found.")
+
+        # Reject the batch on ownership grounds before queueing anything, so an unauthorised id
+        # cannot leave the rest of the selection half-synced.
+        for document in documents_by_id.values():
+            if document.tenant_id != tenant_id:
+                raise Forbidden("No permission.")
+
+        synced_count = 0
+        for document in documents_by_id.values():
+            # Re-indexing re-enables a document's segments, so never sync one the user has disabled.
+            # This also keeps the batch consistent with the dataset-wide sync endpoints, which read
+            # through get_document_by_dataset_id and therefore only see enabled documents.
+            if document.archived or not document.enabled:
+                continue
+            try:
+                if document.data_source_type == "notion_import":
+                    document_indexing_sync_task.delay(dataset_id, document.id)
+                elif document.data_source_type == "website_crawl":
+                    DocumentService.sync_website_document(dataset, document, session)
+                else:
+                    continue
+            except ValueError:
+                # Raised when the document is already syncing; skip it instead of failing the batch.
+                logger.warning("Skipped syncing document %s: sync already in progress", document.id)
+                continue
+            synced_count += 1
+
+        return synced_count
 
     @staticmethod
     def get_documents_position(dataset_id, session: Session):

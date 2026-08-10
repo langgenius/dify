@@ -17,7 +17,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload, DocumentBatchSyncPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
@@ -274,6 +274,7 @@ register_schema_models(
     GenerateSummaryPayload,
     DocumentMetadataUpdatePayload,
     DocumentBatchDownloadZipPayload,
+    DocumentBatchSyncPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -1223,6 +1224,43 @@ class DocumentBatchDownloadZipApi(DocumentResource):
             response.call_on_close(cleanup.close)
         # response-contract:ignore binary ZIP download response
         return response
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/batch-sync")
+class DocumentBatchSyncApi(DocumentResource):
+    """Re-sync multiple Notion/website documents from their source in one request."""
+
+    @console_ns.doc("batch_sync_dataset_documents")
+    @console_ns.doc(description="Re-sync selected dataset documents from their original data source")
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[DocumentBatchSyncPayload.__name__])
+    @with_current_user
+    @with_current_tenant_id
+    # Same permission as the per-document sync endpoints this batches (WebsiteDocumentSyncApi).
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        """Queue a source re-sync for each requested document."""
+        payload = DocumentBatchSyncPayload.model_validate(console_ns.payload or {})
+
+        synced_count = DocumentService.batch_sync_documents(
+            dataset_id=str(dataset_id),
+            document_ids=[str(document_id) for document_id in payload.document_ids],
+            tenant_id=current_tenant_id,
+            current_user=current_user,
+            session=session,
+        )
+        logger.info(
+            "Queued %s of %s requested documents for sync in dataset %s",
+            synced_count,
+            len(payload.document_ids),
+            dataset_id,
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")

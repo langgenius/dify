@@ -24,9 +24,12 @@ from .dataset_service_test_helpers import (
     DocumentService,
     FileInfo,
     FileNotExistsError,
+    Forbidden,
     IndexStructureType,
     InfoList,
     KnowledgeConfig,
+    MagicMock,
+    NoPermissionError,
     NotFound,
     NotionIcon,
     NotionInfo,
@@ -542,6 +545,200 @@ class TestDocumentServiceMutations:
         assert synced.data_source_info_dict["mode"] == "scrape"
         mock_redis.setex.assert_called_once_with(f"document_{document.id}_is_sync", 600, 1)
         sync_task.delay.assert_called_once_with(dataset.id, document.id)
+
+    def test_batch_sync_documents_only_syncs_requested_documents(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+        account.id = "user-1"
+        account.current_tenant_id = "tenant-1"
+
+        notion_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", tenant_id="tenant-1", data_source_type="notion_import"
+        )
+        website_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-2", tenant_id="tenant-1", data_source_type="website_crawl"
+        )
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[notion_doc, website_doc]),
+            patch.object(DocumentService, "sync_website_document") as sync_website,
+            patch("services.dataset_service.document_indexing_sync_task") as notion_task,
+        ):
+            synced = DocumentService.batch_sync_documents(
+                dataset_id="dataset-1",
+                document_ids=["doc-1", "doc-2"],
+                tenant_id="tenant-1",
+                current_user=account,
+                session=session,
+            )
+
+        assert synced == 2
+        notion_task.delay.assert_called_once_with("dataset-1", "doc-1")
+        sync_website.assert_called_once_with("dataset-1", website_doc, session)
+
+    def test_batch_sync_documents_skips_disabled_documents(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        disabled_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", tenant_id="tenant-1", data_source_type="website_crawl", enabled=False
+        )
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[disabled_doc]),
+            patch.object(DocumentService, "sync_website_document") as sync_website,
+        ):
+            synced = DocumentService.batch_sync_documents(
+                dataset_id="dataset-1",
+                document_ids=["doc-1"],
+                tenant_id="tenant-1",
+                current_user=account,
+                session=session,
+            )
+
+        # Re-indexing re-enables segments, so a disabled document must never be synced.
+        assert synced == 0
+        sync_website.assert_not_called()
+
+    def test_batch_sync_documents_skips_archived_and_unsupported_sources(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        archived_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", tenant_id="tenant-1", data_source_type="notion_import", archived=True
+        )
+        upload_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-2", tenant_id="tenant-1", data_source_type="upload_file"
+        )
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[archived_doc, upload_doc]),
+            patch.object(DocumentService, "sync_website_document") as sync_website,
+            patch("services.dataset_service.document_indexing_sync_task") as notion_task,
+        ):
+            synced = DocumentService.batch_sync_documents(
+                dataset_id="dataset-1",
+                document_ids=["doc-1", "doc-2"],
+                tenant_id="tenant-1",
+                current_user=account,
+                session=session,
+            )
+
+        assert synced == 0
+        notion_task.delay.assert_not_called()
+        sync_website.assert_not_called()
+
+    def test_batch_sync_documents_skips_documents_already_syncing(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        first = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", tenant_id="tenant-1", data_source_type="website_crawl"
+        )
+        second = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-2", tenant_id="tenant-1", data_source_type="website_crawl"
+        )
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[first, second]),
+            patch.object(
+                DocumentService,
+                "sync_website_document",
+                side_effect=[ValueError("Document is being synced"), None],
+            ),
+        ):
+            synced = DocumentService.batch_sync_documents(
+                dataset_id="dataset-1",
+                document_ids=["doc-1", "doc-2"],
+                tenant_id="tenant-1",
+                current_user=account,
+                session=session,
+            )
+
+        # The locked document is skipped, the rest of the batch still runs.
+        assert synced == 1
+
+    def test_batch_sync_documents_rejects_documents_from_another_tenant(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        foreign_doc = DatasetServiceUnitDataFactory.create_document_mock(
+            document_id="doc-1", tenant_id="tenant-2", data_source_type="notion_import"
+        )
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[foreign_doc]),
+            patch("services.dataset_service.document_indexing_sync_task") as notion_task,
+        ):
+            with pytest.raises(Forbidden):
+                DocumentService.batch_sync_documents(
+                    dataset_id="dataset-1",
+                    document_ids=["doc-1"],
+                    tenant_id="tenant-1",
+                    current_user=account,
+                    session=session,
+                )
+
+        notion_task.delay.assert_not_called()
+
+    def test_batch_sync_documents_raises_when_a_document_is_missing(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(DocumentService, "get_documents_by_ids", return_value=[]),
+        ):
+            with pytest.raises(NotFound):
+                DocumentService.batch_sync_documents(
+                    dataset_id="dataset-1",
+                    document_ids=["doc-1"],
+                    tenant_id="tenant-1",
+                    current_user=account,
+                    session=session,
+                )
+
+    def test_batch_sync_documents_raises_when_dataset_is_missing(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        with patch.object(DatasetService, "get_dataset", return_value=None):
+            with pytest.raises(NotFound):
+                DocumentService.batch_sync_documents(
+                    dataset_id="dataset-1",
+                    document_ids=["doc-1"],
+                    tenant_id="tenant-1",
+                    current_user=account,
+                    session=session,
+                )
+
+    def test_batch_sync_documents_translates_permission_error_to_forbidden(self):
+        session = MagicMock()
+        account = create_autospec(Account, instance=True)
+
+        with (
+            patch.object(DatasetService, "get_dataset", return_value=MagicMock()),
+            patch.object(DatasetService, "check_dataset_permission", side_effect=NoPermissionError("nope")),
+        ):
+            with pytest.raises(Forbidden):
+                DocumentService.batch_sync_documents(
+                    dataset_id="dataset-1",
+                    document_ids=["doc-1"],
+                    tenant_id="tenant-1",
+                    current_user=account,
+                    session=session,
+                )
 
 
 class TestDocumentServiceSaveDocumentWithoutDatasetId:
