@@ -190,7 +190,7 @@ describe('WebAppAccessPointCard', () => {
   it('shows loading without reporting an environment failure', () => {
     renderCard(AppModeEnum.WORKFLOW, 'loading')
 
-    const card = screen.getByRole('article', { name: /webApp\.title/ })
+    const card = screen.getByRole('region', { name: /webApp\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(

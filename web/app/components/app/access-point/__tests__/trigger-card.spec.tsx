@@ -84,7 +84,7 @@ describe('TriggerAccessPointCard', () => {
   it('shows loading without reporting an environment failure', () => {
     renderCard('loading')
 
-    const card = screen.getByRole('article', { name: /settings\.trigger/ })
+    const card = screen.getByRole('region', { name: /settings\.trigger/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(

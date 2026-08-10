@@ -59,8 +59,8 @@ describe('DeployedEnvironmentAccessPoints', () => {
       <DeployedEnvironmentAccessPoints appId="app-1" environmentId="staging" canEdit canManage />,
     )
 
-    const mcpCard = screen.getByRole('article', { name: /mcp\.server\.title/ })
-    const triggerCard = screen.getByRole('article', { name: /settings\.trigger/ })
+    const mcpCard = screen.getByRole('region', { name: /mcp\.server\.title/ })
+    const triggerCard = screen.getByRole('region', { name: /settings\.trigger/ })
 
     for (const card of [mcpCard, triggerCard]) {
       expect(

@@ -64,7 +64,7 @@ When('I enable the Web App', async function (this: DifyWorld) {
 
 Then('the Web App should be in service', async function (this: DifyWorld) {
   const webAppCard = this.getPage().getByRole('region', { name: 'Web App' })
-  await expect(webAppCard.getByText('In Service', { exact: true })).toBeVisible({
+  await expect(webAppCard.getByText(/^In service$/i)).toBeVisible({
     timeout: 10_000,
   })
 })

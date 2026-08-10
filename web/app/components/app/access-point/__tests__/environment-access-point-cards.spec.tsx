@@ -263,7 +263,7 @@ describe('environment access point cards', () => {
 
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
 
-    const card = screen.getByRole('article', { name: /webApp\.title/ })
+    const card = screen.getByRole('region', { name: /webApp\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(
@@ -382,7 +382,7 @@ describe('environment access point cards', () => {
 
     renderCard(<EnvironmentServiceApiCard appId="app-1" environmentId="staging" canManage />)
 
-    const card = screen.getByRole('article', { name: /serviceApi\.title/ })
+    const card = screen.getByRole('region', { name: /serviceApi\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(

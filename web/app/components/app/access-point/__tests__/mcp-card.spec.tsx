@@ -154,7 +154,7 @@ describe('MCPAccessPointCard', () => {
       />,
     )
 
-    const card = screen.getByRole('article', { name: /mcp\.server\.title/ })
+    const card = screen.getByRole('region', { name: /mcp\.server\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(

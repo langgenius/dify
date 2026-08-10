@@ -74,7 +74,7 @@ describe('ServiceApiAccessPointCard', () => {
       />,
     )
 
-    const card = screen.getByRole('article', { name: /serviceApi\.title/ })
+    const card = screen.getByRole('region', { name: /serviceApi\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('common.loading')).toBeInTheDocument()
     expect(
