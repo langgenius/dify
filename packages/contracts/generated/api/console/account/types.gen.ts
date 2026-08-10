@@ -125,13 +125,42 @@ export type AccountPasswordPayload = {
   repeat_new_password: string
 }
 
-export type AccountProfilePatchPayload = {
-  avatar?: string | null
-  interface_language?: string | null
-  interface_theme?: 'dark' | 'light' | null
-  name?: string | null
-  timezone?: string | null
-}
+export type AccountProfilePatchPayload =
+  | {
+      avatar?: string
+      interface_language?: string
+      interface_theme?: 'dark' | 'light'
+      name: string
+      timezone?: string
+    }
+  | {
+      avatar: string
+      interface_language?: string
+      interface_theme?: 'dark' | 'light'
+      name?: string
+      timezone?: string
+    }
+  | {
+      avatar?: string
+      interface_language: string
+      interface_theme?: 'dark' | 'light'
+      name?: string
+      timezone?: string
+    }
+  | {
+      avatar?: string
+      interface_language?: string
+      interface_theme: 'dark' | 'light'
+      name?: string
+      timezone?: string
+    }
+  | {
+      avatar?: string
+      interface_language?: string
+      interface_theme?: 'dark' | 'light'
+      name?: string
+      timezone: string
+    }
 
 export type AccountTimezonePayload = {
   timezone: string

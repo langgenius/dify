@@ -13168,11 +13168,7 @@ Model class for AI model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| avatar | string |  | No |
-| interface_language | string |  | No |
-| interface_theme | string |  | No |
-| name | string |  | No |
-| timezone | string |  | No |
+| AccountProfilePatchPayload | object<br>object<br>object<br>object<br>object |  |  |
 
 #### AccountResponse
 
