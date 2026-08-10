@@ -41,6 +41,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [saveConflictConfirm, setSaveConflictConfirm] = useState<
     (() => void | Promise<void>) | null
   >(null)
+  const [saveConflictCancel, setSaveConflictCancel] = useState<(() => void) | null>(null)
   const [publishedOverride, setPublishedOverride] = useState<{
     id: string
     publishedAt: number
@@ -374,8 +375,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
-          onSaveConflictConfirm={(onConfirm) => {
+          onSaveConflictConfirm={(onConfirm, onCancel) => {
             setSaveConflictConfirm(() => onConfirm)
+            setSaveConflictCancel(() => onCancel)
           }}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
@@ -413,7 +415,11 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setSaveConflictConfirm(null)}
+                  onClick={() => {
+                    setSaveConflictConfirm(null)
+                    saveConflictCancel?.()
+                    setSaveConflictCancel(null)
+                  }}
                 >
                   {t(($) => $['skillManagement.detail.saveConflictCancel'])}
                 </Button>
@@ -424,6 +430,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
                     const onConfirm = saveConflictConfirm
                     await onConfirm()
                     setSaveConflictConfirm(null)
+                    setSaveConflictCancel(null)
                   }}
                 >
                   {t(($) => $['skillManagement.detail.saveConflictReload'])}
