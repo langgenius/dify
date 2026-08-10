@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Biến Hội Thoại được sử dụng để lưu trữ thông tin tương tác mà LLM cần ghi nhớ, bao gồm lịch sử hội thoại, tệp đã tải lên, tùy chọn người dùng. Chúng có thể đọc và ghi được.",
   "chatVariable.panelTitle": "Biến Hội Thoại",
   "chatVariable.storedContent": "Nội dung đã lưu",
+  "chatVariable.tips": "Mẹo",
   "chatVariable.updatedAt": "Cập nhật lúc ",
   "collaboration.historyAction.generic": "Một cộng tác viên đã thực hiện hoàn tác/làm lại",
   "comments.actions.addComment": "Thêm bình luận",

@@ -97,11 +97,12 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           {isLoading ? (
             <Loading />
           ) : (
-            externalKnowledgeApiList.map((api) => (
+            externalKnowledgeApiList.map((api, index) => (
               <ExternalKnowledgeAPICard
                 key={api.id}
                 api={api}
                 canManageExternalKnowledgeApi={canManageExternalKnowledgeApi}
+                position={index + 1}
               />
             ))
           )}
