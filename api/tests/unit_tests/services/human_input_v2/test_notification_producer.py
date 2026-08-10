@@ -1,14 +1,14 @@
 import base64
 from datetime import UTC, datetime, timedelta
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     CanonicalSubjectKey,
     DeliveryAttemptData,
     EmailAddressApprovalSubject,
     EmailEndpointPlan,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointPlan,
     MatchedRecipientSource,
@@ -95,15 +95,13 @@ def _creation(*, second_email: bool = False):
     return HumanInputForm.create_from_plan(
         ref=FormRef(WorkspaceId("workspace-1"), FormId("form-1")),
         app_id=AppId("app-1"),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,

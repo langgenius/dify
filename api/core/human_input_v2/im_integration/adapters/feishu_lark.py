@@ -39,6 +39,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from websockets.asyncio.client import ClientConnection
 
 from configs import dify_config
+from core.human_input import ButtonStyle
+from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
@@ -63,7 +65,6 @@ from core.human_input_v2.im_provider import (
     MessageReference,
     MessageSendingError,
     MessageSendingResult,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -731,38 +732,6 @@ class _WebhookEventEnvelope(_ExternalResponseModel):
     header: _WebhookEventHeader
 
 
-class _StringSource(BaseModel):
-    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
-
-    type: Literal["constant", "variable"]
-    selector: Sequence[str]
-    value: str
-
-
-class _ParagraphInput(BaseModel):
-    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
-
-    type: Literal["paragraph"]
-    output_variable_name: str = Field(min_length=1)
-    default: _StringSource | None = None
-
-
-class _OptionSource(BaseModel):
-    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
-
-    type: Literal["constant"]
-    selector: Sequence[str] = ()
-    value: list[str] = Field(min_length=1)
-
-
-class _SelectInput(BaseModel):
-    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
-
-    type: Literal["select"]
-    output_variable_name: str = Field(min_length=1)
-    option_source: _OptionSource
-
-
 class _ProviderCardModel(BaseModel):
     """Strict serialization boundary for the Provider-confirmed card shape."""
 
@@ -782,16 +751,6 @@ class _CardPlainText(_ProviderCardModel):
 class _CardMarkdown(_ProviderCardModel):
     tag: Literal["markdown"] = "markdown"
     content: str
-
-
-class _CardField(_ProviderCardModel):
-    is_short: Literal[False] = False
-    text: _CardPlainText
-
-
-class _CardDiv(_ProviderCardModel):
-    tag: Literal["div"] = "div"
-    fields: list[_CardField]
 
 
 class _CardInput(_ProviderCardModel):
@@ -850,7 +809,7 @@ class _CardForm(_ProviderCardModel):
     elements: list[_CardFormElement]
 
 
-type _CardBodyElement = _CardMarkdown | _CardDiv | _CardForm
+type _CardBodyElement = _CardMarkdown | _CardForm
 
 
 class _CardBody(_ProviderCardModel):
@@ -1014,7 +973,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         self._provider = provider
 
     @override
-    def assess(self, intent: NormalizedCardIntent) -> CardAssessment:
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
         reason = _card_unrepresentable_reason(intent, self._provider)
         return CardAssessment(reason is None, reason)
 
@@ -1022,7 +981,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
     def send_card(
         self,
         provider_user_id: ProviderUserId,
-        intent: NormalizedCardIntent,
+        intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
         reason = _card_unrepresentable_reason(intent, self._provider)
@@ -1703,96 +1662,76 @@ def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentit
     return None
 
 
-def _card_unrepresentable_reason(intent: NormalizedCardIntent, provider: IMProvider) -> str | None:
+def _card_unrepresentable_reason(intent: ResolvedForm, provider: IMProvider) -> str | None:
     provider_name = _provider_name(provider)
-    if not intent.rendered_content:
-        return f"{provider_name} cannot preserve empty rendered card content."
+    if not intent.blocks and not intent.user_actions:
+        return f"{provider_name} cannot preserve an empty card."
     input_names: set[str] = set()
-    for input_definition in intent.form_definition.inputs:
-        input_type = input_definition.get("type")
-        if input_type in {"file", "file-list"}:
-            return f"{provider_name} cards cannot represent file inputs."
-        try:
-            if input_type == "paragraph":
-                paragraph = _ParagraphInput.model_validate(input_definition)
-                input_name = paragraph.output_variable_name
-                default = _paragraph_default(paragraph, intent.form_definition.default_values)
-            elif input_type == "select":
-                select = _SelectInput.model_validate(input_definition)
-                input_name = select.output_variable_name
-                default = intent.form_definition.default_values.get(input_name)
-                if any(not option for option in select.option_source.value):
+    form_started = False
+    for block in intent.blocks:
+        match block:
+            case MarkdownText(text=text):
+                if not text:
+                    return f"{provider_name} cannot preserve an empty Markdown block."
+                if form_started:
+                    return f"{provider_name} cannot preserve Markdown after form inputs."
+                continue
+            case FileInput() | FileListInput():
+                return f"{provider_name} cards cannot represent file inputs."
+            case ParagraphInput(output_variable_name=input_name):
+                form_started = True
+            case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                form_started = True
+                if not options or any(not option for option in options):
                     return f"{provider_name} cannot preserve one select option."
-                if default is not None and (not isinstance(default, str) or default not in select.option_source.value):
+                if len(options) != len(set(options)):
+                    return f"{provider_name} cannot preserve duplicate select options."
+                if default_value is not None and default_value not in options:
                     return f"{provider_name} cannot preserve one select input default."
-            else:
-                return f"{provider_name} cannot preserve one card input definition."
-        except (ValidationError, ValueError):
-            return f"{provider_name} cannot preserve one card input definition."
         if input_name in input_names:
             return f"{provider_name} cannot preserve duplicate card input identifiers."
         input_names.add(input_name)
-        if default is not None and not isinstance(default, str):
-            return f"{provider_name} cannot preserve one card input default."
-    if not intent.form_definition.default_values.keys() <= input_names:
-        return f"{provider_name} cannot preserve a default without a matching card input."
-    if any(action.button_style not in {"default", "primary", "accent"} for action in intent.form_definition.actions):
+    if any(
+        action.button_style not in {ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT}
+        for action in intent.user_actions
+    ):
         return f"{provider_name} cannot preserve one card action style."
     return None
 
 
-def _paragraph_default(
-    input_definition: _ParagraphInput,
-    resolved_defaults: Mapping[str, object],
-) -> object:
-    resolved = resolved_defaults.get(input_definition.output_variable_name)
-    source = input_definition.default
-    if source is None:
-        return resolved
-    if source.type == "constant":
-        if resolved is not None and resolved != source.value:
-            raise ValueError("conflicting paragraph default")
-        return source.value
-    if len(source.selector) < 2:
-        raise ValueError("invalid variable selector")
-    return resolved
-
-
 def _render_dynamic_card(
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
     correlation_token: CorrelationToken,
 ) -> dict[str, object]:
-    definition = intent.form_definition
-    placeholder = _CardPlainText(content=definition.form_content)
+    body_elements: list[_CardBodyElement] = []
     form_elements: list[_CardFormElement] = []
-    for raw_input in intent.form_definition.inputs:
-        if raw_input.get("type") == "paragraph":
-            paragraph = _ParagraphInput.model_validate(raw_input)
-            default = _paragraph_default(paragraph, intent.form_definition.default_values)
+    for block in intent.blocks:
+        if isinstance(block, MarkdownText):
+            body_elements.append(_CardMarkdown(content=block.text))
+            continue
+        placeholder = _CardPlainText(content=block.output_variable_name)
+        if isinstance(block, ParagraphInput):
             element: _CardFormElement = _CardInput(
-                name=paragraph.output_variable_name,
-                label=_CardPlainText(content=paragraph.output_variable_name),
+                name=block.output_variable_name,
+                label=_CardPlainText(content=block.output_variable_name),
                 placeholder=placeholder,
-                default_value=default if isinstance(default, str) else None,
+                default_value=block.default_value,
+            )
+        elif isinstance(block, SelectInput):
+            element = _CardSelect(
+                name=block.output_variable_name,
+                placeholder=placeholder,
+                options=[_CardOption(text=_CardPlainText(content=option), value=option) for option in block.options],
+                initial_option=block.default_value,
             )
         else:
-            select = _SelectInput.model_validate(raw_input)
-            default = intent.form_definition.default_values.get(select.output_variable_name)
-            element = _CardSelect(
-                name=select.output_variable_name,
-                placeholder=placeholder,
-                options=[
-                    _CardOption(text=_CardPlainText(content=option), value=option)
-                    for option in select.option_source.value
-                ],
-                initial_option=default if isinstance(default, str) else None,
-            )
+            raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
         form_elements.append(element)
-    for action in intent.form_definition.actions:
+    for action in intent.user_actions:
         button_type: Literal["default", "primary", "danger"]
-        if action.button_style == "primary":
+        if action.button_style is ButtonStyle.PRIMARY:
             button_type = "primary"
-        elif action.button_style == "accent":
+        elif action.button_style is ButtonStyle.ACCENT:
             button_type = "danger"
         else:
             button_type = "default"
@@ -1812,19 +1751,13 @@ def _render_dynamic_card(
                 ],
             )
         )
-    header = (
-        _CardHeader(title=_CardPlainText(content=definition.node_title)) if definition.node_title is not None else None
-    )
+    if form_elements:
+        body_elements.append(_CardForm(elements=form_elements))
+    header = _CardHeader(title=_CardPlainText(content=intent.title)) if intent.title is not None else None
     card = _DynamicCard(
         config=_CardConfig(),
         header=header,
-        body=_CardBody(
-            elements=[
-                _CardMarkdown(content=intent.rendered_content),
-                _CardDiv(fields=[_CardField(text=_CardPlainText(content=definition.form_content))]),
-                _CardForm(elements=form_elements),
-            ]
-        ),
+        body=_CardBody(elements=body_elements),
     )
     return card.model_dump(mode="json", by_alias=True, exclude_none=True)
 

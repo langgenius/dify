@@ -29,7 +29,8 @@ from controllers.common.human_input_v2_contracts import (
     LarkIMIntegrationCredentials as LarkCredentialRequest,
 )
 from controllers.common.human_input_v2_contracts import PreserveOriginalValue
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
@@ -56,7 +57,6 @@ from core.human_input_v2.im_provider import (
     IMStreamStopError,
     MessageAccepted,
     MessageSendingError,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -103,15 +103,6 @@ def _provider_confirmed_card_content() -> dict[str, object]:
             "elements": [
                 {"tag": "markdown", "content": "Rendered **content**"},
                 {
-                    "tag": "div",
-                    "fields": [
-                        {
-                            "is_short": False,
-                            "text": {"tag": "plain_text", "content": "Please decide"},
-                        }
-                    ],
-                },
-                {
                     "tag": "form",
                     "name": "dify_human_input",
                     "elements": [
@@ -120,7 +111,7 @@ def _provider_confirmed_card_content() -> dict[str, object]:
                             "name": "comment",
                             "required": True,
                             "label": {"tag": "plain_text", "content": "comment"},
-                            "placeholder": {"tag": "plain_text", "content": "Please decide"},
+                            "placeholder": {"tag": "plain_text", "content": "comment"},
                             "default_value": "Initial",
                         },
                         {
@@ -462,17 +453,12 @@ def _secure_credentials() -> FeishuIMIntegrationCredentials:
     )
 
 
-def _intent() -> NormalizedCardIntent:
-    return NormalizedCardIntent(
-        rendered_content="Rendered **content**",
-        form_definition=FrozenFormDefinition(
-            form_content="Please decide",
-            inputs=({"type": "paragraph", "output_variable_name": "comment"},),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={"comment": "Initial"},
-            node_title="Approval",
-            display_in_ui=True,
-        ),
+def _intent() -> ResolvedForm:
+    return ResolvedForm(
+        title="Approval",
+        blocks=(MarkdownText("Rendered **content**"), ParagraphInput("comment", "Initial")),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="This value must not be rendered",
     )
 
 
@@ -1176,16 +1162,11 @@ def test_directory_message_and_card_failures_are_safe_and_single_attempt(
     )
     assert isinstance(card_result, MessageSendingError)
 
-    empty_intent = NormalizedCardIntent(
-        rendered_content="",
-        form_definition=FrozenFormDefinition(
-            form_content="Sanitized form",
-            inputs=(),
-            actions=(),
-            default_values={},
-            node_title=None,
-            display_in_ui=True,
-        ),
+    empty_intent = ResolvedForm(
+        title=None,
+        blocks=(),
+        user_actions=(),
+        legacy_form_content="This value must not be rendered",
     )
     assert card_adapter.dynamic_card_messaging.assess(empty_intent).representable is False
     with pytest.raises(DynamicCardMessagingError):

@@ -133,15 +133,6 @@ def repository_context(
     _MutableClock,
     _DeterministicHasher,
 ]:
-    tables = (
-        HumanInputContact.__table__,
-        HumanInputV2Form.__table__,
-        HumanInputV2FormApproverGrant.__table__,
-        HumanInputV2FormOTPChallenge.__table__,
-    )
-    for table in tables:
-        assert isinstance(table, sa.Table)
-        table.create(sqlite_engine)
     _AUDIT_TABLE.create(sqlite_engine)
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     _seed_contact_form_and_grant(session_maker)
@@ -169,7 +160,7 @@ def _seed_contact_form_and_grant(session_maker: sessionmaker[Session]) -> None:
     form = HumanInputV2Form(
         tenant_id="workspace-1",
         app_id="app-1",
-        form_definition=HumanInputV2FormDefinition(form_content="Approve"),
+        form_definition=HumanInputV2FormDefinition(),
         rendered_content="Approve",
         node_timeout_at=_NOW.value + timedelta(hours=1),
         global_expires_at=_NOW.value + timedelta(hours=2),

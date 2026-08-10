@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, RootModel, TypeAda
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from core.human_input import ButtonStyle
 from core.human_input_v2.approval.recipient_resolution import RecipientSourceKind as _RecipientSourceKind
 from core.human_input_v2.entities import (
     EmailProviderType as _EmailProviderType,
@@ -71,7 +72,7 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.entities import (
     IMSyncRunStatus as _IMSyncRunStatus,
 )
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from graphon.file.enums import FileTransferMethod, FileType
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
@@ -320,25 +321,65 @@ class FormDeliveryProviderResponse(_ImmutableJSONObject):
     """Opaque provider delivery response retained only for diagnostics."""
 
 
-class HumanInputV2FormDefinition(_ImmutableJSONModel):
-    """Frozen runtime definition used for rendering and submission validation."""
+class ResolvedFormMarkdownText(_ImmutableJSONModel):
+    type: Literal["markdown"] = "markdown"
+    text: str
 
-    form_content: str = Field(description="Human-readable form template captured when the form was created.")
-    inputs: tuple[FormInputConfig, ...] = Field(
-        default_factory=tuple,
-        strict=False,
-        description="Resolved input definitions accepted by this form.",
-    )
-    user_actions: tuple[UserActionConfig, ...] = Field(
-        default_factory=tuple,
-        strict=False,
-        description="Resolved actions accepted by this form.",
-    )
-    default_values: dict[str, JsonValue] = Field(
-        default_factory=dict,
-        description="Serialized default input values resolved when the form was created.",
-    )
-    node_title: str | None = Field(default=None, description="Node title captured for display and audit context.")
+
+class ResolvedFormParagraphInput(_ImmutableJSONModel):
+    type: Literal["paragraph"] = "paragraph"
+    output_variable_name: str
+    # Populated only when a default value is configured; otherwise None.
+    default_value: str | None = None
+
+
+class ResolvedFormSelectInput(_ImmutableJSONModel):
+    type: Literal["select"] = "select"
+    output_variable_name: str
+    options: tuple[str, ...] = ()
+    # Populated only when a default value is configured; otherwise None.
+    default_value: str | None = None
+
+
+class ResolvedFormFileInput(_ImmutableJSONModel):
+    type: Literal["file"] = "file"
+    output_variable_name: str
+    allowed_file_types: tuple[FileType, ...] = ()
+    allowed_file_extensions: tuple[str, ...] = ()
+    allowed_file_upload_methods: tuple[FileTransferMethod, ...] = ()
+
+
+class ResolvedFormFileListInput(_ImmutableJSONModel):
+    type: Literal["file-list"] = "file-list"
+    output_variable_name: str
+    allowed_file_types: tuple[FileType, ...] = ()
+    allowed_file_extensions: tuple[str, ...] = ()
+    allowed_file_upload_methods: tuple[FileTransferMethod, ...] = ()
+    number_limits: int
+
+
+type ResolvedFormBlock = Annotated[
+    ResolvedFormMarkdownText
+    | ResolvedFormParagraphInput
+    | ResolvedFormSelectInput
+    | ResolvedFormFileInput
+    | ResolvedFormFileListInput,
+    Field(discriminator="type"),
+]
+
+
+class ResolvedFormAction(_ImmutableJSONModel):
+    id: str
+    title: str
+    button_style: ButtonStyle
+
+
+class HumanInputV2FormDefinition(_ImmutableJSONModel):
+    """Resolved presentation snapshot stored in the existing form_definition column."""
+
+    title: str | None = None
+    blocks: tuple[ResolvedFormBlock, ...] = ()
+    user_actions: tuple[ResolvedFormAction, ...] = ()
     display_in_ui: bool | None = Field(
         default=None,
         description="Whether runtime surfaces should expose the form in their UI.",
@@ -1092,8 +1133,8 @@ class HumanInputV2Form(DefaultFieldsDCMixin, TypeBase):
     ``workflow_node_executions`` row. ``node_execution_id`` intentionally names
     the business role while referencing that table's primary key ``id`` rather
     than its separate runtime ``node_execution_id`` column. ``rendered_content``
-    is retained for current runtime compatibility; ``form_definition`` remains
-    the frozen source used for validation and future rerendering.
+    stores only the partially resolved v1 compatibility text; ``form_definition``
+    stores the authoritative typed v2 presentation snapshot.
     """
 
     __tablename__ = "human_input_v2_forms"
@@ -1114,12 +1155,12 @@ class HumanInputV2Form(DefaultFieldsDCMixin, TypeBase):
     form_definition: Mapped[HumanInputV2FormDefinition] = mapped_column(
         FrozenPydanticModelColumn(HumanInputV2FormDefinition),
         nullable=False,
-        comment="Frozen Human Input v2 form definition used for display and submission validation.",
+        comment="Resolved Human Input v2 presentation snapshot used for display and submission validation.",
     )
     rendered_content: Mapped[str] = mapped_column(
         LongText,
         nullable=False,
-        comment="Rendered content retained for current runtime compatibility; form_definition remains authoritative.",
+        comment="Partially resolved content retained only for Human Input v1 compatibility.",
     )
     node_timeout_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
@@ -1967,6 +2008,13 @@ __all__ = [
     "LarkIMIntegrationEncryptedCredentials",
     "MSTeamsIMIntegrationEncryptedCredentials",
     "ResendEmailProviderEncryptedCredentials",
+    "ResolvedFormAction",
+    "ResolvedFormBlock",
+    "ResolvedFormFileInput",
+    "ResolvedFormFileListInput",
+    "ResolvedFormMarkdownText",
+    "ResolvedFormParagraphInput",
+    "ResolvedFormSelectInput",
     "SlackIMIntegrationEncryptedCredentials",
     "TrustedEndUserAuthorizationProof",
     "WeComIMIntegrationEncryptedCredentials",

@@ -6,10 +6,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import override
 
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.approval import (
     FormRef,
     FormSnapshotIdentifierFactory,
-    FrozenFormDefinition,
     HumanInputForm,
     ResolvedApprovalPlan,
 )
@@ -41,8 +41,8 @@ class DefaultFormSnapshotIdentifierFactory(FormSnapshotIdentifierFactory):
 class HumanInputV2FormCreationRequest:
     form_ref: FormRef
     app_id: AppId
-    definition: FrozenFormDefinition
-    rendered_content: str
+    resolved_form: ResolvedForm
+    display_in_ui: bool | None
     node_timeout_at: UtcTimestamp
     global_expires_at: UtcTimestamp
     kind: HumanInputV2FormKind
@@ -85,8 +85,8 @@ class HumanInputV2FormCreationService:
         creation = HumanInputForm.create_from_plan(
             ref=request.form_ref,
             app_id=request.app_id,
-            definition=request.definition,
-            rendered_content=request.rendered_content,
+            resolved_form=request.resolved_form,
+            display_in_ui=request.display_in_ui,
             node_timeout_at=request.node_timeout_at,
             global_expires_at=request.global_expires_at,
             kind=request.kind,

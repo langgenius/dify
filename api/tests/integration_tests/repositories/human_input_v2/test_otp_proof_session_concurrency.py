@@ -86,7 +86,7 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
     form = HumanInputV2Form(
         tenant_id=workspace_id,
         app_id=str(uuidv7()),
-        form_definition=HumanInputV2FormDefinition(form_content="Approve"),
+        form_definition=HumanInputV2FormDefinition(),
         rendered_content="Approve",
         node_timeout_at=issued_at.value + timedelta(hours=1),
         global_expires_at=issued_at.value + timedelta(hours=2),

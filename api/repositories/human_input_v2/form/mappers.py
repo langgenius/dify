@@ -12,6 +12,15 @@ from typing import assert_never
 
 from pydantic import JsonValue, TypeAdapter
 
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    SelectInput,
+)
 from core.human_input_v2.approval import (
     ApprovalSubject,
     ApproverGrant,
@@ -27,8 +36,6 @@ from core.human_input_v2.approval import (
     EndpointAccessCapability,
     EndUserApprovalSubject,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointConfiguration,
     MatchedRecipientSource,
@@ -55,7 +62,6 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
     WorkspaceId,
 )
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.base import DefaultFieldsDCMixin
 from models.human_input_v2 import (
     FormApproverGrantMatchedSource,
@@ -70,6 +76,14 @@ from models.human_input_v2 import (
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormUploadFile,
     HumanInputV2FormUploadToken,
+    ResolvedFormFileInput,
+    ResolvedFormFileListInput,
+    ResolvedFormMarkdownText,
+    ResolvedFormParagraphInput,
+    ResolvedFormSelectInput,
+)
+from models.human_input_v2 import (
+    ResolvedFormAction as ResolvedFormActionRecord,
 )
 from repositories.human_input_v2.email_channel.mappers import (
     email_provider_from_record as _email_provider_from_record,
@@ -78,7 +92,6 @@ from repositories.human_input_v2.email_channel.mappers import (
     email_provider_to_record as _email_provider_to_record,
 )
 
-_FORM_INPUT_ADAPTER: TypeAdapter[FormInputConfig] = TypeAdapter(FormInputConfig)
 _JSON_OBJECT_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
 
 
@@ -111,40 +124,144 @@ def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProvider
     return _email_provider_from_record(record)
 
 
-def _definition_to_record_value(definition: FrozenFormDefinition) -> HumanInputV2FormDefinition:
-    inputs = tuple(_FORM_INPUT_ADAPTER.validate_python(item) for item in definition.inputs)
-    actions = tuple(
-        UserActionConfig.model_validate(
-            {"id": action.id, "title": action.title, "button_style": action.button_style},
-        )
-        for action in definition.actions
-    )
-    default_values = _JSON_OBJECT_ADAPTER.validate_python(definition.default_values)
+def _resolved_form_to_record_value(
+    resolved_form: ResolvedForm,
+    *,
+    display_in_ui: bool | None,
+) -> HumanInputV2FormDefinition:
+    blocks: list[
+        ResolvedFormMarkdownText
+        | ResolvedFormParagraphInput
+        | ResolvedFormSelectInput
+        | ResolvedFormFileInput
+        | ResolvedFormFileListInput
+    ] = []
+    for block in resolved_form.blocks:
+        match block:
+            case MarkdownText(text=text):
+                blocks.append(ResolvedFormMarkdownText(text=text))
+            case ParagraphInput(output_variable_name=output_variable_name, default_value=default_value):
+                blocks.append(
+                    ResolvedFormParagraphInput(
+                        output_variable_name=output_variable_name,
+                        default_value=default_value,
+                    )
+                )
+            case SelectInput(
+                output_variable_name=output_variable_name,
+                options=options,
+                default_value=default_value,
+            ):
+                blocks.append(
+                    ResolvedFormSelectInput(
+                        output_variable_name=output_variable_name,
+                        options=options,
+                        default_value=default_value,
+                    )
+                )
+            case FileInput(
+                output_variable_name=output_variable_name,
+                allowed_file_types=allowed_file_types,
+                allowed_file_extensions=allowed_file_extensions,
+                allowed_file_upload_methods=allowed_file_upload_methods,
+            ):
+                blocks.append(
+                    ResolvedFormFileInput(
+                        output_variable_name=output_variable_name,
+                        allowed_file_types=allowed_file_types,
+                        allowed_file_extensions=allowed_file_extensions,
+                        allowed_file_upload_methods=allowed_file_upload_methods,
+                    )
+                )
+            case FileListInput(
+                output_variable_name=output_variable_name,
+                allowed_file_types=allowed_file_types,
+                allowed_file_extensions=allowed_file_extensions,
+                allowed_file_upload_methods=allowed_file_upload_methods,
+                number_limits=number_limits,
+            ):
+                blocks.append(
+                    ResolvedFormFileListInput(
+                        output_variable_name=output_variable_name,
+                        allowed_file_types=allowed_file_types,
+                        allowed_file_extensions=allowed_file_extensions,
+                        allowed_file_upload_methods=allowed_file_upload_methods,
+                        number_limits=number_limits,
+                    )
+                )
+            case _:
+                assert_never(block)
     return HumanInputV2FormDefinition(
-        form_content=definition.form_content,
-        inputs=inputs,
-        user_actions=actions,
-        default_values=default_values,
-        node_title=definition.node_title,
-        display_in_ui=definition.display_in_ui,
+        title=resolved_form.title,
+        blocks=tuple(blocks),
+        user_actions=tuple(
+            ResolvedFormActionRecord(id=action.id, title=action.title, button_style=action.button_style)
+            for action in resolved_form.user_actions
+        ),
+        display_in_ui=display_in_ui,
     )
 
 
-def _definition_from_record_value(definition: HumanInputV2FormDefinition) -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content=definition.form_content,
-        inputs=tuple(_JSON_OBJECT_ADAPTER.validate_python(item.model_dump(mode="json")) for item in definition.inputs),
-        actions=tuple(
-            FrozenFormAction(
-                id=action.id,
-                title=action.title,
-                button_style=action.button_style.value,
-            )
-            for action in definition.user_actions
+def _resolved_form_from_record_value(
+    definition: HumanInputV2FormDefinition,
+    *,
+    legacy_form_content: str,
+) -> ResolvedForm:
+    blocks: list[MarkdownText | ParagraphInput | SelectInput | FileInput | FileListInput] = []
+    for block in definition.blocks:
+        match block:
+            case ResolvedFormMarkdownText(text=text):
+                blocks.append(MarkdownText(text))
+            case ResolvedFormParagraphInput(
+                output_variable_name=output_variable_name,
+                default_value=default_value,
+            ):
+                blocks.append(ParagraphInput(output_variable_name, default_value))
+            case ResolvedFormSelectInput(
+                output_variable_name=output_variable_name,
+                options=options,
+                default_value=default_value,
+            ):
+                blocks.append(SelectInput(output_variable_name, options, default_value))
+            case ResolvedFormFileInput(
+                output_variable_name=output_variable_name,
+                allowed_file_types=allowed_file_types,
+                allowed_file_extensions=allowed_file_extensions,
+                allowed_file_upload_methods=allowed_file_upload_methods,
+            ):
+                blocks.append(
+                    FileInput(
+                        output_variable_name,
+                        allowed_file_types,
+                        allowed_file_extensions,
+                        allowed_file_upload_methods,
+                    )
+                )
+            case ResolvedFormFileListInput(
+                output_variable_name=output_variable_name,
+                allowed_file_types=allowed_file_types,
+                allowed_file_extensions=allowed_file_extensions,
+                allowed_file_upload_methods=allowed_file_upload_methods,
+                number_limits=number_limits,
+            ):
+                blocks.append(
+                    FileListInput(
+                        output_variable_name,
+                        allowed_file_types,
+                        allowed_file_extensions,
+                        allowed_file_upload_methods,
+                        number_limits,
+                    )
+                )
+            case _:
+                assert_never(block)
+    return ResolvedForm(
+        title=definition.title,
+        blocks=tuple(blocks),
+        user_actions=tuple(
+            ResolvedFormAction(action.id, action.title, action.button_style) for action in definition.user_actions
         ),
-        default_values=definition.default_values,
-        node_title=definition.node_title,
-        display_in_ui=definition.display_in_ui,
+        legacy_form_content=legacy_form_content,
     )
 
 
@@ -154,8 +271,8 @@ def form_to_record(form: HumanInputForm) -> HumanInputV2Form:
     record = HumanInputV2Form(
         tenant_id=str(form.ref.workspace_id),
         app_id=str(form.app_id),
-        form_definition=_definition_to_record_value(form.definition),
-        rendered_content=form.rendered_content,
+        form_definition=_resolved_form_to_record_value(form.resolved_form, display_in_ui=form.display_in_ui),
+        rendered_content=form.resolved_form.legacy_form_content,
         node_timeout_at=form.node_timeout_at.value,
         global_expires_at=form.global_expires_at.value,
         form_kind=form.kind,
@@ -185,8 +302,11 @@ def form_from_record(
     return HumanInputForm(
         ref=form_ref,
         app_id=AppId(record.app_id),
-        definition=_definition_from_record_value(record.form_definition),
-        rendered_content=record.rendered_content,
+        resolved_form=_resolved_form_from_record_value(
+            record.form_definition,
+            legacy_form_content=record.rendered_content,
+        ),
+        display_in_ui=record.form_definition.display_in_ui,
         node_timeout_at=_timestamp(record.node_timeout_at),
         global_expires_at=_timestamp(record.global_expires_at),
         kind=record.form_kind,

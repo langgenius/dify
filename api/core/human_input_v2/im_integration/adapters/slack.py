@@ -17,7 +17,6 @@ from email.message import Message
 from typing import Literal, override
 from urllib.parse import parse_qs
 
-from pydantic import JsonValue
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.models.blocks import MarkdownBlock
 from slack_sdk.signature import Clock, SignatureVerifier
@@ -28,6 +27,8 @@ from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from slack_sdk.web.slack_response import SlackResponse
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
@@ -53,7 +54,6 @@ from core.human_input_v2.im_provider import (
     MessageReference,
     MessageSendingError,
     MessageSendingResult,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -233,7 +233,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
         self._client = client
 
     @override
-    def assess(self, intent: NormalizedCardIntent) -> CardAssessment:
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
         reason = _card_unrepresentable_reason(intent)
         if reason is not None:
             return CardAssessment(False, reason)
@@ -243,7 +243,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
     def send_card(
         self,
         provider_user_id: ProviderUserId,
-        intent: NormalizedCardIntent,
+        intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
         reason = _card_unrepresentable_reason(intent)
@@ -253,7 +253,7 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
         try:
             response = self._client.chat_postMessage(
                 channel=str(provider_user_id),
-                text=intent.rendered_content,
+                text=_card_summary(intent),
                 blocks=blocks,
             )
         except SlackClientError:
@@ -638,163 +638,82 @@ def _accepted_message(
     return MessageAccepted(_SlackMessageLocator(message_kind, channel_id, message_ts))
 
 
-def _card_unrepresentable_reason(intent: NormalizedCardIntent) -> str | None:
-    definition = intent.form_definition
-    if not intent.rendered_content or len(intent.rendered_content) > _MAX_MARKDOWN_TEXT_LENGTH:
-        return "Slack cannot preserve rendered card content of this length."
-    if definition.node_title is not None and len(definition.node_title) > _MAX_HEADER_TEXT_LENGTH:
+def _card_unrepresentable_reason(intent: ResolvedForm) -> str | None:
+    if not intent.blocks and not intent.user_actions:
+        return "Slack cannot preserve an empty card."
+    if intent.title is not None and len(intent.title) > _MAX_HEADER_TEXT_LENGTH:
         return "Slack cannot preserve the card title of this length."
-    block_count = 1 + len(definition.inputs) + (1 if definition.node_title else 0) + (1 if definition.actions else 0)
+    block_count = len(intent.blocks) + (1 if intent.title else 0) + (1 if intent.user_actions else 0)
     if block_count > _MAX_BLOCK_COUNT:
         return "Slack cannot preserve this number of card controls."
-    if len(definition.actions) > _MAX_ACTION_COUNT:
+    if len(intent.user_actions) > _MAX_ACTION_COUNT:
         return "Slack cannot preserve this number of card actions."
 
-    defaults = definition.default_values
     input_names: set[str] = set()
-    for input_definition in definition.inputs:
-        reason = _input_unrepresentable_reason(input_definition, defaults)
-        if reason is not None:
-            return reason
-        input_name = input_definition.get("output_variable_name")
-        assert isinstance(input_name, str)
+    for block in intent.blocks:
+        match block:
+            case MarkdownText(text=text):
+                if not text or len(text) > _MAX_MARKDOWN_TEXT_LENGTH:
+                    return "Slack cannot preserve one Markdown block of this length."
+                continue
+            case FileInput() | FileListInput():
+                return "Slack cards cannot represent file inputs."
+            case ParagraphInput(output_variable_name=input_name, default_value=default_value):
+                if len(input_name) > _MAX_ACTION_ID_LENGTH or len(input_name) > _MAX_INPUT_LABEL_LENGTH:
+                    return "Slack cannot preserve one card input identifier."
+                if default_value is not None and len(default_value) > _MAX_INPUT_INITIAL_VALUE_LENGTH:
+                    return "Slack cannot preserve one card input default."
+            case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                if len(input_name) > _MAX_ACTION_ID_LENGTH or len(input_name) > _MAX_INPUT_LABEL_LENGTH:
+                    return "Slack cannot preserve one card input identifier."
+                if not 1 <= len(options) <= _MAX_RADIO_OPTION_COUNT:
+                    return "Slack cannot preserve one select input's option count."
+                if any(
+                    not option
+                    or len(option) > _MAX_RADIO_OPTION_TEXT_LENGTH
+                    or len(option) > _MAX_RADIO_OPTION_VALUE_LENGTH
+                    for option in options
+                ):
+                    return "Slack cannot preserve one select option."
+                if default_value is not None and default_value not in options:
+                    return "Slack cannot preserve one select input default."
         if input_name in input_names:
             return "Slack cannot preserve duplicate card input identifiers."
         input_names.add(input_name)
-    if not defaults.keys() <= input_names:
-        return "Slack cannot preserve a default without a matching card input."
-    for action in definition.actions:
+    for action in intent.user_actions:
         if len(action.id) > _MAX_ACTION_ID_LENGTH or len(action.title) > _MAX_ACTION_TEXT_LENGTH:
             return "Slack cannot preserve one card action identifier or title."
-        if action.button_style not in {"default", "primary", "accent"}:
+        if action.button_style not in {ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT}:
             return "Slack cannot preserve one card action style."
     return None
 
 
-def _input_unrepresentable_reason(
-    input_definition: Mapping[str, JsonValue],
-    defaults: Mapping[str, JsonValue],
-) -> str | None:
-    input_type = input_definition.get("type")
-    input_name = input_definition.get("output_variable_name")
-    if input_type in {"file", "file-list"}:
-        return "Slack cards cannot represent file inputs."
-    if input_type not in {"paragraph", "select"} or not isinstance(input_name, str) or not input_name:
-        return "Slack cannot preserve one card input definition."
-    if len(input_name) > _MAX_ACTION_ID_LENGTH or len(input_name) > _MAX_INPUT_LABEL_LENGTH:
-        return "Slack cannot preserve one card input identifier."
-    default, default_error = _effective_input_default(input_definition, defaults)
-    if default_error is not None:
-        return default_error
-    if input_type == "paragraph":
-        if default is not None and len(default) > _MAX_INPUT_INITIAL_VALUE_LENGTH:
-            return "Slack cannot preserve one card input default."
-        return None
-
-    option_source = input_definition.get("option_source")
-    if not isinstance(option_source, Mapping) or option_source.get("type") != "constant":
-        return "Slack cannot preserve a select input with unresolved options."
-    options = option_source.get("value")
-    if (
-        not isinstance(options, Sequence)
-        or isinstance(options, (str, bytes, bytearray))
-        or not 1 <= len(options) <= _MAX_RADIO_OPTION_COUNT
-    ):
-        return "Slack cannot preserve one select input's option count."
-    for option in options:
-        if (
-            not isinstance(option, str)
-            or not option
-            or len(option) > _MAX_RADIO_OPTION_TEXT_LENGTH
-            or len(option) > _MAX_RADIO_OPTION_VALUE_LENGTH
-        ):
-            return "Slack cannot preserve one select option."
-    if default is not None and default not in options:
-        return "Slack cannot preserve one select input default."
-    return None
-
-
-def _effective_input_default(
-    input_definition: Mapping[str, JsonValue],
-    defaults: Mapping[str, JsonValue],
-) -> tuple[str | None, str | None]:
-    input_name = input_definition.get("output_variable_name")
-    input_type = input_definition.get("type")
-    if not isinstance(input_name, str):
-        return None, "Slack cannot preserve one card input default."
-
-    resolved_default = defaults.get(input_name)
-    if input_type != "paragraph" or input_definition.get("default") is None:
-        if resolved_default is not None and not isinstance(resolved_default, str):
-            return None, "Slack cannot preserve one card input default."
-        return resolved_default, None
-
-    default_source = input_definition.get("default")
-    if not isinstance(default_source, Mapping):
-        return None, "Slack cannot preserve one card input default."
-    if set(default_source) != {"type", "selector", "value"}:
-        return None, "Slack cannot preserve one card input default."
-    source_type = default_source.get("type")
-    selector = default_source.get("selector")
-    if (
-        not isinstance(selector, Sequence)
-        or isinstance(selector, (str, bytes, bytearray))
-        or any(not isinstance(part, str) or not part for part in selector)
-    ):
-        return None, "Slack cannot preserve one card input default."
-    if source_type == "constant":
-        constant_value = default_source.get("value")
-        if not isinstance(constant_value, str):
-            return None, "Slack cannot preserve one card input default."
-        if resolved_default is not None and resolved_default != constant_value:
-            return None, "Slack cannot preserve one card input default."
-        return constant_value, None
-    if source_type == "variable":
-        if len(selector) < 2 or not isinstance(default_source.get("value"), str):
-            return None, "Slack cannot preserve one card input default."
-        if resolved_default is not None and not isinstance(resolved_default, str):
-            return None, "Slack cannot preserve one card input default."
-        return resolved_default, None
-    return None, "Slack cannot preserve one card input default."
-
-
 def _render_card_blocks(
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
     correlation_token: CorrelationToken,
 ) -> list[dict[str, object]]:
-    definition = intent.form_definition
     blocks: list[dict[str, object]] = []
-    if definition.node_title:
-        blocks.append({"type": "header", "text": {"type": "plain_text", "text": definition.node_title}})
-    blocks.append(MarkdownBlock(text=intent.rendered_content).to_dict())
-    defaults = definition.default_values
-    for input_definition in definition.inputs:
-        input_name = input_definition["output_variable_name"]
-        input_type = input_definition["type"]
-        if not isinstance(input_name, str) or not isinstance(input_type, str):
-            raise DynamicCardMessagingError("Slack cannot preserve one card input definition.")
+    if intent.title:
+        blocks.append({"type": "header", "text": {"type": "plain_text", "text": intent.title}})
+    for block in intent.blocks:
+        if isinstance(block, MarkdownText):
+            blocks.append(MarkdownBlock(text=block.text).to_dict())
+            continue
+        input_name = block.output_variable_name
         input_element: dict[str, object] = {"action_id": input_name}
-        default, default_error = _effective_input_default(input_definition, defaults)
-        if default_error is not None:
-            raise DynamicCardMessagingError(default_error)
-        if input_type == "paragraph":
+        if isinstance(block, ParagraphInput):
             input_element.update({"type": "plain_text_input", "multiline": True})
-            if isinstance(default, str):
-                input_element["initial_value"] = default
-        else:
-            option_source = input_definition["option_source"]
-            assert isinstance(option_source, Mapping)
-            raw_options = option_source["value"]
-            assert isinstance(raw_options, Sequence)
-            assert not isinstance(raw_options, (str, bytes, bytearray))
-            options = [
-                {"text": {"type": "plain_text", "text": option}, "value": option}
-                for option in raw_options
-                if isinstance(option, str)
-            ]
+            if block.default_value is not None:
+                input_element["initial_value"] = block.default_value
+        elif isinstance(block, SelectInput):
+            options = [{"text": {"type": "plain_text", "text": option}, "value": option} for option in block.options]
             input_element.update({"type": "radio_buttons", "options": options})
-            if isinstance(default, str):
-                input_element["initial_option"] = next(option for option in options if option["value"] == default)
+            if block.default_value is not None:
+                input_element["initial_option"] = next(
+                    option for option in options if option["value"] == block.default_value
+                )
+        else:
+            raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
         blocks.append(
             {
                 "type": "input",
@@ -803,9 +722,9 @@ def _render_card_blocks(
                 "element": input_element,
             }
         )
-    if definition.actions:
+    if intent.user_actions:
         action_elements: list[dict[str, object]] = []
-        for action in definition.actions:
+        for action in intent.user_actions:
             action_value = json.dumps(
                 {"action_id": action.id, "correlation_token": str(correlation_token)},
                 sort_keys=True,
@@ -819,13 +738,22 @@ def _render_card_blocks(
                 "text": {"type": "plain_text", "text": action.title},
                 "value": action_value,
             }
-            if action.button_style == "primary":
+            if action.button_style is ButtonStyle.PRIMARY:
                 action_element["style"] = "primary"
-            elif action.button_style == "accent":
+            elif action.button_style is ButtonStyle.ACCENT:
                 action_element["style"] = "danger"
             action_elements.append(action_element)
         blocks.append({"type": "actions", "elements": action_elements})
     return blocks
+
+
+def _card_summary(intent: ResolvedForm) -> str:
+    if intent.title:
+        return intent.title
+    for block in intent.blocks:
+        if isinstance(block, MarkdownText) and block.text.strip():
+            return block.text
+    return "Human input form"
 
 
 def _header_values(headers: tuple[tuple[str, str], ...], target_name: str) -> tuple[str, ...]:

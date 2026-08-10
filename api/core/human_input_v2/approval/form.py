@@ -8,13 +8,11 @@ the later submission transaction boundary.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from pydantic import JsonValue
-
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
 from core.human_input_v2.shared import (
     AppId,
@@ -33,42 +31,7 @@ class InvalidApproverGrantError(ValueError):
 
 
 class InvalidSelectedActionError(ValueError):
-    """The selected action is absent from the frozen definition."""
-
-
-@dataclass(frozen=True, slots=True)
-class FrozenFormAction:
-    """Immutable action values required for display and transition validation."""
-
-    id: str
-    title: str
-    button_style: str
-
-    def __post_init__(self) -> None:
-        if not self.id or not self.title or not self.button_style:
-            raise ValueError("frozen form action values must not be blank")
-
-
-@dataclass(frozen=True, slots=True)
-class FrozenFormDefinition:
-    """Render and validation definition captured at form creation."""
-
-    form_content: str
-    inputs: Sequence[Mapping[str, JsonValue]]
-    actions: tuple[FrozenFormAction, ...]
-    default_values: Mapping[str, JsonValue]
-    node_title: str | None
-    display_in_ui: bool | None
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.actions, tuple):
-            raise TypeError("frozen form definition actions must be an immutable tuple")
-        action_ids = [action.id for action in self.actions]
-        if len(action_ids) != len(set(action_ids)):
-            raise ValueError("frozen form action identifiers must be unique")
-
-    def accepts_action(self, selected_action_id: str) -> bool:
-        return any(action.id == selected_action_id for action in self.actions)
+    """The selected action is absent from the resolved presentation snapshot."""
 
 
 class FormInactiveReason(StrEnum):
@@ -143,8 +106,8 @@ class HumanInputForm:
 
     ref: FormRef
     app_id: AppId
-    definition: FrozenFormDefinition
-    rendered_content: str
+    resolved_form: ResolvedForm
+    display_in_ui: bool | None
     node_timeout_at: UtcTimestamp
     global_expires_at: UtcTimestamp
     kind: HumanInputV2FormKind
@@ -201,7 +164,7 @@ class HumanInputForm:
             return state
         if not any(grant.id == grant_id for grant in self.grants):
             raise InvalidApproverGrantError(str(grant_id))
-        if not self.definition.accepts_action(selected_action_id):
+        if not self.resolved_form.accepts_action(selected_action_id):
             raise InvalidSelectedActionError(selected_action_id)
         return SubmissionTransitionDecision(
             form_ref=self.ref,
@@ -216,8 +179,8 @@ class HumanInputForm:
         *,
         ref: FormRef,
         app_id: AppId,
-        definition: FrozenFormDefinition,
-        rendered_content: str,
+        resolved_form: ResolvedForm,
+        display_in_ui: bool | None,
         node_timeout_at: UtcTimestamp,
         global_expires_at: UtcTimestamp,
         kind: HumanInputV2FormKind,
@@ -254,8 +217,8 @@ class HumanInputForm:
         form = cls(
             ref=ref,
             app_id=app_id,
-            definition=definition,
-            rendered_content=rendered_content,
+            resolved_form=resolved_form,
+            display_in_ui=display_in_ui,
             node_timeout_at=node_timeout_at,
             global_expires_at=global_expires_at,
             kind=kind,

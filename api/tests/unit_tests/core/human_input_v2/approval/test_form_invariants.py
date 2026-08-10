@@ -6,6 +6,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import JsonValue
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     ApproverGrant,
     CanonicalSubjectKey,
@@ -21,8 +23,6 @@ from core.human_input_v2.approval import (
     FormCreation,
     FormInactiveReason,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointConfiguration,
     IMEndpointPlan,
@@ -89,14 +89,12 @@ def _grant(
     )
 
 
-def _definition() -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content="Approve",
-        inputs=(),
-        actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values={},
-        node_title=None,
-        display_in_ui=None,
+def _resolved_form() -> ResolvedForm:
+    return ResolvedForm(
+        title=None,
+        blocks=(MarkdownText("Approve"),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="Approve",
     )
 
 
@@ -111,8 +109,8 @@ def _form(
     return HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
+        resolved_form=_resolved_form(),
+        display_in_ui=None,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=kind,
@@ -126,21 +124,21 @@ def _form(
 
 
 @pytest.mark.parametrize(
-    ("action_id", "title", "button_style"),
-    [("", "Approve", "primary"), ("approve", "", "primary"), ("approve", "Approve", "")],
+    ("action_id", "title"),
+    [("", "Approve"), ("approve", "")],
 )
-def test_frozen_form_action_rejects_each_blank_component(action_id: str, title: str, button_style: str) -> None:
+def test_card_action_rejects_each_blank_component(action_id: str, title: str) -> None:
     with pytest.raises(ValueError, match="must not be blank"):
-        FrozenFormAction(action_id, title, button_style)
+        ResolvedFormAction(action_id, title, ButtonStyle.PRIMARY)
 
 
-def test_frozen_definition_rejects_mutable_actions_and_duplicate_actions() -> None:
-    action = FrozenFormAction("approve", "Approve", "primary")
+def test_resolved_form_rejects_mutable_actions_and_duplicate_actions() -> None:
+    action = ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY)
 
     with pytest.raises(TypeError, match="immutable tuple"):
-        FrozenFormDefinition("Approve", (), [action], {}, None, None)
+        ResolvedForm(None, (), [action], "Approve")
     with pytest.raises(ValueError, match="unique"):
-        FrozenFormDefinition("Approve", (), (action, action), {}, None, None)
+        ResolvedForm(None, (), (action, action), "Approve")
 
 
 def test_grant_rejects_mutable_sources_and_mismatched_subject_key() -> None:
@@ -473,8 +471,8 @@ def test_failed_recipient_plan_cannot_create_a_form_snapshot() -> None:
         HumanInputForm.create_from_plan(
             ref=_FORM_REF,
             app_id=AppId("app-1"),
-            definition=_definition(),
-            rendered_content="Rendered",
+            resolved_form=_resolved_form(),
+            display_in_ui=None,
             node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
             global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
             kind=HumanInputV2FormKind.RUNTIME,

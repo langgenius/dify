@@ -23,7 +23,17 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.im_integration.adapters import ms_teams
 from core.human_input_v2.im_provider import (
     CardAssessment,
@@ -39,7 +49,6 @@ from core.human_input_v2.im_provider import (
     MessageReference,
     MessageSendingError,
     MSTeamsIMIntegrationCredentials,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -128,47 +137,39 @@ def _adapter_with_tokens(mocker, *, graph_claims: dict[str, object], bot_claims:
 def _card_intent(
     *,
     input_type: str = "paragraph",
-    rendered_content: str = "Rendered **content**",
-    action_style: str = "primary",
-) -> NormalizedCardIntent:
-    input_definition: dict[str, object] = {
-        "type": input_type,
-        "output_variable_name": "comment",
-    }
+    markdown_text: str = "Rendered **content**",
+    action_style: ButtonStyle = ButtonStyle.PRIMARY,
+) -> ResolvedForm:
     if input_type == "select":
-        input_definition["option_source"] = {"type": "constant", "value": ["One", "Two"]}
-    definition = FrozenFormDefinition(
-        form_content="Please decide",
-        inputs=(input_definition,),
-        actions=(
-            FrozenFormAction("approve", "Approve", action_style),
-            FrozenFormAction("reject", "Reject", "accent"),
+        input_block: ResolvedFormContent = SelectInput("comment", ("One", "Two"), "One")
+    elif input_type == "file":
+        input_block = FileInput("comment", (), (), ())
+    elif input_type == "file-list":
+        input_block = FileListInput("comment", (), (), (), 1)
+    else:
+        input_block = ParagraphInput("comment", "Initial")
+    return ResolvedForm(
+        title="Approval",
+        blocks=(MarkdownText(markdown_text), input_block, MarkdownText("After input")),
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", action_style),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
         ),
-        default_values={"comment": "One" if input_type == "select" else "Initial"},
-        node_title="Approval",
-        display_in_ui=True,
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent(rendered_content, definition)
 
 
 def _custom_card_intent(
     *,
-    inputs: tuple[dict[str, object], ...],
-    defaults: dict[str, object] | None = None,
-    node_title: str | None = "Approval",
-    action_style: str = "default",
-    rendered_content: str = "Rendered **content**",
-) -> NormalizedCardIntent:
-    return NormalizedCardIntent(
-        rendered_content,
-        FrozenFormDefinition(
-            form_content="Please decide",
-            inputs=inputs,
-            actions=(FrozenFormAction("approve", "Approve", action_style),),
-            default_values=dict(defaults or {}),
-            node_title=node_title,
-            display_in_ui=True,
-        ),
+    blocks: tuple[ResolvedFormContent, ...],
+    title: str | None = "Approval",
+    action_style: ButtonStyle = ButtonStyle.DEFAULT,
+) -> ResolvedForm:
+    return ResolvedForm(
+        title=title,
+        blocks=blocks,
+        user_actions=(ResolvedFormAction("approve", "Approve", action_style),),
+        legacy_form_content="This value must not be rendered",
     )
 
 
@@ -757,7 +758,7 @@ def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_
     connector_client.assert_not_called()
 
 
-@pytest.mark.parametrize("input_type", ["file", "file-list", "ghost"])
+@pytest.mark.parametrize("input_type", ["file", "file-list"])
 def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(mocker, input_type: str) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
@@ -784,12 +785,12 @@ def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(mo
 @pytest.mark.parametrize(
     "intent",
     [
-        _card_intent(action_style="ghost"),
-        _card_intent(rendered_content="x" * 30_000),
+        _card_intent(action_style=ButtonStyle.GHOST),
+        _card_intent(markdown_text="x" * 30_000),
     ],
     ids=("unsupported-action-style", "provider-payload-limit"),
 )
-def test_card_assessment_rejects_unpreservable_presentation_facts(mocker, intent: NormalizedCardIntent) -> None:
+def test_card_assessment_rejects_unpreservable_presentation_facts(mocker, intent: ResolvedForm) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -840,89 +841,29 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker) 
     "intent",
     [
         _custom_card_intent(
-            inputs=({"type": "paragraph", "output_variable_name": "comment"},),
-            defaults={"comment": 1},
+            blocks=(SelectInput("choice", (), None),),
         ),
         _custom_card_intent(
-            inputs=(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "comment",
-                    "default": {"type": "constant", "selector": [], "value": 1},
-                },
+            blocks=(SelectInput("choice", ("",), None),),
+        ),
+        _custom_card_intent(
+            blocks=(SelectInput("choice", ("One", "One"), "One"),),
+        ),
+        _custom_card_intent(
+            blocks=(
+                ParagraphInput("comment", None),
+                ParagraphInput("comment", None),
             ),
         ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "comment",
-                    "default": {"type": "constant", "selector": [], "value": "Initial"},
-                },
-            ),
-            defaults={"comment": "Different"},
-        ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "paragraph",
-                    "output_variable_name": "comment",
-                    "default": {"type": "variable", "selector": ["node"], "value": ""},
-                },
-            ),
-        ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "choice",
-                    "option_source": {"type": "variable", "value": ["One"]},
-                },
-            ),
-        ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "choice",
-                    "option_source": {"type": "constant", "value": []},
-                },
-            ),
-        ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "choice",
-                    "option_source": {"type": "constant", "value": ["One", "One"]},
-                },
-            ),
-        ),
-        _custom_card_intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "choice",
-                    "option_source": {"type": "constant", "value": ["One"]},
-                },
-            ),
-            defaults={"choice": "Two"},
-        ),
-        _custom_card_intent(
-            inputs=({"type": "paragraph", "output_variable_name": "comment"},),
-            defaults={"orphan": "value"},
-        ),
-        _custom_card_intent(
-            inputs=(
-                {"type": "paragraph", "output_variable_name": "comment"},
-                {"type": "paragraph", "output_variable_name": "comment"},
-            ),
-        ),
-        _custom_card_intent(inputs=(), rendered_content=""),
-        _custom_card_intent(inputs=(), node_title=""),
+        _custom_card_intent(blocks=(MarkdownText(""),)),
+        _custom_card_intent(blocks=(), title=""),
     ],
+    ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown", "empty-title"),
 )
-def test_card_assessment_rejects_malformed_defaults_controls_and_presentation(mocker, intent) -> None:
+def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentation(
+    mocker,
+    intent: ResolvedForm,
+) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -968,10 +909,10 @@ def test_card_send_rejects_correlation_that_exceeds_provider_payload_limit_befor
     connector_client.assert_not_called()
 
 
-@pytest.mark.parametrize("button_style", ["primary", "accent", "default"])
-def test_card_renderer_omits_unsupported_teams_action_style(button_style: str) -> None:
+@pytest.mark.parametrize("button_style", [ButtonStyle.PRIMARY, ButtonStyle.ACCENT, ButtonStyle.DEFAULT])
+def test_card_renderer_omits_unsupported_teams_action_style(button_style: ButtonStyle) -> None:
     card, reason = ms_teams._adaptive_card(
-        _custom_card_intent(inputs=(), action_style=button_style),
+        _custom_card_intent(blocks=(), action_style=button_style),
         CorrelationToken("sanitized-correlation"),
     )
 
@@ -1025,7 +966,7 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
     send_to_conversation.assert_called_once()
     _, activity = send_to_conversation.call_args.args
     assert activity.type == "message"
-    assert activity.summary == "Rendered **content**"
+    assert activity.summary == "Approval"
     assert len(activity.attachments) == 1
     attachment = activity.attachments[0]
     assert attachment.content_type == "application/vnd.microsoft.card.adaptive"
@@ -1036,6 +977,7 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
         "TextBlock",
         "TextBlock",
         "Input.ChoiceSet",
+        "TextBlock",
     ]
     choice_input = content["body"][2]
     assert choice_input["id"] == "comment"

@@ -15,6 +15,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     AccountSubmissionActor,
     ApproverGrant,
@@ -27,8 +29,6 @@ from core.human_input_v2.approval import (
     FormAuthorizationAuditEvent,
     FormAuthorizationAuditEventType,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointConfiguration,
     RetryableSubmissionPersistenceError,
@@ -151,15 +151,13 @@ def _form(grant: ApproverGrant) -> HumanInputForm:
     return HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,
@@ -207,15 +205,13 @@ def _end_user_form(grant: ApproverGrant) -> HumanInputForm:
     return HumanInputForm(
         ref=_END_USER_FORM_REF,
         app_id=AppId("app-1"),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,

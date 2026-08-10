@@ -15,7 +15,16 @@ from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    SelectInput,
+)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_provider import (
@@ -32,7 +41,6 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageReference,
     MessageSendingError,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -135,41 +143,33 @@ def _adapter(
     return SlackIMProviderAdapter(credentials or _credentials())
 
 
-def _intent(*, input_type: str = "paragraph") -> NormalizedCardIntent:
-    input_definition: dict[str, object] = {
-        "type": input_type,
-        "output_variable_name": "comment",
-    }
+def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
-        input_definition["option_source"] = {"type": "constant", "value": ["One", "Two"]}
-    definition = FrozenFormDefinition(
-        form_content="Please decide",
-        inputs=(dict(input_definition),),
-        actions=(
-            FrozenFormAction("approve", "Approve", "primary"),
-            FrozenFormAction("reject", "Reject", "accent"),
+        input_block = SelectInput("comment", ("One", "Two"), "One")
+    elif input_type == "file":
+        input_block = FileInput("comment", (), (), ())
+    elif input_type == "file-list":
+        input_block = FileListInput("comment", (), (), (), 1)
+    else:
+        input_block = ParagraphInput("comment", "Initial")
+    return ResolvedForm(
+        title="Approval",
+        blocks=(MarkdownText("Rendered **content**"), input_block, MarkdownText("After input")),
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
         ),
-        default_values={"comment": "One" if input_type == "select" else "Initial"},
-        node_title="Approval",
-        display_in_ui=True,
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent("Rendered **content**", definition)
 
 
-def _intent_with_input(
-    input_definition: dict[str, object],
-    *,
-    defaults: dict[str, object] | None = None,
-) -> NormalizedCardIntent:
-    definition = FrozenFormDefinition(
-        form_content="Please decide",
-        inputs=(dict(input_definition),),
-        actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values=dict(defaults or {}),
-        node_title="Approval",
-        display_in_ui=True,
+def _intent_with_paragraph_default(default_value: str) -> ResolvedForm:
+    return ResolvedForm(
+        title="Approval",
+        blocks=(ParagraphInput("comment", default_value),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent("Rendered **content**", definition)
 
 
 def _signed_request(body: bytes, *, signature: str | None = None) -> WebhookRequest:
@@ -684,12 +684,16 @@ def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -
     assert set(client.post_calls[0]) == {"channel", "text", "blocks"}
     blocks = client.post_calls[0]["blocks"]
     assert isinstance(blocks, list)
-    assert client.post_calls[0]["text"] == intent.rendered_content
+    assert client.post_calls[0]["text"] == "Approval"
     assert "markdown_text" not in client.post_calls[0]
     markdown_blocks = [block for block in blocks if block["type"] == "markdown"]
     input_blocks = [block for block in blocks if block["type"] == "input"]
     action_blocks = [block for block in blocks if block["type"] == "actions"]
-    assert markdown_blocks == [{"type": "markdown", "text": intent.rendered_content}]
+    assert markdown_blocks == [
+        {"type": "markdown", "text": "Rendered **content**"},
+        {"type": "markdown", "text": "After input"},
+    ]
+    assert [block["type"] for block in blocks] == ["header", "markdown", "input", "markdown", "actions"]
     assert len(input_blocks) == 1
     assert input_blocks[0]["element"]["type"] == "radio_buttons"
     assert input_blocks[0]["element"]["initial_option"]["value"] == "One"
@@ -701,40 +705,12 @@ def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -
         assert action_value["action_id"] == element["action_id"]
 
 
-@pytest.mark.parametrize(
-    ("default_source", "resolved_defaults", "expected_default"),
-    [
-        ({"type": "constant", "selector": [], "value": "Local default"}, {}, "Local default"),
-        (
-            {"type": "variable", "selector": ["start", "comment"], "value": "Stale constant"},
-            {"comment": "Resolved default"},
-            "Resolved default",
-        ),
-        (
-            {"type": "constant", "selector": [], "value": "Shared default"},
-            {"comment": "Shared default"},
-            "Shared default",
-        ),
-    ],
-)
-def test_paragraph_effective_default_is_identical_in_assessment_and_rendering(
-    mocker,
-    default_source: dict[str, object],
-    resolved_defaults: dict[str, object],
-    expected_default: str,
-) -> None:
+def test_paragraph_uses_resolved_default_in_assessment_and_rendering(mocker) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
-    intent = _intent_with_input(
-        {
-            "type": "paragraph",
-            "output_variable_name": "comment",
-            "default": default_source,
-        },
-        defaults=resolved_defaults,
-    )
+    intent = _intent_with_paragraph_default("Resolved default")
 
     assessment = adapter.dynamic_card_messaging.assess(intent)
     result = adapter.dynamic_card_messaging.send_card(
@@ -748,46 +724,7 @@ def test_paragraph_effective_default_is_identical_in_assessment_and_rendering(
     blocks = client.post_calls[0]["blocks"]
     assert isinstance(blocks, list)
     input_element = next(block["element"] for block in blocks if block["type"] == "input")
-    assert input_element["initial_value"] == expected_default
-
-
-@pytest.mark.parametrize(
-    ("default_source", "resolved_defaults"),
-    [
-        ("not-a-source", {}),
-        ({"type": "unsupported", "value": "Default"}, {}),
-        ({"type": "constant", "selector": [], "value": 1}, {}),
-        ({"type": "variable", "selector": [], "value": "Stale"}, {"comment": "Resolved"}),
-        ({"type": "constant", "selector": [], "value": "Local"}, {"comment": "Conflicting"}),
-    ],
-)
-def test_paragraph_rejects_unrepresentable_default_source_before_provider_io(
-    mocker,
-    default_source: object,
-    resolved_defaults: dict[str, object],
-) -> None:
-    client = FakeWebClient()
-    adapter = _adapter(mocker, client)
-    intent = _intent_with_input(
-        {
-            "type": "paragraph",
-            "output_variable_name": "comment",
-            "default": default_source,
-        },
-        defaults=resolved_defaults,
-    )
-
-    assessment = adapter.dynamic_card_messaging.assess(intent)
-
-    assert assessment.representable is False
-    with pytest.raises(DynamicCardMessagingError):
-        adapter.dynamic_card_messaging.send_card(
-            ProviderUserId("user-1"),
-            intent,
-            CorrelationToken("correlation-1"),
-        )
-    assert client.auth_calls == 0
-    assert client.post_calls == []
+    assert input_element["initial_value"] == "Resolved default"
 
 
 def test_static_replacement_validates_reference_before_one_exact_mutation(mocker) -> None:

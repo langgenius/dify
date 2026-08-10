@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     ApproverGrant,
     CanonicalSubjectKey,
@@ -16,8 +18,6 @@ from core.human_input_v2.approval import (
     FormInactiveReason,
     FormRef,
     FormSnapshotIdentifierFactory,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     InvalidApproverGrantError,
     InvalidSelectedActionError,
@@ -65,23 +65,15 @@ class _SequentialIdentifierFactory(FormSnapshotIdentifierFactory):
         return DeliveryEndpointId(f"endpoint-{self._endpoint_number}")
 
 
-def _definition() -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content="Please approve {{ request }}",
-        inputs=(
-            {
-                "type": "paragraph",
-                "output_variable_name": "reason",
-                "default": {"type": "constant", "selector": [], "value": "ok"},
-            },
+def _resolved_form() -> ResolvedForm:
+    return ResolvedForm(
+        title="Review",
+        blocks=(MarkdownText("Please approve "), ParagraphInput("reason", "ok")),
+        user_actions=(
+            ResolvedFormAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
+            ResolvedFormAction(id="reject", title="Reject", button_style=ButtonStyle.DEFAULT),
         ),
-        actions=(
-            FrozenFormAction(id="approve", title="Approve", button_style="primary"),
-            FrozenFormAction(id="reject", title="Reject", button_style="default"),
-        ),
-        default_values={"reason": "ok", "metadata": {"labels": ["finance", "urgent"]}},
-        node_title="Review",
-        display_in_ui=True,
+        legacy_form_content="Please approve {{#$output.reason#}}",
     )
 
 
@@ -106,8 +98,8 @@ def _form(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) ->
     return HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
+        resolved_form=_resolved_form(),
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,
@@ -120,12 +112,12 @@ def _form(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) ->
     )
 
 
-def test_frozen_form_definition_prevents_attribute_reassignment() -> None:
-    definition = _definition()
+def test_resolved_form_prevents_attribute_reassignment() -> None:
+    resolved_form = _resolved_form()
 
-    assert definition.default_values == {"metadata": {"labels": ["finance", "urgent"]}, "reason": "ok"}
+    assert resolved_form.blocks[-1] == ParagraphInput("reason", "ok")
     with pytest.raises(FrozenInstanceError):
-        definition.node_title = "Changed"
+        resolved_form.title = "Changed"
 
 
 def test_grant_endpoint_token_upload_and_delivery_facts_remain_distinct_capabilities() -> None:
@@ -269,8 +261,8 @@ def test_resolved_plan_maps_deterministically_to_one_grant_per_approver_and_sepa
     creation = HumanInputForm.create_from_plan(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
+        resolved_form=_resolved_form(),
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,

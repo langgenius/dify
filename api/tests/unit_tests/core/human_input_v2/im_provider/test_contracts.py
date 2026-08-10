@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from typing import get_type_hints
 
 import pytest
 from pydantic import ValidationError
 
+from core.human_input_v2 import ResolvedForm, im_provider
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
+    IMDynamicCardMessaging,
     IMEventStream,
     IMStreamStartError,
     IMStreamStopError,
@@ -62,3 +65,9 @@ def test_event_stream_contract_exposes_owner_managed_lifecycle() -> None:
     assert not hasattr(IMEventStream, "run")
     assert issubclass(IMStreamStartError, Exception)
     assert issubclass(IMStreamStopError, Exception)
+
+
+def test_dynamic_card_contract_consumes_resolved_form_without_runtime_wrapper() -> None:
+    assert get_type_hints(IMDynamicCardMessaging.assess)["intent"] is ResolvedForm
+    assert get_type_hints(IMDynamicCardMessaging.send_card)["intent"] is ResolvedForm
+    assert not hasattr(im_provider, "NormalizedCardIntent")

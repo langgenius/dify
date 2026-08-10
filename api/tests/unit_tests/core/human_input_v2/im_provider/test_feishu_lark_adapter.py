@@ -8,7 +8,17 @@ from typing import Literal, overload
 import pytest
 
 from configs import dify_config
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
@@ -29,7 +39,6 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageReference,
     MessageSendingError,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -204,50 +213,39 @@ def _scope_page(
     }
 
 
-def _intent(input_type: str = "paragraph") -> NormalizedCardIntent:
-    input_definition: dict[str, object] = {
-        "type": input_type,
-        "output_variable_name": "comment",
-    }
+def _intent(input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
-        input_definition["option_source"] = {"type": "constant", "value": ["Approve", "Reject"]}
-    return NormalizedCardIntent(
-        rendered_content="Rendered **content**",
-        form_definition=FrozenFormDefinition(
-            form_content="Please decide",
-            inputs=(input_definition,),
-            actions=(
-                FrozenFormAction("approve", "Approve", "primary"),
-                FrozenFormAction("reject", "Reject", "default"),
-            ),
-            default_values={"comment": "Approve" if input_type == "select" else "Initial"},
-            node_title="Approval",
-            display_in_ui=True,
+        input_block: ResolvedFormContent = SelectInput("comment", ("Approve", "Reject"), "Approve")
+    elif input_type == "file":
+        input_block = FileInput("comment", (), (), ())
+    elif input_type == "file-list":
+        input_block = FileListInput("comment", (), (), (), 1)
+    else:
+        input_block = ParagraphInput("comment", "Initial")
+    return ResolvedForm(
+        title="Approval",
+        blocks=(MarkdownText("Rendered **content**"), input_block),
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.DEFAULT),
         ),
+        legacy_form_content="This value must not be rendered",
     )
 
 
-def _provider_confirmed_form_intent() -> NormalizedCardIntent:
-    return NormalizedCardIntent(
-        rendered_content="Synthetic **approval** content",
-        form_definition=FrozenFormDefinition(
-            form_content="Provide a decision and explanation",
-            inputs=(
-                {"type": "paragraph", "output_variable_name": "explanation"},
-                {
-                    "type": "select",
-                    "output_variable_name": "decision",
-                    "option_source": {"type": "constant", "value": ["allow", "deny"]},
-                },
-            ),
-            actions=(
-                FrozenFormAction("continue", "Continue", "primary"),
-                FrozenFormAction("stop", "Stop", "accent"),
-            ),
-            default_values={"explanation": "Synthetic default", "decision": "allow"},
-            node_title="Synthetic decision",
-            display_in_ui=True,
+def _provider_confirmed_form_intent() -> ResolvedForm:
+    return ResolvedForm(
+        title="Synthetic decision",
+        blocks=(
+            MarkdownText("Synthetic **approval** content"),
+            ParagraphInput("explanation", "Synthetic default"),
+            SelectInput("decision", ("allow", "deny"), "allow"),
         ),
+        user_actions=(
+            ResolvedFormAction("continue", "Continue", ButtonStyle.PRIMARY),
+            ResolvedFormAction("stop", "Stop", ButtonStyle.ACCENT),
+        ),
+        legacy_form_content="This value must not be rendered",
     )
 
 
@@ -1013,6 +1011,34 @@ def test_file_controls_make_whole_card_unrepresentable_without_mutation(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
+def test_markdown_after_input_makes_whole_card_unrepresentable_without_reordering(
+    monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+) -> None:
+    gateway = FakeSDKGateway()
+    adapter = _adapter(monkeypatch, provider, gateway)
+    intent = ResolvedForm(
+        title="Approval",
+        blocks=(ParagraphInput("comment", None), MarkdownText("After input")),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="This value must not be rendered",
+    )
+
+    assessment = adapter.dynamic_card_messaging.assess(intent)
+
+    assert assessment.representable is False
+    assert assessment.reason is not None
+    assert "Markdown after form inputs" in assessment.reason
+    with pytest.raises(DynamicCardMessagingError):
+        adapter.dynamic_card_messaging.send_card(
+            ProviderUserId("union_sanitized_user"),
+            intent,
+            CorrelationToken("opaque-correlation-token"),
+        )
+    assert gateway.calls == []
+
+
+@pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 def test_card_renderer_matches_provider_confirmed_form_contract(
     monkeypatch: pytest.MonkeyPatch,
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
@@ -1044,18 +1070,6 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
             "elements": [
                 {"tag": "markdown", "content": "Synthetic **approval** content"},
                 {
-                    "tag": "div",
-                    "fields": [
-                        {
-                            "is_short": False,
-                            "text": {
-                                "tag": "plain_text",
-                                "content": "Provide a decision and explanation",
-                            },
-                        }
-                    ],
-                },
-                {
                     "tag": "form",
                     "name": "dify_human_input",
                     "elements": [
@@ -1066,7 +1080,7 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
                             "label": {"tag": "plain_text", "content": "explanation"},
                             "placeholder": {
                                 "tag": "plain_text",
-                                "content": "Provide a decision and explanation",
+                                "content": "explanation",
                             },
                             "default_value": "Synthetic default",
                         },
@@ -1076,7 +1090,7 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
                             "required": True,
                             "placeholder": {
                                 "tag": "plain_text",
-                                "content": "Provide a decision and explanation",
+                                "content": "decision",
                             },
                             "options": [
                                 {"text": {"tag": "plain_text", "content": "allow"}, "value": "allow"},

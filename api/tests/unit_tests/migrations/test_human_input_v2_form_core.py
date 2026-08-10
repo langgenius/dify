@@ -11,6 +11,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.orm import Session
 
+from core.human_input import ButtonStyle
 from core.human_input_v2.approval import RecipientSourceKind
 from core.human_input_v2.entities import (
     EmailProviderType,
@@ -18,7 +19,6 @@ from core.human_input_v2.entities import (
     HumanInputV2FormKind,
     HumanInputV2FormStatus,
 )
-from core.workflow.nodes.human_input.entities import UserActionConfig
 from models.human_input_v2 import (
     FormApproverGrantMatchedSource,
     FormApproverGrantMatchedSources,
@@ -32,6 +32,8 @@ from models.human_input_v2 import (
     HumanInputV2FormUploadFile,
     HumanInputV2FormUploadToken,
     ResendEmailProviderEncryptedCredentials,
+    ResolvedFormAction,
+    ResolvedFormMarkdownText,
 )
 
 _MIGRATION_PATH = (
@@ -130,9 +132,9 @@ def test_upgrade_persists_and_loads_strict_structured_json_values() -> None:
             tenant_id="workspace-1",
             app_id="app-1",
             form_definition=HumanInputV2FormDefinition(
-                form_content="Approve",
-                user_actions=(UserActionConfig(id="approve", title="Approve"),),
-                default_values={"nested": {"items": [1, 2]}},
+                title="Review",
+                blocks=(ResolvedFormMarkdownText(text="Approve"),),
+                user_actions=(ResolvedFormAction(id="approve", title="Approve", button_style=ButtonStyle.DEFAULT),),
             ),
             rendered_content="Rendered",
             node_timeout_at=_NOW,
@@ -170,7 +172,11 @@ def test_upgrade_persists_and_loads_strict_structured_json_values() -> None:
         assert stored_provider.encrypted_credentials == ResendEmailProviderEncryptedCredentials(
             encrypted_api_key="ciphertext"
         )
-        assert stored_form.form_definition.default_values == {"nested": {"items": [1, 2]}}
+        assert stored_form.form_definition == HumanInputV2FormDefinition(
+            title="Review",
+            blocks=(ResolvedFormMarkdownText(text="Approve"),),
+            user_actions=(ResolvedFormAction(id="approve", title="Approve", button_style=ButtonStyle.DEFAULT),),
+        )
         assert stored_grant.matched_sources.sources[0].kind is RecipientSourceKind.ONE_TIME_EMAIL
 
 

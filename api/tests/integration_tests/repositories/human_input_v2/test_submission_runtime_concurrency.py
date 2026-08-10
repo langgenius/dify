@@ -18,6 +18,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     ApproverGrant,
     AuthorizationContext,
@@ -29,8 +31,6 @@ from core.human_input_v2.approval import (
     EmailEndpointConfiguration,
     FormAuthorizationAuditEvent,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointConfiguration,
     SubjectSnapshot,
@@ -276,15 +276,13 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
     form = HumanInputForm(
         ref=form_ref,
         app_id=AppId(str(uuidv7())),
-        definition=FrozenFormDefinition(
-            form_content="Approve",
-            inputs=(),
-            actions=(FrozenFormAction("approve", "Approve", "primary"),),
-            default_values={},
-            node_title="Review",
-            display_in_ui=True,
+        resolved_form=ResolvedForm(
+            title="Review",
+            blocks=(MarkdownText("Approve"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="Approve",
         ),
-        rendered_content="Approve",
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(now.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(now.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,

@@ -9,7 +9,6 @@ import hashlib
 import hmac
 import json
 import logging
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.message import Message
@@ -36,8 +35,10 @@ from botframework.connector.auth import (
     SimpleCredentialProvider,
 )
 from msrest.exceptions import HttpOperationError
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
@@ -62,7 +63,6 @@ from core.human_input_v2.im_provider import (
     MessageSendingError,
     MessageSendingResult,
     MSTeamsIMIntegrationCredentials,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -83,7 +83,7 @@ _BASELINE_GRAPH_ROLES = frozenset(("User.Read.All",))
 _PUBLIC_TEAMS_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
 _ADAPTIVE_CARD_CONTENT_TYPE = "application/vnd.microsoft.card.adaptive"
 _MAX_ADAPTIVE_CARD_SIZE_BYTES = 28 * 1024
-_SUPPORTED_ACTION_STYLES = frozenset(("default", "primary", "accent"))
+_SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
 _JSON_CONTENT_TYPE = "application/json"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
 _MESSAGE_LOCATOR_DIGEST_CONTEXT = b"dify-ms-teams-message-reference-v1\0"
@@ -372,114 +372,55 @@ def _mutation_connector(credentials: MicrosoftAppCredentials, base_url: str) -> 
     return client
 
 
-def _effective_input_default(
-    input_definition: Mapping[str, JsonValue],
-    defaults: Mapping[str, JsonValue],
-) -> tuple[str | None, str | None]:
-    input_name = input_definition.get("output_variable_name")
-    input_type = input_definition.get("type")
-    if not isinstance(input_name, str):
-        return None, "Microsoft Teams cannot preserve one card input default."
-
-    resolved_default = defaults.get(input_name)
-    if input_type != "paragraph" or input_definition.get("default") is None:
-        if resolved_default is not None and not isinstance(resolved_default, str):
-            return None, "Microsoft Teams cannot preserve one card input default."
-        return resolved_default, None
-
-    default_source = input_definition.get("default")
-    if not isinstance(default_source, Mapping) or set(default_source) != {"type", "selector", "value"}:
-        return None, "Microsoft Teams cannot preserve one card input default."
-    selector = default_source.get("selector")
-    if (
-        not isinstance(selector, Sequence)
-        or isinstance(selector, (str, bytes, bytearray))
-        or any(not isinstance(part, str) or not part for part in selector)
-    ):
-        return None, "Microsoft Teams cannot preserve one card input default."
-    source_type = default_source.get("type")
-    source_value = default_source.get("value")
-    if source_type == "constant":
-        if not isinstance(source_value, str):
-            return None, "Microsoft Teams cannot preserve one card input default."
-        if resolved_default is not None and resolved_default != source_value:
-            return None, "Microsoft Teams cannot preserve one card input default."
-        return source_value, None
-    if source_type == "variable":
-        if len(selector) < 2 or not isinstance(source_value, str):
-            return None, "Microsoft Teams cannot preserve one card input default."
-        if resolved_default is not None and not isinstance(resolved_default, str):
-            return None, "Microsoft Teams cannot preserve one card input default."
-        return resolved_default, None
-    return None, "Microsoft Teams cannot preserve one card input default."
-
-
-def _adaptive_input(
-    input_definition: Mapping[str, JsonValue],
-    defaults: Mapping[str, JsonValue],
-) -> tuple[_AdaptiveTextInput | _AdaptiveChoiceInput | None, str | None]:
-    input_type = input_definition.get("type")
-    input_name = input_definition.get("output_variable_name")
-    if input_type in {"file", "file-list"}:
-        return None, "Microsoft Teams cards cannot represent file inputs."
-    if input_type not in {"paragraph", "select"} or not isinstance(input_name, str) or not input_name:
-        return None, "Microsoft Teams cannot preserve one card input definition."
-
-    default, default_error = _effective_input_default(input_definition, defaults)
-    if default_error is not None:
-        return None, default_error
-    if input_type == "paragraph":
-        return _AdaptiveTextInput(id=input_name, label=input_name, value=default), None
-
-    option_source = input_definition.get("option_source")
-    if not isinstance(option_source, Mapping) or option_source.get("type") != "constant":
-        return None, "Microsoft Teams cannot preserve a select input with unresolved options."
-    raw_options = option_source.get("value")
-    if not isinstance(raw_options, Sequence) or isinstance(raw_options, (str, bytes, bytearray)) or not raw_options:
-        return None, "Microsoft Teams cannot preserve one select input's options."
-    options: list[str] = []
-    for option in raw_options:
-        if not isinstance(option, str) or not option:
-            return None, "Microsoft Teams cannot preserve one select input's options."
-        options.append(option)
-    if len(options) != len(set(options)):
-        return None, "Microsoft Teams cannot preserve duplicate select options."
-    if default is not None and default not in options:
-        return None, "Microsoft Teams cannot preserve one select input default."
-    choices = tuple(_AdaptiveChoice(title=option, value=option) for option in options)
-    return _AdaptiveChoiceInput(id=input_name, label=input_name, choices=choices, value=default), None
-
-
 def _adaptive_card(
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
     correlation_token: CorrelationToken,
 ) -> tuple[_AdaptiveCard | None, str | None]:
-    definition = intent.form_definition
-    if not intent.rendered_content:
-        return None, "Microsoft Teams cannot preserve empty rendered card content."
-    if definition.node_title is not None and not definition.node_title:
+    if not intent.blocks and not intent.user_actions:
+        return None, "Microsoft Teams cannot preserve an empty card."
+    if intent.title is not None and not intent.title:
         return None, "Microsoft Teams cannot preserve an empty card title."
 
     body: list[_AdaptiveCardBody] = []
-    if definition.node_title is not None:
-        body.append(_AdaptiveTextBlock(text=definition.node_title, size="Medium", weight="Bolder"))
-    body.append(_AdaptiveTextBlock(text=intent.rendered_content))
+    if intent.title is not None:
+        body.append(_AdaptiveTextBlock(text=intent.title, size="Medium", weight="Bolder"))
 
     input_names: set[str] = set()
-    for input_definition in definition.inputs:
-        adaptive_input, input_error = _adaptive_input(input_definition, definition.default_values)
-        if input_error is not None:
-            return None, input_error
-        assert adaptive_input is not None
-        if adaptive_input.id in input_names:
+    for block in intent.blocks:
+        match block:
+            case MarkdownText(text=text):
+                if not text:
+                    return None, "Microsoft Teams cannot preserve an empty Markdown block."
+                body.append(_AdaptiveTextBlock(text=text))
+                continue
+            case FileInput() | FileListInput():
+                return None, "Microsoft Teams cards cannot represent file inputs."
+            case ParagraphInput(output_variable_name=input_name, default_value=default_value):
+                adaptive_input: _AdaptiveTextInput | _AdaptiveChoiceInput = _AdaptiveTextInput(
+                    id=input_name,
+                    label=input_name,
+                    value=default_value,
+                )
+            case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                if not options or any(not option for option in options):
+                    return None, "Microsoft Teams cannot preserve one select input's options."
+                if len(options) != len(set(options)):
+                    return None, "Microsoft Teams cannot preserve duplicate select options."
+                if default_value is not None and default_value not in options:
+                    return None, "Microsoft Teams cannot preserve one select input default."
+                adaptive_input = _AdaptiveChoiceInput(
+                    id=input_name,
+                    label=input_name,
+                    choices=tuple(_AdaptiveChoice(title=option, value=option) for option in options),
+                    value=default_value,
+                )
+        if input_name in input_names:
             return None, "Microsoft Teams cannot preserve duplicate card input identifiers."
-        input_names.add(adaptive_input.id)
+        input_names.add(input_name)
         body.append(adaptive_input)
-    if not definition.default_values.keys() <= input_names:
-        return None, "Microsoft Teams cannot preserve a default without a matching card input."
 
     actions: list[_AdaptiveSubmitAction] = []
-    for action in definition.actions:
+    for action in intent.user_actions:
         if action.button_style not in _SUPPORTED_ACTION_STYLES:
             return None, "Microsoft Teams cannot preserve one card action style."
         # Teams does not support positive or destructive Adaptive Card action styling.
@@ -502,6 +443,15 @@ def _adaptive_card(
     if len(serialized_card) > _MAX_ADAPTIVE_CARD_SIZE_BYTES:
         return None, "Microsoft Teams cannot preserve a card beyond the Provider payload limit."
     return card, None
+
+
+def _card_summary(intent: ResolvedForm) -> str:
+    if intent.title:
+        return intent.title
+    for block in intent.blocks:
+        if isinstance(block, MarkdownText) and block.text.strip():
+            return block.text
+    return "Human input form"
 
 
 class _MSTeamsDirectory(IMDirectory):
@@ -616,7 +566,7 @@ class _MSTeamsMessaging(IMMessaging):
 
 class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
     @override
-    def assess(self, intent: NormalizedCardIntent) -> CardAssessment:
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
         _, reason = _adaptive_card(intent, CorrelationToken(""))
         if reason is not None:
             return CardAssessment(False, reason)
@@ -626,7 +576,7 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
     def send_card(
         self,
         provider_user_id: ProviderUserId,
-        intent: NormalizedCardIntent,
+        intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
         card, reason = _adaptive_card(intent, correlation_token)
@@ -636,7 +586,7 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
         content = card.model_dump(mode="json", by_alias=True, exclude_none=True)
         activity = Activity(
             type="message",
-            summary=intent.rendered_content,
+            summary=_card_summary(intent),
             attachments=[Attachment(content_type=_ADAPTIVE_CARD_CONTENT_TYPE, content=content)],
         )
         return self._send_activity(provider_user_id, activity, message_kind="dynamic_card")

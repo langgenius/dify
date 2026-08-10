@@ -1,11 +1,20 @@
 import enum
+import typing
 from collections.abc import Sequence
-from typing import Annotated, Final, Literal
+from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, field_validator
 
 from core.human_input_v2.entities import IMProvider
-from core.workflow.nodes.human_input.entities import FormInputConfig, TimeoutUnit, UserActionConfig
+from core.workflow.nodes.human_input.entities import (
+    FormInputConfig,
+    TimeoutUnit,
+    UserActionConfig,
+    extract_output_variable_names,
+    validate_unique_action_ids,
+    validate_unique_input_names,
+    validate_unique_output_variable_slots,
+)
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 
@@ -62,7 +71,7 @@ class DebugModeConfig(BaseModel):
     channels: Sequence[Channel]
 
 
-HUMAN_INPUT_V2_VERSION: Final = "2"
+HUMAN_INPUT_V2_VERSION: typing.Final = "2"
 
 
 def _version_validator(version: str) -> str:
@@ -79,6 +88,7 @@ class HumanInputNodeData(BaseNodeData):
     # The linter suppression below is used to
     # ensure that we could mark node data as frozen.
     type: NodeType = BuiltinNodeTypes.HUMAN_INPUT  # pyrefly: ignore[bad-override]
+    title: str = ""  # pyrefly: ignore[bad-override]
     version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION  # pyrefly: ignore[bad-override]
 
     recipients_spec: list[RecipientConfig]
@@ -91,3 +101,24 @@ class HumanInputNodeData(BaseNodeData):
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     timeout: int = 36
     timeout_unit: TimeoutUnit = TimeoutUnit.HOUR
+
+    @field_validator("form_content")
+    @classmethod
+    def _validate_form_content(cls, form_content: str) -> str:
+        validate_unique_output_variable_slots(form_content)
+        return form_content
+
+    @field_validator("inputs")
+    @classmethod
+    def _validate_inputs(cls, inputs: list[FormInputConfig]) -> list[FormInputConfig]:
+        validate_unique_input_names(inputs)
+        return inputs
+
+    @field_validator("user_actions")
+    @classmethod
+    def _validate_user_actions(cls, user_actions: list[UserActionConfig]) -> list[UserActionConfig]:
+        validate_unique_action_ids(user_actions)
+        return user_actions
+
+    def output_variable_names(self) -> tuple[str, ...]:
+        return extract_output_variable_names(self.form_content)

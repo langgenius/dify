@@ -10,6 +10,8 @@ from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.approval import (
     CanonicalSubjectKey,
     DeliveryAttempt,
@@ -21,8 +23,6 @@ from core.human_input_v2.approval import (
     FormCreation,
     FormRef,
     FormSnapshotIdentifierFactory,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     MatchedRecipientSource,
     ProtectedRenderedEmailRequest,
@@ -106,14 +106,12 @@ def repository_context(
     return SQLAlchemyFormRepository(session_maker), session_maker
 
 
-def _definition() -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content="Approve",
-        inputs=(),
-        actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values={},
-        node_title="Review",
-        display_in_ui=True,
+def _resolved_form() -> ResolvedForm:
+    return ResolvedForm(
+        title="Review",
+        blocks=(MarkdownText("Approve"),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="Approve",
     )
 
 
@@ -145,8 +143,8 @@ def _creation(*, duplicate_endpoint: bool = False) -> FormCreation:
     return HumanInputForm.create_from_plan(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
+        resolved_form=_resolved_form(),
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,
@@ -423,6 +421,8 @@ def test_endpoint_token_read_projection_does_not_return_a_grant_or_actor(reposit
 
     assert projection is not None
     assert projection.endpoint_ref == endpoint.ref
+    assert projection.resolved_form == _resolved_form()
+    assert projection.display_in_ui is True
     assert not hasattr(projection, "grant")
     assert not hasattr(projection, "actor")
     assert (

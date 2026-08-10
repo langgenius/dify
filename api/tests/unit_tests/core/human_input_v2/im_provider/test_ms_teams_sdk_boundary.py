@@ -27,9 +27,18 @@ from botframework.connector.auth import (
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.authentication import BasicTokenAuthentication
-from pydantic import JsonValue
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import ms_teams
 from core.human_input_v2.im_provider import (
@@ -46,7 +55,6 @@ from core.human_input_v2.im_provider import (
     MessageReference,
     MessageSendingError,
     MSTeamsIMIntegrationCredentials,
-    NormalizedCardIntent,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
@@ -316,34 +324,26 @@ def _adapter(
 def _card_intent(
     *,
     input_type: str = "select",
-    rendered_content: str = "Sanitized **rendered** content",
-    action_style: str = "primary",
-) -> NormalizedCardIntent:
-    input_definition: dict[str, JsonValue] = {
-        "type": input_type,
-        "output_variable_name": "decision",
-    }
-    default_value = "Sanitized initial value"
+    markdown_text: str = "Sanitized **rendered** content",
+    action_style: ButtonStyle = ButtonStyle.PRIMARY,
+) -> ResolvedForm:
     if input_type == "select":
-        selector: list[JsonValue] = []
-        input_definition["option_source"] = {
-            "type": "constant",
-            "selector": selector,
-            "value": ["Approve", "Reject"],
-        }
-        default_value = "Approve"
-    definition = FrozenFormDefinition(
-        form_content="Sanitized form content",
-        inputs=(input_definition,),
-        actions=(
-            FrozenFormAction("approve", "Approve", action_style),
-            FrozenFormAction("reject", "Reject", "accent"),
+        input_block: ResolvedFormContent = SelectInput("decision", ("Approve", "Reject"), "Approve")
+    elif input_type == "file":
+        input_block = FileInput("decision", (), (), ())
+    elif input_type == "file-list":
+        input_block = FileListInput("decision", (), (), (), 1)
+    else:
+        input_block = ParagraphInput("decision", "Sanitized initial value")
+    return ResolvedForm(
+        title="Sanitized title",
+        blocks=(MarkdownText(markdown_text), input_block, MarkdownText("Sanitized trailing content")),
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", action_style),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
         ),
-        default_values={"decision": default_value},
-        node_title="Sanitized title",
-        display_in_ui=True,
+        legacy_form_content="This value must not be rendered",
     )
-    return NormalizedCardIntent(rendered_content, definition)
 
 
 def _activity_body(
@@ -493,7 +493,7 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     assert text_body["text"] == "Sanitized **text**"
     card_body = send_requests[1].json_body()
     assert card_body["type"] == "message"
-    assert card_body["summary"] == "Sanitized **rendered** content"
+    assert card_body["summary"] == "Sanitized title"
     attachments = card_body["attachments"]
     assert isinstance(attachments, list)
     attachment = attachments[0]
@@ -504,7 +504,12 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
     card_elements = content["body"]
     assert isinstance(card_elements, list)
     assert all(isinstance(element, dict) for element in card_elements)
-    assert [element["type"] for element in card_elements] == ["TextBlock", "TextBlock", "Input.ChoiceSet"]
+    assert [element["type"] for element in card_elements] == [
+        "TextBlock",
+        "TextBlock",
+        "Input.ChoiceSet",
+        "TextBlock",
+    ]
     assert content["actions"] == [
         {
             "type": "Action.Submit",
@@ -676,32 +681,20 @@ def test_graph_boundary_never_publishes_partial_directory(
     [
         _card_intent(input_type="file"),
         _card_intent(input_type="file-list"),
-        _card_intent(input_type="unsupported"),
-        _card_intent(action_style="ghost"),
-        _card_intent(rendered_content="x" * 30_000),
-        NormalizedCardIntent(
-            "Sanitized content",
-            FrozenFormDefinition(
-                form_content="Sanitized form content",
-                inputs=(
-                    {
-                        "type": "select",
-                        "output_variable_name": "decision",
-                        "option_source": {"type": "constant", "selector": [], "value": ["One", "One"]},
-                    },
-                ),
-                actions=(FrozenFormAction("approve", "Approve", "primary"),),
-                default_values={"decision": "One"},
-                node_title="Sanitized title",
-                display_in_ui=True,
-            ),
+        _card_intent(action_style=ButtonStyle.GHOST),
+        _card_intent(markdown_text="x" * 30_000),
+        ResolvedForm(
+            title="Sanitized title",
+            blocks=(SelectInput("decision", ("One", "One"), "One"),),
+            user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+            legacy_form_content="This value must not be rendered",
         ),
     ],
-    ids=("file", "file-list", "unsupported", "action-style", "size", "duplicate-options"),
+    ids=("file", "file-list", "action-style", "size", "duplicate-options"),
 )
 def test_complete_card_assessment_rejects_unrepresentable_intent_without_sdk_io(
     monkeypatch: pytest.MonkeyPatch,
-    intent: NormalizedCardIntent,
+    intent: ResolvedForm,
 ) -> None:
     connector_calls = 0
 

@@ -4,6 +4,16 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    FileInput,
+    FileListInput,
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    SelectInput,
+)
 from core.human_input_v2.approval import (
     ApprovalSubject,
     ApproverGrant,
@@ -18,8 +28,6 @@ from core.human_input_v2.approval import (
     EndpointAccessCapability,
     EndUserApprovalSubject,
     FormRef,
-    FrozenFormAction,
-    FrozenFormDefinition,
     HumanInputForm,
     IMEndpointPlan,
     MatchedRecipientSource,
@@ -58,6 +66,7 @@ from core.human_input_v2.shared import (
     UtcTimestamp,
     WorkspaceId,
 )
+from graphon.file.enums import FileTransferMethod, FileType
 from models.human_input_v2 import HumanInputV2FormApproverGrant, HumanInputV2FormDeliveryEndpoint
 from repositories.human_input_v2.form.mappers import (
     delivery_attempt_from_record,
@@ -80,20 +89,29 @@ _NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 
 
-def _definition() -> FrozenFormDefinition:
-    return FrozenFormDefinition(
-        form_content="Approve",
-        inputs=(
-            {
-                "type": "paragraph",
-                "output_variable_name": "reason",
-                "default": {"type": "constant", "selector": [], "value": "default"},
-            },
+def _resolved_form() -> ResolvedForm:
+    return ResolvedForm(
+        title="Review",
+        blocks=(
+            MarkdownText("Review "),
+            ParagraphInput("reason", "default"),
+            SelectInput("decision", ("approve", "reject"), "approve"),
+            FileInput(
+                "attachment",
+                (FileType.DOCUMENT, FileType.CUSTOM),
+                ("pdf", "md"),
+                (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL),
+            ),
+            FileListInput(
+                "evidence",
+                (FileType.IMAGE,),
+                (),
+                (FileTransferMethod.LOCAL_FILE,),
+                3,
+            ),
         ),
-        actions=(FrozenFormAction("approve", "Approve", "primary"),),
-        default_values={"reason": "default", "nested": {"items": [1, 2]}},
-        node_title="Review",
-        display_in_ui=True,
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="Review {{#$output.reason#}}",
     )
 
 
@@ -159,8 +177,8 @@ def _form() -> HumanInputForm:
     return HumanInputForm(
         ref=_FORM_REF,
         app_id=AppId("app-1"),
-        definition=_definition(),
-        rendered_content="Rendered",
+        resolved_form=_resolved_form(),
+        display_in_ui=True,
         node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
         global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
         kind=HumanInputV2FormKind.RUNTIME,
@@ -188,10 +206,21 @@ def test_form_grant_and_endpoint_round_trip() -> None:
     assert restored_form == form
     assert restored_grant == grant
     assert restored_endpoint == endpoint
-    assert restored_form.definition.default_values == {
-        "nested": {"items": [1, 2]},
-        "reason": "default",
-    }
+    assert restored_form.resolved_form == _resolved_form()
+    assert restored_form.resolved_form.blocks[3].allowed_file_types == (FileType.DOCUMENT, FileType.CUSTOM)
+    assert restored_form.resolved_form.blocks[3].allowed_file_upload_methods == (
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.REMOTE_URL,
+    )
+    assert form_record.form_definition.user_actions[0].button_style is ButtonStyle.PRIMARY
+    assert form_record.rendered_content == _resolved_form().legacy_form_content
+    assert [block.type for block in form_record.form_definition.blocks] == [
+        "markdown",
+        "paragraph",
+        "select",
+        "file",
+        "file-list",
+    ]
     assert restored_grant.matched_sources == grant.matched_sources
 
 

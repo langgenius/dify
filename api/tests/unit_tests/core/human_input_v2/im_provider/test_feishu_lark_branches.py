@@ -10,7 +10,15 @@ from typing import cast, get_type_hints
 
 import pytest
 
-from core.human_input_v2.approval import FrozenFormAction, FrozenFormDefinition
+from core.human_input import ButtonStyle
+from core.human_input_v2 import (
+    MarkdownText,
+    ParagraphInput,
+    ResolvedForm,
+    ResolvedFormAction,
+    ResolvedFormContent,
+    SelectInput,
+)
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as adapters_package
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
@@ -25,7 +33,6 @@ from core.human_input_v2.im_provider import (
     IMStreamStartError,
     IMStreamStopError,
     MessageReference,
-    NormalizedCardIntent,
     WebhookRequest,
 )
 
@@ -102,22 +109,15 @@ def _credentials() -> FeishuIMIntegrationCredentials:
 
 def _intent(
     *,
-    rendered_content: str = "Rendered content",
-    inputs: tuple[dict[str, object], ...] = (),
-    default_values: dict[str, object] | None = None,
-    actions: tuple[FrozenFormAction, ...] = (),
-    node_title: str | None = None,
-) -> NormalizedCardIntent:
-    return NormalizedCardIntent(
-        rendered_content=rendered_content,
-        form_definition=FrozenFormDefinition(
-            form_content="Sanitized form",
-            inputs=inputs,
-            actions=actions,
-            default_values=default_values or {},
-            node_title=node_title,
-            display_in_ui=True,
-        ),
+    blocks: tuple[ResolvedFormContent, ...] = (MarkdownText("Rendered content"),),
+    actions: tuple[ResolvedFormAction, ...] = (),
+    title: str | None = None,
+) -> ResolvedForm:
+    return ResolvedForm(
+        title=title,
+        blocks=blocks,
+        user_actions=actions,
+        legacy_form_content="This value must not be rendered",
     )
 
 
@@ -246,67 +246,28 @@ def test_signature_accepts_timezone_aware_received_at() -> None:
 @pytest.mark.parametrize(
     "intent",
     [
-        _intent(rendered_content=""),
-        _intent(inputs=({"type": "unknown", "output_variable_name": "value"},)),
+        _intent(blocks=(), actions=()),
+        _intent(blocks=(MarkdownText(""),)),
+        _intent(blocks=(SelectInput("decision", ("Approve", ""), "Approve"),)),
+        _intent(blocks=(SelectInput("decision", ("Approve", "Approve"), "Approve"),)),
         _intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "decision",
-                    "option_source": {"type": "constant", "value": ["Approve", ""]},
-                },
+            blocks=(
+                ParagraphInput("duplicate", None),
+                ParagraphInput("duplicate", None),
             )
         ),
         _intent(
-            inputs=(
-                {
-                    "type": "select",
-                    "output_variable_name": "decision",
-                    "option_source": {"type": "constant", "value": ["Approve"]},
-                },
-            ),
-            default_values={"decision": "Reject"},
+            blocks=(ParagraphInput("comment", None), MarkdownText("After input")),
         ),
-        _intent(
-            inputs=(
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-                {"type": "paragraph", "output_variable_name": "duplicate"},
-            )
-        ),
-        _intent(
-            inputs=({"type": "paragraph", "output_variable_name": "comment"},),
-            default_values={"comment": ["not", "text"]},
-        ),
-        _intent(default_values={"missing": "value"}),
-        _intent(actions=(FrozenFormAction("approve", "Approve", "unsupported"),)),
+        _intent(actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.GHOST),)),
     ],
 )
-def test_card_assessment_rejects_every_lossy_shape(intent: NormalizedCardIntent) -> None:
+def test_card_assessment_rejects_every_lossy_shape(intent: ResolvedForm) -> None:
     assert adapter_module._card_unrepresentable_reason(intent, IMProvider.FEISHU) is not None
 
 
-def test_paragraph_sources_and_headerless_card_rendering_cover_semantic_branches() -> None:
-    conflicting = adapter_module._ParagraphInput.model_validate(
-        {
-            "type": "paragraph",
-            "output_variable_name": "comment",
-            "default": {"type": "constant", "selector": [], "value": "Expected"},
-        }
-    )
-    with pytest.raises(ValueError, match="conflicting"):
-        adapter_module._paragraph_default(conflicting, {"comment": "Other"})
-
-    invalid_selector = adapter_module._ParagraphInput.model_validate(
-        {
-            "type": "paragraph",
-            "output_variable_name": "comment",
-            "default": {"type": "variable", "selector": ["short"], "value": "Ignored"},
-        }
-    )
-    with pytest.raises(ValueError, match="selector"):
-        adapter_module._paragraph_default(invalid_selector, {})
-
-    intent = _intent(inputs=({"type": "paragraph", "output_variable_name": "comment"},))
+def test_headerless_resolved_paragraph_renders_without_default() -> None:
+    intent = _intent(blocks=(ParagraphInput("comment", None),))
     card = adapter_module._render_dynamic_card(intent, CorrelationToken("opaque-correlation-token"))
     assert "header" not in card
     assert "default_value" not in card["body"]["elements"][-1]["elements"][0]
