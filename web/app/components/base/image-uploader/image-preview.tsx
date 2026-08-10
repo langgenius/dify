@@ -188,7 +188,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({ url, title, onCancel, onPrev, onN
           data-testid="image-preview-container"
           tabIndex={-1}
           className="flex size-full items-center justify-center"
-          onClick={(e) => e.stopPropagation()}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
