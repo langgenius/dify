@@ -4,8 +4,7 @@ import type { ReactElement } from 'react'
  * Integration test: Education Verification Flow
  *
  * Tests the education plan verification flow in PlanComp:
- *   PlanComp → handleVerify → useEducationVerify → router.push → education-apply
- *   PlanComp → handleVerify → error → show VerifyStateModal
+ *   PlanComp → handleVerify → show temporary pause notice
  *
  * Also covers education button visibility based on context flags.
  */
@@ -102,14 +101,16 @@ vi.mock('@/app/education-apply/verify-state-modal', () => ({
   }: {
     isShow: boolean
     title?: string
-    content?: string
+    content?: React.ReactNode
     email?: string
     showLink?: boolean
   }) =>
     isShow ? (
       <div data-testid="verify-state-modal">
         {title && <span data-testid="modal-title">{title}</span>}
-        {content && <span data-testid="modal-content">{content}</span>}
+        {content !== undefined && content !== null ? (
+          <span data-testid="modal-content">{content}</span>
+        ) : null}
         {email && <span data-testid="modal-email">{email}</span>}
         {showLink && <span data-testid="modal-show-link">link</span>}
       </div>
@@ -208,67 +209,9 @@ describe('Education Verification Flow', () => {
     })
   })
 
-  // ─── 2. Successful Verification Flow ────────────────────────────────────
-  describe('Successful verification flow', () => {
-    it('should let non-manager members start education verification', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'edu-token-123' })
-      setupContexts({}, { enableEducationPlan: true }, { isCurrentWorkspaceManager: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      const verifyButton = screen.getByText(/toVerified/i)
-      await user.click(verifyButton)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledTimes(1)
-        expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
-      })
-    })
-  })
-
-  // ─── 3. Failed Verification Flow ────────────────────────────────────────
-  describe('Failed verification flow', () => {
-    it('should show VerifyStateModal with rejection info on error', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('Verification failed'))
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      // Modal should not be visible initially
-      expect(screen.queryByTestId('verify-state-modal')).not.toBeInTheDocument()
-
-      const verifyButton = screen.getByText(/toVerified/i)
-      await user.click(verifyButton)
-
-      // Modal should appear after verification failure
-      await waitFor(() => {
-        expect(screen.getByTestId('verify-state-modal')).toBeInTheDocument()
-      })
-
-      // Modal should display rejection title and content
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(/rejectTitle/i)
-      expect(screen.getByTestId('modal-content')).toHaveTextContent(/rejectContent/i)
-    })
-
-    it('should show email and link in VerifyStateModal', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('fail'))
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-email')).toHaveTextContent('student@university.edu')
-        expect(screen.getByTestId('modal-show-link')).toBeInTheDocument()
-      })
-    })
-
-    it('should not redirect on verification failure', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('fail'))
+  // ─── 2. Temporarily Paused Verification Flow ────────────────────────────
+  describe('Temporarily paused verification flow', () => {
+    it('should show the pause notice without starting verification', async () => {
       setupContexts({}, { enableEducationPlan: true })
       const user = userEvent.setup()
 
@@ -280,12 +223,18 @@ describe('Education Verification Flow', () => {
         expect(screen.getByTestId('verify-state-modal')).toBeInTheDocument()
       })
 
-      // Should NOT navigate
+      expect(screen.getByTestId('modal-title')).toHaveTextContent(/educationDiscountPaused.title/i)
+      expect(screen.getByTestId('modal-content')).toHaveTextContent(
+        /educationDiscountPaused.description/i,
+      )
+      expect(screen.queryByTestId('modal-email')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('modal-show-link')).not.toBeInTheDocument()
+      expect(mockMutateAsync).not.toHaveBeenCalled()
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
 
-  // ─── 4. Education + Upgrade Coexistence ─────────────────────────────────
+  // ─── 3. Education + Upgrade Coexistence ─────────────────────────────────
   describe('Education and upgrade button coexistence', () => {
     it('should show both education verify and upgrade buttons for sandbox user', () => {
       setupContexts({ type: Plan.sandbox }, { enableEducationPlan: true })

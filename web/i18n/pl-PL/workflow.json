@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Zmienne Konwersacji służą do przechowywania interaktywnych informacji, które LLM musi pamiętać, w tym historii konwersacji, przesłanych plików, preferencji użytkownika. Są one do odczytu i zapisu.",
   "chatVariable.panelTitle": "Zmienne Konwersacji",
   "chatVariable.storedContent": "Przechowywana zawartość",
+  "chatVariable.tips": "Wskazówki",
   "chatVariable.updatedAt": "Zaktualizowano ",
   "collaboration.historyAction.generic": "Współpracownik wykonał cofnięcie/ponowienie",
   "comments.actions.addComment": "Dodaj komentarz",

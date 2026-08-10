@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "As Variáveis de Conversação são usadas para armazenar informações interativas que o LLM precisa lembrar, incluindo histórico de conversas, arquivos carregados, preferências do usuário. Elas são de leitura e escrita.",
   "chatVariable.panelTitle": "Variáveis de Conversação",
   "chatVariable.storedContent": "Conteúdo armazenado",
+  "chatVariable.tips": "Dicas",
   "chatVariable.updatedAt": "Atualizado em ",
   "collaboration.historyAction.generic": "Um colaborador realizou desfazer/refazer",
   "comments.actions.addComment": "Adicionar comentário",

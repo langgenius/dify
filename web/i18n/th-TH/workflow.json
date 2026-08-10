@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "ตัวแปรการสนทนาใช้เพื่อจัดเก็บข้อมูลแบบโต้ตอบที่ LLM จําเป็นต้องจดจํา รวมถึงประวัติการสนทนา ไฟล์ที่อัปโหลด การตั้งค่าของผู้ใช้ พวกเขาอ่าน-เขียน",
   "chatVariable.panelTitle": "ตัวแปรการสนทนา",
   "chatVariable.storedContent": "เนื้อหาที่เก็บไว้",
+  "chatVariable.tips": "เคล็ดลับ",
   "chatVariable.updatedAt": "อัพเดทเมื่อ",
   "collaboration.historyAction.generic": "ผู้ร่วมงานได้ทำการยกเลิก/ทำซ้ำ",
   "comments.actions.addComment": "เพิ่มความคิดเห็น",

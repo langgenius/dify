@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Variabel Percakapan digunakan untuk menyimpan informasi interaktif yang perlu diingat LLM, termasuk riwayat percakapan, file yang diunggah, preferensi pengguna. Mereka dibaca-tulis.",
   "chatVariable.panelTitle": "Variabel Percakapan",
   "chatVariable.storedContent": "Konten yang disimpan",
+  "chatVariable.tips": "Tips",
   "chatVariable.updatedAt": "Diperbarui pada",
   "collaboration.historyAction.generic": "Seorang kolaborator melakukan urungkan/ulang",
   "comments.actions.addComment": "Tambahkan komentar",

@@ -155,8 +155,11 @@ export function SecretKeyModalView({
                     <div className="flex grow space-x-2 px-3">
                       <CopyFeedback content={api.token} />
                       {canManage && (
-                        <ActionButton onClick={() => setDeleteKeyId(api.id)}>
-                          <span className="i-ri-delete-bin-line size-4" />
+                        <ActionButton
+                          aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${generateToken(api.token)}`}
+                          onClick={() => setDeleteKeyId(api.id)}
+                        >
+                          <span aria-hidden className="i-ri-delete-bin-line size-4" />
                         </ActionButton>
                       )}
                     </div>

@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Переменные разговора используются для хранения интерактивной информации, которую LLM необходимо запомнить, включая историю разговоров, загруженные файлы, пользовательские настройки. Они доступны для чтения и записи. ",
   "chatVariable.panelTitle": "Переменные разговора",
   "chatVariable.storedContent": "Сохраненный контент",
+  "chatVariable.tips": "Советы",
   "chatVariable.updatedAt": "Обновлено в ",
   "collaboration.historyAction.generic": "Участник выполнил отмену/повтор",
   "comments.actions.addComment": "Добавить комментарий",

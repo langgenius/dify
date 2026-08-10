@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "会话变量用于存储 LLM 需要的上下文信息，如用户偏好、对话历史等。它是可读写的。",
   "chatVariable.panelTitle": "会话变量",
   "chatVariable.storedContent": "存储内容",
+  "chatVariable.tips": "提示",
   "chatVariable.updatedAt": "更新时间 ",
   "collaboration.historyAction.generic": "协作者执行了撤销/重做操作",
   "comments.actions.addComment": "添加评论",

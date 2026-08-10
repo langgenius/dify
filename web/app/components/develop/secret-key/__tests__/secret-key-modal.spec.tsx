@@ -155,12 +155,10 @@ async function renderModal(scope: SecretKeyScope, overrides: { canManage?: boole
   return { ...result, onClose }
 }
 
-async function confirmFirstKeyDeletion() {
+async function confirmKeyDeletion(accessibleName: string) {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const deleteButton = document.body.querySelector('.i-ri-delete-bin-line')?.closest('button')
-  expect(deleteButton).toBeInTheDocument()
-
-  await user.click(deleteButton!)
+  const deleteButton = screen.getByRole('button', { name: accessibleName })
+  await user.click(deleteButton)
   await act(async () => {
     vi.runAllTimers()
   })
@@ -256,6 +254,12 @@ describe('SecretKeyModal', () => {
   it('deletes an app API key through the generated mutation input', async () => {
     apiMocks.appKeys = [
       {
+        id: 'app-key-0',
+        token: 'other-app-secret-token-987654321',
+        type: 'app',
+        created_at: 1,
+      },
+      {
         id: 'app-key-1',
         token: 'app-secret-token-123456789',
         type: 'app',
@@ -265,7 +269,7 @@ describe('SecretKeyModal', () => {
     await renderModal(appScope)
     await screen.findByText('app...cret-token-123456789')
 
-    await confirmFirstKeyDeletion()
+    await confirmKeyDeletion('common.operation.delete app...cret-token-123456789')
 
     await waitFor(() => {
       expect(apiMocks.deleteApp).toHaveBeenCalledWith({
@@ -277,6 +281,12 @@ describe('SecretKeyModal', () => {
   it('deletes a dataset API key through the generated mutation input', async () => {
     apiMocks.datasetKeys = [
       {
+        id: 'dataset-key-0',
+        token: 'other-dataset-secret-token-987654321',
+        type: 'dataset',
+        created_at: 1,
+      },
+      {
         id: 'dataset-key-1',
         token: 'dataset-secret-token-123456789',
         type: 'dataset',
@@ -286,7 +296,7 @@ describe('SecretKeyModal', () => {
     await renderModal(datasetScope)
     await screen.findByText('dat...cret-token-123456789')
 
-    await confirmFirstKeyDeletion()
+    await confirmKeyDeletion('common.operation.delete dat...cret-token-123456789')
 
     await waitFor(() => {
       expect(apiMocks.deleteDataset).toHaveBeenCalledWith({
@@ -348,7 +358,7 @@ describe('SecretKeyModal', () => {
     await renderModal(environmentScope)
 
     await screen.findByText(/^env\.\.\./)
-    await confirmFirstKeyDeletion()
+    await confirmKeyDeletion('common.operation.delete env...abcdefghijklmnopqrst')
 
     await waitFor(() => {
       expect(apiMocks.deleteEnvironment).toHaveBeenCalledWith({

@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Змінні розмови використовуються для зберігання інтерактивної інформації, яку LLM повинен пам'ятати, включаючи історію розмови, завантажені файли, вподобання користувача. Вони доступні для читання та запису.",
   "chatVariable.panelTitle": "Змінні розмови",
   "chatVariable.storedContent": "Збережений вміст",
+  "chatVariable.tips": "Поради",
   "chatVariable.updatedAt": "Оновлено ",
   "collaboration.historyAction.generic": "Співавтор виконав скасування/повторення",
   "comments.actions.addComment": "Додати коментар",

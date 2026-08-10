@@ -33,6 +33,7 @@ const DebugAndPreview = () => {
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
   const visibleVariables = variables
+  const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
   const restartLabel = t(($) => $['operation.refresh'], { ns: 'common' })
   const userInputFieldLabel = t(($) => $['panel.userInputField'], { ns: 'workflow' })
 
@@ -126,12 +127,14 @@ const DebugAndPreview = () => {
               </div>
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <div
-              className="flex size-6 cursor-pointer items-center justify-center"
+            <button
+              type="button"
+              aria-label={closeLabel}
+              className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="size-4 text-text-tertiary" />
-            </div>
+              <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+            </button>
           </div>
         </div>
         <div className="grow overflow-y-auto rounded-b-2xl">
