@@ -1,5 +1,6 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointCard from '../endpoint-card'
 
@@ -216,6 +217,26 @@ describe('EndpointCard', () => {
   })
 
   describe('User Interactions', () => {
+    it('should reach endpoint actions through the tab order', async () => {
+      const user = userEvent.setup()
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
+
+      await user.tab()
+      expect(getEditButton()).toHaveFocus()
+
+      await user.tab()
+      expect(getDeleteButton()).toHaveFocus()
+
+      await user.keyboard('{Enter}')
+      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
+    })
+
     it('should show disable confirm when switching off', () => {
       render(
         <EndpointCard
