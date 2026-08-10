@@ -107,7 +107,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       }}
     >
       <Field name="email" className="mb-3 block">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
+        <FieldLabel className="my-2 py-0 text-sm leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
         <div className="mt-1">
@@ -125,7 +125,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
       <Field name="password" className="mb-3 block">
         <div className="my-2 flex items-center justify-between">
-          <FieldLabel className="py-0 system-md-semibold text-text-secondary">
+          <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
           </FieldLabel>
           <Link
