@@ -87,6 +87,17 @@ describe('CheckCode', () => {
     vi.unstubAllGlobals()
   })
 
+  it('exposes the page title as the main heading', () => {
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   it.each([
     ['Enter', '{Enter}'],
     ['Space', ' '],
