@@ -61,7 +61,7 @@ const ResultText: FC<ResultTextProps> = ({
             <div className="px-4 py-2">
               {/* ThinkBlock's timer reads isResponding from ChatContext, which the run panel otherwise lacks. */}
               <ChatContextProvider chatList={[]} isResponding={!!isRunning}>
-                <Markdown content={outputs} />
+                <Markdown content={outputs} isAnimating={Boolean(isRunning)} />
               </ChatContextProvider>
             </div>
           )}

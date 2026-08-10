@@ -59,6 +59,23 @@ describe('preprocessLaTeX', () => {
     expect(out).toContain('$math$')
   })
 
+  it('preserves incomplete fenced code while content is streaming', () => {
+    const input = ['Before', '```js', 'const formula = "\\(not math\\)"'].join('\n')
+
+    expect(mod.preprocessLaTeX(input)).toBe(input)
+  })
+
+  it('does not confuse user content with an internal placeholder', () => {
+    const input = [
+      'Literal CODE_BLOCK_PLACEHOLDER text',
+      '```js',
+      'const formula = "\\(not math\\)"',
+      '```',
+    ].join('\n')
+
+    expect(mod.preprocessLaTeX(input)).toBe(input)
+  })
+
   it('does not treat escaped dollar \\$ as math delimiter', () => {
     const input = 'Price: \\$5 and math $x$'
     const out = mod.preprocessLaTeX(input)

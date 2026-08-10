@@ -26,6 +26,14 @@ describe('copy icon component', () => {
     ).toBeInTheDocument()
   })
 
+  it('merges a custom button class', () => {
+    render(<CopyIcon className="size-7" content="copy me" />)
+
+    expect(
+      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
+    ).toHaveClass('size-7')
+  })
+
   it('shows copy check icon when copied', () => {
     copied = true
     render(<CopyIcon content="this is some test content for the copy icon component" />)

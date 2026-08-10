@@ -18,6 +18,7 @@ type WorkflowBodyProps = {
   depth: number
   hideProcessDetail?: boolean
   isError: boolean
+  isResponding?: boolean
   onSubmitHumanInputForm: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   onSwitchTab: (tab: string) => void
   showResultTabs: boolean
@@ -32,6 +33,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
   depth,
   hideProcessDetail,
   isError,
+  isResponding,
   onSubmitHumanInputForm,
   onSwitchTab,
   showResultTabs,
@@ -114,7 +116,12 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
                 />
               </div>
             )}
-          <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
+          <ResultTab
+            data={workflowProcessData}
+            content={content}
+            currentTab={currentTab}
+            isResponding={isResponding}
+          />
         </>
       )}
     </>

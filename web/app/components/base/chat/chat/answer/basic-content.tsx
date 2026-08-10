@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { ChatItem } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -6,8 +5,9 @@ import { Markdown } from '@/app/components/base/markdown'
 
 type BasicContentProps = {
   item: ChatItem
+  responding?: boolean
 }
-const BasicContent: FC<BasicContentProps> = ({ item }) => {
+function BasicContent({ item, responding }: BasicContentProps) {
   const { annotation, content } = item
 
   if (annotation?.logAnnotation) {
@@ -30,6 +30,7 @@ const BasicContent: FC<BasicContentProps> = ({ item }) => {
     <Markdown
       className={cn(item.isError && 'text-[#F04438]!')}
       content={displayContent}
+      isAnimating={Boolean(responding)}
       data-testid="basic-content-markdown"
     />
   )

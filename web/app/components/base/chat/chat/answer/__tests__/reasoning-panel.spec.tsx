@@ -6,8 +6,10 @@ import ReasoningPanel from '../reasoning-panel'
 
 // Mock the heavy Markdown renderer to a simple passthrough.
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => (
-    <div data-testid="reasoning-markdown">{content}</div>
+  Markdown: ({ content, isAnimating }: { content: string; isAnimating?: boolean }) => (
+    <div data-testid="reasoning-markdown" data-animating={String(Boolean(isAnimating))}>
+      {content}
+    </div>
   ),
 }))
 
@@ -30,11 +32,13 @@ describe('ReasoningPanel', () => {
     render(<ReasoningPanel content={{ llm: 'let me think' }} done={false} />)
     expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     expect(screen.getByText('let me think')).toBeInTheDocument()
+    expect(screen.getByTestId('reasoning-markdown')).toHaveAttribute('data-animating', 'true')
   })
 
   it('shows the thought state once done (answer started / terminal / history)', () => {
     render(<ReasoningPanel content={{ llm: 'done thinking' }} done />)
     expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    expect(screen.getByTestId('reasoning-markdown')).toHaveAttribute('data-animating', 'false')
   })
 
   it('counts elapsed time up while thinking', () => {
