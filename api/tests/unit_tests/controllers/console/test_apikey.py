@@ -82,10 +82,11 @@ def test_list_api_keys_uses_injected_session_and_tenant_id(sqlite_session: Sessi
     session.commit()
 
     result = raw_get(resource, session, "app-1", "tenant-1")
+    data = cast(list[dict[str, object]], result["data"])
 
-    assert len(result["data"]) == 1
-    assert result["data"][0]["id"] == "key-1"
-    assert result["data"][0]["token"] == "app-token"
+    assert len(data) == 1
+    assert data[0]["id"] == "key-1"
+    assert data[0]["token"] == "app-token"
 
 
 def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Session) -> None:
