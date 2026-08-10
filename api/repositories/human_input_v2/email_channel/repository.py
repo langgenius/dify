@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import timedelta
 
+from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,7 +20,7 @@ from core.human_input_v2.email_channel import (
     UpdateEmailConfigurationResult,
     UpdateEmailConfigurationStatus,
 )
-from core.human_input_v2.shared import UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import WorkspaceId
 from models.account import Tenant
 from models.human_input_v2 import HumanInputEmailProvider
 
@@ -67,7 +68,7 @@ class SQLAlchemyEmailChannelRepository:
         configuration: EmailChannelConfiguration,
         *,
         expected: EmailConfigurationSnapshot,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> UpdateEmailConfigurationResult:
         with self._session_maker() as session, session.begin():
             record = session.scalar(
@@ -75,7 +76,7 @@ class SQLAlchemyEmailChannelRepository:
                 .where(
                     HumanInputEmailProvider.id == str(expected.configuration_id),
                     HumanInputEmailProvider.tenant_id == str(configuration.workspace_id),
-                    HumanInputEmailProvider.updated_at == expected.updated_at.value,
+                    HumanInputEmailProvider.updated_at == expected.updated_at,
                 )
                 .with_for_update()
             )
@@ -83,11 +84,11 @@ class SQLAlchemyEmailChannelRepository:
                 return UpdateEmailConfigurationResult(UpdateEmailConfigurationStatus.STALE, None)
             current_configuration = email_configuration_from_record(record)
             current_updated_at = current_configuration.updated_at
-            next_value = max(now.value, current_updated_at.value + timedelta(microseconds=1))
+            next_value = max(now, current_updated_at + timedelta(microseconds=1))
             updated = replace(
                 configuration,
                 created_at=current_configuration.created_at,
-                updated_at=UtcTimestamp(next_value),
+                updated_at=next_value,
             )
             mapped = email_configuration_to_record(updated)
             record.provider = mapped.provider

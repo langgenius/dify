@@ -9,7 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from pydantic import NaiveDatetime
+
+from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, WorkspaceId
 
 from .entities import Contact, ExternalContactOwner, OrganizationAccountOwner, WorkspaceMemberOwner
 from .errors import ContactRejectionCode, reject
@@ -75,7 +77,7 @@ class ContactDirectoryPolicy:
         contact_id: ContactId,
         name: str,
         email: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
         avatar_file_id: str | None = None,
     ) -> Contact:
         try:

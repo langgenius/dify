@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.entities import HumanInputDeliveryChannel
 from core.human_input_v2.shared import (
@@ -19,7 +19,6 @@ from core.human_input_v2.shared import (
     AuditEventId,
     DeliveryEndpointId,
     SubmissionId,
-    UtcTimestamp,
 )
 
 from .grants import FormRef
@@ -48,9 +47,9 @@ class FormAuthorizationAuditEvent:
     reason_message: str | None
     authorization_proof: VerifiedSubmissionProof | None
     payload: Mapping[str, JsonValue] | None
-    occurred_at: UtcTimestamp
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    occurred_at: NaiveDatetime
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if self.event_type is FormAuthorizationAuditEventType.SUBMISSION_AUTHORIZED:
@@ -88,9 +87,9 @@ class FormSubmission:
     selected_action_id: str
     input_snapshot: Mapping[str, JsonValue]
     canonical_values: Mapping[str, JsonValue]
-    submitted_at: UtcTimestamp
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    submitted_at: NaiveDatetime
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not self.selected_action_id.strip():

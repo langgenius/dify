@@ -1,6 +1,6 @@
 """Explicit mapper tests for the Human Input v2 form persistence boundary."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -63,7 +63,6 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from graphon.file.enums import FileTransferMethod, FileType
@@ -85,7 +84,7 @@ from repositories.human_input_v2.form.mappers import (
     upload_file_to_record,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 
 
@@ -179,8 +178,8 @@ def _form() -> HumanInputForm:
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id="pause-1",
@@ -309,8 +308,8 @@ def test_mappers_reject_malformed_subject_and_endpoint_records() -> None:
         subject_key="contact:contact-1",
     )
     grant_record.id = "grant-1"
-    grant_record.created_at = _NOW.value
-    grant_record.updated_at = _NOW.value
+    grant_record.created_at = _NOW
+    grant_record.updated_at = _NOW
     endpoint_record = HumanInputV2FormDeliveryEndpoint(
         tenant_id="workspace-1",
         form_id="form-1",
@@ -319,8 +318,8 @@ def test_mappers_reject_malformed_subject_and_endpoint_records() -> None:
         address_hash="a" * 64,
     )
     endpoint_record.id = "endpoint-1"
-    endpoint_record.created_at = _NOW.value
-    endpoint_record.updated_at = _NOW.value
+    endpoint_record.created_at = _NOW
+    endpoint_record.updated_at = _NOW
 
     with pytest.raises(ValueError, match="contact_id"):
         grant_from_record(grant_record)

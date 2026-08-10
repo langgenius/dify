@@ -1,6 +1,8 @@
 """Explicit mapping between Contact Directory values and persistence records."""
 
-from datetime import UTC, datetime
+from datetime import datetime
+
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.contact_directory import (
     Contact,
@@ -16,9 +18,9 @@ from core.human_input_v2.shared import (
     ContactId,
     NormalizedEmail,
     PlatformEntryId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
     HumanInputContact,
     HumanInputContactIdentitySource,
@@ -26,10 +28,10 @@ from models.human_input_v2 import (
 )
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
+def _timestamp(value: datetime) -> NaiveDatetime:
     """Interpret database-naive timestamps as UTC, matching Dify persistence."""
 
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+    return ensure_naive_utc(value)
 
 
 def contact_from_record(record: HumanInputContact) -> Contact:
@@ -92,8 +94,8 @@ def contact_to_record(contact: Contact) -> HumanInputContact:
         avatar_file_id=contact.avatar_file_id,
     )
     record.id = str(contact.id)
-    record.created_at = contact.created_at.value
-    record.updated_at = contact.updated_at.value
+    record.created_at = contact.created_at
+    record.updated_at = contact.updated_at
     return record
 
 
@@ -119,6 +121,6 @@ def platform_entry_to_record(entry: PlatformWorkspaceEntry) -> HumanInputPlatfor
         added_by_account_id=str(entry.added_by_account_id),
     )
     record.id = str(entry.id)
-    record.created_at = entry.created_at.value
-    record.updated_at = entry.updated_at.value
+    record.created_at = entry.created_at
+    record.updated_at = entry.updated_at
     return record

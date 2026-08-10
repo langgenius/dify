@@ -1,6 +1,8 @@
 """Bidirectional mapping between Email channel values and ORM records."""
 
-from datetime import UTC, datetime
+from datetime import datetime
+
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.approval import EmailProviderConfiguration
 from core.human_input_v2.email_channel import EmailChannelConfiguration, ProtectedAPIKey
@@ -8,14 +10,14 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import HumanInputEmailProvider, ResendEmailProviderEncryptedCredentials
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+def _timestamp(value: datetime) -> NaiveDatetime:
+    return ensure_naive_utc(value)
 
 
 def email_configuration_to_record(configuration: EmailChannelConfiguration) -> HumanInputEmailProvider:
@@ -32,8 +34,8 @@ def email_configuration_to_record(configuration: EmailChannelConfiguration) -> H
         ),
     )
     record.id = str(configuration.id)
-    record.created_at = configuration.created_at.value
-    record.updated_at = configuration.updated_at.value
+    record.created_at = configuration.created_at
+    record.updated_at = configuration.updated_at
     return record
 
 

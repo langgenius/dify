@@ -3,111 +3,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import override
+from typing import NewType, override
 
-
-@dataclass(frozen=True, slots=True)
-class _Identifier:
-    """Non-empty string identifier with explicit primitive serialization."""
-
-    value: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.value, str) or not self.value.strip():
-            raise ValueError(f"{type(self).__name__} must not be blank")
-        object.__setattr__(self, "value", self.value.strip())
-
-    @override
-    def __str__(self) -> str:
-        return self.value
-
-    def to_primitive(self) -> str:
-        return self.value
-
-
-class AccountId(_Identifier):
-    """Identifier of an Account record."""
-
-
-class ContactId(_Identifier):
-    """Identifier of a canonical Contact."""
-
-
-class EndUserId(_Identifier):
-    """Identifier of one app-scoped EndUser identity."""
-
-
-class PlatformEntryId(_Identifier):
-    """Identifier of one Platform allow-list entry."""
-
-
-class WorkspaceId(_Identifier):
-    """Identifier of the workspace that owns or resolves a Contact."""
-
-
-class AppId(_Identifier):
-    """Identifier of the application that owns a Human Input form."""
-
-
-class FormId(_Identifier):
-    """Identifier of one Human Input v2 form root."""
-
-
-class ApproverGrantId(_Identifier):
-    """Identifier of one form-scoped approver grant."""
-
-
-class OTPChallengeId(_Identifier):
-    """Identifier of one grant-scoped OTP proof session."""
-
-
-class DeliveryEndpointId(_Identifier):
-    """Identifier of one frozen form delivery endpoint."""
-
-
-class DeliveryAttemptId(_Identifier):
-    """Identifier of one append-only delivery attempt."""
-
-
-class SubmissionId(_Identifier):
-    """Identifier of one immutable winning form submission."""
-
-
-class AuditEventId(_Identifier):
-    """Identifier of one append-only Human Input audit event."""
-
-
-class EmailProviderId(_Identifier):
-    """Identifier of one workspace email provider configuration."""
-
-
-class UploadCapabilityId(_Identifier):
-    """Identifier of one endpoint-scoped upload capability."""
-
-
-class UploadFileAssociationId(_Identifier):
-    """Identifier of one durable uploaded-file association."""
-
-
-class IntegrationId(_Identifier):
-    """Identifier of one IM Integration configuration identity."""
-
-
-class IMIdentityId(_Identifier):
-    """Identifier of one current synchronized provider identity."""
-
-
-class IMBindingId(_Identifier):
-    """Identifier of one current Contact-to-IM-identity binding."""
-
-
-class IMSyncRunId(_Identifier):
-    """Identifier of one IM directory synchronization run."""
-
-
-class IMSyncResultId(_Identifier):
-    """Identifier of one append-only synchronization result fact."""
+AccountId = NewType("AccountId", str)
+ContactId = NewType("ContactId", str)
+EndUserId = NewType("EndUserId", str)
+PlatformEntryId = NewType("PlatformEntryId", str)
+WorkspaceId = NewType("WorkspaceId", str)
+AppId = NewType("AppId", str)
+FormId = NewType("FormId", str)
+ApproverGrantId = NewType("ApproverGrantId", str)
+OTPChallengeId = NewType("OTPChallengeId", str)
+DeliveryEndpointId = NewType("DeliveryEndpointId", str)
+DeliveryAttemptId = NewType("DeliveryAttemptId", str)
+SubmissionId = NewType("SubmissionId", str)
+AuditEventId = NewType("AuditEventId", str)
+EmailProviderId = NewType("EmailProviderId", str)
+UploadCapabilityId = NewType("UploadCapabilityId", str)
+UploadFileAssociationId = NewType("UploadFileAssociationId", str)
+IntegrationId = NewType("IntegrationId", str)
+IMIdentityId = NewType("IMIdentityId", str)
+IMBindingId = NewType("IMBindingId", str)
+IMSyncRunId = NewType("IMSyncRunId", str)
+IMSyncResultId = NewType("IMSyncResultId", str)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,26 +66,7 @@ class WorkspaceScope:
     workspace_id: WorkspaceId
 
     def to_primitive(self) -> dict[str, str]:
-        return {"kind": "workspace", "workspace_id": self.workspace_id.to_primitive()}
+        return {"kind": "workspace", "workspace_id": self.workspace_id}
 
 
 type DirectoryScope = DeploymentScope | WorkspaceScope
-
-
-@dataclass(frozen=True, slots=True)
-class UtcTimestamp:
-    """Timezone-aware timestamp normalized to UTC at construction."""
-
-    value: datetime
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.value, datetime) or self.value.tzinfo is None or self.value.utcoffset() is None:
-            raise ValueError("value must be a timezone-aware datetime")
-        object.__setattr__(self, "value", self.value.astimezone(UTC))
-
-    @classmethod
-    def now(cls) -> UtcTimestamp:
-        return cls(datetime.now(UTC))
-
-    def to_primitive(self) -> str:
-        return self.value.isoformat().replace("+00:00", "Z")

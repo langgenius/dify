@@ -7,10 +7,10 @@ Pydantic types explicitly.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import assert_never
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, NaiveDatetime, TypeAdapter
 
 from core.human_input_v2 import (
     FileInput,
@@ -59,9 +59,9 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.base import DefaultFieldsDCMixin
 from models.human_input_v2 import (
     FormApproverGrantMatchedSource,
@@ -95,21 +95,21 @@ from repositories.human_input_v2.email_channel.mappers import (
 _JSON_OBJECT_ADAPTER: TypeAdapter[dict[str, JsonValue]] = TypeAdapter(dict[str, JsonValue])
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+def _timestamp(value: datetime) -> NaiveDatetime:
+    return ensure_naive_utc(value)
 
 
 def _set_record_identity(
     record: DefaultFieldsDCMixin,
     *,
     record_id: str,
-    created_at: UtcTimestamp,
-    updated_at: UtcTimestamp,
+    created_at: NaiveDatetime,
+    updated_at: NaiveDatetime,
 ) -> None:
     # SQLAlchemy's mapped dataclass mixin owns these fields on every record type.
     record.id = record_id
-    record.created_at = created_at.value
-    record.updated_at = updated_at.value
+    record.created_at = created_at
+    record.updated_at = updated_at
 
 
 def email_provider_to_record(provider: EmailProviderConfiguration) -> HumanInputEmailProvider:
@@ -273,8 +273,8 @@ def form_to_record(form: HumanInputForm) -> HumanInputV2Form:
         app_id=str(form.app_id),
         form_definition=_resolved_form_to_record_value(form.resolved_form, display_in_ui=form.display_in_ui),
         rendered_content=form.resolved_form.legacy_form_content,
-        node_timeout_at=form.node_timeout_at.value,
-        global_expires_at=form.global_expires_at.value,
+        node_timeout_at=form.node_timeout_at,
+        global_expires_at=form.global_expires_at,
         form_kind=form.kind,
         status=form.status,
         workflow_pause_id=form.workflow_pause_id,
@@ -537,9 +537,9 @@ def delivery_attempt_to_record(attempt: DeliveryAttempt) -> HumanInputV2FormDeli
         endpoint_id=str(attempt.endpoint_ref.endpoint_id),
         attempt_number=attempt.attempt_number,
         status=attempt.status,
-        scheduled_at=attempt.scheduled_at.value,
-        started_at=attempt.started_at.value if attempt.started_at is not None else None,
-        finished_at=attempt.finished_at.value if attempt.finished_at is not None else None,
+        scheduled_at=attempt.scheduled_at,
+        started_at=attempt.started_at if attempt.started_at is not None else None,
+        finished_at=attempt.finished_at if attempt.finished_at is not None else None,
         provider_message_id=attempt.provider_message_id,
         failure_code=attempt.failure_code,
         failure_reason=attempt.failure_reason,

@@ -1,9 +1,10 @@
 """Pure current-state authorization contracts for Human Input v2 submission."""
 
 from dataclasses import fields
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
+from pydantic import NaiveDatetime
 
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
@@ -48,11 +49,10 @@ from core.human_input_v2.shared import (
     IntegrationId,
     NormalizedEmail,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 _ACCOUNT_ID = AccountId("account-1")
 _CONTACT_ID = ContactId("contact-1")
@@ -93,8 +93,8 @@ def _form(grant: ApproverGrant, *, status: HumanInputV2FormStatus = HumanInputV2
             legacy_form_content="Approve",
         ),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=status,
         workflow_pause_id="pause-1",
@@ -198,7 +198,7 @@ def _authorize(
     proof: object,
     *,
     selected_action_id: str = "approve",
-    now: UtcTimestamp = _NOW,
+    now: NaiveDatetime = _NOW,
 ) -> SubmissionAuthorizationDecision:
     return SubmissionAuthorizer.authorize(
         context=context,
@@ -473,7 +473,7 @@ def test_waiting_form_past_global_expiry_returns_global_expired_rejection() -> N
     decision = _authorize(
         _context(grant, contact=_contact_facts()),
         VerifiedAccountSessionProof(_ACCOUNT_ID),
-        now=UtcTimestamp(_NOW.value + timedelta(hours=3)),
+        now=_NOW + timedelta(hours=3),
     )
 
     assert decision.rejection is SubmissionAuthorizationRejection.FORM_GLOBALLY_EXPIRED

@@ -13,6 +13,7 @@ from typing import cast
 
 import pytest
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
@@ -64,10 +65,10 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
@@ -240,14 +241,14 @@ def _wait_for_postgresql_lock_wait(
 type _TimestampedRecord = HumanInputContact | HumanInputIMBinding | HumanInputIMIdentity | HumanInputIMIntegration
 
 
-def _set_record_identity(record: _TimestampedRecord, record_id: str, now: UtcTimestamp) -> None:
+def _set_record_identity(record: _TimestampedRecord, record_id: str, now: NaiveDatetime) -> None:
     record.id = record_id
-    record.created_at = now.value
-    record.updated_at = now.value
+    record.created_at = now
+    record.updated_at = now
 
 
 def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
-    now = UtcTimestamp.now()
+    now = naive_utc_now()
     workspace_id = WorkspaceId(str(uuidv7()))
     account_id = AccountId(str(uuidv7()))
     contact_id = ContactId(str(uuidv7()))
@@ -283,8 +284,8 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
             legacy_form_content="Approve",
         ),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(now.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(now.value + timedelta(hours=2)),
+        node_timeout_at=now + timedelta(hours=1),
+        global_expires_at=now + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id=workflow_pause_id,
@@ -354,7 +355,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
         configured_by_account_id=str(account_id),
         callback_url=None,
         safe_status_reason=None,
-        last_checked_at=now.value,
+        last_checked_at=now,
     )
     _set_record_identity(integration, str(integration_id), now)
     identity = HumanInputIMIdentity(
@@ -367,7 +368,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
         normalized_email=str(normalized_email),
         raw_payload=IMIdentityRawPayload({}),
         last_seen_sync_run_id=None,
-        last_seen_at=now.value,
+        last_seen_at=now,
     )
     _set_record_identity(identity, str(identity_id), now)
     binding = HumanInputIMBinding(
@@ -452,7 +453,7 @@ def _email_proof(scenario: _SeededScenario) -> VerifiedEmailOTPProof:
         challenge_ref=scenario.form_ref.grant(scenario.grant_id).challenge(OTPChallengeId(str(uuidv7()))),
         subject=ContactOTPSubject(scenario.contact_id),
         normalized_email=scenario.normalized_email,
-        verified_at=UtcTimestamp.now(),
+        verified_at=naive_utc_now(),
     )
 
 
@@ -483,7 +484,7 @@ def _command(scenario: _SeededScenario, *, proof: object, endpoint_id: DeliveryE
             workflow_pause_id=scenario.workflow_pause_id,
             node_execution_id=scenario.node_execution_id,
         ),
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
 
 
@@ -671,7 +672,7 @@ def test_loaded_context_remains_authoritative_after_identity_change(flask_req_ct
                 context=context,
                 proof=proof,
                 selected_action_id="approve",
-                now=UtcTimestamp.now(),
+                now=naive_utc_now(),
             )
             assert decision.authorized is not None
             result = transaction.commit_authorized_submission_once(

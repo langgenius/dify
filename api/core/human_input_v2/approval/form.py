@@ -12,13 +12,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
 from core.human_input_v2.shared import (
     AppId,
     ApproverGrantId,
     DeliveryEndpointId,
-    UtcTimestamp,
 )
 
 from .delivery import DeliveryAttempt, DeliveryEndpoint
@@ -68,7 +69,7 @@ class SubmissionTransitionDecision:
     form_ref: FormRef
     grant_id: ApproverGrantId
     selected_action_id: str
-    decided_at: UtcTimestamp
+    decided_at: NaiveDatetime
 
 
 class FormSnapshotIdentifierFactory(Protocol):
@@ -108,15 +109,15 @@ class HumanInputForm:
     app_id: AppId
     resolved_form: ResolvedForm
     display_in_ui: bool | None
-    node_timeout_at: UtcTimestamp
-    global_expires_at: UtcTimestamp
+    node_timeout_at: NaiveDatetime
+    global_expires_at: NaiveDatetime
     kind: HumanInputV2FormKind
     status: HumanInputV2FormStatus
     workflow_pause_id: str | None
     node_execution_id: str | None
     grants: tuple[ApproverGrant, ...]
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not isinstance(self.grants, tuple):
@@ -132,7 +133,7 @@ class HumanInputForm:
         if len(grant_ids) != len(set(grant_ids)) or len(subject_keys) != len(set(subject_keys)):
             raise ValueError("form grants must have unique identifiers and canonical subjects")
 
-    def state_at(self, now: UtcTimestamp) -> FormState:
+    def state_at(self, now: NaiveDatetime) -> FormState:
         """Return a stable status/expiry decision without changing persisted state."""
 
         match self.status:
@@ -143,9 +144,9 @@ class HumanInputForm:
             case HumanInputV2FormStatus.EXPIRED:
                 return InactiveFormState(FormInactiveReason.STATUS_EXPIRED)
             case HumanInputV2FormStatus.WAITING:
-                if now.value >= self.global_expires_at.value:
+                if now >= self.global_expires_at:
                     return InactiveFormState(FormInactiveReason.GLOBALLY_EXPIRED)
-                if now.value >= self.node_timeout_at.value:
+                if now >= self.node_timeout_at:
                     return InactiveFormState(FormInactiveReason.TIMED_OUT)
                 return WaitingFormState()
         raise AssertionError(f"unsupported Human Input form status: {self.status}")
@@ -155,7 +156,7 @@ class HumanInputForm:
         *,
         grant_id: ApproverGrantId,
         selected_action_id: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> SubmissionTransitionDecision | InactiveFormState:
         """Validate one local transition without mutating or persisting the form."""
 
@@ -181,14 +182,14 @@ class HumanInputForm:
         app_id: AppId,
         resolved_form: ResolvedForm,
         display_in_ui: bool | None,
-        node_timeout_at: UtcTimestamp,
-        global_expires_at: UtcTimestamp,
+        node_timeout_at: NaiveDatetime,
+        global_expires_at: NaiveDatetime,
         kind: HumanInputV2FormKind,
         workflow_pause_id: str | None,
         node_execution_id: str | None,
         plan: ResolvedApprovalPlan,
         identifier_factory: FormSnapshotIdentifierFactory,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> FormCreation:
         """Map one deterministic resolved plan into a complete frozen snapshot."""
 

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.approval import (
     ContactOTPSubject,
@@ -21,7 +22,6 @@ from core.human_input_v2.shared import (
     FormId,
     NormalizedEmail,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from repositories.human_input_v2.approval.mappers import (
@@ -31,19 +31,19 @@ from repositories.human_input_v2.approval.mappers import (
     proof_to_record_value,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 _GRANT_REF = _FORM_REF.grant(ApproverGrantId("grant-1"))
 _CONTACT_SUBJECT = ContactOTPSubject(ContactId("contact-1"))
 
 
 class _Clock:
-    current: UtcTimestamp
+    current: NaiveDatetime
 
-    def __init__(self, current: UtcTimestamp = _NOW) -> None:
+    def __init__(self, current: NaiveDatetime = _NOW) -> None:
         self.current = current
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> NaiveDatetime:
         return self.current
 
 
@@ -71,8 +71,8 @@ def _pending(*, subject=_CONTACT_SUBJECT, email: str = "reviewer@example.com") -
 
 def _status_cases() -> tuple[OTPChallenge, ...]:
     pending = _pending()
-    verified_clock = _Clock(UtcTimestamp(_NOW.value + timedelta(seconds=30)))
-    expired_clock = _Clock(UtcTimestamp(_NOW.value + timedelta(minutes=10)))
+    verified_clock = _Clock(_NOW + timedelta(seconds=30))
+    expired_clock = _Clock(_NOW + timedelta(minutes=10))
     return (
         pending,
         pending.verify(plaintext_code="123456", clock=verified_clock, code_hasher=_Hasher()).challenge,
@@ -120,10 +120,10 @@ def test_contact_subject_round_trips_its_identity_incarnation() -> None:
         ("code_hash_algorithm", "", "code hash"),
         ("send_count", 6, "send count"),
         ("attempt_count", 6, "attempt count"),
-        ("resend_after", _NOW.value + timedelta(seconds=59, microseconds=999999), "resend_after"),
-        ("resend_after", _NOW.value + timedelta(seconds=60, microseconds=1), "resend_after"),
-        ("expires_at", _NOW.value + timedelta(minutes=10, microseconds=-1), "expires_at"),
-        ("expires_at", _NOW.value + timedelta(minutes=10, microseconds=1), "expires_at"),
+        ("resend_after", _NOW + timedelta(seconds=59, microseconds=999999), "resend_after"),
+        ("resend_after", _NOW + timedelta(seconds=60, microseconds=1), "resend_after"),
+        ("expires_at", _NOW + timedelta(minutes=10, microseconds=-1), "expires_at"),
+        ("expires_at", _NOW + timedelta(minutes=10, microseconds=1), "expires_at"),
         ("subject_type", HumanInputApproverGrantSubjectType.END_USER, "subject type"),
         ("status", "unknown", "status"),
     ],
@@ -162,7 +162,7 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
         challenge_ref=_GRANT_REF.challenge(OTPChallengeId("challenge-1")),
         subject=_CONTACT_SUBJECT,
         normalized_email=NormalizedEmail("reviewer@example.com"),
-        verified_at=UtcTimestamp(_NOW.value + timedelta(seconds=30)),
+        verified_at=_NOW + timedelta(seconds=30),
     )
 
     record_value = proof_to_record_value(proof)
@@ -176,7 +176,7 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
         "subject_type": "contact",
         "contact_id": "contact-1",
         "verified_email": "reviewer@example.com",
-        "verified_at": "2026-07-25T08:00:30Z",
+        "verified_at": "2026-07-25T08:00:30",
     }
     assert not any("hash" in key or "code" in key for key in type(record_value).model_fields)
     assert proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1")) == proof

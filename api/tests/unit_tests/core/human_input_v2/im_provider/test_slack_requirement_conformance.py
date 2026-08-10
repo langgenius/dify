@@ -63,7 +63,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import SlackIMProviderConfigurationPort
 
@@ -345,7 +345,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
         ),
         configured_by_account_id=AccountId("sanitized-account"),
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     resolved_credentials: list[SlackIMIntegrationCredentials] = []
     revealed_credentials: list[EncryptedCredentials] = []
@@ -415,7 +415,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
         ),
         configured_by_account_id=AccountId("sanitized-account"),
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
 
     with pytest.raises(IMProviderConfigurationError, match="slack_preserved_secret_unavailable"):
@@ -469,7 +469,7 @@ def test_provider_port_fails_closed_for_candidate_and_secret_boundary_errors() -
         ),
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     port = SlackIMProviderConfigurationPort(_FailingProtector(), adapter_factory=_SuccessfulAdapter)
 

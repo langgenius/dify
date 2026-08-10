@@ -114,4 +114,4 @@ if violations:
 
 def test_legacy_contact_id_remains_a_string_shaped_transport_identifier() -> None:
     assert LegacyContactId("contact-1") == "contact-1"
-    assert ContactId("contact-1").to_primitive() == "contact-1"
+    assert ContactId("contact-1") == "contact-1"

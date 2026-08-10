@@ -2,7 +2,6 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import UTC, datetime
 from threading import Barrier
 from uuid import uuid4
 
@@ -18,15 +17,15 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 
 
 def _configuration(workspace_id: WorkspaceId, *, configuration_id: str | None = None) -> EmailChannelConfiguration:
-    now = UtcTimestamp(datetime.now(UTC))
+    now = naive_utc_now()
     return EmailChannelConfiguration(
         EmailProviderId(configuration_id or str(uuid4())),
         workspace_id,
@@ -81,7 +80,7 @@ def test_concurrent_conditional_updates_have_one_winner(db_session_with_containe
         return repository.update(
             replace(current, sender_name=sender_name),
             expected=current.snapshot,
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -104,7 +103,7 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
         return repository.update(
             replace(current, sender_name="Racing update"),
             expected=current.snapshot,
-            now=UtcTimestamp.now(),
+            now=naive_utc_now(),
         )
 
     def delete():
@@ -135,7 +134,7 @@ def test_delete_recreate_rejects_previous_identity(db_session_with_containers: S
     stale = repository.update(
         replace(deleted, sender_name="Stale write"),
         expected=deleted.snapshot,
-        now=UtcTimestamp.now(),
+        now=naive_utc_now(),
     )
 
     assert stale.status is UpdateEmailConfigurationStatus.STALE

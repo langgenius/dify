@@ -1,7 +1,7 @@
 """Resend handler lifecycle tests without database, Flask, or network access."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -38,7 +38,6 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_email_channel_manager import (
@@ -46,8 +45,8 @@ from services.human_input_email_channel_manager import (
     HumanInputEmailChannelManager,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 28, 8, tzinfo=UTC))
-_LATER = UtcTimestamp(datetime(2026, 7, 28, 9, tzinfo=UTC))
+_NOW = datetime(2026, 7, 28, 8)
+_LATER = datetime(2026, 7, 28, 9)
 _REF = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 _CONTEXT = HumanInputChannelManagementContext(
     WorkspaceId("workspace-1"),

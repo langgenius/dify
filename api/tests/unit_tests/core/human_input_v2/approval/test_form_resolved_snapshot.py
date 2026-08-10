@@ -1,7 +1,7 @@
 """Authoritative resolved-form ownership tests for the Human Input v2 aggregate."""
 
 from dataclasses import fields
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -20,9 +20,9 @@ from core.human_input_v2.approval import (
     SubjectSnapshot,
 )
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
-from core.human_input_v2.shared import AppId, ApproverGrantId, FormId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AppId, ApproverGrantId, FormId, NormalizedEmail, WorkspaceId
 
-_NOW = UtcTimestamp(datetime(2026, 8, 10, 8, tzinfo=UTC))
+_NOW = datetime(2026, 8, 10, 8)
 
 
 def _resolved_form() -> ResolvedForm:
@@ -54,8 +54,8 @@ def _form() -> HumanInputForm:
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id="pause-1",

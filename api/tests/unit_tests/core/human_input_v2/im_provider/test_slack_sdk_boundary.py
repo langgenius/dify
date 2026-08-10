@@ -61,7 +61,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 from services import human_input_slack_channel as slack_service_module
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import (
@@ -1333,7 +1333,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
     port = SlackIMProviderConfigurationPort(
         protector,
         adapter_factory=SlackIMProviderAdapter,
-        clock=lambda: UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        clock=lambda: datetime(2026, 8, 6, 8),
     )
 
     confirmed = port.prepare(context, _candidate(), None)
@@ -1345,7 +1345,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
         encrypted_credentials=confirmed.encrypted_credentials,
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     preserved = port.prepare(context, _candidate(preserve_app_token=True), current)
 
@@ -1451,7 +1451,7 @@ def test_service_port_normalizes_protection_and_reveal_failures(
         ),
         configured_by_account_id=context.actor_account_id,
         callback_url=None,
-        now=UtcTimestamp(datetime(2026, 8, 6, 8, tzinfo=UTC)),
+        now=datetime(2026, 8, 6, 8),
     )
     monkeypatch.setattr(slack_service_module.encrypter, "decrypt_token", _fail_secret_operation)
     with pytest.raises(IMProviderConfigurationError) as reveal_failure:

@@ -1,7 +1,7 @@
 """Boundary and failure-path tests for Form Core immutable domain values."""
 
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from pydantic import JsonValue
@@ -56,11 +56,10 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 
 
@@ -111,8 +110,8 @@ def _form(
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=None,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=kind,
         status=status,
         workflow_pause_id=workflow_pause_id,
@@ -473,8 +472,8 @@ def test_failed_recipient_plan_cannot_create_a_form_snapshot() -> None:
             app_id=AppId("app-1"),
             resolved_form=_resolved_form(),
             display_in_ui=None,
-            node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-            global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+            node_timeout_at=_NOW + timedelta(hours=1),
+            global_expires_at=_NOW + timedelta(hours=2),
             kind=HumanInputV2FormKind.RUNTIME,
             workflow_pause_id="pause-1",
             node_execution_id="execution-1",

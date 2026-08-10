@@ -2,10 +2,11 @@
 
 from collections.abc import Iterator
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy import event, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -51,7 +52,6 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from extensions.storage.storage_type import StorageType
@@ -69,7 +69,7 @@ from models.model import UploadFile
 from repositories.human_input_v2.form.delivery_repository import SQLAlchemyDeliveryAttemptRepository
 from repositories.human_input_v2.form.repository import FormPersistenceError, SQLAlchemyFormRepository
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 _FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
 
@@ -145,8 +145,8 @@ def _creation(*, duplicate_endpoint: bool = False) -> FormCreation:
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         workflow_pause_id="pause-1",
         node_execution_id="node-execution-1",
@@ -185,7 +185,7 @@ def _upload_file(*, file_id: str, tenant_id: str) -> UploadFile:
         mime_type="text/plain",
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=_NOW.value,
+        created_at=_NOW,
         used=False,
     )
     upload_file.id = file_id
@@ -276,7 +276,7 @@ def test_stale_sending_recovery_respects_the_provider_idempotency_horizon(reposi
         *,
         attempt_id: str,
         endpoint: DeliveryEndpoint,
-        started_at: UtcTimestamp,
+        started_at: NaiveDatetime,
     ) -> DeliveryAttempt:
         return DeliveryAttempt(
             id=DeliveryAttemptId(attempt_id),
@@ -291,25 +291,25 @@ def test_stale_sending_recovery_respects_the_provider_idempotency_horizon(reposi
             failure_reason=None,
             provider_response=data.to_mapping(),
             created_at=started_at,
-            updated_at=UtcTimestamp(_NOW.value - timedelta(minutes=10)),
+            updated_at=_NOW - timedelta(minutes=10),
         )
 
     recoverable = sending_attempt(
         attempt_id="attempt-recoverable",
         endpoint=creation.endpoints[0],
-        started_at=UtcTimestamp(_NOW.value - timedelta(hours=1)),
+        started_at=_NOW - timedelta(hours=1),
     )
     unknown = sending_attempt(
         attempt_id="attempt-unknown",
         endpoint=creation.endpoints[1],
-        started_at=UtcTimestamp(_NOW.value - timedelta(hours=24)),
+        started_at=_NOW - timedelta(hours=24),
     )
     repository.create_form(replace(creation, attempts=(recoverable, unknown)))
     delivery_repository = SQLAlchemyDeliveryAttemptRepository(session_maker)
 
     recovered = delivery_repository.recover_stale(
-        stale_before=UtcTimestamp(_NOW.value - timedelta(minutes=5)),
-        idempotency_cutoff=UtcTimestamp(_NOW.value - timedelta(hours=23)),
+        stale_before=_NOW - timedelta(minutes=5),
+        idempotency_cutoff=_NOW - timedelta(hours=23),
         now=_NOW,
         limit=10,
     )

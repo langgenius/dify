@@ -1,6 +1,6 @@
 """Pure reconciliation tests for the IM Control Plane."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.contact_directory import Contact, ContactSnapshot
 from core.human_input_v2.entities import IMBindingScope, IMProvider, IMSyncRunStatus
@@ -21,11 +21,10 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _REVISION = IntegrationRevisionToken(IntegrationId("integration-1"), 3)
 
 

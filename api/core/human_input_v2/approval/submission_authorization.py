@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import assert_never
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.shared import (
     AccountId,
@@ -22,7 +24,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
 )
 
 from .delivery import DeliveryEndpoint
@@ -208,7 +209,7 @@ class SubmissionAuthorizer:
         context: AuthorizationContext,
         proof: object,
         selected_action_id: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> SubmissionAuthorizationDecision:
         """Authorize verified proof against one already-loaded coherent context."""
 

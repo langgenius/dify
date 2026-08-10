@@ -10,12 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import assert_never
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.shared import (
     ApproverGrantId,
     DeliveryEndpointId,
     FormId,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
@@ -101,8 +102,8 @@ class ApproverGrant:
     subject_key: CanonicalSubjectKey
     matched_sources: tuple[MatchedRecipientSource, ...]
     subject_snapshot: SubjectSnapshot
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not isinstance(self.matched_sources, tuple):
@@ -121,7 +122,7 @@ class ApproverGrant:
         grant_id: ApproverGrantId,
         form_ref: FormRef,
         approver: ResolvedApprover,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> ApproverGrant:
         return cls(
             ref=form_ref.grant(grant_id),

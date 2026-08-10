@@ -1,7 +1,7 @@
 """Domain tests for IM Integration configuration revision semantics."""
 
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -23,12 +23,11 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
-_LATER = UtcTimestamp(datetime(2026, 7, 25, 9, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
+_LATER = datetime(2026, 7, 25, 9)
 
 
 def _credentials(secret: str) -> EncryptedCredentials:

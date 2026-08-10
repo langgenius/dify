@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -35,7 +35,6 @@ from core.human_input_v2.shared import (
     ContactId,
     FormId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_v2.submission import (
@@ -46,7 +45,7 @@ from services.human_input_v2.submission import (
     WorkflowResumeIdentity,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ACCOUNT_ID = AccountId("account-1")
@@ -87,8 +86,8 @@ def _context(
             legacy_form_content="Approve",
         ),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=kind,
         status=status,
         workflow_pause_id=workflow_pause_id,

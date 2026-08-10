@@ -6,6 +6,7 @@ from threading import Barrier
 
 import pytest
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.approval import FormRef, OTPChallengeRejectionReason, OTPCodeHash
@@ -15,8 +16,9 @@ from core.human_input_v2.entities import (
     HumanInputV2FormKind,
     HumanInputV2FormStatus,
 )
-from core.human_input_v2.shared import ApproverGrantId, FormId, OTPChallengeId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import ApproverGrantId, FormId, OTPChallengeId, WorkspaceId
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import (
     FormApproverGrantMatchedSources,
@@ -35,10 +37,10 @@ from repositories.human_input_v2.approval.repository import (
 
 
 class _FixedClock:
-    def __init__(self, now: UtcTimestamp) -> None:
+    def __init__(self, now: NaiveDatetime) -> None:
         self._now = now
 
-    def now(self) -> UtcTimestamp:
+    def now(self) -> NaiveDatetime:
         return self._now
 
 
@@ -71,7 +73,7 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
     contact_id = str(uuidv7())
     initial_challenge_id = str(uuidv7())
     replacement_ids = (str(uuidv7()), str(uuidv7()))
-    issued_at = UtcTimestamp.now()
+    issued_at = naive_utc_now()
     grant_ref = FormRef(WorkspaceId(workspace_id), FormId(form_id)).grant(ApproverGrantId(grant_id))
     contact_email = f"otp-{uuidv7()}@example.com"
     contact = HumanInputContact(
@@ -88,8 +90,8 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
         app_id=str(uuidv7()),
         form_definition=HumanInputV2FormDefinition(),
         rendered_content="Approve",
-        node_timeout_at=issued_at.value + timedelta(hours=1),
-        global_expires_at=issued_at.value + timedelta(hours=2),
+        node_timeout_at=issued_at + timedelta(hours=1),
+        global_expires_at=issued_at + timedelta(hours=2),
         form_kind=HumanInputV2FormKind.DELIVERY_TEST,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id=None,
@@ -122,7 +124,7 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
         challenge_token_hash="a" * 64,
         plaintext_code="123456",
     )
-    resend_clock = _FixedClock(UtcTimestamp(issued_at.value + timedelta(seconds=60)))
+    resend_clock = _FixedClock(issued_at + timedelta(seconds=60))
     barrier = Barrier(2)
 
     def resend(index: int):

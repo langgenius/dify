@@ -12,8 +12,9 @@ from core.human_input_v2.delivery_runtime import (
     EmailProviderAdapterRegistry,
     HumanInputRenderedEmailDeliveryRuntime,
 )
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.form import SQLAlchemyDeliveryAttemptRepository
 from services.human_input_email_channel_manager import DifyEmailCredentialProtector
@@ -66,10 +67,10 @@ def dispatch_human_input_v2_delivery_attempt_task(attempt_id: str) -> None:
 def publish_due_human_input_v2_delivery_attempts_task() -> None:
     sessions = _operation_sessions()
     repository = SQLAlchemyDeliveryAttemptRepository(sessions)
-    now = UtcTimestamp.now()
+    now = naive_utc_now()
     repository.recover_stale(
-        stale_before=UtcTimestamp(now.value - timedelta(minutes=5)),
-        idempotency_cutoff=UtcTimestamp(now.value - timedelta(hours=23)),
+        stale_before=now - timedelta(minutes=5),
+        idempotency_cutoff=now - timedelta(hours=23),
         now=now,
         limit=100,
     )

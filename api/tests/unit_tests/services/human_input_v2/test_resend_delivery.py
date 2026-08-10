@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
@@ -15,7 +15,6 @@ from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_v2.resend_delivery import (
@@ -25,7 +24,7 @@ from services.human_input_v2.resend_delivery import (
     ResendTransportError,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 31, 8)
 _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 
 

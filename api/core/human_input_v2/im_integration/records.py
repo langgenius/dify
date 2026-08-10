@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.entities import IMBindingScope, IMProvider
 from core.human_input_v2.shared import (
@@ -17,7 +17,6 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
 )
 
 
@@ -52,9 +51,9 @@ class IMIdentity:
     normalized_email: NormalizedEmail | None
     raw_payload: OpaqueProviderPayload
     last_seen_sync_run_id: IMSyncRunId | None
-    last_seen_at: UtcTimestamp | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    last_seen_at: NaiveDatetime | None
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not self.provider_user_id.strip():
@@ -72,9 +71,9 @@ class IMIdentity:
         email: str | None,
         raw_payload: Mapping[str, JsonValue],
         last_seen_sync_run_id: IMSyncRunId | None,
-        last_seen_at: UtcTimestamp | None,
-        now: UtcTimestamp,
-        created_at: UtcTimestamp | None = None,
+        last_seen_at: NaiveDatetime | None,
+        now: NaiveDatetime,
+        created_at: NaiveDatetime | None = None,
     ) -> IMIdentity:
         clean_name = display_name.strip() if display_name is not None else None
         clean_email = email.strip() if email is not None else None
@@ -107,8 +106,8 @@ class IMBinding:
     identity_id: IMIdentityId
     provider: IMProvider
     bound_by_account_id: AccountId | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     def __post_init__(self) -> None:
         if not self.scope_id.strip():
@@ -128,8 +127,8 @@ class IMBinding:
         identity_id: IMIdentityId,
         provider: IMProvider,
         bound_by_account_id: AccountId | None,
-        now: UtcTimestamp,
-        created_at: UtcTimestamp | None = None,
+        now: NaiveDatetime,
+        created_at: NaiveDatetime | None = None,
     ) -> IMBinding:
         return cls(
             id=binding_id,

@@ -1,33 +1,79 @@
 """Tests for values shared by Human Input v2 bounded contexts."""
 
-import json
-from datetime import UTC, datetime, timedelta, timezone
+from typing import NewType, Protocol
 
 import pytest
 
 from core.human_input_v2.shared import (
     AccountId,
+    AppId,
+    ApproverGrantId,
+    AuditEventId,
     ContactId,
+    DeliveryAttemptId,
+    DeliveryEndpointId,
     DeploymentScope,
+    EmailProviderId,
     EndUserId,
+    FormId,
+    IMBindingId,
+    IMIdentityId,
+    IMSyncResultId,
+    IMSyncRunId,
+    IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
+    OTPChallengeId,
+    PlatformEntryId,
+    SubmissionId,
+    UploadCapabilityId,
+    UploadFileAssociationId,
     WorkspaceId,
     WorkspaceScope,
 )
 
 
-@pytest.mark.parametrize("identifier_type", [AccountId, ContactId, EndUserId, WorkspaceId])
-@pytest.mark.parametrize("invalid_value", ["", "   ", "\n"])
-def test_typed_ids_reject_blank_values(identifier_type, invalid_value: str) -> None:
-    with pytest.raises(ValueError, match="must not be blank"):
-        identifier_type(invalid_value)
+class _StringNewType(Protocol):
+    __supertype__: type[str]
+
+    def __call__(self, value: str, /) -> str: ...
 
 
-def test_typed_ids_are_equal_only_within_the_same_id_type() -> None:
+@pytest.mark.parametrize(
+    "identifier_type",
+    [
+        AccountId,
+        AppId,
+        ApproverGrantId,
+        AuditEventId,
+        ContactId,
+        DeliveryAttemptId,
+        DeliveryEndpointId,
+        EmailProviderId,
+        EndUserId,
+        FormId,
+        IMBindingId,
+        IMIdentityId,
+        IMSyncResultId,
+        IMSyncRunId,
+        IntegrationId,
+        OTPChallengeId,
+        PlatformEntryId,
+        SubmissionId,
+        UploadCapabilityId,
+        UploadFileAssociationId,
+        WorkspaceId,
+    ],
+)
+def test_typed_ids_are_direct_string_newtypes(identifier_type: _StringNewType) -> None:
+    assert type(identifier_type) is NewType
+    assert identifier_type.__supertype__ is str
+    assert identifier_type("  identifier  ") == "  identifier  "
+
+
+def test_typed_ids_are_distinct_static_types_with_string_runtime_values() -> None:
+    assert ContactId is not AccountId
     assert ContactId("same") == ContactId("same")
-    assert ContactId("same") != AccountId("same")
-    assert ContactId("same").to_primitive() == "same"
+    assert ContactId("same") == AccountId("same")
 
 
 @pytest.mark.parametrize(
@@ -58,18 +104,3 @@ def test_owner_scopes_are_explicit_and_immutable() -> None:
     }
     with pytest.raises(AttributeError):
         WorkspaceScope(workspace_id).workspace_id = WorkspaceId("workspace-2")  # type: ignore[misc]
-
-
-def test_utc_timestamp_normalizes_and_serializes_at_the_boundary() -> None:
-    source = datetime(2026, 7, 25, 10, 30, tzinfo=timezone(timedelta(hours=8)))
-    timestamp = UtcTimestamp(source)
-
-    assert timestamp.value == datetime(2026, 7, 25, 2, 30, tzinfo=UTC)
-    assert timestamp.to_primitive() == "2026-07-25T02:30:00Z"
-    with pytest.raises(TypeError):
-        json.dumps(timestamp)
-
-
-def test_utc_timestamp_rejects_naive_datetime() -> None:
-    with pytest.raises(ValueError, match="timezone-aware"):
-        UtcTimestamp(datetime(2026, 7, 25, 2, 30))

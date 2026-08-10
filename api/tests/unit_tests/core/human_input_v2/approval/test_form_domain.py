@@ -1,9 +1,10 @@
 """Behavior tests for the Human Input v2 form aggregate and frozen child facts."""
 
 from dataclasses import FrozenInstanceError
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
+from pydantic import NaiveDatetime
 
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
@@ -43,11 +44,10 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
 
 
@@ -100,8 +100,8 @@ def _form(*, status: HumanInputV2FormStatus = HumanInputV2FormStatus.WAITING) ->
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=status,
         workflow_pause_id="pause-1",
@@ -185,19 +185,19 @@ def test_grant_endpoint_token_upload_and_delivery_facts_remain_distinct_capabili
         (HumanInputV2FormStatus.EXPIRED, _NOW, FormInactiveReason.STATUS_EXPIRED),
         (
             HumanInputV2FormStatus.WAITING,
-            UtcTimestamp(_NOW.value + timedelta(hours=3)),
+            _NOW + timedelta(hours=3),
             FormInactiveReason.GLOBALLY_EXPIRED,
         ),
         (
             HumanInputV2FormStatus.WAITING,
-            UtcTimestamp(_NOW.value + timedelta(minutes=90)),
+            _NOW + timedelta(minutes=90),
             FormInactiveReason.TIMED_OUT,
         ),
     ],
 )
 def test_form_returns_stable_inactive_reasons(
     status: HumanInputV2FormStatus,
-    now: UtcTimestamp,
+    now: NaiveDatetime,
     expected_reason: FormInactiveReason,
 ) -> None:
     state = _form(status=status).state_at(now)
@@ -263,8 +263,8 @@ def test_resolved_plan_maps_deterministically_to_one_grant_per_approver_and_sepa
         app_id=AppId("app-1"),
         resolved_form=_resolved_form(),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         workflow_pause_id="pause-1",
         node_execution_id="node-execution-1",

@@ -1,6 +1,6 @@
 """Table-driven tests for Contact Directory resolution and lifecycle policy."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 import pytest
 
@@ -12,9 +12,9 @@ from core.human_input_v2.contact_directory import (
     ContactRejectionCode,
     ContactResolution,
 )
-from core.human_input_v2.shared import AccountId, ContactId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, WorkspaceId
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 
 

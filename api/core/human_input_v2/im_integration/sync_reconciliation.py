@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
-from pydantic import JsonValue
+from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.contact_directory import ContactIdentitySource, ContactSnapshot
 from core.human_input_v2.entities import IMProvider, IMSyncRemovalReason, IMSyncResultType, IMSyncRunStatus
@@ -18,7 +18,6 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    UtcTimestamp,
 )
 
 from .integration import IntegrationRevisionToken
@@ -119,8 +118,8 @@ class SyncResultFact:
     directory_entry_payload: OpaqueProviderPayload | None
     contact_snapshot: SyncContactSnapshot | None
     identity_snapshot: SyncIdentitySnapshot | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,12 +157,12 @@ class IMSyncRun:
     removed_count: int
     skipped_count: int
     started_by_account_id: AccountId | None
-    started_at: UtcTimestamp | None
-    finished_at: UtcTimestamp | None
+    started_at: NaiveDatetime | None
+    finished_at: NaiveDatetime | None
     error_code: str | None
     error_message: str | None
-    created_at: UtcTimestamp
-    updated_at: UtcTimestamp
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
 
     @classmethod
     def create(
@@ -173,7 +172,7 @@ class IMSyncRun:
         integration_revision: IntegrationRevisionToken,
         provider: IMProvider,
         started_by_account_id: AccountId | None,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> IMSyncRun:
         return cls(
             id=sync_run_id,
@@ -198,7 +197,7 @@ class IMSyncRun:
     def is_active(self) -> bool:
         return self.status in (IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING)
 
-    def start(self, now: UtcTimestamp) -> IMSyncRun:
+    def start(self, now: NaiveDatetime) -> IMSyncRun:
         if self.status is not IMSyncRunStatus.QUEUED:
             return self
         return replace(self, status=IMSyncRunStatus.RUNNING, started_at=now, updated_at=now)

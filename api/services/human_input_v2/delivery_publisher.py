@@ -5,8 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2.approval import DeliveryAttemptRepository
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
+from libs.datetime_utils import naive_utc_now
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +24,7 @@ class HumanInputV2DueAttemptPublisher:
         repository: DeliveryAttemptRepository,
         enqueue: Callable[[DeliveryAttemptId], None],
         *,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
         batch_size: int = 100,
     ) -> None:
         if batch_size < 1:

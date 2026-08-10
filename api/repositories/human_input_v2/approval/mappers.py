@@ -6,8 +6,10 @@ serialization deliberately omit every code and token digest.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from hashlib import sha256
+
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.approval import (
     ContactOTPSubject,
@@ -25,14 +27,14 @@ from core.human_input_v2.shared import (
     FormId,
     NormalizedEmail,
     OTPChallengeId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import EmailOTPAuthorizationProof, HumanInputV2FormOTPChallenge
 
 
-def _timestamp(value: datetime) -> UtcTimestamp:
-    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+def _timestamp(value: datetime) -> NaiveDatetime:
+    return ensure_naive_utc(value)
 
 
 def _email_hash(normalized_email: NormalizedEmail) -> str:
@@ -60,16 +62,16 @@ def challenge_to_record(challenge: OTPChallenge) -> HumanInputV2FormOTPChallenge
         email_hash=_email_hash(challenge.normalized_email),
         email=str(challenge.normalized_email),
         status=challenge.status,
-        expires_at=challenge.expires_at.value,
-        resend_after=challenge.resend_after.value,
+        expires_at=challenge.expires_at,
+        resend_after=challenge.resend_after,
         send_count=challenge.send_count,
         attempt_count=challenge.attempt_count,
-        verified_at=challenge.verified_at.value if challenge.verified_at is not None else None,
-        invalidated_at=challenge.invalidated_at.value if challenge.invalidated_at is not None else None,
+        verified_at=challenge.verified_at if challenge.verified_at is not None else None,
+        invalidated_at=challenge.invalidated_at if challenge.invalidated_at is not None else None,
     )
     record.id = str(challenge.ref.challenge_id)
-    record.created_at = challenge.created_at.value
-    record.updated_at = challenge.updated_at.value
+    record.created_at = challenge.created_at
+    record.updated_at = challenge.updated_at
     return record
 
 
@@ -141,7 +143,7 @@ def proof_to_record_value(proof: VerifiedEmailOTPProof) -> EmailOTPAuthorization
         subject_type=subject_type,
         contact_id=contact_id,
         verified_email=str(proof.normalized_email),
-        verified_at=proof.verified_at.value,
+        verified_at=proof.verified_at,
     )
 
 

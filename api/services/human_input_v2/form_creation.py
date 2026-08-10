@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import override
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.approval import (
     FormRef,
@@ -18,9 +20,9 @@ from core.human_input_v2.shared import (
     AppId,
     ApproverGrantId,
     DeliveryEndpointId,
-    UtcTimestamp,
     WorkspaceId,
 )
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .delivery_publisher import DeliveryPublicationResult, HumanInputV2DueAttemptPublisher
@@ -43,8 +45,8 @@ class HumanInputV2FormCreationRequest:
     app_id: AppId
     resolved_form: ResolvedForm
     display_in_ui: bool | None
-    node_timeout_at: UtcTimestamp
-    global_expires_at: UtcTimestamp
+    node_timeout_at: NaiveDatetime
+    global_expires_at: NaiveDatetime
     kind: HumanInputV2FormKind
     workflow_pause_id: str | None
     node_execution_id: str | None
@@ -68,7 +70,7 @@ class HumanInputV2FormCreationService:
         publisher: HumanInputV2DueAttemptPublisher,
         *,
         identifier_factory: FormSnapshotIdentifierFactory | None = None,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._producer = producer
         self._publisher = publisher

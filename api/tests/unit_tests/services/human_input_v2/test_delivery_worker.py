@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import datetime
 
 from core.human_input_v2.approval import (
     ApproverGrantRef,
@@ -30,13 +30,12 @@ from core.human_input_v2.shared import (
     EmailProviderId,
     FormId,
     NormalizedEmail,
-    UtcTimestamp,
     WorkspaceId,
 )
 from services.human_input_v2.delivery_worker import HumanInputV2DeliveryWorker
 from services.human_input_v2.notification_producer import serialize_rendered_email_request
 
-_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 31, 8)
 _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 
 

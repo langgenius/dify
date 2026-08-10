@@ -1,9 +1,9 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
 from services.human_input_v2.delivery_publisher import HumanInputV2DueAttemptPublisher
 
-_NOW = UtcTimestamp(datetime(2026, 7, 31, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 31, 8)
 
 
 class Repository:

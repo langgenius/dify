@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import HumanInputV2FormStatus
-from core.human_input_v2.shared import UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import WorkspaceId
 
 from .delivery import (
     DeliveryAttempt,
@@ -29,8 +31,8 @@ class FormDefinitionProjection:
     resolved_form: ResolvedForm
     display_in_ui: bool | None
     status: HumanInputV2FormStatus
-    node_timeout_at: UtcTimestamp
-    global_expires_at: UtcTimestamp
+    node_timeout_at: NaiveDatetime
+    global_expires_at: NaiveDatetime
 
 
 @dataclass(frozen=True, slots=True)

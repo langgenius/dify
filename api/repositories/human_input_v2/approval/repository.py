@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -33,7 +34,7 @@ from core.human_input_v2.approval import (
     OTPVerificationDecision,
 )
 from core.human_input_v2.entities import HumanInputApproverGrantSubjectType
-from core.human_input_v2.shared import ContactId, NormalizedEmail, OTPChallengeId, UtcTimestamp
+from core.human_input_v2.shared import ContactId, NormalizedEmail, OTPChallengeId
 from models.human_input_v2 import (
     HumanInputContact,
     HumanInputV2FormApproverGrant,
@@ -55,7 +56,7 @@ class OTPChallengeAuditFact:
     challenge_ref: OTPChallengeRef
     previous_challenge_id: OTPChallengeId | None
     send_count: int
-    occurred_at: UtcTimestamp
+    occurred_at: NaiveDatetime
 
 
 class OTPChallengeAuditWriter(Protocol):
@@ -337,9 +338,9 @@ class SQLAlchemyOTPChallengeRepository:
         record.status = challenge.status
         record.send_count = challenge.send_count
         record.attempt_count = challenge.attempt_count
-        record.verified_at = challenge.verified_at.value if challenge.verified_at is not None else None
-        record.invalidated_at = challenge.invalidated_at.value if challenge.invalidated_at is not None else None
-        record.updated_at = challenge.updated_at.value
+        record.verified_at = challenge.verified_at if challenge.verified_at is not None else None
+        record.invalidated_at = challenge.invalidated_at if challenge.invalidated_at is not None else None
+        record.updated_at = challenge.updated_at
 
     def _append_audit(
         self,

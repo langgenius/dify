@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import sqlalchemy as sa
+from pydantic import NaiveDatetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,7 +23,8 @@ from core.human_input_v2.delivery_runtime import (
     DeliveryOutcomeStatus,
 )
 from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus
-from core.human_input_v2.shared import DeliveryAttemptId, UtcTimestamp
+from core.human_input_v2.shared import DeliveryAttemptId
+from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
     FormDeliveryProviderResponse,
     HumanInputV2Form,
@@ -39,7 +41,7 @@ class SQLAlchemyDeliveryAttemptRepository:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
-    def list_due_ids(self, *, now: UtcTimestamp, limit: int) -> tuple[DeliveryAttemptId, ...]:
+    def list_due_ids(self, *, now: NaiveDatetime, limit: int) -> tuple[DeliveryAttemptId, ...]:
         if limit < 1:
             raise ValueError("delivery due-read limit must be positive")
         with self._session_maker() as session:
@@ -47,7 +49,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                 select(HumanInputV2FormDeliveryAttempt.id)
                 .where(
                     HumanInputV2FormDeliveryAttempt.status == HumanInputDeliveryAttemptStatus.QUEUED,
-                    HumanInputV2FormDeliveryAttempt.scheduled_at <= now.value,
+                    HumanInputV2FormDeliveryAttempt.scheduled_at <= now,
                 )
                 .order_by(
                     HumanInputV2FormDeliveryAttempt.scheduled_at,
@@ -57,24 +59,27 @@ class SQLAlchemyDeliveryAttemptRepository:
             ).all()
         return tuple(DeliveryAttemptId(value) for value in ids)
 
-    def claim(self, attempt_id: DeliveryAttemptId, *, now: UtcTimestamp) -> ClaimedDeliveryAttempt | None:
+    def claim(self, attempt_id: DeliveryAttemptId, *, now: NaiveDatetime) -> ClaimedDeliveryAttempt | None:
         with self._session_maker() as session, session.begin():
             row = session.execute(self._owned_attempt(attempt_id).with_for_update()).one_or_none()
             if row is None:
                 return None
             record, endpoint = row
-            if record.status is not HumanInputDeliveryAttemptStatus.QUEUED or _aware(record.scheduled_at) > now.value:
+            if (
+                record.status is not HumanInputDeliveryAttemptStatus.QUEUED
+                or ensure_naive_utc(record.scheduled_at) > now
+            ):
                 return None
             record.status = HumanInputDeliveryAttemptStatus.SENDING
             if record.started_at is None:
-                record.started_at = now.value
+                record.started_at = now
             record.updated_at = _next_timestamp(record.updated_at, now)
             session.flush()
             try:
                 return _claimed(record, endpoint)
             except ValueError:
                 record.status = HumanInputDeliveryAttemptStatus.FAILED
-                record.finished_at = now.value
+                record.finished_at = now
                 record.failure_code = "delivery_payload_unavailable"
                 record.updated_at = _next_timestamp(record.updated_at, now)
                 return None
@@ -85,7 +90,7 @@ class SQLAlchemyDeliveryAttemptRepository:
         *,
         snapshot: ConfigurationSnapshotIdentity,
         payload_fingerprint: str,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> ClaimedDeliveryAttempt | None:
         if payload_fingerprint != claim.data.payload_fingerprint:
             return None
@@ -110,8 +115,8 @@ class SQLAlchemyDeliveryAttemptRepository:
         claim: ClaimedDeliveryAttempt,
         *,
         outcome: DeliveryOutcome,
-        scheduled_at: UtcTimestamp,
-        now: UtcTimestamp,
+        scheduled_at: NaiveDatetime,
+        now: NaiveDatetime,
     ) -> bool:
         if outcome.status is not DeliveryOutcomeStatus.RETRYABLE_FAILURE or outcome.failure is None:
             raise ValueError("only retryable outcomes can requeue a delivery")
@@ -126,14 +131,14 @@ class SQLAlchemyDeliveryAttemptRepository:
                 .where(
                     HumanInputV2FormDeliveryAttempt.id == str(claim.attempt.id),
                     HumanInputV2FormDeliveryAttempt.status == HumanInputDeliveryAttemptStatus.SENDING,
-                    HumanInputV2FormDeliveryAttempt.updated_at == claim.attempt.updated_at.value,
+                    HumanInputV2FormDeliveryAttempt.updated_at == claim.attempt.updated_at,
                 )
                 .with_for_update()
             )
             if record is None:
                 return False
             record.status = HumanInputDeliveryAttemptStatus.QUEUED
-            record.scheduled_at = scheduled_at.value
+            record.scheduled_at = scheduled_at
             record.provider_response = FormDeliveryProviderResponse.model_validate(data.to_mapping())
             record.updated_at = _next_timestamp(record.updated_at, now)
             return True
@@ -143,7 +148,7 @@ class SQLAlchemyDeliveryAttemptRepository:
         claim: ClaimedDeliveryAttempt,
         *,
         outcome: DeliveryOutcome,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> bool:
         if outcome.status is DeliveryOutcomeStatus.RETRYABLE_FAILURE:
             raise ValueError("retryable outcome cannot complete a delivery")
@@ -154,7 +159,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                 .where(
                     HumanInputV2FormDeliveryAttempt.id == str(claim.attempt.id),
                     HumanInputV2FormDeliveryAttempt.status == HumanInputDeliveryAttemptStatus.SENDING,
-                    HumanInputV2FormDeliveryAttempt.updated_at == claim.attempt.updated_at.value,
+                    HumanInputV2FormDeliveryAttempt.updated_at == claim.attempt.updated_at,
                 )
                 .with_for_update()
             )
@@ -165,7 +170,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                 if outcome.status is DeliveryOutcomeStatus.ACCEPTED
                 else HumanInputDeliveryAttemptStatus.FAILED
             )
-            record.finished_at = now.value
+            record.finished_at = now
             record.provider_message_id = outcome.receipt.provider_message_id if outcome.receipt is not None else None
             record.failure_code = outcome.failure.code if outcome.failure is not None else None
             record.failure_reason = None
@@ -176,9 +181,9 @@ class SQLAlchemyDeliveryAttemptRepository:
     def recover_stale(
         self,
         *,
-        stale_before: UtcTimestamp,
-        idempotency_cutoff: UtcTimestamp,
-        now: UtcTimestamp,
+        stale_before: NaiveDatetime,
+        idempotency_cutoff: NaiveDatetime,
+        now: NaiveDatetime,
         limit: int,
     ) -> int:
         if limit < 1:
@@ -189,16 +194,16 @@ class SQLAlchemyDeliveryAttemptRepository:
                 select(HumanInputV2FormDeliveryAttempt)
                 .where(
                     HumanInputV2FormDeliveryAttempt.status == HumanInputDeliveryAttemptStatus.SENDING,
-                    HumanInputV2FormDeliveryAttempt.updated_at <= stale_before.value,
+                    HumanInputV2FormDeliveryAttempt.updated_at <= stale_before,
                 )
                 .order_by(HumanInputV2FormDeliveryAttempt.updated_at, HumanInputV2FormDeliveryAttempt.id)
                 .limit(limit)
                 .with_for_update(skip_locked=True)
             ).all()
             for record in records:
-                if record.started_at is None or _aware(record.started_at) < idempotency_cutoff.value:
+                if record.started_at is None or ensure_naive_utc(record.started_at) < idempotency_cutoff:
                     record.status = HumanInputDeliveryAttemptStatus.FAILED
-                    record.finished_at = now.value
+                    record.finished_at = now
                     record.failure_code = "delivery_outcome_unknown"
                     if record.provider_response is not None:
                         current_data = delivery_attempt_data_from_mapping(record.provider_response.root)
@@ -215,7 +220,7 @@ class SQLAlchemyDeliveryAttemptRepository:
                             )
                 else:
                     record.status = HumanInputDeliveryAttemptStatus.QUEUED
-                    record.scheduled_at = now.value
+                    record.scheduled_at = now
                 record.updated_at = _next_timestamp(record.updated_at, now)
                 recovered += 1
         return recovered
@@ -259,16 +264,12 @@ def _claimed(
 def _claim_matches(record: HumanInputV2FormDeliveryAttempt, claim: ClaimedDeliveryAttempt) -> bool:
     return (
         record.status is HumanInputDeliveryAttemptStatus.SENDING
-        and _aware(record.updated_at) == claim.attempt.updated_at.value
+        and ensure_naive_utc(record.updated_at) == claim.attempt.updated_at
     )
 
 
-def _next_timestamp(current: datetime, now: UtcTimestamp) -> datetime:
-    return max(now.value, _aware(current) + timedelta(microseconds=1))
-
-
-def _aware(value: datetime) -> datetime:
-    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+def _next_timestamp(current: datetime, now: NaiveDatetime) -> datetime:
+    return max(now, ensure_naive_utc(current) + timedelta(microseconds=1))
 
 
 def _safe_outcome(outcome: DeliveryOutcome) -> SafeDeliveryOutcome:

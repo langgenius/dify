@@ -1,7 +1,9 @@
 from enum import StrEnum
 from typing import NewType
 
-from core.human_input_v2.shared import AccountId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from pydantic import NaiveDatetime
+
+from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
 
 
 class HumanInputContactType(StrEnum):
@@ -190,8 +192,8 @@ __all__ = [
     "IMSyncResultType",
     "IMSyncRunId",
     "IMSyncRunStatus",
+    "NaiveDatetime",
     "NormalizedEmail",
     "OrganizationCandidateId",
-    "UtcTimestamp",
     "WorkspaceId",
 ]

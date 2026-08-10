@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -61,7 +61,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     SubmissionId,
-    UtcTimestamp,
     WorkspaceId,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
@@ -92,7 +91,7 @@ from repositories.human_input_v2.submission.repository import (
     SubmissionScopeNotFoundError,
 )
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, 8, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25, 8)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 _FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
@@ -158,8 +157,8 @@ def _form(grant: ApproverGrant) -> HumanInputForm:
             legacy_form_content="Approve",
         ),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id="pause-1",
@@ -212,8 +211,8 @@ def _end_user_form(grant: ApproverGrant) -> HumanInputForm:
             legacy_form_content="Approve",
         ),
         display_in_ui=True,
-        node_timeout_at=UtcTimestamp(_NOW.value + timedelta(hours=1)),
-        global_expires_at=UtcTimestamp(_NOW.value + timedelta(hours=2)),
+        node_timeout_at=_NOW + timedelta(hours=1),
+        global_expires_at=_NOW + timedelta(hours=2),
         kind=HumanInputV2FormKind.RUNTIME,
         status=HumanInputV2FormStatus.WAITING,
         workflow_pause_id="pause-2",
@@ -226,8 +225,8 @@ def _end_user_form(grant: ApproverGrant) -> HumanInputForm:
 
 def _set_record_identity(record, record_id: str) -> None:
     record.id = record_id
-    record.created_at = _NOW.value
-    record.updated_at = _NOW.value
+    record.created_at = _NOW
+    record.updated_at = _NOW
 
 
 def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
@@ -277,7 +276,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
             configured_by_account_id=str(_ACCOUNT_ID),
             callback_url=None,
             safe_status_reason=None,
-            last_checked_at=_NOW.value,
+            last_checked_at=_NOW,
         )
         _set_record_identity(integration, str(_INTEGRATION_ID))
         identity = HumanInputIMIdentity(
@@ -290,7 +289,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
             normalized_email="reviewer@example.com",
             raw_payload=IMIdentityRawPayload({}),
             last_seen_sync_run_id=None,
-            last_seen_at=_NOW.value,
+            last_seen_at=_NOW,
         )
         _set_record_identity(identity, str(_IDENTITY_ID))
         binding = HumanInputIMBinding(
@@ -340,7 +339,7 @@ def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-fe
         configured_by_account_id=str(_ACCOUNT_ID),
         callback_url=None,
         safe_status_reason=None,
-        last_checked_at=_NOW.value,
+        last_checked_at=_NOW,
     )
     _set_record_identity(integration, "integration-feishu")
     identity = HumanInputIMIdentity(
@@ -353,7 +352,7 @@ def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-fe
         normalized_email="reviewer@example.com",
         raw_payload=IMIdentityRawPayload({}),
         last_seen_sync_run_id=None,
-        last_seen_at=_NOW.value,
+        last_seen_at=_NOW,
     )
     _set_record_identity(identity, "identity-feishu")
     binding = HumanInputIMBinding(
@@ -785,7 +784,7 @@ def test_im_context_rejects_integration_owned_by_another_workspace_before_fallba
             configured_by_account_id=str(_ACCOUNT_ID),
             callback_url=None,
             safe_status_reason=None,
-            last_checked_at=_NOW.value,
+            last_checked_at=_NOW,
         )
         _set_record_identity(integration, str(cross_workspace_integration_id))
         identity = HumanInputIMIdentity(
@@ -798,7 +797,7 @@ def test_im_context_rejects_integration_owned_by_another_workspace_before_fallba
             normalized_email="reviewer@example.com",
             raw_payload=IMIdentityRawPayload({}),
             last_seen_sync_run_id=None,
-            last_seen_at=_NOW.value,
+            last_seen_at=_NOW,
         )
         _set_record_identity(identity, "identity-cross-workspace")
         session.add_all([integration, identity])
@@ -830,7 +829,7 @@ def test_valid_workspace_binding_wins_over_valid_organization_binding(repository
             normalized_email="organization@example.com",
             raw_payload=IMIdentityRawPayload({}),
             last_seen_sync_run_id=None,
-            last_seen_at=_NOW.value,
+            last_seen_at=_NOW,
         )
         _set_record_identity(organization_identity, "identity-organization")
         organization_binding = HumanInputIMBinding(

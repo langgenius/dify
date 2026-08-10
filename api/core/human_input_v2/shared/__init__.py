@@ -28,7 +28,6 @@ from .values import (
     SubmissionId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    UtcTimestamp,
     WorkspaceId,
     WorkspaceScope,
 )
@@ -57,7 +56,6 @@ __all__ = [
     "SubmissionId",
     "UploadCapabilityId",
     "UploadFileAssociationId",
-    "UtcTimestamp",
     "WorkspaceId",
     "WorkspaceScope",
 ]

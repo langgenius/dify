@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from pydantic import NaiveDatetime
+
 from core.human_input_v2 import channel_identity as _channel_identity
 from core.human_input_v2.channel_identity import ChannelKind, ChannelRef
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
 
 ChannelProvider = _channel_identity.ChannelProvider
 
@@ -96,7 +98,7 @@ class ChannelView:
     capabilities: frozenset[ChannelCapability]
     summary: ChannelSummary
     safe_status_reason: str | None = None
-    last_checked_at: UtcTimestamp | None = None
+    last_checked_at: NaiveDatetime | None = None
 
     def __post_init__(self) -> None:
         if not self.configured and self.status is not ChannelStatus.NOT_CONFIGURED:
@@ -136,7 +138,7 @@ class ChannelTestResult:
     scope: ChannelScope
     status: ChannelStatus
     summary: ChannelTestSummary
-    checked_at: UtcTimestamp
+    checked_at: NaiveDatetime
     safe_status_reason: str | None = None
 
     def __post_init__(self) -> None:

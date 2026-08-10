@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from core.human_input_v2.shared import NormalizedEmail, UtcTimestamp, WorkspaceId
+from pydantic import NaiveDatetime
+
+from core.human_input_v2.shared import NormalizedEmail, WorkspaceId
 
 from .entities import (
     EmailChannelConfiguration,
@@ -115,7 +117,7 @@ class EmailChannelRepository(Protocol):
         configuration: EmailChannelConfiguration,
         *,
         expected: EmailConfigurationSnapshot,
-        now: UtcTimestamp,
+        now: NaiveDatetime,
     ) -> UpdateEmailConfigurationResult: ...
 
     def delete(self, workspace_id: WorkspaceId) -> DeleteEmailConfigurationResult: ...

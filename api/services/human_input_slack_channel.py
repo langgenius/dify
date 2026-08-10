@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Protocol
 
+from pydantic import NaiveDatetime
+
 from core.helper import encrypter
 from core.human_input_v2.channel_management import (
     HumanInputChannelManagementContext,
@@ -22,7 +24,7 @@ from core.human_input_v2.im_provider import (
     CredentialTestSuccess,
     SlackIMIntegrationCredentials,
 )
-from core.human_input_v2.shared import UtcTimestamp
+from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import SlackIMIntegrationEncryptedCredentials
 from services.human_input_im_channel_manager import (
     ConfirmedIMConfiguration,
@@ -96,7 +98,7 @@ class SlackIMProviderConfigurationPort:
         credential_protector: _CredentialProtector,
         *,
         adapter_factory: Callable[[SlackIMIntegrationCredentials], _CredentialTestAdapter] = SlackIMProviderAdapter,
-        clock: Callable[[], UtcTimestamp] = UtcTimestamp.now,
+        clock: Callable[[], NaiveDatetime] = naive_utc_now,
     ) -> None:
         self._credential_protector = credential_protector
         self._adapter_factory = adapter_factory

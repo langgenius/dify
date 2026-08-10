@@ -1,7 +1,7 @@
 """Contract tests for the SQLAlchemy Contact Directory adapter."""
 
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,13 +21,13 @@ from core.human_input_v2.contact_directory import (
     ExternalContactOwner,
     PlatformWorkspaceEntry,
 )
-from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, WorkspaceId
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
 from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.repository import SQLAlchemyContactDirectoryRepository
 
-_NOW = UtcTimestamp(datetime(2026, 7, 25, tzinfo=UTC))
+_NOW = datetime(2026, 7, 25)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 _OTHER_WORKSPACE_ID = WorkspaceId("workspace-2")
 
@@ -431,7 +431,7 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
         name="Ada Lovelace",
         email="lovelace@example.com",
         created_at=original.created_at,
-        now=UtcTimestamp(datetime(2026, 7, 26, tzinfo=UTC)),
+        now=datetime(2026, 7, 26),
     )
 
     restored = repository.save_organization_contact(updated)
