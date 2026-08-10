@@ -6,6 +6,7 @@ exports the workflow-facing file builders for callers.
 """
 
 from .builders import build_from_mapping, build_from_mappings
+from .common import resolve_mapping_file_id
 from .message_files import build_from_message_file, build_from_message_files
 from .storage_keys import StorageKeyLoader
 
@@ -15,4 +16,5 @@ __all__ = [
     "build_from_mappings",
     "build_from_message_file",
     "build_from_message_files",
+    "resolve_mapping_file_id",
 ]
