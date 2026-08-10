@@ -10,7 +10,12 @@ import {
   UuidSchema,
 } from "@knowledge/core";
 
-import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
+import {
+  nonnegativeSafeIntegerColumn,
+  numberColumn,
+  optionalStringColumn,
+  stringColumn,
+} from "./database-row-utils";
 import {
   databasePlaceholder,
   jsonInsertPlaceholder,
@@ -552,10 +557,7 @@ function mapJob(row: DatabaseRow): DocumentSemanticEnrichmentJob {
   }
   return {
     availableAt: DateTimeSchema.parse(stringColumn(row, "available_at")),
-    baseHeadRevision: nonnegativeInteger(
-      numberColumn(row, "base_head_revision"),
-      "baseHeadRevision",
-    ),
+    baseHeadRevision: nonnegativeSafeIntegerColumn(row, "base_head_revision"),
     compilationAttemptId: UuidSchema.parse(stringColumn(row, "compilation_attempt_id")),
     ...(optionalStringColumn(row, "completed_at")
       ? { completedAt: DateTimeSchema.parse(optionalStringColumn(row, "completed_at")) }

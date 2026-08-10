@@ -1,6 +1,8 @@
+import { createSchemaDatabaseAdapter } from "@knowledge/adapters";
 import { describe, expect, it } from "vitest";
 
 import {
+  createDatabaseDocumentSemanticEnrichmentRepository,
   createInMemoryDocumentSemanticEnrichmentRepository,
   createInMemoryDocumentSemanticExtractionCheckpointRepository,
 } from "./document-semantic-enrichment-repository";
@@ -13,6 +15,51 @@ const parseArtifactId = uuid(3);
 const publicationGenerationId = uuid(4);
 
 describe("document semantic enrichment repositories", () => {
+  it("reads PostgreSQL bigint base head revisions returned as strings", async () => {
+    const input = jobInput(uuid(10));
+    const row = {
+      available_at: input.availableAt,
+      base_head_revision: String(input.baseHeadRevision),
+      compilation_attempt_id: input.compilationAttemptId,
+      completed_at: null,
+      created_at: input.createdAt,
+      document_asset_id: input.documentAssetId,
+      document_version: input.documentVersion,
+      execution_attempts: 0,
+      heartbeat_at: null,
+      id: input.id,
+      knowledge_space_id: input.knowledgeSpaceId,
+      last_error_code: null,
+      last_error_message: null,
+      lease_expires_at: null,
+      lease_token: null,
+      max_execution_attempts: input.maxExecutionAttempts,
+      parse_artifact_id: input.parseArtifactId,
+      publication_generation_id: input.publicationGenerationId,
+      result: {},
+      retrieval_profile: input.retrievalProfile,
+      row_version: 0,
+      run_state: "queued",
+      tenant_id: input.tenantId,
+      updated_at: input.createdAt,
+      worker_id: null,
+    };
+    const execute = async (query: { readonly operation: string }) => ({
+      rows: query.operation === "select" ? [row] : [],
+      rowsAffected: 1,
+    });
+    const repository = createDatabaseDocumentSemanticEnrichmentRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: "postgres",
+        transaction: async (callback) => callback({ execute }),
+      }),
+      maxClaimBatchSize: 1,
+    });
+
+    await expect(repository.enqueue(input)).resolves.toMatchObject({ baseHeadRevision: 7 });
+  });
+
   it("admits one durable job per publication generation and fences lease mutations", async () => {
     const leaseTokens = [uuid(20), uuid(21)];
     const repository = createInMemoryDocumentSemanticEnrichmentRepository({
