@@ -817,12 +817,6 @@
   "web/app/components/base/chat/chat/citation/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat/hooks.ts": {
