@@ -1206,8 +1206,8 @@ class Conversation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     summary = mapped_column(LongText)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
-    introduction: Mapped[str] = mapped_column(LongText)
-    system_instruction: Mapped[str] = mapped_column(LongText)
+    introduction: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    system_instruction: Mapped[str | None] = mapped_column(LongText, nullable=True)
     system_instruction_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     status: Mapped[ConversationStatus] = mapped_column(
         EnumText(ConversationStatus, length=255), nullable=False, default=ConversationStatus.NORMAL
@@ -2323,11 +2323,11 @@ class Site(Base):
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     copyright: Mapped[str | None] = mapped_column(String(255))
     privacy_policy: Mapped[str | None] = mapped_column(String(255))
-    input_placeholder: Mapped[str] = mapped_column(String(255))
+    input_placeholder: Mapped[str | None] = mapped_column(String(255), nullable=True)
     show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
-    customize_domain: Mapped[str] = mapped_column(String(255))
+    customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
