@@ -4,6 +4,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
@@ -117,6 +118,7 @@ const DebugWithSingleModel = ({
       if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
+        onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>

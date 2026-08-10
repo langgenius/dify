@@ -1,5 +1,5 @@
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CreateExternalAPIReq } from '../declarations'
-import type { ExternalAPIItem } from '@/models/datasets'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,13 +10,14 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
+import { consoleQuery } from '@/service/client'
 import {
   checkUsageExternalAPI,
   deleteExternalAPI,
@@ -25,19 +26,26 @@ import {
 } from '@/service/datasets'
 
 type ExternalKnowledgeAPICardProps = {
-  api: ExternalAPIItem
+  api: ExternalKnowledgeApiResponse
   canManageExternalKnowledgeApi: boolean
+  position: number
 }
 
 const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   api,
   canManageExternalKnowledgeApi,
+  position,
 }) => {
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [usageCount, setUsageCount] = useState(0)
-  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
+  const queryClient = useQueryClient()
+  const externalKnowledgeApiQueryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
+    input: {},
+  }).queryKey
+  const endpoint =
+    api.settings && typeof api.settings.endpoint === 'string' ? api.settings.endpoint : ''
 
   const { t } = useTranslation()
 
@@ -56,12 +64,6 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
 
       setShowExternalKnowledgeAPIModal({
         payload: formValue,
-        onSaveCallback: () => {
-          mutateExternalKnowledgeApis()
-        },
-        onCancelCallback: () => {
-          mutateExternalKnowledgeApis()
-        },
         isEditMode: true,
         datasetBindings: response.dataset_bindings,
         onEditCallback: async (updatedData: CreateExternalAPIReq) => {
@@ -78,7 +80,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
                 },
               },
             })
-            mutateExternalKnowledgeApis()
+            await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
             console.error('Error updating external knowledge API:', error)
           }
@@ -109,7 +111,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       const response = await deleteExternalAPI({ apiTemplateId: api.id })
       if (response && response.result === 'success') {
         setShowConfirm(false)
-        mutateExternalKnowledgeApis()
+        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
       } else {
         console.error('Failed to delete external API')
       }
@@ -128,22 +130,30 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
             <ApiConnectionMod className="size-4" />
             <div className="system-sm-medium">{api.name}</div>
           </div>
-          <div className="self-stretch system-xs-regular text-text-tertiary">
-            {api.settings.endpoint}
-          </div>
+          <div className="self-stretch system-xs-regular text-text-tertiary">{endpoint}</div>
         </div>
         {canManageExternalKnowledgeApi && (
           <div className="flex items-start gap-1">
-            <ActionButton onClick={handleEditClick}>
-              <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
+            <ActionButton
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
+              onClick={handleEditClick}
+            >
+              <RiEditLine
+                aria-hidden
+                className="size-4 text-text-tertiary hover:text-text-secondary"
+              />
             </ActionButton>
             <ActionButton
+              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
               className="hover:bg-state-destructive-hover"
               onClick={handleDeleteClick}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
+              <RiDeleteBinLine
+                aria-hidden
+                className="size-4 text-text-tertiary hover:text-text-destructive"
+              />
             </ActionButton>
           </div>
         )}

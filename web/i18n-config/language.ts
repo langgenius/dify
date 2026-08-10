@@ -45,6 +45,7 @@ export const localeMap: Record<Locale, string> = {
   'ja-JP': 'ja',
   ja_JP: 'ja',
   'ko-KR': 'ko',
+  'lo-LA': 'lo',
   'ru-RU': 'ru',
   'it-IT': 'it',
   'th-TH': 'th',

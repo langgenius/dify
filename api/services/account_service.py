@@ -28,9 +28,9 @@ from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.helper import timezone as validate_timezone
+from libs.key_providers import generate_key_pair
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
-from libs.rsa import generate_key_pair
 from libs.token import generate_csrf_token
 from models.account import (
     Account,
@@ -75,6 +75,7 @@ from services.errors.account import (
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -324,26 +325,41 @@ class AccountService:
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = session.scalar(
+        current_tenant_join = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
             .limit(1)
         )
-        if current_tenant:
-            account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
-        else:
-            available_ta = session.scalar(
+        if current_tenant_join is not None:
+            account.set_tenant_id_with_session(current_tenant_join.tenant_id, session=session)
+
+        has_valid_current_tenant = (
+            current_tenant_join is not None
+            and account.current_tenant is not None
+            and account.current_tenant.status == TenantStatus.NORMAL
+        )
+        if not has_valid_current_tenant:
+            if current_tenant_join is not None:
+                current_tenant_join.current = False
+
+            available_tenant_join = session.scalar(
                 select(TenantAccountJoin)
-                .where(TenantAccountJoin.account_id == account.id)
+                .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(
+                    TenantAccountJoin.account_id == account.id,
+                    Tenant.status == TenantStatus.NORMAL,
+                )
                 .order_by(TenantAccountJoin.id.asc())
                 .limit(1)
             )
-            if not available_ta:
+            if available_tenant_join is None:
+                if current_tenant_join is not None:
+                    session.commit()
                 return None
 
-            account.set_tenant_id_with_session(available_ta.tenant_id, session=session)
-            available_ta.current = True
-            available_ta.last_opened_at = naive_utc_now()
+            account.set_tenant_id_with_session(available_tenant_join.tenant_id, session=session)
+            available_tenant_join.current = True
+            available_tenant_join.last_opened_at = naive_utc_now()
             session.commit()
 
         AccountService._refresh_account_last_active(account, session)
@@ -1623,8 +1639,7 @@ class TenantService:
             select(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(TenantAccountJoin.tenant_id == tenant.id)
-            .where(TenantAccountJoin.role == "dataset_operator")
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "dataset_operator")
         )
 
         # Initialize an empty list to store the updated accounts
@@ -1953,7 +1968,7 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
 
-            dify_setup = DifySetup(version=dify_config.project.version)
+            dify_setup = DifySetup(version=dify_config.project.version, instance_id=str(uuid.uuid4()))
             session.add(dify_setup)
             session.commit()
         except Exception as e:
@@ -1965,6 +1980,11 @@ class RegisterService:
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
+
+        try:
+            CommunityTelemetryService.report_install(session=session)
+        except Exception:
+            logger.debug("Failed to report install telemetry", exc_info=True)
 
     @classmethod
     def register(

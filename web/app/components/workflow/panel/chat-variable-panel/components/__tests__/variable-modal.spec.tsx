@@ -10,7 +10,8 @@ vi.mock('uuid', () => ({
   v4: () => 'generated-id',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
     info: vi.fn(),

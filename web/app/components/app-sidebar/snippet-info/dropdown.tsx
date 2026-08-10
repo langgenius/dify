@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,10 +127,8 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          className={cn(
-            'action-btn action-btn-m size-6 rounded-md text-text-tertiary',
-            open && 'bg-state-base-hover text-text-secondary',
-          )}
+          aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+          className="action-btn action-btn-m size-6 rounded-md text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>

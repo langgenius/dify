@@ -1,15 +1,15 @@
 'use client'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
-import type { App } from '@/types/app'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiGraduationCapFill } from '@remixicon/react'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { validPassword } from '@/config'
@@ -18,7 +18,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
-import { normalizeAppPagination } from '@/service/use-apps'
 import DeleteAccount from '../delete-account'
 import AvatarWithEdit from './AvatarWithEdit'
 import EmailChangeModal from './email-change-modal'
@@ -29,6 +28,7 @@ const titleClassName = `
 const descriptionClassName = `
   mt-1 body-xs-regular text-text-tertiary
 `
+type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
   const { t } = useTranslation()
@@ -42,7 +42,6 @@ export default function AccountPage() {
           name: '',
         },
       },
-      select: normalizeAppPagination,
     }),
   )
   const apps = appList?.data || []
@@ -52,7 +51,13 @@ export default function AccountPage() {
   const userProfile = userProfileResp.profile
   const mutateUserProfile = () =>
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
   const [editing, setEditing] = useState(false)
@@ -134,21 +139,20 @@ export default function AccountPage() {
     }
   }
 
-  const renderAppItem = (item: IItem) => {
-    const { icon, icon_background, icon_type, icon_url } = item as IItem &
-      Pick<App, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
+  const renderAppItem = (item: AccountAppItem) => {
+    const appIconType = zIconType.safeParse(item.icon_type).data ?? null
     return (
       <div className="flex px-3 py-1">
         <div className="mr-3">
           <AppIcon
             size="tiny"
-            iconType={icon_type}
-            icon={icon}
-            background={icon_background}
-            imageUrl={icon_url}
+            iconType={appIconType}
+            icon={item.icon ?? undefined}
+            background={item.icon_background}
+            imageUrl={item.icon_url}
           />
         </div>
-        <div className="mt-[3px] system-sm-medium text-text-secondary">{item.name}</div>
+        <div className="mt-0.75 system-sm-medium text-text-secondary">{item.name}</div>
       </div>
     )
   }
@@ -172,7 +176,7 @@ export default function AccountPage() {
             {userProfile.name}
             {isEducationAccount && (
               <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                <RiGraduationCapFill aria-hidden="true" className="mr-1 size-3" />
+                <span aria-hidden className="mr-1 i-ri-graduation-cap-fill size-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}
@@ -186,12 +190,13 @@ export default function AccountPage() {
           <div className="flex-1 rounded-lg bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled">
             <span className="pl-1">{userProfile.name}</span>
           </div>
-          <div
+          <button
+            type="button"
             className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
             onClick={handleEditName}
           >
             {t(($) => $['operation.edit'], { ns: 'common' })}
-          </div>
+          </button>
         </div>
       </div>
       <div className="mb-8">
@@ -201,12 +206,13 @@ export default function AccountPage() {
             <span className="pl-1">{userProfile.email}</span>
           </div>
           {systemFeatures.enable_change_email && (
-            <div
+            <button
+              type="button"
               className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text"
               onClick={() => setShowUpdateEmail(true)}
             >
               {t(($) => $['operation.change'], { ns: 'common' })}
-            </div>
+            </button>
           )}
         </div>
       </div>
@@ -238,7 +244,7 @@ export default function AccountPage() {
         {!!apps.length && (
           <Collapse
             title={`${t(($) => $['account.showAppLength'], { ns: 'common', length: apps.length })}`}
-            items={apps.map((app: App) => ({ ...app, key: app.id, name: app.name }))}
+            items={apps.map((app) => ({ ...app, key: app.id, name: app.name }))}
             renderItem={renderAppItem}
             wrapperClassName="mt-2"
           />
@@ -276,7 +282,7 @@ export default function AccountPage() {
         open={editPasswordModalVisible}
         onOpenChange={(open) => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}
       >
-        <DialogContent className="w-[420px]! p-6!">
+        <DialogContent className="w-105! p-6!">
           <div className="mb-6 title-2xl-semi-bold text-text-primary">
             {userProfile.is_password_set
               ? t(($) => $['account.resetPassword'], { ns: 'common' })

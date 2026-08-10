@@ -230,7 +230,7 @@ const CreateAppModal = ({
           <div className="flex flex-row-reverse">
             <Button
               disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
-              className="ml-2 w-24 gap-1"
+              className="ml-2 w-24"
               variant="primary"
               onClick={handleSubmit}
             >

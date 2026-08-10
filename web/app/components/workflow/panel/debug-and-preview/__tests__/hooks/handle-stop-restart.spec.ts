@@ -44,8 +44,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 

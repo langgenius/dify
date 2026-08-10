@@ -72,7 +72,7 @@ const OnlineDocumentPreview = ({
           className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <RiCloseLine className="size-4.5" />
         </button>
       </div>
       {isPending && (

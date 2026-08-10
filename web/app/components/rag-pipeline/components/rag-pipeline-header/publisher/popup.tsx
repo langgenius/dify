@@ -23,7 +23,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
+import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -215,7 +215,7 @@ export function Popup({
     <div
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
+        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
       )}
     >
       <div className="p-4 pt-3">
@@ -270,7 +270,7 @@ export function Popup({
             <RiPlayCircleLine className="mr-2 size-4" />
             {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
           </div>
-          <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+          <RiArrowRightUpLine className="size-4 shrink-0" />
         </Button>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button
@@ -282,7 +282,7 @@ export function Popup({
               <RiTerminalBoxLine className="mr-2 size-4" />
               {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
             </div>
-            <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+            <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />

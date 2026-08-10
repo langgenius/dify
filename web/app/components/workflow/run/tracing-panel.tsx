@@ -90,6 +90,9 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <div className="mb-1 flex items-center">
             <button
               type="button"
+              aria-controls={`${node.id}-children`}
+              aria-expanded={!isCollapsed}
+              aria-label={parallelDetail.parallelTitle}
               onClick={() => toggleCollapse(node.id)}
               className={cn(
                 'mr-2 transition-colors',
@@ -115,10 +118,13 @@ const TracingPanel: FC<TracingPanelProps> = ({
               }}
             ></div>
           </div>
-          <div className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}>
+          <div
+            id={`${node.id}-children`}
+            className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}
+          >
             <div
               className={cn(
-                'absolute top-0 bottom-0 left-[5px] w-[2px]',
+                'absolute top-0 bottom-0 left-1.25 w-0.5',
                 isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
               )}
             ></div>

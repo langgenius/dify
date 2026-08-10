@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListCategory } from './app-type-filter-shared'
+import type { AppListUrlQuery } from './query-params'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -12,8 +12,9 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
-import { isAppListCategory } from './app-type-filter-shared'
+import { studioAppListCategories } from './query-params'
+
+type AppListCategory = AppListUrlQuery['category']
 
 const chipClassName =
   'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -26,41 +27,39 @@ type AppTypeFilterProps = {
 export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
   const { t } = useTranslation()
 
-  const options = useMemo(
-    () => [
-      {
-        value: 'all',
+  const options = useMemo(() => {
+    const optionsByCategory = {
+      all: {
         text: t(($) => $['types.all'], { ns: 'app' }),
         iconClassName: 'i-ri-apps-2-line',
       },
-      {
-        value: AppModeEnum.WORKFLOW,
+      workflow: {
         text: t(($) => $['types.workflow'], { ns: 'app' }),
         iconClassName: 'i-ri-exchange-2-line',
       },
-      {
-        value: AppModeEnum.ADVANCED_CHAT,
+      'advanced-chat': {
         text: t(($) => $['types.advanced'], { ns: 'app' }),
         iconClassName: 'i-ri-message-3-line',
       },
-      {
-        value: AppModeEnum.CHAT,
+      chat: {
         text: t(($) => $['types.chatbot'], { ns: 'app' }),
         iconClassName: 'i-ri-message-3-line',
       },
-      {
-        value: AppModeEnum.AGENT_CHAT,
+      'agent-chat': {
         text: t(($) => $['types.agent'], { ns: 'app' }),
         iconClassName: 'i-ri-robot-3-line',
       },
-      {
-        value: AppModeEnum.COMPLETION,
+      completion: {
         text: t(($) => $['newApp.completeApp'], { ns: 'app' }),
         iconClassName: 'i-ri-file-4-line',
       },
-    ],
-    [t],
-  )
+    } satisfies Record<AppListCategory, { text: string; iconClassName: string }>
+
+    return studioAppListCategories.map((value) => ({
+      value,
+      ...optionsByCategory[value],
+    }))
+  }, [t])
 
   const activeOption = options.find((option) => option.value === value)
   const isSelected = value !== 'all'
@@ -87,12 +86,12 @@ export function AppTypeFilter({ value, onChange }: AppTypeFilterProps) {
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
+        <DropdownMenuRadioGroup<AppListCategory>
           value={value}
-          onValueChange={(nextValue) => isAppListCategory(nextValue) && onChange(nextValue)}
+          onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value}>
+            <DropdownMenuRadioItem<AppListCategory> key={option.value} value={option.value}>
               <span
                 aria-hidden
                 className={cn('h-4 w-4 shrink-0 text-text-tertiary', option.iconClassName)}

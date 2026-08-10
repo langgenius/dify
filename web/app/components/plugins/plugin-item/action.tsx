@@ -68,7 +68,7 @@ const Action: FC<Props> = ({
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {
-          invalidateInstalledPluginList()
+          invalidateInstalledPluginList(category)
         },
         payload: {
           type: PluginSource.github,
@@ -96,7 +96,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
-        invalidateInstalledPluginList()
+        invalidateInstalledPluginList(category)
         onDelete()
       }
     } catch (error) {
@@ -108,6 +108,7 @@ const Action: FC<Props> = ({
     hideDeleteConfirm,
     hideDeleting,
     installationId,
+    category,
     invalidateInstalledPluginList,
     onDelete,
     showDeleting,
@@ -119,8 +120,11 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={handleFetchNewVersion}>
-                <span className="i-ri-loop-left-line size-4 text-text-tertiary" />
+              <ActionButton
+                aria-label={t(($) => $[`${i18nPrefix}.checkForUpdates`], { ns: 'plugin' })}
+                onClick={handleFetchNewVersion}
+              >
+                <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
               </ActionButton>
             }
           />
@@ -133,8 +137,11 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={showPluginInfo}>
-                <span className="i-ri-information-2-line size-4 text-text-tertiary" />
+              <ActionButton
+                aria-label={t(($) => $[`${i18nPrefix}.pluginInfo`], { ns: 'plugin' })}
+                onClick={showPluginInfo}
+              >
+                <span aria-hidden className="i-ri-information-2-line size-4 text-text-tertiary" />
               </ActionButton>
             }
           />
@@ -148,10 +155,11 @@ const Action: FC<Props> = ({
           <TooltipTrigger
             render={
               <ActionButton
+                aria-label={t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
                 className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                 onClick={showDeleteConfirm}
               >
-                <span className="i-ri-delete-bin-line size-4" />
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
               </ActionButton>
             }
           />

@@ -22,7 +22,7 @@ from models import Tenant
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
@@ -163,6 +163,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, dat
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": app_model.id,
+        "mode": "chat",
         "end_user_id": None,
         "enable_site": True,
         "site": {
@@ -383,6 +384,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     assert body["expiration_time"] == int(expiration_time.timestamp())
     assert body["site"] == {
         "app_id": app_model.id,
+        "mode": "chat",
         "end_user_id": None,
         "enable_site": True,
         "site": {

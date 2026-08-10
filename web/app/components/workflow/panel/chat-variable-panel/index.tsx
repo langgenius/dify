@@ -11,7 +11,6 @@ import {
 } from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -22,6 +21,7 @@ import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { updateConversationVariables } from '@/service/workflow'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
@@ -205,30 +205,34 @@ const ChatVariablePanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
       )}
     >
       <div className="flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
         {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton
+            aria-label={t(($) => $['chatVariable.tips'], { ns: 'workflow' })}
+            aria-expanded={showTip}
             state={showTip ? ActionButtonState.Active : undefined}
             onClick={() => setShowTip(!showTip)}
           >
-            <RiBookOpenLine className="size-4" />
+            <RiBookOpenLine aria-hidden="true" className="size-4" />
           </ActionButton>
-          <div
-            className="flex size-6 cursor-pointer items-center justify-center"
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+          </button>
         </div>
       </div>
       {showTip && (
         <div className="shrink-0 px-3 pt-2.5 pb-2">
           <div className="relative rounded-2xl bg-background-section-burn p-3">
-            <div className="inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
+            <div className="inline-block rounded-[5px] border border-divider-deep px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
               TIPS
             </div>
             <div className="mt-1 mb-4 system-sm-regular text-text-secondary">
@@ -263,7 +267,7 @@ const ChatVariablePanel = () => {
                 </div>
               </div>
             </div>
-            <div className="absolute top-[-4px] right-[38px] z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+            <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
           </div>
         </div>
       )}

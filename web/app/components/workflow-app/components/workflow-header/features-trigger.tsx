@@ -13,15 +13,14 @@ import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { Plan } from '@/app/components/billing/type'
+// useWorkflowRunValidation,
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useChecklist,
   useChecklistBeforePublish,
-  useIsChatMode,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  // useWorkflowRunValidation,
-} from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+} from '@/app/components/workflow/hooks/use-checklist'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -30,7 +29,6 @@ import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -141,12 +139,11 @@ const FeaturesTrigger = () => {
       if (!appID) return
 
       const res = await fetchAppDetail({ url: '/apps', id: appID })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, queryClient, setAppDetail])
+  }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -241,12 +238,12 @@ const FeaturesTrigger = () => {
       {isChatMode && (
         <Button
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
           onClick={handleShowFeatures}
         >
-          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
+          <span className="i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t(($) => $['common.features'], { ns: 'workflow' })}
         </Button>
       )}

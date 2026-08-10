@@ -1,10 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
-import type { DSLImportWarning } from '@/models/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
-import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
 import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
@@ -77,7 +75,6 @@ export const isImportCompleted = (status: DSLImportStatus) => {
 export const getImportNotificationPayload = (
   status: DSLImportStatus,
   t: TFunction,
-  warnings: DSLImportWarning[] = [],
 ): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
@@ -87,8 +84,7 @@ export const getImportNotificationPayload = (
         : t(($) => $['common.importWarning'], { ns: 'workflow' }),
     children:
       status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-        ? getDSLImportWarningDescription(warnings) ||
-          t(($) => $['common.importWarningDetails'], { ns: 'workflow' })
+        ? t(($) => $['common.importWarningDetails'], { ns: 'workflow' })
         : undefined,
   }
 }

@@ -44,10 +44,10 @@ export function CreateAppDropdown({
             data-step-by-step-tour-target={stepByStepTourTarget}
             variant="primary"
             size="medium"
-            className="gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3"
+            className="px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3"
           >
             <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-            <span className="pl-1">{t(($) => $['operation.create'], { ns: 'common' })}</span>
+            <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
             <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
           </Button>
         }

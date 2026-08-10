@@ -3,7 +3,13 @@
 import type { ReactNode } from 'react'
 import type { GuideStep } from '@/features/deployments/create-guide/state/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 
@@ -161,14 +167,13 @@ export function GuideCard({
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
       {contentScrollable ? (
-        <ScrollArea
-          className="min-h-0 flex-1"
-          slotClassNames={{
-            viewport: 'overscroll-contain',
-            content: 'min-h-full pt-0.5 pb-6',
-          }}
-        >
-          {children}
+        <ScrollArea className="min-h-0 flex-1">
+          <ScrollAreaViewport className="overscroll-contain">
+            <ScrollAreaContent className="min-h-full pt-0.5 pb-6">{children}</ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
         </ScrollArea>
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden pt-0.5 pb-6">{children}</div>
@@ -192,14 +197,14 @@ export function GuideFrame({
       <div className="flex min-w-0 flex-1 shrink-0 justify-center overflow-hidden">
         <section
           aria-label={t(($) => $['createGuide.title'])}
-          className="flex h-full w-full max-w-[840px] flex-col px-5 sm:px-8 lg:px-10"
+          className="flex h-full w-full max-w-210 flex-col px-5 sm:px-8 lg:px-10"
         >
           <div className="h-5 sm:h-8 lg:h-12" />
           <div className="flex min-w-0 items-start justify-between gap-6 pt-1 pb-4">
             <h1 className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['createGuide.title'])}
             </h1>
-            <div className="hidden w-[184px] shrink-0 min-[1120px]:block">
+            <div className="hidden w-46 shrink-0 min-[1120px]:block">
               <GuideProgressSummary activeStep={activeStep} />
             </div>
           </div>

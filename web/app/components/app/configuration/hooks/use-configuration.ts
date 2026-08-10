@@ -25,10 +25,12 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
+import { useMutation } from '@tanstack/react-query'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -39,7 +41,6 @@ import {
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
@@ -48,7 +49,10 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import {
   ANNOTATION_DEFAULT,
   DATASET_DEFAULT,
@@ -64,6 +68,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -128,7 +133,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } =
     useAppStore(
@@ -157,6 +162,16 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.[1] || ''
+  const { mutateAsync: updateModelConfig } = useMutation({
+    mutationFn: (params: Parameters<typeof updateAppModelConfig>[0]) =>
+      updateAppModelConfig(params),
+    onSuccess: (_data, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: appId } },
+        }),
+      }),
+  })
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -597,7 +612,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
         suggestedQuestionsAfterAnswerConfig,
         t,
         textToSpeechConfig,
-      })(updateAppModelConfig, modelAndParameter, features)
+      })(updateModelConfig, modelAndParameter, features)
     },
     [
       appACLCapabilities.canReleaseAndVersion,
@@ -627,6 +642,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       suggestedQuestionsAfterAnswerConfig,
       t,
       textToSpeechConfig,
+      updateModelConfig,
     ],
   )
 
@@ -769,7 +785,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onCloseSelectDataSet: hideSelectDataSet,
     onCompletionParamsChange: setCompletionParams,
     onConfirmUseGPT4: () => {
-      openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      setSettingsDestination('provider')
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
@@ -777,7 +793,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,
     onMultipleModelConfigsChange: handleMultipleModelConfigsChange,
-    onOpenAccountSettings: () => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
+    onOpenAccountSettings: () => setSettingsDestination('provider'),
     onOpenDebugPanel: showDebugPanel,
     onSaveHistory: (data) => {
       setConversationHistoriesRole(data)

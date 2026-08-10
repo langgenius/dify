@@ -42,7 +42,7 @@ vi.mock('@/service/workflow', () => ({
 }))
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../use-pipeline-refresh-draft', () => ({
   usePipelineRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
   }),

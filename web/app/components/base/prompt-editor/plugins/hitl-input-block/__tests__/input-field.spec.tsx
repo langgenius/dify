@@ -122,7 +122,7 @@ describe('InputField', () => {
     // (and the footer/actions reachable via the internal scroll) even when it is
     // rendered outside the shortcuts popup that defines --shortcut-popup-max-height,
     // e.g. inside the edit dialog. See issue #37979.
-    expect(panel).toHaveClass('max-h-[var(--shortcut-popup-max-height,80dvh)]', 'overflow-hidden')
+    expect(panel).toHaveClass('max-h-(--shortcut-popup-max-height,80dvh)', 'overflow-hidden')
     expect(header).toHaveClass('shrink-0', 'pb-2')
     expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
     expect(footer).toHaveClass('shrink-0', 'bg-components-panel-bg')

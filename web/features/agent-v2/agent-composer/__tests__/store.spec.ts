@@ -5,9 +5,7 @@ import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conve
 import { defaultAgentSoulConfigFormState } from '../form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   rebaseAgentComposerDraftAtom,
 } from '../store'
 
@@ -91,23 +89,12 @@ describe('agent composer store conversions', () => {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Build draft prompt',
     }
-    const originalConfig = {
-      prompt: {
-        system_prompt: 'Build draft prompt',
-      },
-    } satisfies AgentSoulConfig
-
     store.set(rebaseAgentComposerDraftAtom, {
       draft: nextDraft,
-      originalConfig,
     })
 
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
-      'Build draft prompt',
-    )
+    expect(store.get(agentComposerSavedDraftAtom)?.prompt).toBe('Build draft prompt')
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -392,6 +379,40 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
+  })
+
+  it('should preserve a plugin tool identity when hydrating and publishing imported config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            plugin_id: 'langgenius/google',
+            provider_id: 'langgenius/google/google',
+            provider_type: 'plugin',
+            tool_name: 'search',
+            credential_type: 'unauthorized',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'langgenius/google/google',
+        name: 'google',
+        pluginId: 'langgenius/google',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        plugin_id: 'langgenius/google',
+        provider: 'google',
+        provider_id: 'langgenius/google/google',
+      }),
+    ])
   })
 
   it('should hydrate legacy secret refs from ref when value is absent', () => {

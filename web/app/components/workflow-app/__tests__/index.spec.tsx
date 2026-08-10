@@ -127,11 +127,11 @@ vi.mock('@/service/use-tools', () => ({
   useAppTriggers: () => appTriggersState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-workflow-init', () => ({
+vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-get-run-and-trace-url', () => ({
+vi.mock('../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: mockGetWorkflowRunAndTraceUrl,
   }),
@@ -185,12 +185,7 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({
-    children,
-  }: {
-    injectWorkflowStoreSliceFn: unknown
-    children: ReactNode
-  }) => <div data-testid="workflow-context-provider">{children}</div>,
+  WorkflowContextProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
@@ -277,7 +272,6 @@ describe('WorkflowApp', () => {
 
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
       'data-nodes',
       JSON.stringify([{ id: 'node-1' }]),

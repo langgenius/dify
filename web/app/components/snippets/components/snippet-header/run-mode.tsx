@@ -4,7 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
+import { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
+import { useWorkflowStartRun } from '@/app/components/workflow/hooks/use-workflow-start-run'
 import { TEST_RUN_MENU_HOTKEY } from '@/app/components/workflow/hotkeys'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store'
@@ -61,6 +62,7 @@ const RunMode = ({ text }: RunModeProps) => {
       {isRunning && (
         <button
           type="button"
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
           className="flex size-7 items-center justify-center rounded-r-md bg-state-accent-active"
           onClick={handleStop}
         >

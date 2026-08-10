@@ -1,27 +1,24 @@
 'use client'
 
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
-import DifyLogo from '../components/base/logo/dify-logo'
+import { DifyLogo } from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
 import SearchInput from './search-input'
@@ -39,19 +36,25 @@ const EducationApplyAgeContent = () => {
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
+  const [personalUseChecked, setPersonalUseChecked] = useState(false)
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
-  const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
+  const { isPending, mutateAsync: educationAdd } = useMutation(
+    consoleQuery.account.education.post.mutationOptions(),
+  )
+  const { onPlanInfoChanged, plan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -64,14 +67,14 @@ const EducationApplyAgeContent = () => {
   })()
   const handleSubmit = () => {
     educationAdd({
-      token: token || '',
-      role,
-      institution: schoolName,
+      body: {
+        token: token || '',
+        role,
+        institution: schoolName,
+      },
     }).then((res) => {
       if (res.message === 'success') {
         onPlanInfoChanged()
-        updateEducationStatus()
-        setEducationVerifying(null)
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -105,7 +108,7 @@ const EducationApplyAgeContent = () => {
   }
   const renderBackToDifyButton = () => (
     <Button variant="ghost-accent" onClick={handleReturnHome}>
-      <span className="mr-1 i-ri-arrow-left-line size-4" />
+      <span className="i-ri-arrow-left-line size-4" />
       {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
     </Button>
   )
@@ -171,18 +174,18 @@ const EducationApplyAgeContent = () => {
 
   return (
     <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
-      <div className="mx-auto w-full max-w-[1408px] rounded-2xl border border-effects-highlight bg-background-default-subtle">
+      <div className="mx-auto w-full max-w-352 rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
-          className="h-[349px] w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
+          className="h-87.25 w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
         ></div>
-        <div className="mt-[-349px] box-content flex h-7 items-center justify-between p-6">
-          <DifyLogo size="large" style="monochromeWhite" />
+        <div className="-mt-87.25 box-content flex h-7 items-center justify-between p-6">
+          <DifyLogo alt="Dify" size="large" className="brightness-0 invert" />
         </div>
-        <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
-          <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
+        <div className="mx-auto max-w-180 px-8 pb-45">
+          <div className="mb-2 flex h-48 flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
             <div className="mb-2 title-5xl-bold shadow-xs">
               {t(($) => $.toVerified, { ns: 'education' })}
             </div>
@@ -260,7 +263,7 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.age'], { ns: 'education' })}
                   </label>
-                  <label className="flex">
+                  <label className="mb-2 flex">
                     <Checkbox
                       className="mr-2 shrink-0"
                       checked={inSchoolChecked}
@@ -268,11 +271,26 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.inSchool'], { ns: 'education' })}
                   </label>
+                  <label className="flex">
+                    <Checkbox
+                      className="mr-2 shrink-0"
+                      checked={personalUseChecked}
+                      onCheckedChange={setPersonalUseChecked}
+                    />
+                    {t(($) => $['form.terms.option.personalUse'], { ns: 'education' })}
+                  </label>
                 </div>
               </div>
               <Button
                 variant="primary"
-                disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
+                disabled={
+                  !ageChecked ||
+                  !inSchoolChecked ||
+                  !personalUseChecked ||
+                  !schoolName ||
+                  !role ||
+                  isPending
+                }
                 onClick={handleSubmit}
               >
                 {t(($) => $.submit, { ns: 'education' })}
@@ -295,7 +313,7 @@ const EducationApplyAgeContent = () => {
 }
 
 type AppliedEducationWorkspaceBlockProps = {
-  currentWorkspace: ICurrentWorkspace
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse
   plan: PlanType
   action: ReactNode
   isSwitchingWorkspace: boolean

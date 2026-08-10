@@ -155,7 +155,6 @@ const MockContextProvider = ({
   const [newInputs, setNewInputs] = React.useState(value.newConversationInputs)
 
   const newInputsRef = React.useRef(newInputs)
-  newInputsRef.current = newInputs
 
   const contextValue: ChatWithHistoryContextValue = {
     ...value,
@@ -167,6 +166,7 @@ const MockContextProvider = ({
       value.setCurrentConversationInputs(v)
     },
     handleNewConversationInputsChange: (v: Record<string, unknown>) => {
+      newInputsRef.current = v
       setNewInputs(v)
       value.handleNewConversationInputsChange(v)
     },

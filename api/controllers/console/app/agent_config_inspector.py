@@ -30,6 +30,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -810,14 +811,21 @@ class AgentConfigFilesByAgentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
+    @model_validate(AgentConfigFileUploadPayload)
+    def post(
+        self,
+        req_data: AgentConfigFileUploadPayload,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
         return _with_agent_route_target(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
-            action=lambda target: _file_upload_response(target, payload),
+            action=lambda target: _file_upload_response(target, req_data),
         )
 
 
@@ -849,13 +857,13 @@ class AgentConfigFilesApi(Resource):
     @with_current_user
     @with_session
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def post(self, session: Session, current_user: Account, app_model: App):
-        payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
+    @model_validate(AgentConfigFileUploadPayload)
+    def post(self, req_data: AgentConfigFileUploadPayload, session: Session, current_user: Account, app_model: App):
         return _with_app_route_target(
             session=session,
             app_model=app_model,
             current_user=current_user,
-            action=lambda target: _file_upload_response(target, payload),
+            action=lambda target: _file_upload_response(target, req_data),
         )
 
 
@@ -1324,4 +1332,5 @@ class AgentConfigFileApi(Resource):
         )
 
 
+# pyrefly: ignore [unresolvable-dunder-all]
 __all__ = [name for name, value in globals().items() if inspect.isclass(value) and issubclass(value, Resource)]

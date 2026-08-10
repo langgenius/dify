@@ -55,7 +55,6 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockInvalidateQueries = vi.fn()
-const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -75,12 +74,18 @@ const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
+  useNodesReadOnly: () => mockUseNodesReadOnly(),
+  useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklist: (...args: unknown[]) => mockUseChecklist(...args),
   useChecklistBeforePublish: () => mockUseChecklistBeforePublish(),
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -113,7 +118,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
-      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -571,12 +575,6 @@ describe('FeaturesTrigger', () => {
           message: 'common.api.actionSuccess',
         })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetQueryData).toHaveBeenCalledWith(
-          ['apps', 'detail', 'app-id'],
-          expect.objectContaining({
-            name: 'Updated App',
-          }),
-        )
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',

@@ -145,7 +145,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
-    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
+    <div className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
@@ -167,7 +167,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
             if (!open) closeEditModal()
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-130! overflow-hidden! border-none p-0 text-left align-middle">
             <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
           </DialogContent>
         </Dialog>

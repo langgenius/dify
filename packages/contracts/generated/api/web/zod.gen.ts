@@ -40,6 +40,20 @@ export const zAppMetaResponse = z.object({
 })
 
 /**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
  * AppPermissionQuery
  */
 export const zAppPermissionQuery = z.object({
@@ -500,6 +514,11 @@ export const zRetrieverResource = z.object({
 })
 
 /**
+ * SSOProtocol
+ */
+export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
+
+/**
  * SavedMessageCreatePayload
  */
 export const zSavedMessageCreatePayload = z.object({
@@ -641,7 +660,7 @@ export const zUserActionConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -732,7 +751,7 @@ export const zVerificationTokenResponse = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: z.string().default(''),
+  protocol: zSsoProtocol.nullable(),
 })
 
 /**
@@ -744,7 +763,7 @@ export const zWebAppAuthModel = z.object({
   allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
-  sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
+  sso_config: zWebAppAuthSsoModel,
 })
 
 /**
@@ -772,7 +791,6 @@ export const zSystemFeatureModel = z.object({
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_step_by_step_tour: z.boolean().default(false),
-  enable_trial_app: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   knowledge_fs_enabled: z.boolean().default(false),
@@ -783,15 +801,8 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: z.string().default(''),
-  webapp_auth: zWebAppAuthModel.default({
-    allow_email_code_login: false,
-    allow_email_password_login: false,
-    allow_public_access: true,
-    allow_sso: false,
-    enabled: false,
-    sso_config: { protocol: '' },
-  }),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**
@@ -885,6 +896,7 @@ export const zWebAppSiteResponse = z.object({
   custom_config: zWebAppCustomConfigResponse.nullish(),
   enable_site: z.boolean(),
   end_user_id: z.string().nullish(),
+  mode: zAppMode,
   model_config: zWebModelConfigResponse.nullish(),
   plan: z.string(),
   site: zWebSiteResponse,

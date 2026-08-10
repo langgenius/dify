@@ -15,22 +15,27 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
-import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
-import { useGetLanguage } from '@/context/i18n'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
   setProviderToolCredentialAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+  getAgentProviderPluginId,
+  getAgentProviderToolDisplayName,
+  getLocalizedText,
+  getProviderCredentialType,
+  getProviderCredentialVariant,
+  useAgentToolPresentation,
+  useAgentToolProviderCatalog,
+} from '../../../tool-provider-catalog'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -47,6 +52,12 @@ import {
 import { ProviderToolSettingsDialog } from './provider-tool/dialog'
 import { AgentProviderToolItem } from './provider-tool/item'
 
+type DisplayAgentProviderTool = AgentProviderTool & {
+  isInstalled?: boolean
+}
+
+type DisplayAgentTool = AgentCliTool | DisplayAgentProviderTool
+
 const AgentToolItem = memo(
   ({
     tool,
@@ -56,8 +67,9 @@ const AgentToolItem = memo(
     onDeleteProviderToolAction,
     onEditCliTool,
     onCredentialChange,
+    onPluginInstalled,
   }: {
-    tool: AgentTool
+    tool: DisplayAgentTool
     onConfigureAction: (target: ToolSettingTarget) => void
     onDeleteCliTool: (toolId: string) => void
     onDeleteProviderTool: (toolId: string) => void
@@ -68,6 +80,7 @@ const AgentToolItem = memo(
       credentialId?: string,
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
+    onPluginInstalled: () => void
   }) => {
     const [isExpanded, setIsExpanded] = useState(false)
 
@@ -101,12 +114,14 @@ const AgentToolItem = memo(
       return (
         <AgentProviderToolItem
           tool={tool}
+          isInstalled={tool.isInstalled}
           isExpanded={isExpanded}
           onOpenChange={setIsExpanded}
           onConfigureAction={onConfigureAction}
           onRemoveAction={handleRemoveProviderAction}
           onRemoveProvider={handleRemoveProvider}
           onCredentialChange={handleCredentialChange}
+          onInstall={onPluginInstalled}
         />
       )
     }
@@ -116,54 +131,6 @@ const AgentToolItem = memo(
     )
   },
 )
-
-function useAgentToolProviderMap() {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-
-  return useMemo(() => {
-    const providers = new Map<string, ToolWithProvider>()
-    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
-    const customToolList = Array.isArray(customTools) ? customTools : []
-    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
-    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
-    const allProviders = [
-      ...buildInToolList,
-      ...customToolList,
-      ...workflowToolList,
-      ...mcpToolList,
-    ]
-
-    allProviders.forEach((provider) => {
-      providers.set(provider.id, provider)
-      providers.set(provider.name, provider)
-      if (provider.plugin_id) {
-        providers.set(provider.plugin_id, provider)
-        providers.set(`${provider.plugin_id}/${provider.name}`, provider)
-      }
-    })
-
-    return providers
-  }, [buildInTools, customTools, workflowTools, mcpTools])
-}
-
-function getLocalizedText(text: Record<string, string> | undefined, language: string) {
-  return text?.[language] ?? text?.en_US ?? text?.zh_Hans
-}
-
-function getProviderCredentialType(
-  provider?: ToolWithProvider,
-): AgentProviderTool['credentialType'] {
-  if (!provider) return undefined
-
-  if (Object.keys(provider.team_credentials ?? {}).length > 0) return 'api-key'
-
-  if (provider.type === CollectionType.builtIn && provider.allow_delete) return 'oauth2'
-
-  return undefined
-}
 
 function getDisplayCredentialType(
   tool: AgentProviderTool,
@@ -177,30 +144,42 @@ function getDisplayCredentialType(
   return tool.credentialType ?? providerCredentialType
 }
 
-function getProviderCredentialVariant(
-  tool: AgentProviderTool,
-  provider: ToolWithProvider,
-  providerCredentialType: AgentProviderTool['credentialType'],
+function useDisplayTools(
+  tools: AgentTool[],
+  providerById: Map<string, ToolWithProvider>,
+  resolvedProviderTypes: Set<AgentProviderTool['providerType']>,
+  toolPresentation: ReturnType<typeof useAgentToolPresentation>,
 ) {
-  if (!providerCredentialType) return 'none' as const
-
-  if (tool.credentialVariant !== 'none') return tool.credentialVariant
-
-  return tool.credentialId || provider.is_team_authorization
-    ? ('authorized' as const)
-    : ('unauthorized' as const)
-}
-
-function useDisplayTools(tools: AgentTool[], providerById: Map<string, ToolWithProvider>) {
-  const language = useGetLanguage()
+  const { language, marketplacePluginById } = toolPresentation
 
   return useMemo(() => {
-    return tools.map((tool) => {
+    return tools.map((tool): DisplayAgentTool => {
       if (tool.kind !== 'provider') return tool
 
       const provider = providerById.get(tool.id) ?? providerById.get(tool.name)
 
-      if (!provider) return tool
+      if (!provider) {
+        const providerPluginId = getAgentProviderPluginId(tool)
+        const marketplacePlugin = marketplacePluginById.get(providerPluginId)
+
+        return {
+          ...tool,
+          isInstalled: resolvedProviderTypes.has(tool.providerType) ? false : undefined,
+          pluginId: tool.pluginId ?? providerPluginId,
+          pluginUniqueIdentifier:
+            tool.pluginUniqueIdentifier ?? marketplacePlugin?.latest_package_identifier,
+          displayName: getAgentProviderToolDisplayName({
+            language,
+            marketplacePlugin,
+            tool,
+          }),
+          icon:
+            tool.icon ??
+            (marketplacePlugin && providerPluginId
+              ? getIconFromMarketPlace(providerPluginId)
+              : undefined),
+        }
+      }
 
       const providerToolByName = new Map(
         provider.tools.map((providerTool) => [providerTool.name, providerTool]),
@@ -209,7 +188,8 @@ function useDisplayTools(tools: AgentTool[], providerById: Map<string, ToolWithP
 
       return {
         ...tool,
-        displayName: tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name,
+        isInstalled: true,
+        displayName: getAgentProviderToolDisplayName({ language, provider, tool }),
         icon: tool.icon ?? provider.icon,
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType,
@@ -234,9 +214,9 @@ function useDisplayTools(tools: AgentTool[], providerById: Map<string, ToolWithP
               action.description || getLocalizedText(providerTool.description, language) || '',
           }
         }),
-      } satisfies AgentProviderTool
+      } satisfies DisplayAgentProviderTool
     })
-  }, [language, providerById, tools])
+  }, [language, marketplacePluginById, providerById, resolvedProviderTypes, tools])
 }
 
 function AddToolMenuItem({
@@ -295,7 +275,7 @@ function AddToolMenu({
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
-  const providerById = useAgentToolProviderMap()
+  const { providerById } = useAgentToolProviderCatalog()
 
   const openToolPicker = useCallback(() => {
     setView('tool-picker')
@@ -402,7 +382,9 @@ export function AgentTools() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
-  const providerById = useAgentToolProviderMap()
+  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const { providerById, resolvedProviderTypes } = useAgentToolProviderCatalog()
   const tools = useAtomValue(agentComposerToolsAtom)
   const selectedTools = useSelectedProviderTools()
   const addTools = useSetAtom(addProviderToolsAtom)
@@ -432,11 +414,26 @@ export function AgentTools() {
     },
     [setProviderToolCredential],
   )
+  const handlePluginInstalled = useCallback(() => {
+    void Promise.allSettled([
+      invalidateAllBuiltInTools(),
+      invalidateInstalledPluginList(PluginCategoryEnum.tool),
+    ])
+  }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),
     [tools],
   )
-  const displayTools = useDisplayTools(visibleTools, providerById)
+  const toolPresentation = useAgentToolPresentation(visibleTools, {
+    providerById,
+    resolvedProviderTypes,
+  })
+  const displayTools = useDisplayTools(
+    visibleTools,
+    providerById,
+    resolvedProviderTypes,
+    toolPresentation,
+  )
   /*
    * knip-ignore-start
    * Keep this disabled sync logic while backend credential snapshots are being investigated.
@@ -558,6 +555,7 @@ export function AgentTools() {
               onDeleteProviderToolAction={deleteProviderToolAction}
               onEditCliTool={editCliTool}
               onCredentialChange={handleProviderCredentialChange}
+              onPluginInstalled={handlePluginInstalled}
             />
           ))
         )}

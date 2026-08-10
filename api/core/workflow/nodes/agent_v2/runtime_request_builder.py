@@ -33,7 +33,6 @@ from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
     DifyShellLayerConfig,
-    DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
@@ -136,6 +135,8 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    binding_id: str
+    backend_binding_ref: str
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
@@ -251,6 +252,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
+                backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
@@ -699,7 +701,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
                 "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
-                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "file, include the returned `public_download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
@@ -739,7 +741,6 @@ class WorkflowAgentRuntimeRequestBuilder:
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
-    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
         cli_tools=[
             tool
@@ -750,12 +751,6 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
-        sandbox=DifyShellSandboxConfig(
-            provider=agent_soul.sandbox.provider,
-            config=sandbox_config,
-        )
-        if agent_soul.sandbox.provider or sandbox_config
-        else None,
     )
 
 
@@ -841,7 +836,12 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        conditions=cast(
+            Any,
+            metadata_filtering.conditions.model_dump(
+                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
+            ),
+        )
         if metadata_filtering.conditions is not None
         else None,
     )

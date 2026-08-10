@@ -1,12 +1,10 @@
-import type { CreateApiKeyResponse } from '@/models/app'
+import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SecretKeyGenerateModal from '../secret-key-generate'
 
-const createMockApiKey = (token: string): CreateApiKeyResponse => ({
-  id: 'mock-id',
+const createMockApiKey = (token: string): Pick<ApiKeyItem, 'token'> => ({
   token,
-  created_at: '2024-01-01T00:00:00Z',
 })
 
 async function renderModal(ui: React.ReactElement) {
@@ -51,8 +49,7 @@ describe('SecretKeyGenerateModal', () => {
 
     it('should render the close icon', async () => {
       await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render InputCopy component', async () => {
@@ -103,12 +100,7 @@ describe('SecretKeyGenerateModal', () => {
       const onClose = vi.fn()
       await renderModal(<SecretKeyGenerateModal {...defaultProps} onClose={onClose} />)
 
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
-
-      await act(async () => {
-        await user.click(closeIcon!)
-      })
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalled()
     })
@@ -132,34 +124,6 @@ describe('SecretKeyGenerateModal', () => {
       await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
       const modal = document.body.querySelector('.px-8')
       expect(modal).toBeInTheDocument()
-    })
-  })
-
-  describe('header section', () => {
-    it('should have flex justify-end on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('flex')
-      expect(closeContainer?.className).toContain('justify-end')
-    })
-
-    it('should have negative margin on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('-mr-2')
-      expect(closeContainer?.className).toContain('-mt-6')
-    })
-
-    it('should have bottom margin on close container', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      const closeContainer = closeIcon?.parentElement
-      expect(closeContainer).toBeInTheDocument()
-      expect(closeContainer?.className).toContain('mb-4')
     })
   })
 

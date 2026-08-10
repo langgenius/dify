@@ -7,14 +7,19 @@ import { cn } from '../cn'
 import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
+const Popover = BasePopover.Root
+const PopoverTrigger = BasePopover.Trigger
+const PopoverClose = BasePopover.Close
+const PopoverTitle = BasePopover.Title
+const PopoverDescription = BasePopover.Description
+const createPopoverHandle = BasePopover.createHandle
 
-export const Popover = BasePopover.Root
-export const PopoverTrigger = BasePopover.Trigger
-export const PopoverClose = BasePopover.Close
-export const PopoverTitle = BasePopover.Title
-export const PopoverDescription = BasePopover.Description
-export const createPopoverHandle = BasePopover.createHandle
+type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>
+type PopoverHandle<Payload = unknown> = BasePopover.Handle<Payload>
+type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>
+type PopoverCloseProps = BasePopover.Close.Props
+type PopoverTitleProps = BasePopover.Title.Props
+type PopoverDescriptionProps = BasePopover.Description.Props
 
 type PopoverContentProps = {
   children: React.ReactNode
@@ -30,7 +35,7 @@ type PopoverContentProps = {
   popupProps?: Omit<BasePopover.Popup.Props, 'children' | 'className'>
 }
 
-export function PopoverContent({
+function PopoverContent({
   children,
   placement = 'bottom',
   sideOffset = 8,
@@ -66,4 +71,24 @@ export function PopoverContent({
       </BasePopover.Positioner>
     </BasePopover.Portal>
   )
+}
+
+export {
+  createPopoverHandle,
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
+}
+export type {
+  Placement,
+  PopoverCloseProps,
+  PopoverContentProps,
+  PopoverDescriptionProps,
+  PopoverHandle,
+  PopoverProps,
+  PopoverTitleProps,
+  PopoverTriggerProps,
 }

@@ -21,7 +21,6 @@ import {
   useLearnDifyHiddenValue,
   useSetLearnDifyHidden,
 } from '@/app/components/explore/learn-dify/storage'
-import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import {
   ExternalLinkIndicator,
@@ -47,6 +46,7 @@ import {
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import styles from './help-menu.module.css'
+import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
@@ -99,8 +99,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
-  const [aboutVisible, setAboutVisible] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const canToggleStepByStepTour =
@@ -123,13 +122,9 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
         onSuccess: trackVisibilityToggled,
       })
     }
-
-    if (checked) setOpen(false)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-
     if (nextOpen) setSkipRecoveryVisible(false)
   }
 
@@ -137,14 +132,14 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             triggerClassName,
-            open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
+            'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
             skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
           )}
         >
@@ -201,7 +196,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
-                  closeOnClick={false}
+                  closeOnClick={!stepByStepTourEnabled}
                   className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
@@ -222,7 +217,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <SupportMenu onContactUsClick={() => setOpen(false)} />
+              <SupportMenu />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
@@ -236,7 +231,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   iconClassName="i-ri-github-line"
                   label={t(($) => $['userProfile.github'], { ns: 'common' })}
                   trailing={
-                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                    <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75">
                       <span
                         aria-hidden
                         className="i-ri-star-line size-3 shrink-0 text-text-tertiary"
@@ -249,10 +244,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
                 <DropdownMenuItem
                   className="mx-0 h-8 gap-1 px-3 py-1.5"
-                  onClick={() => {
-                    setAboutVisible(true)
-                    setOpen(false)
-                  }}
+                  onClick={() => setAboutOpen(true)}
                 >
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
@@ -274,12 +266,12 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
           </>
         </DropdownMenuContent>
       </DropdownMenu>
-      {aboutVisible && (
-        <AccountAbout
-          onCancel={() => setAboutVisible(false)}
-          langGeniusVersionInfo={langGeniusVersionInfo}
-        />
-      )}
+      <AccountAboutDialog
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
+        langGeniusVersionInfo={langGeniusVersionInfo}
+        deploymentEdition={systemFeatures.deployment_edition}
+      />
     </>
   )
 }

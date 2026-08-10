@@ -83,7 +83,7 @@ export default function AccessRulesEditor({
         ) : (
           <Button variant="primary" size="medium" disabled>
             <span className="i-ri-add-line size-3.5" aria-hidden />
-            <span>{t(($) => $['operation.add'], { ns: 'common' })}</span>
+            <span>{t(($) => $['accessRule.addException'], { ns: 'permission' })}</span>
           </Button>
         )}
       </div>

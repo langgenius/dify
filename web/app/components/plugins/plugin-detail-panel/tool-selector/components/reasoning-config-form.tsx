@@ -16,6 +16,7 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -29,7 +30,10 @@ import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/component
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { userProfileAtom } from '@/context/account-state'
 import {
   createPickerProps,
   getFieldFlags,
@@ -64,6 +68,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const userProfile = useAtomValue(userProfileAtom)
+  const timezone = userProfile.timezone ?? 'UTC'
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))
@@ -153,6 +159,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
       isSelect,
       isAppSelector,
       isModelSelector,
+      isDate,
+      isDateRange,
       showTypeSwitch,
       isConstant,
       showVariableSelector,
@@ -173,7 +181,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>
+            <span className={cn('max-w-35 truncate code-sm-semibold text-text-secondary')}>
               {fieldTitle}
             </span>
             {required && <span className="ml-1 text-red-500">*</span>}
@@ -239,6 +247,25 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 onChange={(e) => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
+            )}
+            {isDate && isConstant && (
+              <div className="min-w-0 grow">
+                <ToolDatePicker
+                  value={typeof varInput?.value === 'string' ? varInput.value : ''}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                  placeholder={placeholder?.[language] || placeholder?.en_US}
+                />
+              </div>
+            )}
+            {isDateRange && varInput?.type !== VarKindType.variable && (
+              <div className="grow">
+                <ToolDateRangePicker
+                  value={varInput?.value}
+                  onChange={handleValueChange(variable, type)}
+                  timezone={timezone}
+                />
+              </div>
             )}
             {isBoolean && (
               <FormInputBoolean

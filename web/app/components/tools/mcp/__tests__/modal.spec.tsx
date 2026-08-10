@@ -1,4 +1,6 @@
+import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -22,7 +24,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // toggle stays hidden even when sso_enforced_for_signin is true.
 const mockSystemFeatures = vi.hoisted(() => ({
   sso_enforced_for_signin: false,
-  sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
+  sso_enforced_for_signin_protocol: null as SsoProtocol | null,
 }))
 describe('MCPModal', () => {
   beforeEach(() => {
@@ -47,6 +49,7 @@ describe('MCPModal', () => {
     it('should render create title when no data is provided', () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('tools.mcp.modal.title')
     })
 
     it('should render edit title when data is provided', () => {
@@ -186,6 +189,15 @@ describe('MCPModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /operation\.close/ }))
       expect(onHide).toHaveBeenCalled()
+    })
+
+    it('should call onHide when the dialog requests close', () => {
+      const onHide = vi.fn()
+      render(<MCPModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
     })
 
     it('should have confirm button disabled when form is empty', () => {
@@ -734,14 +746,14 @@ describe('MCPModal', () => {
   describe('Forward-user-identity toggle', () => {
     beforeEach(() => {
       mockSystemFeatures.sso_enforced_for_signin = false
-      mockSystemFeatures.sso_enforced_for_signin_protocol = ''
+      mockSystemFeatures.sso_enforced_for_signin_protocol = null
     })
 
     // Helper: turn SSO on with a refresh-capable protocol so the toggle is
     // visible. Use this for any test that needs the field rendered.
     const enableRefreshCapableSSO = () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oidc'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oidc
     }
 
     const fillRequiredFields = () => {
@@ -771,14 +783,14 @@ describe('MCPModal', () => {
 
     it('does not render the toggle when SSO protocol is SAML (no refresh model)', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'saml'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.saml
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
     })
 
     it('renders the toggle when SSO protocol is OAuth2', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oauth2'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oauth2
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
     })

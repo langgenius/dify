@@ -6,11 +6,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { debounce, useQueryState } from 'nuqs'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StudioListHeader } from '@/app/components/apps/studio-list-header'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
-import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
   deploymentsListErrorAtom,
   deploymentsListFetchNextPageAtom,
@@ -18,7 +19,6 @@ import {
   deploymentsListHasNextPageAtom,
   deploymentsListIsFetchingAtom,
   deploymentsListIsFetchingNextPageAtom,
-  deploymentsListIsLoadingAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
   deploymentsListShowErrorStateAtom,
@@ -172,24 +172,17 @@ export function DeploymentsListShell() {
   const deploymentsListHasNextPage = useAtomValue(deploymentsListHasNextPageAtom)
   const deploymentsListIsFetching = useAtomValue(deploymentsListIsFetchingAtom)
   const deploymentsListIsFetchingNextPage = useAtomValue(deploymentsListIsFetchingNextPageAtom)
-  const deploymentsListIsLoading = useAtomValue(deploymentsListIsLoadingAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
   const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
-
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
-    error: deploymentsListError,
-    fetchNextPage: deploymentsListFetchNextPage,
-    hasNextPage: deploymentsListHasNextPage,
-    isFetching: deploymentsListIsFetching,
-    isFetchingNextPage: deploymentsListIsFetchingNextPage,
-    isLoading: deploymentsListIsLoading,
-  })
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const canLoadMore =
+    deploymentsListHasNextPage && !deploymentsListIsFetching && !deploymentsListError
 
   return (
     <div
-      ref={rootRef}
+      ref={scrollContainerRef}
       className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
     >
       <DeploymentsListControls />
@@ -211,7 +204,15 @@ export function DeploymentsListShell() {
           ))
         )}
         {deploymentsListIsFetchingNextPage && <DeploymentsListSkeleton />}
-        <div ref={sentinelRef} aria-hidden="true" className="col-span-full h-px" />
+        <InfiniteScrollSentinel
+          canLoadMore={canLoadMore}
+          className="col-span-full"
+          onLoadMore={() => {
+            void deploymentsListFetchNextPage({ cancelRefetch: false })
+          }}
+          preloadDistance={300}
+          scrollContainerRef={scrollContainerRef}
+        />
       </div>
     </div>
   )

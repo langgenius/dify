@@ -99,6 +99,7 @@ describe('ImagePreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
+      expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
       expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
         'src',
@@ -160,6 +161,21 @@ describe('ImagePreview', () => {
   })
 
   describe('User Interactions', () => {
+    it('should not close when image content is clicked', () => {
+      const onCancel = vi.fn()
+      render(
+        <ImagePreview
+          url="https://example.com/image.png"
+          title="Preview Image"
+          onCancel={onCancel}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('img', { name: 'Preview Image' }))
+
+      expect(onCancel).not.toHaveBeenCalled()
+    })
+
     it('should call onCancel when close button is clicked', async () => {
       const user = userEvent.setup()
       const onCancel = vi.fn()

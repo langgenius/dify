@@ -1,12 +1,16 @@
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
@@ -15,13 +19,17 @@ import {
 } from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
-const { mockSwitchWorkspace, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(
-  () => ({
-    mockSwitchWorkspace: vi.fn(),
-    mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
-    mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
-  }),
-)
+const {
+  mockFetchWorkspaces,
+  mockSwitchWorkspace,
+  mockCurrentWorkspaceQueryKey,
+  mockWorkspacesQueryKey,
+} = vi.hoisted(() => ({
+  mockFetchWorkspaces: vi.fn(),
+  mockSwitchWorkspace: vi.fn(),
+  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'summary', 'get'] as const,
+  mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
+}))
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],
@@ -52,21 +60,24 @@ vi.mock('@/service/client', async (importOriginal) => {
       if (prop === 'workspaces') {
         return {
           current: {
-            post: {
-              key: () => mockCurrentWorkspaceQueryKey,
-              queryKey: () => mockCurrentWorkspaceQueryKey,
-              queryOptions: (options?: object) => ({
-                queryKey: mockCurrentWorkspaceQueryKey,
-                queryFn: () => new Promise(() => {}),
-                ...options,
-              }),
+            summary: {
+              get: {
+                key: () => mockCurrentWorkspaceQueryKey,
+                queryKey: () => mockCurrentWorkspaceQueryKey,
+                queryOptions: (options?: object) => ({
+                  queryKey: mockCurrentWorkspaceQueryKey,
+                  queryFn: () => new Promise(() => {}),
+                  ...options,
+                }),
+              },
             },
           },
           get: {
             queryKey: () => mockWorkspacesQueryKey,
-            queryOptions: () => ({
+            queryOptions: (options?: object) => ({
               queryKey: mockWorkspacesQueryKey,
-              queryFn: () => new Promise(() => {}),
+              queryFn: mockFetchWorkspaces,
+              ...options,
             }),
           },
           switch: {
@@ -89,27 +100,25 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
-const currentWorkspaceValue: ICurrentWorkspace = {
+const currentWorkspaceValue: GetWorkspacesCurrentSummaryResponse = {
   id: 'workspace-1',
   name: 'Solar Studio',
   plan: Plan.sandbox,
-  status: 'normal',
-  created_at: 0,
   role: 'owner',
-  providers: [],
-  trial_credits: 10000,
-  trial_credits_used: 2500,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
+  credits: 7500,
 }
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
-let mockCurrentWorkspace: ICurrentWorkspace | undefined = currentWorkspaceValue
-let mockWorkspaces: IWorkspace[] = []
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
+let mockCurrentWorkspace: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue
+let mockWorkspaces: TenantListItemResponse[] = []
 
 const mockCurrentWorkspaceQuery = (
-  data: ICurrentWorkspace | undefined = currentWorkspaceValue,
+  data: GetWorkspacesCurrentSummaryResponse | undefined = currentWorkspaceValue,
   isPending = false,
 ) => {
   mockCurrentWorkspace = isPending ? undefined : data
@@ -124,7 +133,10 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   const { seedWorkspaces = true, systemFeaturesLicense, ...renderOptions } = options ?? {}
   const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
-    queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.summary.get.queryKey(),
+      mockCurrentWorkspace,
+    )
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
@@ -163,11 +175,12 @@ describe('WorkspaceCard', () => {
         current: false,
       },
     ]
+    mockFetchWorkspaces.mockResolvedValue({ workspaces: mockWorkspaces })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     mockCurrentWorkspaceQuery()
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
@@ -175,7 +188,6 @@ describe('WorkspaceCard', () => {
     mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
   })
 
@@ -199,6 +211,24 @@ describe('WorkspaceCard', () => {
     ).toHaveAttribute('href', '/integrations/model-provider')
   })
 
+  it('renders unlimited credits from the summary contract', () => {
+    mockCurrentWorkspaceQuery({ ...currentWorkspaceValue, credits: -1 })
+
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(screen.getByText('common.license.unlimited')).toBeInTheDocument()
+  })
+
+  it('hides the credits link when the summary has no effective credits', () => {
+    mockCurrentWorkspaceQuery({ ...currentWorkspaceValue, credits: null })
+
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
+
+    expect(
+      screen.queryByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('renders a stable skeleton while the current workspace is loading', () => {
     mockCurrentWorkspaceQuery(undefined, true)
 
@@ -210,75 +240,108 @@ describe('WorkspaceCard', () => {
     expect(screen.queryByText('Evan Workspace')).not.toBeInTheDocument()
   })
 
-  it('renders a skeleton while the workspaces query has no data', () => {
+  it('renders the current workspace before loading the workspace list', async () => {
+    const user = userEvent.setup()
     renderWorkspaceCard({ seedWorkspaces: false })
 
     expect(
-      screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('Solar Studio')).not.toBeInTheDocument()
+      screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Solar Studio')).toBeInTheDocument()
+    expect(mockFetchWorkspaces).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Solar Studio' })).toBeInTheDocument()
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
   })
 
-  it('uses the workspaces query current item for billing plan UI', () => {
+  it('prefetches the workspace list when the trigger is hovered', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    const trigger = screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })
+    await user.hover(trigger)
+
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument()
+
+    await user.click(trigger)
+
+    expect(await screen.findByRole('button', { name: 'Evan Workspace' })).toBeInTheDocument()
+    expect(mockFetchWorkspaces).toHaveBeenCalledOnce()
+  })
+
+  it('prefetches the workspace list when the trigger receives keyboard focus', async () => {
+    const user = userEvent.setup()
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    await user.tab()
+
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toHaveFocus()
+    await waitFor(() => expect(mockFetchWorkspaces).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog', { name: 'Solar Studio' })).not.toBeInTheDocument()
+  })
+
+  it('keeps workspace controls visible and disabled while the workspace list is loading', async () => {
+    const user = userEvent.setup()
+    mockFetchWorkspaces.mockReturnValue(new Promise(() => {}))
+    renderWorkspaceCard({ seedWorkspaces: false })
+
+    await user.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByText('common.userProfile.workspace')).toBeInTheDocument()
+    expect(
+      within(panel).getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }),
+    ).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'common.operation.search' })).toBeDisabled()
+    expect(panel.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'Evan Workspace' })).not.toBeInTheDocument()
+  })
+
+  it('uses the current workspace query for billing plan UI', () => {
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
       plan: Plan.team,
     })
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
+      enableBilling: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.team },
+      plan: { type: Plan.sandbox },
     } as ProviderContextState)
-
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
-    expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
-    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
-    expect(screen.queryByText(Plan.team)).not.toBeInTheDocument()
-    expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
+    expect(screen.getByText(Plan.team)).toBeInTheDocument()
+    expect(screen.getByText('billing.upgradeBtn.plain')).toBeInTheDocument()
+    expect(screen.queryByText(Plan.sandbox)).not.toBeInTheDocument()
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
   })
 
   it('uses the original paid plan badge for paid workspaces', () => {
-    mockWorkspaces = [
-      {
-        id: 'workspace-1',
-        name: 'Solar Studio',
-        plan: Plan.team,
-        status: 'normal',
-        created_at: 0,
-        current: true,
-      },
-    ]
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: true,
-      plan: { type: Plan.team },
-    } as ProviderContextState)
-
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: Plan.team,
+    })
     renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
   })
 
   it('shows the Enterprise license status independently of the Cloud billing state', () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: true,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: false,
-      plan: { type: Plan.sandbox },
-    } as ProviderContextState)
-
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: '',
+    })
     renderWorkspaceCard({
       systemFeatures: {
         deployment_edition: 'ENTERPRISE',
       },
       systemFeaturesLicense: {
-        status: LicenseStatus.ACTIVE,
+        status: zLicenseStatus.enum.active,
       },
     })
 
@@ -289,7 +352,14 @@ describe('WorkspaceCard', () => {
   it('opens workspace actions and switcher in a popover panel', async () => {
     renderWorkspaceCard()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    const workspaceTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.openMenu',
+    })
+    expect(workspaceTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(workspaceTrigger)
+
+    expect(workspaceTrigger).toHaveAttribute('data-popup-open', '')
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
@@ -377,7 +447,14 @@ describe('WorkspaceCard', () => {
 
     expect(defaultWorkspaceOptions).toEqual(['Atlas Workspace', 'Solar Studio', 'Evan Workspace'])
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.sort.openMenu' }))
+    const sortTrigger = screen.getByRole('button', {
+      name: 'common.mainNav.workspace.sort.openMenu',
+    })
+    expect(sortTrigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(sortTrigger)
+
+    expect(sortTrigger).toHaveAttribute('data-popup-open', '')
 
     expect(
       await screen.findByRole('menuitemradio', {
@@ -408,19 +485,14 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('opens members settings from workspace menu when billing is disabled', async () => {
-    vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
-      isEducationAccount: false,
-      isEducationWorkspace: false,
-      isFetchedPlan: false,
-      plan: { type: Plan.sandbox },
-    } as ProviderContextState)
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      plan: null,
+    })
 
     renderWorkspaceCard()
 
@@ -429,12 +501,8 @@ describe('WorkspaceCard', () => {
       await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }),
     )
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.MEMBERS,
-    })
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({
-      payload: ACCOUNT_SETTING_TAB.BILLING,
-    })
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.MEMBERS)
+    expect(mockSetSettingsDestination).not.toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
   })
 
   it('switches workspace from the workspace switcher item', async () => {

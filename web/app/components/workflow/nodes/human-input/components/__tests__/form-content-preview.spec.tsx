@@ -22,26 +22,9 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
   default: () => mockUseNodes(),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  __esModule: true,
-  default: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
-    <button type="button" aria-label="close-preview" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
   __esModule: true,
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, variant }: { children?: ReactNode; variant?: string }) => (
-    <button type="button" data-testid={`action-${variant}`}>
-      {children}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/utils', () => ({
@@ -139,7 +122,7 @@ describe('FormContentPreview', () => {
     expect(screen.getByTestId('variable-path'))!.toHaveTextContent('#Classifier.answer#')
     expect(screen.getByTestId('note'))!.toHaveTextContent('Classifier')
     expect(screen.getByText(/Can't find note:/))!.toHaveTextContent('missing_field')
-    expect(screen.getByTestId('action-primary'))!.toHaveTextContent('Approve')
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(screen.getByText('nodes.humanInput.editor.previewTip'))!.toBeInTheDocument()
   })
 
@@ -148,7 +131,7 @@ describe('FormContentPreview', () => {
       <FormContentPreview content="content" formInputs={[]} userActions={[]} onClose={onClose} />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'close-preview' }))
+    fireEvent.click(screen.getByRole('button', { name: 'operation.close' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

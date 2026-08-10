@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
-import { useWorkflowVariableType } from '../../../hooks'
+import { useWorkflowVariableType } from '../../../hooks/use-workflow-variables'
 import { BlockEnum } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 

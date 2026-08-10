@@ -1,16 +1,20 @@
 import logging
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from models.dataset import Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 class _ImmediateThread:
@@ -32,20 +36,19 @@ class TestQAIndexProcessor:
         return QAIndexProcessor()
 
     @pytest.fixture
-    def dataset(self) -> Mock:
-        dataset = Mock()
-        dataset.id = "dataset-1"
-        dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.is_multimodal = True
-        return dataset
+    def dataset(self) -> Dataset:
+        return Dataset(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="QA Dataset",
+            created_by="user-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            is_multimodal=True,
+        )
 
     @pytest.fixture
-    def dataset_document(self) -> Mock:
-        document = Mock()
-        document.id = "doc-1"
-        document.created_by = "user-1"
-        return document
+    def dataset_document(self) -> DatasetDocument:
+        return DatasetDocument(id="doc-1", created_by="user-1")
 
     @pytest.fixture
     def process_rule(self) -> dict:
@@ -58,9 +61,9 @@ class TestQAIndexProcessor:
         segmentation = SimpleNamespace(max_tokens=256, chunk_overlap=10, separator="\n")
         return SimpleNamespace(segmentation=segmentation)
 
-    def test_extract_forwards_automatic_flag(self, processor: QAIndexProcessor) -> None:
+    def test_extract_forwards_automatic_flag(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         extract_setting = Mock()
-        session = Mock()
+        session = sqlite_session
         expected_docs = [Document(page_content="chunk", metadata={})]
 
         with patch("core.rag.index_processor.processor.qa_index_processor.ExtractProcessor.extract") as mock_extract:
@@ -71,22 +74,22 @@ class TestQAIndexProcessor:
         assert docs == expected_docs
         mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
 
-    def test_transform_rejects_none_process_rule(self, processor: QAIndexProcessor) -> None:
-        session = MagicMock()
+    def test_transform_rejects_none_process_rule(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
+        session = sqlite_session
         with pytest.raises(ValueError, match="No process rule found"):
             processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
 
-    def test_transform_rejects_missing_rules_key(self, processor: QAIndexProcessor) -> None:
-        session = MagicMock()
+    def test_transform_rejects_missing_rules_key(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
+        session = sqlite_session
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform(
                 [Document(page_content="text", metadata={})], process_rule={"mode": "custom"}, session=session
             )
 
     def test_transform_preview_calls_formatter_once(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
     ) -> None:
-        session = MagicMock()
+        session = sqlite_session
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         split_node = Document(page_content=".question", metadata={})
         splitter = Mock()
@@ -128,9 +131,9 @@ class TestQAIndexProcessor:
         mock_format.assert_called_once()
 
     def test_transform_non_preview_uses_thread_batches(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
     ) -> None:
-        session = MagicMock()
+        session = sqlite_session
         documents = [
             Document(page_content="doc-1", metadata={"document_id": "doc-1", "dataset_id": "dataset-1"}),
             Document(page_content="doc-2", metadata={"document_id": "doc-2", "dataset_id": "dataset-1"}),
@@ -212,8 +215,10 @@ class TestQAIndexProcessor:
             with pytest.raises(ValueError, match="bad csv"):
                 processor.format_by_template(csv_file)
 
-    def test_load_creates_vectors_for_high_quality_dataset(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        session = MagicMock()
+    def test_load_creates_vectors_for_high_quality_dataset(
+        self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
         docs = [Document(page_content="Q1", metadata={"answer": "A1"})]
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
 
@@ -225,8 +230,10 @@ class TestQAIndexProcessor:
         vector.create.assert_called_once_with(docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
-    def test_load_skips_vector_for_non_high_quality(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        session = MagicMock()
+    def test_load_skips_vector_for_non_high_quality(
+        self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="Q1", metadata={"answer": "A1"})]
 
@@ -236,13 +243,46 @@ class TestQAIndexProcessor:
         mock_vector_cls.assert_not_called()
 
     def test_clean_handles_summary_deletion_and_vector_cleanup(
-        self, processor: QAIndexProcessor, dataset: Mock
+        self,
+        processor: QAIndexProcessor,
+        dataset: Dataset,
+        sqlite_session: Session,
     ) -> None:
-        mock_segment = SimpleNamespace(id="seg-1")
-        scalars_result = Mock()
-        scalars_result.all.return_value = [mock_segment]
-        mock_session = MagicMock()
-        mock_session.scalars.return_value = scalars_result
+        matching_segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=1,
+            content="Q1",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-1",
+        )
+        other_node_segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=2,
+            content="Q2",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-2",
+        )
+        other_dataset_segment = DocumentSegment(
+            tenant_id="tenant-2",
+            dataset_id="dataset-2",
+            document_id="doc-2",
+            position=1,
+            content="Q3",
+            word_count=1,
+            tokens=1,
+            created_by="user-2",
+            index_node_id="node-1",
+        )
+        sqlite_session.add_all([matching_segment, other_node_segment, other_dataset_segment])
+        sqlite_session.commit()
 
         with (
             patch(
@@ -251,13 +291,15 @@ class TestQAIndexProcessor:
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
             vector = mock_vector_cls.return_value
-            processor.clean(dataset, ["node-1"], delete_summaries=True, session=mock_session)
+            processor.clean(dataset, ["node-1"], delete_summaries=True, session=sqlite_session)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=mock_session)
+        mock_summary.assert_called_once_with(dataset, [matching_segment.id], session=sqlite_session)
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
-    def test_clean_handles_dataset_wide_cleanup(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        session = MagicMock()
+    def test_clean_handles_dataset_wide_cleanup(
+        self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
+    ) -> None:
+        session = sqlite_session
         with (
             patch(
                 "core.rag.index_processor.processor.qa_index_processor.SummaryIndexService.delete_summaries_for_segments"
@@ -271,11 +313,15 @@ class TestQAIndexProcessor:
         vector.delete.assert_called_once()
 
     def test_index_adds_documents_and_vectors_for_high_quality(
-        self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
+        self,
+        processor: QAIndexProcessor,
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        sqlite_session: Session,
     ) -> None:
-        session = MagicMock()
+        session = sqlite_session
         phase_events: list[str] = []
-        session.commit.side_effect = lambda: phase_events.append("commit")
+        event.listen(session, "after_commit", lambda _session: phase_events.append("commit"))
         qa_chunks = SimpleNamespace(
             qa_chunks=[
                 SimpleNamespace(question="Q1", answer="A1"),
@@ -315,9 +361,13 @@ class TestQAIndexProcessor:
         mock_vector_cls.return_value.create.assert_called_once()
 
     def test_index_requires_high_quality(
-        self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
+        self,
+        processor: QAIndexProcessor,
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        sqlite_session: Session,
     ) -> None:
-        session = MagicMock()
+        session = sqlite_session
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         qa_chunks = SimpleNamespace(qa_chunks=[SimpleNamespace(question="Q1", answer="A1")])
 
@@ -351,10 +401,10 @@ class TestQAIndexProcessor:
         assert preview["total_segments"] == 1
         assert preview["qa_preview"] == [{"question": "Q1", "answer": "A1"}]
 
-    def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor) -> None:
+    def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         preview_items = [PreviewDetail(content="Q1")]
         assert (
-            processor.generate_summary_preview("tenant-1", preview_items, {"enable": False}, session=MagicMock())
+            processor.generate_summary_preview("tenant-1", preview_items, {"enable": False}, session=sqlite_session)
             is preview_items
         )
 

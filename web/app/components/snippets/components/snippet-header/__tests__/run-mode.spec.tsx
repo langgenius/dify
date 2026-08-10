@@ -21,12 +21,15 @@ const runningResult = {
   outputs_truncated: false,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useWorkflowStartRun: () => ({
-    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
-  }),
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: workflowHookMocks.handleStopRun,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
+  useWorkflowStartRun: () => ({
+    handleWorkflowStartRunInWorkflow: workflowHookMocks.handleWorkflowStartRunInWorkflow,
   }),
 }))
 
@@ -71,7 +74,9 @@ describe('RunMode', () => {
 
     expect(screen.getByRole('button', { name: /workflow\.common\.running/i })).toBeDisabled()
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('task-1')
 
@@ -106,7 +111,9 @@ describe('RunMode', () => {
       },
     })
 
-    await user.click(screen.getAllByRole('button')[1]!)
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.debug\.variableInspect\.trigger\.stop/i }),
+    )
 
     expect(workflowHookMocks.handleStopRun).toHaveBeenCalledWith('')
   })
