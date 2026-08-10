@@ -150,6 +150,7 @@ def is_core_coverage_path(path: str) -> bool:
         "api/commands/knowledge_fs.py",
         "api/configs/extra/knowledge_fs_config.py",
         "api/controllers/openapi/knowledge_fs.py",
+        "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/services/knowledge_fs_capability.py",
     }:

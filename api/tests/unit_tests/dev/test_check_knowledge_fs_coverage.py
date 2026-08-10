@@ -29,6 +29,7 @@ from dev.check_knowledge_fs_coverage import (
         "api/controllers/openapi/knowledge_fs.py",
         "api/controllers/service_api/knowledge_fs/resources.py",
         "api/core/tools/builtin_tool/providers/knowledge_fs/knowledge_fs.py",
+        "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/models/knowledge_fs.py",
         "api/repositories/sqlalchemy_knowledge_fs_cutover_repository.py",
