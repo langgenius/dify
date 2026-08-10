@@ -11,6 +11,8 @@
   "batchAction.enable": "تمكين",
   "batchAction.reIndex": "إعادة الفهرسة",
   "batchAction.selected": "محدد",
+  "batchAction.sync": "مزامنة",
+  "batchAction.syncAll": "مزامنة الكل",
   "chunkingMode.general": "عام",
   "chunkingMode.graph": "رسم بياني",
   "chunkingMode.parentChild": "الأصل والطفل",

@@ -11,6 +11,8 @@
   "batchAction.enable": "Давать возможность",
   "batchAction.reIndex": "Переиндексация",
   "batchAction.selected": "Выбранный",
+  "batchAction.sync": "Синхронизировать",
+  "batchAction.syncAll": "Синхронизировать всё",
   "chunkingMode.general": "Общее",
   "chunkingMode.graph": "График",
   "chunkingMode.parentChild": "Родитель-дочерний",
