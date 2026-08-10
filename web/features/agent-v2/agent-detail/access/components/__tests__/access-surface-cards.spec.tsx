@@ -55,9 +55,7 @@ vi.mock('@/context/account-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -72,9 +70,7 @@ vi.mock('@/context/workspace-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -89,9 +85,7 @@ vi.mock('@/context/permission-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -106,9 +100,7 @@ vi.mock('@/context/version-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })

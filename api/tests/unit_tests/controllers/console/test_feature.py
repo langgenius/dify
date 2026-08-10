@@ -15,6 +15,7 @@ from services.entities.feature_entities import (
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
+from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.init_validation_service import InitValidationService
 from services.schema_definition_service import SchemaDefinitionService
@@ -35,6 +36,7 @@ def _request_context() -> RequestContext:
 def _install_application_services(mocker: MockerFixture):
     feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
     services = ApplicationServices(
+        explore_banner_queries=create_autospec(ExploreBannerQueryService, instance=True, spec_set=True),
         schema_definitions=create_autospec(SchemaDefinitionService, instance=True, spec_set=True),
         setup=create_autospec(SetupService, instance=True, spec_set=True),
         feature_queries=feature_queries,
