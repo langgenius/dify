@@ -507,9 +507,12 @@ export function SkillBuilderPanel({
     return skillMd && isTextFile(skillMd) ? skillMd : undefined
   }
 
-  const handleSend = (messageText = prompt) => {
+  const handleSend = (
+    messageText = prompt,
+    messageAttachments: SkillBuilderAttachment[] = attachments,
+  ) => {
     const trimmedPrompt = messageText.trim()
-    const attachedFiles = attachments
+    const attachedFiles = messageAttachments
     if (
       !canSendBuilderMessage ||
       (!trimmedPrompt && attachedFiles.length === 0) ||
@@ -737,7 +740,8 @@ export function SkillBuilderPanel({
       .slice(0, messageIndex)
       .reverse()
       .find((message) => message.role === 'user')
-    if (previousUserMessage) handleSend(previousUserMessage.content)
+    if (previousUserMessage)
+      handleSend(previousUserMessage.content, previousUserMessage.attachments ?? [])
   }
 
   return (

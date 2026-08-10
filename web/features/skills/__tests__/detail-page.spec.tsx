@@ -2269,6 +2269,51 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('retries a Skill Builder attachment request with the original attachment', async () => {
+    const user = userEvent.setup()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+      onData?.('Used the guide.', true, {})
+      onCompleted?.()
+      return Promise.resolve()
+    })
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.send',
+      }),
+    )
+    await screen.findByText('Used the guide.')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.retryResponse',
+      }),
+    )
+
+    await waitFor(() => expect(mocks.sendSkillAssistMessage).toHaveBeenCalledTimes(2))
+    expect(mocks.sendSkillAssistMessage.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        attachments: [
+          {
+            mime_type: 'text/markdown',
+            name: 'guide.md',
+            size: 10,
+            tool_file_id: 'tool-file-1',
+          },
+        ],
+      }),
+    )
+  })
+
   it('removes uploaded Skill Builder attachments before sending', async () => {
     const user = userEvent.setup()
     const { container } = renderSkillDetailPage()
