@@ -124,7 +124,10 @@ def test_retry_exceed_max_retries(mock_get_client):
 
     with pytest.raises(Exception) as e:
         make_request("GET", "http://example.com", max_retries=SSRF_DEFAULT_MAX_RETRIES - 1)
-    assert str(e.value) == f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com"
+    assert str(e.value) == (
+        f"Reached maximum retries ({SSRF_DEFAULT_MAX_RETRIES - 1}) for URL http://example.com "
+        "(last response status was HTTP 500)"
+    )
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
