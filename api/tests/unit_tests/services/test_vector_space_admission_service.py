@@ -237,7 +237,7 @@ def test_pipeline_qa_workload_counts_question_vectors_without_summaries() -> Non
 def test_admission_is_cloud_only() -> None:
     service = VectorSpaceAdmissionService()
     with (
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         patch("services.vector_space_admission_service.Vector.resolve_vector_type") as resolve_vector_type,
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):

@@ -247,7 +247,6 @@ class VectorSpaceAdmissionService:
     ) -> None:
         if (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
             or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY
             or workload.total_points == 0
             or workload.probe_text is None

@@ -1360,6 +1360,7 @@ class TestFeatureService:
         }
 
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.EDUCATION_ENABLED = True
 
             # Act: Execute the method under test
