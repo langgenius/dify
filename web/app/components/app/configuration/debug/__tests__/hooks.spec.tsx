@@ -70,6 +70,46 @@ describe('configuration debug hooks', () => {
     })
   })
 
+  it('should restore persisted multiple-model debug settings', () => {
+    localStorage.setItem(
+      'app-debug-with-single-or-multiple-models',
+      JSON.stringify({
+        'app-1': {
+          multiple: true,
+          configs: [
+            {
+              id: 'model-1',
+              model: 'gpt-4o',
+              provider: 'langgenius/openai/openai',
+              parameters: { temperature: 0.7 },
+            },
+          ],
+        },
+      }),
+    )
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(true)
+    expect(result.current.multipleModelConfigs).toEqual([
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+    ])
+  })
+
+  it.each(['{', 'null'])('should fall back to default settings for stored value %s', (value) => {
+    localStorage.setItem('app-debug-with-single-or-multiple-models', value)
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(false)
+    expect(result.current.multipleModelConfigs).toEqual([])
+  })
+
   it('should derive chat config data from the debug context', () => {
     mockUseDebugConfigurationContext.mockReturnValue({
       isAdvancedMode: false,
