@@ -2390,6 +2390,50 @@ describe('SkillDetailPage', () => {
     expect(promptInput).toHaveValue('Use the attached guide')
   })
 
+  it('ignores an in-flight attachment after restarting Skill Builder', async () => {
+    const user = userEvent.setup()
+    let resolveUpload!: (file: {
+      id: string
+      mime_type: string
+      name: string
+      size: number
+    }) => void
+    mocks.uploadSkillFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await waitFor(() => expect(mocks.uploadSkillFile).toHaveBeenCalledOnce())
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.restart',
+      }),
+    )
+    expect(attachmentInput).toHaveValue('')
+
+    await act(async () => {
+      resolveUpload({
+        id: 'tool-file-1',
+        mime_type: 'text/markdown',
+        name: 'guide.md',
+        size: 10,
+      })
+    })
+    expect(screen.queryByText('guide.md')).not.toBeInTheDocument()
+  })
+
   it('disables Skill Builder suggestions while an attachment is uploading', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createDefaultSkillDraftDetail()
