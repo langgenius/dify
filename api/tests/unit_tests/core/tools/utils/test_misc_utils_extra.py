@@ -3,8 +3,7 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from datetime import datetime
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -12,7 +11,11 @@ from yaml import YAMLError
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.model_manager import ModelInstance, ModelManager
+from core.provider_manager import ProviderManager
+from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document as RagDocument
+from core.rag.rerank.rerank_model import RerankModelRunner
 from core.tools.utils.dataset_retriever import dataset_multi_retriever_tool as multi_retriever_module
 from core.tools.utils.dataset_retriever import dataset_retriever_tool as single_retriever_module
 from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
@@ -80,6 +83,26 @@ def _persist_document(
 class _FakeFlaskApp:
     def app_context(self):
         return nullcontext()
+
+
+class _FakeCurrentApp:
+    def _get_current_object(self) -> _FakeFlaskApp:
+        return _FakeFlaskApp()
+
+
+class _DatabaseWithSession:
+    def __init__(self, session: scoped_session[Session]) -> None:
+        self.session = session
+
+
+class _UnusedProviderManager(ProviderManager):
+    def __init__(self) -> None:
+        pass
+
+
+class _UnusedModelInstance(ModelInstance):
+    def __init__(self) -> None:
+        pass
 
 
 class _ImmediateThread:
@@ -158,8 +181,13 @@ def test_load_yaml_file_cached_hits(tmp_path):
     assert load_yaml_file_cached.cache_info().hits == 1
 
 
-def test_single_dataset_retriever_from_dataset_builds_name_and_description():
-    dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1", name="Knowledge", description=None)
+def test_single_dataset_retriever_from_dataset_builds_name_and_description(sqlite_session: Session):
+    dataset = _persist_dataset(
+        sqlite_session,
+        dataset_id="dataset-1",
+        tenant_id="tenant-1",
+        name="Knowledge",
+    )
 
     tool = SingleDatasetRetrieverTool.from_dataset(
         dataset=dataset,
@@ -176,8 +204,7 @@ def test_single_dataset_retriever_from_dataset_builds_name_and_description():
 def test_single_dataset_retriever_external_run_returns_content_and_resources(sqlite_session: Session):
     dataset = _persist_dataset(sqlite_session, provider="external", retrieval_model={})
     callback = _TestHitCallback()
-    dataset_retrieval = Mock()
-    dataset_retrieval.get_metadata_filter_condition.return_value = (
+    metadata_filter_result = (
         {dataset.id: ["doc-a"]},
         {"logical_operator": "and"},
     )
@@ -196,7 +223,11 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
         inputs={"x": 1},
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
+    with patch.object(
+        single_retriever_module.DatasetRetrieval,
+        "get_metadata_filter_condition",
+        return_value=metadata_filter_result,
+    ):
         with patch.object(
             single_retriever_module.ExternalDatasetService,
             "fetch_external_knowledge_retrieval",
@@ -218,8 +249,6 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     sqlite_session: Session,
 ):
     dataset = _persist_dataset(sqlite_session)
-    dataset_retrieval = Mock()
-    dataset_retrieval.get_metadata_filter_condition.return_value = ({dataset.id: []}, {"logical_operator": "and"})
     tool = SingleDatasetRetrieverTool(
         tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
@@ -230,7 +259,11 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
         inputs={},
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
+    with patch.object(
+        single_retriever_module.DatasetRetrieval,
+        "get_metadata_filter_condition",
+        return_value=({dataset.id: []}, {"logical_operator": "and"}),
+    ):
         with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
             result = tool.run(session=sqlite_session, query="hello")
 
@@ -265,35 +298,42 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
         doc_metadata={"lang": "fr"},
     )
     callback = _TestHitCallback()
-    dataset_retrieval = Mock()
-    dataset_retrieval.get_metadata_filter_condition.return_value = (None, None)
-    low_segment = SimpleNamespace(
-        id=str(uuid.uuid4()),
+    low_segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
         document_id=document_low.id,
+        index_node_id="node-low",
         content="raw low",
-        answer="low answer",
         hit_count=1,
         word_count=10,
         position=3,
         index_node_hash="hash-low",
-        get_sign_content=lambda: "signed low",
+        tokens=10,
+        created_by=dataset.created_by,
+        answer="low answer",
+        status=SegmentStatus.COMPLETED,
+        completed_at=datetime.now(),
     )
-    high_segment = SimpleNamespace(
-        id=str(uuid.uuid4()),
+    high_segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
         dataset_id=dataset.id,
         document_id=document_high.id,
+        index_node_id="node-high",
         content="raw high",
-        answer=None,
         hit_count=9,
         word_count=25,
         position=1,
         index_node_hash="hash-high",
-        get_sign_content=lambda: "signed high",
+        tokens=25,
+        created_by=dataset.created_by,
+        status=SegmentStatus.COMPLETED,
+        completed_at=datetime.now(),
     )
+    sqlite_session.add_all([low_segment, high_segment])
+    sqlite_session.commit()
     records = [
-        SimpleNamespace(segment=low_segment, score=0.2, summary="summary low"),
-        SimpleNamespace(segment=high_segment, score=0.9, summary=None),
+        RetrievalSegments(segment=low_segment, score=0.2, summary="summary low"),
+        RetrievalSegments(segment=high_segment, score=0.9),
     ]
     documents = [
         RagDocument(page_content="first", metadata={"doc_id": "node-low", "score": 0.2}),
@@ -310,14 +350,21 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
         top_k=2,
     )
 
-    with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
-        with patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents):
-            with patch.object(
-                single_retriever_module.RetrievalService,
-                "format_retrieval_documents",
-                return_value=records,
-            ):
-                result = tool.run(session=sqlite_session, query="hello")
+    with (
+        patch.object(
+            single_retriever_module.DatasetRetrieval,
+            "get_metadata_filter_condition",
+            return_value=(None, None),
+        ),
+        patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents),
+        patch.object(
+            single_retriever_module.RetrievalService,
+            "format_retrieval_documents",
+            return_value=records,
+        ),
+        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+    ):
+        result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "signed high\nsummary low\nquestion:signed low answer:low answer"
     assert callback.documents == documents
@@ -359,7 +406,7 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
     )
 
     try:
-        with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
+        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
             with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
                 result = tool._retriever(
                     flask_app=_FakeFlaskApp(),
@@ -408,7 +455,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     )
 
     try:
-        with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
+        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
             with patch.object(
                 multi_retriever_module.RetrievalService, "retrieve", return_value=documents
             ) as retrieve_mock:
@@ -506,11 +553,10 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     )
     sqlite_session.add_all([segment_for_node_2, segment_for_node_1])
     sqlite_session.commit()
-    model_manager = Mock()
-    model_manager.get_model_instance.return_value = Mock()
-    rerank_runner = Mock()
-    rerank_runner.run.return_value = [second_doc, first_doc]
-    fake_current_app = SimpleNamespace(_get_current_object=lambda: _FakeFlaskApp())
+    model_manager = ModelManager(provider_manager=_UnusedProviderManager())
+    model_instance = _UnusedModelInstance()
+    rerank_runner = RerankModelRunner(model_instance, session=sqlite_session)
+    fake_current_app = _FakeCurrentApp()
 
     with (
         patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
@@ -518,12 +564,14 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
         patch.object(multi_retriever_module, "current_app", fake_current_app),
         patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread),
         patch.object(multi_retriever_module.ModelManager, "for_tenant", return_value=model_manager),
+        patch.object(model_manager, "get_model_instance", return_value=model_instance),
         patch.object(multi_retriever_module, "RerankModelRunner", return_value=rerank_runner) as rerank_runner_class,
+        patch.object(rerank_runner, "run", return_value=[second_doc, first_doc]),
     ):
         result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
-    rerank_runner_class.assert_called_once_with(model_manager.get_model_instance.return_value, session=sqlite_session)
+    rerank_runner_class.assert_called_once_with(model_instance, session=sqlite_session)
     assert retriever_mock.call_count == 2
     assert callback.documents == [second_doc, first_doc]
     assert callback.resources is not None
