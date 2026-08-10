@@ -1,6 +1,9 @@
 'use client'
 
-import type { KnowledgeFsSpaceCreateResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsInitialWebsiteSourcePayload,
+  KnowledgeFsSpaceCreateResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
 import type { WebsiteCrawlPreviewSelection } from './create-source-setup'
@@ -35,7 +38,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
@@ -62,17 +64,55 @@ import { createRequestId } from './request-id'
 import {
   createNewKnowledgeSourceDraft,
   isValidWebsiteSourceDraft,
-  newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
   newKnowledgeSettingsPath,
-  newKnowledgeSourceDraftStorageKey,
 } from './routes'
 
 function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   if (value === 'source' || value === 'upload') return value
   return 'empty'
+}
+
+function initialWebsiteSourceFromSelection(
+  draft: NewKnowledgeSourceDraft,
+  selection?: WebsiteCrawlPreviewSelection,
+): KnowledgeFsInitialWebsiteSourcePayload | undefined {
+  if (
+    draft.sourceType !== 'websiteCrawl' ||
+    draft.provider !== 'Firecrawl' ||
+    !selection ||
+    selection.draft.sourceType !== 'websiteCrawl' ||
+    selection.draft.provider !== draft.provider ||
+    selection.draft.rootUrl !== draft.rootUrl ||
+    selection.draft.sourceName !== draft.sourceName ||
+    selection.draft.includeSubpages !== draft.includeSubpages ||
+    selection.draft.maxPages !== draft.maxPages ||
+    selection.draft.syncPolicy !== draft.syncPolicy
+  )
+    return undefined
+
+  const selectedPages = selection.pages.filter((page) =>
+    selection.selectedPageIds.includes(page.pageId),
+  )
+  if (!selectedPages.length) return undefined
+
+  return {
+    crawl_options: {
+      include_subpages: draft.includeSubpages,
+      limit: draft.maxPages,
+    },
+    kind: 'website_crawl',
+    name: draft.sourceName.trim(),
+    provider: 'firecrawl',
+    root_url: draft.rootUrl,
+    selection: selectedPages.map((page) => ({
+      source_url: page.sourceUrl,
+      ...(page.title ? { title: page.title } : {}),
+    })),
+    sync_policy: draft.syncPolicy,
+  }
 }
 
 export function CreateKnowledgePage() {
@@ -103,9 +143,6 @@ export function CreateKnowledgePage() {
   const [websitePreviewSelection, setWebsitePreviewSelection] =
     useState<WebsiteCrawlPreviewSelection>()
   const websitePreviewSelectionRef = useRef<WebsiteCrawlPreviewSelection | undefined>(undefined)
-  const sourceDraftsRef = useRef<
-    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
-  >({})
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
@@ -129,18 +166,18 @@ export function CreateKnowledgePage() {
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
+  const initialWebsiteSource = initialWebsiteSourceFromSelection(
+    sourceDraft,
+    websitePreviewSelection,
+  )
   const sourceSubmissionBlocked =
     startMode === 'source' &&
     (sourceDraft.sourceType === 'websiteCrawl'
-      ? !isValidWebsiteSourceDraft(sourceDraft)
+      ? !isValidWebsiteSourceDraft(sourceDraft) || !initialWebsiteSource
       : !sourceDraft.sourceName.trim())
-  const sourceDraftChanged = Object.values({
-    ...sourceDraftsRef.current,
-    [sourceDraft.sourceType]: sourceDraft,
-  }).some(
-    (draft) =>
-      JSON.stringify(draft) !== JSON.stringify(createNewKnowledgeSourceDraft(draft.sourceType)),
-  )
+  const sourceDraftChanged =
+    JSON.stringify(sourceDraft) !==
+    JSON.stringify(createNewKnowledgeSourceDraft(sourceDraft.sourceType))
   const hasUnsavedChanges = Boolean(
     name ||
     description ||
@@ -283,36 +320,18 @@ export function CreateKnowledgePage() {
     const normalizedDescription = description.trim()
     if (!normalizedName) return
 
+    const latestWebsitePreviewSelection =
+      websitePreviewSelectionRef.current ?? websitePreviewSelection
+    const initialSource = initialWebsiteSourceFromSelection(
+      sourceDraft,
+      latestWebsitePreviewSelection,
+    )
+    if (startMode === 'source' && sourceDraft.sourceType === 'websiteCrawl' && !initialSource)
+      return
+
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
-      const latestWebsitePreviewSelection =
-        websitePreviewSelectionRef.current ?? websitePreviewSelection
-      const initialSource =
-        startMode === 'source' &&
-        sourceDraft.sourceType === 'websiteCrawl' &&
-        latestWebsitePreviewSelection?.draft.sourceType === 'websiteCrawl' &&
-        latestWebsitePreviewSelection.selectedPageIds.length > 0
-          ? {
-              crawl_options: {
-                include_subpages: latestWebsitePreviewSelection.draft.includeSubpages,
-                limit: latestWebsitePreviewSelection.draft.maxPages,
-              },
-              kind: 'website_crawl' as const,
-              name: latestWebsitePreviewSelection.draft.sourceName.trim(),
-              provider: 'firecrawl' as const,
-              root_url: latestWebsitePreviewSelection.draft.rootUrl,
-              selection: latestWebsitePreviewSelection.pages
-                .filter((page) =>
-                  latestWebsitePreviewSelection.selectedPageIds.includes(page.pageId),
-                )
-                .map((page) => ({
-                  source_url: page.sourceUrl,
-                  ...(page.title ? { title: page.title } : {}),
-                })),
-              sync_policy: latestWebsitePreviewSelection.draft.syncPolicy,
-            }
-          : undefined
       const result = await createMutation.mutateAsync({
         existingKnowledge: createdKnowledge,
         description: normalizedDescription,
@@ -354,29 +373,6 @@ export function CreateKnowledgePage() {
         } finally {
           setUploading(false)
         }
-      }
-
-      if (startMode === 'source') {
-        if (initialSource) {
-          replaceAfterHistoryGuard(newKnowledgeDetailPath(created.control_space_id))
-          return
-        }
-        try {
-          const sourceDraftKey = createRequestId()
-          globalThis.sessionStorage.setItem(
-            newKnowledgeSourceDraftStorageKey(sourceDraftKey),
-            JSON.stringify(sourceDraft),
-          )
-          replaceAfterHistoryGuard(
-            newKnowledgeAddSourcePath(created.control_space_id, {
-              draftKey: sourceDraftKey,
-              sourceType: sourceDraft.sourceType,
-            }),
-          )
-        } catch {
-          toast.error(t(($) => $['newKnowledge.addSourceFailed']))
-        }
-        return
       }
 
       replaceAfterHistoryGuard(
@@ -574,18 +570,14 @@ export function CreateKnowledgePage() {
                         disabled={submissionLocked}
                         draft={sourceDraft}
                         onDraftChange={(value) => {
-                          sourceDraftsRef.current[value.sourceType] = value
                           setSourceDraft(value)
                           updateWebsitePreviewSelection(undefined)
                           resetUnsubmittedError()
                         }}
                         onWebsitePreviewSelectionChange={updateWebsitePreviewSelection}
                         onSourceTypeChange={(value) => {
-                          sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
-                          const nextDraft =
-                            sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value)
-                          sourceDraftsRef.current[value] = nextDraft
-                          setSourceDraft(nextDraft)
+                          if (value !== 'websiteCrawl') return
+                          setSourceDraft(createNewKnowledgeSourceDraft(value))
                           updateWebsitePreviewSelection(undefined)
                           resetUnsubmittedError()
                         }}

@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
-import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
@@ -46,10 +45,6 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   rbacAtom: Symbol('rbacEnabledAtom'),
   uploadEnabled: true,
   rbacEnabled: true,
-}))
-
-const datasourceAuthStateMock = vi.hoisted(() => ({
-  result: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -159,13 +154,6 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: serviceMock.createCrawl,
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: () => ({
-    data: { result: datasourceAuthStateMock.result },
-    isPending: false,
-  }),
-}))
-
 const createdKnowledge = {
   control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
   model_setup_required: false,
@@ -259,14 +247,6 @@ describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     globalThis.sessionStorage.clear()
-    datasourceAuthStateMock.result = [
-      {
-        credentials_list: [{ id: 'notion-credential-1' }],
-        name: 'Notion',
-        plugin_id: 'langgenius/notion_datasource',
-        provider: 'notion',
-      },
-    ]
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
     serviceMock.createKfsSource.mockResolvedValue(kfsSourceResponse())
@@ -740,7 +720,7 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('keeps every start mode interactive without simulating backend success', async () => {
+  it('enables only source options supported by atomic creation', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -756,13 +736,30 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(connectSource)
     expect(connectSource).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
+    const onlineDocuments = screen.getByRole('radio', {
+      name: 'dataset.newKnowledge.onlineDocuments',
+    })
+    expect(onlineDocuments).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
     for (const unavailableProvider of ['Jina Reader', 'WaterCrawl', 'FakeCrawler']) {
-      await user.click(screen.getByRole('radio', { name: unavailableProvider }))
-      expect(screen.getByRole('radio', { name: unavailableProvider })).toBeChecked()
+      expect(screen.getByRole('radio', { name: unavailableProvider })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
     }
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
+    await user.click(onlineDocuments)
+    expect(onlineDocuments).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }),
+    ).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
@@ -788,19 +785,6 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Getting started' }))
     expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('1')
-    const onlineDocuments = screen.getByRole('radio', {
-      name: 'dataset.newKnowledge.onlineDocuments',
-    })
-    await user.click(onlineDocuments)
-    expect(onlineDocuments).toBeChecked()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('Notion')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.notionNotConnected')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
-    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
@@ -812,27 +796,6 @@ describe('CreateKnowledgePage', () => {
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
-  })
-
-  it('offers to connect Notion when the provider has no credential', async () => {
-    const user = userEvent.setup()
-    datasourceAuthStateMock.result = []
-    renderPage()
-
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-
-    expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-    ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourceSetupBackendDependency',
-    )
   })
 
   it('disables upload before creating a space when direct upload is unavailable', () => {
@@ -1039,98 +1002,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.selectWorkflowPages).not.toHaveBeenCalled()
   })
 
-  it('falls back to direct navigation when releasing the history guard does not emit popstate', async () => {
-    const user = userEvent.setup()
-    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
-    navigationMock.startMode = 'source'
-    renderPage()
-    await fillRequiredFields(user)
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
-      'Dify docs',
-    )
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
-    expect(historyBack).toHaveBeenCalledOnce()
-    await waitFor(
-      () =>
-        expect(routerMock.replace).toHaveBeenCalledWith(
-          '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
-        ),
-      { timeout: 2000 },
-    )
-  })
-
-  it('preserves online document configuration across the real navigation boundary', async () => {
-    const user = userEvent.setup()
-    navigationMock.startMode = 'source'
-    renderPage()
-    await fillRequiredFields(user)
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-      'Shared product docs',
-    )
-    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
-    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
-    await waitFor(() =>
-      expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=onlineDocuments&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
-      ),
-    )
-    expect(
-      JSON.parse(
-        globalThis.sessionStorage.getItem(
-          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
-        ) ?? '',
-      ),
-    ).toEqual({
-      provider: 'Google Docs',
-      sourceName: 'Shared product docs',
-      sourceType: 'onlineDocuments',
-      syncPolicy: 'daily',
-    })
-  })
-
-  it('keeps each source type draft when the user switches between them', async () => {
-    const user = userEvent.setup()
-    navigationMock.startMode = 'source'
-    renderPage()
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
-      'Website docs',
-    )
-
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-      'Notion docs',
-    )
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
-
-    expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toHaveValue(
-      'https://docs.dify.ai',
-    )
-    expect(screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')).toHaveValue(
-      'Website docs',
-    )
-  })
-
-  it('uses the same website validation as the add-source workflow', async () => {
+  it('requires a selected website preview page before creating with an initial source', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     renderPage()
@@ -1148,6 +1020,15 @@ describe('CreateKnowledgePage', () => {
 
     await user.clear(rootUrl)
     await user.type(rootUrl, 'https://docs.dify.ai')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+
+    const crawlAndPreview = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlAndPreview',
+    })
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
   })
 
@@ -1280,49 +1161,6 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.upload).toHaveBeenCalledTimes(2)
   })
 
-  it('hands the configured source draft to the add-source workflow after creation', async () => {
-    const user = userEvent.setup()
-    navigationMock.startMode = 'source'
-    renderPage()
-    await fillRequiredFields(user)
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
-      'https://docs.dify.ai',
-    )
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
-      'Dify docs',
-    )
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
-    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
-    const maxPages = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
-    await user.clear(maxPages)
-    await user.type(maxPages, '25')
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
-    await waitFor(() =>
-      expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
-      ),
-    )
-    expect(
-      JSON.parse(
-        globalThis.sessionStorage.getItem(
-          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
-        ) ?? '',
-      ),
-    ).toEqual({
-      includeSubpages: false,
-      maxPages: 25,
-      provider: 'Firecrawl',
-      rootUrl: 'https://docs.dify.ai',
-      sourceName: 'Dify docs',
-      sourceType: 'websiteCrawl',
-      syncPolicy: 'daily',
-    })
-  })
-
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -1386,28 +1224,6 @@ describe('CreateKnowledgePage', () => {
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
-  })
-
-  it('asks before discarding a preserved source draft after switching source types', async () => {
-    const user = userEvent.setup()
-    navigationMock.startMode = 'source'
-    renderPage()
-
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
-      'Release notes',
-    )
-    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'dataset.newKnowledge.discardDraftTitle',
-      }),
-    ).toBeInTheDocument()
-    expect(routerMock.replace).not.toHaveBeenCalled()
   })
 
   it('protects an unsaved draft from browser unload', async () => {

@@ -94,20 +94,32 @@ function crawlPreviewPages(pages: CrawlResultItem[]): CrawlPreviewPage[] {
 
 const providers = {
   onlineDocuments: [
-    { icon: 'i-custom-public-common-notion', label: 'Notion' },
-    { icon: 'i-ri-file-text-fill text-[#4d8bf5]', label: 'Google Docs' },
-    { icon: 'i-custom-public-common-confluence', label: 'Confluence' },
+    { available: false, icon: 'i-custom-public-common-notion', label: 'Notion' },
+    {
+      available: false,
+      icon: 'i-ri-file-text-fill text-[#4d8bf5]',
+      label: 'Google Docs',
+    },
+    { available: false, icon: 'i-custom-public-common-confluence', label: 'Confluence' },
   ],
   onlineDrive: [
-    { icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },
-    { icon: 'i-ri-cloud-line', label: 'OneDrive' },
-    { icon: 'i-ri-box-3-line', label: 'Amazon S3' },
+    { available: false, icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },
+    { available: false, icon: 'i-ri-cloud-line', label: 'OneDrive' },
+    { available: false, icon: 'i-ri-box-3-line', label: 'Amazon S3' },
   ],
   websiteCrawl: [
     { icon: 'i-custom-public-common-firecrawl', label: 'Firecrawl', available: true },
-    { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
-    { icon: 'i-custom-public-knowledge-watercrawl', label: 'WaterCrawl' },
-    { icon: 'i-ri-global-line text-text-accent', label: 'FakeCrawler' },
+    { available: false, icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
+    {
+      available: false,
+      icon: 'i-custom-public-knowledge-watercrawl',
+      label: 'WaterCrawl',
+    },
+    {
+      available: false,
+      icon: 'i-ri-global-line text-text-accent',
+      label: 'FakeCrawler',
+    },
   ],
 } as const
 
@@ -214,7 +226,9 @@ export function CreateSourceSetup({
   const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
     ? draft.provider
     : availableProviders[0].label
-  const previewReady = draft.sourceType === 'websiteCrawl' && isValidWebsiteSourceDraft(draft)
+  const websiteProviderAvailable =
+    draft.sourceType === 'websiteCrawl' && draft.provider === 'Firecrawl'
+  const previewReady = websiteProviderAvailable && isValidWebsiteSourceDraft(draft)
   const previewRootUrl = draft.sourceType === 'websiteCrawl' ? draft.rootUrl : ''
   const selectionPages = useMemo(() => crawlPreviewPages(previewPages), [previewPages])
   const crawlOptionsAreDefault =
@@ -340,6 +354,7 @@ export function CreateSourceSetup({
       <SourceTypeSelector
         appearance="embedded"
         disabled={disabled}
+        disabledValues={['onlineDocuments', 'onlineDrive']}
         value={sourceType}
         onChange={(value) => {
           setBackendBoundaryVisible(false)
@@ -359,7 +374,7 @@ export function CreateSourceSetup({
             type="button"
             variant="ghost-accent"
             size="small"
-            disabled={disabled}
+            disabled
             className="gap-0.5 px-2.75"
             onClick={showBackendBoundary}
           >
@@ -372,6 +387,7 @@ export function CreateSourceSetup({
           disabled={disabled}
           layout={sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
           options={providers[sourceType].map((provider) => ({
+            disabled: !provider.available,
             icon: <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />,
             value: provider.label,
           }))}
@@ -608,14 +624,14 @@ export function CreateSourceSetup({
         <>
           {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
             <NotionSourceConfiguration
-              disabled={disabled}
+              disabled={disabled || !websiteProviderAvailable}
               draft={draft}
               onConnect={showBackendBoundary}
               onDraftChange={updateDraft}
             />
           ) : (
             <ConnectedSourceConfiguration
-              disabled={disabled}
+              disabled={disabled || !websiteProviderAvailable}
               draft={draft}
               onDraftChange={updateDraft}
             />
