@@ -139,9 +139,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "jsx_a11y/tabindex-no-positive": {
-      "count": 3
-    },
     "no-restricted-imports": {
       "count": 1
     }
