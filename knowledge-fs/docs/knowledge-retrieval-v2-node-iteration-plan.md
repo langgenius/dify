@@ -21,10 +21,26 @@
 | D1 | 节点标识 | 全新 NodeType 字符串 `knowledge-retrieval-v2`，backend `version()="1"`；前端新增 `BlockEnum.KnowledgeRetrievalV2`。**不采用** agent_v2 的同 type + version 判别模式（那是原地升级语义，本需求要求两节点并存） |
 | D2 | 检索 API | 网关 `POST /knowledge-spaces/{id}/retrieval-tests`（evidence-only），**不用** `createQuery`（会走 LLM 生成答案，成本/延迟/语义都不符） |
 | D3 | 配置归属 | 节点配置面保持薄：空间选择 + query 变量 + mode（+ manual metadata filters）。topK/阈值/rerank 归空间的 published retrieval profile，节点不复刻 v1 的节点级检索参数 |
-| D4 | 多空间 | MVP 支持多空间：并发检索、各自归一化分数排序合并、全局 topN 截断；跨空间统一 rerank 留 P2。文档明示跨空间分数仅弱可比 |
-| D5 | 绑定生命周期 | 发布含 v2 节点的 workflow 时自动 `app_bindings.upsert(caller_kind=workflow)`；清理交给 `orphan_reconciler`；admission 失败运行时报确定性错误码 |
-| D6 | mode 默认值 | 节点默认不传 mode（跟随空间 defaultMode，不触发 LLM 路由）；显式 `auto` 才走 reasoning model 路由。research 模式允许选择但 UI 标注高延迟高成本 |
-| D7 | metadata 过滤 | 迭代 1 在 retrieval-tests 暴露有界 filters；节点 MVP 仅 manual 模式，automatic（LLM 抽条件）为 P2 |
+| D4 | 多空间 | MVP 支持多空间：最多 10 个空间、最多 4 路并发检索、保留 KFS 返回的 profile-final `score` 做稳定降序合并并全局 topN 截断；**不做每空间二次 min-max 归一化**（它会把弱相关单结果错误抬到 1）。跨空间统一 rerank 留 P2，文档明示分数仅弱可比 |
+| D5 | 绑定生命周期 | 发布含 v2 节点的 workflow 时对 `caller_kind=workflow` 做**精确同步**：新增/恢复目标绑定，并撤销已从已发布 graph 移除的绑定。`orphan_reconciler` 当前只处理 Space 生命周期，不能替代 workflow 引用清理；admission 失败运行时报确定性错误码 |
+| D6 | mode 默认值 | 节点默认不传 mode（每个空间分别跟随其 published `defaultMode`）。显式值仅允许 `fast/deep/research`；KFS 当前没有 `auto` retrieval mode，不能向该端点发送 `auto`。research 模式允许选择但 UI 标注高延迟高成本 |
+| D7 | metadata 过滤 | 迭代 1 在 retrieval-tests 暴露有界的 KFS 固定字段 filters；节点 MVP 仅 manual 模式。不能复用旧 dataset 的任意 `name/operator/value` 条件，因为两者合同不兼容；automatic（LLM 抽条件）为 P2 |
+
+## 开发前评审修订（2026-08-09）
+
+原方案整体可实施，但开发以以下约束为准：
+
+- `retrieval-tests` 是 evidence-only 产品操作，即使 method 为 POST，也登记为只读 action；
+  `includeText=true` 只返回有界正文，不透传候选内部 metadata。
+- 单候选正文最多 8,192 Unicode 字符，最多 100 个候选；产品操作响应上限 4 MiB。
+- 多空间查询任一空间失败时 fail-closed，不返回容易被误认为完整结果的 partial evidence；空结果是成功。
+- 多空间未显式指定 mode 时，各空间可能采用不同默认模式，因此聚合 metrics 的 `mode` 允许
+  `mixed`，同时返回 requested/effective mode 与 per-space 摘要，不能假设只有一个 mode。
+- 草稿 debugger/explore 运行可在授权校验前幂等创建所选空间绑定；已发布/终端用户运行绝不
+  自动补绑定。发布路径先校验所有目标空间，再在一个事务里精确同步绑定，避免半发布状态。
+- `control_space_ids` 最多 10 个并去重；`top_n` 范围 1–100；query 限 16,000 字符；
+  filters 采用 dates/documentTypes/entities/freshnessStatuses/languages/nodeKinds/sourceIds/tags。
+- DSL 跨环境不会静默接受缺失 Space：导入进入 checklist warning，发布前 validation 阻断。
 
 ## 现状事实（调研结论，开发前置依赖）
 
@@ -84,12 +100,12 @@
    - `type = "knowledge-retrieval-v2"`；
    - `control_space_ids: list[str]`（Dify 侧 control_space_id，非上游 space uuid）；
    - `query_variable_selector`；
-   - `mode: Literal["auto","fast","deep","research"] | None`（None=跟随空间默认）；
+   - `mode: Literal["fast","deep","research"] | None`（None=各空间跟随自己的默认）；
    - `top_n: int`（多空间合并后截断数）；
-   - `metadata_filtering_conditions`（manual，结构复用 `MetadataFilteringCondition` 可行则复用）。
+   - `metadata_filters`（manual，使用 KFS 固定字段合同，不复用旧 dataset 的通用条件）。
    - 直接继承 BaseNode，**不继承 LLMNode**（v1 的历史包袱，v2 无 single-retrieval 模式）。
-2. `knowledge_retrieval_v2_node.py`：`version()="1"`。执行：解析 query 变量 → 逐空间并发
-   `run_retrieval` → 归一化合并 + topN → 组装输出。
+2. `knowledge_retrieval_v2_node.py`：`version()="1"`。执行：解析 query 变量 → 逐空间有界并发
+   `run_retrieval` → 保留 KFS final score 做稳定合并 + topN → 组装输出。
 3. `exc.py` 错误分类：admission 拒绝（未绑定/权限撤销）、KFS 不可用（fail-closed 503）、
    合同校验失败；检索为空不是错误。
 4. **输出变量**（与前端 outputVars 声明严格一致）：
@@ -116,7 +132,8 @@
 3. DSL 导入/跨环境迁移：`control_space_id` 环境相关，导入时校验存在性，缺失进 checklist
    警告（对齐 v1 对 `dataset_ids` 的处理），不静默保留脏引用。
 4. 生命周期验证：空间删除/成员变更 → admission 拒绝 → 节点确定性错误码；确认
-   `orphan_reconciler` 覆盖 workflow 绑定清理。
+   发布精确同步会撤销已从 graph 移除的 workflow 绑定。`orphan_reconciler`
+   只负责 Space 生命周期孤儿，不承担 app graph 引用清理。
 
 **验收**：发布→运行→撤权→运行失败→恢复→运行成功全链路行为确定；草稿运行语义有测试锁定。
 
@@ -144,14 +161,17 @@
 
 ## 迭代 6：可观测性（2 人日）
 
-1. 节点执行 metadata 落 `WorkflowNodeExecutionMetadataKey`：mode、totalMs、
-   candidateCounts、degradationFlags，运行详情可见。
+1. `WorkflowNodeExecutionMetadataKey` 是上游闭合枚举，不强行塞入自定义 key。mode、
+   totalMs、candidateCounts、degradationFlags 落节点 `process_data.knowledge_fs`，
+   同时将稳定子集作为 `metrics` 输出，运行详情可见且不污染全局元数据合同。
 2. trace 贯通：workflow trace id 经 `issue(trace_id=...)` 传入，KFS 侧 metrics 可反查。
 
 ## 迭代 7：测试收尾与发布（3 人日）
 
-1. 后端 integration 测试（CI-only）；前端 vitest 全绿；`e2e/` 一条 Cucumber 场景
-   （建空间→传文档→建 workflow→v2 节点检索→断言输出）。
+1. 后端 integration 测试（CI-only）与前端 Vitest 全绿。当 `e2e/` 具备可重置的
+   KnowledgeFS 服务和预置文档 fixture 后，再启用“建空间→传文档→建 workflow→
+   v2 节点检索→断言输出” Cucumber 场景；本期不提交无可用 fixture 的永久 skip/
+   假绿场景，以 KFS route、Dify service、node 和 DSL fixture 的分层合同测试替代。
 2. 含 v2 节点的 DSL 导出样例进测试 fixture，防 schema 回归。
 3. 文档：节点使用文档 + v1/v2 对比表（数据源、配置归属、citation、模式差异）。
 4. 发布策略：随 workspace 级 KnowledgeFS 开关走，不设独立 flag；回滚 = 关空间侧开关，

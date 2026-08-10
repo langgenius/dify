@@ -24,11 +24,14 @@ from services.knowledge_fs.product_operations import KnowledgeFSProductPermissio
 
 
 class ProductAuthorization:
-    def __init__(self) -> None:
+    def __init__(self, *, fail_on: str | None = None) -> None:
         self.calls: list[dict[str, object]] = []
+        self.fail_on = fail_on
 
     def authorize_control_space(self, **kwargs: object) -> object:
         self.calls.append(kwargs)
+        if kwargs["control_space_id"] == self.fail_on:
+            raise PermissionError("forbidden")
         return object()
 
 
@@ -289,3 +292,135 @@ def test_active_binding_count_is_distinct_by_app_and_requires_only_read_access(b
         == 1
     )
     assert product.calls[-1]["permission"] is KnowledgeFSProductPermission.READ
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+def test_workflow_binding_sync_is_exact_atomic_and_revokes_removed_spaces(binding_session: Session) -> None:
+    first = binding_session.scalar(select(KnowledgeFSControlSpace))
+    assert first is not None
+    second = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-2",
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+        knowledge_space_id="space-2",
+        knowledge_space_revision=1,
+    )
+    binding_session.add(second)
+    binding_session.flush()
+    binding_session.add_all(
+        [
+            KnowledgeFSExternalAccessPolicy(
+                tenant_id="tenant-1",
+                control_space_id=second.id,
+                agent_enabled=True,
+                workflow_enabled=True,
+            ),
+            KnowledgeFSAuthorizationRevision(
+                tenant_id="tenant-1",
+                control_space_id=second.id,
+                external_access_epoch=2,
+            ),
+        ]
+    )
+    binding_session.commit()
+    revocations = Revocations()
+    service = _service(binding_session, revocations=revocations)
+    service.upsert(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=first.id,
+        payload=KnowledgeFSAppBindingPayload(
+            app_id="app-1",
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        ),
+    )
+
+    synced = service.sync_workflow_bindings(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        app_id="app-1",
+        control_space_ids=[second.id, second.id],
+    )
+
+    rows = {row.control_space_id: row for row in binding_session.scalars(select(AppKnowledgeFSSpaceJoin)).all()}
+    assert [binding.app_id for binding in synced] == ["app-1"]
+    assert rows[first.id].status is KnowledgeFSAppSpaceJoinStatus.REVOKED
+    assert rows[second.id].status is KnowledgeFSAppSpaceJoinStatus.ACTIVE
+    assert len(revocations.calls) == 1
+    assert revocations.calls[0]["control_space_id"] == first.id
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+def test_workflow_binding_sync_authorizes_every_target_before_mutation(binding_session: Session) -> None:
+    space = binding_session.scalar(select(KnowledgeFSControlSpace))
+    assert space is not None
+    service = _service(binding_session, product=ProductAuthorization(fail_on=space.id))
+
+    with pytest.raises(PermissionError, match="forbidden"):
+        service.sync_workflow_bindings(
+            tenant_id="tenant-1",
+            actor_account_id="owner-1",
+            app_id="app-1",
+            control_space_ids=[space.id],
+        )
+
+    assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+def test_workflow_binding_sync_can_join_the_publish_transaction(binding_session: Session) -> None:
+    space = binding_session.scalar(select(KnowledgeFSControlSpace))
+    assert space is not None
+    service = _service(binding_session)
+
+    service.sync_workflow_bindings(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        app_id="app-1",
+        control_space_ids=[space.id],
+        session=binding_session,
+    )
+
+    assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is not None
+    binding_session.rollback()
+    assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None

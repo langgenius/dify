@@ -267,6 +267,7 @@ export function getRequiredScope(method: string, path: string): KnowledgeSpaceSc
       (path === "/queries" ||
         path === "/internal/knowledge-spaces/product-summaries/batch" ||
         path === "/research-tasks/plan" ||
+        /^\/knowledge-spaces\/[^/]+\/retrieval-tests$/.test(path) ||
         /^\/agent-workspace-snapshots\/[^/]+\/replay$/.test(path)))
   ) {
     return "knowledge-spaces:read";

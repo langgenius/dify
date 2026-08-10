@@ -12,6 +12,7 @@ import {
   createKnowledgeSpaceRoute,
   listKnowledgeSpacesRoute,
 } from "./knowledge-space-routes";
+import { runRetrievalTestRoute } from "./retrieval-test-routes";
 
 describe("knowledge-space OpenAPI contract", () => {
   it("publishes stable operation ids for Dify product operations", () => {
@@ -20,6 +21,7 @@ describe("knowledge-space OpenAPI contract", () => {
     expect(batchKnowledgeSpaceProductSummariesRoute.operationId).toBe(
       "batchKnowledgeSpaceProductSummaries",
     );
+    expect(runRetrievalTestRoute.operationId).toBe("runRetrievalTest");
     expect(createKnowledgeSpaceRoute.tags).toEqual(["Knowledge Spaces"]);
     expect(listKnowledgeSpacesRoute.tags).toEqual(["Knowledge Spaces"]);
   });
@@ -100,6 +102,11 @@ describe("knowledge-space OpenAPI contract", () => {
       operationId: "createKnowledgeSpace",
       "x-knowledge-fs-max-response-bytes": 1024 * 1024,
       "x-knowledge-fs-required-scope": "knowledge-spaces:write",
+    });
+    expect(document.paths?.["/knowledge-spaces/{id}/retrieval-tests"]?.post).toMatchObject({
+      operationId: "runRetrievalTest",
+      "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
+      "x-knowledge-fs-required-scope": "knowledge-spaces:read",
     });
     expect(document.paths?.["/knowledge-spaces"]?.get?.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ in: "header", name: "x-trace-id" })]),

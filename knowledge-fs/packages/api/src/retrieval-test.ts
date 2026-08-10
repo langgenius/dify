@@ -16,7 +16,9 @@ import {
 import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
 import { PageIndexSemanticScoreVersion } from "./page-index-semantic-tree-search";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
+import type { RetrievalMetadataFilters } from "./retrieval-candidates";
 import type { RetrievalSource } from "./retrieval-candidates";
+import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
 import { createRetrievalPlanner } from "./retrieval-planner";
 import type {
   BasicHybridRetriever,
@@ -66,6 +68,7 @@ export interface RetrievalTestResult {
     readonly projectionIds: readonly string[];
     readonly score: number;
     readonly sources: readonly RetrievalSource[];
+    readonly text?: string | undefined;
   }[];
   readonly metrics: HybridRetrievalMetrics;
   readonly plan: RetrievalTestPlan;
@@ -87,6 +90,8 @@ export interface RetrievalTestRuntimeCapabilitiesInput {
 
 export interface RetrievalTestExecutorInput {
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
+  readonly filters?: RetrievalMetadataFilters | undefined;
+  readonly includeText?: boolean | undefined;
   readonly knowledgeSpaceId: string;
   readonly mode: "deep" | "fast" | "research";
   readonly permissionScope: readonly string[];
@@ -215,6 +220,9 @@ export function createRetrievalTestExecutor({
             ? { denseProjectionModel: input.embeddingProfile.vectorSpaceId }
             : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
+          ...(input.filters === undefined
+            ? {}
+            : { filters: normalizeRetrievalMetadataFilters(input.filters) }),
           limit: input.retrievalProfile.topK,
           mode: input.mode,
           permissionScope: input.permissionScope,
@@ -244,7 +252,9 @@ export function createRetrievalTestExecutor({
           profile: input.retrievalProfile,
         });
         return {
-          items: retrieval.items.map(safeRetrievalTestItem),
+          items: retrieval.items.map((item) =>
+            safeRetrievalTestItem(item, input.includeText === true),
+          ),
           metrics: cloneRetrievalTestMetrics(retrieval.metrics),
           plan: {
             ...retrieval.plan,
@@ -521,7 +531,9 @@ function sameRetrievalTestPlan(
 
 function safeRetrievalTestItem(
   item: Awaited<ReturnType<BasicHybridRetriever["retrieve"]>>["items"][number],
+  includeText: boolean,
 ): RetrievalTestResult["items"][number] {
+  const text = typeof item.metadata.text === "string" ? item.metadata.text : "";
   return {
     citation: {
       artifactHash: boundedString(item.citation.artifactHash, 128),
@@ -540,7 +552,12 @@ function safeRetrievalTestItem(
     projectionIds: item.projectionIds.slice(0, 128).map((id) => boundedString(id, 512)),
     score: item.score,
     sources: [...new Set(item.sources)].slice(0, 4),
+    ...(includeText ? { text: boundedUnicodeString(text, 8_192) } : {}),
   };
+}
+
+function boundedUnicodeString(value: string, maxCharacters: number): string {
+  return Array.from(value).slice(0, maxCharacters).join("");
 }
 
 function cloneRetrievalTestMetrics(metrics: HybridRetrievalMetrics): HybridRetrievalMetrics {

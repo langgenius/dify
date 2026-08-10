@@ -9,7 +9,7 @@ import { createInMemoryKnowledgeSpaceRepository } from "./knowledge-space-reposi
 import type { PublishedKnowledgeSpaceRuntimeSnapshot } from "./published-knowledge-space-runtime-snapshot";
 import { RetrievalExecutionAdmissionError } from "./retrieval-execution-lease";
 import type { RetrievalTestExecutor, RetrievalTestResult } from "./retrieval-test";
-import { RetrievalTestResponseSchema } from "./retrieval-test-routes";
+import { RetrievalTestRequestSchema, RetrievalTestResponseSchema } from "./retrieval-test-routes";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const TOKEN = "owner-token";
@@ -61,7 +61,16 @@ describe("retrieval test route", () => {
     await createSpace(app);
 
     const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
-      body: JSON.stringify({ mode: "deep", query: "compare graph evidence" }),
+      body: JSON.stringify({
+        filters: {
+          documentTypes: [" handbook ", "handbook"],
+          nodeKinds: ["section"],
+          tags: ["camera"],
+        },
+        includeText: true,
+        mode: "deep",
+        query: "compare graph evidence",
+      }),
       headers: jsonBearer(),
       method: "POST",
     });
@@ -76,6 +85,7 @@ describe("retrieval test route", () => {
         headRevision: 4,
         publicationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
       },
+      items: [{ text: "Camera evidence" }],
       retrievalProfile: { revision: 3, topK: 3 },
     });
     expect(resolve).toHaveBeenCalledTimes(1);
@@ -98,6 +108,12 @@ describe("retrieval test route", () => {
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({
         knowledgeSpaceId: SPACE_ID,
+        filters: {
+          documentTypes: ["handbook"],
+          nodeKinds: ["section"],
+          tags: ["camera"],
+        },
+        includeText: true,
         mode: "deep",
         permissionScope: expect.arrayContaining([
           `knowledge-space:${SPACE_ID}`,
@@ -109,6 +125,56 @@ describe("retrieval test route", () => {
       }),
     );
     expect(stream).not.toHaveBeenCalled();
+  });
+
+  it("keeps request filters bounded and rejects unsupported auto mode", () => {
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        filters: { tags: Array.from({ length: 101 }, (_, index) => `tag-${index}`) },
+        query: "camera",
+      }).success,
+    ).toBe(false);
+    expect(RetrievalTestRequestSchema.safeParse({ mode: "auto", query: "camera" }).success).toBe(
+      false,
+    );
+    expect(RetrievalTestRequestSchema.safeParse({ query: "😀".repeat(16_000) }).success).toBe(true);
+  });
+
+  it("validates the text limit in Unicode characters rather than UTF-16 code units", async () => {
+    const text = "😀".repeat(8_192);
+    const result = retrievalResult("fast");
+    const execute = vi.fn(
+      async (): Promise<RetrievalTestResult> => ({
+        ...result,
+        items: result.items.map((item) => ({ ...item, text })),
+      }),
+    );
+    const app = gateway({
+      executor: { execute },
+      retrievalExecutionLeases: {
+        acquire: async () => ({
+          assertActive: async () => undefined,
+          release: async () => undefined,
+          signal: new AbortController().signal,
+        }),
+      },
+      runtimeSnapshotResolver: {
+        assertReady: async () => undefined,
+        resolve: async () => runtimeSnapshot(),
+      },
+    });
+    await createSpace(app);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
+      body: JSON.stringify({ includeText: true, query: "camera" }),
+      headers: jsonBearer(),
+      method: "POST",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(() => RetrievalTestResponseSchema.parse(body)).not.toThrow();
+    expect(Array.from(body.items[0].text)).toHaveLength(8_192);
   });
 
   it("fails closed with 503 when runtime/executor/lease capability is absent", async () => {
@@ -282,6 +348,7 @@ function retrievalResult(mode: "deep" | "fast" | "research"): RetrievalTestResul
         projectionIds: ["projection-1"],
         score: 0.8,
         sources: ["dense", "fts"],
+        text: "Camera evidence",
       },
     ],
     metrics: {

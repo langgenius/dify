@@ -106,6 +106,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.TriggerPlugin,
   BlockEnum.LLM,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
   BlockEnum.Code,
   BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest,

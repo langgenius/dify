@@ -879,6 +879,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
         "createQuery": KnowledgeFSCapabilityOperation(
             "queries.create", _STANDARD_CALLERS, "POST", "/queries", "knowledge_space"
         ),
+        "runRetrievalTest": KnowledgeFSCapabilityOperation(
+            "queries.retrieval_test",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/retrieval-tests",
+            "knowledge_space",
+        ),
         "getAnswerTrace": KnowledgeFSCapabilityOperation(
             "queries.read", _STANDARD_CALLERS, "GET", "/queries/{traceId}", "query"
         ),

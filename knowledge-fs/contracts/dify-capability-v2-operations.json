@@ -334,6 +334,25 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "source_workflows.crawl_import.create",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createSourceCrawlImportWorkflow",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/sources/{sourceId}/crawl-import",
+      "resourceBinding": {
+        "pathParameter": "sourceId"
+      },
+      "resourceType": "source"
+    },
+    {
       "action": "source_workflows.preview.create",
       "allowedCallerKinds": [
         "interactive",
@@ -1592,6 +1611,23 @@
       "path": "/internal/capability-grants/{grantId}/revoke",
       "resourceBinding": {
         "bodyField": "knowledgeSpaceId"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "queries.retrieval_test",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "runRetrievalTest",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/retrieval-tests",
+      "resourceBinding": {
+        "pathParameter": "id"
       },
       "resourceType": "knowledge_space"
     },

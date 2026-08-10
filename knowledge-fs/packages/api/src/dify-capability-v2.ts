@@ -342,6 +342,7 @@ const READ_ACTIONS: ReadonlySet<string> = new Set([
   "queries.evidence.list",
   "queries.missing.list",
   "queries.read",
+  "queries.retrieval_test",
   "research_tasks.partials.list",
   "research_tasks.read",
   "research_tasks.list",
@@ -1229,6 +1230,15 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     operationId: "createQuery",
     pathTemplate: "/queries",
     resource: { bodyField: "knowledgeSpaceId" },
+    resourceType: "knowledge_space",
+  },
+  {
+    action: "queries.retrieval_test",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "POST",
+    operationId: "runRetrievalTest",
+    pathTemplate: "/knowledge-spaces/{id}/retrieval-tests",
+    resource: { pathParameter: "id" },
     resourceType: "knowledge_space",
   },
   {

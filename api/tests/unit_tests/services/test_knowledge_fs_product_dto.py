@@ -35,7 +35,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRerankIntent,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskPartialListResponse,
+    KnowledgeFSRetrievalMetadataFilters,
     KnowledgeFSRetrievalProfileIntent,
+    KnowledgeFSRetrievalTestPayload,
+    KnowledgeFSRetrievalTestResponse,
     KnowledgeFSScoreThresholdIntent,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSourceCreatePayload,
@@ -50,6 +53,73 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() -> None:
+    payload = KnowledgeFSRetrievalTestPayload.model_validate(
+        {
+            "filters": {
+                "documentTypes": [" handbook ", "handbook"],
+                "nodeKinds": ["section"],
+                "tags": [" camera ", "camera"],
+            },
+            "includeText": True,
+            "mode": "deep",
+            "query": "  camera evidence  ",
+        }
+    )
+
+    assert payload.query == "camera evidence"
+    assert payload.filters == KnowledgeFSRetrievalMetadataFilters(
+        document_types=["handbook"],
+        node_kinds=["section"],
+        tags=["camera"],
+    )
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "filters": {
+            "documentTypes": ["handbook"],
+            "nodeKinds": ["section"],
+            "tags": ["camera"],
+        },
+        "includeText": True,
+        "mode": "deep",
+        "query": "camera evidence",
+    }
+    with pytest.raises(ValidationError):
+        KnowledgeFSRetrievalTestPayload(query="camera", mode="auto")  # type: ignore[arg-type]
+    with pytest.raises(ValidationError):
+        KnowledgeFSRetrievalMetadataFilters(tags=[f"tag-{index}" for index in range(101)])
+
+
+def test_retrieval_test_response_validates_evidence_text_and_metrics() -> None:
+    response = KnowledgeFSRetrievalTestResponse.model_validate(
+        {
+            "items": [
+                {
+                    "citation": {
+                        "artifactHash": "a" * 64,
+                        "documentAssetId": "document-1",
+                        "documentVersion": 1,
+                        "pageNumber": 3,
+                        "sectionPath": ["Camera", "Sensor"],
+                    },
+                    "nodeId": "node-1",
+                    "projectionIds": ["projection-1"],
+                    "score": 1.2,
+                    "sources": ["dense", "fts"],
+                    "text": "Camera evidence",
+                }
+            ],
+            "metrics": {"degradationFlags": [], "denseCandidates": 3, "totalMs": 12},
+            "mode": "fast",
+            "traceId": "trace-1",
+        }
+    )
+
+    assert response.items[0].citation.section_path == ["Camera", "Sensor"]
+    assert response.items[0].score == 1.2
+    assert response.items[0].text == "Camera evidence"
+    assert response.metrics.total_ms == 12
 
 
 def test_query_payloads_accept_either_text_or_upload_file_images() -> None:

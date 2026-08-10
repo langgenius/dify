@@ -137,6 +137,45 @@ describe("createRetrievalTestExecutor", () => {
     });
   });
 
+  it("forwards normalized metadata filters and exposes bounded text only when requested", async () => {
+    const calls: RetrieveHybridInput[] = [];
+    const executor = createRetrievalTestExecutor({
+      embeddingModel: embeddingSelection.model,
+      embeddings: embeddingProvider(),
+      retriever: recordingRetriever("fast", calls, ordinaryMetrics({ rerank: true })),
+    });
+
+    const result = await executor.execute({
+      embeddingProfile,
+      filters: {
+        documentTypes: [" handbook ", "handbook"],
+        nodeKinds: ["section"],
+        tags: [" camera ", "camera"],
+      },
+      includeText: true,
+      knowledgeSpaceId: SPACE_ID,
+      mode: "fast",
+      permissionScope: ["tenant:tenant-1"],
+      projectionSnapshot,
+      query: "camera",
+      retrievalProfile,
+      subject,
+      traceId: "trace-filtered",
+    });
+
+    expect(calls[0]?.filters).toEqual({
+      documentTypes: ["handbook"],
+      entities: undefined,
+      freshnessStatuses: undefined,
+      languages: undefined,
+      nodeIds: undefined,
+      nodeKinds: ["section"],
+      sourceIds: undefined,
+      tags: ["camera"],
+    });
+    expect(result.items[0]).toMatchObject({ text: "secret candidate text" });
+  });
+
   it("runs Research through semantic Value Search and LLM PageIndex scoring without FTS, Graph, or rerank", async () => {
     const embed = vi.fn(async () => ({
       dense: [[0.1, 0.2, 0.3]],

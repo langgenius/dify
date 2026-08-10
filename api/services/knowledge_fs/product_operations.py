@@ -837,6 +837,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=0,
             stream_kind="sse",
         ),
+        "retrieveEvidence": _operation(
+            "POST",
+            "runRetrievalTest",
+            KnowledgeFSProductPermission.QUERY,
+            "/knowledge-spaces/{id}/retrieval-tests",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=64 * 1024,
+            max_response_bytes=4 * 1024 * 1024,
+            stream_kind="json",
+        ),
         "listResearchTasks": _operation(
             "GET",
             "listKnowledgeSpaceResearchTasks",

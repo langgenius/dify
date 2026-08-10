@@ -6,6 +6,7 @@ import type { EndNodeType } from '../../../end/types'
 import type { HttpNodeType } from '../../../http/types'
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { IterationNodeType } from '../../../iteration/types'
+import type { KnowledgeRetrievalV2NodeType } from '../../../knowledge-retrieval-v2/types'
 import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
 import type { ListFilterNodeType } from '../../../list-operator/types'
 import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
@@ -64,6 +65,7 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { VAR_REGEX } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
+import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
 import { Type } from '../../../llm/types'
 import { VarType as ToolVarType } from '../../../tool/types'
 
@@ -400,6 +402,10 @@ const formatItem = (
     }
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      res.vars = KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT
       break
     }
 
@@ -1270,6 +1276,10 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [query_variable_selector, query_attachment_selector]
       break
     }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      res = [(data as KnowledgeRetrievalV2NodeType).query_variable_selector]
+      break
+    }
     case BlockEnum.IfElse: {
       res = []
       res.push(
@@ -1456,6 +1466,10 @@ export const getNodeUsedVarPassToServerKey = (
       res = 'query'
       break
     }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      res = 'query'
+      break
+    }
     case BlockEnum.IfElse: {
       const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
         for (const caseItem of cases) {
@@ -1611,6 +1625,12 @@ export const updateNodeVars = (
           payload.query_variable_selector = newVarSelector
         if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
           payload.query_attachment_selector = newVarSelector
+        break
+      }
+      case BlockEnum.KnowledgeRetrievalV2: {
+        const payload = data as KnowledgeRetrievalV2NodeType
+        if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.query_variable_selector = newVarSelector
         break
       }
       case BlockEnum.IfElse: {
@@ -1996,6 +2016,10 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
 
     case BlockEnum.KnowledgeRetrieval: {
       varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+    case BlockEnum.KnowledgeRetrievalV2: {
+      varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT, [id], res)
       break
     }
 

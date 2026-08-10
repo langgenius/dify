@@ -13,6 +13,7 @@ import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/hu
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
+import useKnowledgeRetrievalV2SingleRunFormParams from '@/app/components/workflow/nodes/knowledge-retrieval-v2/use-single-run-form-params'
 import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params'
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
@@ -37,6 +38,7 @@ import { TabType } from '../types'
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
   [BlockEnum.KnowledgeRetrieval]: useKnowledgeRetrievalSingleRunFormParams,
+  [BlockEnum.KnowledgeRetrievalV2]: useKnowledgeRetrievalV2SingleRunFormParams,
   [BlockEnum.Code]: useCodeSingleRunFormParams,
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
@@ -79,6 +81,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Tool]: useToolGetDataForCheckMore,
   [BlockEnum.LLM]: undefined,
   [BlockEnum.KnowledgeRetrieval]: undefined,
+  [BlockEnum.KnowledgeRetrievalV2]: undefined,
   [BlockEnum.Code]: undefined,
   [BlockEnum.TemplateTransform]: undefined,
   [BlockEnum.QuestionClassifier]: undefined,

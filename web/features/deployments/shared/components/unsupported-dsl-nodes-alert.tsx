@@ -13,6 +13,7 @@ const workflowBlockTypeSelectors: Record<BlockEnum, SelectorParam<'workflow'>> =
   [BlockEnum.Answer]: ($) => $['blocks.answer'],
   [BlockEnum.LLM]: ($) => $['blocks.llm'],
   [BlockEnum.KnowledgeRetrieval]: ($) => $['blocks.knowledge-retrieval'],
+  [BlockEnum.KnowledgeRetrievalV2]: ($) => $['blocks.knowledge-retrieval-v2'],
   [BlockEnum.QuestionClassifier]: ($) => $['blocks.question-classifier'],
   [BlockEnum.IfElse]: ($) => $['blocks.if-else'],
   [BlockEnum.Code]: ($) => $['blocks.code'],

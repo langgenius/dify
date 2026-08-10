@@ -1,0 +1,216 @@
+import type { ComponentProps, ReactNode } from 'react'
+import type { PanelProps } from '@/types/workflow'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { BlockEnum } from '@/app/components/workflow/types'
+import Panel from '../panel'
+
+const mockUseInfiniteQuery = vi.hoisted(() => vi.fn())
+const mockInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockHandleMetadataFilterChange = vi.hoisted(() => vi.fn())
+const mockHandleSpaceToggle = vi.hoisted(() => vi.fn())
+const mockHandleTopNChange = vi.hoisted(() => vi.fn())
+const mockInputs = vi.hoisted(() => ({
+  title: 'Knowledge Retrieval v2',
+  desc: '',
+  type: 'knowledge-retrieval-v2',
+  query_variable_selector: ['start', 'query'],
+  control_space_ids: ['space-1'],
+  mode: 'research',
+  top_n: 10,
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useInfiniteQuery: mockUseInfiniteQuery,
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    knowledgeFs: {
+      spaces: {
+        get: { infiniteOptions: mockInfiniteOptions },
+      },
+    },
+  },
+}))
+
+vi.mock('../use-config', () => ({
+  default: () => ({
+    readOnly: false,
+    inputs: mockInputs,
+    filterStringVar: vi.fn(),
+    handleMetadataFilterChange: mockHandleMetadataFilterChange,
+    handleModeChange: vi.fn(),
+    handleNodeKindToggle: vi.fn(),
+    handleQueryVarChange: vi.fn(),
+    handleSpaceToggle: mockHandleSpaceToggle,
+    handleTopNChange: mockHandleTopNChange,
+  }),
+}))
+
+vi.mock('@langgenius/dify-ui/checkbox', () => ({
+  Checkbox: ({
+    checked,
+    disabled,
+    onCheckedChange,
+  }: ComponentProps<'input'> & {
+    onCheckedChange?: (checked: boolean) => void
+  }) => (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => onCheckedChange?.(event.currentTarget.checked)}
+    />
+  ),
+}))
+
+vi.mock('@langgenius/dify-ui/input', () => ({
+  Input: (props: ComponentProps<'input'>) => <input {...props} />,
+}))
+
+vi.mock('@langgenius/dify-ui/select', () => ({
+  Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItemIndicator: () => null,
+  SelectItemText: ({ children }: { children: ReactNode }) => <>{children}</>,
+  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
+  default: ({ children, title }: { children: ReactNode; title: string }) => (
+    <section>
+      <div>{title}</div>
+      {children}
+    </section>
+  ),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
+  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  VarItem: ({ name }: { name: string }) => <div>{name}</div>,
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({ default: () => null }))
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: () => <div data-testid="variable-picker" />,
+}))
+
+const panelProps: PanelProps = {
+  getInputVars: () => [],
+  toVarInputs: () => [],
+  runInputData: {},
+  runInputDataRef: { current: {} },
+  setRunInputData: vi.fn(),
+  runResult: undefined,
+}
+
+describe('KnowledgeRetrievalV2Panel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockInputs.control_space_ids = ['space-1']
+    mockUseInfiniteQuery.mockReturnValue({
+      data: {
+        pages: [
+          {
+            data: [
+              {
+                control_space_id: 'space-1',
+                technical_status: 'available',
+                technical_summary: {
+                  name: 'Product docs',
+                  model_profile: {
+                    retrievalProfile: { defaultMode: 'deep', topK: 8, rerank: { enabled: true } },
+                  },
+                },
+              },
+              {
+                control_space_id: 'space-2',
+                technical_status: 'unavailable',
+                technical_summary: { name: 'Archived docs' },
+              },
+            ],
+            has_more: false,
+            page: 1,
+          },
+        ],
+      },
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      isLoading: false,
+    })
+  })
+
+  it('shows space profiles and wires bounded retrieval controls', () => {
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-1'],
+          mode: 'research',
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(
+      screen.getByText((_, element) => {
+        const text = element?.textContent ?? ''
+        return (
+          element?.tagName === 'DIV' &&
+          element.childElementCount === 0 &&
+          text.includes('Product docs: deep') &&
+          text.includes('profile.topK 8') &&
+          text.includes('profile.rerank workflow.nodes.knowledgeRetrievalV2.profile.on')
+        )
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.knowledgeRetrievalV2.mode.researchHint'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Product docs/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Archived docs/ })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /Product docs/ }))
+    expect(mockHandleSpaceToggle).toHaveBeenCalledWith(
+      expect.objectContaining({ control_space_id: 'space-1', default_mode: 'deep', top_k: 8 }),
+    )
+
+    fireEvent.blur(screen.getByLabelText('workflow.nodes.knowledgeRetrievalV2.filters.tags'), {
+      target: { value: 'policy, policy, finance' },
+    })
+    expect(mockHandleMetadataFilterChange).toHaveBeenCalledWith('tags', ['policy', 'finance'])
+
+    fireEvent.change(screen.getByDisplayValue('10'), { target: { value: '12' } })
+    expect(mockHandleTopNChange).toHaveBeenCalledWith(12)
+  })
+
+  it('allows a selected space to be removed after it becomes unavailable', () => {
+    mockInputs.control_space_ids = ['space-2']
+
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-2'],
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    const selectedUnavailableSpace = screen.getByRole('checkbox', { name: /Archived docs/ })
+    expect(selectedUnavailableSpace).toBeChecked()
+    expect(selectedUnavailableSpace).toBeEnabled()
+  })
+})

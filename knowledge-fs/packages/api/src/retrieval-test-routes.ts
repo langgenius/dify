@@ -13,10 +13,47 @@ import {
 import { KnowledgeSpaceParamsSchema } from "./knowledge-space-golden-question-schemas";
 import { RetrievalTestStageNames } from "./retrieval-test";
 
+const RetrievalQuerySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32_000)
+  .refine((value) => Array.from(value).length <= 16_000, "Query exceeds 16000 Unicode characters");
+const RetrievalTextSchema = z
+  .string()
+  .max(16_384)
+  .refine((value) => Array.from(value).length <= 8_192, "Text exceeds 8192 Unicode characters");
+
 export const RetrievalTestRequestSchema = z
   .object({
+    filters: z
+      .object({
+        createdAfter: z
+          .string()
+          .trim()
+          .min(1)
+          .max(64)
+          .refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date"),
+        createdBefore: z
+          .string()
+          .trim()
+          .min(1)
+          .max(64)
+          .refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date"),
+        documentTypes: z.array(z.string().trim().min(1).max(512)).max(100),
+        entities: z.array(z.string().trim().min(1).max(512)).max(100),
+        freshnessStatuses: z.array(z.string().trim().min(1).max(512)).max(100),
+        languages: z.array(z.string().trim().min(1).max(512)).max(100),
+        nodeKinds: z.array(z.enum(["chunk", "section", "table", "image", "summary"])).max(100),
+        sourceIds: z.array(z.string().trim().min(1).max(512)).max(100),
+        tags: z.array(z.string().trim().min(1).max(512)).max(100),
+      })
+      .partial()
+      .strict()
+      .optional(),
+    includeText: z.boolean().default(false),
     mode: KnowledgeSpaceRetrievalModeSchema.optional(),
-    query: z.string().trim().min(1).max(16_000),
+    query: RetrievalQuerySchema,
   })
   .strict();
 
@@ -105,6 +142,7 @@ export const RetrievalTestResponseSchema = z
               .array(z.enum(["dense", "fts", "pageindex", "visual"]))
               .max(4)
               .readonly(),
+            text: RetrievalTextSchema.optional(),
           })
           .strict(),
       )
@@ -145,7 +183,9 @@ const RetrievalTestConflictResponseSchema = ErrorResponseSchema.extend({
 
 export const runRetrievalTestRoute = createRoute({
   method: "post",
+  operationId: "runRetrievalTest",
   path: "/knowledge-spaces/{id}/retrieval-tests",
+  "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
   request: {
     body: {
       content: {

@@ -14,7 +14,10 @@ from services.knowledge_fs.app_execution_capability import (
     KnowledgeResourceRef,
 )
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
-from services.knowledge_fs.product_dto import KnowledgeFSResearchTaskCreatePayload
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSResearchTaskCreatePayload,
+    KnowledgeFSRetrievalTestPayload,
+)
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError, KnowledgeFSRemoteJSONRequest
 
 
@@ -37,7 +40,7 @@ class Broker:
         return KnowledgeFSIssuedProductCapability(
             token="token",
             expires_at=datetime(2030, 1, 1, tzinfo=UTC),
-            operation_id="createResearchTask",
+            operation_id=str(kwargs["operation_id"]),
             knowledge_space_id="space-1",
             knowledge_space_revision=2,
             trace_id="trace-1",
@@ -50,6 +53,27 @@ class Remote:
 
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
         self.calls.append(request)
+        if request.operation_id == "retrieveEvidence":
+            return {
+                "items": [
+                    {
+                        "citation": {
+                            "artifactHash": "a" * 64,
+                            "documentAssetId": "document-1",
+                            "documentVersion": 1,
+                            "sectionPath": ["Camera"],
+                        },
+                        "nodeId": "node-1",
+                        "projectionIds": ["projection-1"],
+                        "score": 0.8,
+                        "sources": ["dense"],
+                        "text": "Camera evidence",
+                    }
+                ],
+                "metrics": {"denseCandidates": 1, "totalMs": 10},
+                "mode": "fast",
+                "traceId": "trace-1",
+            }
         return {
             "id": "research-1",
             "knowledgeSpaceId": "space-1",
@@ -247,3 +271,49 @@ def test_create_research_task_propagates_remote_io_failure() -> None:
             resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
             payload=KnowledgeFSResearchTaskCreatePayload(query="Compare the evidence"),
         )
+
+
+def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operation() -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+    run_context = DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        trace_session_id="trace-from-workflow",
+    )
+
+    result = service.run_retrieval(
+        run_context=run_context,
+        caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+        resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+        payload=KnowledgeFSRetrievalTestPayload(
+            include_text=True,
+            mode="fast",
+            query="camera",
+        ),
+    )
+
+    assert result.items[0].text == "Camera evidence"
+    assert admission.calls[0]["operation_id"] == "retrieveEvidence"
+    assert broker.calls[0]["operation_id"] == "retrieveEvidence"
+    assert remote.calls == [
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="retrieveEvidence",
+            method="POST",
+            path="/knowledge-spaces/space-1/retrieval-tests",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="token",
+            trace_id="trace-1",
+            payload={"includeText": True, "mode": "fast", "query": "camera"},
+        )
+    ]

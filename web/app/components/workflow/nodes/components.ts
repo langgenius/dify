@@ -28,6 +28,8 @@ import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
 import KnowledgeBaseNode from './knowledge-base/node'
 import KnowledgeBasePanel from './knowledge-base/panel'
+import KnowledgeRetrievalV2Node from './knowledge-retrieval-v2/node'
+import KnowledgeRetrievalV2Panel from './knowledge-retrieval-v2/panel'
 import KnowledgeRetrievalNode from './knowledge-retrieval/node'
 import KnowledgeRetrievalPanel from './knowledge-retrieval/panel'
 import ListFilterNode from './list-operator/node'
@@ -84,6 +86,7 @@ export const NodeComponentMap = {
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
+  [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Node,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
   [BlockEnum.IfElse]: IfElseNode,
   [BlockEnum.Code]: CodeNode,
@@ -115,6 +118,7 @@ export const PanelComponentMap = {
   [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,
+  [BlockEnum.KnowledgeRetrievalV2]: KnowledgeRetrievalV2Panel,
   [BlockEnum.QuestionClassifier]: QuestionClassifierPanel,
   [BlockEnum.IfElse]: IfElsePanel,
   [BlockEnum.Code]: CodePanel,
