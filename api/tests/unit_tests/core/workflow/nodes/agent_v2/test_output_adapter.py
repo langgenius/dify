@@ -195,6 +195,22 @@ def test_failure_output_adapter_uses_knowledge_failure_type():
     assert result.error_type == "knowledge_retrieve_failed"
 
 
+def test_failure_output_adapter_resolves_legacy_invoke_reason():
+    result = WorkflowAgentOutputAdapter().build_failure_result(
+        event=AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="quota exceeded",
+            error_type=None,
+            reason="InvokeRateLimitError",
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+    )
+
+    assert result.error_type == "invoke_rate_limit_exceeded"
+
+
 def test_failure_output_adapter_uses_default_error_type_without_backend_classification():
     result = WorkflowAgentOutputAdapter().build_failure_result(
         event=AgentBackendRunFailedInternalEvent(

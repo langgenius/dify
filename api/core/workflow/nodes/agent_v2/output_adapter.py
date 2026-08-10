@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
+from dify_agent.protocol import resolve_run_failure_type
+
 from clients.agent_backend import (
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
@@ -98,7 +100,10 @@ class WorkflowAgentOutputAdapter:
         match event:
             case AgentBackendRunFailedInternalEvent():
                 error = event.error
-                error_type = event.error_type or event.reason or "agent_backend_run_failed"
+                failure_type = resolve_run_failure_type(event.error_type, event.reason)
+                error_type = (
+                    failure_type.value if failure_type is not None else event.reason or "agent_backend_run_failed"
+                )
                 terminal_status = "failed"
             case AgentBackendRunCancelledInternalEvent():
                 error = event.message or "Agent backend run was cancelled."

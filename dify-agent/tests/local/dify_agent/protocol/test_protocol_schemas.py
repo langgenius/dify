@@ -31,6 +31,7 @@ from dify_agent.protocol.schemas import (
     RunSucceededEvent,
     RunSucceededEventData,
     normalize_composition,
+    resolve_run_failure_type,
 )
 from dify_agent.layers.dify_plugin.configs import (
     DifyPluginLLMLayerConfig,
@@ -111,6 +112,26 @@ def test_run_failed_event_error_type_is_optional_and_round_trips() -> None:
     assert isinstance(decoded, RunFailedEvent)
     assert decoded.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
     assert protocol_exports.RunFailureType is RunFailureType
+
+
+@pytest.mark.parametrize(
+    ("error_type", "reason", "expected"),
+    [
+        (RunFailureType.BINDING_LOST, "InvokeRateLimitError", RunFailureType.BINDING_LOST),
+        (None, "binding_lost", RunFailureType.BINDING_LOST),
+        (None, "InvokeRateLimitError", RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED),
+        (None, "knowledge_retrieve_failed", RunFailureType.KNOWLEDGE_RETRIEVE_FAILED),
+        (None, "model_error", None),
+        (None, None, None),
+    ],
+)
+def test_resolve_run_failure_type(
+    error_type: RunFailureType | None,
+    reason: str | None,
+    expected: RunFailureType | None,
+) -> None:
+    assert resolve_run_failure_type(error_type, reason) is expected
+    assert protocol_exports.resolve_run_failure_type is resolve_run_failure_type
 
 
 def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:

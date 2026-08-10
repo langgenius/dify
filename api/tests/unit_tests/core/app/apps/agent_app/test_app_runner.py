@@ -1250,6 +1250,7 @@ def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -
 
     assert isinstance(err, AgentBackendRunFailedError)
     assert err.run_id == "run-1"
+    assert err.error_type is RunFailureType.KNOWLEDGE_RETRIEVE_FAILED
     assert err.reason == "knowledge_retrieve_failed"
     assert err.source_event_id == "event-1"
     assert err.detail == {
