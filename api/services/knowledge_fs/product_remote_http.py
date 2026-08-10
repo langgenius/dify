@@ -258,6 +258,12 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
+            if response.status_code in {400, 409, 413, 422}:
+                _log_upstream_rejection(
+                    operation_id=request.operation_id,
+                    trace_id=request.trace_id,
+                    response=response,
+                )
             if response.status_code == 400:
                 raise KnowledgeFSProductRequestRejectedError(status_code=400)
             if response.status_code == 409:

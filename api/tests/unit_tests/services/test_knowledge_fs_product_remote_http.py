@@ -799,6 +799,34 @@ def test_multipart_remote_closes_and_maps_upstream_response_failures(
     assert response.is_closed
 
 
+def test_multipart_remote_logs_bounded_upstream_rejection(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    response = httpx.Response(
+        409,
+        json={
+            "code": "DOCUMENT_MUTATION_CONFLICT",
+            "error": "Knowledge space already has an active document mutation lease",
+            "secret": "must-not-be-logged",
+        },
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
+        with pytest.raises(KnowledgeFSProductRequestRejectedError):
+            client.execute_multipart(_multipart_request())
+
+    assert "operation_id=createDocument" in caplog.text
+    assert "trace_id=trace-1" in caplog.text
+    assert "status_code=409" in caplog.text
+    assert "upstream_code=DOCUMENT_MUTATION_CONFLICT" in caplog.text
+    assert "upstream_message=Knowledge space already has an active document mutation lease" in caplog.text
+    assert "must-not-be-logged" not in caplog.text
+
+
 @pytest.mark.parametrize(
     ("updates", "error_type", "status_code"),
     [
