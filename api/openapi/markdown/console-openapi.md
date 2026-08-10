@@ -15295,8 +15295,21 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | category | string |  | Yes |
-| credentials | object |  | Yes |
+| credentials | [ApiKeyAuthCredentialsPayload](#apikeyauthcredentialspayload) |  | Yes |
 | provider | string |  | Yes |
+
+#### ApiKeyAuthConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | string |  | Yes |
+
+#### ApiKeyAuthCredentialsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_type | string |  | Yes |
+| config | [ApiKeyAuthConfigPayload](#apikeyauthconfigpayload) |  | Yes |
 
 #### ApiKeyAuthDataSourceItem
 
