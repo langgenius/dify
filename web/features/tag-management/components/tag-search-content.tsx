@@ -26,6 +26,7 @@ type TagSearchContentProps = {
   onOpenTagManagement?: () => void
   onClose?: () => void
   canBindOrUnbindTags?: boolean
+  showTagManagement?: boolean
 }
 
 export const TagSearchContent = ({
@@ -35,6 +36,7 @@ export const TagSearchContent = ({
   onOpenTagManagement,
   onClose,
   canBindOrUnbindTags = false,
+  showTagManagement = true,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -115,7 +117,7 @@ export const TagSearchContent = ({
           </div>
         </div>
       </ComboboxEmpty>
-      {canManageTags && (
+      {canManageTags && showTagManagement && (
         <>
           <ComboboxSeparator />
           <div className="p-1">

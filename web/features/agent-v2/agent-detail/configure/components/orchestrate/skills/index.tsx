@@ -36,6 +36,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
@@ -211,8 +212,24 @@ function WorkspaceSkillSelector({
 }) {
   const { t } = useTranslation('agentV2')
   const [keyword, setKeyword] = useState('')
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [previewSkillId, setPreviewSkillId] = useState<string | undefined>(undefined)
+  const selectorRef = useRef<HTMLDivElement>(null)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
+  const { data: tagList = [] } = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type: 'skill',
+        },
+      },
+    }),
+  )
+  const tagNameById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag.name])), [tagList])
+  const selectedTagNames = useMemo(
+    () => selectedTagIds.flatMap((tagId) => tagNameById.get(tagId) ?? []),
+    [selectedTagIds, tagNameById],
+  )
   const skillsQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
       input: (pageParam) => ({
@@ -220,6 +237,7 @@ function WorkspaceSkillSelector({
           limit: WORKSPACE_SKILLS_PAGE_SIZE,
           page: Number(pageParam),
           ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
+          ...(selectedTagNames.length ? { tag: selectedTagNames } : {}),
         },
       }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? (lastPage.page ?? 1) + 1 : undefined),
@@ -247,19 +265,32 @@ function WorkspaceSkillSelector({
   )
 
   return (
-    <div className="relative h-[520px] w-[320px]">
+    <div ref={selectorRef} className="relative h-[520px] w-[320px]">
       <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-[5px]">
         <div className="border-b border-divider-subtle p-2">
           <div className="relative">
             <SearchInput
+              className={keyword ? '[&_input]:pr-14' : '[&_input]:pr-9'}
               value={keyword}
               onValueChange={setKeyword}
               placeholder={t(($) => $['agentDetail.configure.skills.workspaceSelector.search'])}
             />
-            <span
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 right-8 i-ri-price-tag-3-line size-4 -translate-y-1/2 text-text-tertiary"
-            />
+            <div
+              className={cn(
+                'absolute top-1/2 size-6 -translate-y-1/2',
+                keyword ? 'right-7' : 'right-1.5',
+              )}
+            >
+              <TagFilter
+                iconOnly
+                type="skill"
+                value={selectedTagIds}
+                onChange={setSelectedTagIds}
+                portalProps={{ container: selectorRef }}
+                showTagManagement={false}
+                triggerClassName="bg-transparent hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover"
+              />
+            </div>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-1" onScroll={handleListScroll}>
