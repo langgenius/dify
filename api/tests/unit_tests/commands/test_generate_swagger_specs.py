@@ -250,6 +250,25 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
         "#/components/schemas/SyncDraftWorkflowResponse"
     )
     assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
+    trigger_run_request = _request_schema(paths["/apps/{app_id}/workflows/draft/trigger/run"]["post"])
+    assert trigger_run_request["$ref"] == "#/components/schemas/DraftWorkflowTriggerRunPayload"
+    assert "DraftWorkflowTriggerRunRequest" not in schemas
+
+    draft_variable_list_ref = "#/components/schemas/WorkflowDraftVariableListWithoutValueResponse"
+    for path in (
+        "/apps/{app_id}/workflows/draft/variables",
+        "/snippets/{snippet_id}/workflows/draft/variables",
+        "/rag/pipelines/{pipeline_id}/workflows/draft/variables",
+    ):
+        assert _response_schema(paths[path]["get"])["$ref"] == draft_variable_list_ref
+    assert schemas["WorkflowDraftVariableListResponse"]["properties"]["items"]["items"]["$ref"] == (
+        "#/components/schemas/WorkflowDraftVariableResponse"
+    )
+    full_content = schemas["WorkflowDraftVariableFullContentResponse"]
+    assert set(full_content["properties"]) == {"size_bytes", "value_type", "length", "download_url"}
+    assert "WorkflowDraftVariable" not in schemas
+    assert "WorkflowDraftVariableList" not in schemas
+    assert "WorkflowDraftVariableWithoutValue" not in schemas
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
