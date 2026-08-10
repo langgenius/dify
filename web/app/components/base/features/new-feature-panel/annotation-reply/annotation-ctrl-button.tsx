@@ -52,8 +52,11 @@ const AnnotationCtrlButton: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={onEdit}>
-                <RiEditLine className="size-4" />
+              <ActionButton
+                aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
+                onClick={onEdit}
+              >
+                <RiEditLine aria-hidden className="size-4" />
               </ActionButton>
             }
           />
@@ -66,8 +69,11 @@ const AnnotationCtrlButton: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton onClick={handleAdd}>
-                <RiFileEditLine className="size-4" />
+              <ActionButton
+                aria-label={t(($) => $['feature.annotation.add'], { ns: 'appDebug' })}
+                onClick={handleAdd}
+              >
+                <RiFileEditLine aria-hidden className="size-4" />
               </ActionButton>
             }
           />

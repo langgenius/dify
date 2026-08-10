@@ -84,23 +84,11 @@ const mockSystemFeaturesState = vi.hoisted(() => ({
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
     version: '1.0.1',
-    release_date: '',
     release_notes: '',
-    features: {
-      can_replace_logo: false,
-      model_load_balancing_enabled: false,
-    },
-    can_auto_update: false,
   } as
     | {
         version: string
-        release_date: string
         release_notes: string
-        features: {
-          can_replace_logo: boolean
-          model_load_balancing_enabled: boolean
-        }
-        can_auto_update: boolean
       }
     | undefined,
 }))
@@ -380,13 +368,7 @@ describe('Console bootstrap', () => {
     })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
-      release_date: '',
       release_notes: '',
-      features: {
-        can_replace_logo: false,
-        model_load_balancing_enabled: false,
-      },
-      can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
