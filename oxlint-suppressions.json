@@ -2048,11 +2048,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/common/credential-icon.tsx": {
-    "jsx_a11y/alt-text": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
     "eslint-react/static-components": {
       "count": 2
