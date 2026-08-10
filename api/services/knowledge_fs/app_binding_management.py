@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Protocol
 
 import sqlalchemy as sa
@@ -203,9 +204,9 @@ class KnowledgeFSAppBindingManagementService:
         tenant_id: str,
         actor_account_id: str,
         app_id: str,
-        control_space_ids: list[str] | tuple[str, ...],
+        control_space_ids: builtins.list[str] | tuple[str, ...],
         session: Session | None = None,
-    ) -> list[KnowledgeFSAppBindingResponse]:
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
         """Make published Workflow bindings exactly match one validated graph snapshot."""
 
         normalized_space_ids = list(dict.fromkeys(space_id.strip() for space_id in control_space_ids))
@@ -248,8 +249,8 @@ class KnowledgeFSAppBindingManagementService:
         tenant_id: str,
         actor_account_id: str,
         app_id: str,
-        normalized_space_ids: list[str],
-    ) -> list[KnowledgeFSAppBindingResponse]:
+        normalized_space_ids: builtins.list[str],
+    ) -> builtins.list[KnowledgeFSAppBindingResponse]:
         desired = set(normalized_space_ids)
         responses_by_space: dict[str, KnowledgeFSAppBindingResponse] = {}
         if not self._apps.supports_binding(

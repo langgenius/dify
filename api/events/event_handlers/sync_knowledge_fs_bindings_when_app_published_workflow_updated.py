@@ -37,16 +37,21 @@ def handle(sender: object, **kwargs: object) -> None:
             return
 
     runtime = get_knowledge_fs_runtime(session_factory.get_session_maker())
-    sync_kwargs: dict[str, object] = {}
-    if publish_session is not None:
-        sync_kwargs["session"] = publish_session
-    runtime.app_bindings.sync_workflow_bindings(
-        tenant_id=app.tenant_id,
-        actor_account_id=published_workflow.created_by,
-        app_id=app.id,
-        control_space_ids=list(control_space_ids),
-        **sync_kwargs,
-    )
+    if publish_session is None:
+        runtime.app_bindings.sync_workflow_bindings(
+            tenant_id=app.tenant_id,
+            actor_account_id=published_workflow.created_by,
+            app_id=app.id,
+            control_space_ids=list(control_space_ids),
+        )
+    else:
+        runtime.app_bindings.sync_workflow_bindings(
+            tenant_id=app.tenant_id,
+            actor_account_id=published_workflow.created_by,
+            app_id=app.id,
+            control_space_ids=list(control_space_ids),
+            session=publish_session,
+        )
 
 
 def get_control_space_ids_from_workflow(published_workflow: Workflow) -> tuple[str, ...]:
