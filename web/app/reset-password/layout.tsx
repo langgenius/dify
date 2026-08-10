@@ -1,13 +1,17 @@
-'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { getQueryClient } from '@/app/get-query-client'
+import { systemFeaturesServerQueryOptions } from '@/features/system-features/server'
 import Header from '../signin/_header'
 
-export default function SignInLayout({ children }: any) {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+export default async function SignInLayout({ children }: any) {
+  const queryClient = getQueryClient()
+  await queryClient.prefetchQuery(systemFeaturesServerQueryOptions())
+  const systemFeatures = queryClient.getQueryData<{ branding: { enabled: boolean } }>(
+    systemFeaturesServerQueryOptions().queryKey,
+  )
   return (
-    <>
+    <HydrationBoundary state={dehydrate(queryClient)}>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
         <div
           className={cn(
@@ -24,13 +28,13 @@ export default function SignInLayout({ children }: any) {
           >
             <div className="flex flex-col md:w-100">{children}</div>
           </div>
-          {!systemFeatures.branding.enabled && (
+          {!systemFeatures?.branding?.enabled && (
             <div className="px-8 py-6 system-xs-regular text-text-tertiary">
               © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
             </div>
           )}
         </div>
       </div>
-    </>
+    </HydrationBoundary>
   )
 }
