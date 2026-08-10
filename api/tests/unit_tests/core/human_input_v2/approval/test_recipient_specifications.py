@@ -11,9 +11,11 @@ from core.human_input_v2.approval import (
     DynamicRecipientValue,
     OneTimeEmailRecipientSpecification,
     UnsupportedDynamicRecipientValue,
+    UnsupportedRecipientSpecificationError,
     WorkflowRecipientSpecificationAdapter,
 )
 from core.workflow.nodes.human_input_v2.entities import (
+    AllWorkspaceContacts,
     Contact,
     DebugModeConfig,
     DynamicEmail,
@@ -51,6 +53,18 @@ def test_workflow_node_configuration_is_explicitly_adapted_to_immutable_specific
     )
     node_data.recipients_spec.append(OnetimeEmail(email="later@example.com"))
     assert len(specifications) == 4
+
+
+def test_workflow_adapter_explicitly_rejects_unresolved_all_workspace_contacts() -> None:
+    node_data = _node_data().model_copy(update={"recipients_spec": [AllWorkspaceContacts()]})
+
+    with pytest.raises(
+        UnsupportedRecipientSpecificationError,
+        match="all_workspace_contacts.*runtime expansion",
+    ) as raised:
+        WorkflowRecipientSpecificationAdapter.from_node_data(node_data)
+
+    assert raised.value.recipient_type == "all_workspace_contacts"
 
 
 def test_specification_values_are_frozen_and_serialize_only_at_the_boundary() -> None:

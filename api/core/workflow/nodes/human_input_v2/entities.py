@@ -16,7 +16,6 @@ from core.workflow.nodes.human_input.entities import (
     validate_unique_output_variable_slots,
 )
 from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import BuiltinNodeTypes, NodeType
 
 
 class RecipientType(enum.StrEnum):
@@ -24,6 +23,7 @@ class RecipientType(enum.StrEnum):
     DYNAMIC_EMAIL = enum.auto()
     ONETIME_EMAIL = enum.auto()
     INITIATOR = enum.auto()
+    ALL_WORKSPACE_CONTACTS = enum.auto()
 
 
 class Contact(BaseModel):
@@ -48,7 +48,22 @@ class Initiator(BaseModel):
     type: Literal[RecipientType.INITIATOR] = RecipientType.INITIATOR
 
 
-RecipientConfig = Annotated[Contact | DynamicEmail | OnetimeEmail | Initiator, Discriminator("type")]
+class AllWorkspaceContacts(BaseModel):
+    """Migration marker preserving legacy whole-workspace recipient intent.
+
+    Runtime expansion is deliberately owned by the recipient resolver rather
+    than the node-data migration helper.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: Literal[RecipientType.ALL_WORKSPACE_CONTACTS] = RecipientType.ALL_WORKSPACE_CONTACTS
+
+
+RecipientConfig = Annotated[
+    Contact | DynamicEmail | OnetimeEmail | Initiator | AllWorkspaceContacts,
+    Discriminator("type"),
+]
 
 
 class MessageTemplateConfig(BaseModel):
@@ -71,6 +86,7 @@ class DebugModeConfig(BaseModel):
     channels: Sequence[Channel]
 
 
+HUMAN_INPUT_NODE_TYPE: typing.Final[Literal["human-input"]] = "human-input"
 HUMAN_INPUT_V2_VERSION: typing.Final = "2"
 
 
@@ -85,9 +101,9 @@ class HumanInputNodeData(BaseNodeData):
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
-    # The linter suppression below is used to
-    # ensure that we could mark node data as frozen.
-    type: NodeType = BuiltinNodeTypes.HUMAN_INPUT  # pyrefly: ignore[bad-override]
+    # BaseNodeData exposes the discriminator as a class variable, while the
+    # concrete Pydantic model must validate and serialize an exact wire value.
+    type: Literal["human-input"] = HUMAN_INPUT_NODE_TYPE  # pyrefly: ignore[bad-override]
     title: str = ""  # pyrefly: ignore[bad-override]
     version: Annotated[str, AfterValidator(_version_validator)] = HUMAN_INPUT_V2_VERSION  # pyrefly: ignore[bad-override]
 

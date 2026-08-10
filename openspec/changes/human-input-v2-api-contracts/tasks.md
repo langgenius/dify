@@ -27,8 +27,8 @@
 
 ## 4. Wire Draft Debug And Node-Data Migration APIs
 
-- [ ] 4.1 Write red-first migration service tests for ordered batch conversion, duplicate node IDs, explicit non-v1 versions, request-scoped tenant snapshots, `whole_workspace` expansion, deterministic retries, multiple node-scoped blockers, and all-or-error results without persistence.
-- [ ] 4.2 Implement a side-effect-free `HumanInputNodeDataMigrationService` over the existing recipient-resolution and node conversion boundaries, then replace the workspace node-data-migration 501 handler.
+- [x] 4.1 Superseded by `implement-human-input-v1-v2-node-data-migration`; its corrected tests own ordered all-or-error conversion and preserve `whole_workspace` as `all_workspace_contacts` without static expansion.
+- [x] 4.2 Superseded by `implement-human-input-v1-v2-node-data-migration`; do not implement Contact-aware conversion, Contact auto-upgrade, Contact lookup, or static `whole_workspace` expansion from this checklist.
 - [ ] 4.3 Write red-first tests for v2 message-template rendering, `DebugChannel` selection, current-editor recipient resolution, provider failure mapping, send logging/rate-limit hooks, and v1 `delivery-test` compatibility.
 - [ ] 4.4 Implement `MessageTemplateTestService` over the existing delivery-provider boundary and replace the draft v2 message-template/test 501 handlers without aliasing the v1 request contract.
 - [ ] 4.5 Add version-dispatch tests and implementation for draft form preview/run so v1 and v2 node payloads use independent logic and cannot be cross-submitted.

@@ -12,6 +12,9 @@ from enum import StrEnum
 from typing import assert_never
 
 from core.workflow.nodes.human_input_v2.entities import (
+    AllWorkspaceContacts as WorkflowAllWorkspaceContacts,
+)
+from core.workflow.nodes.human_input_v2.entities import (
     Contact as WorkflowContactRecipient,
 )
 from core.workflow.nodes.human_input_v2.entities import (
@@ -26,6 +29,14 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.entities import (
     OnetimeEmail as WorkflowOneTimeEmailRecipient,
 )
+
+
+class UnsupportedRecipientSpecificationError(ValueError):
+    """A saved workflow recipient cannot enter runtime resolution yet."""
+
+    def __init__(self, recipient_type: str) -> None:
+        self.recipient_type = recipient_type
+        super().__init__(f"{recipient_type} runtime expansion is not implemented")
 
 
 class RecipientSpecificationKind(StrEnum):
@@ -139,6 +150,8 @@ class WorkflowRecipientSpecificationAdapter:
                 specification = DynamicEmailRecipientSpecification(selector=tuple(configured_recipient.selector))
             elif isinstance(configured_recipient, WorkflowInitiatorRecipient):
                 specification = CurrentInitiatorRecipientSpecification()
+            elif isinstance(configured_recipient, WorkflowAllWorkspaceContacts):
+                raise UnsupportedRecipientSpecificationError(configured_recipient.type)
             else:
                 assert_never(configured_recipient)
             specifications.append(specification)

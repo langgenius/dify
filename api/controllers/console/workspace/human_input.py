@@ -105,12 +105,15 @@ from core.human_input_v2.channel_management import (
     ChannelStatus,
 )
 from enums.deployment_edition import DeploymentEdition
+from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from services.human_input_channel_management_composition import (
     build_human_input_channel_management_context,
     build_human_input_channel_management_service,
 )
+from services.human_input_v2.composition import build_human_input_node_data_migration_service
+from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
 register_enum_models(
     console_ns,
@@ -558,8 +561,9 @@ class NodeDataMigrationAPI(Resource):
         description=(
             "Migrate node data from HITLv1 to HITLv2. "
             'A missing legacy version defaults to "1"; any other explicit version is rejected. '
-            "This endpoint only returns the migrated Human Input v2 node data to the client. "
-            "It does not update the workflow DSL."
+            "Every legacy Email recipient becomes onetime_email, while whole_workspace becomes "
+            "all_workspace_contacts. This side-effect-free endpoint only returns migrated node data; "
+            "the caller owns applying it to the Draft workflow."
         ),
     )
     @console_ns.expect(console_ns.models[NodeDataMigrationPayload.__name__])
@@ -571,8 +575,23 @@ class NodeDataMigrationAPI(Resource):
     @edit_permission_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
-        NodeDataMigrationPayload.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+        request_body = NodeDataMigrationPayload.model_validate(console_ns.payload or {})
+        outcome = build_human_input_node_data_migration_service().migrate(
+            workspace_id=tenant_id,
+            nodes=tuple(MigrationNode(node_id=node.node_id, node_data=node.node_data) for node in request_body.nodes),
+        )
+        if isinstance(outcome, NodeDataMigrationFailure):
+            return (
+                dump_response(
+                    NodeDataMigrationFailureResponse,
+                    {
+                        "message": "Human Input node-data migration failed.",
+                        "blockers": outcome.blockers,
+                    },
+                ),
+                HTTPStatus.BAD_REQUEST,
+            )
+        return dump_response(NodeDataMigrationResponse, outcome)
 
 
 _CHANNEL_FAILURE_STATUS = {

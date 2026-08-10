@@ -92,6 +92,7 @@ from .recipient_specifications import (
     RecipientSpecification,
     RecipientSpecificationKind,
     UnsupportedDynamicRecipientValue,
+    UnsupportedRecipientSpecificationError,
     WorkflowRecipientSpecificationAdapter,
 )
 from .submission_authorization import (
@@ -223,6 +224,7 @@ __all__ = [
     "SubmissionTransaction",
     "SubmissionTransitionDecision",
     "UnsupportedDynamicRecipientValue",
+    "UnsupportedRecipientSpecificationError",
     "UploadCapability",
     "UploadCapabilityRef",
     "UploadFileAssociation",

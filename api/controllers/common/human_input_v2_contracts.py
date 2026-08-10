@@ -14,7 +14,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Annotated, Literal, Self, Union
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
 
 from core.human_input_v2.entities import (
     ContactId,
@@ -33,9 +33,9 @@ from core.human_input_v2.entities import (
     OrganizationCandidateId,
 )
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull as HITLv1NodeData
 from core.workflow.nodes.human_input_v2.entities import Channel
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
+from core.workflow.nodes.human_input_v2.migration import LegacyHumanInputNodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
@@ -313,8 +313,7 @@ class WeComIMIntegrationCredentials(_RequestModel):
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
     secret: str | PreserveOriginalValue = Field(
-        repr=False,
-        description="WeCom application secret. This field will be masked in response"
+        repr=False, description="WeCom application secret. This field will be masked in response"
     )
 
 
@@ -758,7 +757,7 @@ class FormSubmitResponse(ResponseModel):
 # =================== Node migration related entities ===================
 
 
-class LegacyHITLv1NodeData(HITLv1NodeData):
+class LegacyHITLv1NodeData(LegacyHumanInputNodeData):
     """Legacy Human Input node data accepted by the v1-to-v2 migration helper.
 
     Missing versions use the historical v1 default. Any explicit value other
@@ -777,13 +776,6 @@ class LegacyHITLv1NodeData(HITLv1NodeData):
         ),
         json_schema_extra={"const": "1"},
     )
-
-    @field_validator("version")
-    @classmethod
-    def validate_version(cls, value: str) -> str:
-        if value != "1":
-            raise ValueError('version must be "1"')
-        return value
 
 
 class NodeDataMigrationInput(_MigrationInputModel):
