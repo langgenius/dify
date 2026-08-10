@@ -11,6 +11,7 @@ const serviceMock = vi.hoisted(() => ({
   getKfsSource: vi.fn(),
   getCrawlStatus: vi.fn(),
   getDefaultModel: vi.fn(),
+  getSpace: vi.fn(),
   getSyncPolicy: vi.fn(),
   getWorkflow: vi.fn(),
   listConnections: vi.fn(),
@@ -83,6 +84,7 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          get: serviceMock.getSpace,
           sourceConnections: {
             get: serviceMock.listConnections,
           },
@@ -343,6 +345,19 @@ describe('CreateKnowledgePage', () => {
         },
       }),
     )
+    serviceMock.getSpace.mockResolvedValue({
+      control_space_id: createdKnowledge.control_space_id,
+      created_at: '2026-08-10T09:45:02Z',
+      knowledge_space_id: 'knowledge-space-1',
+      owner_account_id: 'account-1',
+      permission_keys: ['knowledge_space_read'],
+      resource_version: 1,
+      state: 'active',
+      technical_status: 'available',
+      technical_summary: null,
+      updated_at: '2026-08-10T09:45:38Z',
+      visibility: 'all_team_members',
+    })
     serviceMock.upload.mockResolvedValue({
       id: 'document-1',
     })
@@ -1108,6 +1123,49 @@ describe('CreateKnowledgePage', () => {
         name: 'dataset.newKnowledge.preview',
       }),
     ).toBeEnabled()
+  })
+
+  it('waits for first-time space provisioning before uploading the selected file', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    let resolveReadiness: (value: Awaited<ReturnType<typeof serviceMock.getSpace>>) => void = () =>
+      undefined
+    serviceMock.getSpace.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveReadiness = resolve
+        }),
+    )
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.getSpace).toHaveBeenCalledOnce())
+    expect(serviceMock.upload).not.toHaveBeenCalled()
+
+    resolveReadiness({
+      control_space_id: createdKnowledge.control_space_id,
+      created_at: '2026-08-10T09:45:02Z',
+      knowledge_space_id: 'knowledge-space-1',
+      owner_account_id: 'account-1',
+      permission_keys: ['knowledge_space_read'],
+      resource_version: 1,
+      state: 'active',
+      technical_status: 'available',
+      technical_summary: null,
+      updated_at: '2026-08-10T09:45:38Z',
+      visibility: 'all_team_members',
+    })
+
+    await waitFor(() => expect(serviceMock.upload).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
   })
 
   it('previews a selected file locally without uploading it', () => {

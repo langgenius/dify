@@ -4,6 +4,7 @@ import type {
   KnowledgeFsModelIntent,
   KnowledgeFsSpaceCreatePayload,
   KnowledgeFsSpaceCreateResponse,
+  KnowledgeFsSpaceDetailResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { consoleClient } from '@/service/client'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
@@ -43,12 +44,78 @@ export class KnowledgeCreationError extends Error {
   }
 }
 
+const KNOWLEDGE_SPACE_READY_POLL_INTERVAL_MS = 1_000
+const KNOWLEDGE_SPACE_READY_TIMEOUT_MS = 120_000
+
+export class KnowledgeSpaceProvisioningError extends Error {
+  readonly state?: KnowledgeFsSpaceDetailResponse['state']
+
+  constructor(message: string, state?: KnowledgeFsSpaceDetailResponse['state']) {
+    super(message)
+    this.name = 'KnowledgeSpaceProvisioningError'
+    this.state = state
+  }
+}
+
 function responseStatus(error: unknown) {
   if (error instanceof Response) return error.status
   if (error && typeof error === 'object' && 'status' in error) return error.status
   if (error && typeof error === 'object' && 'data' in error) {
     const data = error.data
     if (data && typeof data === 'object' && 'status' in data) return data.status
+  }
+}
+
+function isRetryableProvisioningReadError(error: unknown) {
+  const status = responseStatus(error)
+  if (typeof status !== 'number') return true
+
+  return (
+    status === 404 ||
+    status === 408 ||
+    status === 409 ||
+    status === 425 ||
+    status === 429 ||
+    status >= 500
+  )
+}
+
+function waitForNextProvisioningPoll(delayMs: number) {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, delayMs))
+}
+
+export async function waitForKnowledgeSpaceReady(
+  controlSpaceId: string,
+): Promise<KnowledgeFsSpaceDetailResponse> {
+  const deadline = Date.now() + KNOWLEDGE_SPACE_READY_TIMEOUT_MS
+
+  while (true) {
+    try {
+      const space = await consoleClient.knowledgeFs.spaces.byControlSpaceId.get({
+        params: { control_space_id: controlSpaceId },
+      })
+      if (space.state === 'active') {
+        if (space.knowledge_space_id) return space
+        throw new KnowledgeSpaceProvisioningError(
+          'Knowledge space became active without a registered data-plane space',
+          space.state,
+        )
+      }
+      if (space.state !== 'provisioning')
+        throw new KnowledgeSpaceProvisioningError(
+          `Knowledge space provisioning stopped in state ${space.state}`,
+          space.state,
+        )
+    } catch (error) {
+      if (error instanceof KnowledgeSpaceProvisioningError) throw error
+      if (!isRetryableProvisioningReadError(error)) throw error
+    }
+
+    const remainingMs = deadline - Date.now()
+    if (remainingMs <= 0)
+      throw new KnowledgeSpaceProvisioningError('Knowledge space provisioning timed out')
+
+    await waitForNextProvisioningPoll(Math.min(KNOWLEDGE_SPACE_READY_POLL_INTERVAL_MS, remainingMs))
   }
 }
 

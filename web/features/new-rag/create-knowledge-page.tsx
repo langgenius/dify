@@ -56,6 +56,7 @@ import {
   isDefinitiveCreationRejection,
   KnowledgeCreationError,
   NAME_MAX_LENGTH,
+  waitForKnowledgeSpaceReady,
 } from './create-knowledge-workflow'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
@@ -355,6 +356,7 @@ export function CreateKnowledgePage() {
         setUploading(true)
         setUploadError(false)
         try {
+          await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
             created.control_space_id,
             uploads.map(({ file, id }) => ({ file, id })),

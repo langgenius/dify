@@ -1,14 +1,22 @@
-import { createKnowledge, isDefinitiveCreationRejection } from '../create-knowledge-workflow'
+import {
+  createKnowledge,
+  isDefinitiveCreationRejection,
+  waitForKnowledgeSpaceReady,
+} from '../create-knowledge-workflow'
 
 const serviceMock = vi.hoisted(() => ({
   createSpace: vi.fn(),
   getDefaultModel: vi.fn(),
+  getSpace: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
       spaces: {
+        byControlSpaceId: {
+          get: serviceMock.getSpace,
+        },
         post: serviceMock.createSpace,
       },
     },
@@ -45,6 +53,23 @@ describe('createKnowledge', () => {
       operation_id: 'operation-1',
       state: 'provisioning',
     })
+    serviceMock.getSpace.mockResolvedValue({
+      control_space_id: 'control-space-1',
+      created_at: '2026-08-10T09:45:02Z',
+      knowledge_space_id: 'knowledge-space-1',
+      owner_account_id: 'account-1',
+      permission_keys: ['knowledge_space_read'],
+      resource_version: 1,
+      state: 'active',
+      technical_status: 'available',
+      technical_summary: null,
+      updated_at: '2026-08-10T09:45:38Z',
+      visibility: 'only_me',
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('creates a control space with the new model intent and visibility', async () => {
@@ -208,6 +233,49 @@ describe('createKnowledge', () => {
     await expect(createKnowledge(values)).resolves.toMatchObject({
       modelSetupRequired: true,
     })
+  })
+
+  it('waits for an asynchronously provisioned space before allowing data-plane work', async () => {
+    vi.useFakeTimers()
+    serviceMock.getSpace
+      .mockResolvedValueOnce({
+        control_space_id: 'control-space-1',
+        created_at: '2026-08-10T09:45:02Z',
+        knowledge_space_id: null,
+        owner_account_id: 'account-1',
+        permission_keys: ['knowledge_space_read'],
+        resource_version: 0,
+        state: 'provisioning',
+        technical_status: 'not_ready',
+        technical_summary: null,
+        updated_at: '2026-08-10T09:45:02Z',
+        visibility: 'only_me',
+      })
+      .mockResolvedValueOnce({
+        control_space_id: 'control-space-1',
+        created_at: '2026-08-10T09:45:02Z',
+        knowledge_space_id: 'knowledge-space-1',
+        owner_account_id: 'account-1',
+        permission_keys: ['knowledge_space_read'],
+        resource_version: 1,
+        state: 'active',
+        technical_status: 'available',
+        technical_summary: null,
+        updated_at: '2026-08-10T09:45:38Z',
+        visibility: 'only_me',
+      })
+
+    const ready = waitForKnowledgeSpaceReady('control-space-1')
+    await Promise.resolve()
+
+    expect(serviceMock.getSpace).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    await expect(ready).resolves.toMatchObject({
+      knowledge_space_id: 'knowledge-space-1',
+      state: 'active',
+    })
+    expect(serviceMock.getSpace).toHaveBeenCalledTimes(2)
   })
 })
 
