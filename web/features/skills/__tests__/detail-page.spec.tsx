@@ -1549,11 +1549,11 @@ describe('SkillDetailPage', () => {
     })
 
     mocks.saveDraftFileMutationFn.mockImplementationOnce(async () => {
-      mocks.skillDetail = latestDetail
       const error = new Error('skill has been modified by another user') as Error & {
         code: string
         details: {
           current_file_hash: string
+          current_file_content: string
           current_updated_at: number
           expected_updated_at: number
         }
@@ -1562,6 +1562,7 @@ describe('SkillDetailPage', () => {
       error.details = {
         current_file_hash: 'hash-2',
         current_updated_at: 1784638499,
+        current_file_content: latestDetail.files?.[0]?.content ?? '',
         expected_updated_at: 1784638487,
       }
       throw error
@@ -1575,12 +1576,9 @@ describe('SkillDetailPage', () => {
     )
     await user.type(getSourceEditor(), '\nMy tab changes')
 
-    await waitFor(
-      () => {
-        expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.saveConflict')
-      },
-      { timeout: 4000 },
-    )
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    })
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     expect(mocks.skillDetailGetFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
@@ -1597,6 +1595,10 @@ describe('SkillDetailPage', () => {
       // Expected: conflict blocks autosave until the user edits again.
     }
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.saveConflictReload' }),
+    )
+    expect(getSourceEditor()).toHaveValue('# Changed from another tab\n')
   }, 10000)
 
   it('uses conflict details from response errors without retrying autosave', async () => {
@@ -1627,12 +1629,9 @@ describe('SkillDetailPage', () => {
     )
     await user.type(getSourceEditor(), '\nMy response error changes')
 
-    await waitFor(
-      () => {
-        expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.saveConflict')
-      },
-      { timeout: 4000 },
-    )
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    })
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(
