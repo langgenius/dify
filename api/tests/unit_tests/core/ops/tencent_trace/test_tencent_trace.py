@@ -16,7 +16,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.tencent_trace.tencent_trace import TencentDataTrace
 from dify_graph.entities import WorkflowNodeExecution
 from dify_graph.enums import BuiltinNodeTypes
-from models import Account, App, TenantAccountJoin
+from models import Account, App
 
 logger = logging.getLogger(__name__)
 
@@ -394,12 +394,10 @@ class TestTencentDataTrace:
         app = MagicMock(spec=App)
         app.id = "app-1"
         app.created_by = "user-1"
+        app.tenant_id = "app-tenant"
 
         account = MagicMock(spec=Account)
         account.id = "user-1"
-
-        tenant_join = MagicMock(spec=TenantAccountJoin)
-        tenant_join.tenant_id = "tenant-1"
 
         mock_executions = [MagicMock()]
 
@@ -408,7 +406,6 @@ class TestTencentDataTrace:
             with patch("core.ops.tencent_trace.tencent_trace.Session") as mock_session_ctx:
                 session = mock_session_ctx.return_value.__enter__.return_value
                 session.scalar.side_effect = [app, account]
-                session.query.return_value.filter_by.return_value.first.return_value = tenant_join
 
                 with patch(
                     "core.ops.tencent_trace.tencent_trace.SQLAlchemyWorkflowNodeExecutionRepository"
@@ -418,7 +415,8 @@ class TestTencentDataTrace:
                     results = tencent_data_trace._get_workflow_node_executions(trace_info)
 
                     assert results == mock_executions
-                    account.set_tenant_id.assert_called_once_with("tenant-1")
+                    # Node executions are scoped to the app's tenant, not the creator's active workspace.
+                    assert mock_repo.call_args.kwargs["tenant_id"] == "app-tenant"
 
     def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace):
         trace_info = MagicMock(spec=WorkflowTraceInfo)

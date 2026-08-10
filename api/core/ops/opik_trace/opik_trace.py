@@ -173,6 +173,7 @@ class OpikDataTrace(BaseTraceInstance):
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            tenant_id=trace_info.tenant_id,
         )
 
         # Get all executions for this workflow run

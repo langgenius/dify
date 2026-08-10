@@ -23,7 +23,7 @@ from dify_graph.model_runtime.utils.encoders import jsonable_encoder
 from dify_graph.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_storage import storage
-from libs.helper import extract_tenant_id
+from libs.helper import resolve_tenant_id
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
@@ -66,6 +66,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        tenant_id: str | None = None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -75,6 +76,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            tenant_id: Tenant that owns the node executions; defaults to the user's own tenant.
+                Callers acting on another tenant's records must pass this explicitly.
         """
         # If an engine is provided, create a sessionmaker from it
         if isinstance(session_factory, Engine):
@@ -86,11 +89,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
             )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
-        if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id
+        self._tenant_id = resolve_tenant_id(tenant_id, user)
 
         # Store app context
         self._app_id = app_id

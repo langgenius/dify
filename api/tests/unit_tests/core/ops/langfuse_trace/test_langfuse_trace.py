@@ -259,6 +259,49 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     assert trace_data.name == TraceTaskName.WORKFLOW_TRACE
 
 
+def test_workflow_trace_scopes_node_query_to_run_tenant(trace_instance, monkeypatch):
+    """Node executions are read from the run's tenant, not the app creator's active workspace."""
+    trace_info = WorkflowTraceInfo(
+        workflow_id="wf-1",
+        tenant_id="run-tenant",
+        workflow_run_id="run-1",
+        workflow_run_elapsed_time=1.0,
+        workflow_run_status="succeeded",
+        workflow_run_inputs={},
+        workflow_run_outputs={},
+        workflow_run_version="1.0",
+        total_tokens=0,
+        file_list=[],
+        query="",
+        message_id=None,
+        conversation_id="conv-1",
+        start_time=_dt(),
+        end_time=_dt(),
+        trace_id=None,
+        metadata={"app_id": "app-1"},
+        workflow_app_log_id="log-1",
+        error="",
+    )
+
+    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.sessionmaker", lambda bind: lambda: MagicMock())
+    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.db", MagicMock(engine="engine"))
+    repo = MagicMock()
+    repo.get_by_workflow_run.return_value = []
+    mock_factory = MagicMock()
+    mock_factory.create_workflow_node_execution_repository.return_value = repo
+    monkeypatch.setattr("core.ops.langfuse_trace.langfuse_trace.DifyCoreRepositoryFactory", mock_factory)
+
+    # The creator has since switched their active workspace away from the app's tenant.
+    service_account = MagicMock(current_tenant_id="creator-active-tenant")
+    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: service_account)
+
+    trace_instance.add_trace = MagicMock()
+    trace_instance.workflow_trace(trace_info)
+
+    kwargs = mock_factory.create_workflow_node_execution_repository.call_args.kwargs
+    assert kwargs["tenant_id"] == "run-tenant"
+
+
 def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",

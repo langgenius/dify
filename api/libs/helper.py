@@ -93,6 +93,23 @@ def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
         raise ValueError(f"Invalid user type: {type(user)}. Expected Account or EndUser.")
 
 
+def resolve_tenant_id(tenant_id: str | None, user: Union["Account", "EndUser"]) -> str:
+    """
+    Resolve the tenant that owns a record, preferring an explicitly supplied tenant_id.
+
+    Callers acting on records owned by a tenant other than the acting user's own — trace
+    exporters running under a synthesized service account, for instance — must pass
+    tenant_id explicitly; the user is then only used for creator attribution.
+
+    Raises:
+        ValueError: If no tenant_id was supplied and none can be derived from the user
+    """
+    resolved = tenant_id or extract_tenant_id(user)
+    if not resolved:
+        raise ValueError("User must have a tenant_id or current_tenant_id")
+    return resolved
+
+
 def run(script):
     return subprocess.getstatusoutput("source /root/.bashrc && " + script)
 

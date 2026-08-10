@@ -294,6 +294,7 @@ class AliyunDataTrace(BaseTraceInstance):
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            tenant_id=trace_info.tenant_id,
         )
 
         return workflow_node_execution_repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)

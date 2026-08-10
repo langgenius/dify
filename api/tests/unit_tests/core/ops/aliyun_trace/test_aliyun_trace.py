@@ -405,6 +405,10 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
     assert result == ["node1"]
     repo.get_by_workflow_run.assert_called_once_with(workflow_run_id=trace_info.workflow_run_id)
 
+    # Node executions must be read from the run's tenant, not the creator's active workspace.
+    kwargs = mock_factory.create_workflow_node_execution_repository.call_args.kwargs
+    assert kwargs["tenant_id"] == "tenant-id"
+
 
 def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
