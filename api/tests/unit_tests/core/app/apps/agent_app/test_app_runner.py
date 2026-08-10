@@ -61,7 +61,11 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
 )
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool_engine import ToolEngine
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -1635,3 +1639,194 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch: pyt
     # mismatch). A resume therefore re-sends a non-blank query, never blank.
     layer_names = [layer.name for layer in client.request.composition.layers]
     assert "agent_app_user_prompt" in layer_names
+
+
+def test_tool_result_file_metadata_persists_message_files(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Issue #40425: tool-result events carrying SDK-reported file references must
+    # replay the legacy tool-file chain so the chat pipeline can render them.
+    message = Message(
+        id="msg-1",
+        app_id="app-1",
+        conversation_id="conv-1",
+        _inputs={},
+        query="draw a cat",
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    sqlite_session.add(message)
+    sqlite_session.commit()
+
+    transform_calls: list[dict[str, Any]] = []
+
+    def fake_transform(
+        *,
+        messages: Any,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None = None,
+    ) -> Iterator[ToolInvokeMessage]:
+        message_list = list(messages)
+        transform_calls.append(
+            {
+                "messages": message_list,
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                "conversation_id": conversation_id,
+            }
+        )
+        for _ in message_list:
+            yield ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+                message=ToolInvokeMessage.TextMessage(text="/files/tools/tool-file-1.png"),
+                meta={"mime_type": "image/png", "tool_file_id": "tool-file-1"},
+            )
+
+    create_calls: list[dict[str, Any]] = []
+
+    def fake_create_message_files(
+        *, tool_messages: Any, agent_message: Message, invoke_from: InvokeFrom, user_id: str
+    ) -> list[str]:
+        create_calls.append(
+            {
+                "binaries": list(tool_messages),
+                "agent_message_id": agent_message.id,
+                "invoke_from": invoke_from,
+                "user_id": user_id,
+            }
+        )
+        return ["message-file-1"]
+
+    monkeypatch.setattr(
+        ToolFileMessageTransformer,
+        "transform_tool_invoke_messages",
+        staticmethod(fake_transform),
+    )
+    monkeypatch.setattr(ToolEngine, "_create_message_files", staticmethod(fake_create_message_files))
+
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "generate_image",
+                    "args": {"prompt": "a cat"},
+                    "tool_call_id": "call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "generate_image",
+                    "tool_call_id": "call-1",
+                    "content": "image has been created and sent to user already",
+                    "metadata": {
+                        "dify_tool_files": [
+                            {"type": "image", "url": "https://tools.example/cat.png", "mime_type": "image/png"}
+                        ]
+                    },
+                },
+            },
+        )
+    )
+
+    assert len(transform_calls) == 1
+    assert transform_calls[0]["user_id"] == "user-1"
+    assert transform_calls[0]["tenant_id"] == "tenant-1"
+    assert transform_calls[0]["conversation_id"] == "conv-1"
+    source_message = transform_calls[0]["messages"][0]
+    assert source_message.type == ToolInvokeMessage.MessageType.IMAGE
+    assert source_message.message.text == "https://tools.example/cat.png"
+    assert source_message.meta == {"mime_type": "image/png"}
+
+    assert len(create_calls) == 1
+    assert create_calls[0]["agent_message_id"] == "msg-1"
+    assert create_calls[0]["invoke_from"] == InvokeFrom.WEB_APP
+    assert [binary.url for binary in create_calls[0]["binaries"]] == ["/files/tools/tool-file-1.png"]
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].observation == "image has been created and sent to user already"
+    assert rows[0].message_files == '["message-file-1"]'
+
+    file_events = [e for e in qm.events if isinstance(e, QueueMessageFileEvent)]
+    assert [e.message_file_id for e in file_events] == ["message-file-1"]
+
+
+def test_tool_result_file_persistence_failure_keeps_observation(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A failing download/persist chain must degrade to the text-only observation.
+    message = Message(
+        id="msg-1",
+        app_id="app-1",
+        conversation_id="conv-1",
+        _inputs={},
+        query="draw a cat",
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    sqlite_session.add(message)
+    sqlite_session.commit()
+
+    def broken_transform(**_kwargs: Any) -> Iterator[ToolInvokeMessage]:
+        raise RuntimeError("download failed")
+
+    monkeypatch.setattr(
+        ToolFileMessageTransformer,
+        "transform_tool_invoke_messages",
+        staticmethod(broken_transform),
+    )
+
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "generate_image",
+                    "tool_call_id": "call-1",
+                    "content": "image has been created and sent to user already",
+                    "metadata": {"dify_tool_files": [{"type": "image", "url": "https://tools.example/cat.png"}]},
+                },
+            },
+        )
+    )
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 1
+    assert rows[0].observation == "image has been created and sent to user already"
+    assert rows[0].message_files == ""
+    assert [e for e in qm.events if isinstance(e, QueueMessageFileEvent)] == []
