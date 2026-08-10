@@ -41,6 +41,10 @@ type NextPageRequest = {
   prefix?: string
 }
 
+const MAX_SELECTION = 200
+const ROOT_PAGE_SCOPE = 'root'
+const SELECTION_LIMIT_ID = 'create-connected-source-selection-limit'
+
 function isDriveContainer(file: PreviewFile) {
   return /bucket|directory|folder|workspace/i.test(file.type)
 }
@@ -80,7 +84,11 @@ export function CreateConnectedSourceSetup({
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(false)
   const [previewed, setPreviewed] = useState(false)
-  const [nextPageRequest, setNextPageRequest] = useState<NextPageRequest | null>()
+  const [nextPageRequests, setNextPageRequests] = useState<Map<string, NextPageRequest>>(
+    () => new Map(),
+  )
+  const driveTransport = providerOption.providerType === 'online_drive'
+  const selectionAtLimit = selected.size >= MAX_SELECTION
   const selectableResources = useMemo(
     () =>
       resources.filter(
@@ -113,7 +121,7 @@ export function CreateConnectedSourceSetup({
       pluginId: providerOption.plugin.plugin_id,
       provider: providerOption.plugin.provider,
     }
-    if (draft.sourceType === 'onlineDocuments') {
+    if (!driveTransport) {
       onInitialSourceChange({
         ...binding,
         kind: 'online_document',
@@ -158,6 +166,7 @@ export function CreateConnectedSourceSetup({
   }, [
     credential.id,
     draft,
+    driveTransport,
     onInitialSourceChange,
     providerOption.datasource.identity.name,
     providerOption.plugin.plugin_id,
@@ -189,7 +198,7 @@ export function CreateConnectedSourceSetup({
           body: {
             credentialId: credential.id,
             datasource: providerOption.datasource.identity.name,
-            kind: draft.sourceType === 'onlineDocuments' ? 'online_document' : 'online_drive',
+            kind: driveTransport ? 'online_drive' : 'online_document',
             parameters: {
               ...(bucket ? { bucket } : {}),
               ...(prefix ? { prefix } : {}),
@@ -199,39 +208,43 @@ export function CreateConnectedSourceSetup({
             provider: providerOption.plugin.provider,
           },
         })
-        const nextResources: PreviewResource[] =
-          draft.sourceType === 'onlineDocuments'
-            ? (response.documents ?? []).map((document) => ({
-                depth,
-                document,
-                key: `document:${document.provider_item_id}`,
-                kind: 'document' as const,
-                parentKey,
-              }))
-            : (response.files ?? []).map((file) => ({
-                depth,
-                file,
-                key: `file:${file.provider_item_id}`,
-                kind: 'file' as const,
-                parentKey,
-              }))
+        const nextResources: PreviewResource[] = driveTransport
+          ? (response.files ?? []).map((file) => ({
+              depth,
+              file,
+              key: `file:${file.provider_item_id}`,
+              kind: 'file' as const,
+              parentKey,
+            }))
+          : (response.documents ?? []).map((document) => ({
+              depth,
+              document,
+              key: `document:${document.provider_item_id}`,
+              kind: 'document' as const,
+              parentKey,
+            }))
         setResources((current) => {
           const next = new Map((append ? current : []).map((resource) => [resource.key, resource]))
           for (const resource of nextResources) next.set(resource.key, resource)
           return [...next.values()]
         })
         if (parentKey) setExpanded((current) => new Set(current).add(parentKey))
-        setNextPageRequest(
-          response.next_page_parameters
-            ? {
-                bucket,
-                depth,
-                nextPage: response.next_page_parameters,
-                parentKey,
-                prefix,
-              }
-            : null,
-        )
+        setNextPageRequests((current) => {
+          const next = append ? new Map(current) : new Map<string, NextPageRequest>()
+          const scope = parentKey ?? ROOT_PAGE_SCOPE
+          if (response.next_page_parameters) {
+            next.set(scope, {
+              bucket,
+              depth,
+              nextPage: response.next_page_parameters,
+              parentKey,
+              prefix,
+            })
+          } else {
+            next.delete(scope)
+          }
+          return next
+        })
         setPreviewed(true)
       } catch {
         setError(true)
@@ -240,14 +253,14 @@ export function CreateConnectedSourceSetup({
         setLoadingMore(false)
       }
     },
-    [credential.id, draft.sourceType, providerOption],
+    [credential.id, driveTransport, providerOption],
   )
 
   const toggle = (key: string) => {
     setSelected((current) => {
       const next = new Set(current)
       if (next.has(key)) next.delete(key)
-      else next.add(key)
+      else if (next.size < MAX_SELECTION) next.add(key)
       return next
     })
   }
@@ -259,7 +272,10 @@ export function CreateConnectedSourceSetup({
         selectableResources.every((resource) => current.has(resource.key))
       for (const resource of selectableResources) {
         if (allSelected) next.delete(resource.key)
-        else next.add(resource.key)
+        else {
+          if (next.size >= MAX_SELECTION) break
+          next.add(resource.key)
+        }
       }
       return next
     })
@@ -281,6 +297,9 @@ export function CreateConnectedSourceSetup({
       prefix: resource.file.id || undefined,
     })
   }
+  const visibleNextPageRequests = [...nextPageRequests.entries()].filter(
+    ([scope]) => scope === ROOT_PAGE_SCOPE || expanded.has(scope),
+  )
 
   return (
     <div className="space-y-4">
@@ -332,11 +351,21 @@ export function CreateConnectedSourceSetup({
           <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             <Checkbox
               aria-label={t(($) => $['newKnowledge.selectAll'])}
+              aria-describedby={selectionAtLimit ? SELECTION_LIMIT_ID : undefined}
               checked={
                 selectableResources.length > 0 &&
                 selectableResources.every((resource) => selected.has(resource.key))
               }
-              disabled={disabled || !selectableResources.length}
+              disabled={
+                disabled ||
+                !selectableResources.length ||
+                (selectionAtLimit &&
+                  !selectableResources.every((resource) => selected.has(resource.key)))
+              }
+              indeterminate={
+                selected.size > 0 &&
+                !selectableResources.every((resource) => selected.has(resource.key))
+              }
               onCheckedChange={toggleAll}
             />
             <span className="system-xs-medium text-text-secondary">
@@ -344,8 +373,13 @@ export function CreateConnectedSourceSetup({
                 ? t(($) => $['newKnowledge.selectPagesToSync'])
                 : t(($) => $['newKnowledge.selectFilesAndFolders'])}
             </span>
-            <span className="ml-auto system-xs-regular text-text-tertiary">
+            <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.pagesSelected'], { count: selected.size })}
+              {selectionAtLimit && (
+                <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
+                  {t(($) => $['newKnowledge.maxPages'])}: {MAX_SELECTION}
+                </span>
+              )}
             </span>
           </div>
           <ul className="max-h-64 overflow-y-auto p-1.5">
@@ -364,12 +398,13 @@ export function CreateConnectedSourceSetup({
                       size="small"
                       className="size-5 px-0"
                       aria-label={resourceName(resource)}
+                      aria-expanded={expanded.has(resource.key)}
                       disabled={disabled || loadingMore}
                       onClick={() => expandContainer(resource)}
                     >
                       <span
                         aria-hidden
-                        className={`i-ri-arrow-right-s-line size-4 transition-transform ${
+                        className={`i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none ${
                           expanded.has(resource.key) ? 'rotate-90' : ''
                         }`}
                       />
@@ -377,8 +412,13 @@ export function CreateConnectedSourceSetup({
                   ) : (
                     <Checkbox
                       aria-label={resourceName(resource)}
+                      aria-describedby={
+                        selectionAtLimit && !selected.has(resource.key)
+                          ? SELECTION_LIMIT_ID
+                          : undefined
+                      }
                       checked={selected.has(resource.key)}
-                      disabled={disabled}
+                      disabled={disabled || (selectionAtLimit && !selected.has(resource.key))}
                       onCheckedChange={() => toggle(resource.key)}
                     />
                   )}
@@ -390,17 +430,25 @@ export function CreateConnectedSourceSetup({
               )
             })}
           </ul>
-          {nextPageRequest && (
-            <div className="border-t border-divider-subtle px-3 py-2 text-center">
-              <Button
-                type="button"
-                size="small"
-                variant="ghost"
-                loading={loadingMore}
-                onClick={() => void requestPreview({ append: true, ...nextPageRequest })}
-              >
-                {t(($) => $['newKnowledge.loadMore'])}
-              </Button>
+          {visibleNextPageRequests.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 border-t border-divider-subtle px-3 py-2 text-center">
+              {visibleNextPageRequests.map(([scope, request]) => {
+                const parent =
+                  scope === ROOT_PAGE_SCOPE ? undefined : resources.find(({ key }) => key === scope)
+                return (
+                  <Button
+                    key={scope}
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    loading={loadingMore}
+                    onClick={() => void requestPreview({ append: true, ...request })}
+                  >
+                    {t(($) => $['newKnowledge.loadMore'])}
+                    {parent ? ` · ${resourceName(parent)}` : ''}
+                  </Button>
+                )
+              })}
             </div>
           )}
         </section>

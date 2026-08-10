@@ -10,7 +10,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialOnlineDriveSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
 from tasks.knowledge_fs_initial_source_tasks import (
     KnowledgeFSInitialSourceNotReadyError,
     import_initial_source,
@@ -693,3 +693,50 @@ def test_initial_source_task_validates_discriminated_connector_payload() -> None
     parsed_payload = start_import.call_args.kwargs["payload"]
     assert isinstance(parsed_payload, KnowledgeFSInitialOnlineDocumentSourcePayload)
     assert parsed_payload.credential_id == "notion-credential-1"
+
+
+def test_initial_source_task_retries_transient_remote_error() -> None:
+    serialized_payload = _drive_payload().model_dump(mode="json", by_alias=True)
+    remote_error = KnowledgeFSProductRemoteError("temporary outage")
+    retry_error = RuntimeError("retry requested")
+    with (
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.start_initial_source_import",
+            side_effect=remote_error,
+        ),
+        patch.object(import_initial_source, "retry", side_effect=retry_error) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        import_initial_source.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=serialized_payload,
+            workflow_id="workflow-1",
+        )
+
+    retry.assert_called_once_with(exc=remote_error)
+
+
+def test_initial_source_task_does_not_retry_authoritative_missing_resource() -> None:
+    serialized_payload = _drive_payload().model_dump(mode="json", by_alias=True)
+    missing_resource = KnowledgeFSProductResourceNotFoundError("workflow was not found")
+    with (
+        patch(
+            "tasks.knowledge_fs_initial_source_tasks.start_initial_source_import",
+            side_effect=missing_resource,
+        ),
+        patch.object(import_initial_source, "retry") as retry,
+        pytest.raises(KnowledgeFSProductResourceNotFoundError, match="workflow was not found"),
+    ):
+        import_initial_source.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=serialized_payload,
+            workflow_id="workflow-1",
+        )
+
+    retry.assert_not_called()

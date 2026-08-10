@@ -66,8 +66,12 @@ type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
 
 function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
-  if (!Array.isArray(response.data)) return []
-  return response.data.flatMap((item) => {
+  const items = Array.isArray(response.data)
+    ? response.data
+    : response.data && typeof response.data === 'object'
+      ? [response.data]
+      : []
+  return items.flatMap((item) => {
     if (!item || typeof item !== 'object') return []
     const page = item as Record<string, unknown>
     const sourceUrl =
@@ -262,6 +266,12 @@ export function CreateSourceSetup({
         },
         url: draft.rootUrl,
       })) as Record<string, unknown>
+      const synchronousPages = crawlPages(created)
+      if (synchronousPages.length) {
+        setPreviewPages(synchronousPages)
+        setCrawlState('success')
+        return
+      }
       const jobId = typeof created.job_id === 'string' ? created.job_id : undefined
       if (!jobId) throw new Error('Website crawl did not return a job id')
 

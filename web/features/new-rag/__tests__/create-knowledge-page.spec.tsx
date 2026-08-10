@@ -239,6 +239,37 @@ const firecrawlDatasourceAuth = {
   provider: 'firecrawl',
 }
 
+const jinaDatasourcePlugin = {
+  ...firecrawlDatasourcePlugin,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      label: { en_US: 'Jina Reader', zh_Hans: 'Jina Reader' },
+      name: 'jinareader',
+    },
+  },
+  plugin_id: 'langgenius/jina_datasource',
+  plugin_unique_identifier: 'langgenius/jina_datasource:1.0.0@local',
+  provider: 'jinareader',
+}
+
+const jinaDatasourceAuth = {
+  ...firecrawlDatasourceAuth,
+  credentials_list: [
+    {
+      ...firecrawlDatasourceAuth.credentials_list[0],
+      id: 'jina-credential-1',
+      name: 'Default Jina Reader',
+    },
+  ],
+  label: { en_US: 'Jina Reader' },
+  name: 'jinareader',
+  plugin_id: 'langgenius/jina_datasource',
+  plugin_unique_identifier: 'langgenius/jina_datasource:1.0.0@local',
+  provider: 'jinareader',
+}
+
 const notionDatasourcePlugin = {
   ...firecrawlDatasourcePlugin,
   declaration: {
@@ -1107,6 +1138,54 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByText('Getting started')).toBeInTheDocument()
   })
 
+  it('creates an initial source from a synchronous Jina Reader preview', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
+    serviceMock.createCrawl.mockResolvedValueOnce({
+      data: {
+        content: '# Dify introduction',
+        description: 'Introduction',
+        title: 'Dify introduction',
+        url: 'https://docs.dify.ai/introduction',
+      },
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai/introduction',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify introduction',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Dify introduction' }))
+    expect(serviceMock.getCrawlStatus).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        initial_source: expect.objectContaining({
+          credentialId: 'jina-credential-1',
+          pluginId: 'langgenius/jina_datasource',
+          provider: 'jinareader',
+          selection: [
+            expect.objectContaining({
+              source_url: 'https://docs.dify.ai/introduction',
+              title: 'Dify introduction',
+            }),
+          ],
+        }),
+      }),
+    })
+  })
+
   it('shows and can stop an ongoing website crawl', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
@@ -1336,6 +1415,203 @@ describe('CreateKnowledgePage', () => {
         },
       }),
     })
+  })
+
+  it('uses the online-drive transport when creating with Google Docs', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [
+      firecrawlDatasourcePlugin,
+      notionDatasourcePlugin,
+      googleDriveDatasourcePlugin,
+    ]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, notionDatasourceAuth, googleDriveDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockResolvedValue({
+      files: [
+        {
+          bucket: null,
+          id: 'doc-1',
+          mime_type: 'application/vnd.google-apps.document',
+          name: 'Launch plan',
+          provider_item_id: '["","doc-1"]',
+          size: 1024,
+          type: 'application/vnd.google-apps.document',
+        },
+      ],
+      kind: 'online_drive',
+      next_page_parameters: null,
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Team docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+    await waitFor(() =>
+      expect(serviceMock.previewInitialSource).toHaveBeenCalledWith({
+        body: expect.objectContaining({ kind: 'online_drive' }),
+      }),
+    )
+    await user.click(await screen.findByRole('checkbox', { name: 'Launch plan' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        initial_source: expect.objectContaining({
+          kind: 'online_drive',
+          selection: [expect.objectContaining({ id: 'doc-1' })],
+        }),
+      }),
+    })
+  })
+
+  it('preserves root pagination while expanding a drive folder', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, googleDriveDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, googleDriveDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockImplementation(
+      ({ body }: { body: { parameters: Record<string, unknown> } }) => {
+        if (body.parameters.prefix === 'folder-1') {
+          return Promise.resolve({
+            files: [
+              {
+                bucket: null,
+                id: 'child-1',
+                mime_type: 'application/pdf',
+                name: 'Folder child.pdf',
+                provider_item_id: '["","child-1"]',
+                size: 128,
+                type: 'application/pdf',
+              },
+            ],
+            kind: 'online_drive',
+            next_page_parameters: null,
+          })
+        }
+        if (body.parameters.next_page_parameters) {
+          return Promise.resolve({
+            files: [
+              {
+                bucket: null,
+                id: 'root-2',
+                mime_type: 'application/pdf',
+                name: 'Second root file.pdf',
+                provider_item_id: '["","root-2"]',
+                size: 256,
+                type: 'application/pdf',
+              },
+            ],
+            kind: 'online_drive',
+            next_page_parameters: null,
+          })
+        }
+        return Promise.resolve({
+          files: [
+            {
+              bucket: null,
+              id: 'folder-1',
+              mime_type: null,
+              name: 'Plans',
+              provider_item_id: '["","folder-1"]',
+              size: 0,
+              type: 'folder',
+            },
+          ],
+          kind: 'online_drive',
+          next_page_parameters: { cursor: 'root-next' },
+        })
+      },
+    )
+    renderPage()
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+    const folderButton = await screen.findByRole('button', { name: 'Plans' })
+    expect(folderButton).toHaveAttribute('aria-expanded', 'false')
+    await user.click(folderButton)
+    expect(folderButton).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('checkbox', { name: 'Folder child.pdf' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+
+    expect(
+      await screen.findByRole('checkbox', { name: 'Second root file.pdf' }),
+    ).toBeInTheDocument()
+    expect(serviceMock.previewInitialSource).toHaveBeenLastCalledWith({
+      body: expect.objectContaining({
+        parameters: { next_page_parameters: { cursor: 'root-next' } },
+      }),
+    })
+  })
+
+  it('limits a paginated drive selection to the backend maximum', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, googleDriveDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, googleDriveDatasourceAuth],
+    }
+    const files = Array.from({ length: 200 }, (_, index) => ({
+      bucket: null,
+      id: `file-${index + 1}`,
+      mime_type: 'application/pdf',
+      name: `File ${index + 1}.pdf`,
+      provider_item_id: `["","file-${index + 1}"]`,
+      size: 128,
+      type: 'application/pdf',
+    }))
+    serviceMock.previewInitialSource
+      .mockResolvedValueOnce({
+        files,
+        kind: 'online_drive',
+        next_page_parameters: { cursor: 'next' },
+      })
+      .mockResolvedValueOnce({
+        files: [
+          {
+            bucket: null,
+            id: 'file-201',
+            mime_type: 'application/pdf',
+            name: 'File 201.pdf',
+            provider_item_id: '["","file-201"]',
+            size: 128,
+            type: 'application/pdf',
+          },
+        ],
+        kind: 'online_drive',
+        next_page_parameters: null,
+      })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Drive archive',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    await screen.findByRole('checkbox', { name: 'File 201.pdf' })
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' }))
+
+    expect(screen.getByRole('checkbox', { name: 'File 201.pdf' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(screen.getByText(/^dataset\.newKnowledge\.pagesSelected/)).toHaveTextContent('200')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source.selection).toHaveLength(200)
   })
 
   it('requires a selected website preview page before creating with an initial source', async () => {

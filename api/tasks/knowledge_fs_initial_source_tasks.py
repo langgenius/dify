@@ -32,7 +32,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 _LEGACY_WEBSITE_PLUGIN_IDS = {
@@ -554,6 +554,10 @@ def _run_initial_source_task(
                 },
             )
         raise task.retry(exc=exc)
+    except KnowledgeFSProductResourceNotFoundError:
+        raise
+    except KnowledgeFSProductRemoteError as exc:
+        raise task.retry(exc=exc)
 
 
 @shared_task(bind=True, queue="knowledge_fs_lifecycle", max_retries=180, default_retry_delay=2)
@@ -613,6 +617,10 @@ def import_initial_website_source(
                     "workflow_id": exc.workflow_id,
                 },
             )
+        raise self.retry(exc=exc)
+    except KnowledgeFSProductResourceNotFoundError:
+        raise
+    except KnowledgeFSProductRemoteError as exc:
         raise self.retry(exc=exc)
 
 
