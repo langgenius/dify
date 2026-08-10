@@ -22,7 +22,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     RBACPermission,
@@ -905,6 +905,7 @@ class AppApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     @model_validate(UpdateAppPayload)
@@ -939,6 +940,7 @@ class AppApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model
     def delete(self, session: Session, app_model: App):
@@ -963,6 +965,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @agent_manage_required_for_agent_app
     @with_current_user
     @with_current_tenant_id
     @get_app_model(mode=None)
@@ -1040,6 +1043,7 @@ class AppExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
+    @agent_manage_required_for_agent_app
     @get_app_model
     @model_validate(AppExportQuery)
     def get(self, req_data: AppExportQuery, app_model: App):
@@ -1064,6 +1068,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
+    @agent_manage_required_for_agent_app
     @with_current_user_id
     @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
@@ -1094,6 +1099,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppNamePayload)
@@ -1121,6 +1127,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppIconPayload)
@@ -1154,6 +1161,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppSiteStatusPayload)
@@ -1181,6 +1189,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     @model_validate(AppApiStatusPayload)

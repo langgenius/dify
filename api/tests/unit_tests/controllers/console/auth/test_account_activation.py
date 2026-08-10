@@ -14,6 +14,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
+from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from models.account import AccountStatus, TenantAccountRole
 
@@ -201,6 +202,40 @@ class TestActivateApi:
     def mock_switch_tenant(self):
         with patch("controllers.console.auth.activate.TenantService.switch_tenant") as mock:
             yield mock
+
+    def test_activation_rejects_invitation_for_different_authenticated_account(
+        self,
+        app: Flask,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
+        mock_switch_tenant: MagicMock,
+    ):
+        mock_account.status = AccountStatus.ACTIVE
+        mock_invitation["data"]["requires_setup"] = False
+        current_account = MagicMock(id="another-account")
+
+        with (
+            patch("controllers.console.auth.activate.db") as mock_db,
+            patch(
+                "controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback",
+                return_value=mock_invitation,
+            ),
+            patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
+            patch(
+                "controllers.console.auth.activate.current_account_with_tenant",
+                return_value=(current_account, "current-workspace"),
+            ),
+            patch("controllers.console.auth.activate.RegisterService.revoke_token") as revoke_token,
+            patch("controllers.console.auth.activate.TenantService.create_tenant_member") as create_tenant_member,
+            app.test_request_context("/activate", method="POST", json={"token": "valid-token"}),
+            pytest.raises(InvitationAccountMismatchError),
+        ):
+            ActivateApi().post()
+
+        mock_db.session.scalar.assert_not_called()
+        revoke_token.assert_not_called()
+        create_tenant_member.assert_not_called()
+        mock_switch_tenant.assert_not_called()
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")

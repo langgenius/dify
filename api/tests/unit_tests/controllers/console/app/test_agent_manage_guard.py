@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from werkzeug.exceptions import Forbidden
 
+from controllers.console.app import app as app_module
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from core.rbac import RBACPermission, RBACResourceScope
@@ -40,7 +41,42 @@ def _patch_guard(app_model, rbac_enabled: bool):
     )
 
 
+def _guard_wrapper_code():
+    @agent_manage_required_for_agent_app
+    def view():
+        return None
+
+    return view.__code__
+
+
+def _has_agent_manage_guard(view) -> bool:
+    guard_wrapper_code = _guard_wrapper_code()
+    current = view
+    while current is not None:
+        if current.__code__ is guard_wrapper_code:
+            return True
+        current = getattr(current, "__wrapped__", None)
+    return False
+
+
 class TestAgentManageRequiredForAgentApp:
+    @pytest.mark.parametrize(
+        "view",
+        [
+            app_module.AppApi.put,
+            app_module.AppApi.delete,
+            app_module.AppCopyApi.post,
+            app_module.AppExportApi.get,
+            app_module.AppPublishToCreatorsPlatformApi.post,
+            app_module.AppNameApi.post,
+            app_module.AppIconApi.post,
+            app_module.AppSiteStatus.post,
+            app_module.AppApiStatus.post,
+        ],
+    )
+    def test_generic_agent_app_routes_are_guarded(self, view):
+        assert _has_agent_manage_guard(view)
+
     def test_non_agent_app_passes_through_without_workspace_check(self):
         view, calls = _guarded_view()
         patches = _patch_guard(_app_with_binding(None), rbac_enabled=True)
