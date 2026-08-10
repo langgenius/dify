@@ -2,14 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ModifyExternalRetrievalModal from '../modify-external-retrieval-modal'
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('../../external-knowledge-base/create/RetrievalSettings', () => ({
   default: ({
     topK,
@@ -67,7 +59,7 @@ describe('ModifyExternalRetrievalModal', () => {
 
   it('should call onClose when close button clicked', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('action-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(defaultProps.onClose).toHaveBeenCalled()
   })
 
