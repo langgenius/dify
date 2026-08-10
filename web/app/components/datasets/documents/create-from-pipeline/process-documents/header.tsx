@@ -21,16 +21,9 @@ const Header = ({ onReset, resetDisabled, previewDisabled, onPreview }: HeaderPr
       <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>
         {t(($) => $['operation.reset'], { ns: 'common' })}
       </Button>
-      <Button
-        variant="secondary-accent"
-        onClick={onPreview}
-        className="gap-x-0.5"
-        disabled={previewDisabled}
-      >
+      <Button variant="secondary-accent" onClick={onPreview} disabled={previewDisabled}>
         <RiSearchEyeLine className="size-4" />
-        <span className="px-0.5">
-          {t(($) => $['addDocuments.stepTwo.previewChunks'], { ns: 'datasetPipeline' })}
-        </span>
+        <span>{t(($) => $['addDocuments.stepTwo.previewChunks'], { ns: 'datasetPipeline' })}</span>
       </Button>
     </div>
   )

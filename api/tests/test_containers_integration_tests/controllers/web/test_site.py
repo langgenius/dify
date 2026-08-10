@@ -15,7 +15,7 @@ from extensions.storage.storage_type import StorageType
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
 from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 @pytest.fixture

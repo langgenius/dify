@@ -324,7 +324,7 @@ class MigrationImportService:
         options: ImportOptions,
         session: Session,
     ) -> str:
-        import_service = AppDslService(cast(Session, session))
+        import_service = AppDslService(session)
         if existing_app is not None:
             import_result = import_service.import_app(
                 account=account,
@@ -768,7 +768,7 @@ class MigrationImportService:
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
-            service = MCPToolManageService(session=cast(Session, session))
+            service = MCPToolManageService(session=session)
             configuration = MCPConfiguration.model_validate(mcp_data.get("configuration") or {})
             authentication = (
                 MCPAuthentication.model_validate(mcp_data["authentication"]) if mcp_data.get("authentication") else None

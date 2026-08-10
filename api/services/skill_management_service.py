@@ -49,6 +49,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.nodes.llm.reasoning import split_reasoning
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -886,7 +887,7 @@ class SkillManagementService:
                         "answer": reply,
                     }
                 )
-                suggestions = [suggestion.strip() for suggestion in plan.suggestions if suggestion.strip()]
+                suggestions = [suggestion.strip() for suggestion in (plan.suggestions or []) if suggestion.strip()]
                 if suggestions:
                     yield self._assistant_sse(
                         {
@@ -1121,27 +1122,6 @@ class SkillManagementService:
                     "reasoning": tagged_reasoning,
                 }
             )
-        if not reasoning_chunks and raw_text.strip():
-            try:
-                reasoning_response = model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
-                    model_parameters=model_parameters,
-                    stream=False,
-                )
-            except Exception:
-                reasoning_response = None
-            if reasoning_response is not None:
-                reasoning = self._extract_reasoning_content(reasoning_response)
-                if reasoning:
-                    reasoning_chunks.append(reasoning)
-                    yield self._assistant_sse(
-                        {
-                            "event": "skill_assistant_reasoning_chunk",
-                            "id": message_id,
-                            "reasoning": reasoning,
-                        }
-                    )
-
         try:
             parsed = json.loads(raw_text)
         except json.JSONDecodeError:
@@ -1163,7 +1143,7 @@ class SkillManagementService:
             user_message=message,
             history=history,
         )
-        if not any(suggestion.strip() for suggestion in plan.suggestions):
+        if not any(suggestion.strip() for suggestion in (plan.suggestions or [])):
             plan = plan.model_copy(
                 update={
                     "suggestions": self._generate_assistant_suggestions(
@@ -1243,36 +1223,35 @@ class SkillManagementService:
 
     @staticmethod
     def _extract_direct_reasoning_from_mapping(value: dict[str, object]) -> str | None:
-        raw_reasoning = (
-            value.get("reasoning_content")
-            or value.get("reasoning")
-            or value.get("reasoningContent")
-        )
+        raw_reasoning = value.get("reasoning_content") or value.get("reasoning") or value.get("reasoningContent")
         return raw_reasoning if isinstance(raw_reasoning, str) else None
 
     @staticmethod
     def _extract_reasoning_from_dump(value: object) -> str:
-        match value:
-            case {"reasoning_content": str(reasoning)} | {"reasoning": str(reasoning)} | {
-                "reasoningContent": str(reasoning)
-            }:
-                return reasoning
-            case {"data": str(text)} | {"content": str(text)}:
-                _clean_text, reasoning = split_reasoning(text, "separated")
-                return reasoning
-            case dict():
-                for nested_value in value.values():
-                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
-                    if reasoning:
-                        return reasoning
-            case list() | tuple():
-                for nested_value in value:
-                    reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
-                    if reasoning:
-                        return reasoning
-            case str():
-                _clean_text, reasoning = split_reasoning(value, "separated")
-                return reasoning
+        if isinstance(value, str):
+            _clean_text, reasoning = split_reasoning(value, "separated")
+            return reasoning
+        if isinstance(value, dict):
+            for key in ("reasoning_content", "reasoning", "reasoningContent"):
+                raw_reasoning = value.get(key)
+                if isinstance(raw_reasoning, str):
+                    return raw_reasoning
+
+            for key in ("data", "content"):
+                text = value.get(key)
+                if isinstance(text, str):
+                    _clean_text, reasoning = split_reasoning(text, "separated")
+                    return reasoning
+
+            for nested_value in value.values():
+                reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                if reasoning:
+                    return reasoning
+        elif isinstance(value, (list, tuple)):
+            for nested_value in value:
+                reasoning = SkillManagementService._extract_reasoning_from_dump(nested_value)
+                if reasoning:
+                    return reasoning
         return ""
 
     def _generate_assistant_suggestions(
@@ -1290,7 +1269,7 @@ class SkillManagementService:
             "Only suggest actions for the current Skill. Never suggest creating another Skill, "
             "starting a new Skill, or switching Skills.\n"
             "Return exactly one JSON object and no markdown fences, prose, or explanation.\n"
-            "Required schema: {\"suggestions\": [\"...\", \"...\"]}\n\n"
+            'Required schema: {"suggestions": ["...", "..."]}\n\n'
             f"User request:\n{user_message}\n\n"
             f"Assistant reply:\n{assistant_reply}"
         )
@@ -1312,6 +1291,7 @@ class SkillManagementService:
             logger.warning("skill_assistant_suggestions_failed", exc_info=True)
             return []
 
+        suggestions: object
         if isinstance(parsed, list):
             suggestions = parsed
         elif isinstance(parsed, dict):
@@ -1325,6 +1305,9 @@ class SkillManagementService:
             return []
         if not isinstance(suggestions, list):
             return []
+        return [suggestion.strip() for suggestion in suggestions if isinstance(suggestion, str) and suggestion.strip()][
+            :3
+        ]
 
     def _resolve_assistant_model(
         self,
@@ -1656,14 +1639,6 @@ class SkillManagementService:
             except IntegrityError as exc:
                 session.rollback()
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
-            logger.info(
-                "skill_assistant_operation_applied skill_id=%s operation=%s path=%s name=%s display_name=%s",
-                skill_id,
-                payload.operation,
-                payload.path,
-                skill.name,
-                skill.display_name,
-            )
             return {
                 **self._serialize_skill(
                     skill,
@@ -2661,10 +2636,10 @@ class SkillManagementService:
             return "existing_skill"
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
-        content = skill_md.content_text if skill_md is not None else ""
-        has_description = bool(
-            skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION
-        )
+        content = ""
+        if skill_md is not None and skill_md.content_text is not None:
+            content = skill_md.content_text
+        has_description = bool(skill.description.strip() and skill.description.strip() != _UNTITLED_SKILL_DESCRIPTION)
         body = _FRONTMATTER_RE.sub("", content, count=1).strip()
         has_body = bool(body and body not in {_EMPTY_SKILL_DRAFT_CONTENT.strip(), _UNTITLED_SKILL_MD_BODY.strip()})
         has_resources = any(file.path != _SKILL_MD for file in files)
@@ -2716,7 +2691,9 @@ class SkillManagementService:
             return plan
 
         skill_md = next((file for file in files if file.path == _SKILL_MD), None)
-        current_content = skill_md.content_text if skill_md is not None else _EMPTY_SKILL_DRAFT_CONTENT
+        current_content = _EMPTY_SKILL_DRAFT_CONTENT
+        if skill_md is not None and skill_md.content_text is not None:
+            current_content = skill_md.content_text
         operations: list[SkillAssistDraftOperationPayload] = []
         for operation in plan.operations:
             if operation.path == _SKILL_MD and operation.operation == "upsert_text":
@@ -3661,6 +3638,7 @@ class SkillManagementService:
         if skill_md is None or skill_md.kind != SkillFileKind.FILE or skill_md.storage != SkillFileStorage.TEXT:
             raise SkillManagementServiceError("missing_skill_md", "skill must contain text SKILL.md")
         skill_md_content = skill_md.content or ""
+        previous_skill_name = skill.name
         if not strict_frontmatter and sync_frontmatter_name:
             skill_md_content = self._normalize_untitled_draft_skill_md_name(skill=skill, content=skill_md_content)
             entries_by_path[_SKILL_MD] = skill_md.model_copy(update={"content": skill_md_content})
@@ -3676,6 +3654,9 @@ class SkillManagementService:
                 )
         elif sync_frontmatter_name:
             self._sync_skill_metadata_from_draft_skill_md(skill=skill, content=skill_md_content)
+            if not skill.name_manually_edited and skill.name != previous_skill_name:
+                skill_md_content = re.sub(r"(?m)^name:\s*.*$", f"name: {skill.name}", skill_md_content, count=1)
+                entries_by_path[_SKILL_MD] = skill_md.model_copy(update={"content": skill_md_content})
 
         file_paths = {path for path, item in entries_by_path.items() if item.kind == SkillFileKind.FILE}
         for path in file_paths:
@@ -3760,7 +3741,7 @@ class SkillManagementService:
                 session = object_session(skill)
                 auto_generated_name = False
                 if (
-                    self._is_placeholder_skill_name(skill.name)
+                    not skill.name_manually_edited
                     and display_name is not None
                     and display_name != _UNTITLED_DISPLAY_NAME
                     and session is not None
@@ -4054,7 +4035,7 @@ class SkillManagementService:
     @staticmethod
     def _assistant_error_message(exc: Exception, *, fallback: str) -> str:
         """Expose a bounded provider error without returning a traceback to the client."""
-        description = getattr(exc, "description", None)
+        description = exc.description if isinstance(exc, InvokeError) else None
         message = description if isinstance(description, str) and description.strip() else str(exc)
         message = message.strip()
         if message.startswith("[models] "):

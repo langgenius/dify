@@ -1,5 +1,5 @@
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { SSOProtocol } from '@/features/system-features/constants'
 import SSOAuth from '../sso-auth'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -33,7 +33,7 @@ describe('SSOAuth redirect security', () => {
   })
 
   it('should use the login fallback without calling SSO when the redirect target is external', async () => {
-    render(<SSOAuth protocol={SSOProtocol.SAML} />)
+    render(<SSOAuth protocol={zSsoProtocol.enum.saml} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'login.withSSO' }))
 
@@ -46,9 +46,9 @@ describe('SSOAuth redirect security', () => {
   })
 
   it.each([
-    [SSOProtocol.SAML, serviceMocks.fetchMembersSAMLSSOUrl],
-    [SSOProtocol.OIDC, serviceMocks.fetchMembersOIDCSSOUrl],
-    [SSOProtocol.OAuth2, serviceMocks.fetchMembersOAuth2SSOUrl],
+    [zSsoProtocol.enum.saml, serviceMocks.fetchMembersSAMLSSOUrl],
+    [zSsoProtocol.enum.oidc, serviceMocks.fetchMembersOIDCSSOUrl],
+    [zSsoProtocol.enum.oauth2, serviceMocks.fetchMembersOAuth2SSOUrl],
   ])('should send the sanitized redirect target to %s SSO', async (protocol, serviceMock) => {
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: encodeURIComponent('/chatbot/share-app?foo=bar'),

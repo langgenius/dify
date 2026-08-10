@@ -823,13 +823,15 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
     api = WorkspaceSkillRestoreApi()
     method = unwrap(api.post)
     service = MagicMock()
-    service.restore_version.return_value = {
+    empty_tags: list[object] = []
+    empty_files: list[object] = []
+    restored_skill: dict[str, object] = {
         "id": "skill-1",
         "name": "finance-sop",
         "display_name": "Finance SOP",
         "icon": "📄",
         "description": "Finance procedures",
-        "tags": [],
+        "tags": empty_tags,
         "name_manually_edited": False,
         "visibility": "workspace",
         "latest_published_version_id": "version-1",
@@ -842,8 +844,9 @@ def test_restore_skill_version_validates_payload(app: Flask, current_user: Accou
         "updated_by_name": "Li Wei",
         "created_at": 1,
         "updated_at": 2,
-        "files": [],
+        "files": empty_files,
     }
+    service.restore_version.return_value = restored_skill
 
     with (
         app.test_request_context("/", method="POST"),
@@ -1071,6 +1074,7 @@ def test_skill_assistant_runs_agent_app_stream(app: Flask, current_user: Account
                 size=128,
             )
         ],
+        history=[],
         model_payload=None,
         target_path=None,
     )

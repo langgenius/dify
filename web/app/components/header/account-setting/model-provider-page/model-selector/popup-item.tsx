@@ -1,6 +1,6 @@
-import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import type { DefaultModel, Model, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate } from './types'
+import type { ComponentProps } from 'react'
+import type { DefaultModel, ModelItem } from '../declarations'
+import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -12,25 +12,33 @@ import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { renderI18nObject } from '@/i18n-config'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
-import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
+import {
+  useLanguage,
+  useLazyModelProviderDetail,
+  useUpdateModelList,
+  useUpdateModelProviders,
+} from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
 import { useChangeProviderPriority } from '../provider-added-card/use-change-provider-priority'
-import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
+import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 export type ModelSelectorPreviewPayload = {
-  provider: Model
+  provider: ModelSelectorProvider
   modelItem: ModelItem
 }
 
+type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
+
 type PopupItemProps = {
   defaultModel?: DefaultModel
-  model: Model
+  model: ModelSelectorProvider
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
-  previewCardHandle: PreviewCardHandle<ModelSelectorPreviewPayload>
+  previewCardHandle: PreviewCardHandle
   onPreviewCardClose: () => void
   onHide: () => void
 }
@@ -53,16 +61,18 @@ function PopupItem({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find((provider) => provider.provider === model.provider)
+  const { providerDetail, loadProviderDetail } = useLazyModelProviderDetail(model.provider)
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
-  const canOpenCredentialDropdown =
-    !!currentProvider && (canUseCredential || canCreateCredential || canManageCredential)
-  const handleOpenModelModal = () => {
+  const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential
+  const handleOpenModelModal = async () => {
     if (!canCreateCredential) return
 
     if (!currentProvider) return
+    const detail = await loadProviderDetail()
+    if (!detail) return
     setShowModelModal({
       payload: {
-        currentProvider,
+        currentProvider: detail,
         currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
       },
       onSaveCallback: () => {
@@ -75,8 +85,7 @@ function PopupItem({
     })
   }
 
-  // oxlint-disable-next-line eslint-react/use-state -- This domain hook returns credential panel state, not a React useState tuple.
-  const credentialPanelState = useCredentialPanelState(currentProvider)
+  const state = useCredentialPanelInfo(currentProvider)
   const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
   const groupItems = useMemo(
     () =>
@@ -89,16 +98,23 @@ function PopupItem({
     [model.models, model.provider],
   )
 
-  const isUsingCredits = credentialPanelState.priority === 'credits'
-  const hasCredits = !credentialPanelState.isCreditsExhausted
-  const isApiKeyActive =
-    credentialPanelState.variant === 'api-active' || credentialPanelState.variant === 'api-fallback'
-  const { credentialName } = credentialPanelState
+  const isUsingCredits = state.priority === 'credits'
+  const hasCredits = !state.isCreditsExhausted
+  const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
+  const { credentialName } = state
 
   const handleCloseDropdown = useCallback(() => {
     setDropdownOpen(false)
     onHide()
   }, [onHide])
+  const handleDropdownOpenChange = async (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setDropdownOpen(false)
+      return
+    }
+    const detail = await loadProviderDetail()
+    if (detail) setDropdownOpen(true)
+  }
 
   if (!currentProvider) return null
 
@@ -107,10 +123,10 @@ function PopupItem({
       <div className="sticky top-0 z-1 flex h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <button
           type="button"
-          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left"
+          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={() => setCollapsed((prev) => !prev)}
         >
-          <span className="truncate">{model.label[language] || model.label.en_US}</span>
+          <span className="truncate">{renderI18nObject(model.label, language)}</span>
           <span
             className={cn(
               'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary',
@@ -118,21 +134,18 @@ function PopupItem({
             )}
           />
         </button>
-        <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        <Popover open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
           <PopoverTrigger
             disabled={!canOpenCredentialDropdown}
             render={
               <button
                 type="button"
-                className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover"
+                className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               >
                 {isUsingCredits ? (
                   hasCredits ? (
                     <>
-                      <span
-                        aria-hidden
-                        className="i-custom-vender-line-financeandecommerce-credits-coin size-3"
-                      />
+                      <span className="i-custom-vender-line-financeandecommerce-credits-coin size-3" />
                       <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
                       </span>
@@ -164,17 +177,17 @@ function PopupItem({
               </button>
             }
           />
-          {currentProvider && (
-            <PopoverContent placement="bottom-end">
+          <PopoverContent placement="bottom-end">
+            {providerDetail && (
               <DropdownContent
-                provider={currentProvider}
-                state={credentialPanelState}
+                provider={providerDetail}
+                state={state}
                 isChangingPriority={isChangingPriority}
                 onChangePriority={handleChangePriority}
                 onClose={handleCloseDropdown}
               />
-            </PopoverContent>
-          )}
+            )}
+          </PopoverContent>
         </Popover>
       </div>
       {!collapsed &&
@@ -220,7 +233,7 @@ function PopupItem({
                 </ModelName>
               </div>
               {defaultModel?.model === modelItem.model &&
-                defaultModel.provider === model.provider && (
+                defaultModel.provider === currentProvider.provider && (
                   <ComboboxItemIndicator className="shrink-0 text-text-accent">
                     <span
                       className="i-custom-vender-line-general-check size-4"
@@ -232,7 +245,7 @@ function PopupItem({
           )
           const itemRender =
             modelItem.status === ModelStatusEnum.noConfigure ? (
-              <div className={rowClassName} aria-disabled="true" onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
                 {rowContent}
                 {canCreateCredential && (
                   <button

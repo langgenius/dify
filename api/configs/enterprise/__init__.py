@@ -25,6 +25,12 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    ENABLE_LICENSE_EXPIRY_NOTICE: bool = Field(
+        description="Show the license expiry countdown badge in the console when the license is expiring. "
+        "Disable to hide the badge; license status and all enforcement remain unaffected.",
+        default=True,
+    )
+
     ENTERPRISE_REQUEST_TIMEOUT: int = Field(
         ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
     )

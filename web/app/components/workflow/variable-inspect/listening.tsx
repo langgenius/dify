@@ -215,7 +215,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       )}
       <div>
         <Button size="medium" className="px-3" variant="primary" onClick={onStop}>
-          <StopCircle className="mr-1 size-4" />
+          <StopCircle className="size-4" />
           {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflow' })}
         </Button>
       </div>

@@ -43,6 +43,7 @@ from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
     SkillAssistDraftOperationPayload,
+    SkillAssistModelPayload,
     SkillCreatePayload,
     SkillDraftFileCheckPayload,
     SkillDraftFileOperation,
@@ -588,7 +589,7 @@ def test_create_assistant_action_stream_generates_missing_suggestions() -> None:
         json.dumps({"follow_up_suggestions": ["Add SLA tiers", "Include refund denial templates"]}),
     ]
 
-    def invoke_llm(**_kwargs):
+    def invoke_llm(**_kwargs) -> SimpleNamespace:
         return SimpleNamespace(
             message=SimpleNamespace(get_text_content=lambda: model_outputs.pop(0)),
         )

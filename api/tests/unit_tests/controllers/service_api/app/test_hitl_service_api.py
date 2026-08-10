@@ -39,6 +39,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
@@ -117,10 +118,8 @@ def _build_service_api_pause_converter() -> WorkflowResponseConverter:
         workflow_id="workflow-id",
         workflow_execution_id="run-id",
     )
-    user = MagicMock(spec=Account)
+    user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
-    user.name = "Tester"
-    user.email = "tester@example.com"
     return WorkflowResponseConverter(
         application_generate_entity=application_generate_entity,
         user=user,
@@ -271,8 +270,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    runtime_state.register_paused_node("node-1")
-    runtime_state.outputs = {"result": "value"}
+    runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -682,7 +680,7 @@ class TestHitlServiceApi:
         assert pause_resp.data.reasons[0]["TYPE"] == "human_input_required"
         assert pause_resp.data.reasons[0]["form_id"] == "form-1"
         assert pause_resp.data.reasons[0]["form_token"] == "token"
-        assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
+        assert pause_resp.data.reasons[0]["expiration_time"] == to_utc_timestamp(expiration_time)
 
         assert isinstance(responses[0], HumanInputRequiredResponse)
         hi_resp = responses[0]
@@ -693,7 +691,7 @@ class TestHitlServiceApi:
         assert hi_resp.data.actions[0].id == "approve"
         assert hi_resp.data.display_in_ui is True
         assert hi_resp.data.form_token == "token"
-        assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
+        assert hi_resp.data.expiration_time == to_utc_timestamp(expiration_time)
 
     # Snapshot payload contract
     @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
@@ -751,13 +749,13 @@ class TestHitlServiceApi:
         ]
         assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
         assert events[3]["data"]["form_token"] == "wtok"
-        assert events[3]["data"]["expiration_time"] == int(expiration_time.timestamp())
+        assert events[3]["data"]["expiration_time"] == to_utc_timestamp(expiration_time)
         pause_data = events[-1]["data"]
         assert pause_data["paused_nodes"] == ["node-1"]
         assert pause_data["outputs"] == {"result": "value"}
         assert pause_data["reasons"][0]["TYPE"] == "human_input_required"
         assert pause_data["reasons"][0]["form_token"] == "wtok"
-        assert pause_data["reasons"][0]["expiration_time"] == int(expiration_time.timestamp())
+        assert pause_data["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
         assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
         assert pause_data["created_at"] == int(workflow_run.created_at.timestamp())
         assert pause_data["elapsed_time"] == workflow_run.elapsed_time

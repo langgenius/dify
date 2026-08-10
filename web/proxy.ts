@@ -10,22 +10,43 @@ const NECESSARY_DOMAIN =
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const EMBEDDABLE_PATH_PREFIXES = ['/chat', '/workflow', '/completion', '/webapp-signin']
-const EMBEDDABLE_PATH_SEGMENTS = ['/agent']
+const EMBEDDABLE_PATH_SEGMENTS = [
+  '/agent',
+  '/chat',
+  '/chatbot',
+  '/completion',
+  '/webapp-signin',
+  '/workflow',
+]
 const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
   ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
   : ''
+const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
+const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+
+const matchesPathSegment = (pathname: string, segments: string[]) =>
+  segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
 
 export const canEmbedPath = (pathname: string) =>
   EMBEDDABLE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
-  EMBEDDABLE_PATH_SEGMENTS.some(
-    (segment) => pathname === segment || pathname.startsWith(`${segment}/`),
-  )
+  matchesPathSegment(pathname, EMBEDDABLE_PATH_SEGMENTS)
 
-const wrapResponseWithXFrameOptions = (response: NextResponse, pathname: string) => {
-  // prevent clickjacking: https://owasp.org/www-community/attacks/Clickjacking
-  // Chatbot page should be allowed to be embedded in iframe. It's a feature
-  if (env.NEXT_PUBLIC_ALLOW_EMBED !== true && !canEmbedPath(pathname))
+const wrapResponseWithFrameProtection = (response: NextResponse, pathname: string) => {
+  // Published app routes are intentionally embeddable; all other routes default to clickjacking protection.
+  const preventEmbedding =
+    matchesPathSegment(pathname, NON_EMBEDDABLE_PATH_SEGMENTS) ||
+    (env.NEXT_PUBLIC_ALLOW_EMBED !== true && !canEmbedPath(pathname))
+
+  if (preventEmbedding) {
     response.headers.set('X-Frame-Options', 'DENY')
+    const contentSecurityPolicy = response.headers.get('Content-Security-Policy')
+    response.headers.set(
+      'Content-Security-Policy',
+      contentSecurityPolicy
+        ? `${contentSecurityPolicy} ${FRAME_ANCESTORS_NONE}`
+        : FRAME_ANCESTORS_NONE,
+    )
+  }
 
   return response
 }
@@ -43,7 +64,7 @@ export function proxy(request: NextRequest) {
         headers: requestHeaders,
       },
     })
-    return wrapResponseWithXFrameOptions(response, pathname)
+    return wrapResponseWithFrameProtection(response, pathname)
   }
 
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
@@ -82,7 +103,7 @@ export function proxy(request: NextRequest) {
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 
-  return wrapResponseWithXFrameOptions(response, pathname)
+  return wrapResponseWithFrameProtection(response, pathname)
 }
 
 export const config = {

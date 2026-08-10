@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Maximum Chunk Length",
   "embedding.segments": "Paragraphs",
   "embedding.textCleaning": "Text Preprocessing Rules",
+  "embedding.vectorSpaceEstimateExceeded.description": "Document ontvangen, maar de geschatte vectoropslag van {{estimated}} MB overschrijdt de limiet van uw abonnement van {{limit}} MB. Er zijn daarom geen vectoren opgeslagen. Als een ander document wordt verwerkt of de verwerking zojuist is mislukt, probeer het dan later opnieuw. Verklein anders het bestand of verminder het aantal chunks.",
+  "embedding.vectorSpaceEstimateExceeded.title": "De geschatte vectoropslag na het uploaden overschrijdt de capaciteit van je abonnement",
   "embedding.waiting": "Embedding waiting...",
   "list.action.addButton": "Add chunk",
   "list.action.archive": "Archive",

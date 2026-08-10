@@ -278,7 +278,9 @@ export function SkillTagsEditor({
                 }}
               </ComboboxList>
               <ComboboxEmpty>{tCommon(($) => $['tag.noTag'])}</ComboboxEmpty>
-              <ComboboxSeparator className="my-0" />
+              <div role="separator" aria-orientation="horizontal" className="my-0">
+                <ComboboxSeparator />
+              </div>
               <div className="p-1">
                 <button
                   type="button"

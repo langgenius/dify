@@ -6,7 +6,7 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelStatusEnum } from '../declarations'
-import { useCurrentProviderAndModel } from '../hooks'
+import { getCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
@@ -33,7 +33,6 @@ type ModelSelectorProps = {
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
   onOpenMarketplace?: () => void
-  onOpenProviderSettings?: () => void
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -52,7 +51,6 @@ function ModelSelector({
   hideProviderSettingsFooter,
   onConfigureEmptyState,
   onOpenMarketplace,
-  onOpenProviderSettings,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -60,7 +58,7 @@ function ModelSelector({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(modelList, defaultModel)
   const currentValue = useMemo<ModelSelectorValue | null>(() => {
     if (!currentProvider || !currentModel) return null
 
@@ -179,7 +177,6 @@ function ModelSelector({
           modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onOpenMarketplace={onOpenMarketplace}
-          onOpenProviderSettings={onOpenProviderSettings}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

@@ -215,6 +215,7 @@ class ConsoleWorkflowEventsApi(Resource):
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
+            continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
 
             def _generate_stream_events():
                 if include_state_snapshot:
@@ -225,6 +226,8 @@ class ConsoleWorkflowEventsApi(Resource):
                             tenant_id=workflow_run.tenant_id,
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
+                            human_input_surface=HumanInputSurface.CONSOLE,
+                            close_on_pause=not continue_on_pause,
                         )
                     )
                 return generator.convert_to_event_stream(

@@ -7,12 +7,16 @@ import { useTranslation } from 'react-i18next'
 
 type ConfigModelProps = {
   onClick?: () => void
+  loading?: boolean
+  disabled?: boolean
   loadBalancingEnabled?: boolean
   loadBalancingInvalid?: boolean
   credentialRemoved?: boolean
 }
 const ConfigModel = ({
   onClick,
+  loading,
+  disabled,
   loadBalancingEnabled,
   loadBalancingInvalid,
   credentialRemoved,
@@ -21,14 +25,19 @@ const ConfigModel = ({
 
   if (loadBalancingInvalid) {
     return (
-      <div
-        className="relative flex h-4.5 cursor-pointer items-center rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning"
+      <Button
+        variant="ghost"
+        size="small"
+        loading={loading}
+        disabled={disabled}
+        aria-busy={loading || undefined}
+        className="relative h-4.5 rounded-[5px] border border-text-warning bg-components-badge-bg-dimm px-1.5 system-2xs-medium-uppercase text-text-warning shadow-none hover:bg-components-badge-bg-dimm"
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 size-3" />
         {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
-      </div>
+      </Button>
     )
   }
 
@@ -36,24 +45,27 @@ const ConfigModel = ({
     <Button
       variant="secondary"
       size="small"
+      loading={loading}
+      disabled={disabled}
+      aria-busy={loading || undefined}
       className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
       onClick={onClick}
     >
       {credentialRemoved && (
         <>
           {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
-          <StatusDot status="error" className="ml-2" />
+          <StatusDot status="error" />
         </>
       )}
       {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiEqualizer2Line className="mr-1 size-4" />
+          <RiEqualizer2Line className="size-4" />
           {t(($) => $['operation.config'], { ns: 'common' })}
         </>
       )}
       {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
         <>
-          <RiScales3Line className="mr-1 size-4" />
+          <RiScales3Line className="size-4" />
           {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
         </>
       )}

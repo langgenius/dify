@@ -41,7 +41,6 @@ import { SkillCardTags } from '@/features/tag-management/components/skill-card-t
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -240,6 +239,10 @@ function DeleteSkillDialog({
   })
   const references = referencesQuery.data?.data ?? []
   const referenceCount = Math.max(skill.reference_count ?? 0, references.length)
+  const isDeleteDisabled =
+    deleteMutation.isPending ||
+    (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
+    (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
       ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
@@ -248,7 +251,7 @@ function DeleteSkillDialog({
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
-    if (deleteMutation.isPending) return
+    if (isDeleteDisabled) return
 
     deleteMutation.mutate(
       {
@@ -345,7 +348,7 @@ function DeleteSkillDialog({
           <AlertDialogConfirmButton
             tone="destructive"
             loading={deleteMutation.isPending}
-            disabled={referenceCount > 0 && confirmDeleteInput !== skill.display_name}
+            disabled={isDeleteDisabled}
             onClick={handleDelete}
           >
             {tCommon(($) => $['operation.delete'])}
@@ -365,7 +368,6 @@ function SkillCard({
 }) {
   const { t } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
-  const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -382,10 +384,7 @@ function SkillCard({
     },
   })
   const isDraft = !skill.latest_published_version_id
-  const updatedAt = formatTime(
-    skill.updated_at,
-    t(($) => $['skillManagement.dateTimeFormat']),
-  )
+  const updatedAt = formatTimeFromNow(skill.updated_at * 1000)
   const publishedAt = skill.latest_published_at
     ? formatTimeFromNow(skill.latest_published_at * 1000)
     : undefined

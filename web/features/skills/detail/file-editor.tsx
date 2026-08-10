@@ -1388,6 +1388,7 @@ export function FileEditor({
             <div
               className={cn(publishConfirmOpen && 'hidden')}
               aria-hidden={publishConfirmOpen || undefined}
+              hidden={publishConfirmOpen}
             >
               <SkillPublishBar
                 metaLabel={publishMetaText}

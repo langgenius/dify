@@ -280,6 +280,7 @@ export const createWorkflowStreamHandlers = ({
   taskId,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
+  let hasStartedResumeStream = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -420,8 +421,14 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
-      // WebApp workflows must keep using the public API namespace after pause/resume.
-      void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        void sseGet(
+          `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
+          {},
+          otherOptions,
+        )
+      }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
   }

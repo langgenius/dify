@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 
 type DSLDragDropHookProps = {
   onDSLFileDropped: (file: File) => void
-  containerRef: React.RefObject<HTMLDivElement | null>
+  dropZoneRef: React.RefObject<HTMLDivElement | null>
   enabled?: boolean
 }
 
 export const useDSLDragDrop = ({
   onDSLFileDropped,
-  containerRef,
+  dropZoneRef,
   enabled = true,
 }: DSLDragDropHookProps) => {
   const [dragging, setDragging] = useState(false)
@@ -24,14 +24,14 @@ export const useDSLDragDrop = ({
     e.stopPropagation()
   }
 
-  const handleDragLeave = (e: DragEvent) => {
+  const handleDragLeave = useEffectEvent((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.relatedTarget === null || !containerRef.current?.contains(e.relatedTarget as Node))
+    if (e.relatedTarget === null || !dropZoneRef.current?.contains(e.relatedTarget as Node))
       setDragging(false)
-  }
+  })
 
-  const handleDrop = (e: DragEvent) => {
+  const handleDrop = useEffectEvent((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
@@ -44,12 +44,12 @@ export const useDSLDragDrop = ({
     const file = files[0]
     if (file!.name.toLowerCase().endsWith('.yaml') || file!.name.toLowerCase().endsWith('.yml'))
       onDSLFileDropped(file!)
-  }
+  })
 
   useEffect(() => {
     if (!enabled) return
 
-    const current = containerRef.current
+    const current = dropZoneRef.current
     if (current) {
       current.addEventListener('dragenter', handleDragEnter)
       current.addEventListener('dragover', handleDragOver)
@@ -64,7 +64,7 @@ export const useDSLDragDrop = ({
         current.removeEventListener('drop', handleDrop)
       }
     }
-  }, [containerRef, enabled])
+  }, [dropZoneRef, enabled])
 
   return {
     dragging: enabled ? dragging : false,

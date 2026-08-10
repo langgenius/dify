@@ -1,5 +1,5 @@
 'use client'
-import type { CreateApiKeyResponse } from '@/models/app'
+import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,13 +21,7 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import useTimestamp from '@/hooks/use-timestamp'
-import { createApikey as createAppApikey, delApikey as delAppApikey } from '@/service/apps'
-import {
-  createApikey as createDatasetApikey,
-  delApikey as delDatasetApikey,
-} from '@/service/datasets'
-import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
-import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 
@@ -43,13 +38,22 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
-  const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
-  const invalidateAppApiKeys = useInvalidateAppApiKeys()
-  const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
-  const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, {
-    enabled: !!appId && isShow,
-  })
-  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({
+  const [newKey, setNewKey] = useState<Pick<ApiKeyItem, 'token'> | undefined>(undefined)
+  const createAppApiKey = useMutation(consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions())
+  const deleteAppApiKey = useMutation(
+    consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions(),
+  )
+  const createDatasetApiKey = useMutation(consoleQuery.datasets.apiKeys.post.mutationOptions())
+  const deleteDatasetApiKey = useMutation(
+    consoleQuery.datasets.apiKeys.byApiKeyId.delete.mutationOptions(),
+  )
+  const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useQuery(
+    consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
+      input: appId && isShow ? { params: { resource_id: appId } } : skipToken,
+    }),
+  )
+  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useQuery({
+    ...consoleQuery.datasets.apiKeys.get.queryOptions(),
     enabled: !appId && isShow,
   })
   const apiKeysList = appId ? appApiKeys : datasetApiKeys
@@ -62,27 +66,48 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
     if (!canManage) return
     if (!delKeyID) return
 
-    const delApikey = appId ? delAppApikey : delDatasetApikey
-    const params = appId
-      ? { url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} }
-      : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
-    await delApikey(params)
-    if (appId) invalidateAppApiKeys(appId)
-    else invalidateDatasetApiKeys()
+    try {
+      if (appId) {
+        deleteAppApiKey.mutate({
+          params: { resource_id: appId, api_key_id: delKeyID },
+        })
+        return
+      }
+
+      deleteDatasetApiKey.mutate({
+        params: { api_key_id: delKeyID },
+      })
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   const onCreate = async () => {
     if (!currentWorkspace.id || !canManage) return
 
-    const params = appId
-      ? { url: `/apps/${appId}/api-keys`, body: {} }
-      : { url: '/datasets/api-keys', body: {} }
-    const createApikey = appId ? createAppApikey : createDatasetApikey
-    const res = await createApikey(params)
-    setIsVisible(true)
-    setNewKey(res)
-    if (appId) invalidateAppApiKeys(appId)
-    else invalidateDatasetApiKeys()
+    try {
+      if (appId) {
+        createAppApiKey.mutate(
+          { params: { resource_id: appId } },
+          {
+            onSuccess: (apiKey) => {
+              setIsVisible(true)
+              setNewKey(apiKey)
+            },
+          },
+        )
+        return
+      }
+
+      createDatasetApiKey.mutate(undefined, {
+        onSuccess: (apiKey) => {
+          setIsVisible(true)
+          setNewKey(apiKey)
+        },
+      })
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   const generateToken = (token: string) => {
@@ -201,7 +226,7 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
               onClick={onCreate}
               disabled={!currentWorkspace.id || !canManage}
             >
-              <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
+              <span className="i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">
                 {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
               </div>
