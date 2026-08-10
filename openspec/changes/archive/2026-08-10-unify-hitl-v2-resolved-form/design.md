@@ -39,48 +39,57 @@ class MarkdownText:
 
 @dataclass(frozen=True, slots=True)
 class ParagraphInput:
-    output_name: str
+    output_variable_name: str
+    # Populated only when a default value is configured; otherwise None.
     default_value: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class SelectInput:
-    output_name: str
+    output_variable_name: str
     options: tuple[str, ...]
+    # Populated only when a default value is configured; otherwise None.
     default_value: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class FileInput:
-    output_name: str
+    output_variable_name: str
     allowed_file_types: tuple[FileType, ...]
     allowed_file_extensions: tuple[str, ...]
-    allowed_upload_methods: tuple[FileTransferMethod, ...]
+    allowed_file_upload_methods: tuple[FileTransferMethod, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class FileListInput:
-    output_name: str
+    output_variable_name: str
     allowed_file_types: tuple[FileType, ...]
     allowed_file_extensions: tuple[str, ...]
-    allowed_upload_methods: tuple[FileTransferMethod, ...]
-    maximum_count: int
+    allowed_file_upload_methods: tuple[FileTransferMethod, ...]
+    number_limits: int
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedFormAction:
+    id: str
+    title: str
+    button_style: ButtonStyle
 
 
 type Input = ParagraphInput | SelectInput | FileInput | FileListInput
-type CardContent = MarkdownText | Input
+type ResolvedFormContent = MarkdownText | Input
 
 
 @dataclass(frozen=True, slots=True)
 class ResolvedForm:
     title: str | None
-    blocks: tuple[CardContent, ...]
-    actions: tuple[CardAction, ...]
+    blocks: tuple[ResolvedFormContent, ...]
+    user_actions: tuple[ResolvedFormAction, ...]
     # All non-output variables are resolved; {{#$output.<name>#}} slots remain.
     legacy_form_content: str
 ```
 
-具体 input 本身就是 block，不增加 `InputBlock` wrapper。`output_name` 是提交值与 workflow output 的稳定关联。`default_value` 只保存最终标量，不保存 constant/variable source 或 selector。File constraints 和 `maximum_count` 保存实际生效的不可变值；`allowed_file_types` 和 `allowed_upload_methods` 分别保留 `FileType` 与 `FileTransferMethod` enums，不退化为字符串。
+具体 input 本身就是 block，不增加 `InputBlock` wrapper。domain values 使用 `ResolvedFormAction` 和 `ResolvedFormContent`，不得以 `CardAction`、`CardContent` 等 IM/card 名称暴露渠道语义。直接继承上游语义的字段沿用 `output_variable_name`、`allowed_file_upload_methods` 和 `number_limits`；`default_value` 只保存最终标量，不保存 constant/variable source 或 selector，并通过字段注释明确只有配置了 default value 时才存在实际值，否则为 `None`。File constraints 和 `number_limits` 保存实际生效的不可变值；`allowed_file_types`、`allowed_file_upload_methods` 和 `button_style` 分别保留 `FileType`、`FileTransferMethod` 和 `ButtonStyle` enums，不退化为字符串。
 
 `legacy_form_content` 仅为 v1 compatibility 保留。它保存完成所有非输出变量替换后的表单文本，同时原样保留 `{{#$output.<name>#}}` slots。除 compiler 在构造 blocks 时使用该中间结果外，任何 v2 consumer 都不得把该字段作为 typed rendering 的内容来源。
 
@@ -94,9 +103,9 @@ compiler 位于 `core/workflow/nodes/human_input_v2`，因为只有该层应理�
 2. 区分普通 workflow variable tokens 与 `$output` input slots，替换所有非输出变量并原样保留 output slots，得到 `ResolvedForm.legacy_form_content`。
 3. 按保留的 `$output` tokens 保持原位顺序切割 `ResolvedForm.legacy_form_content`。
 4. 对非 token fragment，仅当 `fragment != ""` 时产生 `MarkdownText`；不得调用 `strip()`。因此相邻 inputs 之间不会产生空 Markdown block，而真实空白和换行仍被保留。
-5. 对 input slot 产生与 node config 对齐的 `ParagraphInput`、`SelectInput`、`FileInput` 或 `FileListInput`，并把配置名映射为 `output_name`。
-6. 解析 paragraph defaults、select options/defaults 和 file-list effective maximum count，使 snapshot 中不再出现 selector、source discriminator、`Segment` 或 raw JSON mapping。
-7. 冻结 title 和 actions，并把第 2 步得到的部分解析文本保存为 `legacy_form_content`。
+5. 对 input slot 产生与 node config 对齐的 `ParagraphInput`、`SelectInput`、`FileInput` 或 `FileListInput`，并保留配置的 `output_variable_name`。
+6. 解析 paragraph defaults、select options/defaults 和 file-list effective `number_limits`，使 snapshot 中不再出现 selector、source discriminator、`Segment` 或 raw JSON mapping。
+7. 冻结 title 和 `user_actions`，并把第 2 步得到的部分解析文本保存为 `legacy_form_content`。
 
 DSL 写入阶段已经负责 input slot 的重复性校验，compiler 和 adapters 不重复该检查。引用不存在 input config 的 slot 属于无法构造完整 snapshot 的错误；没有被 `form_content` 引用的 input config 不进入 blocks。
 
@@ -106,7 +115,7 @@ DSL 写入阶段已经负责 input slot 的重复性校验，compiler 和 adapte
 
 `HumanInputForm` 用 `resolved_form: ResolvedForm` 取代 `definition + rendered_content` 的并列状态。Action membership 从该 snapshot 读取，确保接受的 action 与展示给用户的 actions 一致。Input submission canonicalization 尚未在 v2 public transport 中实现，不在本变更中新增。
 
-ORM 可以继续使用现有 `form_definition` JSON column 和 `rendered_content` text column，不要求 SQL DDL：mapper 把 title、blocks 和 actions 写入 JSON column，把 `ResolvedForm.legacy_form_content` 写入现有 `rendered_content` physical column，读取时重新组合 domain object。`display_in_ui` 等非展示 DSL metadata 保留在 aggregate/persistence projection 中，不加入 `ResolvedForm`。
+ORM 可以继续使用现有 `form_definition` JSON column 和 `rendered_content` text column，不要求 SQL DDL：mapper 把 title、blocks 和 `user_actions` 写入 JSON column，把 `ResolvedForm.legacy_form_content` 写入现有 `rendered_content` physical column，读取时重新组合 domain object。`display_in_ui` 等非展示 DSL metadata 保留在 aggregate/persistence projection 中，不加入 `ResolvedForm`。
 
 仓库中尚无调用 `HumanInputV2FormCreationService` 的 production node execution path，HITL v2 public transports 也仍未实现，因此本变更按不存在需要跨版本读取的 production form records 处理，不设计 legacy dual-read schema。
 

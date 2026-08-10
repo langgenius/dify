@@ -4,7 +4,7 @@ HITL v2 当前把 Markdown、原始 input 定义、动态默认值和已渲染�
 
 ## What Changes
 
-- 新增渠道无关的 `ResolvedForm` 模型，以有序的 `MarkdownText | Input` blocks 表达最终展示内容，并携带 title、actions 和 `legacy_form_content`；该字符串已替换所有非输出变量，但保留 `{{#$output.<name>#}}` slots。
+- 新增渠道无关的 `ResolvedForm` 模型，以有序的 `MarkdownText | Input` blocks 表达最终展示内容，并携带 title、`user_actions` 和 `legacy_form_content`；该字符串已替换所有非输出变量，但保留 `{{#$output.<name>#}}` slots。
 - 新增 HITL v2 form compilation/resolution 边界：替换 Markdown 中的非输出 workflow variables，按 `{{#$output.<name>#}}` 原位切割内容，解析 paragraph defaults 和 select options/defaults，并冻结 file constraints。
 - 让 HITL v2 form aggregate 持有并持久化 `ResolvedForm` snapshot，使异步 delivery、交互回调和 action selection 使用同一份已展示定义。
 - **BREAKING (internal)**：调整 `NormalizedCardIntent` 及 IM dynamic-card contracts，使 adapters 消费 `ResolvedForm`，不再接收或解析 `FrozenFormDefinition`、raw mappings、selectors 或独立的 default-values mapping。

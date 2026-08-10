@@ -1,7 +1,10 @@
-## ADDED Requirements
+# hitl-v2-resolved-form Specification
 
+## Purpose
+TBD - created by archiving change unify-hitl-v2-resolved-form. Update Purpose after archive.
+## Requirements
 ### Requirement: 渠道无关的 resolved form snapshot
-系统 MUST 使用不可变的 `ResolvedForm` 表达 HITL v2 表单的最终展示状态。该 snapshot MUST 包含可选 title、有序 `MarkdownText | Input` blocks、actions 和 `legacy_form_content`，并且 MUST 不包含 workflow selector、value-source discriminator、未解析的非输出 variable value 或 raw input mapping。生成的 `ResolvedForm` 代码 MUST 在 `legacy_form_content` 字段紧邻上方包含准确的 English comment：`# All non-output variables are resolved; {{#$output.<name>#}} slots remain.`
+系统 MUST 使用不可变的 `ResolvedForm` 表达 HITL v2 表单的最终展示状态。该 snapshot MUST 包含可选 title、有序 `MarkdownText | Input` blocks、`user_actions` 和 `legacy_form_content`，并且 MUST 不包含 workflow selector、value-source discriminator、未解析的非输出 variable value 或 raw input mapping。通用 domain action 和 content 类型 MUST 分别命名为 `ResolvedFormAction` 和 `ResolvedFormContent`，不得暴露 `CardAction` 或 `CardContent` 等 IM/card 语义。生成的 `ResolvedForm` 代码 MUST 在 `legacy_form_content` 字段紧邻上方包含准确的 English comment：`# All non-output variables are resolved; {{#$output.<name>#}} slots remain.`
 
 #### Scenario: Snapshot contains only resolved values
 - **WHEN** 系统从包含 variable-backed paragraph default 和 select options 的 HITL v2 node 创建表单
@@ -10,14 +13,24 @@
 
 #### Scenario: Input variants expose stable output names
 - **WHEN** compiler 为 paragraph、select、file 或 file-list slot 创建 input block
-- **THEN** 对应 input 使用 `output_name` 标识提交值
+- **THEN** 对应 input 沿用上游 `output_variable_name` 标识提交值
 - **AND** input 不包含未由当前 DSL 定义的 `required` 或 label 字段
 
 #### Scenario: File inputs preserve constraint enums
 - **WHEN** compiler 创建 `FileInput` 或 `FileListInput`
 - **THEN** `allowed_file_types` 保存 immutable `FileType` enum tuple
-- **AND** `allowed_upload_methods` 保存 immutable `FileTransferMethod` enum tuple
+- **AND** `allowed_file_upload_methods` 保存 immutable `FileTransferMethod` enum tuple
 - **AND** domain model 不把 file types 或 upload methods 降级为 strings
+
+#### Scenario: Actions preserve the upstream style enum
+- **WHEN** compiler 创建 resolved user action
+- **THEN** `button_style` 保存上游 `ButtonStyle` enum
+- **AND** domain 和 persistence model 不把 action style 降级为 string
+
+#### Scenario: Domain type names remain channel-neutral
+- **WHEN** caller 从通用 Human Input v2 domain 导入 resolved form values
+- **THEN** action 和 content union 分别通过 `ResolvedFormAction` 和 `ResolvedFormContent` 暴露
+- **AND** 通用 domain 不导出 `CardAction` 或 `CardContent`
 
 #### Scenario: Form content resolves non-output variables and preserves output slots
 - **WHEN** authoring `form_content` 同时包含普通 workflow variable 和 `{{#$output.<name>#}}` slot
