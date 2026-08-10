@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session
 
-from fields.snippet_fields import SnippetListItemResponse, SnippetResponse, SnippetResponseSource
+from fields.snippet_fields import SnippetListItemResponse, snippet_list_item_response, snippet_response
 from libs.helper import dump_response
 from models.account import Account
 from models.enums import TagType
@@ -85,10 +85,10 @@ def populated_snippet(sqlite_session: Session) -> CustomizedSnippet:
     )
 
 
-def test_snippet_response_source_resolves_fields_from_the_given_session(
+def test_snippet_response_resolves_fields_from_the_given_session(
     populated_snippet: CustomizedSnippet, sqlite_session: Session
 ) -> None:
-    result = dump_response(SnippetResponse, SnippetResponseSource(populated_snippet, session=sqlite_session))
+    result = snippet_response(populated_snippet, session=sqlite_session).model_dump(mode="json")
 
     assert result["graph"] == {"nodes": [{"id": "llm-1"}], "edges": []}
     assert result["input_fields"] == [{"variable": "query"}]
@@ -100,7 +100,10 @@ def test_snippet_response_source_resolves_fields_from_the_given_session(
 def test_snippet_list_item_resolves_author_and_tags_from_the_given_session(
     populated_snippet: CustomizedSnippet, sqlite_session: Session
 ) -> None:
-    result = dump_response(SnippetListItemResponse, SnippetResponseSource(populated_snippet, session=sqlite_session))
+    result = snippet_list_item_response(populated_snippet, session=sqlite_session).model_dump(mode="json")
 
     assert result["author_name"] == "Ada"
     assert [tag["name"] for tag in result["tags"]] == ["Reusable"]
+    # The list row carries the raw audit ids; only the detail response resolves them to accounts.
+    assert result["created_by"] == ACCOUNT_1_ID
+    assert result["updated_by"] == ACCOUNT_2_ID
