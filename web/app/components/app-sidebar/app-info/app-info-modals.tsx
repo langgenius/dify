@@ -64,6 +64,7 @@ const AppInfoModals = ({
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [isSecretExporting, setIsSecretExporting] = useState(false)
+  const confirmDeleteInputId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
     secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
@@ -148,7 +149,7 @@ const AppInfoModals = ({
               </AlertDialogDescription>
               <div className="mt-2">
                 <label
-                  htmlFor="app-delete-confirmation"
+                  htmlFor={confirmDeleteInputId}
                   className="mb-1 block system-sm-regular text-text-secondary"
                 >
                   <Trans
@@ -164,7 +165,7 @@ const AppInfoModals = ({
                 </label>
                 <div className="relative">
                   <Input
-                    id="app-delete-confirmation"
+                    id={confirmDeleteInputId}
                     type="text"
                     autoComplete="off"
                     spellCheck={false}

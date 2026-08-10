@@ -105,9 +105,9 @@ const InstallForm = () => {
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-[32px] font-bold text-text-primary">
+        <h1 className="text-[32px] font-bold text-text-primary">
           {t(($) => $.setAdminAccount, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 text-sm text-text-secondary">
           {t(($) => $.setAdminAccountDesc, { ns: 'login' })}
         </p>
