@@ -3,8 +3,9 @@ import { PluginCategory } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
   SelectItem,
-  SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
@@ -98,12 +99,23 @@ export function CredentialField({
               </div>
             </div>
           ) : (
-            slot.candidates.map((candidate) => (
-              <SelectItem key={candidate.credential_id} value={candidate.credential_id}>
-                <SelectItemText>{candidate.display_name || candidate.credential_id}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))
+            <SelectGroup className="py-1">
+              <SelectGroupLabel>{t(($) => $['deployDrawer.runtimeCredentials'])}</SelectGroupLabel>
+              {slot.candidates.map((candidate) => (
+                <SelectItem
+                  key={candidate.credential_id}
+                  value={candidate.credential_id}
+                  className="h-8 gap-1.5 py-1 pr-1 pl-3 system-md-regular data-selected:bg-state-base-hover"
+                >
+                  <span className="flex size-2 shrink-0 items-center justify-center">
+                    <StatusDot size="small" />
+                  </span>
+                  <SelectItemText className="me-0 px-0 system-md-regular">
+                    {candidate.display_name || candidate.credential_id}
+                  </SelectItemText>
+                </SelectItem>
+              ))}
+            </SelectGroup>
           )}
         </SelectContent>
       </Select>
