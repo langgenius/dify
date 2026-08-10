@@ -12,12 +12,12 @@ type DataSourceProviderProps = {
 }
 
 const DataSourceProvider = ({ children }: DataSourceProviderProps) => {
-  const storeRef = useRef<DataSourceStoreApi>(null)
+  const storeRef = useRef<DataSourceStoreApi | null>(null)
 
-  if (!storeRef.current) storeRef.current = createDataSourceStore()
+  if (storeRef.current === null) storeRef.current = createDataSourceStore()
 
   return (
-    <DataSourceContext.Provider value={storeRef.current!}>{children}</DataSourceContext.Provider>
+    <DataSourceContext.Provider value={storeRef.current}>{children}</DataSourceContext.Provider>
   )
 }
 

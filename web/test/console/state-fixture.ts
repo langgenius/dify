@@ -56,13 +56,7 @@ const defaultLangGeniusVersionInfo = {
   current_version: '',
   latest_version: '',
   version: '',
-  release_date: '',
   release_notes: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
 } satisfies LangGeniusVersionInfo
 
 const userProfileAtom = atom(defaultUserProfile)

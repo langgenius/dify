@@ -123,6 +123,26 @@ describe('form-input-item helpers', () => {
     ).toBeUndefined()
   })
 
+  it('should expose date field state', () => {
+    const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
+      type: VarKindType.constant,
+      value: '2024-01-01',
+    })
+    expect(dateState.isDate).toBe(true)
+    expect(dateState.isDateRange).toBe(false)
+    expect(getTargetVarType(dateState)).toBe(VarType.string)
+    expect(getVarKindType(dateState)).toBe(VarKindType.constant)
+    expect(getFilterVar(dateState)?.({ type: VarType.string } as Var)).toBe(true)
+
+    const rangeState = getFormInputState(createSchema({ type: FormTypeEnum.dateRange }), {
+      type: VarKindType.constant,
+      value: '{}',
+    })
+    expect(rangeState.isDateRange).toBe(true)
+    expect(rangeState.isDate).toBe(false)
+    expect(getVarKindType(rangeState)).toBe(VarKindType.constant)
+  })
+
   it('should filter and map visible options using show_on rules', () => {
     const options = [
       createOption('always'),

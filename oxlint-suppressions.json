@@ -64,14 +64,6 @@
       "count": 3
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/date-picker.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/field.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -122,11 +114,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -481,9 +468,6 @@
     }
   },
   "web/app/components/app/configuration/debug/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -781,14 +765,6 @@
   },
   "web/app/components/base/chat/chat/answer/agent-content.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/chat/chat/answer/suggested-questions.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5025,14 +5001,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 11
-    }
-  },
-  "web/app/components/workflow/panel/debug-and-preview/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/user-input.tsx": {
