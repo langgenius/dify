@@ -1,42 +1,108 @@
-"""Durable follow-up that starts the first website import after Space provisioning."""
+"""Durable follow-up that imports the first Source after Space provisioning."""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import Literal
 
 from celery import shared_task
+from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from models.account import Account
+from models.credential_permission import CredentialType
 from models.knowledge_fs import KnowledgeFSControlSpaceState
 from models.oauth import DatasourceProvider
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
+from services.credential_permission_service import CredentialPermissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlImportPayload,
+    KnowledgeFSInitialOnlineDocumentSourcePayload,
+    KnowledgeFSInitialSourcePayload,
     KnowledgeFSInitialWebsiteSourcePayload,
+    KnowledgeFSOnlineDocumentWorkflowImportPayload,
+    KnowledgeFSOnlineDriveWorkflowImportPayload,
     KnowledgeFSSourceConnectionCreatePayload,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
+    KnowledgeFSSourceWorkflowImportPayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
-_FIRECRAWL_PROVIDER_ID = "plugin-daemon-website"
-_FIRECRAWL_PLUGIN_ID = "langgenius/firecrawl_datasource"
+_LEGACY_WEBSITE_PLUGIN_IDS = {
+    "firecrawl": "langgenius/firecrawl_datasource",
+    "jinareader": "langgenius/jina_datasource",
+    "watercrawl": "watercrawl/watercrawl_datasource",
+}
 _PAGE_SIZE = 200
+_INITIAL_SOURCE_ADAPTER: TypeAdapter[KnowledgeFSInitialSourcePayload] = TypeAdapter(KnowledgeFSInitialSourcePayload)
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class _DatasourceBinding:
+    credential_id: str | None
+    datasource: str
+    plugin_id: str
+    provider: str
+    provider_id: str
+    provider_kind: str
+
+
 class KnowledgeFSInitialSourceNotReadyError(RuntimeError):
-    """The Space or Source workflow is still progressing and should be retried."""
+    """The Space, connection, or Source workflow is progressing and should be retried."""
 
     def __init__(self, message: str, *, workflow_id: str | None = None) -> None:
         super().__init__(message)
         self.workflow_id = workflow_id
+
+
+def _binding(payload: KnowledgeFSInitialSourcePayload) -> _DatasourceBinding:
+    if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+        normalized_provider = "".join(character for character in payload.provider.lower() if character.isalnum())
+        plugin_id = payload.plugin_id or _LEGACY_WEBSITE_PLUGIN_IDS.get(normalized_provider)
+        if plugin_id is None:
+            raise RuntimeError("Website datasource plugin binding is required")
+        return _DatasourceBinding(
+            credential_id=payload.credential_id,
+            datasource=payload.datasource,
+            plugin_id=plugin_id,
+            provider=payload.provider,
+            provider_id="plugin-daemon-website",
+            provider_kind="website",
+        )
+    if isinstance(payload, KnowledgeFSInitialOnlineDocumentSourcePayload):
+        return _DatasourceBinding(
+            credential_id=payload.credential_id,
+            datasource=payload.datasource,
+            plugin_id=payload.plugin_id,
+            provider=payload.provider,
+            provider_id="plugin-daemon-online-document",
+            provider_kind="online-document",
+        )
+    return _DatasourceBinding(
+        credential_id=payload.credential_id,
+        datasource=payload.datasource,
+        plugin_id=payload.plugin_id,
+        provider=payload.provider,
+        provider_id="plugin-daemon-online-drive",
+        provider_kind="online-drive",
+    )
+
+
+def _request_id(*, operation_id: str, payload: KnowledgeFSInitialSourcePayload) -> str:
+    # Preserve the original website request ID so retries from the previous rollout
+    # reconcile with the same provisional Source.
+    if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+        return f"initial-website-source:{operation_id}"
+    return f"initial-source:{operation_id}"
 
 
 def _find_initial_source(*, facade, tenant_id: str, account_id: str, control_space_id: str, request_id: str):
@@ -57,29 +123,41 @@ def _find_initial_source(*, facade, tenant_id: str, account_id: str, control_spa
         cursor = response.next_cursor
 
 
-def _find_firecrawl_credential(*, session_maker, tenant_id: str) -> tuple[str, str]:
+def _find_credential(*, session_maker, tenant_id: str, account_id: str, binding: _DatasourceBinding) -> tuple[str, str]:
+    query = select(DatasourceProvider).where(
+        DatasourceProvider.tenant_id == tenant_id,
+        DatasourceProvider.provider == binding.provider,
+        DatasourceProvider.plugin_id == binding.plugin_id,
+    )
     with session_maker() as session:
+        account = session.get(Account, account_id)
+        if account is None:
+            raise RuntimeError("Initial Source account was not found")
+        query = CredentialPermissionService.apply_visibility_filter(
+            query,
+            model_id_column=DatasourceProvider.id,
+            model_user_id_column=DatasourceProvider.user_id,
+            model_visibility_column=DatasourceProvider.visibility,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+            user=account,
+        )
+        if binding.credential_id is not None:
+            query = query.where(DatasourceProvider.id == binding.credential_id)
         credential = session.scalar(
-            select(DatasourceProvider)
-            .where(
-                DatasourceProvider.tenant_id == tenant_id,
-                DatasourceProvider.provider == "firecrawl",
-                DatasourceProvider.plugin_id == _FIRECRAWL_PLUGIN_ID,
-            )
-            .order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc())
-            .limit(1)
+            query.order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc()).limit(1)
         )
     if credential is None:
-        raise RuntimeError("Firecrawl credential is unavailable")
-    return str(credential.id), credential.name or "Firecrawl"
+        raise RuntimeError("Datasource credential is unavailable")
+    return str(credential.id), credential.name or binding.provider
 
 
-def _find_or_create_firecrawl_connection(
+def _find_or_create_connection(
     *,
     facade,
     tenant_id: str,
     account_id: str,
     control_space_id: str,
+    binding: _DatasourceBinding,
     credential_id: str,
     credential_name: str,
 ):
@@ -88,9 +166,16 @@ def _find_or_create_firecrawl_connection(
         account_id=account_id,
         control_space_id=control_space_id,
     )
-    if not any(provider.id == _FIRECRAWL_PROVIDER_ID and provider.available for provider in providers.data):
-        raise RuntimeError("Firecrawl provider is unavailable")
+    if not any(provider.id == binding.provider_id and provider.available for provider in providers.data):
+        raise RuntimeError(f"{binding.provider_kind} provider is unavailable")
 
+    expected_configuration: dict[str, bool | int | str] = {
+        "credentialId": credential_id,
+        "datasource": binding.datasource,
+        "pluginId": binding.plugin_id,
+        "provider": binding.provider,
+        "providerKind": binding.provider_kind,
+    }
     cursor: str | None = None
     while True:
         response = facade.list_source_connections(
@@ -101,16 +186,15 @@ def _find_or_create_firecrawl_connection(
             limit=_PAGE_SIZE,
         )
         for connection in response.data:
-            if (
-                connection.provider_id != _FIRECRAWL_PROVIDER_ID
-                or connection.configuration.get("credentialId") != credential_id
-            ):
+            if connection.provider_id != binding.provider_id:
+                continue
+            if any(connection.configuration.get(key) != value for key, value in expected_configuration.items()):
                 continue
             if connection.status == "active":
                 return connection
             if connection.status == "provisioning":
-                raise KnowledgeFSInitialSourceNotReadyError("Firecrawl connection is still provisioning")
-            raise RuntimeError(f"Firecrawl connection is unavailable in state {connection.status}")
+                raise KnowledgeFSInitialSourceNotReadyError("Datasource connection is still provisioning")
+            raise RuntimeError(f"Datasource connection is unavailable in state {connection.status}")
         if not response.next_cursor:
             break
         cursor = response.next_cursor
@@ -121,33 +205,131 @@ def _find_or_create_firecrawl_connection(
         control_space_id=control_space_id,
         payload=KnowledgeFSSourceConnectionCreatePayload(
             authKind="endpoint",
-            configuration={
-                "credentialId": credential_id,
-                "datasource": "crawl",
-                "pluginId": _FIRECRAWL_PLUGIN_ID,
-                "provider": "firecrawl",
-                "providerKind": "website",
-            },
+            configuration=expected_configuration,
             credentials={},
             name=credential_name,
-            providerId=_FIRECRAWL_PROVIDER_ID,
+            providerId=binding.provider_id,
         ),
     )
     if connection.status != "active":
-        raise KnowledgeFSInitialSourceNotReadyError("Firecrawl connection is still provisioning")
+        raise KnowledgeFSInitialSourceNotReadyError("Datasource connection is still provisioning")
     return connection
 
 
-def start_initial_website_source_import(
+def _source_payload(
+    *,
+    payload: KnowledgeFSInitialSourcePayload,
+    binding: _DatasourceBinding,
+    connection_id: str,
+    request_id: str,
+) -> KnowledgeFSSourceCreatePayload:
+    metadata: dict[str, object] = {
+        "clientRequestId": request_id,
+        "preview": True,
+        "providerId": binding.provider_id,
+        "providerKind": binding.provider_kind,
+        "providerName": payload.provider,
+    }
+    if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+        metadata["crawlOptions"] = {
+            "includeSubpages": payload.crawl_options.include_subpages,
+            "limit": payload.crawl_options.limit,
+        }
+        source_type: Literal["connector", "web"] = "web"
+        uri = payload.root_url
+    else:
+        source_type = "connector"
+        uri = f"connector://{connection_id}"
+    return KnowledgeFSSourceCreatePayload(
+        connectionId=connection_id,
+        metadata=metadata,
+        name=payload.name,
+        status="disabled",
+        type=source_type,
+        uri=uri,
+    )
+
+
+def _start_workflow(
+    *,
+    facade,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    source_id: str,
+    request_id: str,
+    payload: KnowledgeFSInitialSourcePayload,
+):
+    if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+        return facade.import_selected_source_crawl(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=KnowledgeFSCrawlImportPayload(
+                sourceUrls=[selection.source_url for selection in payload.selection],
+            ),
+            idempotency_key=f"{request_id}:crawl-import",
+        )
+    if isinstance(payload, KnowledgeFSInitialOnlineDocumentSourcePayload):
+        import_payload = KnowledgeFSSourceWorkflowImportPayload(
+            KnowledgeFSOnlineDocumentWorkflowImportPayload(
+                kind="online-document-import",
+                items=payload.selection,
+            )
+        )
+    else:
+        import_payload = KnowledgeFSSourceWorkflowImportPayload(
+            KnowledgeFSOnlineDriveWorkflowImportPayload(
+                kind="online-drive-import",
+                items=payload.selection,
+            )
+        )
+    return facade.import_source_workflow(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        source_id=source_id,
+        payload=import_payload,
+        idempotency_key=f"{request_id}:connector-import",
+    )
+
+
+def _sync_policy_payload(
+    *, payload: KnowledgeFSInitialSourcePayload, expected_revision: int, source_version: int
+) -> KnowledgeFSSourceSyncPolicyPayload:
+    if payload.sync_policy == "manual":
+        return KnowledgeFSSourceSyncPolicyPayload(
+            enabled=False,
+            mode="manual",
+            expectedRevision=expected_revision,
+            expectedSourceVersion=source_version,
+        )
+    if payload.sync_policy == "daily":
+        return KnowledgeFSSourceSyncPolicyPayload(
+            enabled=True,
+            mode="interval",
+            expectedRevision=expected_revision,
+            expectedSourceVersion=source_version,
+        )
+    return KnowledgeFSSourceSyncPolicyPayload(
+        enabled=True,
+        mode="provider",
+        expectedRevision=expected_revision,
+        expectedSourceVersion=source_version,
+    )
+
+
+def start_initial_source_import(
     *,
     tenant_id: str,
     account_id: str,
     control_space_id: str,
     operation_id: str,
-    payload: KnowledgeFSInitialWebsiteSourcePayload,
+    payload: KnowledgeFSInitialSourcePayload,
     workflow_id: str | None = None,
 ) -> str:
-    """Idempotently create the provisional Source and start its selected crawl import."""
+    """Idempotently create a provisional Source, import its selection, and commit it."""
 
     session_maker = session_factory.get_session_maker()
     with session_maker() as session:
@@ -173,10 +355,10 @@ def start_initial_website_source_import(
             run_id=workflow_id,
         )
         if workflow.source_id is None:
-            raise RuntimeError("Initial website Source import workflow has no Source")
+            raise RuntimeError("Initial Source import workflow has no Source")
         source_id = workflow.source_id
     else:
-        request_id = f"initial-website-source:{operation_id}"
+        request_id = _request_id(operation_id=operation_id, payload=payload)
         source = _find_initial_source(
             facade=facade,
             tenant_id=tenant_id,
@@ -185,15 +367,19 @@ def start_initial_website_source_import(
             request_id=request_id,
         )
         if source is None:
-            credential_id, credential_name = _find_firecrawl_credential(
+            binding = _binding(payload)
+            credential_id, credential_name = _find_credential(
                 session_maker=session_maker,
                 tenant_id=tenant_id,
+                account_id=account_id,
+                binding=binding,
             )
-            connection = _find_or_create_firecrawl_connection(
+            connection = _find_or_create_connection(
                 facade=facade,
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_id=control_space_id,
+                binding=binding,
                 credential_id=credential_id,
                 credential_name=credential_name,
             )
@@ -201,38 +387,27 @@ def start_initial_website_source_import(
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_id=control_space_id,
-                payload=KnowledgeFSSourceCreatePayload(
-                    connectionId=connection.id,
-                    metadata={
-                        "clientRequestId": request_id,
-                        "crawlOptions": {
-                            "includeSubpages": payload.crawl_options.include_subpages,
-                            "limit": payload.crawl_options.limit,
-                        },
-                        "preview": True,
-                        "providerId": _FIRECRAWL_PROVIDER_ID,
-                    },
-                    name=payload.name,
-                    status="disabled",
-                    type="web",
-                    uri=payload.root_url,
+                payload=_source_payload(
+                    payload=payload,
+                    binding=binding,
+                    connection_id=connection.id,
+                    request_id=request_id,
                 ),
             )
         source_id = source.id
-        workflow = facade.import_selected_source_crawl(
+        workflow = _start_workflow(
+            facade=facade,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             source_id=source_id,
-            payload=KnowledgeFSCrawlImportPayload(
-                sourceUrls=[selection.source_url for selection in payload.selection],
-            ),
-            idempotency_key=f"{request_id}:crawl-import",
+            request_id=request_id,
+            payload=payload,
         )
 
     if workflow.state in {"queued", "running", "crawling", "importing", "syncing"}:
         raise KnowledgeFSInitialSourceNotReadyError(
-            "Initial website Source import is still running",
+            "Initial Source import is still running",
             workflow_id=workflow.id,
         )
     if workflow.state != "completed":
@@ -269,7 +444,7 @@ def start_initial_website_source_import(
                 ),
             )
         logger.error(
-            "Initial website Source import failed",
+            "Initial Source import failed",
             extra={
                 "control_space_id": control_space_id,
                 "error_code": workflow.last_error_code,
@@ -311,43 +486,99 @@ def start_initial_website_source_import(
         expected_revision = current_policy.revision
     except KnowledgeFSProductResourceNotFoundError:
         expected_revision = 0
-    if payload.sync_policy == "manual":
-        sync_policy = KnowledgeFSSourceSyncPolicyPayload(
-            enabled=False,
-            mode="manual",
-            expectedRevision=expected_revision,
-            expectedSourceVersion=committed_source.version,
-        )
-    elif payload.sync_policy == "daily":
-        sync_policy = KnowledgeFSSourceSyncPolicyPayload(
-            enabled=True,
-            mode="interval",
-            expectedRevision=expected_revision,
-            expectedSourceVersion=committed_source.version,
-        )
-    else:
-        sync_policy = KnowledgeFSSourceSyncPolicyPayload(
-            enabled=True,
-            mode="provider",
-            expectedRevision=expected_revision,
-            expectedSourceVersion=committed_source.version,
-        )
     facade.update_source_sync_policy(
         tenant_id=tenant_id,
         account_id=account_id,
         control_space_id=control_space_id,
         source_id=source_id,
-        payload=sync_policy,
+        payload=_sync_policy_payload(
+            payload=payload,
+            expected_revision=expected_revision,
+            source_version=committed_source.version,
+        ),
     )
     return workflow.id
 
 
-@shared_task(
-    bind=True,
-    queue="knowledge_fs_lifecycle",
-    max_retries=180,
-    default_retry_delay=2,
-)
+def start_initial_website_source_import(
+    *,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    operation_id: str,
+    payload: KnowledgeFSInitialWebsiteSourcePayload,
+    workflow_id: str | None = None,
+) -> str:
+    """Compatibility wrapper for callers using the original website-only protocol."""
+
+    return start_initial_source_import(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        operation_id=operation_id,
+        payload=payload,
+        workflow_id=workflow_id,
+    )
+
+
+def _run_initial_source_task(
+    task,
+    *,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    operation_id: str,
+    payload: dict[str, object],
+    workflow_id: str | None,
+) -> str:
+    try:
+        return start_initial_source_import(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id=operation_id,
+            payload=_INITIAL_SOURCE_ADAPTER.validate_python(payload),
+            workflow_id=workflow_id,
+        )
+    except KnowledgeFSInitialSourceNotReadyError as exc:
+        if exc.workflow_id is not None:
+            raise task.retry(
+                exc=exc,
+                kwargs={
+                    "tenant_id": tenant_id,
+                    "account_id": account_id,
+                    "control_space_id": control_space_id,
+                    "operation_id": operation_id,
+                    "payload": payload,
+                    "workflow_id": exc.workflow_id,
+                },
+            )
+        raise task.retry(exc=exc)
+
+
+@shared_task(bind=True, queue="knowledge_fs_lifecycle", max_retries=180, default_retry_delay=2)
+def import_initial_source(
+    self,
+    *,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    operation_id: str,
+    payload: dict[str, object],
+    workflow_id: str | None = None,
+) -> str:
+    return _run_initial_source_task(
+        self,
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        operation_id=operation_id,
+        payload=payload,
+        workflow_id=workflow_id,
+    )
+
+
+@shared_task(bind=True, queue="knowledge_fs_lifecycle", max_retries=180, default_retry_delay=2)
 def import_initial_website_source(
     self,
     *,
@@ -358,6 +589,8 @@ def import_initial_website_source(
     payload: dict[str, object],
     workflow_id: str | None = None,
 ) -> str:
+    """Compatibility task for already-enqueued website-only messages."""
+
     try:
         return start_initial_website_source_import(
             tenant_id=tenant_id,
@@ -383,4 +616,9 @@ def import_initial_website_source(
         raise self.retry(exc=exc)
 
 
-__all__ = ["import_initial_website_source", "start_initial_website_source_import"]
+__all__ = [
+    "import_initial_source",
+    "import_initial_website_source",
+    "start_initial_source_import",
+    "start_initial_website_source_import",
+]

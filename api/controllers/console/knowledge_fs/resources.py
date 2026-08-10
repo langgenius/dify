@@ -48,6 +48,7 @@ from services.knowledge_fs.control_plane_service import (
 from services.knowledge_fs.credential_service import (
     KnowledgeFSCredentialPolicyError,
 )
+from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.product_authorization import (
     KnowledgeFSProductNotFoundError,
 )
@@ -100,6 +101,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSInitialSourcePreviewPayload,
+    KnowledgeFSInitialSourcePreviewResponse,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
@@ -246,6 +249,7 @@ register_schema_models(
     KnowledgeFSSourceConnectionRefreshPayload,
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewSelectionPayload,
+    KnowledgeFSInitialSourcePreviewPayload,
     KnowledgeFSSourceDeletePayload,
     KnowledgeFSSourceDeleteQuery,
     KnowledgeFSSourceFilesQuery,
@@ -340,6 +344,7 @@ register_response_schema_models(
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewStatsResponse,
     KnowledgeFSPresignedUploadResponse,
+    KnowledgeFSInitialSourcePreviewResponse,
     KnowledgeFSUploadSessionCreateResponse,
     KnowledgeFSUploadSessionMutationResponse,
 )
@@ -577,6 +582,28 @@ def _overview_stats_response(
         stale_source_count=stats.current.stale_source_count,
         window=outcomes.window,
     )
+
+
+@console_ns.route("/knowledge-fs/source-provider-preview")
+class KnowledgeFSInitialSourcePreviewApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSInitialSourcePreviewPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Datasource resources available for an initial Source",
+        console_ns.models[KnowledgeFSInitialSourcePreviewResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self):
+        account, tenant_id = current_account_with_tenant()
+        result = KnowledgeFSInitialSourcePreviewService(session_factory.get_session_maker()).preview(
+            tenant_id=tenant_id,
+            account=account,
+            payload=_payload(KnowledgeFSInitialSourcePreviewPayload),
+        )
+        return dump_response(KnowledgeFSInitialSourcePreviewResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces")

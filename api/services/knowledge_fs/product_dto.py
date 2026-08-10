@@ -113,16 +113,51 @@ class KnowledgeFSInitialWebsiteSelectionPayload(BaseModel):
         return source_url.strip()
 
 
+class KnowledgeFSOnlineDocumentWorkflowImportItemPayload(BaseModel):
+    etag: str | None = Field(default=None, max_length=1_024)
+    last_edited_time: str | None = Field(default=None, max_length=128, alias="lastEditedTime")
+    name: str | None = Field(default=None, max_length=500)
+    page_id: str = Field(min_length=1, max_length=1_024, alias="pageId")
+    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
+    type: str = Field(min_length=1, max_length=128)
+    workspace_id: str = Field(min_length=1, max_length=1_024, alias="workspaceId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
+    bucket: str | None = Field(default=None, max_length=1_024)
+    etag: str | None = Field(default=None, max_length=1_024)
+    id: str = Field(min_length=1, max_length=1_024)
+    mime_type: str | None = Field(default=None, max_length=255, alias="mimeType")
+    name: str = Field(min_length=1, max_length=500)
+    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
+    credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
+    datasource: str = Field(min_length=1, max_length=255)
+    plugin_id: str = Field(min_length=1, max_length=255, alias="pluginId")
+    provider: str = Field(min_length=1, max_length=255)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
     kind: Literal["website_crawl"]
     name: str = Field(min_length=1, max_length=200)
-    provider: Literal["firecrawl"]
+    provider: str = Field(min_length=1, max_length=255)
+    plugin_id: str | None = Field(default=None, min_length=1, max_length=255, alias="pluginId")
+    datasource: str = Field(default="crawl", min_length=1, max_length=255)
+    credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
     sync_policy: Literal["provider", "daily", "manual"] = "provider"
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
     @model_validator(mode="after")
     def validate_selection(self) -> KnowledgeFSInitialWebsiteSourcePayload:
@@ -130,6 +165,68 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
         if len(set(source_urls)) != len(source_urls):
             raise ValueError("initial website selection URLs must be unique")
         return self
+
+
+class KnowledgeFSInitialOnlineDocumentSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
+    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
+    kind: Literal["online_document"]
+    name: str = Field(min_length=1, max_length=200)
+    selection: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    sync_policy: Literal["provider", "daily", "manual"] = "provider"
+
+
+class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
+    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
+    kind: Literal["online_drive"]
+    name: str = Field(min_length=1, max_length=200)
+    selection: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    sync_policy: Literal["provider", "daily", "manual"] = "provider"
+
+
+class KnowledgeFSInitialSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):
+    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
+    kind: Literal["online_document", "online_drive"]
+    parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
+
+
+class KnowledgeFSInitialSourcePreviewDocumentResponse(ResponseModel):
+    last_edited_time: str | None = Field(
+        default=None, validation_alias=AliasChoices("last_edited_time", "lastEditedTime")
+    )
+    name: str
+    page_id: str = Field(validation_alias=AliasChoices("page_id", "pageId"))
+    provider_item_id: str = Field(validation_alias=AliasChoices("provider_item_id", "providerItemId"))
+    type: str
+    workspace_id: str = Field(validation_alias=AliasChoices("workspace_id", "workspaceId"))
+    workspace_name: str | None = Field(default=None, validation_alias=AliasChoices("workspace_name", "workspaceName"))
+
+
+class KnowledgeFSInitialSourcePreviewFileResponse(ResponseModel):
+    bucket: str | None = None
+    id: str
+    mime_type: str | None = Field(default=None, validation_alias=AliasChoices("mime_type", "mimeType"))
+    name: str
+    provider_item_id: str = Field(validation_alias=AliasChoices("provider_item_id", "providerItemId"))
+    size: int = Field(ge=0)
+    type: str
+
+
+class KnowledgeFSInitialSourcePreviewResponse(ResponseModel):
+    documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = Field(default_factory=list)
+    files: list[KnowledgeFSInitialSourcePreviewFileResponse] = Field(default_factory=list)
+    kind: Literal["online_document", "online_drive"]
+    next_page_parameters: dict[str, JsonValue] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("next_page_parameters", "nextPageParameters"),
+    )
+
+
+KnowledgeFSInitialSourcePayload = Annotated[
+    KnowledgeFSInitialWebsiteSourcePayload
+    | KnowledgeFSInitialOnlineDocumentSourcePayload
+    | KnowledgeFSInitialOnlineDriveSourcePayload,
+    Field(discriminator="kind"),
+]
 
 
 class KnowledgeFSSpaceCreatePayload(BaseModel):
@@ -141,7 +238,7 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
     embedding: KnowledgeFSModelIntent | None = None
     retrieval: KnowledgeFSRetrievalProfileIntent | None = None
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=255)
-    initial_source: KnowledgeFSInitialWebsiteSourcePayload | None = None
+    initial_source: KnowledgeFSInitialSourcePayload | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -1573,29 +1670,6 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
-class KnowledgeFSOnlineDocumentWorkflowImportItemPayload(BaseModel):
-    etag: str | None = Field(default=None, max_length=1_024)
-    last_edited_time: str | None = Field(default=None, max_length=128, alias="lastEditedTime")
-    name: str | None = Field(default=None, max_length=500)
-    page_id: str = Field(min_length=1, max_length=1_024, alias="pageId")
-    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
-    type: str = Field(min_length=1, max_length=128)
-    workspace_id: str = Field(min_length=1, max_length=1_024, alias="workspaceId")
-
-    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
-
-
-class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
-    bucket: str | None = Field(default=None, max_length=1_024)
-    etag: str | None = Field(default=None, max_length=1_024)
-    id: str = Field(min_length=1, max_length=1_024)
-    mime_type: str | None = Field(default=None, max_length=255, alias="mimeType")
-    name: str = Field(min_length=1, max_length=500)
-    provider_item_id: str = Field(min_length=1, max_length=1_024, alias="providerItemId")
-
-    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
-
-
 class KnowledgeFSOnlineDocumentWorkflowImportPayload(BaseModel):
     items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
     kind: Literal["online-document-import"]
@@ -2798,6 +2872,14 @@ __all__ = [
     "KnowledgeFSExternalAccessPayload",
     "KnowledgeFSExternalAccessResponse",
     "KnowledgeFSIdempotencyHeader",
+    "KnowledgeFSInitialDatasourceBindingPayload",
+    "KnowledgeFSInitialOnlineDocumentSourcePayload",
+    "KnowledgeFSInitialOnlineDriveSourcePayload",
+    "KnowledgeFSInitialSourcePayload",
+    "KnowledgeFSInitialSourcePreviewDocumentResponse",
+    "KnowledgeFSInitialSourcePreviewFileResponse",
+    "KnowledgeFSInitialSourcePreviewPayload",
+    "KnowledgeFSInitialSourcePreviewResponse",
     "KnowledgeFSInitialWebsiteCrawlOptionsPayload",
     "KnowledgeFSInitialWebsiteSelectionPayload",
     "KnowledgeFSInitialWebsiteSourcePayload",
@@ -2809,6 +2891,8 @@ __all__ = [
     "KnowledgeFSMemberBindingPayload",
     "KnowledgeFSMembersReplacePayload",
     "KnowledgeFSModelIntent",
+    "KnowledgeFSOnlineDocumentWorkflowImportItemPayload",
+    "KnowledgeFSOnlineDriveWorkflowImportItemPayload",
     "KnowledgeFSOverviewBaseStatsResponse",
     "KnowledgeFSOverviewCountComparisonResponse",
     "KnowledgeFSOverviewHealthComponentResponse",

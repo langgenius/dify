@@ -733,6 +733,56 @@ export const zKnowledgeFsResearchTaskPlanPayload = z.object({
   topK: z.int().gte(1).lte(50).nullish(),
 })
 
+export const zJsonValue = z.unknown()
+
+/**
+ * KnowledgeFSInitialSourcePreviewPayload
+ */
+export const zKnowledgeFsInitialSourcePreviewPayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.enum(['online_document', 'online_drive']),
+  parameters: z.record(z.string(), zJsonValue).optional(),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewDocumentResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
+  last_edited_time: z.string().nullish(),
+  name: z.string(),
+  page_id: z.string(),
+  provider_item_id: z.string(),
+  type: z.string(),
+  workspace_id: z.string(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewFileResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewFileResponse = z.object({
+  bucket: z.string().nullish(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  provider_item_id: z.string(),
+  size: z.int().gte(0),
+  type: z.string(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
+  documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
+  files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
+  kind: z.enum(['online_document', 'online_drive']),
+  next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
+})
+
 /**
  * KnowledgeFSModelIntent
  */
@@ -1599,13 +1649,95 @@ export const zKnowledgeFsInitialWebsiteSelectionPayload = z.object({
  */
 export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   crawl_options: zKnowledgeFsInitialWebsiteCrawlOptionsPayload,
+  credentialId: z.string().min(1).max(255).nullish(),
+  datasource: z.string().min(1).max(255).optional().default('crawl'),
   kind: z.literal('website_crawl'),
   name: z.string().min(1).max(200),
-  provider: z.literal('firecrawl'),
+  pluginId: z.string().min(1).max(255).nullish(),
+  provider: z.string().min(1).max(255),
   root_url: z.string().min(1).max(4096),
   selection: z.array(zKnowledgeFsInitialWebsiteSelectionPayload).min(1).max(200),
   sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
 })
+
+/**
+ * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
+  etag: z.string().max(1024).nullish(),
+  lastEditedTime: z.string().max(128).nullish(),
+  name: z.string().max(500).nullish(),
+  pageId: z.string().min(1).max(1024),
+  providerItemId: z.string().min(1).max(1024),
+  type: z.string().min(1).max(128),
+  workspaceId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSInitialOnlineDocumentSourcePayload
+ */
+export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.literal('online_document'),
+  name: z.string().min(1).max(200),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+  selection: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+})
+
+/**
+ * KnowledgeFSOnlineDocumentWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-document-import'),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
+  bucket: z.string().max(1024).nullish(),
+  etag: z.string().max(1024).nullish(),
+  id: z.string().min(1).max(1024),
+  mimeType: z.string().max(255).nullish(),
+  name: z.string().min(1).max(500),
+  providerItemId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSInitialOnlineDriveSourcePayload
+ */
+export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.literal('online_drive'),
+  name: z.string().min(1).max(200),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+  selection: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-drive-import'),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowImportPayload
+ */
+export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
+  zKnowledgeFsOnlineDocumentWorkflowImportPayload.extend({
+    kind: z.literal('online-document-import'),
+  }),
+  zKnowledgeFsOnlineDriveWorkflowImportPayload.extend({ kind: z.literal('online-drive-import') }),
+])
 
 /**
  * KnowledgeFSRerankIntent
@@ -1647,7 +1779,13 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
     .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
     .nullish(),
   idempotency_key: z.string().min(1).max(255).nullish(),
-  initial_source: zKnowledgeFsInitialWebsiteSourcePayload.nullish(),
+  initial_source: z
+    .discriminatedUnion('kind', [
+      zKnowledgeFsInitialWebsiteSourcePayload.extend({ kind: z.literal('website_crawl') }),
+      zKnowledgeFsInitialOnlineDocumentSourcePayload.extend({ kind: z.literal('online_document') }),
+      zKnowledgeFsInitialOnlineDriveSourcePayload.extend({ kind: z.literal('online_drive') }),
+    ])
+    .nullish(),
   name: z.string().min(1).max(40),
   retrieval: zKnowledgeFsRetrievalProfileIntent.nullish(),
   slug: z
@@ -2078,57 +2216,6 @@ export const zKnowledgeFsSourcePagesResponse = z.object({
 })
 
 /**
- * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
- */
-export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
-  etag: z.string().max(1024).nullish(),
-  lastEditedTime: z.string().max(128).nullish(),
-  name: z.string().max(500).nullish(),
-  pageId: z.string().min(1).max(1024),
-  providerItemId: z.string().min(1).max(1024),
-  type: z.string().min(1).max(128),
-  workspaceId: z.string().min(1).max(1024),
-})
-
-/**
- * KnowledgeFSOnlineDocumentWorkflowImportPayload
- */
-export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
-  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
-  kind: z.literal('online-document-import'),
-})
-
-/**
- * KnowledgeFSOnlineDriveWorkflowImportItemPayload
- */
-export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
-  bucket: z.string().max(1024).nullish(),
-  etag: z.string().max(1024).nullish(),
-  id: z.string().min(1).max(1024),
-  mimeType: z.string().max(255).nullish(),
-  name: z.string().min(1).max(500),
-  providerItemId: z.string().min(1).max(1024),
-})
-
-/**
- * KnowledgeFSOnlineDriveWorkflowImportPayload
- */
-export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
-  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
-  kind: z.literal('online-drive-import'),
-})
-
-/**
- * KnowledgeFSSourceWorkflowImportPayload
- */
-export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
-  zKnowledgeFsOnlineDocumentWorkflowImportPayload.extend({
-    kind: z.literal('online-document-import'),
-  }),
-  zKnowledgeFsOnlineDriveWorkflowImportPayload.extend({ kind: z.literal('online-drive-import') }),
-])
-
-/**
  * KnowledgeFSTraceProfileResponse
  */
 export const zKnowledgeFsTraceProfileResponse = z.object({
@@ -2212,6 +2299,14 @@ export const zGetKnowledgeFsResearchTasksByTaskIdEventsQuery = z.object({
  * KnowledgeFS research task event stream
  */
 export const zGetKnowledgeFsResearchTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
+
+export const zPostKnowledgeFsSourceProviderPreviewBody = zKnowledgeFsInitialSourcePreviewPayload
+
+/**
+ * Datasource resources available for an initial Source
+ */
+export const zPostKnowledgeFsSourceProviderPreviewResponse =
+  zKnowledgeFsInitialSourcePreviewResponse
 
 export const zGetKnowledgeFsSpacesQuery = z.object({
   creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),

@@ -1,6 +1,5 @@
 import type {
   KnowledgeFsControlSpaceVisibility,
-  KnowledgeFsInitialWebsiteSourcePayload,
   KnowledgeFsModelIntent,
   KnowledgeFsSpaceCreatePayload,
   KnowledgeFsSpaceCreateResponse,
@@ -21,7 +20,7 @@ type CreateKnowledgeValues = {
   existingKnowledge?: KnowledgeFsSpaceCreateResponse
   description: string
   idempotencyKey: string
-  initialSource?: KnowledgeFsInitialWebsiteSourcePayload
+  initialSource?: NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
   name: string
   onCreated: (knowledgeSpace: KnowledgeFsSpaceCreateResponse) => void
   visibility: KnowledgeVisibility

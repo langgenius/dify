@@ -5,11 +5,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from models.knowledge_fs import KnowledgeFSControlSpaceState
-from services.knowledge_fs.product_dto import KnowledgeFSInitialWebsiteSourcePayload
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSInitialOnlineDocumentSourcePayload,
+    KnowledgeFSInitialOnlineDriveSourcePayload,
+    KnowledgeFSInitialWebsiteSourcePayload,
+)
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
 from tasks.knowledge_fs_initial_source_tasks import (
     KnowledgeFSInitialSourceNotReadyError,
+    import_initial_source,
     import_initial_website_source,
+    start_initial_source_import,
     start_initial_website_source_import,
 )
 
@@ -33,6 +39,51 @@ def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePaylo
     )
 
 
+def _document_payload() -> KnowledgeFSInitialOnlineDocumentSourcePayload:
+    return KnowledgeFSInitialOnlineDocumentSourcePayload.model_validate(
+        {
+            "kind": "online_document",
+            "name": "Product wiki",
+            "pluginId": "langgenius/notion_datasource",
+            "provider": "notion",
+            "datasource": "pages",
+            "credentialId": "notion-credential-1",
+            "selection": [
+                {
+                    "lastEditedTime": "2026-08-10T00:00:00Z",
+                    "name": "Roadmap",
+                    "pageId": "page-1",
+                    "providerItemId": "notion:page-1",
+                    "type": "page",
+                    "workspaceId": "workspace-1",
+                }
+            ],
+        }
+    )
+
+
+def _drive_payload() -> KnowledgeFSInitialOnlineDriveSourcePayload:
+    return KnowledgeFSInitialOnlineDriveSourcePayload.model_validate(
+        {
+            "kind": "online_drive",
+            "name": "Team drive",
+            "pluginId": "langgenius/google_drive",
+            "provider": "google_drive",
+            "datasource": "google_drive",
+            "credentialId": "drive-credential-1",
+            "selection": [
+                {
+                    "id": "file-1",
+                    "mimeType": "application/pdf",
+                    "name": "Plan.pdf",
+                    "providerItemId": "google-drive:file-1",
+                }
+            ],
+            "sync_policy": "manual",
+        }
+    )
+
+
 def _facade() -> MagicMock:
     facade = MagicMock()
     facade.list_sources.return_value = SimpleNamespace(data=[], next_cursor=None)
@@ -42,7 +93,13 @@ def _facade() -> MagicMock:
     facade.list_source_connections.return_value = SimpleNamespace(
         data=[
             SimpleNamespace(
-                configuration={"credentialId": "firecrawl-credential-1"},
+                configuration={
+                    "credentialId": "firecrawl-credential-1",
+                    "datasource": "crawl",
+                    "pluginId": "langgenius/firecrawl_datasource",
+                    "provider": "firecrawl",
+                    "providerKind": "website",
+                },
                 id="connection-1",
                 provider_id="plugin-daemon-website",
                 status="active",
@@ -165,6 +222,85 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     assert sync_payload.expected_source_version == 4
 
 
+@pytest.mark.parametrize(
+    ("payload", "provider_id", "credential_id", "workflow_kind", "expected_source_name"),
+    [
+        (
+            _document_payload(),
+            "plugin-daemon-online-document",
+            "notion-credential-1",
+            "online-document-import",
+            "Product wiki",
+        ),
+        (
+            _drive_payload(),
+            "plugin-daemon-online-drive",
+            "drive-credential-1",
+            "online-drive-import",
+            "Team drive",
+        ),
+    ],
+)
+def test_initial_connector_source_import_uses_exact_binding_and_selection(
+    payload: KnowledgeFSInitialOnlineDocumentSourcePayload | KnowledgeFSInitialOnlineDriveSourcePayload,
+    provider_id: str,
+    credential_id: str,
+    workflow_kind: str,
+    expected_source_name: str,
+) -> None:
+    facade = _facade()
+    facade.list_source_providers.return_value = SimpleNamespace(data=[SimpleNamespace(id=provider_id, available=True)])
+    facade.list_source_connections.return_value = SimpleNamespace(data=[], next_cursor=None)
+    facade.create_source_connection.return_value = SimpleNamespace(id="connector-1", status="active")
+    facade.import_source_workflow.return_value = SimpleNamespace(
+        id="connector-workflow-1",
+        source_id="source-1",
+        state="completed",
+    )
+    facade.get_source.return_value = SimpleNamespace(
+        metadata={"clientRequestId": "initial-source:operation-1", "preview": True},
+        status="disabled",
+        version=3,
+    )
+    facade.update_source.return_value = SimpleNamespace(
+        metadata={"clientRequestId": "initial-source:operation-1", "preview": False},
+        status="active",
+        version=4,
+    )
+    credential = SimpleNamespace(id=credential_id, name=expected_source_name)
+
+    with _runtime(facade, credential=credential):
+        result = start_initial_source_import(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=payload,
+        )
+
+    assert result == "connector-workflow-1"
+    connection_payload = facade.create_source_connection.call_args.kwargs["payload"]
+    assert connection_payload.provider_id == provider_id
+    assert connection_payload.configuration == {
+        "credentialId": credential_id,
+        "datasource": payload.datasource,
+        "pluginId": payload.plugin_id,
+        "provider": payload.provider,
+        "providerKind": "online-document" if workflow_kind == "online-document-import" else "online-drive",
+    }
+    source_payload = facade.create_source.call_args.kwargs["payload"]
+    assert source_payload.connection_id == "connector-1"
+    assert source_payload.name == expected_source_name
+    assert source_payload.type == "connector"
+    assert source_payload.uri == "connector://connector-1"
+    assert source_payload.metadata["providerId"] == provider_id
+    import_payload = facade.import_source_workflow.call_args.kwargs["payload"].root
+    assert import_payload.kind == workflow_kind
+    assert import_payload.items == payload.selection
+    sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert sync_payload.mode == ("manual" if workflow_kind == "online-drive-import" else "provider")
+
+
 def test_initial_website_source_import_reuses_source_across_pages_and_preserves_failure() -> None:
     facade = _facade()
     existing_source = SimpleNamespace(
@@ -216,7 +352,13 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
         SimpleNamespace(
             data=[
                 SimpleNamespace(
-                    configuration={"credentialId": "firecrawl-credential-1"},
+                    configuration={
+                        "credentialId": "firecrawl-credential-1",
+                        "datasource": "crawl",
+                        "pluginId": "langgenius/firecrawl_datasource",
+                        "provider": "firecrawl",
+                        "providerKind": "website",
+                    },
                     id="connection-2",
                     provider_id="plugin-daemon-website",
                     status="active",
@@ -365,7 +507,13 @@ def test_initial_website_source_import_retries_provisioning_firecrawl_connection
     facade.list_source_connections.return_value = SimpleNamespace(
         data=[
             SimpleNamespace(
-                configuration={"credentialId": "firecrawl-credential-1"},
+                configuration={
+                    "credentialId": "firecrawl-credential-1",
+                    "datasource": "crawl",
+                    "pluginId": "langgenius/firecrawl_datasource",
+                    "provider": "firecrawl",
+                    "providerKind": "website",
+                },
                 id="connection-1",
                 provider_id="plugin-daemon-website",
                 status="provisioning",
@@ -523,3 +671,25 @@ def test_initial_website_source_task_retries_with_workflow_id() -> None:
             "workflow_id": "workflow-1",
         },
     )
+
+
+def test_initial_source_task_validates_discriminated_connector_payload() -> None:
+    serialized_payload = _document_payload().model_dump(mode="json", by_alias=True)
+    with patch(
+        "tasks.knowledge_fs_initial_source_tasks.start_initial_source_import",
+        return_value="workflow-1",
+    ) as start_import:
+        assert (
+            import_initial_source.run(
+                tenant_id="tenant-1",
+                account_id="account-1",
+                control_space_id="control-1",
+                operation_id="operation-1",
+                payload=serialized_payload,
+            )
+            == "workflow-1"
+        )
+
+    parsed_payload = start_import.call_args.kwargs["payload"]
+    assert isinstance(parsed_payload, KnowledgeFSInitialOnlineDocumentSourcePayload)
+    assert parsed_payload.credential_id == "notion-credential-1"

@@ -18,6 +18,26 @@ export type KnowledgeFsAdmittedQueryRequest = {
   sessionId?: string | null
 }
 
+export type KnowledgeFsInitialSourcePreviewPayload = {
+  credentialId: string
+  datasource: string
+  kind: 'online_document' | 'online_drive'
+  parameters?: {
+    [key: string]: JsonValue
+  }
+  pluginId: string
+  provider: string
+}
+
+export type KnowledgeFsInitialSourcePreviewResponse = {
+  documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
+  files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
+  kind: 'online_document' | 'online_drive'
+  next_page_parameters?: {
+    [key: string]: JsonValue
+  } | null
+}
+
 export type KnowledgeFsSpaceListResponse = {
   data: Array<KnowledgeFsSpaceListItemResponse>
   has_more: boolean
@@ -30,7 +50,17 @@ export type KnowledgeFsSpaceCreatePayload = {
   embedding?: KnowledgeFsModelIntent | null
   icon?: string | null
   idempotency_key?: string | null
-  initial_source?: KnowledgeFsInitialWebsiteSourcePayload | null
+  initial_source?:
+    | ({
+        kind: 'website_crawl'
+      } & KnowledgeFsInitialWebsiteSourcePayload)
+    | ({
+        kind: 'online_document'
+      } & KnowledgeFsInitialOnlineDocumentSourcePayload)
+    | ({
+        kind: 'online_drive'
+      } & KnowledgeFsInitialOnlineDriveSourcePayload)
+    | null
   name: string
   retrieval?: KnowledgeFsRetrievalProfileIntent | null
   slug: string
@@ -947,6 +977,28 @@ export type KnowledgeFsQueryImageReference = {
   uploadFileId: string
 }
 
+export type JsonValue = unknown
+
+export type KnowledgeFsInitialSourcePreviewDocumentResponse = {
+  last_edited_time?: string | null
+  name: string
+  page_id: string
+  provider_item_id: string
+  type: string
+  workspace_id: string
+  workspace_name?: string | null
+}
+
+export type KnowledgeFsInitialSourcePreviewFileResponse = {
+  bucket?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  provider_item_id: string
+  size: number
+  type: string
+}
+
 export type KnowledgeFsSpaceListItemResponse = {
   control_space_id: string
   created_at: string
@@ -970,11 +1022,36 @@ export type KnowledgeFsModelIntent = {
 
 export type KnowledgeFsInitialWebsiteSourcePayload = {
   crawl_options: KnowledgeFsInitialWebsiteCrawlOptionsPayload
+  credentialId?: string | null
+  datasource?: string
   kind: 'website_crawl'
   name: string
-  provider: 'firecrawl'
+  pluginId?: string | null
+  provider: string
   root_url: string
   selection: Array<KnowledgeFsInitialWebsiteSelectionPayload>
+  sync_policy?: 'daily' | 'manual' | 'provider'
+}
+
+export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
+  credentialId: string
+  datasource: string
+  kind: 'online_document'
+  name: string
+  pluginId: string
+  provider: string
+  selection: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  sync_policy?: 'daily' | 'manual' | 'provider'
+}
+
+export type KnowledgeFsInitialOnlineDriveSourcePayload = {
+  credentialId: string
+  datasource: string
+  kind: 'online_drive'
+  name: string
+  pluginId: string
+  provider: string
+  selection: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
   sync_policy?: 'daily' | 'manual' | 'provider'
 }
 
@@ -1478,6 +1555,25 @@ export type KnowledgeFsInitialWebsiteSelectionPayload = {
   title?: string | null
 }
 
+export type KnowledgeFsOnlineDocumentWorkflowImportItemPayload = {
+  etag?: string | null
+  lastEditedTime?: string | null
+  name?: string | null
+  pageId: string
+  providerItemId: string
+  type: string
+  workspaceId: string
+}
+
+export type KnowledgeFsOnlineDriveWorkflowImportItemPayload = {
+  bucket?: string | null
+  etag?: string | null
+  id: string
+  mimeType?: string | null
+  name: string
+  providerItemId: string
+}
+
 export type KnowledgeFsRerankIntent = {
   enabled: boolean
   model?: KnowledgeFsModelIntent | null
@@ -1578,25 +1674,6 @@ export type KnowledgeFsSourcePageResponse = {
   type: string
 }
 
-export type KnowledgeFsOnlineDocumentWorkflowImportItemPayload = {
-  etag?: string | null
-  lastEditedTime?: string | null
-  name?: string | null
-  pageId: string
-  providerItemId: string
-  type: string
-  workspaceId: string
-}
-
-export type KnowledgeFsOnlineDriveWorkflowImportItemPayload = {
-  bucket?: string | null
-  etag?: string | null
-  id: string
-  mimeType?: string | null
-  name: string
-  providerItemId: string
-}
-
 export type KnowledgeFsTraceProfileResponse = {
   embedding_model?: string | null
   embedding_vector_space_id?: string | null
@@ -1670,6 +1747,20 @@ export type GetKnowledgeFsResearchTasksByTaskIdEventsResponses = {
 
 export type GetKnowledgeFsResearchTasksByTaskIdEventsResponse =
   GetKnowledgeFsResearchTasksByTaskIdEventsResponses[keyof GetKnowledgeFsResearchTasksByTaskIdEventsResponses]
+
+export type PostKnowledgeFsSourceProviderPreviewData = {
+  body: KnowledgeFsInitialSourcePreviewPayload
+  path?: never
+  query?: never
+  url: '/knowledge-fs/source-provider-preview'
+}
+
+export type PostKnowledgeFsSourceProviderPreviewResponses = {
+  200: KnowledgeFsInitialSourcePreviewResponse
+}
+
+export type PostKnowledgeFsSourceProviderPreviewResponse =
+  PostKnowledgeFsSourceProviderPreviewResponses[keyof PostKnowledgeFsSourceProviderPreviewResponses]
 
 export type GetKnowledgeFsSpacesData = {
   body?: never

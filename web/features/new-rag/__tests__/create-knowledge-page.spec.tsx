@@ -10,6 +10,7 @@ const serviceMock = vi.hoisted(() => ({
   createKfsSource: vi.fn(),
   getKfsSource: vi.fn(),
   getCrawlStatus: vi.fn(),
+  previewInitialSource: vi.fn(),
   getDefaultModel: vi.fn(),
   getSpace: vi.fn(),
   getSyncPolicy: vi.fn(),
@@ -25,6 +26,21 @@ const serviceMock = vi.hoisted(() => ({
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
   sourcesKey: vi.fn(() => ['console', 'knowledgeFs', 'sources']),
   documentsKey: vi.fn(() => ['console', 'knowledgeFs', 'documents']),
+}))
+
+const datasourceQueryMock = vi.hoisted(() => ({
+  auth: {
+    data: { result: [] as Array<Record<string, unknown>> },
+    error: null as unknown,
+    isPending: false,
+    refetch: vi.fn(),
+  },
+  plugins: {
+    data: [] as Array<Record<string, unknown>>,
+    error: null as unknown,
+    isPending: false,
+    refetch: vi.fn(),
+  },
 }))
 
 const routerMock = vi.hoisted(() => ({
@@ -82,6 +98,9 @@ vi.mock('jotai', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
+      sourceProviderPreview: {
+        post: serviceMock.previewInitialSource,
+      },
       spaces: {
         byControlSpaceId: {
           get: serviceMock.getSpace,
@@ -153,8 +172,160 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('@/service/datasets', () => ({
   checkFirecrawlTaskStatus: serviceMock.getCrawlStatus,
+  checkJinaReaderTaskStatus: serviceMock.getCrawlStatus,
+  checkWatercrawlTaskStatus: serviceMock.getCrawlStatus,
   createFirecrawlTask: serviceMock.createCrawl,
+  createJinaReaderTask: serviceMock.createCrawl,
+  createWatercrawlTask: serviceMock.createCrawl,
 }))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useDataSourceList: () => datasourceQueryMock.plugins,
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceListAuth: () => datasourceQueryMock.auth,
+}))
+
+const firecrawlDatasourcePlugin = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+          name: 'crawl',
+          provider: 'firecrawl',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      icon: 'icon.svg',
+      label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      name: 'firecrawl',
+      tags: [],
+    },
+    provider_type: 'website_crawl',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/firecrawl_datasource',
+  plugin_unique_identifier: 'langgenius/firecrawl_datasource:1.0.0@local',
+  provider: 'firecrawl',
+}
+
+const firecrawlDatasourceAuth = {
+  author: 'langgenius',
+  credentials_list: [
+    {
+      avatar_url: '',
+      credential: {},
+      id: 'firecrawl-credential-1',
+      is_default: true,
+      name: 'Default Firecrawl',
+      type: 'api-key',
+    },
+  ],
+  description: { en_US: 'Firecrawl' },
+  icon: 'icon.svg',
+  label: { en_US: 'Firecrawl' },
+  name: 'firecrawl',
+  plugin_id: 'langgenius/firecrawl_datasource',
+  plugin_unique_identifier: 'langgenius/firecrawl_datasource:1.0.0@local',
+  provider: 'firecrawl',
+}
+
+const notionDatasourcePlugin = {
+  ...firecrawlDatasourcePlugin,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    datasources: [
+      {
+        description: { en_US: 'Notion', zh_Hans: 'Notion' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Notion', zh_Hans: 'Notion' },
+          name: 'notion',
+          provider: 'notion',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      label: { en_US: 'Notion', zh_Hans: 'Notion' },
+      name: 'notion',
+    },
+    provider_type: 'online_document',
+  },
+  plugin_id: 'langgenius/notion_datasource',
+  plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
+  provider: 'notion',
+}
+
+const notionDatasourceAuth = {
+  ...firecrawlDatasourceAuth,
+  credentials_list: [
+    {
+      ...firecrawlDatasourceAuth.credentials_list[0],
+      id: 'notion-credential-1',
+      name: 'Default Notion',
+    },
+  ],
+  label: { en_US: 'Notion' },
+  name: 'notion',
+  plugin_id: 'langgenius/notion_datasource',
+  plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
+  provider: 'notion',
+}
+
+const googleDriveDatasourcePlugin = {
+  ...firecrawlDatasourcePlugin,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    datasources: [
+      {
+        description: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+          name: 'google_drive',
+          provider: 'google_drive',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      label: { en_US: 'Google Drive', zh_Hans: 'Google Drive' },
+      name: 'google_drive',
+    },
+    provider_type: 'online_drive',
+  },
+  plugin_id: 'langgenius/google_drive',
+  plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
+  provider: 'google_drive',
+}
+
+const googleDriveDatasourceAuth = {
+  ...firecrawlDatasourceAuth,
+  credentials_list: [
+    {
+      ...firecrawlDatasourceAuth.credentials_list[0],
+      id: 'google-drive-credential-1',
+      name: 'Default Google Drive',
+    },
+  ],
+  label: { en_US: 'Google Drive' },
+  name: 'google_drive',
+  plugin_id: 'langgenius/google_drive',
+  plugin_unique_identifier: 'langgenius/google_drive:1.0.0@local',
+  provider: 'google_drive',
+}
 
 const createdKnowledge = {
   control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
@@ -249,6 +420,12 @@ describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     globalThis.sessionStorage.clear()
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin]
+    datasourceQueryMock.plugins.error = null
+    datasourceQueryMock.plugins.isPending = false
+    datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth] }
+    datasourceQueryMock.auth.error = null
+    datasourceQueryMock.auth.isPending = false
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
     serviceMock.createKfsSource.mockResolvedValue(kfsSourceResponse())
@@ -735,7 +912,7 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('enables only source options supported by atomic creation', async () => {
+  it('enables every atomic source type and distinguishes installed providers', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -756,24 +933,17 @@ describe('CreateKnowledgePage', () => {
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
     })
-    expect(onlineDocuments).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(onlineDocuments).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl', 'FakeCrawler']) {
-      expect(screen.getByRole('radio', { name: unavailableProvider })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
-    }
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'WaterCrawl' })).toBeEnabled()
     await user.click(onlineDocuments)
-    expect(onlineDocuments).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }),
-    ).toBeDisabled()
+    expect(onlineDocuments).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Notion' })).toBeChecked()
+    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
     expect(
@@ -998,8 +1168,11 @@ describe('CreateKnowledgePage', () => {
             include_subpages: true,
             limit: 100,
           },
+          credentialId: 'firecrawl-credential-1',
+          datasource: 'crawl',
           kind: 'website_crawl',
           name: 'Dify docs',
+          pluginId: 'langgenius/firecrawl_datasource',
           provider: 'firecrawl',
           root_url: 'https://docs.dify.ai',
           selection: [
@@ -1015,6 +1188,154 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.createKfsSource).not.toHaveBeenCalled()
     expect(serviceMock.startKfsCrawlPreview).not.toHaveBeenCalled()
     expect(serviceMock.selectWorkflowPages).not.toHaveBeenCalled()
+  })
+
+  it('distinguishes an installed document provider with no credential', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, notionDatasourcePlugin]
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+
+    expect(
+      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.connectProvider:{"provider":"Notion"}',
+      }),
+    ).toBeEnabled()
+    expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
+  })
+
+  it('creates a knowledge space atomically with selected online documents', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, notionDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, notionDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockResolvedValue({
+      documents: [
+        {
+          last_edited_time: '2026-08-10T08:00:00Z',
+          name: 'Product handbook',
+          page_id: 'page-1',
+          provider_item_id: '["workspace-1","page-1"]',
+          type: 'page',
+          workspace_id: 'workspace-1',
+          workspace_name: 'Dify',
+        },
+      ],
+      kind: 'online_document',
+      next_page_parameters: null,
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Notion handbook',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Product handbook' }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
+      ).toBeEnabled(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        initial_source: {
+          credentialId: 'notion-credential-1',
+          datasource: 'notion',
+          kind: 'online_document',
+          name: 'Notion handbook',
+          pluginId: 'langgenius/notion_datasource',
+          provider: 'notion',
+          selection: [
+            {
+              lastEditedTime: '2026-08-10T08:00:00Z',
+              name: 'Product handbook',
+              pageId: 'page-1',
+              providerItemId: '["workspace-1","page-1"]',
+              type: 'page',
+              workspaceId: 'workspace-1',
+            },
+          ],
+          sync_policy: 'provider',
+        },
+      }),
+    })
+  })
+
+  it('creates a knowledge space atomically with a selected drive file', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, googleDriveDatasourcePlugin]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, googleDriveDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockResolvedValue({
+      files: [
+        {
+          bucket: null,
+          id: 'file-1',
+          mime_type: 'application/pdf',
+          name: 'Runbook.pdf',
+          provider_item_id: '["","file-1"]',
+          size: 2048,
+          type: 'application/pdf',
+        },
+      ],
+      kind: 'online_drive',
+      next_page_parameters: null,
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Drive runbook',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Runbook.pdf' }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
+      ).toBeEnabled(),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        initial_source: {
+          credentialId: 'google-drive-credential-1',
+          datasource: 'google_drive',
+          kind: 'online_drive',
+          name: 'Drive runbook',
+          pluginId: 'langgenius/google_drive',
+          provider: 'google_drive',
+          selection: [
+            {
+              bucket: undefined,
+              id: 'file-1',
+              mimeType: 'application/pdf',
+              name: 'Runbook.pdf',
+              providerItemId: '["","file-1"]',
+            },
+          ],
+          sync_policy: 'provider',
+        },
+      }),
+    })
   })
 
   it('requires a selected website preview page before creating with an initial source', async () => {
