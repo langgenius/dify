@@ -1,5 +1,6 @@
 import inspect
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
@@ -26,6 +27,7 @@ from controllers.console.workspace.account import (
     AccountNameApi,
     AccountPasswordApi,
     AccountProfileApi,
+    AccountProfilePatchPayload,
     AccountTimezoneApi,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
@@ -38,10 +40,12 @@ from controllers.console.workspace.error import (
 )
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAccountJoin
 from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.entities.account_entities import AccountProfileChanges
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
@@ -165,28 +169,95 @@ class TestAccountProfileApi:
 
 class TestAccountUpdateApis:
     @pytest.mark.parametrize(
-        ("api_cls", "payload"),
+        ("api_cls", "payload", "expected_changes"),
         [
-            (AccountNameApi, {"name": "test"}),
-            (AccountAvatarApi, {"avatar": "img.png"}),
-            (AccountInterfaceLanguageApi, {"interface_language": "en-US"}),
-            (AccountInterfaceThemeApi, {"interface_theme": "dark"}),
-            (AccountTimezoneApi, {"timezone": "UTC"}),
+            (AccountNameApi, {"name": "test"}, AccountProfileChanges(name="test")),
+            (AccountAvatarApi, {"avatar": "img.png"}, AccountProfileChanges(avatar="img.png")),
+            (
+                AccountInterfaceLanguageApi,
+                {"interface_language": "en-US"},
+                AccountProfileChanges(interface_language="en-US"),
+            ),
+            (
+                AccountInterfaceThemeApi,
+                {"interface_theme": "dark"},
+                AccountProfileChanges(interface_theme="dark"),
+            ),
+            (AccountTimezoneApi, {"timezone": "UTC"}, AccountProfileChanges(timezone="UTC")),
         ],
     )
-    def test_update_success(self, app: Flask, api_cls, payload):
+    def test_deprecated_update_routes_delegate_to_profile_service(
+        self, app: Flask, api_cls, payload, expected_changes: AccountProfileChanges
+    ):
         api = api_cls()
         method = inspect.unwrap(api.post)
-
         user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id=user.id,
+            active_workspace_id=None,
+        )
+        profile = MagicMock()
+        profile.update.return_value = user
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.account.AccountService.update_account", return_value=user),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
         ):
-            result = method(api, user)
+            result = method(api, request_context)
 
         assert result["id"] == user.id
+        profile.update.assert_called_once_with(request_context, expected_changes)
+
+    def test_deprecated_update_routes_are_marked_deprecated(self):
+        for api_cls in (
+            AccountNameApi,
+            AccountAvatarApi,
+            AccountInterfaceLanguageApi,
+            AccountInterfaceThemeApi,
+            AccountTimezoneApi,
+        ):
+            assert api_cls.post.__apidoc__["deprecated"] is True
+
+
+class TestAccountProfilePatchApi:
+    def test_updates_multiple_profile_fields(self, app: Flask):
+        api = AccountProfileApi()
+        method = inspect.unwrap(api.patch)
+        user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=user.id,
+            active_workspace_id="workspace-1",
+        )
+        profile = MagicMock()
+        profile.update.return_value = user
+        payload = {"name": "Jane", "interface_language": "en-US", "timezone": "UTC"}
+
+        with (
+            app.test_request_context("/account/profile", method="PATCH", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
+        ):
+            result = method(api, request_context)
+
+        assert result["id"] == user.id
+        profile.update.assert_called_once_with(
+            request_context,
+            AccountProfileChanges(name="Jane", interface_language="en-US", timezone="UTC"),
+        )
+
+    @pytest.mark.parametrize("payload", [{}, {"name": None}, {"unexpected": "value"}])
+    def test_rejects_empty_null_or_unknown_changes(self, payload: dict[str, object]):
+        with pytest.raises(ValueError):
+            AccountProfilePatchPayload.model_validate(payload)
 
 
 class TestAccountAvatarApiGet:

@@ -93,6 +93,23 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:account-application-boundary]
+name = Account application services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.account_ports
+    services.account_profile_service
+    services.entities.account_entities
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:feature-query-service-boundary]
 name = Feature query application service is framework and persistence neutral
 type = forbidden

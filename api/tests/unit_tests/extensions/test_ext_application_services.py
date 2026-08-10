@@ -10,6 +10,7 @@ from enums import DeploymentEdition
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
+from repositories.account_unit_of_work import SQLAlchemyAccountUnitOfWorkFactory
 from services.init_validation_service import InvalidInitializationPasswordError
 
 
@@ -134,3 +135,18 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_wires_account_profile_unit_of_work(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    unit_of_work = services.accounts.profile._unit_of_work
+    assert isinstance(unit_of_work, SQLAlchemyAccountUnitOfWorkFactory)
+    assert unit_of_work._session_factory is sqlite_session_factory
