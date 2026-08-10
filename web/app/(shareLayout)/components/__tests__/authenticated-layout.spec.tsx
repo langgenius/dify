@@ -1,4 +1,5 @@
 import type { AppData, AppMeta } from '@/models/share'
+import type { WebAppAddress } from '@/service/webapp-address'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { webAppLogout } from '@/service/webapp-auth'
@@ -20,6 +21,7 @@ const updateAppParams = vi.fn()
 const updateWebAppMeta = vi.fn()
 const updateUserCanAccessApp = vi.fn()
 const replace = vi.fn()
+const webAppAddress: WebAppAddress = { kind: 'default', code: 'share-code' }
 
 const mockWebAppState = {
   shareCode: 'share-code',
@@ -94,6 +96,10 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-address', () => ({
+  resolveWebAppAddress: () => webAppAddress,
 }))
 
 const resetQueryStates = () => {
@@ -173,7 +179,7 @@ describe('AuthenticatedLayout', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.userProfile.logout' }))
 
-    expect(webAppLogout).toHaveBeenCalledWith('share-code')
+    expect(webAppLogout).toHaveBeenCalledWith(webAppAddress)
     expect(replace).toHaveBeenCalledWith('/webapp-signin?redirect_url=%2Fworkflow%2Fshare-code')
   })
 })

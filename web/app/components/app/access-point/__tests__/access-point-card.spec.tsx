@@ -17,7 +17,7 @@ describe('AccessPointCard', () => {
       </AccessPointCard>,
     )
 
-    expect(screen.getByRole('article', { name: 'Web App' })).toHaveAttribute(
+    expect(screen.getByRole('region', { name: 'Web App' })).toHaveAttribute(
       'data-highlighted',
       'true',
     )
@@ -41,7 +41,7 @@ describe('AccessPointCard', () => {
     )
 
     expect(screen.getByText(label)).toBeInTheDocument()
-    const card = screen.getByRole('article', { name: 'Web App' })
+    const card = screen.getByRole('region', { name: 'Web App' })
     if (busy) expect(card).toHaveAttribute('aria-busy', 'true')
     else expect(card).not.toHaveAttribute('aria-busy')
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()

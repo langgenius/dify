@@ -53,7 +53,7 @@ export function AccessPointCard({
   }
 
   return (
-    <article
+    <section
       aria-labelledby={titleId}
       aria-busy={isLoading || undefined}
       data-highlighted={highlighted || undefined}
@@ -114,7 +114,7 @@ export function AccessPointCard({
           </footer>
         )}
       </div>
-    </article>
+    </section>
   )
 }
 

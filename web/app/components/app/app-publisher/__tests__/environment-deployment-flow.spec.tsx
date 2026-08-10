@@ -67,6 +67,13 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
+  useAllWorkflowTools: () => ({ data: [] }),
+}))
+
 function publishedWorkflowVersion({
   id,
   name,
