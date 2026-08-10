@@ -8,23 +8,26 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { toolSettingShowOnConditionMet } from '@/app/components/plugins/plugin-detail-panel/tool-selector/utils/show-on'
 import { VarType } from '@/app/components/workflow/types'
 import { VarKindType } from '../types'
 
-type FormInputSchema = CredentialFormSchema &
-  Partial<{
-    _type: FormTypeEnum
-    multiple: boolean
-    options: FormOption[]
-    placeholder: TypeWithI18N
-    scope: string
-  }>
+/** Nested select options may carry recursive `children` (not on base {@link FormOption}). */
+export type FormOptionTree = FormOption & { children?: FormOptionTree[] }
+
+type FormInputSchema = CredentialFormSchema & Partial<{
+  _type: FormTypeEnum
+  multiple: boolean
+  options: FormOption[]
+  placeholder: TypeWithI18N
+  scope: string
+}>
 
 type FormInputValue = ResourceVarInputs[string] | undefined
 
 type ShowOnCondition = {
-  value: unknown
   variable: string
+  value: string
 }
 
 type OptionLabel = string | TypeWithI18N
@@ -67,9 +70,10 @@ type FormInputState = {
   variable: string
 }
 
-const optionMatchesValue = (values: ResourceVarInputs, showOnItem: ShowOnCondition) =>
-  values[showOnItem.variable]?.value === showOnItem.value ||
-  values[showOnItem.variable] === showOnItem.value
+const optionMatchesValue = (
+  values: ResourceVarInputs,
+  showOnItem: ShowOnCondition,
+) => toolSettingShowOnConditionMet(values, showOnItem)
 
 const getOptionLabel = (option: SelectableOption, language: string) => {
   if (typeof option.label === 'string') return option.label
@@ -182,19 +186,42 @@ export const getVarKindType = (state: FormInputState) => {
   return undefined
 }
 
-export const filterVisibleOptions = (options: SelectableOption[], values: ResourceVarInputs) =>
-  options.filter((option) => {
-    if (option.show_on?.length)
-      return option.show_on.every((showOnItem) => optionMatchesValue(values, showOnItem))
-    return true
-  })
+export const filterVisibleOptions = (
+  options: SelectableOption[],
+  values: ResourceVarInputs,
+) => options.filter((option) => {
+  if (option.show_on?.length)
+    return option.show_on.every(showOnItem => optionMatchesValue(values, showOnItem))
+  return true
+})
 
-export const mapSelectItems = (options: SelectableOption[], language: string): SelectItem[] =>
-  options.map((option) => ({
-    icon: option.icon,
-    name: getOptionLabel(option, language),
-    value: option.value,
-  }))
+export const filterVisibleTreeOptions = (
+  options: FormOptionTree[],
+  values: ResourceVarInputs,
+): FormOptionTree[] => {
+  return options.reduce<FormOptionTree[]>((acc, option) => {
+    const isVisible = !option.show_on?.length || option.show_on.every(
+      showOnItem => toolSettingShowOnConditionMet(values, showOnItem),
+    )
+    if (!isVisible)
+      return acc
+    const children = option.children?.length ? filterVisibleTreeOptions(option.children, values) : undefined
+    acc.push({ ...option, children })
+    return acc
+  }, [])
+}
+
+export const mapSelectItems = (
+  options: SelectableOption[],
+  language: string,
+): SelectItem[] => options.map(option => ({
+  icon: option.icon,
+  name: getOptionLabel(option, language),
+  value: option.value,
+}))
+
+export const hasOptionIcon = (options: SelectableOption[]) => options.some(option => !!option.icon)
+
 export const getSelectedLabels = (
   selectedValues: string[] | undefined,
   options: SelectableOption[],
