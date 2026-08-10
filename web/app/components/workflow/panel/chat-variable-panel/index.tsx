@@ -212,7 +212,7 @@ const ChatVariablePanel = () => {
         {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton
-            aria-label="TIPS"
+            aria-label={t(($) => $['chatVariable.tips'], { ns: 'workflow' })}
             aria-expanded={showTip}
             state={showTip ? ActionButtonState.Active : undefined}
             onClick={() => setShowTip(!showTip)}

@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Spremenljivke pogovora se uporabljajo za shranjevanje interaktivnih informacij, ki se jih LLM mora zapomniti, vključno z zgodovino pogovorov, naloženimi datotekami in uporabnikovimi nastavitvami. So branje-in-pisanje.",
   "chatVariable.panelTitle": "Pogovor Spremenljivke",
   "chatVariable.storedContent": "Shranjena vsebina",
+  "chatVariable.tips": "Nasveti",
   "chatVariable.updatedAt": "Posodobljeno ob",
   "collaboration.historyAction.generic": "Sodelavec je izvedel razveljavitev/ponovitev",
   "comments.actions.addComment": "Dodaj komentar",

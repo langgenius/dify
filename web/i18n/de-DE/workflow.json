@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Gesprächsvariablen werden verwendet, um interaktive Informationen zu speichern, die das LLM benötigt, einschließlich Gesprächsverlauf, hochgeladene Dateien und Benutzereinstellungen. Sie sind les- und schreibbar.",
   "chatVariable.panelTitle": "Gesprächsvariablen",
   "chatVariable.storedContent": "Gespeicherter Inhalt",
+  "chatVariable.tips": "Tipps",
   "chatVariable.updatedAt": "Aktualisiert am ",
   "collaboration.historyAction.generic": "Ein Mitbearbeiter hat Rückgängig/Wiederholen ausgeführt",
   "comments.actions.addComment": "Kommentar hinzufügen",

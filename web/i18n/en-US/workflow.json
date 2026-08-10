@@ -114,6 +114,7 @@
   "chatVariable.panelDescription": "Conversation Variables are used to store interactive information that LLM needs to remember, including conversation history, uploaded files, user preferences. They are read-write. ",
   "chatVariable.panelTitle": "Conversation Variables",
   "chatVariable.storedContent": "Stored content",
+  "chatVariable.tips": "Tips",
   "chatVariable.updatedAt": "Updated at ",
   "collaboration.historyAction.generic": "A collaborator performed an undo/redo action",
   "comments.actions.addComment": "Add Comment",
