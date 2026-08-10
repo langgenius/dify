@@ -399,10 +399,19 @@ def test_get_signed_image_preview_url_uses_image_preview_signature(
     ssrf_make_request.assert_not_called()
 
 
-def test_image_preview_url_with_file_preview_signature_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):
+def test_image_preview_url_accepts_file_preview_signature(
+    monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
+):
     _patch_file_fetcher_config(monkeypatch)
-    proxy_response = httpx.Response(403, request=httpx.Request("GET", "http://localhost:5001/bad"))
-    ssrf_make_request = _patch_ssrf_make_request(monkeypatch, proxy_response)
+    file_database.upload_file.key = "upload_files/tenant/image.png"
+    file_database.upload_file.name = "image.png"
+    file_database.upload_file.mime_type = "image/png"
+    file_database.upload_file.size = 6
+    file_database.upload_file.extension = "png"
+    file_database.session.commit()
+    load_once = MagicMock(return_value=b"image!")
+    monkeypatch.setattr(remote_fetcher.storage, "load_once", load_once)
+    ssrf_make_request = _patch_ssrf_make_request(monkeypatch)
     url = _signed_url(
         base_url="http://localhost:5001",
         path=f"/files/{UPLOAD_FILE_ID}/image-preview",
@@ -411,12 +420,11 @@ def test_image_preview_url_with_file_preview_signature_delegates_to_ssrf_proxy(m
 
     response = remote_fetcher.make_request("GET", url)
 
-    assert response is proxy_response
-    ssrf_make_request.assert_called_once_with(
-        method="GET",
-        url=url,
-        max_retries=remote_fetcher.SSRF_DEFAULT_MAX_RETRIES,
-    )
+    assert response.status_code == 200
+    assert response.content == b"image!"
+    assert response.headers["Content-Type"] == "image/png"
+    load_once.assert_called_once_with("upload_files/tenant/image.png")
+    ssrf_make_request.assert_not_called()
 
 
 def test_duplicate_signature_query_value_delegates_to_ssrf_proxy(monkeypatch: pytest.MonkeyPatch):

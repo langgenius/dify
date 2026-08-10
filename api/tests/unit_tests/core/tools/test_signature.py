@@ -127,7 +127,7 @@ def test_sign_upload_file_preview_url_uses_files_url(monkeypatch: pytest.MonkeyP
     query = parse_qs(parsed.query)
 
     assert parsed.netloc == "files.example.com"
-    assert parsed.path == "/files/upload-id/image-preview"
+    assert parsed.path == "/files/upload-id/file-preview"
     assert query["timestamp"][0]
     assert query["nonce"][0]
     assert query["sign"][0]
@@ -145,7 +145,7 @@ def test_sign_upload_file_preview_url_ignores_internal_files_url(monkeypatch: py
     query = parse_qs(parsed.query)
 
     assert parsed.netloc == "files.example.com"
-    assert parsed.path == "/files/upload-id/image-preview"
+    assert parsed.path == "/files/upload-id/file-preview"
     assert query["timestamp"][0]
     assert query["nonce"][0]
     assert query["sign"][0]

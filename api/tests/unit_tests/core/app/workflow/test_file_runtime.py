@@ -257,6 +257,47 @@ def test_verify_preview_signature_validates_signature_and_expiration(monkeypatch
     )
 
 
+def test_verify_preview_signature_accepts_legacy_image_preview_signature(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_ACCESS_TIMEOUT", 60)
+    runtime = _build_runtime()
+    payload = "image-preview|upload-file-id|1700000000|nonce"
+    sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
+
+    assert (
+        runtime.verify_preview_signature(
+            preview_kind="file",
+            file_id="upload-file-id",
+            timestamp="1700000000",
+            nonce="nonce",
+            sign=sign,
+        )
+        is True
+    )
+
+
+def test_verify_preview_signature_accepts_signature_without_padding(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.app.workflow.file_runtime.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.app.workflow.file_runtime.dify_config.FILES_ACCESS_TIMEOUT", 60)
+    runtime = _build_runtime()
+    payload = "file-preview|upload-file-id|1700000000|nonce"
+    sign = base64.urlsafe_b64encode(hmac.new(b"unit-secret", payload.encode(), hashlib.sha256).digest()).decode()
+    sign_without_padding = sign.rstrip("=")
+
+    assert (
+        runtime.verify_preview_signature(
+            preview_kind="file",
+            file_id="upload-file-id",
+            timestamp="1700000000",
+            nonce="nonce",
+            sign=sign_without_padding,
+        )
+        is True
+    )
+
+
 def test_load_file_bytes_returns_bytes_and_rejects_non_bytes(
     monkeypatch: pytest.MonkeyPatch, file_session: Session
 ) -> None:

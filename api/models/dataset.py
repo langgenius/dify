@@ -1093,18 +1093,6 @@ class DocumentSegment(TypeBase):
             return []
         attachment_list: list[AttachmentItem] = []
         for _, attachment in attachments_with_bindings:
-            upload_file_id = attachment.id
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode()
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            reference_url = dify_config.FILES_URL or dify_config.CONSOLE_API_URL or ""
-            base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
-            source_url = f"{base_url}?{params}"
             attachment_list.append(
                 {
                     "id": attachment.id,
@@ -1112,7 +1100,7 @@ class DocumentSegment(TypeBase):
                     "size": attachment.size,
                     "extension": attachment.extension,
                     "mime_type": attachment.mime_type,
-                    "source_url": source_url,
+                    "source_url": sign_upload_file_preview_url(attachment.id, attachment.extension),
                 }
             )
         return attachment_list

@@ -1049,7 +1049,7 @@ class TestDocumentSegmentIndexing:
         parsed = urlparse(source_url)
         query = parse_qs(parsed.query)
         assert parsed.netloc == "files.example.com"
-        assert parsed.path == "/files/upload-1/image-preview"
+        assert parsed.path == "/files/upload-1/file-preview"
         assert query["timestamp"] == ["1700000000"]
         assert query["nonce"] == ["01010101010101010101010101010101"]
         assert query["sign"][0]

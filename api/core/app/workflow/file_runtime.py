@@ -148,11 +148,14 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         nonce: str,
         sign: str,
     ) -> bool:
-        payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
-        recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
-        if sign != base64.urlsafe_b64encode(recalculated).decode():
-            return False
-        return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+        alternate_kind: Literal["image", "file"] = "image" if preview_kind == "file" else "file"
+        for kind in (preview_kind, alternate_kind):
+            payload = f"{kind}-preview|{file_id}|{timestamp}|{nonce}"
+            recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
+            expected = base64.urlsafe_b64encode(recalculated).decode()
+            if hmac.compare_digest(_normalize_urlsafe_b64(sign), expected):
+                return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+        return False
 
     @staticmethod
     def _base_url(*, for_external: bool) -> str:
@@ -213,6 +216,11 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             tool_file = self._file_access_controller.get_tool_file(session=session, file_id=tool_file_id)
             if tool_file is None:
                 raise ValueError(f"Tool file {tool_file_id} not found")
+
+
+def _normalize_urlsafe_b64(sign: str) -> str:
+    padding = (-len(sign)) % 4
+    return sign + ("=" * padding)
 
 
 def bind_dify_workflow_file_runtime() -> None:

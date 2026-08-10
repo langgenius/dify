@@ -210,6 +210,11 @@ def _single_query_value(query: dict[str, list[str]], key: str) -> str | None:
     return values[0]
 
 
+def _normalize_urlsafe_b64(sign: str) -> str:
+    padding = (-len(sign)) % 4
+    return sign + ("=" * padding)
+
+
 def _verify_signed_file_url(
     *,
     signed_file_url: _SignedFileUrl,
@@ -226,10 +231,20 @@ def _verify_signed_file_url(
     if current_time - signed_at > dify_config.FILES_ACCESS_TIMEOUT:
         return False
 
-    payload = f"{signed_file_url.preview_kind}|{signed_file_url.file_id}|{timestamp}|{nonce}"
-    recalculated = hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
-    expected = base64.urlsafe_b64encode(recalculated).decode()
-    return hmac.compare_digest(sign, expected)
+    preview_kinds = [signed_file_url.preview_kind]
+    if signed_file_url.preview_kind == "file-preview":
+        preview_kinds.append("image-preview")
+    elif signed_file_url.preview_kind == "image-preview":
+        preview_kinds.append("file-preview")
+
+    normalized_sign = _normalize_urlsafe_b64(sign)
+    for preview_kind in preview_kinds:
+        payload = f"{preview_kind}|{signed_file_url.file_id}|{timestamp}|{nonce}"
+        recalculated = hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+        expected = base64.urlsafe_b64encode(recalculated).decode()
+        if hmac.compare_digest(normalized_sign, expected):
+            return True
+    return False
 
 
 def _build_upload_file_response(*, method: Literal["GET", "HEAD"], url: str, file_id: str) -> httpx.Response:
