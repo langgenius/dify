@@ -123,7 +123,7 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
         return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
 
     if isinstance(exc, BindingLostError):
-        return message, None, "binding_lost"
+        return message, RunFailureType.BINDING_LOST, None
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
@@ -134,10 +134,12 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
 
             error_type = body.get("error_type")
             if isinstance(error_type, str) and error_type:
+                if error_type == "InvokeRateLimitError":
+                    return message, RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED, None
                 reason = error_type
 
         if reason is None and exc.status_code == 429:
-            reason = "InvokeRateLimitError"
+            return message, RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED, None
 
     if isinstance(exc, DifyKnowledgeBaseClientError):
         reason = exc.error_code or "DifyKnowledgeBaseClientError"

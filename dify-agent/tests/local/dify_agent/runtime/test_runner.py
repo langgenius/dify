@@ -75,6 +75,7 @@ from dify_agent.runtime.runner import (
     _run_failed_error_payload,
 )
 from dify_agent.runtime_backend import (
+    BindingLostError,
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
@@ -184,8 +185,8 @@ def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
     message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "quota exceeded"
-    assert error_type is None
-    assert reason == "InvokeRateLimitError"
+    assert error_type is RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED
+    assert reason is None
 
 
 def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() -> None:
@@ -194,8 +195,8 @@ def test_run_failed_error_payload_infers_rate_limit_reason_from_status_code() ->
     message, error_type, reason = _run_failed_error_payload(exc)
 
     assert message == "too many requests"
-    assert error_type is None
-    assert reason == "InvokeRateLimitError"
+    assert error_type is RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED
+    assert reason is None
 
 
 def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
@@ -220,6 +221,16 @@ def test_run_failed_error_payload_classifies_usage_limit() -> None:
 
     assert message == "The next request would exceed the request_limit of 100"
     assert error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert reason is None
+
+
+def test_run_failed_error_payload_classifies_binding_lost() -> None:
+    exc = BindingLostError("binding no longer available")
+
+    message, error_type, reason = _run_failed_error_payload(exc)
+
+    assert message == "binding no longer available"
+    assert error_type is RunFailureType.BINDING_LOST
     assert reason is None
 
 

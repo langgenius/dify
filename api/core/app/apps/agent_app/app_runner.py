@@ -16,7 +16,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
-from dify_agent.protocol import DeferredToolResultsPayload
+from dify_agent.protocol import DeferredToolResultsPayload, RunFailureType
 from pydantic import JsonValue
 
 from clients.agent_backend import (
@@ -87,8 +87,16 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
     "InvokeServerUnavailableError": InvokeServerUnavailableError,
 }
 
+_AGENT_BACKEND_INVOKE_ERROR_BY_FAILURE_TYPE: Mapping[RunFailureType, type[InvokeError]] = {
+    RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED: InvokeRateLimitError,
+}
+
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
+    if event.error_type is not None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_FAILURE_TYPE.get(event.error_type)
+        if err_cls is not None:
+            return err_cls(event.error)
     if event.error_type is None:
         err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
         if err_cls is not None:
@@ -703,7 +711,9 @@ class AgentAppRunner:
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
                 reason = terminal.reason
-                if terminal.error_type is None and reason == "binding_lost":
+                if terminal.error_type == RunFailureType.BINDING_LOST or (
+                    terminal.error_type is None and reason == "binding_lost"
+                ):
                     raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")

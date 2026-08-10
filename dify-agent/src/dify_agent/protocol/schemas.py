@@ -68,6 +68,9 @@ class RunFailureType(StrEnum):
     """
 
     AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
+    BINDING_LOST = "binding_lost"
+    INVOKE_RATE_LIMIT_EXCEEDED = "invoke_rate_limit_exceeded"
+    AGENT_SHUTDOWN = "agent_shutdown"
 
 
 def utc_now() -> datetime:

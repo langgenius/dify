@@ -1193,6 +1193,19 @@ def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
     assert str(err) == "quota exceeded"
 
 
+def test_agent_backend_failure_to_exception_maps_rate_limit_failure_type() -> None:
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="quota exceeded",
+            error_type=RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED,
+        )
+    )
+
+    assert isinstance(err, InvokeRateLimitError)
+    assert str(err) == "quota exceeded"
+
+
 def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -> None:
     err = app_runner_module._agent_backend_failure_to_exception(
         AgentBackendRunFailedInternalEvent(
