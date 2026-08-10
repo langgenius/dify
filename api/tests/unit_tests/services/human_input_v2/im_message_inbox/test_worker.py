@@ -10,7 +10,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_message_inbox import ConsumerDecision, IMInboxDelivery, IMInboxRecordId
+from core.human_input_v2.im_message_inbox import (
+    ConsumerDecision,
+    IMInboxDelivery,
+    IMInboxRecordId,
+    InboxProcessingPolicy,
+)
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId, UtcTimestamp
 from models.human_input_v2 import IMMessageInbox
@@ -25,10 +30,18 @@ from services.human_input_v2.im_message_inbox.worker import (
     HeartbeatExecution,
     IMInboxWorker,
     InboxWorkerOutcome,
-    InboxWorkerPolicy,
 )
 
 _NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
+
+
+def _policy(*, maximum_attempts: int = 3) -> InboxProcessingPolicy:
+    return InboxProcessingPolicy(
+        maximum_attempts=maximum_attempts,
+        lease_duration=timedelta(seconds=30),
+        retry_backoff_minimum=timedelta(seconds=5),
+        retry_backoff_maximum=timedelta(seconds=20),
+    )
 
 
 class _MutableClock:
@@ -60,12 +73,14 @@ class _Consumer:
 
 class _Heartbeat:
     lease_held: bool
+    calls: list[IMInboxDelivery]
 
     def __init__(self, *, lease_held: bool = True) -> None:
         self.lease_held = lease_held
+        self.calls = []
 
     def execute(self, delivery: IMInboxDelivery, operation: Callable[[], ConsumerDecision]) -> HeartbeatExecution:
-        del delivery
+        self.calls.append(delivery)
         decision = operation()
         return HeartbeatExecution(decision=decision, lease_held=self.lease_held)
 
@@ -120,9 +135,13 @@ def _context(
     failure: RuntimeError | None = None,
     metrics: IMInboxMetrics | None = None,
 ) -> tuple[IMInboxWorker, SQLAlchemyIMMessageInboxRepository, _Consumer, _MutableClock, sessionmaker[Session]]:
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    repository = SQLAlchemyIMMessageInboxRepository(session_maker)
+    repository = SQLAlchemyIMMessageInboxRepository(
+        session_maker,
+        _policy(maximum_attempts=maximum_attempts),
+    )
     consumer = _Consumer(decision, failure=failure)
     clock = _MutableClock()
     worker = IMInboxWorker(
@@ -131,16 +150,23 @@ def _context(
         clock=clock,
         heartbeat=heartbeat or _Heartbeat(),
         metrics=metrics or NoopIMInboxMetrics(),
-        policy=InboxWorkerPolicy(
-            maximum_attempts=maximum_attempts,
-            lease_duration=timedelta(seconds=30),
-        ),
     )
     return worker, repository, consumer, clock, session_maker
 
 
 def _accept(repository: SQLAlchemyIMMessageInboxRepository, event_id: str = "event-1") -> IMInboxRecordId:
     return repository.insert_or_resolve(IntegrationId("integration-1"), _event(event_id), now=_NOW).record_id
+
+
+def test_processing_policy_caps_exponential_retry_backoff() -> None:
+    policy = _policy()
+
+    assert tuple(policy.retry_delay(attempt) for attempt in range(1, 5)) == (
+        timedelta(seconds=5),
+        timedelta(seconds=10),
+        timedelta(seconds=20),
+        timedelta(seconds=20),
+    )
 
 
 def test_worker_claim_miss_does_not_call_consumer(sqlite_engine: Engine) -> None:
@@ -212,7 +238,7 @@ def test_lost_lease_prevents_stale_terminal_write_and_allows_reclaim(sqlite_engi
 
     outcome = worker.process(record_id)
     clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
-    reclaimed = repository.claim_by_id(record_id, now=clock.current, lease_duration=timedelta(seconds=30))
+    reclaimed = repository.claim_by_id(record_id, now=clock.current)
 
     assert outcome is InboxWorkerOutcome.LOST_LEASE
     assert metrics.events == [
@@ -272,6 +298,7 @@ def test_pending_retry_is_not_reported_as_expired_lease_reclaim(sqlite_engine: E
     record_id = _accept(repository)
     assert worker.process(record_id) is InboxWorkerOutcome.RETRIED
     consumer.decision = ConsumerDecision.SUCCEEDED
+    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=5))
 
     outcome = worker.process(record_id)
 
@@ -296,10 +323,6 @@ def test_side_effect_before_lost_finalize_can_be_delivered_again(sqlite_engine: 
         clock=clock,
         heartbeat=_Heartbeat(),
         metrics=metrics,
-        policy=InboxWorkerPolicy(
-            maximum_attempts=3,
-            lease_duration=timedelta(seconds=30),
-        ),
     )
 
     second = second_worker.process(record_id)
@@ -322,7 +345,10 @@ def test_worker_crash_is_recovered_after_the_claim_lease_expires(sqlite_engine: 
         metrics=metrics,
     )
     record_id = _accept(repository)
-    abandoned = repository.claim_by_id(record_id, now=clock.now(), lease_duration=timedelta(seconds=30))
+    abandoned = repository.claim_by_id(
+        record_id,
+        now=clock.now(),
+    )
     assert abandoned is not None
     clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
 
@@ -334,6 +360,54 @@ def test_worker_crash_is_recovered_after_the_claim_lease_expires(sqlite_engine: 
         (IMInboxMetricKind.LEASE_RECLAIM, IMProvider.FEISHU, "reclaimed"),
         (IMInboxMetricKind.TERMINAL, IMProvider.FEISHU, "succeeded"),
     ]
+
+
+def test_worker_atomically_fails_expired_claim_at_attempt_limit_without_calling_consumer(
+    sqlite_engine: Engine,
+) -> None:
+    metrics = _Metrics()
+    heartbeat = _Heartbeat()
+    worker, repository, consumer, clock, session_maker = _context(
+        sqlite_engine,
+        ConsumerDecision.SUCCEEDED,
+        maximum_attempts=1,
+        heartbeat=heartbeat,
+        metrics=metrics,
+    )
+    record_id = _accept(repository)
+    abandoned = repository.claim_by_id(record_id, now=clock.now())
+    assert abandoned is not None
+    clock.current = UtcTimestamp(_NOW.value + timedelta(seconds=31))
+    wakeup_record_ids: list[IMInboxRecordId] = []
+    recovery = IMInboxRecovery(
+        repository=repository,
+        wakeup=_Wakeup(wakeup_record_ids),
+        clock=clock.now,
+        batch_size=10,
+        metrics=NoopIMInboxMetrics(),
+    )
+
+    recovery_result = recovery.dispatch_available()
+    assert recovery_result.discovered == 1
+    assert recovery_result.dispatched == 1
+    assert wakeup_record_ids == [record_id]
+
+    outcome = worker.process(wakeup_record_ids[0])
+
+    assert outcome is InboxWorkerOutcome.ATTEMPTS_EXHAUSTED
+    assert heartbeat.calls == []
+    assert consumer.calls == []
+    assert metrics.events == [
+        (IMInboxMetricKind.RETRY, IMProvider.FEISHU, "exhausted"),
+        (IMInboxMetricKind.TERMINAL, IMProvider.FEISHU, "failed"),
+    ]
+    with session_maker() as session:
+        stored = session.get_one(IMMessageInbox, str(record_id))
+        assert stored.status.value == "failed"
+        assert stored.attempt_count == 1
+        assert stored.claim_token is None
+        assert stored.lease_expires_at is None
+        assert stored.completed_at == datetime(2026, 8, 2, 8, 0, 31)
 
 
 def test_duplicate_direct_and_recovery_wakeups_share_the_claim_path(sqlite_engine: Engine) -> None:

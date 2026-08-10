@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
@@ -10,9 +11,16 @@ from configs import dify_config
 from core.human_input_v2.entities import IMProvider
 
 if TYPE_CHECKING:
-    from opentelemetry.metrics import Counter, Histogram
+    from opentelemetry.metrics import Counter
 
 logger = logging.getLogger(__name__)
+
+
+class _GaugeInstrument(Protocol):
+    """The stable synchronous Gauge surface used by this adapter."""
+
+    def set(self, amount: int | float, attributes: Mapping[str, str] | None = None) -> None:
+        """Replace the current value for one attribute set."""
 
 
 class IMInboxMetricKind(StrEnum):
@@ -65,8 +73,8 @@ class OpenTelemetryIMInboxMetrics:
     """OpenTelemetry adapter with stable, low-cardinality dimensions."""
 
     _events: Counter | None
-    _backlog_count: Histogram | None
-    _oldest_pending_age: Histogram | None
+    _backlog_count: _GaugeInstrument | None
+    _oldest_pending_age: _GaugeInstrument | None
 
     def __init__(self) -> None:
         self._events = None
@@ -83,12 +91,12 @@ class OpenTelemetryIMInboxMetrics:
                 description="Durable IM inbox lifecycle events.",
                 unit="{event}",
             )
-            self._backlog_count = meter.create_histogram(
+            self._backlog_count = meter.create_gauge(
                 "im_message_inbox_backlog_records",
                 description="IM inbox records by current processing status.",
                 unit="{record}",
             )
-            self._oldest_pending_age = meter.create_histogram(
+            self._oldest_pending_age = meter.create_gauge(
                 "im_message_inbox_oldest_pending_age_seconds",
                 description="Age of the oldest pending IM inbox record.",
                 unit="s",
@@ -112,6 +120,6 @@ class OpenTelemetryIMInboxMetrics:
 
     def record_backlog(self, *, status: str, count: int, oldest_age_seconds: float | None) -> None:
         if self._backlog_count is not None:
-            self._backlog_count.record(count, {"status": status})
-        if status == "pending" and oldest_age_seconds is not None and self._oldest_pending_age is not None:
-            self._oldest_pending_age.record(oldest_age_seconds)
+            self._backlog_count.set(count, {"status": status})
+        if status == "pending" and self._oldest_pending_age is not None:
+            self._oldest_pending_age.set(oldest_age_seconds if oldest_age_seconds is not None else 0)

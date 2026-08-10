@@ -15,15 +15,16 @@ from typing import Protocol, override
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
-    IMInboxRecordId,
     IMMessageInboxRepository,
     InboxPersistenceError,
+    canonicalize_inbox_event,
     validate_inbox_event,
     validate_inbox_provider_tenant_id,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
 from core.human_input_v2.shared import IntegrationId, UtcTimestamp
 
+from . import wakeup
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
 
 logger = logging.getLogger(__name__)
@@ -36,17 +37,6 @@ class InboxClock(Protocol):
         """Return the current UTC timestamp."""
 
 
-class InboxWakeup(Protocol):
-    """Post-commit latency hint carrying only the inbox record ID."""
-
-    def publish(self, record_id: IMInboxRecordId) -> None:
-        """Publish at most one wakeup for one accepted delivery."""
-
-
-class InboxWakeupError(RuntimeError):
-    """Expected broker unavailability after durable acceptance."""
-
-
 class IMMessageInboxSink(IMEventConsumer):
     """Concrete durable sink bound to one logical local Integration."""
 
@@ -55,7 +45,7 @@ class IMMessageInboxSink(IMEventConsumer):
     _expected_provider_tenant_id: str
     _repository: IMMessageInboxRepository
     _clock: InboxClock
-    _wakeup: InboxWakeup | None
+    _wakeup: wakeup.InboxWakeup | None
     _metrics: IMInboxMetrics
 
     def __init__(
@@ -66,7 +56,7 @@ class IMMessageInboxSink(IMEventConsumer):
         expected_provider_tenant_id: str,
         repository: IMMessageInboxRepository,
         clock: InboxClock,
-        wakeup: InboxWakeup | None,
+        wakeup: wakeup.InboxWakeup | None,
         metrics: IMInboxMetrics,
     ) -> None:
         normalized_provider_tenant_id = expected_provider_tenant_id.strip()
@@ -85,6 +75,7 @@ class IMMessageInboxSink(IMEventConsumer):
     def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
         """Commit or resolve the event before returning transport acceptance."""
 
+        event = canonicalize_inbox_event(event)
         validate_inbox_event(event)
         if (
             event.provider is not self._expected_provider
@@ -131,7 +122,7 @@ class IMMessageInboxSink(IMEventConsumer):
         if self._wakeup is not None and accepted.kind is AcceptanceKind.NEW:
             try:
                 self._wakeup.publish(accepted.record_id)
-            except InboxWakeupError:
+            except wakeup.InboxWakeupError:
                 self._metrics.record(
                     IMInboxMetricKind.DISPATCH_FAILURE,
                     provider=event.provider,

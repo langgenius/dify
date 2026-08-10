@@ -2,24 +2,36 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError
+from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError, InboxProcessingPolicy
 from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
 from core.human_input_v2.shared import IntegrationId, UtcTimestamp
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
-from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink, InboxWakeup, InboxWakeupError
+from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
 from services.human_input_v2.im_message_inbox.telemetry import IMInboxMetricKind
+from services.human_input_v2.im_message_inbox.wakeup import InboxWakeup, InboxWakeupError
 
 _NOW = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
 _PAYLOAD = ' {"secret":"must-not-log"}\n'
+
+
+def _policy() -> InboxProcessingPolicy:
+    return InboxProcessingPolicy(
+        maximum_attempts=3,
+        lease_duration=timedelta(seconds=30),
+        retry_backoff_minimum=timedelta(seconds=5),
+        retry_backoff_maximum=timedelta(seconds=20),
+    )
 
 
 class _FixedClock:
@@ -95,9 +107,10 @@ def _event(
 def _sink(
     sqlite_engine: Engine, *, wakeup: InboxWakeup | None
 ) -> tuple[IMMessageInboxSink, sessionmaker[Session], _RecordingMetrics]:
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    repository = SQLAlchemyIMMessageInboxRepository(session_maker)
+    repository = SQLAlchemyIMMessageInboxRepository(session_maker, _policy())
     metrics = _RecordingMetrics()
     return (
         IMMessageInboxSink(
@@ -116,6 +129,16 @@ def _sink(
 
 def test_sink_implements_provider_event_consumer_contract() -> None:
     assert IMEventConsumer in IMMessageInboxSink.__mro__
+
+
+def test_wakeup_contract_is_owned_by_the_inbox_feature_not_the_sink_adapter() -> None:
+    from services.human_input_v2.im_message_inbox import sink
+    from services.human_input_v2.im_message_inbox.wakeup import InboxWakeup, InboxWakeupError
+
+    assert InboxWakeup.__module__.endswith(".wakeup")
+    assert InboxWakeupError.__module__.endswith(".wakeup")
+    assert not hasattr(sink, "InboxWakeup")
+    assert not hasattr(sink, "InboxWakeupError")
 
 
 def test_sink_returns_accepted_only_after_commit_and_publishes_only_record_id(sqlite_engine: Engine) -> None:
@@ -185,13 +208,14 @@ def test_sink_accepts_and_preserves_max_length_provider_metadata(sqlite_engine: 
     maximum_tenant_id = "t" * 128
     maximum_event_id = "e" * 128
     maximum_event_type = "y" * 128
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sink = IMMessageInboxSink(
         integration_id=IntegrationId("integration-1"),
         expected_provider=IMProvider.FEISHU,
         expected_provider_tenant_id=maximum_tenant_id,
-        repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+        repository=SQLAlchemyIMMessageInboxRepository(session_maker, _policy()),
         clock=_FixedClock(),
         wakeup=None,
         metrics=_RecordingMetrics(),
@@ -210,8 +234,35 @@ def test_sink_accepts_and_preserves_max_length_provider_metadata(sqlite_engine: 
         assert stored.provider_event_type == maximum_event_type
 
 
+def test_sink_canonicalizes_oversized_blank_event_id_before_validation(sqlite_engine: Engine) -> None:
+    sink, session_maker, _ = _sink(sqlite_engine, wakeup=None)
+
+    acceptance = sink.accept(_event(event_id=" " * 129))
+
+    assert acceptance is EventAcceptance.ACCEPTED
+    with session_maker() as session:
+        stored = session.scalar(sa.select(IMMessageInbox))
+        assert stored is not None
+        assert stored.provider_event_id is None
+        assert stored.raw_payload == _PAYLOAD
+
+
+def test_sink_preserves_nonblank_event_id_verbatim(sqlite_engine: Engine) -> None:
+    sink, session_maker, _ = _sink(sqlite_engine, wakeup=None)
+    event_id = " event-1 "
+
+    acceptance = sink.accept(_event(event_id=event_id))
+
+    assert acceptance is EventAcceptance.ACCEPTED
+    with session_maker() as session:
+        stored = session.scalar(sa.select(IMMessageInbox))
+        assert stored is not None
+        assert stored.provider_event_id == event_id
+
+
 def test_sink_rejects_oversized_bound_integration_identity_during_construction(sqlite_engine: Engine) -> None:
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
     with pytest.raises(InboxEventValidationError, match="provider tenant id"):
@@ -219,7 +270,7 @@ def test_sink_rejects_oversized_bound_integration_identity_during_construction(s
             integration_id=IntegrationId("integration-1"),
             expected_provider=IMProvider.FEISHU,
             expected_provider_tenant_id="t" * 129,
-            repository=SQLAlchemyIMMessageInboxRepository(session_maker),
+            repository=SQLAlchemyIMMessageInboxRepository(session_maker, _policy()),
             clock=_FixedClock(),
             wakeup=None,
             metrics=_RecordingMetrics(),
@@ -300,13 +351,13 @@ def test_sink_returns_not_accepted_when_database_insert_fails(
         _executemany: bool,
     ) -> None:
         if statement.lstrip().startswith("INSERT INTO im_message_inbox"):
-            raise sa.exc.OperationalError(statement, {}, RuntimeError("injected database failure"))
+            raise OperationalError(statement, {}, RuntimeError("injected database failure"))
 
-    sa.event.listen(sqlite_engine, "before_cursor_execute", fail_inbox_insert)
+    sqlalchemy_event.listen(sqlite_engine, "before_cursor_execute", fail_inbox_insert)
     try:
         acceptance = sink.accept(_event())
     finally:
-        sa.event.remove(sqlite_engine, "before_cursor_execute", fail_inbox_insert)
+        sqlalchemy_event.remove(sqlite_engine, "before_cursor_execute", fail_inbox_insert)
 
     assert acceptance is EventAcceptance.NOT_ACCEPTED
     assert metrics.events == [(IMInboxMetricKind.ACCEPTANCE_FAILURE, IMProvider.FEISHU, "persistence_failure")]
@@ -321,9 +372,9 @@ def test_sink_returns_not_accepted_when_database_commit_fails(
     sink, session_maker, metrics = _sink(sqlite_engine, wakeup=None)
 
     def fail_commit(_connection: sa.Connection) -> None:
-        raise sa.exc.OperationalError("COMMIT", {}, RuntimeError("credential must-not-log"))
+        raise OperationalError("COMMIT", {}, RuntimeError("credential must-not-log"))
 
-    sa.event.listen(sqlite_engine, "commit", fail_commit, once=True)
+    sqlalchemy_event.listen(sqlite_engine, "commit", fail_commit, once=True)
 
     acceptance = sink.accept(_event())
 

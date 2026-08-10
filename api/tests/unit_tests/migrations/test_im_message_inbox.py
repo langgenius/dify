@@ -191,6 +191,13 @@ def test_inbox_model_keeps_real_provider_id_as_only_deduplication_identity() -> 
     assert len(IMMessageInbox.metadata.tables) > 0
 
 
+def test_inbox_updated_at_is_a_repository_owned_transition_anchor() -> None:
+    updated_at = IMMessageInbox.__table__.columns.updated_at
+
+    assert updated_at.onupdate is None
+    assert updated_at.server_default is not None
+
+
 def test_processing_state_constraint_matches_model_without_timing_columns() -> None:
     module = _load_migration_module()
     migration_constraint = _processing_state_constraint(_declared_migration_table(module))

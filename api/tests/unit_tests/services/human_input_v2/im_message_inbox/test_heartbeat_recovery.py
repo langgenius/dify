@@ -14,7 +14,9 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_message_inbox import (
     ClaimToken,
     ConsumerDecision,
+    IMInboxDelivery,
     IMInboxRecordId,
+    InboxProcessingPolicy,
     InboxProcessingStatus,
     TransitionResult,
 )
@@ -24,11 +26,20 @@ from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.heartbeat import RenewableLeaseHeartbeat
 from services.human_input_v2.im_message_inbox.recovery import IMInboxRecovery
-from services.human_input_v2.im_message_inbox.sink import InboxWakeupError
 from services.human_input_v2.im_message_inbox.telemetry import (
     IMInboxMetricKind,
     IMInboxMetrics,
 )
+from services.human_input_v2.im_message_inbox.wakeup import InboxWakeupError
+
+
+def _policy(*, lease_duration: timedelta = timedelta(seconds=1)) -> InboxProcessingPolicy:
+    return InboxProcessingPolicy(
+        maximum_attempts=3,
+        lease_duration=lease_duration,
+        retry_backoff_minimum=timedelta(seconds=5),
+        retry_backoff_maximum=timedelta(seconds=20),
+    )
 
 
 class _SystemClock:
@@ -39,8 +50,8 @@ class _SystemClock:
 class _TrackingRepository(SQLAlchemyIMMessageInboxRepository):
     renewed: Event
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
-        super().__init__(session_maker)
+    def __init__(self, session_maker: sessionmaker[Session], policy: InboxProcessingPolicy) -> None:
+        super().__init__(session_maker, policy)
         self.renewed = Event()
 
     @override
@@ -50,13 +61,11 @@ class _TrackingRepository(SQLAlchemyIMMessageInboxRepository):
         claim_token: ClaimToken,
         *,
         now: UtcTimestamp,
-        lease_duration: timedelta,
     ) -> TransitionResult:
         result = super().renew(
             record_id,
             claim_token,
             now=now,
-            lease_duration=lease_duration,
         )
         self.renewed.set()
         return result
@@ -115,22 +124,21 @@ def test_renewable_heartbeat_extends_lease_while_consumer_runs() -> None:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    IMMessageInbox.metadata.create_all(engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    repository = _TrackingRepository(session_maker)
+    repository = _TrackingRepository(session_maker, _policy())
     clock = _SystemClock()
     accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event("event-1"), now=clock.now())
     delivery = repository.claim_by_id(
         accepted.record_id,
         now=clock.now(),
-        lease_duration=timedelta(seconds=1),
     )
-    assert delivery is not None
+    assert isinstance(delivery, IMInboxDelivery)
     heartbeat = RenewableLeaseHeartbeat(
         repository=repository,
         clock=clock,
         heartbeat_interval=timedelta(milliseconds=10),
-        lease_duration=timedelta(seconds=1),
     )
 
     def consume() -> ConsumerDecision:
@@ -145,9 +153,13 @@ def test_renewable_heartbeat_extends_lease_while_consumer_runs() -> None:
 
 
 def test_recovery_is_bounded_and_broker_failure_preserves_database_backlog(sqlite_engine: sa.Engine) -> None:
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    repository = SQLAlchemyIMMessageInboxRepository(session_maker)
+    repository = SQLAlchemyIMMessageInboxRepository(
+        session_maker,
+        _policy(lease_duration=timedelta(seconds=5)),
+    )
     now = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
     accepted = [
         repository.insert_or_resolve(IntegrationId("integration-1"), _event(f"event-{index}"), now=now)
@@ -169,7 +181,12 @@ def test_recovery_is_bounded_and_broker_failure_preserves_database_backlog(sqlit
     assert result.dispatched == 0
     assert len(set(wakeup.record_ids)) == 2
     assert set(wakeup.record_ids).issubset({item.record_id for item in accepted})
-    assert set(repository.recoverable_record_ids(now=now, limit=10)) == {item.record_id for item in accepted}
+    assert set(
+        repository.recoverable_record_ids(
+            now=now,
+            limit=10,
+        )
+    ) == {item.record_id for item in accepted}
     assert isinstance(metrics, _Metrics)
     assert metrics.events == [
         (IMInboxMetricKind.DISPATCH_FAILURE, None, "broker_unavailable"),

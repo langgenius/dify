@@ -26,7 +26,6 @@ class RenewableLeaseHeartbeat:
     _repository: IMMessageInboxRepository
     _clock: WorkerClock
     _heartbeat_interval: timedelta
-    _lease_duration: timedelta
 
     def __init__(
         self,
@@ -34,16 +33,12 @@ class RenewableLeaseHeartbeat:
         repository: IMMessageInboxRepository,
         clock: WorkerClock,
         heartbeat_interval: timedelta,
-        lease_duration: timedelta,
     ) -> None:
         if heartbeat_interval <= timedelta():
             raise ValueError("heartbeat interval must be positive")
-        if heartbeat_interval >= lease_duration:
-            raise ValueError("heartbeat interval must be shorter than lease duration")
         self._repository = repository
         self._clock = clock
         self._heartbeat_interval = heartbeat_interval
-        self._lease_duration = lease_duration
 
     def execute(
         self,
@@ -62,7 +57,6 @@ class RenewableLeaseHeartbeat:
                         delivery.record_id,
                         delivery.claim_token,
                         now=self._clock.now(),
-                        lease_duration=self._lease_duration,
                     )
                 except InboxPersistenceError:
                     lost_lease.set()

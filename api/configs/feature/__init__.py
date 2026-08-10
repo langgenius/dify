@@ -1330,6 +1330,8 @@ class IMMessageInboxConfig(BaseSettings):
     IM_MESSAGE_INBOX_MAXIMUM_ATTEMPTS: PositiveInt = Field(default=5)
     IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS: PositiveInt = Field(default=60)
     IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS: PositiveInt = Field(default=20)
+    IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS: PositiveInt = Field(default=5)
+    IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS: PositiveInt = Field(default=300)
     IM_MESSAGE_INBOX_RECOVERY_BATCH_SIZE: PositiveInt = Field(default=100)
     IM_MESSAGE_INBOX_RECOVERY_INTERVAL_SECONDS: PositiveInt = Field(default=30)
 
@@ -1337,6 +1339,8 @@ class IMMessageInboxConfig(BaseSettings):
     def _validate_im_message_inbox_policy(self) -> "IMMessageInboxConfig":
         if self.IM_MESSAGE_INBOX_HEARTBEAT_INTERVAL_SECONDS >= self.IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS:
             raise ValueError("IM message inbox heartbeat interval must be shorter than its lease duration")
+        if self.IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS < self.IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS:
+            raise ValueError("IM message inbox retry backoff maximum must not be shorter than its minimum")
         return self
 
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import timedelta
 from enum import StrEnum
 from typing import Protocol
 
@@ -20,8 +19,10 @@ from core.human_input_v2.im_message_inbox import (
     IMInboxDelivery,
     IMInboxRecordId,
     IMMessageInboxRepository,
+    InboxClaimExhausted,
     InboxClaimOrigin,
     LostLease,
+    RetryExhausted,
 )
 from core.human_input_v2.shared import UtcTimestamp
 
@@ -35,20 +36,6 @@ class WorkerClock(Protocol):
 
     def now(self) -> UtcTimestamp:
         """Return the current UTC timestamp."""
-
-
-@dataclass(frozen=True, slots=True)
-class InboxWorkerPolicy:
-    """Bounded attempt and lease policy for one worker instance."""
-
-    maximum_attempts: int
-    lease_duration: timedelta
-
-    def __post_init__(self) -> None:
-        if self.maximum_attempts < 1:
-            raise ValueError("maximum attempts must be positive")
-        if self.lease_duration <= timedelta():
-            raise ValueError("lease duration must be positive")
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +65,7 @@ class InboxWorkerOutcome(StrEnum):
     IGNORED = "ignored"
     RETRIED = "retried"
     FAILED = "failed"
+    ATTEMPTS_EXHAUSTED = "attempts_exhausted"
     LOST_LEASE = "lost_lease"
 
 
@@ -89,7 +77,6 @@ class IMInboxWorker:
     _clock: WorkerClock
     _heartbeat: LeaseHeartbeat
     _metrics: IMInboxMetrics
-    _policy: InboxWorkerPolicy
 
     def __init__(
         self,
@@ -99,25 +86,35 @@ class IMInboxWorker:
         clock: WorkerClock,
         heartbeat: LeaseHeartbeat,
         metrics: IMInboxMetrics,
-        policy: InboxWorkerPolicy,
     ) -> None:
         self._repository = repository
         self._consumer = consumer
         self._clock = clock
         self._heartbeat = heartbeat
         self._metrics = metrics
-        self._policy = policy
 
     def process(self, record_id: IMInboxRecordId) -> InboxWorkerOutcome:
         """Claim one record, call its consumer, and fence the resulting write."""
 
-        delivery = self._repository.claim_by_id(
+        claim_result = self._repository.claim_by_id(
             record_id,
             now=self._clock.now(),
-            lease_duration=self._policy.lease_duration,
         )
-        if delivery is None:
+        if claim_result is None:
             return InboxWorkerOutcome.CLAIM_MISS
+        if isinstance(claim_result, InboxClaimExhausted):
+            self._metrics.record(
+                IMInboxMetricKind.RETRY,
+                provider=claim_result.provider,
+                outcome="exhausted",
+            )
+            self._metrics.record(
+                IMInboxMetricKind.TERMINAL,
+                provider=claim_result.provider,
+                outcome=InboxWorkerOutcome.FAILED.value,
+            )
+            return InboxWorkerOutcome.ATTEMPTS_EXHAUSTED
+        delivery = claim_result
         if delivery.claim_origin is InboxClaimOrigin.PENDING:
             self._metrics.record(
                 IMInboxMetricKind.CLAIM,
@@ -192,12 +189,11 @@ class IMInboxWorker:
             delivery.record_id,
             delivery.claim_token,
             now=self._clock.now(),
-            maximum_attempts=self._policy.maximum_attempts,
         )
         if isinstance(transition, LostLease):
             self._record_lost_lease(delivery, outcome="retry")
             return InboxWorkerOutcome.LOST_LEASE
-        if delivery.attempt >= self._policy.maximum_attempts:
+        if isinstance(transition, RetryExhausted):
             self._metrics.record(
                 IMInboxMetricKind.RETRY,
                 provider=delivery.event.provider,

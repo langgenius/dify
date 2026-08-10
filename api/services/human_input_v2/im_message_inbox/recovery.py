@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from core.human_input_v2.im_message_inbox import IMMessageInboxRepository, InboxProcessingStatus
 from core.human_input_v2.shared import UtcTimestamp
 
-from .sink import InboxWakeup, InboxWakeupError
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
+from .wakeup import InboxWakeup, InboxWakeupError
 
 logger = logging.getLogger(__name__)
 

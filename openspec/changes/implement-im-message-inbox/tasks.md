@@ -49,10 +49,10 @@
 ## 6. 接入 Provider event composition
 
 - [ ] 6.1 在 Integration runtime/composition layer 为每个 active adapter 构造对应 `IMMessageInboxSink`，只把已有 `IMEventSink` view 传给 Webhook/STREAM capabilities。
-- [ ] 6.2 添加 Webhook receiver-level test，断言 authentication 失败或 challenge 不调用 sink，authenticated event commit 成功后才返回 Provider success response，commit 失败映射 retry-compatible response。
-- [ ] 6.3 为支持 STREAM 的 Provider 添加 callback-level test，断言同一 callback/connection 保留 ACK ownership，而 sink commit 结果只通过 `ACCEPTED` / `RETRY` 控制 ACK。
-- [ ] 6.4 验证 Webhook 与 STREAM 产生的 event 可写入同一 inbox contract，且 HTTP objects、ACK envelope、SDK client、claim token 与 local Integration ID 都不进入 `AuthenticatedIMEvent`。
-- [ ] 6.5 使用 PostgreSQL 和 fake consumer 完成 receiver → sink adapter → single inbox table → worker → terminal outcome 的 backend integration test，不在本 change 中接入 card decoding 或 Human Input submission logic。
+- [x] 6.2 添加 Webhook receiver-level test，断言 authentication 失败或 challenge 不调用 sink，authenticated event commit 成功后才返回 Provider success response，commit 失败映射 retry-compatible response。
+- [x] 6.3 为支持 STREAM 的 Provider 添加 callback-level test，断言同一 callback/connection 保留 ACK ownership，而 sink commit 结果只通过 `ACCEPTED` / `RETRY` 控制 ACK。
+- [x] 6.4 验证 Webhook 与 STREAM 产生的 event 可写入同一 inbox contract，且 HTTP objects、ACK envelope、SDK client、claim token 与 local Integration ID 都不进入 `AuthenticatedIMEvent`。
+- [x] 6.5 使用 PostgreSQL 和 fake consumer 完成 receiver → sink adapter → single inbox table → worker → terminal outcome 的 backend integration test，不在本 change 中接入 card decoding 或 Human Input submission logic。
 
 ## 7. 增加 observability 与敏感数据保护
 
@@ -65,6 +65,6 @@
 
 - [x] 8.1 使用 SQLite 运行 event inbox 的 migration/model、repository、sink 和 worker unit tests，并确认新增测试遵循 Arrange-Act-Assert；独立 receiver contract unit tests 可以注入 fake sink，但不能替代 SQLite inbox tests。
 - [x] 8.2 运行 `uv run --project api ruff format --check`、targeted Ruff lint 与 targeted Pyright/type checks，修复 inbox change 引入的所有问题。
-- [ ] 8.3 在 CI 中使用 PostgreSQL 运行 concurrency integration tests 和 receiver-to-worker backend integration tests；不得用 SQLite 结果关闭 row-lock、`SKIP LOCKED` 或 multi-worker acceptance items，本地环境不把 CI-only integration suite 作为前置条件。
+- [x] 8.3 在 CI 中使用 PostgreSQL 运行 concurrency integration tests 和 receiver-to-worker backend integration tests；不得用 SQLite 结果关闭 row-lock、`SKIP LOCKED` 或 multi-worker acceptance items，本地环境不把 CI-only integration suite 作为前置条件。
 - [x] 8.4 使用 failure injection 验证 database commit failure、broker outage、worker crash、expired lease、stale finalize 与 poison event exhaustion，并保存不含敏感 payload 的验收证据。
 - [x] 8.5 运行 `openspec validate implement-im-message-inbox --strict`，确认 proposal、design、spec 与 tasks 一致且 apply-ready。

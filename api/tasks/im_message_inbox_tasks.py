@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Protocol
 
 from celery import shared_task
@@ -17,7 +18,7 @@ from flask import current_app
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.human_input_v2.im_message_inbox import IMInboxRecordId
+from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxProcessingPolicy
 from core.human_input_v2.shared import UtcTimestamp
 from dify_app import DifyApp
 from extensions.ext_database import db
@@ -27,7 +28,7 @@ from services.human_input_v2.im_message_inbox import (
     InboxWorkerOutcome,
     OpenTelemetryIMInboxMetrics,
 )
-from services.human_input_v2.im_message_inbox.sink import InboxWakeupError
+from services.human_input_v2.im_message_inbox.wakeup import InboxWakeupError
 
 _RUNTIME_EXTENSION_KEY = "im_message_inbox_task_runtime"
 
@@ -91,7 +92,7 @@ def _task_runtime() -> IMInboxTaskRuntime:
     return runtime
 
 
-@shared_task(name="im_message_inbox.process_record", queue="workflow_storage")
+@shared_task(name="im_message_inbox.process_record", queue="human_input_delivery")
 def process_im_message_inbox_record(record_id: str) -> str:
     """Process one record ID after application composition supplies a consumer."""
 
@@ -100,7 +101,16 @@ def process_im_message_inbox_record(record_id: str) -> str:
 
 
 def _build_recovery() -> IMInboxRecovery:
-    repository = SQLAlchemyIMMessageInboxRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
+    policy = InboxProcessingPolicy(
+        maximum_attempts=dify_config.IM_MESSAGE_INBOX_MAXIMUM_ATTEMPTS,
+        lease_duration=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_LEASE_DURATION_SECONDS),
+        retry_backoff_minimum=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MIN_SECONDS),
+        retry_backoff_maximum=timedelta(seconds=dify_config.IM_MESSAGE_INBOX_RETRY_BACKOFF_MAX_SECONDS),
+    )
+    repository = SQLAlchemyIMMessageInboxRepository(
+        sessionmaker(bind=db.engine, expire_on_commit=False),
+        policy,
+    )
     return IMInboxRecovery(
         repository=repository,
         wakeup=CeleryIMInboxWakeup(process_im_message_inbox_record),

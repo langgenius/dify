@@ -8,7 +8,12 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_message_inbox import ConsumerDecision, IMInboxDelivery, IMInboxRecordId
+from core.human_input_v2.im_message_inbox import (
+    ConsumerDecision,
+    IMInboxDelivery,
+    IMInboxRecordId,
+    InboxProcessingPolicy,
+)
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId, UtcTimestamp
 from dify_app import DifyApp
@@ -18,11 +23,10 @@ from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIM
 from services.human_input_v2.im_message_inbox import (
     IMInboxWorker,
     InboxWorkerOutcome,
-    InboxWorkerPolicy,
     NoopIMInboxMetrics,
     RenewableLeaseHeartbeat,
 )
-from services.human_input_v2.im_message_inbox.sink import InboxWakeupError
+from services.human_input_v2.im_message_inbox.wakeup import InboxWakeupError
 from tasks.im_message_inbox_tasks import (
     CeleryIMInboxWakeup,
     IMInboxRuntimeNotConfiguredError,
@@ -90,6 +94,16 @@ class _Recovery:
         return object()
 
 
+def _task_queue(task: object) -> str | None:
+    # Celery exposes routing options dynamically, outside its declared Task interface.
+    queue = getattr(task, "queue", None)
+    return queue if isinstance(queue, str) else None
+
+
+def test_processing_task_uses_the_deployed_human_input_queue() -> None:
+    assert _task_queue(process_im_message_inbox_record) == "human_input_delivery"
+
+
 def test_celery_wakeup_publishes_one_record_id_without_broker_retries() -> None:
     record_task = _RecordTask()
     wakeup = CeleryIMInboxWakeup(record_task)
@@ -131,9 +145,19 @@ def test_processing_task_passes_only_typed_record_id_to_configured_processor() -
 
 def test_processing_task_runs_repository_backed_worker_and_fenced_finalizes(sqlite_engine: Engine) -> None:
     now = UtcTimestamp(datetime(2026, 8, 2, 8, tzinfo=UTC))
-    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[IMMessageInbox.__table__])
+    inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
+    IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    repository = SQLAlchemyIMMessageInboxRepository(session_maker)
+    lease_duration = timedelta(seconds=30)
+    repository = SQLAlchemyIMMessageInboxRepository(
+        session_maker,
+        InboxProcessingPolicy(
+            maximum_attempts=3,
+            lease_duration=lease_duration,
+            retry_backoff_minimum=timedelta(seconds=5),
+            retry_backoff_maximum=timedelta(seconds=20),
+        ),
+    )
     event = AuthenticatedIMEvent(
         provider=IMProvider.FEISHU,
         provider_tenant_id="tenant-1",
@@ -146,7 +170,6 @@ def test_processing_task_runs_repository_backed_worker_and_fenced_finalizes(sqli
     record_id = repository.insert_or_resolve(IntegrationId("integration-1"), event, now=now).record_id
     consumer = _Consumer()
     clock = _FixedClock(now)
-    lease_duration = timedelta(seconds=30)
     worker = IMInboxWorker(
         repository=repository,
         consumer=consumer,
@@ -155,13 +178,8 @@ def test_processing_task_runs_repository_backed_worker_and_fenced_finalizes(sqli
             repository=repository,
             clock=clock,
             heartbeat_interval=timedelta(seconds=10),
-            lease_duration=lease_duration,
         ),
         metrics=NoopIMInboxMetrics(),
-        policy=InboxWorkerPolicy(
-            maximum_attempts=3,
-            lease_duration=lease_duration,
-        ),
     )
     app = DifyApp(__name__)
     configure_im_inbox_task_runtime(app, processor_factory=lambda: worker)

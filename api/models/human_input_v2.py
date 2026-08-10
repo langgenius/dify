@@ -23,7 +23,7 @@ from typing import Annotated, Literal
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, RootModel, TypeAdapter
 from sqlalchemy import orm
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
 from core.human_input_v2.approval.recipient_resolution import RecipientSourceKind as _RecipientSourceKind
 from core.human_input_v2.entities import (
@@ -73,6 +73,8 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
@@ -647,8 +649,44 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class IMMessageInbox(DefaultFieldsDCMixin, TypeBase):
-    """Authenticated event facts plus one renewable fenced processing lease."""
+class _IMMessageInboxDefaultFieldsMixin(MappedAsDataclass):
+    """Default fields whose update timestamp is controlled by the inbox repository."""
+
+    __abstract__ = True
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        init=False,
+        server_default=sa.func.current_timestamp(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        insert_default=naive_utc_now,
+        default_factory=naive_utc_now,
+        init=False,
+        server_default=sa.func.current_timestamp(),
+        comment="Repository-owned processing transition timestamp and retry-backoff anchor.",
+    )
+
+
+class IMMessageInbox(_IMMessageInboxDefaultFieldsMixin, TypeBase):
+    """Authenticated event facts plus one renewable fenced processing lease.
+
+    ``updated_at`` is the repository-owned processing transition timestamp and
+    retry-backoff anchor. It must never be replaced by an automatic database
+    clock update because processing policy evaluates application-injected UTC.
+    """
 
     __tablename__ = "im_message_inbox"
     __table_args__ = (

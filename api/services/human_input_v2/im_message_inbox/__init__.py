@@ -2,9 +2,10 @@
 
 from .heartbeat import RenewableLeaseHeartbeat
 from .recovery import IMInboxRecovery, RecoveryDispatchResult
-from .sink import IMMessageInboxSink, InboxWakeupError
+from .sink import IMMessageInboxSink
 from .telemetry import IMInboxMetricKind, IMInboxMetrics, NoopIMInboxMetrics, OpenTelemetryIMInboxMetrics
-from .worker import IMInboxWorker, InboxWorkerOutcome, InboxWorkerPolicy
+from .wakeup import InboxWakeup, InboxWakeupError
+from .worker import IMInboxWorker, InboxWorkerOutcome
 
 __all__ = [
     "IMInboxMetricKind",
@@ -12,9 +13,9 @@ __all__ = [
     "IMInboxRecovery",
     "IMInboxWorker",
     "IMMessageInboxSink",
+    "InboxWakeup",
     "InboxWakeupError",
     "InboxWorkerOutcome",
-    "InboxWorkerPolicy",
     "NoopIMInboxMetrics",
     "OpenTelemetryIMInboxMetrics",
     "RecoveryDispatchResult",

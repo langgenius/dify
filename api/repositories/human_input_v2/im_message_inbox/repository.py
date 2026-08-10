@@ -19,16 +19,22 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
     ClaimToken,
-    IMInboxDelivery,
     IMInboxRecordId,
     InboxAcceptance,
     InboxBacklog,
+    InboxClaimExhausted,
     InboxClaimOrigin,
+    InboxClaimResult,
     InboxPersistenceError,
+    InboxProcessingPolicy,
     InboxProcessingStatus,
     LostLease,
+    RetryExhausted,
+    RetryResult,
+    RetryScheduled,
     TransitionApplied,
     TransitionResult,
+    canonicalize_inbox_event,
     validate_inbox_event,
 )
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
@@ -47,15 +53,18 @@ class SQLAlchemyIMMessageInboxRepository:
     """Single-table persistence, claim, recovery, and fenced transition adapter."""
 
     _session_maker: sessionmaker[Session]
+    _policy: InboxProcessingPolicy
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker[Session], policy: InboxProcessingPolicy) -> None:
         self._session_maker = session_maker
+        self._policy = policy
 
     def insert_or_resolve(
         self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: UtcTimestamp
     ) -> InboxAcceptance:
         """Commit all event facts atomically, resolving only real-ID conflicts."""
 
+        event = canonicalize_inbox_event(event)
         validate_inbox_event(event)
         record_id = IMInboxRecordId(str(uuidv7()))
         try:
@@ -87,9 +96,7 @@ class SQLAlchemyIMMessageInboxRepository:
             raise InboxPersistenceError("duplicate IM event could not be resolved")
         return InboxAcceptance(IMInboxRecordId(existing_id), AcceptanceKind.DUPLICATE)
 
-    def claim_by_id(
-        self, record_id: IMInboxRecordId, *, now: UtcTimestamp, lease_duration: timedelta
-    ) -> IMInboxDelivery | None:
+    def claim_by_id(self, record_id: IMInboxRecordId, *, now: UtcTimestamp) -> InboxClaimResult | None:
         """Claim one available record and return only after the transaction commits."""
 
         with self._session_maker() as session, session.begin():
@@ -100,15 +107,11 @@ class SQLAlchemyIMMessageInboxRepository:
             )
             if record is None:
                 return None
-            claim_origin = self._claim_origin(record)
-            self._assign_claim(record, now, lease_duration)
+            claim_result = self._claim_locked_record(record, now)
             session.flush()
-            delivery = delivery_from_record(record, claim_origin=claim_origin)
-        return delivery
+        return claim_result
 
-    def claim_available(
-        self, *, now: UtcTimestamp, lease_duration: timedelta, limit: int
-    ) -> tuple[IMInboxDelivery, ...]:
+    def claim_available(self, *, now: UtcTimestamp, limit: int) -> tuple[InboxClaimResult, ...]:
         """Claim a bounded batch ordered by record age."""
 
         if limit < 1:
@@ -123,12 +126,30 @@ class SQLAlchemyIMMessageInboxRepository:
                     .with_for_update(skip_locked=True)
                 )
             )
-            claims = tuple((record, self._claim_origin(record)) for record in records)
-            for record, _ in claims:
-                self._assign_claim(record, now, lease_duration)
+            claim_results = tuple(self._claim_locked_record(record, now) for record in records)
             session.flush()
-            deliveries = tuple(delivery_from_record(record, claim_origin=origin) for record, origin in claims)
-        return deliveries
+        return claim_results
+
+    def _claim_locked_record(
+        self,
+        record: IMMessageInbox,
+        now: UtcTimestamp,
+    ) -> InboxClaimResult:
+        if record.status is InboxProcessingStatus.PROCESSING and record.attempt_count >= self._policy.maximum_attempts:
+            current = _naive_utc(now)
+            record.status = InboxProcessingStatus.FAILED
+            record.claim_token = None
+            record.lease_expires_at = None
+            record.completed_at = current
+            record.updated_at = current
+            return InboxClaimExhausted(
+                IMInboxRecordId(record.id),
+                record.provider,
+                record.attempt_count,
+            )
+        claim_origin = self._claim_origin(record)
+        self._assign_claim(record, now, self._policy.lease_duration)
+        return delivery_from_record(record, claim_origin=claim_origin)
 
     @staticmethod
     def _claim_origin(record: IMMessageInbox) -> InboxClaimOrigin:
@@ -138,11 +159,22 @@ class SQLAlchemyIMMessageInboxRepository:
             return InboxClaimOrigin.EXPIRED_PROCESSING
         raise ValueError(f"record has non-claimable status: {record.status.value}")
 
-    @staticmethod
-    def _available(now: UtcTimestamp) -> sa.ColumnElement[bool]:
+    def _available(self, now: UtcTimestamp) -> sa.ColumnElement[bool]:
         current = _naive_utc(now)
+        pending_retry_states = tuple(
+            sa.and_(
+                IMMessageInbox.status == InboxProcessingStatus.PENDING,
+                IMMessageInbox.attempt_count == completed_attempts,
+                IMMessageInbox.updated_at <= current - self._policy.retry_delay(completed_attempts),
+            )
+            for completed_attempts in range(1, self._policy.maximum_attempts)
+        )
         return sa.or_(
-            IMMessageInbox.status == InboxProcessingStatus.PENDING,
+            sa.and_(
+                IMMessageInbox.status == InboxProcessingStatus.PENDING,
+                IMMessageInbox.attempt_count == 0,
+            ),
+            *pending_retry_states,
             sa.and_(
                 IMMessageInbox.status == InboxProcessingStatus.PROCESSING,
                 IMMessageInbox.lease_expires_at <= current,
@@ -163,10 +195,9 @@ class SQLAlchemyIMMessageInboxRepository:
         claim_token: ClaimToken,
         *,
         now: UtcTimestamp,
-        lease_duration: timedelta,
     ) -> TransitionResult:
         values = {
-            "lease_expires_at": _naive_utc(now) + lease_duration,
+            "lease_expires_at": _naive_utc(now) + self._policy.lease_duration,
             "updated_at": _naive_utc(now),
         }
         return self._fenced_update(record_id, claim_token, now=now, values=values)
@@ -214,8 +245,7 @@ class SQLAlchemyIMMessageInboxRepository:
         claim_token: ClaimToken,
         *,
         now: UtcTimestamp,
-        maximum_attempts: int,
-    ) -> TransitionResult:
+    ) -> RetryResult:
         """Return current work to pending or fail it after bounded attempts."""
 
         current = _naive_utc(now)
@@ -232,16 +262,31 @@ class SQLAlchemyIMMessageInboxRepository:
             )
             if record is None:
                 return LostLease(record_id, claim_token)
-            if record.attempt_count >= maximum_attempts:
-                record.status = InboxProcessingStatus.FAILED
-                record.completed_at = current
-            else:
-                record.status = InboxProcessingStatus.PENDING
-                record.completed_at = None
-            record.claim_token = None
-            record.lease_expires_at = None
-            record.updated_at = current
-        return TransitionApplied(record_id)
+            attempts_exhausted = record.attempt_count >= self._policy.maximum_attempts
+            # Assigning an unchanged ORM timestamp leaves it clean and lets the column's
+            # database onupdate replace the injected retry anchor. Keep the locked read for
+            # attempt policy, then explicitly write every transition value through Core.
+            result = session.connection().execute(
+                sa.update(IMMessageInbox)
+                .where(
+                    IMMessageInbox.id == str(record_id),
+                    IMMessageInbox.status == InboxProcessingStatus.PROCESSING,
+                    IMMessageInbox.claim_token == str(claim_token),
+                    IMMessageInbox.lease_expires_at > current,
+                )
+                .values(
+                    status=(InboxProcessingStatus.FAILED if attempts_exhausted else InboxProcessingStatus.PENDING),
+                    claim_token=None,
+                    lease_expires_at=None,
+                    completed_at=current if attempts_exhausted else None,
+                    updated_at=current,
+                )
+            )
+            if result.rowcount != 1:
+                return LostLease(record_id, claim_token)
+        if attempts_exhausted:
+            return RetryExhausted(record_id)
+        return RetryScheduled(record_id)
 
     def _fenced_update(
         self,

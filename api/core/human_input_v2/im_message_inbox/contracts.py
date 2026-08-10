@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from enum import StrEnum
 from typing import NewType, Protocol
 
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId, UtcTimestamp
 
@@ -30,6 +31,14 @@ def validate_inbox_provider_tenant_id(provider_tenant_id: str) -> None:
 
     if len(provider_tenant_id) > IM_INBOX_PROVIDER_METADATA_MAX_LENGTH:
         raise InboxEventValidationError("provider tenant id", IM_INBOX_PROVIDER_METADATA_MAX_LENGTH)
+
+
+def canonicalize_inbox_event(event: AuthenticatedIMEvent) -> AuthenticatedIMEvent:
+    """Represent a blank Provider event ID as an absent deduplication identity."""
+
+    if event.event_id is None or event.event_id.strip():
+        return event
+    return replace(event, event_id=None)
 
 
 def validate_inbox_event(event: AuthenticatedIMEvent) -> None:
@@ -80,6 +89,38 @@ class AcceptanceKind(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class InboxProcessingPolicy:
+    """Immutable attempt, lease, and retry-availability policy owned by persistence."""
+
+    maximum_attempts: int
+    lease_duration: timedelta
+    retry_backoff_minimum: timedelta
+    retry_backoff_maximum: timedelta
+
+    def __post_init__(self) -> None:
+        if self.maximum_attempts < 1:
+            raise ValueError("maximum attempts must be positive")
+        if self.lease_duration <= timedelta():
+            raise ValueError("lease duration must be positive")
+        if self.retry_backoff_minimum <= timedelta():
+            raise ValueError("retry backoff minimum must be positive")
+        if self.retry_backoff_maximum < self.retry_backoff_minimum:
+            raise ValueError("retry backoff maximum must not be shorter than its minimum")
+
+    def retry_delay(self, completed_attempts: int) -> timedelta:
+        """Return capped exponential delay after the given completed attempt."""
+
+        if completed_attempts < 1:
+            raise ValueError("completed attempts must be positive")
+        delay = self.retry_backoff_minimum
+        remaining_doublings = completed_attempts - 1
+        while remaining_doublings > 0 and delay < self.retry_backoff_maximum:
+            delay = min(delay * 2, self.retry_backoff_maximum)
+            remaining_doublings -= 1
+        return delay
+
+
+@dataclass(frozen=True, slots=True)
 class IMInboxDelivery:
     """Claimed authenticated event plus local routing and fencing metadata."""
 
@@ -96,11 +137,44 @@ class IMInboxDelivery:
 
 
 @dataclass(frozen=True, slots=True)
+class InboxClaimExhausted:
+    """Expired processing work atomically failed before a new claim was issued."""
+
+    record_id: IMInboxRecordId
+    provider: IMProvider
+    attempt: int
+
+    def __post_init__(self) -> None:
+        if self.attempt < 1:
+            raise ValueError("attempt must be positive")
+
+
+type InboxClaimResult = IMInboxDelivery | InboxClaimExhausted
+
+
+@dataclass(frozen=True, slots=True)
 class LostLease:
     """A stale owner result that cannot mutate the current record state."""
 
     record_id: IMInboxRecordId
     claim_token: ClaimToken
+
+
+@dataclass(frozen=True, slots=True)
+class RetryScheduled:
+    """Current processing claim returned to delayed pending work."""
+
+    record_id: IMInboxRecordId
+
+
+@dataclass(frozen=True, slots=True)
+class RetryExhausted:
+    """Current processing claim reached its attempt limit and failed terminally."""
+
+    record_id: IMInboxRecordId
+
+
+type RetryResult = RetryScheduled | RetryExhausted | LostLease
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,14 +228,10 @@ class IMMessageInboxRepository(Protocol):
     ) -> InboxAcceptance:
         """Commit a new record or resolve its identified duplicate."""
 
-    def claim_by_id(
-        self, record_id: IMInboxRecordId, *, now: UtcTimestamp, lease_duration: timedelta
-    ) -> IMInboxDelivery | None:
+    def claim_by_id(self, record_id: IMInboxRecordId, *, now: UtcTimestamp) -> InboxClaimResult | None:
         """Acquire an available record in a short transaction."""
 
-    def claim_available(
-        self, *, now: UtcTimestamp, lease_duration: timedelta, limit: int
-    ) -> tuple[IMInboxDelivery, ...]:
+    def claim_available(self, *, now: UtcTimestamp, limit: int) -> tuple[InboxClaimResult, ...]:
         """Acquire a bounded available batch using the same claim contract."""
 
     def renew(
@@ -170,7 +240,6 @@ class IMMessageInboxRepository(Protocol):
         claim_token: ClaimToken,
         *,
         now: UtcTimestamp,
-        lease_duration: timedelta,
     ) -> TransitionResult:
         """Renew the current unexpired fenced lease."""
 
@@ -180,8 +249,7 @@ class IMMessageInboxRepository(Protocol):
         claim_token: ClaimToken,
         *,
         now: UtcTimestamp,
-        maximum_attempts: int,
-    ) -> TransitionResult:
+    ) -> RetryResult:
         """Return a current claim to pending or exhaust it to terminal failure."""
 
     def succeed(self, record_id: IMInboxRecordId, claim_token: ClaimToken, *, now: UtcTimestamp) -> TransitionResult:
