@@ -1,6 +1,7 @@
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { NewKnowledgeSourceDraft } from '../routes'
 import type { SourceConnection, SourceProvider } from '../source-models'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
@@ -18,6 +19,7 @@ const routerMock = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
 }))
+const openMock = vi.hoisted(() => vi.fn())
 
 const connectFirecrawlButtonName = 'dataset.newKnowledge.connectProvider:{"provider":"Firecrawl"}'
 
@@ -170,6 +172,16 @@ const queryState = vi.hoisted(() => ({
     isPending: false,
     refetch: vi.fn(),
   },
+  datasourcePlugins: {
+    data: [] as DataSourceItem[],
+    error: null as unknown,
+    isPending: false,
+    refetch: vi.fn(),
+  },
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useDataSourceList: () => queryState.datasourcePlugins,
 }))
 
 const clientMock = vi.hoisted(() => ({
@@ -402,6 +414,87 @@ const firecrawlDatasourceAuth: DatasourceProviderAuthListResponse['result'][numb
   provider: 'firecrawl',
 }
 
+const firecrawlDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+          name: 'crawl',
+          provider: 'firecrawl',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      icon: 'icon.svg',
+      label: { en_US: 'Firecrawl', zh_Hans: 'Firecrawl' },
+      name: 'firecrawl',
+      tags: [],
+    },
+    provider_type: 'website_crawl',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/firecrawl_datasource',
+  plugin_unique_identifier: 'langgenius/firecrawl_datasource:1.0.0@local',
+  provider: 'firecrawl',
+}
+
+const jinaDatasourcePlugin: DataSourceItem = {
+  declaration: {
+    credentials_schema: [],
+    datasources: [
+      {
+        description: { en_US: 'Jina Reader', zh_Hans: 'Jina Reader' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Jina Reader', zh_Hans: 'Jina Reader' },
+          name: 'jina_reader',
+          provider: 'jinareader',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      author: 'langgenius',
+      description: { en_US: 'Jina Reader', zh_Hans: 'Jina Reader' },
+      icon: 'icon.svg',
+      label: { en_US: 'Jina Reader', zh_Hans: 'Jina Reader' },
+      name: 'jinareader',
+      tags: [],
+    },
+    provider_type: 'website_crawl',
+  },
+  is_authorized: true,
+  plugin_id: 'langgenius/jina_datasource',
+  plugin_unique_identifier: 'langgenius/jina_datasource:1.0.0@local',
+  provider: 'jinareader',
+}
+
+const jinaDatasourceAuth: DatasourceProviderAuthListResponse['result'][number] = {
+  ...firecrawlDatasourceAuth,
+  credentials_list: [
+    {
+      avatar_url: null,
+      credential: {},
+      id: 'jina-credential-1',
+      is_default: true,
+      name: 'Default Jina Reader',
+      type: 'api-key',
+    },
+  ],
+  label: { en_US: 'Jina Reader' },
+  name: 'jinareader',
+  plugin_id: 'langgenius/jina_datasource',
+  plugin_unique_identifier: 'langgenius/jina_datasource:1.0.0@local',
+  provider: 'jinareader',
+}
+
 const connection = (
   status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked',
   version = 2,
@@ -426,18 +519,23 @@ const connection = (
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('open', openMock)
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
     queryState.connections.refetch.mockReset()
     queryState.providers.refetch.mockReset()
     queryState.datasourceAuth.refetch.mockReset()
+    queryState.datasourcePlugins.refetch.mockReset()
     queryState.providers.data = { items: [firecrawlProvider] }
     queryState.providers.error = null
     queryState.providers.isPending = false
     queryState.datasourceAuth.data = { result: [] }
     queryState.datasourceAuth.error = null
     queryState.datasourceAuth.isPending = false
+    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin]
+    queryState.datasourcePlugins.error = null
+    queryState.datasourcePlugins.isPending = false
     queryState.connections.data = { pages: [{ items: [] }] }
     queryState.connections.error = null
     queryState.connections.hasNextPage = false
@@ -448,6 +546,7 @@ describe('AddSourcePage', () => {
 
   afterEach(() => {
     globalThis.sessionStorage.clear()
+    vi.unstubAllGlobals()
   })
 
   it('loads the provider catalog and every scoped connection cursor page', () => {
@@ -579,7 +678,7 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue('25')
   })
 
-  it('keeps the exact website provider selected and lets the user switch to Firecrawl', async () => {
+  it('keeps the exact website provider selected while loading website dependencies', async () => {
     const user = userEvent.setup()
     render(
       <AddSourcePage
@@ -597,9 +696,19 @@ describe('AddSourcePage', () => {
     )
 
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
-    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
-    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
     expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.configureProvider:{"provider":"Jina Reader"}',
+      }),
+    )
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fjina_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
     await user.click(screen.getByRole('radio', { name: 'Firecrawl' }))
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
     expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
@@ -855,6 +964,74 @@ describe('AddSourcePage', () => {
     expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
   })
 
+  it('binds an installed Jina Reader datasource without reusing a Firecrawl connection', async () => {
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    queryState.datasourceAuth.data = { result: [jinaDatasourceAuth] }
+    queryState.connections.data = {
+      pages: [
+        {
+          items: [
+            {
+              ...connection('active'),
+              authKind: 'endpoint',
+              configuration: {
+                credentialId: 'firecrawl-credential-1',
+                datasource: 'crawl',
+                pluginId: 'langgenius/firecrawl_datasource',
+                provider: 'firecrawl',
+                providerKind: 'website',
+              },
+            },
+          ],
+        },
+      ],
+    }
+    clientMock.createConnection.mockResolvedValue({
+      ...connection('active'),
+      authKind: 'endpoint',
+      configuration: {
+        credentialId: 'jina-credential-1',
+        datasource: 'jina_reader',
+        pluginId: 'langgenius/jina_datasource',
+        provider: 'jinareader',
+        providerKind: 'website',
+      },
+      name: 'Jina Reader',
+    })
+
+    render(
+      <AddSourcePage
+        initialSourceProvider="Jina Reader"
+        initialSourceType="websiteCrawl"
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    await waitFor(() =>
+      expect(clientMock.createConnection).toHaveBeenCalledWith({
+        body: {
+          authKind: 'endpoint',
+          configuration: {
+            credentialId: 'jina-credential-1',
+            datasource: 'jina_reader',
+            pluginId: 'langgenius/jina_datasource',
+            provider: 'jinareader',
+            providerKind: 'website',
+          },
+          credentials: {},
+          name: 'Jina Reader',
+          providerId: 'plugin-daemon-website',
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toBeEnabled()
+  })
+
   it('opens Data Source settings when Dify has no Firecrawl credential', async () => {
     const user = userEvent.setup()
     queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
@@ -871,8 +1048,23 @@ describe('AddSourcePage', () => {
       }),
     )
 
-    expect(routerMock.replace).toHaveBeenCalledWith('/integrations/data-source')
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Ffirecrawl_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
     expect(clientMock.createConnection).not.toHaveBeenCalled()
+  })
+
+  it('refreshes website plugins, credentials, providers, and connections after configuration', () => {
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    act(() => globalThis.dispatchEvent(new Event('focus')))
+
+    expect(queryState.providers.refetch).toHaveBeenCalledOnce()
+    expect(queryState.datasourcePlugins.refetch).toHaveBeenCalledOnce()
+    expect(queryState.datasourceAuth.refetch).toHaveBeenCalledOnce()
+    expect(queryState.connections.refetch).toHaveBeenCalledOnce()
   })
 
   it('treats an active managed connection as unconfigured after its credential is deleted', () => {
@@ -950,7 +1142,11 @@ describe('AddSourcePage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'FakeCrawler' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }))
-    expect(routerMock.replace).toHaveBeenCalledWith('/integrations/data-source')
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source',
+      '_blank',
+      'noopener,noreferrer',
+    )
   })
 
   it('keeps the handed-off website draft when the provider connection becomes active', async () => {
@@ -992,7 +1188,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.firecrawlUnavailable')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
   })
 
   it('clears sensitive input but retains non-sensitive input after a connection error', async () => {

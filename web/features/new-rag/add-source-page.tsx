@@ -7,6 +7,7 @@ import type {
   NewKnowledgeWebsiteProvider,
 } from './routes'
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -28,6 +29,7 @@ import Loading from '@/app/components/base/loading'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { useDataSourceList } from '@/service/use-pipeline'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import { ConnectedSourceSetup } from './connected-source-setup'
 import {
@@ -49,26 +51,44 @@ type ConnectionAuthKind = 'api-key' | 'endpoint'
 type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
-const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
-const FIRECRAWL_CONNECTION_NAME = 'Firecrawl'
-const FIRECRAWL_CONFIGURATION = {
-  datasource: 'crawl',
-  pluginId: 'langgenius/firecrawl_datasource',
-  provider: 'firecrawl',
-  providerKind: 'website',
-} as const
+const WEBSITE_SOURCE_PROVIDER_ID = 'plugin-daemon-website'
 const WEBSITE_PROVIDER_OPTIONS: Array<{
+  aliases: string[]
   icon: string
   value: NewKnowledgeWebsiteProvider
 }> = [
-  { icon: 'i-custom-public-common-firecrawl', value: 'Firecrawl' },
-  { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
-  { icon: 'i-custom-public-knowledge-watercrawl', value: 'WaterCrawl' },
-  { icon: 'i-ri-global-line text-text-accent', value: 'FakeCrawler' },
+  {
+    aliases: ['firecrawl'],
+    icon: 'i-custom-public-common-firecrawl',
+    value: 'Firecrawl',
+  },
+  {
+    aliases: ['jina', 'jina reader', 'jinareader'],
+    icon: 'i-custom-public-llm-jina',
+    value: 'Jina Reader',
+  },
+  {
+    aliases: ['watercrawl'],
+    icon: 'i-custom-public-knowledge-watercrawl',
+    value: 'WaterCrawl',
+  },
+  {
+    aliases: ['fakecrawler'],
+    icon: 'i-ri-global-line text-text-accent',
+    value: 'FakeCrawler',
+  },
 ]
-const FIRECRAWL_FIXED_FIELD_NAMES = new Set([
-  ...Object.keys(FIRECRAWL_CONFIGURATION),
+const WEBSITE_PROVIDER_PACKAGE_IDS: Partial<Record<NewKnowledgeWebsiteProvider, string>> = {
+  Firecrawl: 'langgenius/firecrawl_datasource',
+  'Jina Reader': 'langgenius/jina_datasource',
+  WaterCrawl: 'watercrawl/watercrawl_datasource',
+}
+const MANAGED_PROVIDER_FIELD_NAMES = new Set([
   'credentialId',
+  'datasource',
+  'pluginId',
+  'provider',
+  'providerKind',
 ])
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
@@ -90,43 +110,124 @@ function fieldValue(value: string, type: ProviderField['type']) {
   return value.trim()
 }
 
-function findFirecrawl(providers: Provider[]) {
-  return providers.find((provider) => provider.id === FIRECRAWL_PROVIDER_ID)
+function normalizeProviderName(value: string) {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
-function findFirecrawlDatasourceProvider(providers: DatasourceProviderAuthListResponse['result']) {
+function websiteProviderOption(provider: NewKnowledgeWebsiteProvider) {
+  return WEBSITE_PROVIDER_OPTIONS.find((option) => option.value === provider)
+}
+
+function websiteProviderIntegrationPath(provider?: NewKnowledgeWebsiteProvider) {
+  const base = buildIntegrationPath('data-source')
+  if (!provider) return base
+  const packageId = WEBSITE_PROVIDER_PACKAGE_IDS[provider]
+  if (!packageId) return base
+  const query = new URLSearchParams({ 'package-ids': JSON.stringify([packageId]) })
+  return `${base}?${query.toString()}`
+}
+
+function findWebsiteSourceProvider(providers: Provider[]) {
+  return providers.find((provider) => provider.id === WEBSITE_SOURCE_PROVIDER_ID)
+}
+
+function findWebsiteDatasourceProvider(
+  datasourcePlugins: DataSourceItem[],
+  providerName: NewKnowledgeWebsiteProvider,
+) {
+  if (providerName === 'FakeCrawler') return undefined
+  const option = websiteProviderOption(providerName)
+  if (!option) return undefined
+  const aliases = [option.value, ...option.aliases].map(normalizeProviderName)
+  for (const plugin of datasourcePlugins) {
+    if (plugin.declaration.provider_type !== 'website_crawl') continue
+    const pluginIdentities = [
+      plugin.declaration.identity.label.en_US,
+      plugin.declaration.identity.name,
+      plugin.plugin_id,
+      plugin.provider,
+    ].map(normalizeProviderName)
+    const datasource = plugin.declaration.datasources.find((candidate) => {
+      const datasourceIdentities = [
+        candidate.identity.label.en_US,
+        candidate.identity.name,
+        candidate.identity.provider,
+      ].map(normalizeProviderName)
+      return [...pluginIdentities, ...datasourceIdentities].some((identity) =>
+        aliases.some((alias) => identity.includes(alias) || alias.includes(identity)),
+      )
+    })
+    if (datasource) return { datasource, plugin }
+  }
+  return undefined
+}
+
+type WebsiteDatasourceProvider = NonNullable<ReturnType<typeof findWebsiteDatasourceProvider>>
+
+function findDatasourceAuth(
+  providers: DatasourceProviderAuthListResponse['result'],
+  datasourceProvider: WebsiteDatasourceProvider | undefined,
+) {
+  if (!datasourceProvider) return undefined
   return providers.find(
     (provider) =>
-      provider.plugin_id === FIRECRAWL_CONFIGURATION.pluginId &&
-      provider.provider === FIRECRAWL_CONFIGURATION.provider,
+      provider.plugin_id === datasourceProvider.plugin.plugin_id &&
+      provider.provider === datasourceProvider.plugin.provider,
   )
 }
 
-function findFirecrawlCredential(providers: DatasourceProviderAuthListResponse['result']) {
-  const datasourceProvider = findFirecrawlDatasourceProvider(providers)
-  return (
-    datasourceProvider?.credentials_list.find((credential) => credential.is_default) ??
-    datasourceProvider?.credentials_list[0]
-  )
-}
-
-function hasFirecrawlCredential(
+function findDatasourceCredential(
   providers: DatasourceProviderAuthListResponse['result'],
-  credentialId: unknown,
+  datasourceProvider: WebsiteDatasourceProvider | undefined,
 ) {
-  if (typeof credentialId !== 'string') return false
-  return Boolean(
-    findFirecrawlDatasourceProvider(providers)?.credentials_list.some(
-      (credential) => credential.id === credentialId,
-    ),
+  const provider = findDatasourceAuth(providers, datasourceProvider)
+  return (
+    provider?.credentials_list.find((credential) => credential.is_default) ??
+    provider?.credentials_list[0]
   )
 }
 
-function findProviderConnection(connections: Connection[], providerId?: string) {
-  if (!providerId) return undefined
+function websiteDatasourceConfiguration(
+  datasourceProvider: WebsiteDatasourceProvider,
+  credentialId?: string,
+) {
+  return {
+    ...(credentialId ? { credentialId } : {}),
+    datasource: datasourceProvider.datasource.identity.name,
+    pluginId: datasourceProvider.plugin.plugin_id,
+    provider: datasourceProvider.plugin.provider,
+    providerKind: 'website',
+  }
+}
+
+function connectionMatchesDatasource(
+  connection: Connection,
+  datasourceProvider: WebsiteDatasourceProvider | undefined,
+  credentialId?: string,
+) {
+  if (!datasourceProvider) return false
+  const configuration = connection.configuration
+  return (
+    configuration.pluginId === datasourceProvider.plugin.plugin_id &&
+    configuration.provider === datasourceProvider.plugin.provider &&
+    configuration.datasource === datasourceProvider.datasource.identity.name &&
+    (!credentialId || configuration.credentialId === credentialId)
+  )
+}
+
+function findProviderConnection(
+  connections: Connection[],
+  providerId: string | undefined,
+  datasourceProvider: WebsiteDatasourceProvider | undefined,
+  credentialId?: string,
+) {
+  if (!providerId || !datasourceProvider) return undefined
   return [
     ...connections.filter(
-      (connection) => connection.providerId === providerId && connection.status !== 'revoked',
+      (connection) =>
+        connection.providerId === providerId &&
+        connection.status !== 'revoked' &&
+        connectionMatchesDatasource(connection, datasourceProvider, credentialId),
     ),
   ].sort(
     (left, right) =>
@@ -151,7 +252,7 @@ function normalizeSourceType(value: string | null): SourceType {
 
 function isDifyManagedProvider(provider: Provider) {
   const fieldNames = new Set(provider.configuration.map((field) => field.name))
-  return fieldNames.has('credentialId') && fieldNames.has('providerKind')
+  return [...MANAGED_PROVIDER_FIELD_NAMES].every((field) => fieldNames.has(field))
 }
 
 function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
@@ -161,7 +262,7 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
       : []
 
   const fields = provider.configuration.filter(
-    (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
+    (field) => !MANAGED_PROVIDER_FIELD_NAMES.has(field.name),
   )
   const supported: ConnectionAuthKind[] = []
   if (provider.authKinds.includes('api-key') && fields.some((field) => field.secret))
@@ -305,18 +406,22 @@ function ProviderFieldControl({
 }
 
 function ConnectionForm({
+  datasourceProvider,
   knowledgeSpaceId,
   onConnected,
   onDraftChange,
   onReconcile,
   provider,
+  providerName,
   credentialId,
 }: {
+  datasourceProvider: WebsiteDatasourceProvider
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
+  providerName: NewKnowledgeWebsiteProvider
   credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
@@ -327,7 +432,7 @@ function ConnectionForm({
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
   const configurableFields = provider.configuration.filter(
-    (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
+    (field) => !MANAGED_PROVIDER_FIELD_NAMES.has(field.name),
   )
   const visibleFields = configurableFields.filter(
     (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
@@ -360,12 +465,11 @@ function ConnectionForm({
     setPending(true)
     try {
       const fixedValues: Record<string, string> = {
-        ...FIRECRAWL_CONFIGURATION,
-        ...(credentialId ? { credentialId } : {}),
+        ...websiteDatasourceConfiguration(datasourceProvider, credentialId),
       }
       const fixedConfiguration = Object.fromEntries(
         provider.configuration
-          .filter((field) => FIRECRAWL_FIXED_FIELD_NAMES.has(field.name))
+          .filter((field) => MANAGED_PROVIDER_FIELD_NAMES.has(field.name))
           .flatMap((field) => {
             const value = fixedValues[field.name]
             return value === undefined ? [] : ([[field.name, value]] as const)
@@ -390,7 +494,7 @@ function ConnectionForm({
             authKind,
             configuration: safeConfiguration,
             credentials: secretCredentials,
-            name: FIRECRAWL_CONNECTION_NAME,
+            name: providerName,
             providerId: provider.id,
           },
           params: { control_space_id: knowledgeSpaceId },
@@ -456,7 +560,7 @@ function ConnectionForm({
         {pending
           ? t(($) => $['newKnowledge.connectingProvider'])
           : t(($) => $['newKnowledge.connectProvider'], {
-              provider: FIRECRAWL_CONNECTION_NAME,
+              provider: providerName,
             })}
       </Button>
     </Form>
@@ -465,16 +569,20 @@ function ConnectionForm({
 
 function ManagedProviderConnection({
   credentialId,
+  datasourceProvider,
   knowledgeSpaceId,
   onConnected,
   onReconcile,
   provider,
+  providerName,
 }: {
   credentialId: string
+  datasourceProvider: WebsiteDatasourceProvider
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
+  providerName: NewKnowledgeWebsiteProvider
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -482,16 +590,17 @@ function ManagedProviderConnection({
   const [error, setError] = useState(false)
   const requestRef = useRef<
     | {
-        attempt: number
+        key: string
         promise: Promise<Connection | undefined>
       }
     | undefined
   >(undefined)
+  const requestKey = `${provider.id}:${datasourceProvider.plugin.plugin_id}:${datasourceProvider.datasource.identity.name}:${credentialId}:${attempt}`
 
   useEffect(() => {
-    if (requestRef.current?.attempt !== attempt) {
+    if (requestRef.current?.key !== requestKey) {
       requestRef.current = {
-        attempt,
+        key: requestKey,
         promise: (async () => {
           try {
             return sourceConnectionFromApi(
@@ -499,11 +608,10 @@ function ManagedProviderConnection({
                 body: {
                   authKind: 'endpoint',
                   configuration: {
-                    ...FIRECRAWL_CONFIGURATION,
-                    credentialId,
+                    ...websiteDatasourceConfiguration(datasourceProvider, credentialId),
                   },
                   credentials: {},
-                  name: FIRECRAWL_CONNECTION_NAME,
+                  name: providerName,
                   providerId: provider.id,
                 },
                 params: { control_space_id: knowledgeSpaceId },
@@ -529,7 +637,16 @@ function ManagedProviderConnection({
     return () => {
       subscribed = false
     }
-  }, [attempt, credentialId, knowledgeSpaceId, onConnected, onReconcile, provider.id])
+  }, [
+    credentialId,
+    datasourceProvider,
+    knowledgeSpaceId,
+    onConnected,
+    onReconcile,
+    provider.id,
+    providerName,
+    requestKey,
+  ])
 
   return (
     <div className="flex min-h-40 flex-col items-center justify-center rounded-xl bg-background-section p-4 text-center">
@@ -563,20 +680,24 @@ function ManagedProviderConnection({
 }
 
 function UnconfiguredProvider({
+  datasourceProvider,
   knowledgeSpaceId,
   onConnected,
   onConfigureManagedProvider,
   onDraftChange,
   onReconcile,
   provider,
+  providerName,
   credentialId,
 }: {
+  datasourceProvider: WebsiteDatasourceProvider
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onConfigureManagedProvider: () => void
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
+  providerName: NewKnowledgeWebsiteProvider
   credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
@@ -587,37 +708,44 @@ function UnconfiguredProvider({
     return (
       <ManagedProviderConnection
         credentialId={credentialId}
+        datasourceProvider={datasourceProvider}
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
         onReconcile={onReconcile}
         provider={provider}
+        providerName={providerName}
       />
     )
 
   if (configuring)
     return (
       <ConnectionForm
+        datasourceProvider={datasourceProvider}
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
         onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
+        providerName={providerName}
       />
     )
 
   return (
     <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span aria-hidden className="i-custom-public-common-firecrawl size-4.5" />
+        <span
+          aria-hidden
+          className={`${websiteProviderOption(providerName)?.icon ?? 'i-ri-global-line'} size-4.5`}
+        />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
-          provider: FIRECRAWL_CONNECTION_NAME,
+          provider: providerName,
         })}
       </h3>
       <p className="system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
-          provider: FIRECRAWL_CONNECTION_NAME,
+          provider: providerName,
         })}
       </p>
       <Button
@@ -625,7 +753,7 @@ function UnconfiguredProvider({
         onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
       >
         {t(($) => $['newKnowledge.configureProvider'], {
-          provider: FIRECRAWL_CONNECTION_NAME,
+          provider: providerName,
         })}
       </Button>
     </div>
@@ -787,8 +915,7 @@ export function AddSourcePage({
     Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
   >({ [sourceDraft.sourceType]: sourceDraft })
   const sourceType = sourceDraft.sourceType
-  const websiteSourceSelected =
-    sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
+  const websiteSourceSelected = sourceDraft.sourceType === 'websiteCrawl'
   const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const updateSourceDraft = (draft: NewKnowledgeSourceDraft) => {
     sourceDraftsRef.current[draft.sourceType] = draft
@@ -848,6 +975,7 @@ export function AddSourcePage({
       retry: false,
     }),
   )
+  const datasourcePluginsQuery = useDataSourceList(websiteSourceSelected)
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },
@@ -864,20 +992,40 @@ export function AddSourcePage({
       retry: false,
     }),
   )
-  const provider = findFirecrawl(providersQuery.data ?? [])
+  const provider = findWebsiteSourceProvider(providersQuery.data ?? [])
+  const websiteProviderName =
+    sourceDraft.sourceType === 'websiteCrawl' ? sourceDraft.provider : 'Firecrawl'
+  const datasourceProvider = useMemo(
+    () => findWebsiteDatasourceProvider(datasourcePluginsQuery.data ?? [], websiteProviderName),
+    [datasourcePluginsQuery.data, websiteProviderName],
+  )
   const datasourceProviders = datasourceAuthQuery.data?.result ?? []
-  const datasourceCredential = findFirecrawlCredential(datasourceProviders)
+  const datasourceCredential = findDatasourceCredential(datasourceProviders, datasourceProvider)
   const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
   const remoteConnections =
     connectionsQuery.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
-  const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
+  const remoteConnection = findProviderConnection(
+    remoteConnections,
+    provider?.id,
+    datasourceProvider,
+    difyManagedProvider ? datasourceCredential?.id : undefined,
+  )
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
   const matchingRemoteConnection = connectionOverride
     ? remoteConnections.find((candidate) => candidate.id === connectionOverride.id)
     : undefined
   const connection = useMemo(() => {
     const localConnection = connectionOverride
-    if (!localConnection || localConnection.providerId !== provider?.id) return remoteConnection
+    if (
+      !localConnection ||
+      localConnection.providerId !== provider?.id ||
+      !connectionMatchesDatasource(
+        localConnection,
+        datasourceProvider,
+        difyManagedProvider ? datasourceCredential?.id : undefined,
+      )
+    )
+      return remoteConnection
     if (!matchingRemoteConnection) return localConnection
     if (matchingRemoteConnection.id === localConnection.id) {
       if (matchingRemoteConnection.version > localConnection.version)
@@ -893,16 +1041,23 @@ export function AddSourcePage({
         return matchingRemoteConnection
     }
     return localConnection
-  }, [connectionOverride, matchingRemoteConnection, provider?.id, remoteConnection])
+  }, [
+    connectionOverride,
+    datasourceCredential?.id,
+    datasourceProvider,
+    difyManagedProvider,
+    matchingRemoteConnection,
+    provider?.id,
+    remoteConnection,
+  ])
   const activeConnection =
     connection?.status === 'active' &&
-    (!difyManagedProvider ||
-      hasFirecrawlCredential(datasourceProviders, connection.configuration.credentialId))
+    (!difyManagedProvider || datasourceCredential?.id === connection.configuration.credentialId)
       ? connection
       : undefined
   const supportsDirectConnection = provider
     ? difyManagedProvider
-      ? provider.authKinds.includes('endpoint')
+      ? Boolean(datasourceProvider) && provider.authKinds.includes('endpoint')
       : getSupportedAuthKinds(provider).length > 0
     : false
   const {
@@ -911,6 +1066,29 @@ export function AddSourcePage({
     isFetchingNextPage: isFetchingNextConnectionPage,
     refetch: refetchConnections,
   } = connectionsQuery
+  const { refetch: refetchProviders } = providersQuery
+  const { refetch: refetchDatasourceAuth } = datasourceAuthQuery
+  const { refetch: refetchDatasourcePlugins } = datasourcePluginsQuery
+
+  useEffect(() => {
+    if (!websiteSourceSelected) return
+    const refetch = () => {
+      void Promise.all([
+        refetchProviders(),
+        refetchDatasourcePlugins(),
+        refetchDatasourceAuth(),
+        refetchConnections(),
+      ])
+    }
+    globalThis.addEventListener('focus', refetch)
+    return () => globalThis.removeEventListener('focus', refetch)
+  }, [
+    refetchConnections,
+    refetchDatasourceAuth,
+    refetchDatasourcePlugins,
+    refetchProviders,
+    websiteSourceSelected,
+  ])
 
   useEffect(() => {
     if (
@@ -951,10 +1129,22 @@ export function AddSourcePage({
       ? refreshedCurrentConnection
         ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
         : undefined
-      : findProviderConnection(refreshedConnections, provider?.id)
+      : findProviderConnection(
+          refreshedConnections,
+          provider?.id,
+          datasourceProvider,
+          difyManagedProvider ? datasourceCredential?.id : undefined,
+        )
     if (updatedConnection) setConnectionOverride(updatedConnection)
     return updatedConnection
-  }, [connection, provider?.id, refetchConnections])
+  }, [
+    connection,
+    datasourceCredential?.id,
+    datasourceProvider,
+    difyManagedProvider,
+    provider?.id,
+    refetchConnections,
+  ])
 
   const loadingConnections =
     connectionsQuery.isPending ||
@@ -962,12 +1152,14 @@ export function AddSourcePage({
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
   const queryError =
     providersQuery.error ||
+    datasourcePluginsQuery.error ||
     connectionsQuery.error ||
     connectionsQuery.isFetchNextPageError ||
     (difyManagedProvider ? datasourceAuthQuery.error : null)
   const websiteReady = Boolean(
     websiteSourceSelected &&
     !queryError &&
+    Boolean(datasourceProvider) &&
     provider?.available &&
     supportsDirectConnection &&
     activeConnection,
@@ -1139,7 +1331,10 @@ export function AddSourcePage({
   if (
     !sourceDraftResolved ||
     (websiteSourceSelected &&
-      (providersQuery.isPending || datasourceAuthQuery.isPending || loadingConnections))
+      (providersQuery.isPending ||
+        datasourcePluginsQuery.isPending ||
+        datasourceAuthQuery.isPending ||
+        loadingConnections))
   )
     return (
       <div className="flex min-h-64 items-center justify-center">
@@ -1174,19 +1369,14 @@ export function AddSourcePage({
               <ProviderSelector
                 disabled={websiteSetupLocked}
                 provider={sourceDraft.provider}
-                onMoreProviders={() => requestNavigation(buildIntegrationPath('data-source'))}
+                onMoreProviders={() =>
+                  globalThis.open(websiteProviderIntegrationPath(), '_blank', 'noopener,noreferrer')
+                }
                 onChange={(provider) => {
                   updateSourceDraft({ ...sourceDraft, provider })
                 }}
               />
-              {!websiteSourceSelected ? (
-                <div className="rounded-xl bg-background-section p-4">
-                  <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
-                  <p className="mt-1 system-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.providerUnavailable'])}
-                  </p>
-                </div>
-              ) : queryError ? (
+              {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
                     {t(($) => $['newKnowledge.providerLoadFailed'])}
@@ -1196,6 +1386,7 @@ export function AddSourcePage({
                     onClick={() =>
                       void Promise.all([
                         providersQuery.refetch(),
+                        datasourcePluginsQuery.refetch(),
                         datasourceAuthQuery.refetch(),
                         connectionsQuery.refetch(),
                       ])
@@ -1206,13 +1397,35 @@ export function AddSourcePage({
                 </div>
               ) : !provider ? (
                 <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.firecrawlUnavailable'])}
+                  {t(($) => $['newKnowledge.providerUnavailable'])}
+                </div>
+              ) : !datasourceProvider ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">{websiteProviderName}</p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.providerUnavailable'])}
+                  </p>
+                  {websiteProviderName !== 'FakeCrawler' && (
+                    <Button
+                      variant="primary"
+                      className="mt-3"
+                      onClick={() =>
+                        globalThis.open(
+                          websiteProviderIntegrationPath(websiteProviderName),
+                          '_blank',
+                          'noopener,noreferrer',
+                        )
+                      }
+                    >
+                      {t(($) => $['newKnowledge.configureProvider'], {
+                        provider: websiteProviderName,
+                      })}
+                    </Button>
+                  )}
                 </div>
               ) : !provider.available || !supportsDirectConnection ? (
                 <div className="rounded-xl bg-background-section p-4">
-                  <p className="system-sm-semibold text-text-primary">
-                    {FIRECRAWL_CONNECTION_NAME}
-                  </p>
+                  <p className="system-sm-semibold text-text-primary">{websiteProviderName}</p>
                   <p className="mt-1 system-xs-regular text-text-tertiary">
                     {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
                   </p>
@@ -1225,7 +1438,7 @@ export function AddSourcePage({
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
                   onInteractionLockChange={setWebsiteSetupLocked}
-                  providerName={FIRECRAWL_CONNECTION_NAME}
+                  providerName={websiteProviderName}
                 />
               ) : activeConnection ? (
                 <div className="flex min-h-64 items-center justify-center">
@@ -1242,15 +1455,22 @@ export function AddSourcePage({
                 />
               ) : (
                 <UnconfiguredProvider
+                  key={`${websiteProviderName}:${datasourceProvider.plugin.plugin_id}`}
                   credentialId={datasourceCredential?.id}
+                  datasourceProvider={datasourceProvider}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onConnected={rememberConnection}
                   onConfigureManagedProvider={() =>
-                    requestNavigation(buildIntegrationPath('data-source'))
+                    globalThis.open(
+                      websiteProviderIntegrationPath(websiteProviderName),
+                      '_blank',
+                      'noopener,noreferrer',
+                    )
                   }
                   onDraftChange={setConnectionDraftDirty}
                   onReconcile={reconcileConnection}
                   provider={provider}
+                  providerName={websiteProviderName}
                 />
               )}
             </>
