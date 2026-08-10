@@ -65,11 +65,7 @@ describe('WebSSOForm redirect security', () => {
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: encodeURIComponent('/chatbot/share-app'),
     })
-    window.history.replaceState(
-      {},
-      '',
-      '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app',
-    )
+    window.history.replaceState({}, '', '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app')
 
     renderWithConsoleQuery(<WebSSOForm />, {
       systemFeatures: { webapp_auth: { enabled: true } },
