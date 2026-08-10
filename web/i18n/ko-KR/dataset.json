@@ -11,6 +11,8 @@
   "batchAction.enable": "사용",
   "batchAction.reIndex": "재색인",
   "batchAction.selected": "선택한",
+  "batchAction.sync": "동기화",
+  "batchAction.syncAll": "모두 동기화",
   "chunkingMode.general": "일반",
   "chunkingMode.graph": "그래프",
   "chunkingMode.parentChild": "부모 - 자식",

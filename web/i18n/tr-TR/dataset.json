@@ -11,6 +11,8 @@
   "batchAction.enable": "Etkinleştir",
   "batchAction.reIndex": "Yeniden dizinle",
   "batchAction.selected": "Seçilmiş",
+  "batchAction.sync": "Senkronize Et",
+  "batchAction.syncAll": "Tümünü Senkronize Et",
   "chunkingMode.general": "Genel",
   "chunkingMode.graph": "Grafik",
   "chunkingMode.parentChild": "Ebeveyn-çocuk",

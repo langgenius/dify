@@ -84,6 +84,8 @@ vi.mock('@/features/system-features/state', async () => {
 // Mock document service hooks
 const mockInvalidDocumentList = vi.fn()
 const mockInvalidDocumentDetail = vi.fn()
+const mockBatchSyncNotion = vi.fn()
+const mockBatchSyncWebsite = vi.fn()
 
 vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentList: vi.fn(() => ({
@@ -116,6 +118,8 @@ vi.mock('@/service/knowledge/use-document', () => ({
   })),
   useInvalidDocumentList: vi.fn(() => mockInvalidDocumentList),
   useInvalidDocumentDetail: vi.fn(() => mockInvalidDocumentDetail),
+  useBatchSyncNotion: vi.fn(() => ({ mutateAsync: mockBatchSyncNotion })),
+  useBatchSyncWebsite: vi.fn(() => ({ mutateAsync: mockBatchSyncWebsite })),
 }))
 
 // Mock segment service hooks
