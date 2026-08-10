@@ -399,9 +399,7 @@ def test_get_signed_image_preview_url_uses_image_preview_signature(
     ssrf_make_request.assert_not_called()
 
 
-def test_image_preview_url_accepts_file_preview_signature(
-    monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase
-):
+def test_image_preview_url_accepts_file_preview_signature(monkeypatch: pytest.MonkeyPatch, file_database: FileDatabase):
     _patch_file_fetcher_config(monkeypatch)
     file_database.upload_file.key = "upload_files/tenant/image.png"
     file_database.upload_file.name = "image.png"
