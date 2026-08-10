@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from controllers.inner_api.agent.files import AgentFileDownloadRequestApi, AgentFileUploadRequestApi
+from controllers.inner_api.agent.files import (
+    AgentFileDownloadRequestApi,
+    AgentFileRequestHttpError,
+    AgentFileUploadRequestApi,
+)
 from core.workflow.file_reference import build_file_reference
 from services.file_request_service import DownloadFileRequestResult
 
@@ -46,7 +50,72 @@ def test_upload_request_returns_origin_free_uri(app: Flask) -> None:
         tenant_id="tenant-1",
         user_id="canonical-end-user-1",
         conversation_id="conversation-1",
+        user_from=None,
     )
+
+
+def test_upload_request_preserves_tenant_scoped_account_owner(app: Flask) -> None:
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "account-1",
+        "user_from": "account",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+        "conversation_id": "conversation-1",
+    }
+    tenant = SimpleNamespace(id="tenant-1")
+    session = MagicMock()
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.get_user") as get_user,
+            patch(f"{MODULE}.get_signed_file_uri_for_plugin", return_value="/files/upload/for-plugin?sign=1") as sign,
+        ):
+            tenant_service.get_tenant_by_id.return_value = tenant
+            tenant_service.account_belongs_to_tenant.return_value = True
+            response = _raw(AgentFileUploadRequestApi.post)(AgentFileUploadRequestApi(), session)
+
+    assert response == {"upload_uri": "/files/upload/for-plugin?sign=1"}
+    get_user.assert_not_called()
+    tenant_service.account_belongs_to_tenant.assert_called_once_with("account-1", "tenant-1", session=session)
+    sign.assert_called_once_with(
+        filename="report.pdf",
+        mimetype="application/pdf",
+        tenant_id="tenant-1",
+        user_id="account-1",
+        conversation_id="conversation-1",
+        user_from="account",
+    )
+
+
+def test_upload_request_rejects_account_outside_tenant_without_signing(app: Flask) -> None:
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "account-outside-tenant",
+        "user_from": "account",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+    }
+    tenant = SimpleNamespace(id="tenant-1")
+    session = MagicMock()
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{MODULE}.TenantService") as tenant_service,
+            patch(f"{MODULE}.get_user") as get_user,
+            patch(f"{MODULE}.get_signed_file_uri_for_plugin") as sign,
+        ):
+            tenant_service.get_tenant_by_id.return_value = tenant
+            tenant_service.account_belongs_to_tenant.return_value = False
+            with pytest.raises(AgentFileRequestHttpError) as exc_info:
+                _raw(AgentFileUploadRequestApi.post)(AgentFileUploadRequestApi(), session)
+
+    assert exc_info.value.error_code == "user_not_found"
+    assert exc_info.value.code == 404
+    tenant_service.account_belongs_to_tenant.assert_called_once_with(
+        "account-outside-tenant", "tenant-1", session=session
+    )
+    get_user.assert_not_called()
+    sign.assert_not_called()
 
 
 def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask) -> None:

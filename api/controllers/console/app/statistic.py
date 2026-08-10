@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import sqlalchemy as sa
-from flask import abort, request
+from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,6 +12,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -157,8 +158,8 @@ class DailyMessageStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -177,7 +178,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -217,8 +218,8 @@ class DailyConversationStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -237,7 +238,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -276,8 +277,8 @@ class DailyTerminalsStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -296,7 +297,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -336,8 +337,8 @@ class DailyTokenCostStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -357,7 +358,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -399,8 +400,8 @@ class AverageSessionInteractionStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("c.created_at")
         sql_query = f"""SELECT
@@ -427,7 +428,7 @@ FROM
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -478,8 +479,8 @@ class UserSatisfactionRateStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
@@ -502,7 +503,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -547,8 +548,8 @@ class AverageResponseTimeStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -567,7 +568,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -607,8 +608,8 @@ class TokensPerSecondStatistic(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
-    def get(self, account: Account, app_model: App):
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(StatisticTimeRangeQuery)
+    def get(self, req_data: StatisticTimeRangeQuery, account: Account, app_model: App):
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -630,7 +631,7 @@ WHERE
         }
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 

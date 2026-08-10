@@ -17,7 +17,9 @@ from controllers.console.workspace.endpoint import (
     EndpointIdPayload,
     EndpointItemApi,
     EndpointListApi,
+    EndpointListForPluginQuery,
     EndpointListForSinglePluginApi,
+    EndpointListQuery,
     EndpointUpdatePayload,
     LegacyEndpointUpdatePayload,
 )
@@ -146,7 +148,7 @@ class TestEndpointListApi:
                 return_value=[endpoint_entity],
             ),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, EndpointListQuery(page=1, page_size=10), "t1", "u1")
 
         endpoint = result["endpoints"][0]
         assert endpoint["id"] == "e1"
@@ -180,7 +182,7 @@ class TestEndpointListApi:
             app.test_request_context("/?page=0&page_size=10"),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointListQuery(page=0, page_size=10), "t1", "u1")
 
 
 class TestEndpointListForSinglePluginApi:
@@ -195,7 +197,7 @@ class TestEndpointListForSinglePluginApi:
                 return_value=[_endpoint_entity()],
             ),
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, EndpointListForPluginQuery(page=1, page_size=10, plugin_id="p1"), "t1", "u1")
 
         assert result["endpoints"][0]["id"] == "e1"
         assert result["endpoints"][0]["settings"]["api_key"] == "pl********et"
@@ -209,7 +211,7 @@ class TestEndpointListForSinglePluginApi:
             app.test_request_context("/?page=1&page_size=10"),
         ):
             with pytest.raises(ValueError):
-                method(api, "t1", "u1")
+                method(api, EndpointListForPluginQuery(page=1, page_size=10), "t1", "u1")
 
 
 class TestEndpointItemApi:

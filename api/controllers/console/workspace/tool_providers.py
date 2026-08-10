@@ -33,6 +33,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -555,16 +556,15 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
-
-        payload = BuiltinToolCredentialDeletePayload.model_validate(console_ns.payload or {})
+    @model_validate(BuiltinToolCredentialDeletePayload)
+    def post(self, req_data: BuiltinToolCredentialDeletePayload, tenant_id: str, provider: str):
 
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.delete_builtin_tool_provider(
                 tenant_id,
                 provider,
-                payload.credential_id,
+                req_data.credential_id,
             ),
         )
 
@@ -582,19 +582,18 @@ class ToolBuiltinProviderAddApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str):
-        payload = BuiltinToolAddPayload.model_validate(console_ns.payload or {})
-
+    @model_validate(BuiltinToolAddPayload)
+    def post(self, req_data: BuiltinToolAddPayload, tenant_id: str, user: Account, provider: str):
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.add_builtin_tool_provider(
                 user_id=user.id,
                 tenant_id=tenant_id,
                 provider=provider,
-                credentials=payload.credentials,
-                name=payload.name,
-                api_type=CredentialType.of(payload.type),
-                visibility=payload.visibility,
+                credentials=req_data.credentials,
+                name=req_data.name,
+                api_type=CredentialType.of(req_data.type),
+                visibility=req_data.visibility,
             ),
         )
 
@@ -614,16 +613,15 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str):
-        payload = BuiltinToolUpdatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(BuiltinToolUpdatePayload)
+    def post(self, req_data: BuiltinToolUpdatePayload, tenant_id: str, user: Account, provider: str):
         result = BuiltinToolManageService.update_builtin_tool_provider(
             user_id=user.id,
             tenant_id=tenant_id,
             provider=provider,
-            credential_id=payload.credential_id,
-            credentials=payload.credentials,
-            name=payload.name or "",
+            credential_id=req_data.credential_id,
+            credentials=req_data.credentials,
+            name=req_data.name or "",
         )
         return dump_response(SimpleResultResponse, result)
 
@@ -683,22 +681,21 @@ class ToolApiProviderAddApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = ApiToolProviderAddPayload.model_validate(console_ns.payload or {})
-
+    @model_validate(ApiToolProviderAddPayload)
+    def post(self, req_data: ApiToolProviderAddPayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             ApiToolManageService.create_api_tool_provider(
                 user.id,
                 tenant_id,
-                payload.provider,
-                payload.icon.model_dump(mode="json"),
-                payload.credentials,
-                payload.schema_type,
-                payload.schema_,
-                payload.privacy_policy or "",
-                payload.custom_disclaimer or "",
-                payload.labels or [],
+                req_data.provider,
+                req_data.icon.model_dump(mode="json"),
+                req_data.credentials,
+                req_data.schema_type,
+                req_data.schema_,
+                req_data.privacy_policy or "",
+                req_data.custom_disclaimer or "",
+                req_data.labels or [],
             ),
         )
 
@@ -764,23 +761,22 @@ class ToolApiProviderUpdateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = ApiToolProviderUpdatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(ApiToolProviderUpdatePayload)
+    def post(self, req_data: ApiToolProviderUpdatePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             ApiToolManageService.update_api_tool_provider(
                 user.id,
                 tenant_id,
-                payload.provider,
-                payload.original_provider,
-                payload.icon.model_dump(mode="json"),
-                payload.credentials,
-                payload.schema_type,
-                payload.schema_,
-                payload.privacy_policy,
-                payload.custom_disclaimer,
-                payload.labels or [],
+                req_data.provider,
+                req_data.original_provider,
+                req_data.icon.model_dump(mode="json"),
+                req_data.credentials,
+                req_data.schema_type,
+                req_data.schema_,
+                req_data.privacy_policy,
+                req_data.custom_disclaimer,
+                req_data.labels or [],
             ),
         )
 
@@ -796,15 +792,14 @@ class ToolApiProviderDeleteApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = ApiToolProviderDeletePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(ApiToolProviderDeletePayload)
+    def post(self, req_data: ApiToolProviderDeletePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             ApiToolManageService.delete_api_tool_provider(
                 user.id,
                 tenant_id,
-                payload.provider,
+                req_data.provider,
             ),
         )
 
@@ -861,10 +856,9 @@ class ToolApiProviderSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        payload = ApiToolSchemaPayload.model_validate(console_ns.payload or {})
-
-        return dump_response(ApiSchemaParseResponse, ApiToolManageService.parser_api_schema(schema=payload.schema_))
+    @model_validate(ApiToolSchemaPayload)
+    def post(self, req_data: ApiToolSchemaPayload):
+        return dump_response(ApiSchemaParseResponse, ApiToolManageService.parser_api_schema(schema=req_data.schema_))
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/test/pre")
@@ -879,18 +873,18 @@ class ToolApiProviderPreviousTestApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        payload = ApiToolTestPayload.model_validate(console_ns.payload or {})
+    @model_validate(ApiToolTestPayload)
+    def post(self, req_data: ApiToolTestPayload, current_tenant_id: str):
         return dump_response(
             ApiToolPreviewResponse,
             ApiToolManageService.test_api_tool_preview(
                 current_tenant_id,
-                payload.provider_name or "",
-                payload.tool_name,
-                payload.credentials,
-                payload.parameters,
-                payload.schema_type,
-                payload.schema_,
+                req_data.provider_name or "",
+                req_data.tool_name,
+                req_data.credentials,
+                req_data.parameters,
+                req_data.schema_type,
+                req_data.schema_,
             ),
         )
 
@@ -906,22 +900,21 @@ class ToolWorkflowProviderCreateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = WorkflowToolCreatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(WorkflowToolCreatePayload)
+    def post(self, req_data: WorkflowToolCreatePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             WorkflowToolManageService.create_workflow_tool(
                 user_id=user.id,
                 tenant_id=tenant_id,
-                workflow_app_id=payload.workflow_app_id,
-                name=payload.name,
-                label=payload.label,
-                icon=payload.icon.model_dump(mode="json"),
-                description=payload.description,
-                parameters=payload.parameters,
-                privacy_policy=payload.privacy_policy or "",
-                labels=payload.labels or [],
+                workflow_app_id=req_data.workflow_app_id,
+                name=req_data.name,
+                label=req_data.label,
+                icon=req_data.icon.model_dump(mode="json"),
+                description=req_data.description,
+                parameters=req_data.parameters,
+                privacy_policy=req_data.privacy_policy or "",
+                labels=req_data.labels or [],
             ),
         )
 
@@ -937,22 +930,21 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = WorkflowToolUpdatePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(WorkflowToolUpdatePayload)
+    def post(self, req_data: WorkflowToolUpdatePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             WorkflowToolManageService.update_workflow_tool(
                 user.id,
                 tenant_id,
-                payload.workflow_tool_id,
-                payload.name,
-                payload.label,
-                payload.icon.model_dump(mode="json"),
-                payload.description,
-                payload.parameters,
-                payload.privacy_policy or "",
-                payload.labels or [],
+                req_data.workflow_tool_id,
+                req_data.name,
+                req_data.label,
+                req_data.icon.model_dump(mode="json"),
+                req_data.description,
+                req_data.parameters,
+                req_data.privacy_policy or "",
+                req_data.labels or [],
             ),
         )
 
@@ -968,15 +960,14 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = WorkflowToolDeletePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(WorkflowToolDeletePayload)
+    def post(self, req_data: WorkflowToolDeletePayload, tenant_id: str, user: Account):
         return dump_response(
             SimpleResultResponse,
             WorkflowToolManageService.delete_workflow_tool(
                 user.id,
                 tenant_id,
-                payload.workflow_tool_id,
+                req_data.workflow_tool_id,
             ),
         )
 
@@ -1224,12 +1215,12 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
-        payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
+    @model_validate(BuiltinProviderDefaultCredentialPayload)
+    def post(self, req_data: BuiltinProviderDefaultCredentialPayload, current_tenant_id: str, provider: str):
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.set_default_provider(
-                tenant_id=current_tenant_id, provider=provider, id=payload.id
+                tenant_id=current_tenant_id, provider=provider, id=req_data.id
             ),
         )
 
@@ -1246,17 +1237,16 @@ class ToolOAuthCustomClient(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
-        payload = ToolOAuthCustomClientPayload.model_validate(console_ns.payload or {})
-
+    @model_validate(ToolOAuthCustomClientPayload)
+    def post(self, req_data: ToolOAuthCustomClientPayload, tenant_id: str, provider: str):
         return dump_response(
             SimpleResultResponse,
             BuiltinToolManageService.save_custom_oauth_client_params(
                 tenant_id=tenant_id,
                 provider=provider,
-                client_params=payload.client_params or {},
-                enable_oauth_custom_client=payload.enable_oauth_custom_client
-                if payload.enable_oauth_custom_client is not None
+                client_params=req_data.client_params or {},
+                enable_oauth_custom_client=req_data.enable_oauth_custom_client
+                if req_data.enable_oauth_custom_client is not None
                 else True,
             ),
         )
@@ -1349,11 +1339,10 @@ class ToolProviderMCPApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account):
-        payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
-
-        configuration = payload.configuration or MCPConfiguration()
-        authentication = payload.authentication
+    @model_validate(MCPProviderCreatePayload)
+    def post(self, req_data: MCPProviderCreatePayload, tenant_id: str, user: Account):
+        configuration = req_data.configuration or MCPConfiguration()
+        authentication = req_data.authentication
 
         # 1) Create provider in a short transaction (no network I/O inside)
         with session_factory.create_session() as session, session.begin():
@@ -1361,24 +1350,24 @@ class ToolProviderMCPApi(Resource):
             result = service.create_provider(
                 tenant_id=tenant_id,
                 user_id=user.id,
-                server_url=payload.server_url,
-                name=payload.name,
-                icon=payload.icon,
-                icon_type=payload.icon_type,
-                icon_background=payload.icon_background,
-                server_identifier=payload.server_identifier,
-                headers=payload.headers or {},
+                server_url=req_data.server_url,
+                name=req_data.name,
+                icon=req_data.icon,
+                icon_type=req_data.icon_type,
+                icon_background=req_data.icon_background,
+                server_identifier=req_data.server_identifier,
+                headers=req_data.headers or {},
                 configuration=configuration,
                 authentication=authentication,
-                identity_mode=_resolve_identity_mode(payload.identity_mode, current=IdentityMode.OFF),
+                identity_mode=_resolve_identity_mode(req_data.identity_mode, current=IdentityMode.OFF),
             )
 
         # 2) Try to fetch tools immediately after creation so they appear without a second save.
         #    Perform network I/O outside any DB session to avoid holding locks.
         try:
             reconnect = MCPToolManageService.reconnect_with_url(
-                server_url=payload.server_url,
-                headers=payload.headers or {},
+                server_url=req_data.server_url,
+                headers=req_data.headers or {},
                 timeout=configuration.timeout,
                 sse_read_timeout=configuration.sse_read_timeout,
             )
@@ -1403,24 +1392,24 @@ class ToolProviderMCPApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def put(self, current_tenant_id: str):
-        payload = MCPProviderUpdatePayload.model_validate(console_ns.payload or {})
-        configuration = payload.configuration or MCPConfiguration()
-        authentication = payload.authentication
+    @model_validate(MCPProviderUpdatePayload)
+    def put(self, req_data: MCPProviderUpdatePayload, current_tenant_id: str):
+        configuration = req_data.configuration or MCPConfiguration()
+        authentication = req_data.authentication
 
         # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
         validation_data = None
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
-                tenant_id=current_tenant_id, provider_id=payload.provider_id
+                tenant_id=current_tenant_id, provider_id=req_data.provider_id
             )
 
         # Step 2: Perform URL validation with network I/O OUTSIDE of any database session
         # This prevents holding database locks during potentially slow network operations
         validation_result = MCPToolManageService.validate_server_url_standalone(
             tenant_id=current_tenant_id,
-            new_server_url=payload.server_url,
+            new_server_url=req_data.server_url,
             validation_data=validation_data,
         )
 
@@ -1430,18 +1419,18 @@ class ToolProviderMCPApi(Resource):
             # Resolve "leave unchanged" (None) against the stored value, and gate
             # the result on ENTERPRISE_ENABLED — both are API-layer concerns, so
             # the service receives a concrete IdentityMode.
-            existing = service.get_provider(provider_id=payload.provider_id, tenant_id=current_tenant_id)
-            identity_mode = _resolve_identity_mode(payload.identity_mode, current=IdentityMode(existing.identity_mode))
+            existing = service.get_provider(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
+            identity_mode = _resolve_identity_mode(req_data.identity_mode, current=IdentityMode(existing.identity_mode))
             service.update_provider(
                 tenant_id=current_tenant_id,
-                provider_id=payload.provider_id,
-                server_url=payload.server_url,
-                name=payload.name,
-                icon=payload.icon,
-                icon_type=payload.icon_type,
-                icon_background=payload.icon_background,
-                server_identifier=payload.server_identifier,
-                headers=payload.headers or {},
+                provider_id=req_data.provider_id,
+                server_url=req_data.server_url,
+                name=req_data.name,
+                icon=req_data.icon,
+                icon_type=req_data.icon_type,
+                icon_background=req_data.icon_background,
+                server_identifier=req_data.server_identifier,
+                headers=req_data.headers or {},
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
@@ -1457,12 +1446,11 @@ class ToolProviderMCPApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str):
-        payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
-
+    @model_validate(MCPProviderDeletePayload)
+    def delete(self, req_data: MCPProviderDeletePayload, current_tenant_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
-            service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
+            service.delete_provider(tenant_id=current_tenant_id, provider_id=req_data.provider_id)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -1476,9 +1464,9 @@ class ToolMCPAuthApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        payload = MCPAuthPayload.model_validate(console_ns.payload or {})
-        provider_id = payload.provider_id
+    @model_validate(MCPAuthPayload)
+    def post(self, req_data: MCPAuthPayload, tenant_id: str):
+        provider_id = req_data.provider_id
 
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
@@ -1515,7 +1503,7 @@ class ToolMCPAuthApi(Resource):
                 # Pass the extracted OAuth metadata hints to auth()
                 auth_result = auth(
                     provider_entity,
-                    payload.authorization_code,
+                    req_data.authorization_code,
                     resource_metadata_url=e.resource_metadata_url,
                     scope_hint=e.scope_hint,
                 )

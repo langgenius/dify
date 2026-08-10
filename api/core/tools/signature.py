@@ -4,6 +4,7 @@ import hmac
 import os
 import time
 import urllib.parse
+from typing import Literal
 from urllib.parse import urlsplit
 
 from configs import dify_config
@@ -88,13 +89,27 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
 
 
 def get_signed_file_uri_for_plugin(
-    filename: str, mimetype: str, tenant_id: str, user_id: str, conversation_id: str | None = None
+    filename: str,
+    mimetype: str,
+    tenant_id: str,
+    user_id: str,
+    conversation_id: str | None = None,
+    user_from: Literal["account", "end-user"] | None = None,
 ) -> str:
     """Build a signed plugin-upload URI without selecting a network origin."""
 
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    data_to_sign = _plugin_upload_signature_payload(
+        filename=filename,
+        mimetype=mimetype,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        timestamp=timestamp,
+        nonce=nonce,
+        user_from=user_from,
+    )
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
     query_params = {
@@ -106,6 +121,8 @@ def get_signed_file_uri_for_plugin(
     }
     if conversation_id:
         query_params["conversation_id"] = conversation_id
+    if user_from is not None:
+        query_params["user_from"] = user_from
     query = urllib.parse.urlencode(query_params)
     return f"/files/upload/for-plugin?{query}"
 
@@ -117,13 +134,23 @@ def verify_plugin_file_signature(
     tenant_id: str,
     user_id: str,
     conversation_id: str | None = None,
+    user_from: Literal["account", "end-user"] | None = None,
     timestamp: str,
     nonce: str,
     sign: str,
 ) -> bool:
     """Verify the signature used by the plugin-facing file upload endpoint."""
 
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    data_to_sign = _plugin_upload_signature_payload(
+        filename=filename,
+        mimetype=mimetype,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        timestamp=timestamp,
+        nonce=nonce,
+        user_from=user_from,
+    )
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
@@ -132,3 +159,27 @@ def verify_plugin_file_signature(
 
     current_time = int(time.time())
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+
+def _plugin_upload_signature_payload(
+    *,
+    filename: str,
+    mimetype: str,
+    tenant_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    timestamp: str,
+    nonce: str,
+    user_from: Literal["account", "end-user"] | None,
+) -> str:
+    """Build the compatible upload signature payload with optional identity ownership.
+
+    Omitting ``user_from`` preserves the legacy payload. When present, the
+    identity kind is appended and HMAC-protected so account/end-user ownership
+    cannot be altered.
+    """
+
+    payload = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    if user_from is not None:
+        payload = f"{payload}|{user_from}"
+    return payload

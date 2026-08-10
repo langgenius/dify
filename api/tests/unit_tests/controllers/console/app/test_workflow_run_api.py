@@ -98,7 +98,11 @@ def test_workflow_run_list_returns_frontend_history_contract(app: Flask, monkeyp
     handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/workflow-runs?limit=10", method="GET"):
-        payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+        payload = handler(
+            api,
+            workflow_run_module.WorkflowRunListQuery(limit=10),
+            app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+        )
 
     response = _serialize_200_response(api.get, payload)
 
@@ -139,7 +143,11 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(app: Flask, monkey
     handler = unwrap(api.get)
 
     with app.test_request_context("/apps/app-1/advanced-chat/workflow-runs?limit=1", method="GET"):
-        payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+        payload = handler(
+            api,
+            workflow_run_module.WorkflowRunListQuery(limit=1),
+            app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
+        )
 
     response = _serialize_200_response(api.get, payload)
 

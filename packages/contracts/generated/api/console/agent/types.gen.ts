@@ -433,22 +433,22 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type AgentSandboxDownloadPayload = {
+  caller_id: string
+  caller_type: 'build_draft' | 'conversation'
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
   size?: number | null
   text?: string | null
   truncated: boolean
-}
-
-export type AgentSandboxUploadPayload = {
-  caller_id: string
-  caller_type: 'build_draft' | 'conversation'
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -1586,6 +1586,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -1882,6 +1883,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -3117,6 +3120,22 @@ export type GetAgentByAgentIdSandboxFilesResponses = {
 export type GetAgentByAgentIdSandboxFilesResponse =
   GetAgentByAgentIdSandboxFilesResponses[keyof GetAgentByAgentIdSandboxFilesResponses]
 
+export type PostAgentByAgentIdSandboxFilesDownloadData = {
+  body: AgentSandboxDownloadPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/sandbox/files/download'
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponses = {
+  200: SandboxDownloadResponse
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadResponse =
+  PostAgentByAgentIdSandboxFilesDownloadResponses[keyof PostAgentByAgentIdSandboxFilesDownloadResponses]
+
 export type GetAgentByAgentIdSandboxFilesReadData = {
   body?: never
   path: {
@@ -3136,22 +3155,6 @@ export type GetAgentByAgentIdSandboxFilesReadResponses = {
 
 export type GetAgentByAgentIdSandboxFilesReadResponse =
   GetAgentByAgentIdSandboxFilesReadResponses[keyof GetAgentByAgentIdSandboxFilesReadResponses]
-
-export type PostAgentByAgentIdSandboxFilesUploadData = {
-  body: AgentSandboxUploadPayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/sandbox/files/upload'
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponses = {
-  200: SandboxUploadResponse
-}
-
-export type PostAgentByAgentIdSandboxFilesUploadResponse =
-  PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
 export type PostAgentByAgentIdSkillsUploadData = {
   body: {

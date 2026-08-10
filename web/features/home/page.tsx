@@ -1,4 +1,5 @@
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
+import { Suspense } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
 import {
   getSystemFeaturesQueryClient,
@@ -7,6 +8,8 @@ import {
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
 import { HomeContent } from './home-content/home-content'
+import { HomeShell } from './home-shell'
+import { HomeSkeleton } from './home-skeleton'
 
 export async function HomePage() {
   const homeQueryClient = getQueryClient()
@@ -44,7 +47,17 @@ export async function HomePage() {
 
   return (
     <HydrationBoundary state={dehydratedState}>
-      <HomeContent />
+      <Suspense
+        fallback={
+          <HomeShell>
+            <div className="flex flex-1 flex-col overflow-y-auto">
+              <HomeSkeleton showBanner={enableExploreBanner} />
+            </div>
+          </HomeShell>
+        }
+      >
+        <HomeContent />
+      </Suspense>
     </HydrationBoundary>
   )
 }

@@ -84,7 +84,7 @@ const OutputPanel: FC<OutputPanelProps> = ({ isRunning, outputs, error, height }
           <CodeEditor
             showFileList
             readOnly
-            title={<div tabIndex={0}>Output</div>}
+            title="Output"
             language={CodeLanguage.json}
             value={JSON.stringify(outputs, null, 2)}
             isJSONStringifyBeauty

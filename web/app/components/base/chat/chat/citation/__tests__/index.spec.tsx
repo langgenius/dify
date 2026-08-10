@@ -96,7 +96,9 @@ describe('Citation', () => {
           ]}
         />,
       )
-      expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
+      const measurementItems = screen.getAllByTestId('citation-measurement-item')
+      expect(measurementItems).toHaveLength(2)
+      measurementItems.forEach((item) => expect(item).toHaveAttribute('aria-hidden', 'true'))
     })
 
     it('should display the document name inside each measurement item', () => {
