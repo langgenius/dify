@@ -11,7 +11,7 @@ import type {
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
 } from './routes'
-import type { Source, SourceConnection, SourceProvider, SourceWorkflowRun } from './source-models'
+import type { Source, SourceConnection, SourceProvider } from './source-models'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -38,7 +38,6 @@ import {
   sourceFromApi,
   sourceProviderListFromApi,
   sourceSyncPolicyFromApi,
-  sourceWorkflowFromApi,
 } from './source-models'
 import {
   SourceConnectionRequiredCard,
@@ -82,24 +81,6 @@ const CONNECTION_PAGE_SIZE = 200
 const RESOURCE_PAGE_SIZE = 200
 const MAX_SELECTION = 200
 const MAX_SOURCE_CURSOR_PAGES = 100
-const IMPORT_POLL_INTERVAL_MS = 1500
-const IMPORT_POLL_LIMIT = 120
-const IMPORT_SUCCESS_STATES = new Set([
-  'complete',
-  'completed',
-  'success',
-  'succeeded',
-  'zero_results',
-])
-const IMPORT_FAILURE_STATES = new Set([
-  'canceled',
-  'cancelled',
-  'error',
-  'exhausted',
-  'failed',
-  'timed_out',
-  'timeout',
-])
 const MANAGED_PROVIDER_FIELD_NAMES = new Set([
   'credentialId',
   'datasource',
@@ -402,29 +383,6 @@ function requestStatus(error: unknown) {
   if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
     return typeof error.data.status === 'number' ? error.data.status : undefined
   return undefined
-}
-
-function normalizedWorkflowState(run: SourceWorkflowRun) {
-  return run.state.trim().toLocaleLowerCase().replaceAll('-', '_')
-}
-
-async function waitForImportWorkflow(knowledgeSpaceId: string, initialRun: SourceWorkflowRun) {
-  let run = initialRun
-  for (let attempt = 0; attempt < IMPORT_POLL_LIMIT; attempt += 1) {
-    const state = normalizedWorkflowState(run)
-    if (IMPORT_SUCCESS_STATES.has(state)) return run
-    if (IMPORT_FAILURE_STATES.has(state)) throw new Error('Source import failed')
-    await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
-    run = sourceWorkflowFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get({
-        params: {
-          control_space_id: knowledgeSpaceId,
-          run_id: run.id,
-        },
-      }),
-    )
-  }
-  throw new Error('Source import did not reach a terminal state')
 }
 
 function ProviderSelector({
@@ -1481,60 +1439,6 @@ function ResourceConfiguration({
       if (!finalSource.version) throw new Error('Final source has no version')
       previewSourceRef.current = finalSource
       setPreviewSource(finalSource)
-      const importRun = sourceWorkflowFromApi(
-        !driveTransport
-          ? await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
-              {
-                body: {
-                  items: selectedPages.map((resource) => ({
-                    lastEditedTime: resource.page.last_edited_time ?? undefined,
-                    name: resource.page.page_name,
-                    pageId: resource.page.page_id,
-                    providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
-                    type: resource.page.type,
-                    workspaceId: resource.groupId,
-                  })),
-                  kind: 'online-document-import',
-                },
-                headers: { 'Idempotency-Key': createRequestId() },
-                params: {
-                  control_space_id: knowledgeSpaceId,
-                  source_id: finalSource.id,
-                },
-              },
-            )
-          : await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
-              {
-                body: {
-                  items: selectedFiles.map((resource) => ({
-                    bucket: resource.bucket,
-                    id: resource.file.id,
-                    mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
-                    name: resource.file.name,
-                    providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
-                  })),
-                  kind: 'online-drive-import',
-                },
-                headers: { 'Idempotency-Key': createRequestId() },
-                params: {
-                  control_space_id: knowledgeSpaceId,
-                  source_id: finalSource.id,
-                },
-              },
-            ),
-      )
-      await waitForImportWorkflow(knowledgeSpaceId, importRun)
-      const importedSource = sourceFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: finalSource.id,
-          },
-        }),
-      )
-      if (!importedSource.version) throw new Error('Imported source has no version')
-      previewSourceRef.current = importedSource
-      setPreviewSource(importedSource)
       const policy =
         draft.syncPolicy === 'manual'
           ? ({ enabled: false, mode: 'manual' } as const)
@@ -1561,21 +1465,65 @@ function ResourceConfiguration({
         body: {
           ...policy,
           expectedRevision,
-          expectedSourceVersion: importedSource.version,
+          expectedSourceVersion: finalSource.version,
         },
         params: {
           control_space_id: knowledgeSpaceId,
           source_id: finalSource.id,
         },
       })
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-      })
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
-      })
+      await (!driveTransport
+        ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
+            {
+              body: {
+                items: selectedPages.map((resource) => ({
+                  lastEditedTime: resource.page.last_edited_time ?? undefined,
+                  name: resource.page.page_name,
+                  pageId: resource.page.page_id,
+                  providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
+                  type: resource.page.type,
+                  workspaceId: resource.groupId,
+                })),
+                kind: 'online-document-import',
+              },
+              headers: { 'Idempotency-Key': createRequestId() },
+              params: {
+                control_space_id: knowledgeSpaceId,
+                source_id: finalSource.id,
+              },
+            },
+          )
+        : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
+            {
+              body: {
+                items: selectedFiles.map((resource) => ({
+                  bucket: resource.bucket,
+                  id: resource.file.id,
+                  mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
+                  name: resource.file.name,
+                  providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
+                })),
+                kind: 'online-drive-import',
+              },
+              headers: { 'Idempotency-Key': createRequestId() },
+              params: {
+                control_space_id: knowledgeSpaceId,
+                source_id: finalSource.id,
+              },
+            },
+          ))
       committedRef.current = true
       onDirtyChange(false)
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
+          refetchType: 'none',
+        }),
+      ])
       onCompleted()
     } catch {
       try {
