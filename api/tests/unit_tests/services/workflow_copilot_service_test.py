@@ -17,8 +17,10 @@ def _graph() -> dict[str, object]:
     return {
         "nodes": [
             {"id": "node1", "data": {"type": "start", "title": "Start"}},
-            {"id": "node2", "data": {"type": "llm", "title": "Answer", 
-            "prompt_template": [{"role": "user", "text": "hi"}]}},
+            {
+                "id": "node2",
+                "data": {"type": "llm", "title": "Answer", "prompt_template": [{"role": "user", "text": "hi"}]},
+            },
             {"id": "node3", "data": {"type": "end", "title": "End"}},
         ],
         "edges": [

@@ -151,9 +151,11 @@ def _sse_from_llm_stream(
         yield "data: " + json.dumps({"event": "message_end"}) + "\n\n"
     except InvokeError as e:
         logger.warning("page-generate: model invoke error mid-stream: %s", e.description)
-        yield "data: " + json.dumps({"event": "error", 
-                            "code": "completion_request_error", 
-                            "message": e.description}) + "\n\n"
+        yield (
+            "data: "
+            + json.dumps({"event": "error", "code": "completion_request_error", "message": e.description})
+            + "\n\n"
+        )
     except Exception as e:
         logger.exception("page-generate: unexpected error during streaming")
         yield "data: " + json.dumps({"event": "error", "code": "internal_error", "message": str(e)}) + "\n\n"
