@@ -216,6 +216,16 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
+    assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
+    assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthCredentialsPayload"
+    )
+    assert schemas["ApiKeyAuthCredentialsPayload"]["properties"]["config"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthConfigPayload"
+    )
+    assert schemas["ApiKeyAuthConfigPayload"]["properties"]["api_key"]["minLength"] == 1
+
     invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
         "#/components/schemas/"
     )

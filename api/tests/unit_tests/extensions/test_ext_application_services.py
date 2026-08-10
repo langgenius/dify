@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from enums.deployment_edition import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
+from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 
 
 @pytest.mark.parametrize(
@@ -56,3 +57,15 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_wires_data_source_api_key_auth(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)

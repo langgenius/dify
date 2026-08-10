@@ -12,10 +12,16 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from enums.deployment_edition import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services.auth.data_source_api_key_auth_gateways import (
+    ProviderApiKeyAuthCredentialValidator,
+    TenantApiKeyAuthCredentialEncryptor,
+)
+from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -33,6 +39,7 @@ _EXTENSION_KEY = "application_services"
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    data_source_api_key_auth: DataSourceApiKeyAuthService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
@@ -48,7 +55,13 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
+    data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     return ApplicationServices(
+        data_source_api_key_auth=DataSourceApiKeyAuthService(
+            bindings=data_source_api_key_auth_bindings,
+            validator=ProviderApiKeyAuthCredentialValidator(),
+            encryptor=TenantApiKeyAuthCredentialEncryptor(),
+        ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
             is_enabled=FeatureService.is_explore_banner_enabled,
