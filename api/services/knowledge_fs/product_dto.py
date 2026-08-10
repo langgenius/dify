@@ -137,7 +137,7 @@ class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
 
 
 class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
-    credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
+    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
     datasource: str = Field(min_length=1, max_length=255)
     plugin_id: str = Field(min_length=1, max_length=255, alias="pluginId")
     provider: str = Field(min_length=1, max_length=255)
@@ -168,7 +168,6 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
 
 
 class KnowledgeFSInitialOnlineDocumentSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
-    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
     kind: Literal["online_document"]
     name: str = Field(min_length=1, max_length=200)
     selection: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
@@ -176,7 +175,6 @@ class KnowledgeFSInitialOnlineDocumentSourcePayload(KnowledgeFSInitialDatasource
 
 
 class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
-    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
     kind: Literal["online_drive"]
     name: str = Field(min_length=1, max_length=200)
     selection: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
@@ -184,7 +182,6 @@ class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceBin
 
 
 class KnowledgeFSInitialSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):
-    credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
     kind: Literal["online_document", "online_drive"]
     parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
 
