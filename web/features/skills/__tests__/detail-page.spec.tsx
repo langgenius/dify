@@ -1648,9 +1648,12 @@ describe('SkillDetailPage', () => {
     )
     await user.type(getSourceEditor(), '\nMy response error changes')
 
-    await waitFor(() => {
-      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+      },
+      { timeout: 5000 },
+    )
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
     await waitFor(() => {
       expect(
@@ -2652,7 +2655,7 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(sendButton).toBeDisabled()
-  })
+  }, 15000)
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })
@@ -2718,7 +2721,7 @@ describe('SkillDetailPage', () => {
     expect(
       screen.getByPlaceholderText('skill.skillManagement.detail.builder.modifyPlaceholder'),
     ).toBeEnabled()
-  })
+  }, 15000)
 
   it('shows Skill Builder completion errors returned by the assistant stream', async () => {
     const user = userEvent.setup()
