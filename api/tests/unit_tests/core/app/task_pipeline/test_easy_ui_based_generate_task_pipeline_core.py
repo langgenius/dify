@@ -7,6 +7,7 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -56,7 +57,7 @@ from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
-from models.enums import CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 
@@ -136,14 +137,52 @@ def _unknown_queue_message() -> MessageQueueMessage:
 
 
 def _make_conversation(app_mode: AppMode) -> Conversation:
-    conversation = Conversation()
+    conversation = Conversation(
+        app_id="app",
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=app_mode,
+        name="conversation",
+        inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.WEB_APP,
+        from_source=ConversationFromSource.API,
+        from_end_user_id="user",
+        from_account_id=None,
+    )
     conversation.id = "conv"
     conversation.mode = app_mode
     return conversation
 
 
 def _make_message() -> Message:
-    message = Message()
+    message = Message(
+        app_id="app",
+        conversation_id="conv",
+        inputs={},
+        query="query",
+        message="",
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer="",
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        provider_response_latency=0,
+        total_price=0,
+        currency="USD",
+        invoke_from=InvokeFrom.WEB_APP,
+        from_source=ConversationFromSource.API,
+        from_end_user_id="user",
+        from_account_id=None,
+        app_mode=AppMode.CHAT,
+    )
     message.id = "msg"
     message.created_at = datetime.now(UTC)
     return message
@@ -1173,7 +1212,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert list(pipeline._process_stream_response(publisher=None)) == []
 
-    def test_save_message_persists_fields_and_emits_trace(self, monkeypatch: pytest.MonkeyPatch):
+    def test_save_message_persists_fields_and_emits_trace(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1195,8 +1236,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         message_obj = _make_message()
         conversation_obj = _make_conversation(AppMode.CHAT)
-        session = Mock()
-        session.scalar.side_effect = [message_obj, conversation_obj]
+        session = sqlite_session
+        session.add_all([conversation_obj, message_obj])
+        session.flush()
         trace_manager_double = _TraceManagerDouble()
         trace_manager = cast(TraceQueueManager, trace_manager_double)
         sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
@@ -1234,7 +1276,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
 
-    def test_save_message_raises_when_message_not_found(self):
+    def test_save_message_raises_when_message_not_found(self, sqlite_session: Session):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1244,13 +1286,12 @@ class TestEasyUiBasedGenerateTaskPipeline:
             message=message,
             stream=False,
         )
-        session = Mock()
-        session.scalar.return_value = None
+        session = sqlite_session
 
         with pytest.raises(ValueError, match="message msg not found"):
             pipeline._save_message(session=session)
 
-    def test_save_message_raises_when_conversation_not_found(self):
+    def test_save_message_raises_when_conversation_not_found(self, sqlite_session: Session):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1260,8 +1301,9 @@ class TestEasyUiBasedGenerateTaskPipeline:
             message=message,
             stream=False,
         )
-        session = Mock()
-        session.scalar.side_effect = [_make_message(), None]
+        session = sqlite_session
+        session.add(_make_message())
+        session.flush()
 
         with pytest.raises(ValueError, match="Conversation conv not found"):
             pipeline._save_message(session=session)

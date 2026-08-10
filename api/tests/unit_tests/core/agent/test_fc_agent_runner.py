@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -20,6 +21,8 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from models.enums import CreatorUserRole
+from models.model import StorageType, UploadFile
 
 # ==============================
 # Dummy Helper Classes
@@ -333,23 +336,37 @@ class TestBuildDatasetToolImageContents:
         )
         build_reference = mocker.patch("core.agent.fc_agent_runner.build_file_reference", return_value="file-ref")
 
-        upload_file = MagicMock()
+        upload_file = UploadFile(
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            storage_type=StorageType.LOCAL,
+            key="image_files/chart.png",
+            name="chart.png",
+            size=123,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
         upload_file.id = "890985e9-c2f1-484e-bc7b-62010a337e6d"
-        upload_file.name = "chart.png"
-        upload_file.extension = "png"
-        upload_file.mime_type = "image/png"
-        upload_file.source_url = ""
-        upload_file.size = 123
-        upload_file.key = "image_files/chart.png"
-
-        non_image_file = MagicMock()
+        non_image_file = UploadFile(
+            tenant_id=upload_file.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="files/report.pdf",
+            name="report.pdf",
+            size=10,
+            extension="pdf",
+            mime_type="application/pdf",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=upload_file.created_by,
+            created_at=datetime.now(UTC),
+            used=True,
+        )
         non_image_file.id = "11111111-1111-1111-1111-111111111111"
-        non_image_file.mime_type = "application/pdf"
-
-        scalars_result = MagicMock()
-        scalars_result.all.return_value = [upload_file, non_image_file]
-        session = MagicMock()
-        session.scalars.return_value = scalars_result
+        session = runner.session
+        session.add_all([upload_file, non_image_file])
+        session.commit()
 
         response = (
             "![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview?sign=1)\n"
@@ -392,13 +409,24 @@ class TestRunMethod:
         queue_calls = runner.queue_manager.publish.call_args_list
         assert any(call.args and call.args[0].__class__.__name__ == "QueueMessageEndEvent" for call in queue_calls)
 
-    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
+    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
         events: list[str] = []
-        session = MagicMock()
-        session.commit.side_effect = lambda: events.append("commit")
-        session.close.side_effect = lambda: events.append("close")
+        session = runner.session
+        original_commit = session.commit
+        original_close = session.close
+
+        def commit_session() -> None:
+            events.append("commit")
+            original_commit()
+
+        def close_session() -> None:
+            events.append("close")
+            original_close()
+
+        mocker.patch.object(session, "commit", side_effect=commit_session)
+        mocker.patch.object(session, "close", side_effect=close_session)
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
