@@ -1,17 +1,26 @@
-import type { LogicalDocument } from './document-models'
-import { consoleClient } from '@/service/client'
-import { logicalDocumentFromApi, logicalDocumentListFromApi } from './document-models'
+import type { KnowledgeFsMetadataFieldResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { consoleQuery } from '@/service/client'
 
 export type DocumentMetadataType = 'string' | 'number' | 'time'
 export type DocumentMetadataNameError = 'duplicate' | 'empty' | 'invalid' | 'tooLong'
 
 export type DocumentMetadataField = {
   count: number
+  createdAt: string
+  id: string
   name: string
+  rowVersion: number
   type: DocumentMetadataType
+  updatedAt: string
 }
 
-const reservedDocumentMetadataNames = new Set(['displayName', 'retrievalCount', 'sourceName'])
+const reservedDocumentMetadataNames = new Set([
+  'displayName',
+  'provenance',
+  'retrievalCount',
+  'sourceName',
+  'system',
+])
 
 export function isEditableDocumentMetadata(name: string) {
   return !reservedDocumentMetadataNames.has(name)
@@ -48,99 +57,30 @@ export function editableDocumentMetadataEntries(metadata: Record<string, unknown
   return Object.entries(metadata).filter(([name]) => isEditableDocumentMetadata(name))
 }
 
-export function documentMetadataFieldsFromDocuments(
-  documents: LogicalDocument[],
-): DocumentMetadataField[] {
-  const fields = new Map<
-    string,
-    DocumentMetadataField & {
-      typeInferredFromEmptyValue: boolean
-    }
-  >()
-
-  for (const document of documents) {
-    for (const [name, value] of editableDocumentMetadataEntries(document.userMetadata)) {
-      if (value === null || value === undefined) continue
-      const current = fields.get(name)
-      const typeInferredFromEmptyValue = value === ''
-      fields.set(name, {
-        count: (current?.count ?? 0) + 1,
-        name,
-        type:
-          current && !current.typeInferredFromEmptyValue
-            ? current.type
-            : documentMetadataType(value),
-        typeInferredFromEmptyValue:
-          Boolean(current?.typeInferredFromEmptyValue ?? true) && typeInferredFromEmptyValue,
-      })
-    }
-  }
-
-  return [...fields.values()]
-    .map(({ count, name, type }) => ({ count, name, type }))
-    .sort((left, right) => left.name.localeCompare(right.name))
-}
-
-export async function listAllLogicalDocuments(knowledgeSpaceId: string) {
-  const documents: LogicalDocument[] = []
-  let cursor: string | undefined
-
-  do {
-    const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get({
-      params: { control_space_id: knowledgeSpaceId },
-      query: cursor ? { cursor } : {},
-    })
-    const page = logicalDocumentListFromApi(response)
-    documents.push(...page.items)
-    cursor = page.nextCursor
-  } while (cursor)
-
-  return documents
-}
-
-export type DocumentMetadataPatchTarget = {
-  document: LogicalDocument
-  patch: Record<string, unknown>
-}
-
-export async function patchDocumentMetadataTargets(
-  controlSpaceId: string,
-  targets: DocumentMetadataPatchTarget[],
-) {
-  const failures: Array<{ document: LogicalDocument; reason: unknown }> = []
-  const updatedDocuments = new Map<string, LogicalDocument>()
-
-  for (let index = 0; index < targets.length; index += 5) {
-    const batch = targets.slice(index, index + 5)
-    const results = await Promise.allSettled(
-      batch.map(({ document, patch }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-          body: { expectedRowVersion: document.rowVersion, patch },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
-          },
-        }),
-      ),
-    )
-
-    results.forEach((result, resultIndex) => {
-      const target = batch[resultIndex]
-      if (!target) return
-      const { document } = target
-      if (result.status === 'fulfilled')
-        updatedDocuments.set(document.id, logicalDocumentFromApi(result.value))
-      else failures.push({ document, reason: result.reason })
-    })
-  }
-
-  return { failures, updatedDocuments }
-}
-
-export function documentMetadataDocumentsQueryOptions(knowledgeSpaceId: string) {
+export function documentMetadataFieldFromApi(
+  field: KnowledgeFsMetadataFieldResponse,
+): DocumentMetadataField {
   return {
-    queryFn: () => listAllLogicalDocuments(knowledgeSpaceId),
-    queryKey: ['new-rag', 'document-metadata-documents', knowledgeSpaceId] as const,
+    count: field.count,
+    createdAt: field.created_at,
+    id: field.id,
+    name: field.name,
+    rowVersion: field.row_version,
+    type: field.type,
+    updatedAt: field.updated_at,
+  }
+}
+
+export function documentMetadataFieldsQueryOptions(knowledgeSpaceId: string) {
+  return {
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: 100 },
+      },
+    }),
+    select: (response: { data: KnowledgeFsMetadataFieldResponse[] }) =>
+      response.data.map(documentMetadataFieldFromApi),
     staleTime: 30_000,
   }
 }

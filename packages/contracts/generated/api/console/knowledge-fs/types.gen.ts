@@ -13,7 +13,8 @@ export type KnowledgeFsAdmittedQueryRequest = {
   activeEntityIds?: Array<string>
   knowledgeSpaceId: string
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   sessionId?: string | null
 }
 
@@ -393,6 +394,35 @@ export type KnowledgeFsPermissionListResponse = {
   data: Array<KnowledgeFsPermissionResponse>
 }
 
+export type KnowledgeFsMetadataFieldListResponse = {
+  data: Array<KnowledgeFsMetadataFieldResponse>
+  next_cursor?: string | null
+}
+
+export type KnowledgeFsMetadataFieldCreatePayload = {
+  name: string
+  type: 'number' | 'string' | 'time'
+}
+
+export type KnowledgeFsMetadataFieldResponse = {
+  count: number
+  created_at: string
+  id: string
+  name: string
+  row_version: number
+  type: 'number' | 'string' | 'time'
+  updated_at: string
+}
+
+export type KnowledgeFsMetadataFieldDeleteResponse = {
+  deleted: true
+}
+
+export type KnowledgeFsMetadataFieldUpdatePayload = {
+  expectedRowVersion: number
+  name: string
+}
+
 export type KnowledgeFsOverviewActivityListResponse = {
   data: Array<KnowledgeFsOverviewActivityResponse>
   next_cursor?: string | null
@@ -494,7 +524,8 @@ export type KnowledgeFsQueryCreatePayload = {
   activeDocumentIds?: Array<string>
   activeEntityIds?: Array<string>
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   sessionId?: string | null
 }
 
@@ -532,7 +563,8 @@ export type KnowledgeFsResearchTaskCreatePayload = {
     [key: string]: unknown
   }
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   topK?: number | null
 }
 
@@ -552,6 +584,7 @@ export type KnowledgeFsResearchTaskResponse = {
   }
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
   query: string
+  query_images?: Array<KnowledgeFsQueryImageReference>
   stage:
     | 'analyzing'
     | 'canceled'
@@ -569,7 +602,8 @@ export type KnowledgeFsResearchTaskResponse = {
 export type KnowledgeFsResearchTaskPlanPayload = {
   budgetUsd?: number | null
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   topK?: number | null
 }
 
@@ -580,6 +614,7 @@ export type KnowledgeFsResearchTaskPlanResponse = {
   }
   knowledge_space_id: string
   query: string
+  query_images?: Array<KnowledgeFsQueryImageReference>
   retrieval_plan: KnowledgeFsResearchTaskRetrievalPlanResponse
   steps: Array<{
     [key: string]: unknown
@@ -681,6 +716,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
   kind: string
   knowledge_space_id: string
   last_error_code?: string | null
+  last_error_message?: string | null
   max_execution_attempts: number
   progress_completed: number
   progress_failed: number
@@ -905,6 +941,10 @@ export type KnowledgeFsjwkResponse = {
   kty: 'RSA'
   n: string
   use: 'sig'
+}
+
+export type KnowledgeFsQueryImageReference = {
+  uploadFileId: string
 }
 
 export type KnowledgeFsSpaceListItemResponse = {
@@ -2342,6 +2382,77 @@ export type PutKnowledgeFsSpacesByControlSpaceIdMembersResponses = {
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   PutKnowledgeFsSpacesByControlSpaceIdMembersResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdMembersResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdMetadataData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/metadata'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdMetadataResponses = {
+  200: KnowledgeFsMetadataFieldListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdMetadataResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdMetadataResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdMetadataData = {
+  body: KnowledgeFsMetadataFieldCreatePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/metadata'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdMetadataResponses = {
+  201: KnowledgeFsMetadataFieldResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdMetadataResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdMetadataResponses]
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    field_id: string
+  }
+  query: {
+    expectedRowVersion: number
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/metadata/{field_id}'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses = {
+  200: KnowledgeFsMetadataFieldDeleteResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdData = {
+  body: KnowledgeFsMetadataFieldUpdatePayload
+  path: {
+    control_space_id: string
+    field_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/metadata/{field_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses = {
+  200: KnowledgeFsMetadataFieldResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdOverviewActivityData = {
   body?: never

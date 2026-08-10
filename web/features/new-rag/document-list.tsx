@@ -252,11 +252,13 @@ const DocumentRow = memo(
 export function DocumentsEmpty({
   canEdit,
   onAddDocument,
+  onOpenMetadata,
   readOnlyReasonId,
   uploading,
 }: {
   canEdit: boolean
   onAddDocument: () => void
+  onOpenMetadata: () => void
   readOnlyReasonId?: string
   uploading: boolean
 }) {
@@ -273,18 +275,24 @@ export function DocumentsEmpty({
       <p className="w-115 max-w-full text-[13px] leading-4 font-normal text-text-tertiary">
         {t(($) => $['newKnowledge.documentsEmptyDescription'])}
       </p>
-      <Button
-        className="gap-1 pl-3"
-        variant="primary"
-        aria-busy={uploading}
-        disabled={!canEdit}
-        loading={uploading}
-        aria-describedby={!canEdit ? readOnlyReasonId : undefined}
-        onClick={onAddDocument}
-      >
-        <span aria-hidden className="i-ri-add-line size-4" />
-        {t(($) => $['newKnowledge.addDocument'])}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
+          <span aria-hidden className="i-ri-file-text-line size-4" />
+          {t(($) => $['newKnowledge.metadata'])}
+        </Button>
+        <Button
+          className="gap-1 pl-3"
+          variant="primary"
+          aria-busy={uploading}
+          disabled={!canEdit}
+          loading={uploading}
+          aria-describedby={!canEdit ? readOnlyReasonId : undefined}
+          onClick={onAddDocument}
+        >
+          <span aria-hidden className="i-ri-add-line size-4" />
+          {t(($) => $['newKnowledge.addDocument'])}
+        </Button>
+      </div>
       {canEdit && (
         <p className="system-xs-regular text-text-quaternary">
           {t(($) => $['newKnowledge.documentsDropHint'])}

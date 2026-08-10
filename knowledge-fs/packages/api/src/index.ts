@@ -257,6 +257,10 @@ export * from "./knowledge-space-golden-question-schemas";
 export * from "./knowledge-space-embedding-resolver";
 export * from "./knowledge-space-handlers";
 export * from "./knowledge-space-manifest-repository";
+export * from "./knowledge-space-metadata-handlers";
+export * from "./knowledge-space-metadata-repository";
+export * from "./knowledge-space-metadata-routes";
+export * from "./knowledge-space-metadata-schemas";
 export * from "./knowledge-space-outline-summary-enhancer";
 export * from "./knowledge-space-semantic-ingestion-postprocessor";
 export * from "./knowledge-space-overview";
@@ -535,6 +539,7 @@ import {
   createInMemoryKnowledgeSpaceManifestRepository,
   ensureKnowledgeSpaceManifest,
 } from "./knowledge-space-manifest-repository";
+import { registerKnowledgeSpaceMetadataHandlers } from "./knowledge-space-metadata-handlers";
 import { createInMemoryKnowledgeSpaceOverviewRepository } from "./knowledge-space-overview";
 import { registerKnowledgeSpaceOverviewHandlers } from "./knowledge-space-overview-handlers";
 import { registerKnowledgeSpaceProductSummaryHandlers } from "./knowledge-space-product-summary-handlers";
@@ -740,6 +745,7 @@ export function createKnowledgeGateway({
   knowledgePaths,
   integratedKnowledgeSpaceProvisioning,
   knowledgeSpaceManifests,
+  metadataFields,
   knowledgeSpaceOverview,
   knowledgeSpaceProfiles,
   knowledgeSpaceProvisioning,
@@ -1740,6 +1746,14 @@ export function createKnowledgeGateway({
     spaces,
   });
 
+  registerKnowledgeSpaceMetadataHandlers({
+    app,
+    authorization: spaceAuthorization,
+    ...(metadataFields ? { metadataFields } : {}),
+    now,
+    spaces,
+  });
+
   registerLogicalDocumentHandlers({
     access: accessService,
     app,
@@ -1749,6 +1763,7 @@ export function createKnowledgeGateway({
     ...(documentChunkState ? { chunkState: documentChunkState } : {}),
     ...(documentCompilationJobs ? { compilationJobs: documentCompilationJobs } : {}),
     ...(logicalDocuments ? { logicalDocuments } : {}),
+    ...(metadataFields ? { metadataFields } : {}),
     now,
     ...(documentRevisionRollbacks ? { rollbackCoordinator: documentRevisionRollbacks } : {}),
     ...(documentSettings ? { settings: documentSettings } : {}),

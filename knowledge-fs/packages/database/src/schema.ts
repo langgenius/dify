@@ -2892,6 +2892,68 @@ const tables = [
     ],
   },
   {
+    name: "knowledge_space_metadata_fields",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: `"type" IN ('string', 'number', 'time')`,
+          tidb: "`type` IN ('string', 'number', 'time')",
+        },
+        name: "knowledge_space_metadata_fields_type_ck",
+      },
+      {
+        expression: { postgres: '"row_version" >= 0', tidb: "`row_version` >= 0" },
+        name: "knowledge_space_metadata_fields_row_version_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+    ],
+    columns: [
+      idColumn(),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      varcharColumn("name", 255),
+      varcharColumn("type", 16),
+      integerColumn("row_version"),
+      varcharColumn("created_by_subject_id", 255),
+      varcharColumn("updated_by_subject_id", 255, true),
+      timestampColumn("created_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "logical_document_metadata_bindings",
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id", "metadata_field_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "id"],
+        referencedTable: "knowledge_space_metadata_fields",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "document_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "id"],
+        referencedTable: "logical_documents",
+      },
+    ],
+    primaryKey: ["tenant_id", "knowledge_space_id", "document_id", "metadata_field_id"],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_id"),
+      idColumn("metadata_field_id"),
+      varcharColumn("created_by_subject_id", 255),
+      timestampColumn("created_at"),
+    ],
+  },
+  {
     name: "document_revisions",
     checkConstraints: [
       {
@@ -7118,6 +7180,32 @@ const indexes = [
     name: "logical_documents_space_cursor_idx",
     purpose: "List logical documents with stable tenant and space isolation",
     tableName: "logical_documents",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "id"],
+    name: "knowledge_space_metadata_fields_scope_id_uq",
+    purpose: "Bind document metadata values to one tenant-scoped field definition",
+    tableName: "knowledge_space_metadata_fields",
+    unique: true,
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "name"],
+    name: "knowledge_space_metadata_fields_name_uq",
+    purpose: "Keep custom metadata names unique inside one knowledge space",
+    tableName: "knowledge_space_metadata_fields",
+    unique: true,
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "name", "id"],
+    name: "knowledge_space_metadata_fields_cursor_idx",
+    purpose: "List a bounded metadata catalog with stable keyset pagination",
+    tableName: "knowledge_space_metadata_fields",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "metadata_field_id", "document_id"],
+    name: "logical_document_metadata_bindings_field_idx",
+    purpose: "Count and mutate documents bound to one metadata field without scanning JSON",
+    tableName: "logical_document_metadata_bindings",
   },
   {
     columns: ["tenant_id", "knowledge_space_id", "document_id", "revision"],

@@ -341,10 +341,16 @@ function metadataStringValuesForKeys(
 }
 
 function retrievalMetadataContainers(metadata: Record<string, unknown>): Record<string, unknown>[] {
+  const documentMetadata = isPlainObject(metadata.documentMetadata)
+    ? metadata.documentMetadata
+    : undefined;
   return [
     metadata,
     ...(isPlainObject(metadata.nodeMetadata) ? [metadata.nodeMetadata] : []),
-    ...(isPlainObject(metadata.documentMetadata) ? [metadata.documentMetadata] : []),
+    ...(documentMetadata ? [documentMetadata] : []),
+    ...(documentMetadata && isPlainObject(documentMetadata.userMetadata)
+      ? [documentMetadata.userMetadata]
+      : []),
   ];
 }
 

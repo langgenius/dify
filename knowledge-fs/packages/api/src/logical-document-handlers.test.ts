@@ -29,6 +29,10 @@ import {
   type KnowledgeSpaceAuthorizationGuard,
   type KnowledgeSpaceCallerKind,
 } from "./knowledge-space-authorization";
+import {
+  type KnowledgeSpaceMetadataRepository,
+  KnowledgeSpaceMetadataValidationError,
+} from "./knowledge-space-metadata-repository";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import {
   type DocumentSettingsChangeCoordinator,
@@ -380,6 +384,84 @@ describe("logical document handlers", () => {
     });
     await expectStatus(patchMetadata(disappeared), 404);
     await expectStatus(patchMetadata(handlerApp({ access: denyingAccess() })), 404);
+  });
+
+  it("validates field types and reconciles bindings around a document metadata patch", async () => {
+    const updated = documentFixture({
+      rowVersion: 3,
+      updatedAt: "2026-07-14T12:05:00.000Z",
+      userMetadata: { category: "camera" },
+    });
+    const patchUserMetadata = vi.fn(async () => updated);
+    const validatePatch = vi.fn<KnowledgeSpaceMetadataRepository["validatePatch"]>(
+      async () => undefined,
+    );
+    const reconcileDocument = vi.fn<KnowledgeSpaceMetadataRepository["reconcileDocument"]>(
+      async () => undefined,
+    );
+    const app = handlerApp({
+      logicalDocuments: logicalDocumentRepository({ patchUserMetadata }),
+      metadataFields: metadataRepository({ reconcileDocument, validatePatch }),
+    });
+
+    await expectStatus(patchMetadata(app), 200);
+    expect(validatePatch).toHaveBeenCalledWith({
+      knowledgeSpaceId,
+      patch: { category: "camera" },
+      tenantId,
+    });
+    expect(reconcileDocument).toHaveBeenCalledWith({
+      documentId,
+      knowledgeSpaceId,
+      now: updated.updatedAt,
+      subjectId: "member-a",
+      tenantId,
+      userMetadata: { category: "camera" },
+    });
+    expect(validatePatch.mock.invocationCallOrder[0]).toBeLessThan(
+      patchUserMetadata.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
+    expect(patchUserMetadata.mock.invocationCallOrder[0]).toBeLessThan(
+      reconcileDocument.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
+    );
+
+    const rejectedPatch = vi.fn(async () => updated);
+    const invalid = handlerApp({
+      logicalDocuments: logicalDocumentRepository({ patchUserMetadata: rejectedPatch }),
+      metadataFields: metadataRepository({
+        validatePatch: vi.fn(async () => {
+          throw new KnowledgeSpaceMetadataValidationError("wrong type");
+        }),
+      }),
+    });
+    await expectStatus(patchMetadata(invalid), 400);
+    expect(rejectedPatch).not.toHaveBeenCalled();
+  });
+
+  it("does not duplicate metadata lifecycle work managed by the database repository", async () => {
+    const patchUserMetadata = vi.fn(async () =>
+      documentFixture({ rowVersion: 3, userMetadata: { category: "camera" } }),
+    );
+    const validatePatch = vi.fn<KnowledgeSpaceMetadataRepository["validatePatch"]>(
+      async () => undefined,
+    );
+    const reconcileDocument = vi.fn<KnowledgeSpaceMetadataRepository["reconcileDocument"]>(
+      async () => undefined,
+    );
+    const app = handlerApp({
+      logicalDocuments: logicalDocumentRepository({
+        metadataLifecycleManaged: true,
+        patchUserMetadata,
+      }),
+      metadataFields: metadataRepository({ reconcileDocument, validatePatch }),
+    });
+
+    await expectStatus(patchMetadata(app), 200);
+    expect(patchUserMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({ metadataSubjectId: "member-a" }),
+    );
+    expect(validatePatch).not.toHaveBeenCalled();
+    expect(reconcileDocument).not.toHaveBeenCalled();
   });
 
   it("lists and fetches visible chunks with optional query and cursor fields", async () => {
@@ -925,6 +1007,24 @@ function logicalDocumentRepository(
     listActiveBySource: vi.fn(async () => ({ items: [] })),
     listRevisions: vi.fn(async () => ({ items: [revision] })),
     patchUserMetadata: vi.fn(async () => document),
+    ...overrides,
+  };
+}
+
+function metadataRepository(
+  overrides: Partial<KnowledgeSpaceMetadataRepository> = {},
+): KnowledgeSpaceMetadataRepository {
+  return {
+    create: vi.fn(async () => {
+      throw new Error("not used");
+    }),
+    delete: vi.fn(async () => undefined),
+    list: vi.fn(async () => ({ items: [] })),
+    reconcileDocument: vi.fn(async () => undefined),
+    updateName: vi.fn(async () => {
+      throw new Error("not used");
+    }),
+    validatePatch: vi.fn(async () => undefined),
     ...overrides,
   };
 }

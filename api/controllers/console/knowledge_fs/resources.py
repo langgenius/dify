@@ -105,6 +105,13 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
+    KnowledgeFSMetadataFieldCreatePayload,
+    KnowledgeFSMetadataFieldDeleteQuery,
+    KnowledgeFSMetadataFieldDeleteResponse,
+    KnowledgeFSMetadataFieldListQuery,
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSMetadataFieldResponse,
+    KnowledgeFSMetadataFieldUpdatePayload,
     KnowledgeFSOverviewActivityListQuery,
     KnowledgeFSOverviewActivityListResponse,
     KnowledgeFSOverviewAttentionListQuery,
@@ -213,6 +220,10 @@ register_schema_models(
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSMetadataFieldCreatePayload,
+    KnowledgeFSMetadataFieldDeleteQuery,
+    KnowledgeFSMetadataFieldListQuery,
+    KnowledgeFSMetadataFieldUpdatePayload,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSGoldenQuestionBulkImportPayload,
     KnowledgeFSGoldenQuestionEvidenceMatchPayload,
@@ -286,6 +297,9 @@ register_response_schema_models(
     KnowledgeFSExternalAccessResponse,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentListResponse,
+    KnowledgeFSMetadataFieldDeleteResponse,
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSMetadataFieldResponse,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSQueryResponse,
     KnowledgeFSQualityReplayResponse,
@@ -1206,6 +1220,97 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
             body_reader=_read_document_upload,
         )
         return dump_response(KnowledgeFSDocumentUploadAcceptedResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata")
+class KnowledgeFSSpaceMetadataApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS metadata fields",
+        console_ns.models[KnowledgeFSMetadataFieldListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = query_params_from_request(KnowledgeFSMetadataFieldListQuery)
+        result = _console_services().facade.list_metadata_fields(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSMetadataFieldListResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldCreatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS metadata field created",
+        console_ns.models[KnowledgeFSMetadataFieldResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.create_metadata_field(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSMetadataFieldCreatePayload),
+        )
+        return dump_response(KnowledgeFSMetadataFieldResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata/<string:field_id>")
+class KnowledgeFSSpaceMetadataFieldApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSMetadataFieldUpdatePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS metadata field updated",
+        console_ns.models[KnowledgeFSMetadataFieldResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def patch(self, control_space_id: str, field_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.update_metadata_field(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            field_id=field_id,
+            payload=_payload(KnowledgeFSMetadataFieldUpdatePayload),
+        )
+        return dump_response(KnowledgeFSMetadataFieldResponse, result)
+
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSMetadataFieldDeleteQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS metadata field deleted",
+        console_ns.models[KnowledgeFSMetadataFieldDeleteResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, control_space_id: str, field_id: str):
+        actor_id, tenant_id = _actor()
+        query = query_params_from_request(KnowledgeFSMetadataFieldDeleteQuery)
+        result = _console_services().facade.delete_metadata_field(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            field_id=field_id,
+            expected_row_version=query.expected_row_version,
+        )
+        return dump_response(KnowledgeFSMetadataFieldDeleteResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")

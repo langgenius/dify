@@ -60,6 +60,7 @@ import {
   createDatabaseKnowledgePathRepository,
   createDatabaseKnowledgeSpaceAccessRepository,
   createDatabaseKnowledgeSpaceManifestRepository,
+  createDatabaseKnowledgeSpaceMetadataRepository,
   createDatabaseKnowledgeSpaceOverviewRepository,
   createDatabaseKnowledgeSpaceProfileBackfillRepository,
   createDatabaseKnowledgeSpaceProfileMigrationRepository,
@@ -327,6 +328,10 @@ export function createApiDatabaseRepositories({
     database,
     maxClaimBatchSize: maxListLimit,
   });
+  const metadataFields = createDatabaseKnowledgeSpaceMetadataRepository({
+    database,
+    maxListLimit,
+  });
 
   return {
     agentWorkspaceSnapshots,
@@ -394,6 +399,7 @@ export function createApiDatabaseRepositories({
         database,
         maxListLimit,
       }),
+      metadataFields,
       knowledgeSpaceOverview: createDatabaseKnowledgeSpaceOverviewRepository({
         database,
         maxListLimit,
@@ -405,6 +411,7 @@ export function createApiDatabaseRepositories({
       logicalDocuments: createDatabaseLogicalDocumentRepository({
         database,
         maxListLimit,
+        metadataLifecycle: metadataFields.documentLifecycle,
       }),
       knowledgeSpaceAccess,
       legacySpacePublicationBootstraps,

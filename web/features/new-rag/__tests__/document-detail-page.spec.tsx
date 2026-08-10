@@ -1,4 +1,5 @@
 import type { KnowledgeFsDocumentOutlineResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { DocumentMetadataField } from '../document-metadata-model'
 import type {
   BackgroundTask,
   DocumentProcessingTask,
@@ -110,8 +111,9 @@ const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const patchDocumentMetadata = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
-const metadataDocumentsQuery = vi.hoisted(() => ({
-  data: [] as LogicalDocument[] | undefined,
+const createMetadataField = vi.hoisted(() => vi.fn())
+const metadataFieldsQuery = vi.hoisted(() => ({
+  data: [] as DocumentMetadataField[] | undefined,
   error: null as unknown,
   isFetching: false,
   isPending: false,
@@ -366,7 +368,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useMutation: (options: { mutationKind?: string }) =>
       options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
     useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
-      if (options.queryKey?.includes('document-metadata-documents')) return metadataDocumentsQuery
+      if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       if (options.queryKind === 'outline') return outlineQuery
       if (options.queryKind === 'settings')
         return {
@@ -397,6 +399,9 @@ vi.mock('@/service/client', () => ({
           },
           logicalDocuments: {
             get: listLogicalDocuments,
+          },
+          metadata: {
+            post: createMetadataField,
           },
         },
       },
@@ -461,6 +466,14 @@ vi.mock('@/service/client', () => ({
               key: () => ['knowledge-fs', 'documents'],
             },
           },
+          metadata: {
+            get: {
+              key: () => ['knowledge-fs', 'metadata-fields'],
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryKey: ['knowledge-fs', 'metadata-fields', input],
+              }),
+            },
+          },
           jobs: {
             byJobId: {
               get: {
@@ -505,6 +518,17 @@ const logicalDocument = (overrides: Partial<LogicalDocument> = {}): LogicalDocum
   title: 'sso-enterprise.pdf',
   updatedAt: '2026-07-21T10:00:00Z',
   userMetadata: { sourceName: 'Notion support SOP' },
+  ...overrides,
+})
+
+const metadataField = (overrides: Partial<DocumentMetadataField> = {}): DocumentMetadataField => ({
+  count: 1,
+  createdAt: '2026-08-10T10:00:00Z',
+  id: 'metadata-field-1',
+  name: 'category',
+  rowVersion: 0,
+  type: 'string',
+  updatedAt: '2026-08-10T10:00:00Z',
   ...overrides,
 })
 
@@ -617,10 +641,11 @@ describe('DocumentDetailPage', () => {
     tasksQuery.isFetchNextPageError = false
     tasksQuery.isFetchingNextPage = false
     tasksQuery.isPending = false
-    metadataDocumentsQuery.data = []
-    metadataDocumentsQuery.error = null
-    metadataDocumentsQuery.isFetching = false
-    metadataDocumentsQuery.isPending = false
+    metadataFieldsQuery.data = []
+    metadataFieldsQuery.error = null
+    metadataFieldsQuery.isFetching = false
+    metadataFieldsQuery.isPending = false
+    metadataFieldsQuery.refetch.mockResolvedValue({ data: [], error: null })
     permissionState.refresh.mockResolvedValue({
       data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
       error: null,
@@ -640,6 +665,15 @@ describe('DocumentDetailPage', () => {
     patchDocumentMetadata.mockImplementation(async () =>
       logicalDocumentApiResponse(logicalDocument({ rowVersion: 3 })),
     )
+    createMetadataField.mockResolvedValue({
+      count: 0,
+      created_at: '2026-08-10T10:00:00Z',
+      id: 'metadata-field-1',
+      name: 'category',
+      row_version: 0,
+      type: 'string',
+      updated_at: '2026-08-10T10:00:00Z',
+    })
     listLogicalDocuments.mockResolvedValue({
       data: [logicalDocumentApiResponse(logicalDocument())],
       next_cursor: null,
@@ -985,14 +1019,7 @@ describe('DocumentDetailPage', () => {
 
   it('lets users choose the type of a new document metadata field', async () => {
     const user = userEvent.setup()
-    metadataDocumentsQuery.data = [
-      logicalDocument(),
-      logicalDocument({
-        id: 'document-2',
-        rowVersion: 4,
-        userMetadata: { priority: 0 },
-      }),
-    ]
+    metadataFieldsQuery.data = [metadataField({ name: 'priority', type: 'number' })]
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1016,15 +1043,9 @@ describe('DocumentDetailPage', () => {
 
   it('keeps selected number and time metadata empty until the user enters a value', async () => {
     const user = userEvent.setup()
-    metadataDocumentsQuery.data = [
-      logicalDocument(),
-      logicalDocument({
-        id: 'document-2',
-        userMetadata: {
-          priority: 7,
-          reviewed_at: '2026-08-04T10:00:00.000Z',
-        },
-      }),
+    metadataFieldsQuery.data = [
+      metadataField({ name: 'priority', type: 'number' }),
+      metadataField({ id: 'metadata-field-2', name: 'reviewed_at', type: 'time' }),
     ]
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
@@ -1046,13 +1067,7 @@ describe('DocumentDetailPage', () => {
   it('preserves a time field editor when this document has an empty value', async () => {
     const user = userEvent.setup()
     documentQuery.data = logicalDocument({ userMetadata: { reviewed_at: '' } })
-    metadataDocumentsQuery.data = [
-      logicalDocument({ userMetadata: { reviewed_at: '' } }),
-      logicalDocument({
-        id: 'document-2',
-        userMetadata: { reviewed_at: '2026-08-04T10:00:00.000Z' },
-      }),
-    ]
+    metadataFieldsQuery.data = [metadataField({ name: 'reviewed_at', type: 'time' })]
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1063,10 +1078,10 @@ describe('DocumentDetailPage', () => {
 
   it('keeps the edit action busy while resolving metadata types', async () => {
     const user = userEvent.setup()
-    let resolveMetadataRefetch!: (value: { data: LogicalDocument[] }) => void
+    let resolveMetadataRefetch!: (value: { data: DocumentMetadataField[] }) => void
     documentQuery.data = logicalDocument({ userMetadata: { category: '' } })
-    metadataDocumentsQuery.data = undefined
-    metadataDocumentsQuery.refetch.mockImplementation(
+    metadataFieldsQuery.data = undefined
+    metadataFieldsQuery.refetch.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveMetadataRefetch = resolve
@@ -1080,10 +1095,10 @@ describe('DocumentDetailPage', () => {
 
     expect(editButton).toHaveAttribute('aria-disabled', 'true')
     await user.click(editButton)
-    expect(metadataDocumentsQuery.refetch).toHaveBeenCalledOnce()
+    expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
 
     await act(async () => {
-      resolveMetadataRefetch({ data: [logicalDocument({ userMetadata: { category: '' } })] })
+      resolveMetadataRefetch({ data: [metadataField()] })
     })
     expect(await screen.findByLabelText('category')).toBeInTheDocument()
   })
@@ -1094,7 +1109,7 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument({
       userMetadata: { reviewed_at: '2026-08-04T10:00:00.000Z' },
     })
-    metadataDocumentsQuery.data = [documentQuery.data]
+    metadataFieldsQuery.data = [metadataField({ name: 'reviewed_at', type: 'time' })]
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1104,16 +1119,8 @@ describe('DocumentDetailPage', () => {
     getTimezoneOffset.mockRestore()
   })
 
-  it('creates a reusable metadata field across KnowledgeFS documents', async () => {
+  it('creates a reusable field and initializes only the current document', async () => {
     const user = userEvent.setup()
-    const secondDocument = logicalDocument({ id: 'document-2', rowVersion: 4 })
-    listLogicalDocuments.mockResolvedValue({
-      data: [
-        logicalDocumentApiResponse(logicalDocument()),
-        logicalDocumentApiResponse(secondDocument),
-      ],
-      next_cursor: null,
-    })
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1133,51 +1140,31 @@ describe('DocumentDetailPage', () => {
     )
     await user.keyboard('{Enter}')
 
-    expect(listLogicalDocuments).toHaveBeenCalledWith({
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'priority', type: 'number' },
       params: { control_space_id: 'space-1' },
-      query: {},
     })
     expect(patchDocumentMetadata).toHaveBeenCalledWith({
       body: { expectedRowVersion: 2, patch: { priority: 0 } },
       params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
-    expect(patchDocumentMetadata).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 4, patch: { priority: 0 } },
-      params: { control_space_id: 'space-1', document_id: 'document-2' },
-    })
+    expect(patchDocumentMetadata).toHaveBeenCalledOnce()
+    expect(listLogicalDocuments).not.toHaveBeenCalled()
   })
 
   it('keeps a newly created field in the current document draft', async () => {
     const user = userEvent.setup()
     const currentDocument = logicalDocument()
-    const secondDocument = logicalDocument({ id: 'document-2', rowVersion: 4 })
-    const documents = [currentDocument, secondDocument]
     documentQuery.data = currentDocument
-    metadataDocumentsQuery.data = documents
-    listLogicalDocuments.mockImplementation(async () => ({
-      data: documents.map(logicalDocumentApiResponse),
-      next_cursor: null,
-    }))
+    metadataFieldsQuery.data = []
     patchDocumentMetadata.mockImplementation(
-      async ({
-        body,
-        params,
-      }: {
-        body: { patch: Record<string, unknown> }
-        params: { document_id: string }
-      }) => {
-        const index = documents.findIndex((candidate) => candidate.id === params.document_id)
-        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
-        const candidate = documents[index]
-        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
+      async ({ body }: { body: { patch: Record<string, unknown> } }) => {
         const updated = logicalDocument({
-          ...candidate,
-          id: candidate.id,
-          rowVersion: candidate.rowVersion + 1,
-          userMetadata: { ...candidate.userMetadata, ...body.patch },
+          ...currentDocument,
+          rowVersion: currentDocument.rowVersion + 1,
+          userMetadata: { ...currentDocument.userMetadata, ...body.patch },
         })
-        documents[index] = updated
-        if (updated.id === currentDocument.id) documentQuery.data = updated
+        documentQuery.data = updated
         return logicalDocumentApiResponse(updated)
       },
     )
@@ -1203,15 +1190,15 @@ describe('DocumentDetailPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(patchDocumentMetadata).toHaveBeenCalledTimes(2)
+    expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(patchDocumentMetadata).not.toHaveBeenCalledWith(
       expect.objectContaining({ body: expect.objectContaining({ patch: { priority: null } }) }),
     )
   })
 
-  it('keeps metadata creation unavailable while the full field list is loading', async () => {
+  it('keeps metadata creation unavailable while the field catalog is loading', async () => {
     const user = userEvent.setup()
-    metadataDocumentsQuery.isPending = true
+    metadataFieldsQuery.isPending = true
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
@@ -1258,9 +1245,7 @@ describe('DocumentDetailPage', () => {
 
   it('validates a new metadata name before submitting it', async () => {
     const user = userEvent.setup()
-    metadataDocumentsQuery.data = [
-      logicalDocument({ id: 'document-2', userMetadata: { existing_field: '' } }),
-    ]
+    metadataFieldsQuery.data = [metadataField({ name: 'existing_field' })]
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 

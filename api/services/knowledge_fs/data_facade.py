@@ -62,6 +62,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSMetadataFieldCreatePayload,
+    KnowledgeFSMetadataFieldDeleteResponse,
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSMetadataFieldResponse,
+    KnowledgeFSMetadataFieldUpdatePayload,
     KnowledgeFSOverviewActivityListResponse,
     KnowledgeFSOverviewAttentionListResponse,
     KnowledgeFSOverviewBaseStatsResponse,
@@ -886,6 +891,79 @@ class KnowledgeFSDataFacade:
             payload=payload,
         )
         return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
+
+    def list_metadata_fields(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> KnowledgeFSMetadataFieldListResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listMetadataFields",
+            query=_knowledge_fs_query(("cursor", cursor), ("limit", limit)),
+        )
+        return KnowledgeFSMetadataFieldListResponse.model_validate(raw)
+
+    def create_metadata_field(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSMetadataFieldCreatePayload,
+    ) -> KnowledgeFSMetadataFieldResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="createMetadataField",
+            payload=payload,
+        )
+        return KnowledgeFSMetadataFieldResponse.model_validate(raw)
+
+    def update_metadata_field(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        field_id: str,
+        payload: KnowledgeFSMetadataFieldUpdatePayload,
+    ) -> KnowledgeFSMetadataFieldResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="updateMetadataField",
+            path_parameters=(("fieldId", field_id),),
+            payload=payload,
+        )
+        return KnowledgeFSMetadataFieldResponse.model_validate(raw)
+
+    def delete_metadata_field(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        field_id: str,
+        expected_row_version: int,
+    ) -> KnowledgeFSMetadataFieldDeleteResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="deleteMetadataField",
+            path_parameters=(("fieldId", field_id),),
+            query=(("expectedRowVersion", str(expected_row_version)),),
+        )
+        return KnowledgeFSMetadataFieldDeleteResponse.model_validate(raw)
 
     def list_document_chunks(
         self,

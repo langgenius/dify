@@ -1,5 +1,9 @@
 import { createSchemaDatabaseAdapter } from "@knowledge/adapters";
-import type { DatabaseExecuteInput, DatabaseExecuteResult } from "@knowledge/core";
+import type {
+  DatabaseExecuteInput,
+  DatabaseExecuteResult,
+  DatabaseExecutor,
+} from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -642,6 +646,40 @@ describe("logical document repository", () => {
           (call) => call.operation === "update" && call.tableName === "logical_documents",
         ),
       ).toBe(true);
+    });
+
+    it(`updates metadata bindings inside the document CAS transaction (${dialect})`, async () => {
+      const fixture = metadataPatchDatabase(dialect, {
+        targetPermissionScope: actorPermissionScopes(),
+      });
+      let validationExecutor: DatabaseExecutor | undefined;
+      let reconciliationExecutor: DatabaseExecutor | undefined;
+      const repository = createDatabaseLogicalDocumentRepository({
+        database: fixture.database,
+        maxListLimit: 100,
+        metadataLifecycle: {
+          reconcileDocument: async (executor, input) => {
+            reconciliationExecutor = executor;
+            expect(input).toMatchObject({
+              documentId,
+              subjectId: "editor-a",
+              userMetadata: { category: "camera" },
+            });
+          },
+          syncDocumentAsset: async () => undefined,
+          validatePatch: async (executor, input) => {
+            validationExecutor = executor;
+            expect(input.patch).toEqual({ category: "camera" });
+          },
+        },
+      });
+
+      await expect(repository.patchUserMetadata(metadataPatchInput())).resolves.toMatchObject({
+        rowVersion: 2,
+      });
+      expect(repository.metadataLifecycleManaged).toBe(true);
+      expect(validationExecutor).toBeDefined();
+      expect(reconciliationExecutor).toBe(validationExecutor);
     });
 
     it(`conceals metadata mutation when permission is revoked at the final fence (${dialect})`, async () => {

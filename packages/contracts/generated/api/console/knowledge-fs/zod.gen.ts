@@ -3,18 +3,6 @@
 import * as z from 'zod'
 
 /**
- * KnowledgeFSAdmittedQueryRequest
- */
-export const zKnowledgeFsAdmittedQueryRequest = z.object({
-  activeDocumentIds: z.array(z.string()).max(100).optional(),
-  activeEntityIds: z.array(z.string()).max(100).optional(),
-  knowledgeSpaceId: z.string().min(1),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
-  sessionId: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSBackgroundTaskResponse
  */
 export const zKnowledgeFsBackgroundTaskResponse = z.object({
@@ -279,6 +267,50 @@ export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
 })
 
 /**
+ * KnowledgeFSMetadataFieldCreatePayload
+ */
+export const zKnowledgeFsMetadataFieldCreatePayload = z.object({
+  name: z.string().min(1).max(255),
+  type: z.enum(['number', 'string', 'time']),
+})
+
+/**
+ * KnowledgeFSMetadataFieldResponse
+ */
+export const zKnowledgeFsMetadataFieldResponse = z.object({
+  count: z.int().gte(0),
+  created_at: z.iso.datetime(),
+  id: z.string(),
+  name: z.string(),
+  row_version: z.int().gte(0),
+  type: z.enum(['number', 'string', 'time']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSMetadataFieldListResponse
+ */
+export const zKnowledgeFsMetadataFieldListResponse = z.object({
+  data: z.array(zKnowledgeFsMetadataFieldResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSMetadataFieldDeleteResponse
+ */
+export const zKnowledgeFsMetadataFieldDeleteResponse = z.object({
+  deleted: z.literal(true),
+})
+
+/**
+ * KnowledgeFSMetadataFieldUpdatePayload
+ */
+export const zKnowledgeFsMetadataFieldUpdatePayload = z.object({
+  expectedRowVersion: z.int().gte(0),
+  name: z.string().min(1).max(255),
+})
+
+/**
  * KnowledgeFSBadCaseCreatePayload
  */
 export const zKnowledgeFsBadCaseCreatePayload = z.object({
@@ -346,17 +378,6 @@ export const zKnowledgeFsQualityReplayResponse = z.object({
 })
 
 /**
- * KnowledgeFSQueryCreatePayload
- */
-export const zKnowledgeFsQueryCreatePayload = z.object({
-  activeDocumentIds: z.array(z.string()).max(100).optional(),
-  activeEntityIds: z.array(z.string()).max(100).optional(),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
-  sessionId: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSQueryResponse
  */
 export const zKnowledgeFsQueryResponse = z.object({
@@ -367,17 +388,6 @@ export const zKnowledgeFsQueryResponse = z.object({
 })
 
 /**
- * KnowledgeFSQueryAdmissionResponse
- */
-export const zKnowledgeFsQueryAdmissionResponse = z.object({
-  expires_at: z.iso.datetime(),
-  operation_id: z.literal('createQuery'),
-  request: zKnowledgeFsAdmittedQueryRequest,
-  token: z.string(),
-  url: z.string(),
-})
-
-/**
  * KnowledgeFSQueryStreamCapabilityResponse
  */
 export const zKnowledgeFsQueryStreamCapabilityResponse = z.object({
@@ -385,16 +395,6 @@ export const zKnowledgeFsQueryStreamCapabilityResponse = z.object({
   operation_id: z.literal('createQuery'),
   token: z.string(),
   url: z.string(),
-})
-
-/**
- * KnowledgeFSResearchTaskPlanPayload
- */
-export const zKnowledgeFsResearchTaskPlanPayload = z.object({
-  budgetUsd: z.number().gte(0).nullish(),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
-  topK: z.int().gte(1).lte(50).nullish(),
 })
 
 /**
@@ -480,6 +480,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
   kind: z.string(),
   knowledge_space_id: z.string(),
   last_error_code: z.string().nullish(),
+  last_error_message: z.string().nullish(),
   max_execution_attempts: z.int().gte(1),
   progress_completed: z.int().gte(0),
   progress_failed: z.int().gte(0),
@@ -676,6 +677,60 @@ export const zKnowledgeFsjwkResponse = z.object({
  */
 export const zKnowledgeFsjwksResponse = z.object({
   keys: z.array(zKnowledgeFsjwkResponse),
+})
+
+/**
+ * KnowledgeFSQueryImageReference
+ */
+export const zKnowledgeFsQueryImageReference = z.object({
+  uploadFileId: z.string().min(1),
+})
+
+/**
+ * KnowledgeFSAdmittedQueryRequest
+ */
+export const zKnowledgeFsAdmittedQueryRequest = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  knowledgeSpaceId: z.string().min(1),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  sessionId: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQueryCreatePayload
+ */
+export const zKnowledgeFsQueryCreatePayload = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  sessionId: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQueryAdmissionResponse
+ */
+export const zKnowledgeFsQueryAdmissionResponse = z.object({
+  expires_at: z.iso.datetime(),
+  operation_id: z.literal('createQuery'),
+  request: zKnowledgeFsAdmittedQueryRequest,
+  token: z.string(),
+  url: z.string(),
+})
+
+/**
+ * KnowledgeFSResearchTaskPlanPayload
+ */
+export const zKnowledgeFsResearchTaskPlanPayload = z.object({
+  budgetUsd: z.number().gte(0).nullish(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  topK: z.int().gte(1).lte(50).nullish(),
 })
 
 /**
@@ -1209,7 +1264,8 @@ export const zKnowledgeFsResearchTaskCreatePayload = z.object({
   limits: zKnowledgeFsResearchTaskLimits.nullish(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
   topK: z.int().gte(1).lte(50).nullish(),
 })
 
@@ -1228,6 +1284,7 @@ export const zKnowledgeFsResearchTaskResponse = z.object({
   metadata: z.record(z.string(), z.unknown()),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
   stage: z.enum([
     'analyzing',
     'canceled',
@@ -1283,6 +1340,7 @@ export const zKnowledgeFsResearchTaskPlanResponse = z.object({
   estimates: z.record(z.string(), z.unknown()),
   knowledge_space_id: z.string(),
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
   retrieval_plan: zKnowledgeFsResearchTaskRetrievalPlanResponse,
   steps: z.array(z.record(z.string(), z.unknown())),
   strategy_version: z.literal('research-dry-run-planner-v1'),
@@ -2671,6 +2729,63 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdMembersPath = z.object({
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse =
   zKnowledgeFsPermissionListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdMetadataPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdMetadataQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(100),
+})
+
+/**
+ * KnowledgeFS metadata fields
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
+  zKnowledgeFsMetadataFieldListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdMetadataBody =
+  zKnowledgeFsMetadataFieldCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdMetadataPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS metadata field created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdMetadataResponse =
+  zKnowledgeFsMetadataFieldResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdPath = z.object({
+  control_space_id: z.string(),
+  field_id: z.string(),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdQuery = z.object({
+  expectedRowVersion: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFS metadata field deleted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
+  zKnowledgeFsMetadataFieldDeleteResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdBody =
+  zKnowledgeFsMetadataFieldUpdatePayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdPath = z.object({
+  control_space_id: z.string(),
+  field_id: z.string(),
+})
+
+/**
+ * KnowledgeFS metadata field updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse =
+  zKnowledgeFsMetadataFieldResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityPath = z.object({
   control_space_id: z.string(),

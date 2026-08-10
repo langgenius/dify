@@ -138,6 +138,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0038_document_outline_summary_checkpoints.tidb.sql",
       "packages/database/migrations/0039_document_semantic_enrichment.postgres.sql",
       "packages/database/migrations/0039_document_semantic_enrichment.tidb.sql",
+      "packages/database/migrations/0040_knowledge_space_metadata.postgres.sql",
+      "packages/database/migrations/0040_knowledge_space_metadata.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -859,6 +861,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0037_logical_document_zero_revision_deletion.postgres.sql",
       "packages/database/migrations/0038_document_outline_summary_checkpoints.postgres.sql",
       "packages/database/migrations/0039_document_semantic_enrichment.postgres.sql",
+      "packages/database/migrations/0040_knowledge_space_metadata.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -902,6 +905,7 @@ describe("migration file rendering", () => {
           "0037_logical_document_zero_revision_deletion",
           "0038_document_outline_summary_checkpoints",
           "0039_document_semantic_enrichment",
+          "0040_knowledge_space_metadata",
         ],
         dialect: "postgres",
       }),
