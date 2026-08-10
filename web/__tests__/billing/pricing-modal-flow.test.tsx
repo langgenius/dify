@@ -175,6 +175,15 @@ describe('Pricing Modal Flow', () => {
     it('should default to cloud category with three cloud plans', () => {
       render(<Pricing onCancel={onCancel} />)
 
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.cloud' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.self' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+
       // Three cloud plans: sandbox, professional, team
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.professional\.name/i)).toBeInTheDocument()
@@ -205,9 +214,13 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      // Click the self-hosted tab
-      const selfTab = screen.getByText(/plansCommon\.self/i)
-      await user.click(selfTab)
+      const selfHostedButton = screen.getByRole('button', {
+        name: 'billing.plansCommon.self',
+      })
+      selfHostedButton.focus()
+      await user.keyboard(' ')
+
+      expect(selfHostedButton).toHaveAttribute('aria-pressed', 'true')
 
       // Self-hosted plans should appear
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
@@ -222,7 +235,7 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
 
       // Annual billing toggle should not be visible
       expect(screen.queryByText(/plansCommon\.annualBilling/i)).not.toBeInTheDocument()
@@ -232,7 +245,7 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
 
       expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
     })
@@ -242,11 +255,11 @@ describe('Pricing Modal Flow', () => {
       render(<Pricing onCancel={onCancel} />)
 
       // Switch to self-hosted
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
       expect(screen.queryByText(/plans\.sandbox\.name/i)).not.toBeInTheDocument()
 
       // Switch back to cloud
-      await user.click(screen.getByText(/plansCommon\.cloud/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.cloud' }))
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
