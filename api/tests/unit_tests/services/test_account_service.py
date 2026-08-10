@@ -2904,16 +2904,26 @@ class TestTokenGeneratorsDoNotShareState:
     EMAIL = "a@example.com"
 
     @pytest.mark.parametrize("generator", GENERATORS)
-    def test_default_argument_is_not_mutated(self, generator) -> None:
-        defaults = generator.__func__.__defaults__
+    def test_consecutive_calls_do_not_share_a_dict(self, generator) -> None:
+        handed_over = []
 
-        with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
+        def capture(**kwargs):
+            handed_over.append(kwargs["additional_data"])
+            return "tok"
+
+        with patch("services.account_service.TokenManager.generate_token", side_effect=capture):
             generator(email=self.EMAIL, code="111111")
+            generator(email=self.EMAIL, code="222222")
 
-        for default in defaults or ():
-            assert default != {"code": "111111"}, (
-                f"{generator.__name__} mutated its default argument; the dict is shared across calls"
-            )
+        # Scribble on what the first call handed over. If the generator reuses one
+        # dict across calls, the second call is holding the very same object and
+        # the scribble shows up there too.
+        handed_over[0]["scribble"] = True
+
+        assert "scribble" not in handed_over[1], (
+            f"{generator.__name__} hands the same dict to every call; "
+            f"one request can overwrite another's additional_data"
+        )
 
     @pytest.mark.parametrize("generator", GENERATORS)
     def test_caller_dict_is_not_mutated(self, generator) -> None:
