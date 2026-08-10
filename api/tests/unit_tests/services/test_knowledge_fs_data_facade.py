@@ -21,6 +21,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGrepQuery,
     KnowledgeFSListQuery,
     KnowledgeFSLogicalDocumentDeletePayload,
+    KnowledgeFSMetadataFieldCreatePayload,
+    KnowledgeFSMetadataFieldUpdatePayload,
     KnowledgeFSProductRerankProfile,
     KnowledgeFSProductRetrievalProfile,
     KnowledgeFSProductScoreThreshold,
@@ -170,6 +172,36 @@ class RecordingRemote:
                 "retrieval": None,
                 "revision": 2,
             }
+        if request.operation_id == "listMetadataFields":
+            return {
+                "items": [
+                    {
+                        "count": 2,
+                        "createdAt": "2030-01-01T00:00:00Z",
+                        "id": "field-1",
+                        "name": "category",
+                        "rowVersion": 3,
+                        "type": "string",
+                        "updatedAt": "2030-01-01T00:00:00Z",
+                    }
+                ],
+                "nextCursor": None,
+            }
+        if request.operation_id in {
+            "createMetadataField",
+            "updateMetadataField",
+        }:
+            return {
+                "count": 2,
+                "createdAt": "2030-01-01T00:00:00Z",
+                "id": "field-1",
+                "name": "category",
+                "rowVersion": 3,
+                "type": "string",
+                "updatedAt": "2030-01-01T00:00:00Z",
+            }
+        if request.operation_id == "deleteMetadataField":
+            return {"deleted": True}
         if request.operation_id == "listSources":
             return {
                 "items": [
@@ -1038,6 +1070,60 @@ def test_basic_product_facade_resolves_control_space_then_uses_exact_kfs_routes(
     }
     assert remote.requests[5].query == (("cursor", "task-cursor"),)
     assert remote.requests[6].query == (("cursor", "trace-cursor"),)
+    assert {call["control_space_id"] for call in broker.calls} == {"control-1"}
+
+
+def test_metadata_field_facade_uses_catalog_routes_and_row_version_cas() -> None:
+    remote = RecordingRemote()
+    broker = RecordingBroker()
+    facade = KnowledgeFSDataFacade(broker=broker, remote=remote)  # type: ignore[arg-type]
+
+    listed = facade.list_metadata_fields(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        cursor="field-cursor",
+        limit=25,
+    )
+    facade.create_metadata_field(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSMetadataFieldCreatePayload(name="category", type="string"),
+    )
+    facade.update_metadata_field(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        field_id="field-1",
+        payload=KnowledgeFSMetadataFieldUpdatePayload(expected_row_version=3, name="topic"),
+    )
+    deleted = facade.delete_metadata_field(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        field_id="field-1",
+        expected_row_version=4,
+    )
+
+    assert listed.data[0].name == "category"
+    assert deleted.deleted is True
+    assert [request.operation_id for request in remote.requests] == [
+        "listMetadataFields",
+        "createMetadataField",
+        "updateMetadataField",
+        "deleteMetadataField",
+    ]
+    assert [request.path for request in remote.requests] == [
+        "/knowledge-spaces/space-1/metadata-fields",
+        "/knowledge-spaces/space-1/metadata-fields",
+        "/knowledge-spaces/space-1/metadata-fields/field-1",
+        "/knowledge-spaces/space-1/metadata-fields/field-1",
+    ]
+    assert remote.requests[0].query == (("cursor", "field-cursor"), ("limit", "25"))
+    assert remote.requests[1].payload == {"name": "category", "type": "string"}
+    assert remote.requests[2].payload == {"expectedRowVersion": 3, "name": "topic"}
+    assert remote.requests[3].query == (("expectedRowVersion", "4"),)
     assert {call["control_space_id"] for call in broker.calls} == {"control-1"}
 
 

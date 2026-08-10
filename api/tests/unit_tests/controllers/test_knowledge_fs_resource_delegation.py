@@ -257,6 +257,30 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1", "document_id": "document-1"},
     ),
     (
+        "KnowledgeFSSpaceMetadataApi",
+        "get",
+        ("space-1",),
+        "facade",
+        "list_metadata_fields",
+        {"control_space_id": "space-1", "cursor": None, "limit": 100},
+    ),
+    (
+        "KnowledgeFSSpaceMetadataApi",
+        "post",
+        ("space-1",),
+        "facade",
+        "create_metadata_field",
+        {"control_space_id": "space-1"},
+    ),
+    (
+        "KnowledgeFSSpaceMetadataFieldApi",
+        "patch",
+        ("space-1", "field-1"),
+        "facade",
+        "update_metadata_field",
+        {"control_space_id": "space-1", "field_id": "field-1"},
+    ),
+    (
         "KnowledgeFSSpaceDocumentApi",
         "delete",
         ("space-1", "document-1"),
@@ -667,6 +691,34 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
         page=2,
         limit=10,
         creator_ids=["creator-1", "creator-2"],
+    )
+    assert result is _RAW_RESULT
+
+
+def test_console_metadata_delete_forwards_row_version_cas(monkeypatch: pytest.MonkeyPatch) -> None:
+    facade = MagicMock()
+    facade.delete_metadata_field.return_value = _RAW_RESULT
+    runtime = SimpleNamespace(facade=facade)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+    app = Flask(__name__)
+
+    with app.test_request_context("/?expectedRowVersion=7", method="DELETE"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceMetadataFieldApi",
+            "delete",
+            "space-1",
+            "field-1",
+        )
+
+    facade.delete_metadata_field.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="space-1",
+        field_id="field-1",
+        expected_row_version=7,
     )
     assert result is _RAW_RESULT
 

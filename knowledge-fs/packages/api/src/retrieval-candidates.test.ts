@@ -117,4 +117,24 @@ describe("retrieval candidates", () => {
       "Hybrid retrieval permissionScope entries must be non-empty strings",
     );
   });
+
+  it("includes durable document user metadata in retrieval filtering", () => {
+    const nested = candidate({
+      metadata: {
+        documentCreatedAt: "2026-05-12T12:00:00.000Z",
+        documentMetadata: {
+          userMetadata: { language: "zh-CN", tags: ["invoice"] },
+        },
+        documentType: "pdf",
+        nodeKind: "chunk",
+      },
+    });
+
+    expect(
+      filterRetrievalCandidatesByMetadata([nested], {
+        languages: ["zh-CN"],
+        tags: ["invoice"],
+      }),
+    ).toHaveLength(1);
+  });
 });

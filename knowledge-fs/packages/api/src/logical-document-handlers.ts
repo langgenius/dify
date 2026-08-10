@@ -29,6 +29,10 @@ import {
   type KnowledgeSpaceAuthorizationGuard,
   type KnowledgeSpaceDurablePermissionReference,
 } from "./knowledge-space-authorization";
+import {
+  type KnowledgeSpaceMetadataRepository,
+  KnowledgeSpaceMetadataValidationError,
+} from "./knowledge-space-metadata-repository";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import {
   type DocumentRevision,
@@ -98,6 +102,7 @@ export interface RegisterLogicalDocumentHandlersOptions {
   readonly chunks?: DocumentChunkRepository | undefined;
   readonly compilationJobs?: DocumentCompilationJobStateMachine | undefined;
   readonly logicalDocuments?: LogicalDocumentRepository | undefined;
+  readonly metadataFields?: KnowledgeSpaceMetadataRepository | undefined;
   readonly now?: (() => string) | undefined;
   readonly rollbackCoordinator?: DocumentRevisionRollbackCoordinator | undefined;
   readonly settings?: DocumentSettingsRepository | undefined;
@@ -118,6 +123,7 @@ export function registerLogicalDocumentHandlers({
   chunks,
   compilationJobs,
   logicalDocuments,
+  metadataFields,
   now = () => new Date().toISOString(),
   rollbackCoordinator,
   settings,
@@ -313,11 +319,19 @@ export function registerLogicalDocumentHandlers({
     if (!capabilityGrant && !permissionSnapshot)
       return context.json({ error: "Document not found" }, 404);
     try {
+      if (metadataFields && !logicalDocuments.metadataLifecycleManaged) {
+        await metadataFields.validatePatch({
+          knowledgeSpaceId: params.id,
+          patch: body.patch,
+          tenantId: context.get("subject").tenantId,
+        });
+      }
       const updated = await logicalDocuments.patchUserMetadata({
         ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
         documentId: params.documentId,
         expectedRowVersion: body.expectedRowVersion,
         knowledgeSpaceId: params.id,
+        metadataSubjectId: context.get("subject").subjectId,
         now: now(),
         patch: body.patch,
         ...(permissionSnapshot
@@ -328,6 +342,16 @@ export function registerLogicalDocumentHandlers({
           : {}),
         tenantId: context.get("subject").tenantId,
       });
+      if (metadataFields && !logicalDocuments.metadataLifecycleManaged) {
+        await metadataFields.reconcileDocument({
+          documentId: updated.id,
+          knowledgeSpaceId: updated.knowledgeSpaceId,
+          now: updated.updatedAt,
+          subjectId: context.get("subject").subjectId,
+          tenantId: updated.tenantId,
+          userMetadata: updated.userMetadata,
+        });
+      }
       const full = await logicalDocuments.get({
         documentId: updated.id,
         knowledgeSpaceId: updated.knowledgeSpaceId,
@@ -339,6 +363,8 @@ export function registerLogicalDocumentHandlers({
       if (error instanceof LogicalDocumentConflictError)
         return context.json({ error: error.message }, 409);
       if (error instanceof LogicalDocumentValidationError)
+        return context.json({ error: error.message }, 400);
+      if (error instanceof KnowledgeSpaceMetadataValidationError)
         return context.json({ error: error.message }, 400);
       if (error instanceof LogicalDocumentNotFoundError)
         return context.json({ error: "Document not found" }, 404);

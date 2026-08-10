@@ -1,3 +1,4 @@
+import type { DocumentMetadataField } from '../document-metadata-model'
 import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from '../document-models'
 import type { Source } from '../source-models'
 import { hashKey } from '@tanstack/react-query'
@@ -64,8 +65,11 @@ const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
-const metadataDocumentsQuery = vi.hoisted(() => ({
-  data: undefined as LogicalDocument[] | undefined,
+const createMetadataField = vi.hoisted(() => vi.fn())
+const renameMetadataField = vi.hoisted(() => vi.fn())
+const deleteMetadataField = vi.hoisted(() => vi.fn())
+const metadataFieldsQuery = vi.hoisted(() => ({
+  data: undefined as DocumentMetadataField[] | undefined,
   error: null as unknown,
   isFetching: false,
   isPending: false,
@@ -357,14 +361,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       return uploadMutation
     },
     useQuery: (options: { queryKey?: readonly unknown[] }) => {
-      if (options.queryKey?.includes('document-metadata-documents'))
-        return {
-          ...metadataDocumentsQuery,
-          data:
-            metadataDocumentsQuery.data ??
-            documentsQuery.data?.pages.flatMap((page) => page.items) ??
-            [],
-        }
+      if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       return {
         data: {
           configuration_state: settingsState.configurationState,
@@ -431,6 +428,13 @@ vi.mock('@/service/client', () => ({
               delete: removeDocumentMutation,
             },
           },
+          metadata: {
+            post: createMetadataField,
+            byFieldId: {
+              delete: deleteMetadataField,
+              patch: renameMetadataField,
+            },
+          },
           sources: {
             bySourceId: {
               patch: updateSourceMutation,
@@ -461,6 +465,14 @@ vi.mock('@/service/client', () => ({
             get: {
               infiniteOptions: documentsInfiniteOptions,
               key: () => ['knowledge-fs', 'documents'],
+            },
+          },
+          metadata: {
+            get: {
+              key: () => ['knowledge-fs', 'metadata-fields'],
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryKey: ['knowledge-fs', 'metadata-fields', input],
+              }),
             },
           },
           settings: {
@@ -531,6 +543,17 @@ const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => 
   title: 'sso-enterprise.pdf',
   updatedAt: '2026-07-20T10:01:00Z',
   userMetadata: { sourceName: 'Notion support SOP' },
+  ...overrides,
+})
+
+const metadataField = (overrides: Partial<DocumentMetadataField> = {}): DocumentMetadataField => ({
+  count: 1,
+  createdAt: '2026-08-10T10:00:00Z',
+  id: 'metadata-field-1',
+  name: 'category',
+  rowVersion: 0,
+  type: 'string',
+  updatedAt: '2026-08-10T10:00:00Z',
   ...overrides,
 })
 
@@ -645,11 +668,11 @@ describe('DocumentsPage', () => {
     documentsQuery.isPending = false
     documentsQuery.isRefetching = false
     documentsQuery.refetch.mockResolvedValue({ error: null })
-    metadataDocumentsQuery.data = undefined
-    metadataDocumentsQuery.error = null
-    metadataDocumentsQuery.isFetching = false
-    metadataDocumentsQuery.isPending = false
-    metadataDocumentsQuery.refetch.mockResolvedValue({ error: null })
+    metadataFieldsQuery.data = []
+    metadataFieldsQuery.error = null
+    metadataFieldsQuery.isFetching = false
+    metadataFieldsQuery.isPending = false
+    metadataFieldsQuery.refetch.mockResolvedValue({ data: [], error: null })
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.dataUpdatedAt = 0
     tasksQuery.dataUpdateCount = 0
@@ -720,6 +743,25 @@ describe('DocumentsPage', () => {
       ),
       next_cursor: null,
     }))
+    createMetadataField.mockResolvedValue({
+      count: 0,
+      created_at: '2026-08-10T10:00:00Z',
+      id: 'metadata-field-1',
+      name: 'category',
+      row_version: 0,
+      type: 'string',
+      updated_at: '2026-08-10T10:00:00Z',
+    })
+    renameMetadataField.mockResolvedValue({
+      count: 1,
+      created_at: '2026-08-10T10:00:00Z',
+      id: 'metadata-field-1',
+      name: 'topic',
+      row_version: 1,
+      type: 'string',
+      updated_at: '2026-08-10T10:01:00Z',
+    })
+    deleteMetadataField.mockResolvedValue({ deleted: true })
     renameDocumentMutation.mockImplementation(
       async ({ body }: { body: { patch: Record<string, unknown> } }) => {
         const userMetadata = { ...document().userMetadata }
@@ -865,24 +907,8 @@ describe('DocumentsPage', () => {
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
   })
 
-  it('creates metadata through the KnowledgeFS document metadata endpoint', async () => {
+  it('creates a metadata field without scanning or rewriting documents', async () => {
     const user = userEvent.setup()
-    documentsQuery.data = {
-      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
-    }
-    listLogicalDocuments
-      .mockResolvedValueOnce({
-        data: [documentApiResponse(document({ id: 'one', title: 'One.pdf' }))],
-        next_cursor: 'next-page',
-      })
-      .mockResolvedValueOnce({
-        data: [
-          documentApiResponse(
-            document({ id: 'two', rowVersion: 4, title: 'Two.pdf', userMetadata: {} }),
-          ),
-        ],
-        next_cursor: null,
-      })
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -898,22 +924,13 @@ describe('DocumentsPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 1, patch: { category: '' } },
-      params: { control_space_id: 'space-1', document_id: 'one' },
-    })
-    expect(renameDocumentMutation).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 4, patch: { category: '' } },
-      params: { control_space_id: 'space-1', document_id: 'two' },
-    })
-    expect(listLogicalDocuments).toHaveBeenNthCalledWith(1, {
+    expect(createMetadataField).toHaveBeenCalledOnce()
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'category', type: 'string' },
       params: { control_space_id: 'space-1' },
-      query: {},
     })
-    expect(listLogicalDocuments).toHaveBeenNthCalledWith(2, {
-      params: { control_space_id: 'space-1' },
-      query: { cursor: 'next-page' },
-    })
+    expect(listLogicalDocuments).not.toHaveBeenCalled()
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
     await waitFor(() =>
       expect(
         screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
@@ -921,53 +938,9 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('resumes a partially failed metadata creation without rewriting completed documents', async () => {
+  it('keeps metadata creation open when the field request fails', async () => {
     const user = userEvent.setup()
-    const currentDocuments = Array.from({ length: 6 }, (_, index) =>
-      document({
-        id: `document-${index + 1}`,
-        rowVersion: index + 1,
-        title: `Document ${index + 1}.pdf`,
-        userMetadata: {},
-      }),
-    )
-    documentsQuery.data = { pages: [{ items: currentDocuments }] }
-    listLogicalDocuments.mockImplementation(async () => ({
-      data: currentDocuments.map(documentApiResponse),
-      next_cursor: null,
-    }))
-    let rejectSecondDocument = true
-    renameDocumentMutation.mockImplementation(
-      async ({
-        body,
-        params,
-      }: {
-        body: { patch: Record<string, unknown> }
-        params: { document_id: string }
-      }) => {
-        if (params.document_id === 'document-2' && rejectSecondDocument) {
-          rejectSecondDocument = false
-          throw new Error('conflict')
-        }
-        const index = currentDocuments.findIndex((candidate) => candidate.id === params.document_id)
-        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
-        const candidate = currentDocuments[index]
-        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
-        const updatedMetadata = { ...candidate.userMetadata }
-        for (const [name, value] of Object.entries(body.patch)) {
-          if (value === null) delete updatedMetadata[name]
-          else updatedMetadata[name] = value
-        }
-        const updated = document({
-          ...candidate,
-          id: candidate.id,
-          rowVersion: candidate.rowVersion + 1,
-          userMetadata: updatedMetadata,
-        })
-        currentDocuments[index] = updated
-        return documentApiResponse(updated)
-      },
-    )
+    createMetadataField.mockRejectedValueOnce(new Error('conflict'))
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -985,30 +958,16 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(toastMock.error).toHaveBeenCalled())
     expect(nameInput).toBeInTheDocument()
-    expect(renameDocumentMutation).toHaveBeenCalledTimes(6)
-
-    await user.keyboard('{Enter}')
-
-    await waitFor(() => expect(nameInput).not.toBeInTheDocument())
-    expect(renameDocumentMutation).toHaveBeenCalledTimes(7)
-    expect(
-      renameDocumentMutation.mock.calls.filter(
-        ([request]) => request.params.document_id === 'document-1',
-      ),
-    ).toHaveLength(1)
-    expect(
-      renameDocumentMutation.mock.calls.filter(
-        ([request]) => request.params.document_id === 'document-2',
-      ),
-    ).toHaveLength(2)
+    expect(createMetadataField).toHaveBeenCalledOnce()
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('disables metadata creation until the full document metadata query completes', async () => {
+  it('disables metadata creation until the field catalog query completes', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
     }
-    metadataDocumentsQuery.isPending = true
+    metadataFieldsQuery.isPending = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -1021,12 +980,12 @@ describe('DocumentsPage', () => {
     ).toBeDisabled()
   })
 
-  it('lets users retry when the metadata document query fails', async () => {
+  it('lets users retry when the metadata field query fails', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
     }
-    metadataDocumentsQuery.error = new Error('metadata query failed')
+    metadataFieldsQuery.error = new Error('metadata query failed')
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -1037,11 +996,12 @@ describe('DocumentsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
-    expect(metadataDocumentsQuery.refetch).toHaveBeenCalledOnce()
+    expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
   })
 
   it('validates a metadata name in the metadata drawer before submitting it', async () => {
     const user = userEvent.setup()
+    metadataFieldsQuery.data = [metadataField({ name: 'existing_field' })]
     documentsQuery.data = {
       pages: [
         {
@@ -1103,8 +1063,9 @@ describe('DocumentsPage', () => {
     expect(save).toBeEnabled()
   })
 
-  it('renames metadata through the KnowledgeFS document metadata endpoint', async () => {
+  it('renames metadata through the field catalog endpoint', async () => {
     const user = userEvent.setup()
+    metadataFieldsQuery.data = [metadataField()]
     documentsQuery.data = {
       pages: [
         {
@@ -1130,58 +1091,17 @@ describe('DocumentsPage', () => {
     await user.type(nameInput, 'topic')
     await user.keyboard('{Enter}')
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith({
-      body: {
-        expectedRowVersion: 1,
-        patch: { category: null, topic: 'support' },
-      },
-      params: { control_space_id: 'space-1', document_id: 'one' },
+    expect(renameMetadataField).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 0, name: 'topic' },
+      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
     })
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('resumes a partially failed metadata rename from the open dialog', async () => {
+  it('keeps the metadata rename dialog open when the catalog request fails', async () => {
     const user = userEvent.setup()
-    const currentDocuments = [
-      document({ id: 'one', userMetadata: { category: 'support' } }),
-      document({ id: 'two', rowVersion: 2, userMetadata: { category: 'sales' } }),
-    ]
-    documentsQuery.data = { pages: [{ items: currentDocuments }] }
-    listLogicalDocuments.mockImplementation(async () => ({
-      data: currentDocuments.map(documentApiResponse),
-      next_cursor: null,
-    }))
-    let rejectSecondDocument = true
-    renameDocumentMutation.mockImplementation(
-      async ({
-        body,
-        params,
-      }: {
-        body: { patch: Record<string, unknown> }
-        params: { document_id: string }
-      }) => {
-        if (params.document_id === 'two' && rejectSecondDocument) {
-          rejectSecondDocument = false
-          throw new Error('conflict')
-        }
-        const index = currentDocuments.findIndex((candidate) => candidate.id === params.document_id)
-        if (index < 0) throw new Error(`Unknown document ${params.document_id}`)
-        const candidate = currentDocuments[index]
-        if (!candidate) throw new Error(`Unknown document ${params.document_id}`)
-        const updatedMetadata = { ...candidate.userMetadata }
-        for (const [name, value] of Object.entries(body.patch)) {
-          if (value === null) delete updatedMetadata[name]
-          else updatedMetadata[name] = value
-        }
-        const updated = document({
-          ...candidate,
-          id: candidate.id,
-          rowVersion: candidate.rowVersion + 1,
-          userMetadata: updatedMetadata,
-        })
-        currentDocuments[index] = updated
-        return documentApiResponse(updated)
-      },
-    )
+    metadataFieldsQuery.data = [metadataField()]
+    renameMetadataField.mockRejectedValueOnce(new Error('conflict'))
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -1196,21 +1116,13 @@ describe('DocumentsPage', () => {
 
     await waitFor(() => expect(toastMock.error).toHaveBeenCalled())
     expect(nameInput).toBeInTheDocument()
-
-    await user.keyboard('{Enter}')
-
-    await waitFor(() => expect(nameInput).not.toBeInTheDocument())
-    expect(renameDocumentMutation).toHaveBeenCalledTimes(3)
-    expect(
-      renameDocumentMutation.mock.calls.filter(([request]) => request.params.document_id === 'one'),
-    ).toHaveLength(1)
-    expect(
-      renameDocumentMutation.mock.calls.filter(([request]) => request.params.document_id === 'two'),
-    ).toHaveLength(2)
+    expect(renameMetadataField).toHaveBeenCalledOnce()
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('deletes metadata through the KnowledgeFS document metadata endpoint', async () => {
+  it('deletes metadata through the field catalog endpoint', async () => {
     const user = userEvent.setup()
+    metadataFieldsQuery.data = [metadataField({ count: 1 })]
     documentsQuery.data = {
       pages: [
         {
@@ -1231,10 +1143,11 @@ describe('DocumentsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith({
-      body: { expectedRowVersion: 1, patch: { category: null } },
-      params: { control_space_id: 'space-1', document_id: 'one' },
+    expect(deleteMetadataField).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
+      query: { expectedRowVersion: 0 },
     })
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
   it('starts re-indexing from a document row action', async () => {
@@ -1525,9 +1438,7 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":2}',
       }),
     ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.metadata' }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })).toBeEnabled()
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })

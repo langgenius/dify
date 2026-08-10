@@ -55,6 +55,7 @@ import type { KnowledgePathRepository } from "./knowledge-path-repository";
 import type { KnowledgeSpaceAccessService } from "./knowledge-space-access-control";
 import type { KnowledgeSpaceEmbeddingResolver } from "./knowledge-space-embedding-resolver";
 import type { KnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
+import type { KnowledgeSpaceMetadataRepository } from "./knowledge-space-metadata-repository";
 import type { KnowledgeSpaceOverviewRepository } from "./knowledge-space-overview";
 import type { KnowledgeSpaceProfileMigrationRepository } from "./knowledge-space-profile-migration";
 import type { KnowledgeSpaceProfileMigrationService } from "./knowledge-space-profile-migration-service";
@@ -235,6 +236,7 @@ export interface KnowledgeGatewayOptions {
   knowledgeFsLeases?: KnowledgeFsLeaseRepository;
   knowledgeFsSessions?: KnowledgeFsSessionRepository;
   knowledgeSpaceManifests?: KnowledgeSpaceManifestRepository;
+  metadataFields?: KnowledgeSpaceMetadataRepository;
   knowledgeSpaceOverview?: KnowledgeSpaceOverviewRepository;
   knowledgeSpaceProfiles?: KnowledgeSpaceProfileRepository;
   /** Separate branded port that can never bootstrap KFS-local product authorization. */

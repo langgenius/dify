@@ -1175,6 +1175,52 @@ class KnowledgeFSDocumentMetadataPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSMetadataFieldListQuery(BaseModel):
+    cursor: str | None = Field(default=None, min_length=1, max_length=1_000)
+    limit: int = Field(default=100, ge=1, le=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSMetadataFieldCreatePayload(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    type: Literal["string", "number", "time"]
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSMetadataFieldUpdatePayload(BaseModel):
+    expected_row_version: int = Field(ge=0, alias="expectedRowVersion")
+    name: str = Field(min_length=1, max_length=255)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSMetadataFieldDeleteQuery(BaseModel):
+    expected_row_version: int = Field(ge=0, alias="expectedRowVersion")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSMetadataFieldResponse(ResponseModel):
+    count: int = Field(ge=0)
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    id: str
+    name: str
+    row_version: int = Field(ge=0, validation_alias=AliasChoices("row_version", "rowVersion"))
+    type: Literal["string", "number", "time"]
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSMetadataFieldListResponse(ResponseModel):
+    data: list[KnowledgeFSMetadataFieldResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSMetadataFieldDeleteResponse(ResponseModel):
+    deleted: Literal[True]
+
+
 class KnowledgeFSDocumentChunkResponse(ResponseModel):
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))

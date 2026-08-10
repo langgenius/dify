@@ -22,6 +22,7 @@ import {
 } from "./knowledge-space-access-control";
 import type { KnowledgeSpacePermissionSnapshot } from "./knowledge-space-access-control";
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import type { KnowledgeSpaceMetadataDocumentLifecycle } from "./knowledge-space-metadata-repository";
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
 import {
@@ -142,6 +143,8 @@ export interface PatchDocumentUserMetadataInput extends LogicalDocumentLookup {
   /** Fresh Capability v2 provenance revalidated in the same transaction as the metadata CAS. */
   readonly capabilityGrantId?: string | undefined;
   readonly expectedRowVersion: number;
+  /** Actor recorded on durable metadata-field bindings, including Capability v2 mutations. */
+  readonly metadataSubjectId?: string | undefined;
   readonly now: string;
   readonly patch: Readonly<Record<string, unknown>>;
   /** Fresh durable grant revalidated in the same transaction as the metadata CAS. */
@@ -189,6 +192,8 @@ export interface SourceActiveDocumentInventoryItem {
 }
 
 export interface LogicalDocumentRepository {
+  /** True when document values, field bindings, and retrieval metadata share one transaction. */
+  readonly metadataLifecycleManaged?: true | undefined;
   /**
    * Creates immutable revision content. sourceId + providerItemId is the stable I4 injection
    * boundary: repeated imports append to the same logical document; the asset tuple remains the
@@ -813,12 +818,14 @@ export interface DatabaseLogicalDocumentRepositoryOptions {
   readonly database: DatabaseAdapter;
   readonly generateDocumentId?: (() => string) | undefined;
   readonly maxListLimit: number;
+  readonly metadataLifecycle?: KnowledgeSpaceMetadataDocumentLifecycle | undefined;
 }
 
 export function createDatabaseLogicalDocumentRepository({
   database,
   generateDocumentId = randomUUID,
   maxListLimit,
+  metadataLifecycle,
 }: DatabaseLogicalDocumentRepositoryOptions): LogicalDocumentRepository {
   positiveLimit(maxListLimit, "maxListLimit");
 
@@ -946,6 +953,14 @@ export function createDatabaseLogicalDocumentRepository({
       }
       const result = await getWithActive(transaction, input);
       if (!result) throw new LogicalDocumentNotFoundError("Logical document not found");
+      if (metadataLifecycle) {
+        await metadataLifecycle.syncDocumentAsset(transaction, {
+          documentId: result.id,
+          knowledgeSpaceId: result.knowledgeSpaceId,
+          tenantId: result.tenantId,
+          userMetadata: result.userMetadata,
+        });
+      }
       await appendKnowledgeSpaceActivityWithExecutor({
         database,
         executor: transaction,
@@ -976,6 +991,7 @@ export function createDatabaseLogicalDocumentRepository({
     });
 
   return {
+    ...(metadataLifecycle ? { metadataLifecycleManaged: true as const } : {}),
     bindCompilationAttempt: (input) =>
       database.transaction(async (transaction) => {
         await requireWritableSpace(database, transaction, input);
@@ -1531,6 +1547,13 @@ export function createDatabaseLogicalDocumentRepository({
             document.rowVersion,
           );
         }
+        if (metadataLifecycle) {
+          await metadataLifecycle.validatePatch(transaction, {
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            patch: input.patch,
+            tenantId: input.tenantId,
+          });
+        }
         const metadata = applyUserMetadataPatch(document.userMetadata, input.patch);
         const result = await transaction.execute({
           maxRows: 0,
@@ -1553,6 +1576,20 @@ export function createDatabaseLogicalDocumentRepository({
             input.expectedRowVersion,
             document.rowVersion,
           );
+        }
+        if (metadataLifecycle) {
+          const subjectId = input.metadataSubjectId ?? input.requestedBySubjectId;
+          if (!subjectId) {
+            throw new LogicalDocumentValidationError("Metadata mutation subject is required");
+          }
+          await metadataLifecycle.reconcileDocument(transaction, {
+            documentId: input.documentId,
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            now: input.now,
+            subjectId,
+            tenantId: input.tenantId,
+            userMetadata: metadata,
+          });
         }
         const updated = await readDocument(transaction, input);
         if (!updated) throw new LogicalDocumentNotFoundError("Logical document not found");

@@ -2523,6 +2523,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <DocumentsEmpty
             canEdit={canUpload}
             onAddDocument={() => openUploadForm()}
+            onOpenMetadata={() => setMetadataOpen(true)}
             readOnlyReasonId={documentUploadRestrictionReasonId}
             uploading={uploading}
           />
@@ -2650,7 +2651,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         tasks={drawerTasks}
       />
       <DocumentMetadataDrawer
-        documents={documents}
         knowledgeSpaceId={knowledgeSpaceId}
         onOpenChange={setMetadataOpen}
         open={metadataOpen && !permissionDenied}

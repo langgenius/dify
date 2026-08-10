@@ -13,15 +13,13 @@ import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import {
   documentMetadataDefaultValue,
-  documentMetadataDocumentsQueryOptions,
-  documentMetadataFieldsFromDocuments,
+  documentMetadataFieldsQueryOptions,
   documentMetadataNameError,
   documentMetadataType,
   editableDocumentMetadataEntries,
-  listAllLogicalDocuments,
-  patchDocumentMetadataTargets,
 } from './document-metadata-model'
 import { DocumentMetadataPicker } from './document-metadata-picker'
+import { logicalDocumentFromApi } from './document-models'
 import { newKnowledgeDocumentsPath } from './routes'
 
 type MetadataDraft = {
@@ -122,14 +120,11 @@ export function DocumentMetadataCard({
       ),
     [document.userMetadata],
   )
-  const metadataDocumentsQuery = useQuery({
-    ...documentMetadataDocumentsQueryOptions(controlSpaceId),
+  const metadataFieldsQuery = useQuery({
+    ...documentMetadataFieldsQueryOptions(controlSpaceId),
     enabled: editing,
   })
-  const fields = useMemo(
-    () => documentMetadataFieldsFromDocuments(metadataDocumentsQuery.data ?? [document]),
-    [document, metadataDocumentsQuery.data],
-  )
+  const fields = metadataFieldsQuery.data ?? []
   const renderedItems = useMemo(
     () =>
       editing
@@ -158,7 +153,7 @@ export function DocumentMetadataCard({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
       }),
       queryClient.invalidateQueries({
-        queryKey: documentMetadataDocumentsQueryOptions(controlSpaceId).queryKey,
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
       }),
     ])
   }
@@ -168,12 +163,9 @@ export function DocumentMetadataCard({
     setPreparing(true)
     try {
       let availableFields = fields
-      if (
-        !metadataDocumentsQuery.data &&
-        editableDocumentMetadataEntries(document.userMetadata).some(([, value]) => value === '')
-      ) {
-        const result = await metadataDocumentsQuery.refetch()
-        availableFields = documentMetadataFieldsFromDocuments(result.data ?? [document])
+      if (!metadataFieldsQuery.data) {
+        const result = await metadataFieldsQuery.refetch()
+        availableFields = result.data ?? []
       }
       setEditBaseline({ metadata: document.userMetadata, rowVersion: document.rowVersion })
       setDrafts(metadataDrafts(document, availableFields))
@@ -199,28 +191,24 @@ export function DocumentMetadataCard({
 
     setCreating(true)
     try {
-      const listedDocuments = await listAllLogicalDocuments(controlSpaceId)
-      const documents = listedDocuments.some((candidate) => candidate.id === document.id)
-        ? listedDocuments
-        : [document, ...listedDocuments]
       const defaultValue = documentMetadataDefaultValue(type)
-      const targets = documents.flatMap((candidate) =>
-        name in candidate.userMetadata
-          ? []
-          : [{ document: candidate, patch: { [name]: defaultValue } }],
-      )
-      const result = await patchDocumentMetadataTargets(controlSpaceId, targets)
-      const failure = result.failures[0]
-      if (failure) {
-        setRetryableCreateName(name)
-        throw failure.reason
+      if (retryableCreateName !== name) {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+          body: { name, type },
+          params: { control_space_id: controlSpaceId },
+        })
       }
-      const currentDocument =
-        result.updatedDocuments.get(document.id) ??
-        documents.find((candidate) => candidate.id === document.id) ??
-        document
+      const response =
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+          body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
+          params: {
+            control_space_id: controlSpaceId,
+            document_id: document.id,
+          },
+        })
+      const currentDocument = logicalDocumentFromApi(response)
       setEditBaseline({
-        metadata: { ...currentDocument.userMetadata, [name]: defaultValue },
+        metadata: currentDocument.userMetadata,
         rowVersion: currentDocument.rowVersion,
       })
       setDrafts((current) => {
@@ -239,6 +227,7 @@ export function DocumentMetadataCard({
       await invalidateMetadataQueries()
       toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch (error) {
+      setRetryableCreateName(name)
       toast.error(t(($) => $['newKnowledge.settings.saveFailed']))
       throw error
     } finally {
@@ -330,12 +319,12 @@ export function DocumentMetadataCard({
           <DocumentMetadataPicker
             allowedExistingName={retryableCreateName}
             creating={creating}
-            error={Boolean(metadataDocumentsQuery.error)}
+            error={Boolean(metadataFieldsQuery.error)}
             fields={fields}
-            loading={metadataDocumentsQuery.isPending || metadataDocumentsQuery.isFetching}
+            loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
             onCreate={createField}
             onManage={() => router.push(`${newKnowledgeDocumentsPath(controlSpaceId)}?metadata=1`)}
-            onRetry={() => void metadataDocumentsQuery.refetch()}
+            onRetry={() => void metadataFieldsQuery.refetch()}
             onSelect={(field) => {
               setDrafts((current) => {
                 if (current.some((draft) => draft.name === field.name)) return current

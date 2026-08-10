@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import type { DocumentMetadataField, DocumentMetadataType } from './document-metadata-model'
-import type { LogicalDocument } from './document-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -30,17 +29,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { DocumentMetadataCreateForm } from './document-metadata-create-form'
 import {
-  documentMetadataDefaultValue,
-  documentMetadataDocumentsQueryOptions,
-  documentMetadataFieldsFromDocuments,
+  documentMetadataFieldsQueryOptions,
   documentMetadataNameError,
-  listAllLogicalDocuments,
-  patchDocumentMetadataTargets,
 } from './document-metadata-model'
 
 const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
@@ -48,7 +43,6 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   string: 'i-ri-text-snippet',
   time: 'i-ri-time-line',
 }
-
 function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <div>
@@ -240,13 +234,11 @@ function MetadataItem({
 }
 
 export function DocumentMetadataDrawer({
-  documents,
   knowledgeSpaceId,
   onOpenChange,
   open,
   readOnly,
 }: {
-  documents: LogicalDocument[]
   knowledgeSpaceId: string
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -255,45 +247,27 @@ export function DocumentMetadataDrawer({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [pending, setPending] = useState(false)
-  const [retryableCreateName, setRetryableCreateName] = useState<string>()
-  const [retryableRename, setRetryableRename] = useState<{
-    sourceName: string
-    targetName: string
-  }>()
-  const metadataDocumentsQuery = useQuery({
-    ...documentMetadataDocumentsQueryOptions(knowledgeSpaceId),
+  const metadataFieldsQuery = useQuery({
+    ...documentMetadataFieldsQueryOptions(knowledgeSpaceId),
     enabled: open,
   })
-  const metadataDocuments = metadataDocumentsQuery.data ?? documents
-  const fields = useMemo(
-    () => documentMetadataFieldsFromDocuments(metadataDocuments),
-    [metadataDocuments],
-  )
+  const fields = metadataFieldsQuery.data ?? []
 
   const nameErrorMessage = (error: ReturnType<typeof documentMetadataNameError>) => {
     if (!error) return undefined
     return t(($) => $[`metadata.checkName.${error}`], { max: 255, ns: 'dataset' })
   }
 
-  const mutateDocuments = async (
-    patchForDocument: (document: LogicalDocument) => Record<string, unknown> | undefined,
-  ) => {
+  const mutateField = async (mutation: () => Promise<unknown>) => {
     if (readOnly || pending) return false
     setPending(true)
     try {
-      const currentDocuments = await listAllLogicalDocuments(knowledgeSpaceId)
-      const targets = currentDocuments.flatMap((document) => {
-        const patch = patchForDocument(document)
-        return patch ? [{ document, patch }] : []
-      })
-      const result = await patchDocumentMetadataTargets(knowledgeSpaceId, targets)
-      const failure = result.failures[0]
-      if (failure) throw failure.reason
+      await mutation()
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
       })
       await queryClient.invalidateQueries({
-        queryKey: documentMetadataDocumentsQueryOptions(knowledgeSpaceId).queryKey,
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
       })
       return true
     } catch {
@@ -305,41 +279,40 @@ export function DocumentMetadataDrawer({
   }
 
   const createMetadata = async (name: string, type: DocumentMetadataType) => {
-    const error = nameErrorMessage(documentMetadataNameError(name, fields, retryableCreateName))
+    const error = nameErrorMessage(documentMetadataNameError(name, fields))
     if (error) {
       toast.error(error)
       return false
     }
-    const defaultValue = documentMetadataDefaultValue(type)
-    const success = await mutateDocuments((document) =>
-      name in document.userMetadata ? undefined : { [name]: defaultValue },
+    return mutateField(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+        body: { name, type },
+        params: { control_space_id: knowledgeSpaceId },
+      }),
     )
-    setRetryableCreateName(success ? undefined : name)
-    return success
   }
 
   const renameMetadata = async (field: DocumentMetadataField, name: string) => {
-    const retryingSameRename =
-      retryableRename?.sourceName === field.name && retryableRename.targetName === name
-    const error = nameErrorMessage(
-      documentMetadataNameError(name, fields, retryingSameRename ? name : field.name),
-    )
+    const error = nameErrorMessage(documentMetadataNameError(name, fields, field.name))
     if (error) {
       toast.error(error)
       return false
     }
     if (name === field.name) return true
-    const success = await mutateDocuments((document) => {
-      if (!(field.name in document.userMetadata)) return undefined
-      return { [field.name]: null, [name]: document.userMetadata[field.name] }
-    })
-    setRetryableRename(success ? undefined : { sourceName: field.name, targetName: name })
-    return success
+    return mutateField(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch({
+        body: { expectedRowVersion: field.rowVersion, name },
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+      }),
+    )
   }
 
   const deleteMetadata = (field: DocumentMetadataField) =>
-    mutateDocuments((document) =>
-      field.name in document.userMetadata ? { [field.name]: null } : undefined,
+    mutateField(() =>
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete({
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+        query: { expectedRowVersion: field.rowVersion },
+      }),
     )
 
   return (
@@ -363,20 +336,18 @@ export function DocumentMetadataDrawer({
                   {t(($) => $['metadata.datasetMetadata.description'], { ns: 'dataset' })}
                 </div>
                 <CreateMetadataPopover
-                  allowedExistingName={retryableCreateName}
                   disabled={
                     readOnly ||
-                    metadataDocuments.length === 0 ||
-                    metadataDocumentsQuery.isPending ||
-                    metadataDocumentsQuery.isFetching ||
-                    Boolean(metadataDocumentsQuery.error)
+                    metadataFieldsQuery.isPending ||
+                    metadataFieldsQuery.isFetching ||
+                    Boolean(metadataFieldsQuery.error)
                   }
                   fields={fields}
                   pending={pending}
                   onCreate={createMetadata}
                 />
 
-                {metadataDocumentsQuery.error && !metadataDocumentsQuery.isFetching && (
+                {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
                       {t(($) => $['newKnowledge.documentLoadErrorDescription'], {
@@ -385,7 +356,7 @@ export function DocumentMetadataDrawer({
                     </span>
                     <Button
                       className="shrink-0"
-                      onClick={() => void metadataDocumentsQuery.refetch()}
+                      onClick={() => void metadataFieldsQuery.refetch()}
                       size="small"
                       variant="ghost"
                     >
@@ -397,7 +368,7 @@ export function DocumentMetadataDrawer({
                 <div className="mt-3 space-y-1">
                   {fields.map((field) => (
                     <MetadataItem
-                      key={field.name}
+                      key={field.id}
                       busy={pending}
                       canEdit={!readOnly}
                       field={field}

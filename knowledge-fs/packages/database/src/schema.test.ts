@@ -56,6 +56,8 @@ describe("database schema catalog", () => {
       "projection_set_publication_members",
       "document_compilation_attempts",
       "logical_documents",
+      "knowledge_space_metadata_fields",
+      "logical_document_metadata_bindings",
       "document_revisions",
       "document_revision_chunks",
       "document_chunk_state_changes",
@@ -167,6 +169,38 @@ describe("database schema catalog", () => {
     expect(renderCreateTableSql("tidb", table)).toContain(
       "JSON_TYPE(`required_permission_scope`) = 'ARRAY'",
     );
+  });
+
+  it("models metadata definitions separately from document values and indexes binding counts", () => {
+    const schema = getDatabaseSchema();
+    const fields = findTable(schema, "knowledge_space_metadata_fields");
+    const bindings = findTable(schema, "logical_document_metadata_bindings");
+
+    expect(fields.columns.map((column) => column.name)).toEqual([
+      "id",
+      "tenant_id",
+      "knowledge_space_id",
+      "name",
+      "type",
+      "row_version",
+      "created_by_subject_id",
+      "updated_by_subject_id",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(bindings.primaryKey).toEqual([
+      "tenant_id",
+      "knowledge_space_id",
+      "document_id",
+      "metadata_field_id",
+    ]);
+    expect(findIndex(schema, "knowledge_space_metadata_fields_name_uq").unique).toBe(true);
+    expect(findIndex(schema, "logical_document_metadata_bindings_field_idx").columns).toEqual([
+      "tenant_id",
+      "knowledge_space_id",
+      "metadata_field_id",
+      "document_id",
+    ]);
   });
 
   it("models every durable source-product table, relationship, invariant, and hot-path index", () => {

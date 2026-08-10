@@ -232,6 +232,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "createKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "sources.create",
       "allowedCallerKinds": [
         "interactive",
@@ -452,6 +469,23 @@
       "operationId": "deleteIntegratedKnowledgeSpace",
       "parentResourceBinding": null,
       "path": "/internal/knowledge-spaces/{id}/delete",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "deleteKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields/{fieldId}",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -1057,6 +1091,23 @@
       "operationId": "listKnowledgeFs",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/fs/ls",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listKnowledgeSpaceMetadataFields",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields",
       "resourceBinding": {
         "pathParameter": "id"
       },
@@ -1768,6 +1819,23 @@
       "operationId": "updateKnowledgeSpaceEmbeddingProfile",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/embedding-profile",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.metadata.write",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "updateKnowledgeSpaceMetadataField",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/metadata-fields/{fieldId}",
       "resourceBinding": {
         "pathParameter": "id"
       },
