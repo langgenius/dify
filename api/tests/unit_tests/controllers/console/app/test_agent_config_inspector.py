@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app.agent_config_inspector import (
@@ -26,7 +28,6 @@ from controllers.console.app.agent_config_inspector import (
     AgentConfigSkillInspectByAgentApi,
     AgentConfigSkillsApi,
     AgentConfigSkillUploadByAgentApi,
-    console_ns,
 )
 from services.agent_config_service import AgentConfigServiceError
 
@@ -46,8 +47,8 @@ _APP = SimpleNamespace(
 _USER = SimpleNamespace(id="acct-1")
 
 
-def test_resolve_bound_agent_uses_injected_session():
-    session = MagicMock()
+def test_resolve_bound_agent_uses_injected_session(unbound_session: Session):
+    session = unbound_session
     resolver = MagicMock(return_value="agent-1")
     app_model = SimpleNamespace(bound_agent_id_with_session=resolver)
     result = inspector._resolve_agent_id(session, app_model, None)
@@ -100,8 +101,10 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft():
     assert config_service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "draft"
 
 
-def test_normal_draft_resolution_commits_created_draft_before_service_session() -> None:
-    session = MagicMock()
+def test_normal_draft_resolution_commits_created_draft_before_service_session(sqlite_session: Session) -> None:
+    session = sqlite_session
+    commits: list[str] = []
+    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
     with patch(f"{_MOD}.AgentComposerService") as composer:
         composer.load_agent_composer.return_value = {"draft": {"id": "draft-1"}}
         version_id, version_kind = inspector._resolve_console_version(
@@ -114,7 +117,7 @@ def test_normal_draft_resolution_commits_created_draft_before_service_session() 
         )
     assert version_id == "draft-1"
     assert version_kind.value == "draft"
-    session.commit.assert_called_once()
+    assert commits == ["commit"]
 
 
 def test_skill_inspect_by_agent_returns_strict_json_response():
@@ -208,13 +211,10 @@ def test_skill_upload_by_agent_delegates_after_version_resolution():
 
 def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup():
     raw = _raw(AgentConfigFilesByAgentApi.post)
-    with app.test_request_context("/?draft_type=debug_build"):
+    with app.test_request_context("/?draft_type=debug_build", json={"upload_file_id": "upload-1"}):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
             patch(f"{_MOD}.AgentComposerService") as composer,
-            patch.object(
-                type(console_ns), "payload", new_callable=PropertyMock, return_value={"upload_file_id": "upload-1"}
-            ),
             patch(f"{_MOD}.AgentConfigService") as config_service,
         ):
             composer.load_agent_app_build_draft.return_value = {"draft": {"id": "build-draft-1"}}
@@ -222,7 +222,14 @@ def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup():
                 "file": {"id": "guide.txt", "name": "guide.txt", "file_id": "upload-1"},
                 "config_version": {"id": "build-draft-1", "kind": "build_draft", "writable": True},
             }
-            body, status = raw(AgentConfigFilesByAgentApi(), MagicMock(), "tenant-1", _USER, "agent-1")
+            body, status = raw(
+                AgentConfigFilesByAgentApi(),
+                inspector.AgentConfigFileUploadPayload(upload_file_id="upload-1"),
+                MagicMock(),
+                "tenant-1",
+                _USER,
+                "agent-1",
+            )
     assert status == 201
     assert body["file"]["name"] == "guide.txt"
     assert config_service.return_value.push_file_for_console.call_args.kwargs["upload_file_id"] == "upload-1"

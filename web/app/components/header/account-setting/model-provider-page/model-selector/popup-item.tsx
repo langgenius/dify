@@ -123,7 +123,7 @@ function PopupItem({
       <div className="sticky top-0 z-1 flex h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <button
           type="button"
-          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           onClick={() => setCollapsed((prev) => !prev)}
         >
           <span className="truncate">{renderI18nObject(model.label, language)}</span>

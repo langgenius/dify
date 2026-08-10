@@ -48,6 +48,10 @@ describe('HeadersInput', () => {
 
     it('should render header items', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerKey' })).toHaveLength(2)
+      expect(screen.getAllByRole('textbox', { name: 'tools.mcp.modal.headerValue' })).toHaveLength(
+        2,
+      )
       expect(screen.getByDisplayValue('Authorization')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Bearer token123')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Content-Type')).toBeInTheDocument()
@@ -105,7 +109,7 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const keyInput = screen.getByDisplayValue('Header1')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
       fireEvent.change(keyInput, { target: { value: 'NewHeader' } })
 
       expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'NewHeader', value: 'Value1' }])
@@ -115,7 +119,7 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const valueInput = screen.getByDisplayValue('Value1')
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
       fireEvent.change(valueInput, { target: { value: 'NewValue' } })
 
       expect(onChange).toHaveBeenCalledWith([{ id: '1', key: 'Header1', value: 'NewValue' }])
@@ -166,7 +170,9 @@ describe('HeadersInput', () => {
       const onChange = vi.fn()
       render(<HeadersInput {...defaultProps} headersItems={headersItems} onChange={onChange} />)
 
-      const header2Input = screen.getByDisplayValue('Header2')
+      const header2Input = screen.getAllByRole('textbox', {
+        name: 'tools.mcp.modal.headerKey',
+      })[1]!
       fireEvent.change(header2Input, { target: { value: 'UpdatedHeader2' } })
 
       expect(onChange).toHaveBeenCalledWith([
@@ -199,8 +205,8 @@ describe('HeadersInput', () => {
     it('should make inputs readonly when readonly is true', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={true} />)
 
-      const keyInput = screen.getByDisplayValue('ReadOnly')
-      const valueInput = screen.getByDisplayValue('Value')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
 
       expect(keyInput).toHaveAttribute('readonly')
       expect(valueInput).toHaveAttribute('readonly')
@@ -209,8 +215,8 @@ describe('HeadersInput', () => {
     it('should not make inputs readonly when readonly is false', () => {
       render(<HeadersInput {...defaultProps} headersItems={headersItems} readonly={false} />)
 
-      const keyInput = screen.getByDisplayValue('ReadOnly')
-      const valueInput = screen.getByDisplayValue('Value')
+      const keyInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })
+      const valueInput = screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' })
 
       expect(keyInput).not.toHaveAttribute('readonly')
       expect(valueInput).not.toHaveAttribute('readonly')
@@ -222,8 +228,10 @@ describe('HeadersInput', () => {
       const headersItems = [{ id: '1', key: '', value: '' }]
       render(<HeadersInput {...defaultProps} headersItems={headersItems} />)
 
-      const inputs = screen.getAllByRole('textbox')
-      expect(inputs.length).toBe(2)
+      expect(screen.getByRole('textbox', { name: 'tools.mcp.modal.headerKey' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('textbox', { name: 'tools.mcp.modal.headerValue' }),
+      ).toBeInTheDocument()
     })
 
     it('should handle special characters in header key', () => {

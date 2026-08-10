@@ -15,7 +15,6 @@ export type SystemFeatureModel = {
   enable_email_password_login: boolean
   enable_explore_banner: boolean
   enable_learn_app: boolean
-  enable_license_expiry_notice: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
@@ -32,6 +31,7 @@ export type SystemFeatureModel = {
 
 export type LicenseModel = {
   expired_at: string
+  license_expiry_notice_enabled: boolean
   seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel

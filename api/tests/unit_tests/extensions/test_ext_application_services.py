@@ -1,11 +1,14 @@
 """Tests for application-service dependency wiring."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.deployment_edition import DeploymentEdition
 from extensions import ext_application_services
+from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
 from services.init_validation_service import InvalidInitializationPasswordError
 
@@ -39,6 +42,7 @@ def test_build_application_services_configures_init_validation(
         database_client=sqlite_session_factory,
         deployment_edition=deployment_edition,
         initialization_password=initialization_password,
+        redis=MagicMock(spec=RedisClientWrapper),
     )
 
     assert services.init_validation.is_validated(session_validated=session_validated) is expected
@@ -51,6 +55,7 @@ def test_build_application_services_passes_the_expected_password(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
         initialization_password="expected",
+        redis=MagicMock(spec=RedisClientWrapper),
     )
 
     services.init_validation.validate_password("expected")
@@ -74,3 +79,56 @@ def test_init_app_registers_services_for_the_current_app(
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
         assert services.init_validation.is_validated(session_validated=False) is False
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "setup_completed"),
+    [
+        pytest.param(DeploymentEdition.CLOUD, True, id="cloud"),
+        pytest.param(DeploymentEdition.COMMUNITY, False, id="community"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, id="enterprise"),
+    ],
+)
+def test_build_application_services_configures_setup_policy(
+    sqlite_session_factory: sessionmaker[Session],
+    deployment_edition: DeploymentEdition,
+    setup_completed: bool,
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=deployment_edition,
+        initialization_password=None,
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert services.setup.get_status().completed is setup_completed
+
+
+def test_build_application_services_wires_builtin_schema_definitions(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password=None,
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    definitions = services.schema_definitions.list()
+
+    assert definitions
+    assert all({"name", "label", "schema"} <= definition.keys() for definition in definitions)
+
+
+def test_build_application_services_does_not_construct_schema_manager(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with patch("extensions.ext_application_services.SchemaManager") as schema_manager:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password=None,
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    schema_manager.assert_not_called()

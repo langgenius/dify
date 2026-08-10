@@ -198,7 +198,13 @@ class TestConversationRenameApi:
                 return_value=conversation,
             ),
         ):
-            result = method(api, user, chat_app, "cid")
+            result = method(
+                api,
+                conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
+                user,
+                chat_app,
+                "cid",
+            )
 
         assert result["id"] == "cid"
 
@@ -215,7 +221,13 @@ class TestConversationRenameApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, user, chat_app, "cid")
+                method(
+                    api,
+                    conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
+                    user,
+                    chat_app,
+                    "cid",
+                )
 
 
 class TestConversationPinApi:

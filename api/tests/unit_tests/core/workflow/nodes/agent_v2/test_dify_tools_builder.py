@@ -1007,7 +1007,7 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
 
-def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
+def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.MonkeyPatch):
     """The default provider-tools lister maps ToolManager's provider controller
     to the plain name list the expansion step consumes."""
     from types import SimpleNamespace

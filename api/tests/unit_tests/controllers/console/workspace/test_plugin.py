@@ -10,6 +10,25 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.plugin import (
+    ParserAsset,
+    ParserAutoUpgradeChange,
+    ParserAutoUpgradeFetch,
+    ParserDynamicOptions,
+    ParserDynamicOptionsWithCredentials,
+    ParserExcludePlugin,
+    ParserGithubInstall,
+    ParserGithubUpgrade,
+    ParserGithubUpload,
+    ParserIcon,
+    ParserLatest,
+    ParserList,
+    ParserMarketplaceUpgrade,
+    ParserPermissionChange,
+    ParserPluginIdentifierQuery,
+    ParserPluginIdentifiers,
+    ParserReadme,
+    ParserTasks,
+    ParserUninstall,
     PluginAssetApi,
     PluginAutoUpgradeExcludePluginApi,
     PluginCategoryListApi,
@@ -29,6 +48,7 @@ from controllers.console.workspace.plugin import (
     PluginFetchPermissionApi,
     PluginIconApi,
     PluginInstalledIdsApi,
+    PluginInstalledIdsQuery,
     PluginInstallFromGithubApi,
     PluginInstallFromMarketplaceApi,
     PluginInstallFromPkgApi,
@@ -367,7 +387,7 @@ class TestPluginListLatestVersionsApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginService.list_latest_versions", return_value=versions),
         ):
-            result = method(api)
+            result = method(api, ParserLatest.model_validate(payload))
 
         assert result == {
             "versions": {
@@ -389,7 +409,7 @@ class TestPluginListLatestVersionsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api)
+            result = method(api, ParserLatest.model_validate(payload))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -435,7 +455,7 @@ class TestPluginListApi:
                 return_value=plugins_with_total,
             ) as mock_list_with_total,
         ):
-            result = method(api, "t1", "u1")
+            result = method(api, ParserList(page=1, page_size=10), "t1", "u1")
 
         assert result == {"plugins": [_expected_plugin_entity_dump()], "total": 1}
         mock_list_with_total.assert_called_once_with("t1", "u1", 1, 10)
@@ -584,7 +604,7 @@ class TestPluginIconApi:
             app.test_request_context("/?tenant_id=t1&filename=a.png"),
             patch("controllers.console.workspace.plugin.PluginService.get_asset", return_value=(b"x", "image/png")),
         ):
-            response = method(api)
+            response = method(api, ParserIcon.model_validate({"tenant_id": "t1", "filename": "a.png"}))
 
         assert response.mimetype == "image/png"
 
@@ -598,7 +618,9 @@ class TestPluginAssetApi:
             app.test_request_context("/?plugin_unique_identifier=p&file_name=a.bin"),
             patch("controllers.console.workspace.plugin.PluginService.extract_asset", return_value=b"x"),
         ):
-            response = method(api, "t1")
+            response = method(
+                api, ParserAsset.model_validate({"plugin_unique_identifier": "p", "file_name": "a.bin"}), "t1"
+            )
 
         assert response.mimetype == "application/octet-stream"
 
@@ -653,7 +675,7 @@ class TestPluginInstallFromPkgApi:
                 "controllers.console.workspace.plugin.PluginService.install_from_local_pkg", return_value={"ok": True}
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -673,7 +695,7 @@ class TestPluginUninstallApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True) as uninstall_mock,
         ):
-            result = method(api, "t1")
+            result = method(api, ParserUninstall.model_validate(payload), "t1")
 
         assert result["success"] is True
         uninstall_mock.assert_called_once_with(
@@ -699,7 +721,7 @@ class TestPluginChangePermissionApi:
             app.test_request_context("/", json=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, "t1", user)
+                method(api, ParserPermissionChange(), "t1", user)
 
     def test_change_permission_success(self, app: Flask):
         api = PluginChangePermissionApi()
@@ -716,7 +738,7 @@ class TestPluginChangePermissionApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginPermissionService.change_permission", return_value=True),
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserPermissionChange(), "t1", user)
 
         assert result["success"] is True
 
@@ -747,7 +769,14 @@ class TestPluginFetchDynamicSelectOptionsApi:
                 return_value=[_dynamic_option()],
             ),
         ):
-            result = method(api, "t1", user)
+            result = method(
+                api,
+                ParserDynamicOptions.model_validate(
+                    {"plugin_id": "p", "provider": "x", "action": "y", "parameter": "z", "provider_type": "tool"}
+                ),
+                "t1",
+                user,
+            )
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
 
@@ -761,7 +790,7 @@ class TestPluginReadmeApi:
             app.test_request_context("/?plugin_unique_identifier=p"),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_readme", return_value="readme"),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserReadme.model_validate({"plugin_unique_identifier": "p"}), "t1")
 
         assert result["readme"] == "readme"
 
@@ -780,7 +809,7 @@ class TestPluginListInstallationsFromIdsApi:
                 return_value=[_plugin_installation()],
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserLatest.model_validate(payload), "t1")
 
         assert result == {"plugins": [_expected_plugin_installation_dump()]}
 
@@ -797,7 +826,7 @@ class TestPluginListInstallationsFromIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserLatest.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -813,7 +842,7 @@ class TestPluginInstalledIdsApi:
                 return_value=["langgenius/openai", "langgenius/anthropic"],
             ) as list_installed_plugin_ids,
         ):
-            result = method(api, "t1")
+            result = method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
 
         assert result == {"plugin_ids": ["langgenius/openai", "langgenius/anthropic"]}
         list_installed_plugin_ids.assert_called_once_with("t1", PluginCategory.Tool)
@@ -829,7 +858,7 @@ class TestPluginInstalledIdsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, PluginInstalledIdsQuery.model_validate({"category": "tool"}), "t1")
 
         assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
@@ -847,7 +876,7 @@ class TestPluginUploadFromGithubApi:
                 "controllers.console.workspace.plugin.PluginService.upload_pkg_from_github", return_value={"ok": True}
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubUpload.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -864,7 +893,7 @@ class TestPluginUploadFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubUpload.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -933,7 +962,7 @@ class TestPluginInstallFromGithubApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginService.install_from_github", return_value={"ok": True}),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubInstall.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -955,7 +984,7 @@ class TestPluginInstallFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubInstall.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -973,7 +1002,7 @@ class TestPluginInstallFromMarketplaceApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -990,7 +1019,7 @@ class TestPluginInstallFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1006,7 +1035,7 @@ class TestPluginFetchMarketplacePkgApi:
                 return_value=_plugin_declaration(),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
 
         assert result == {"manifest": _expected_plugin_declaration_dump()}
 
@@ -1021,7 +1050,7 @@ class TestPluginFetchMarketplacePkgApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1036,7 +1065,7 @@ class TestPluginFetchManifestApi:
             app.test_request_context("/?plugin_unique_identifier=p"),
             patch("controllers.console.workspace.plugin.PluginService.fetch_plugin_manifest", return_value=manifest),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
 
         assert result == {"manifest": _expected_plugin_declaration_dump()}
 
@@ -1051,7 +1080,7 @@ class TestPluginFetchManifestApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserPluginIdentifierQuery.model_validate({"plugin_unique_identifier": "p"}), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1067,7 +1096,7 @@ class TestPluginFetchInstallTasksApi:
                 return_value=[_plugin_task()],
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserTasks(), "t1")
 
         assert result == {"tasks": [_expected_plugin_task_dump()]}
 
@@ -1082,7 +1111,7 @@ class TestPluginFetchInstallTasksApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserTasks(), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1217,7 +1246,7 @@ class TestPluginUpgradeFromMarketplaceApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -1237,7 +1266,7 @@ class TestPluginUpgradeFromMarketplaceApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserMarketplaceUpgrade.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1261,7 +1290,7 @@ class TestPluginUpgradeFromGithubApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubUpgrade.model_validate(payload), "t1")
 
         assert result["ok"] is True
 
@@ -1284,7 +1313,7 @@ class TestPluginUpgradeFromGithubApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserGithubUpgrade.model_validate(payload), "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1309,7 +1338,7 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
                 return_value=[_dynamic_option()],
             ),
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
 
         assert result == {"options": [_expected_dynamic_option_dump()]}
 
@@ -1333,7 +1362,7 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
@@ -1361,7 +1390,7 @@ class TestPluginChangeAutoUpgradeApi:
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
             ) as change,
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is True
         change.assert_called_once()
@@ -1389,7 +1418,7 @@ class TestPluginChangeAutoUpgradeApi:
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=True
             ) as change,
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is True
         change.assert_called_once()
@@ -1416,7 +1445,7 @@ class TestPluginChangeAutoUpgradeApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.change_strategy", return_value=False),
         ):
-            result = method(api, "t1", user)
+            result = method(api, ParserAutoUpgradeChange.model_validate(payload), "t1", user)
 
         assert result["success"] is False
 
@@ -1442,7 +1471,11 @@ class TestPluginFetchAutoUpgradeApi:
                 return_value=auto_upgrade,
             ),
         ):
-            result = method(api, "t1")
+            result = method(
+                api,
+                ParserAutoUpgradeFetch.model_validate({"category": TenantPluginAutoUpgradeCategory.TOOL.value}),
+                "t1",
+            )
 
         assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
@@ -1462,7 +1495,11 @@ class TestPluginFetchAutoUpgradeApi:
                 return_value=78300,
             ),
         ):
-            result = method(api, "t1")
+            result = method(
+                api,
+                ParserAutoUpgradeFetch.model_validate({"category": TenantPluginAutoUpgradeCategory.MODEL.value}),
+                "t1",
+            )
 
         assert result == {
             "category": TenantPluginAutoUpgradeCategory.MODEL,
@@ -1487,7 +1524,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=True),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserExcludePlugin.model_validate(payload), "t1")
 
         assert result["success"] is True
 
@@ -1501,6 +1538,6 @@ class TestPluginAutoUpgradeExcludePluginApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.plugin.PluginAutoUpgradeService.exclude_plugin", return_value=False),
         ):
-            result = method(api, "t1")
+            result = method(api, ParserExcludePlugin.model_validate(payload), "t1")
 
         assert result["success"] is False

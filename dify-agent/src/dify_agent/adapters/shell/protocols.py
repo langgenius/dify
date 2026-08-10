@@ -105,9 +105,3 @@ class ShellCommandProtocol(Protocol):
         force: bool = False,
         grace_seconds: float | None = None,
     ) -> None: ...
-
-
-class ShellFileTransferProtocol(Protocol):
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...

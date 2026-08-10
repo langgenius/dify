@@ -788,7 +788,6 @@ export const zSystemFeatureModel = z.object({
   enable_email_password_login: z.boolean().default(true),
   enable_explore_banner: z.boolean().default(false),
   enable_learn_app: z.boolean().default(true),
-  enable_license_expiry_notice: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_step_by_step_tour: z.boolean().default(false),

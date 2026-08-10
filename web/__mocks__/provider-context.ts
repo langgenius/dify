@@ -24,11 +24,6 @@ export const baseProviderContextValue: ProviderContextState = {
   datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
