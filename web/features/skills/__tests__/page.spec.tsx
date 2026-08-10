@@ -578,6 +578,54 @@ describe('SkillsPage', () => {
     )
   })
 
+  it('keeps deletion disabled while cached references refresh', async () => {
+    const user = userEvent.setup()
+    let referenceRequestCount = 0
+    let shouldHangReferenceRequest = false
+    mocks.skills = [createSkill({ reference_count: 0 })]
+    mocks.skillPages = [mocks.skills]
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references-pending', options],
+      queryFn: () => {
+        referenceRequestCount += 1
+        if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
+
+        return new Promise(() => {})
+      },
+    }))
+    renderSkillsPage()
+
+    const moreButton = await screen.findByRole('button', {
+      name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+    })
+    await user.click(moreButton)
+    await user.click(await screen.findByText('common.operation.delete'))
+    let dialog = await screen.findByRole('alertdialog')
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeEnabled()
+    })
+    const initialRequestCount = referenceRequestCount
+    shouldHangReferenceRequest = true
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    await user.click(moreButton)
+    await user.click(await screen.findByText('common.operation.delete'))
+    dialog = await screen.findByRole('alertdialog')
+
+    expect(
+      within(dialog).getByRole('button', {
+        name: 'common.operation.delete',
+      }),
+    ).toBeDisabled()
+    await waitFor(() => {
+      expect(referenceRequestCount).toBeGreaterThan(initialRequestCount)
+    })
+  })
+
   it('collapses long reference lists in the delete confirmation', async () => {
     const user = userEvent.setup()
     mocks.skillReferences = Array.from({ length: 7 }, (_, index) =>

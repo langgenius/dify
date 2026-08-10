@@ -1841,6 +1841,53 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('keeps sidebar deletion disabled while cached references refresh', async () => {
+    const user = userEvent.setup()
+    let referenceRequestCount = 0
+    let shouldHangReferenceRequest = false
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references-pending', options],
+      queryFn: () => {
+        referenceRequestCount += 1
+        if (!shouldHangReferenceRequest) return Promise.resolve({ data: [] })
+
+        return new Promise(() => {})
+      },
+    }))
+    renderSkillDetailPage()
+
+    const moreButton = await screen.findByRole('button', {
+      name: 'skill.skillManagement.moreActions:{"name":"Untitled skill"}',
+    })
+    await user.click(moreButton)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    let dialog = screen.getByRole('alertdialog')
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeEnabled()
+    })
+    const initialRequestCount = referenceRequestCount
+    shouldHangReferenceRequest = true
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    await user.click(moreButton)
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    dialog = screen.getByRole('alertdialog')
+
+    expect(
+      within(dialog).getByRole('button', {
+        name: 'common.operation.delete',
+      }),
+    ).toBeDisabled()
+    await waitFor(() => {
+      expect(referenceRequestCount).toBeGreaterThan(initialRequestCount)
+    })
+  })
+
   it('does not expose mutable More actions while viewing a published version', async () => {
     mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
       queryKey: ['skill-versions', options],
