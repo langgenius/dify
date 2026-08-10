@@ -83,3 +83,7 @@ class AccountEmailDomainSuspendedError(AccountEmailFrozenError):
 
 class AccountEmailAlreadyInUseError(AccountApplicationError):
     """The target email already belongs to an account."""
+
+
+class EducationDiscountPausedError(Exception):
+    """Education discount activation is temporarily paused."""
