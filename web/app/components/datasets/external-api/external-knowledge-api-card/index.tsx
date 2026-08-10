@@ -28,11 +28,13 @@ import {
 type ExternalKnowledgeAPICardProps = {
   api: ExternalKnowledgeApiResponse
   canManageExternalKnowledgeApi: boolean
+  position: number
 }
 
 const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   api,
   canManageExternalKnowledgeApi,
+  position,
 }) => {
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
@@ -133,7 +135,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
         {canManageExternalKnowledgeApi && (
           <div className="flex items-start gap-1">
             <ActionButton
-              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
               onClick={handleEditClick}
             >
               <RiEditLine
@@ -142,7 +144,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
               />
             </ActionButton>
             <ActionButton
-              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
               className="hover:bg-state-destructive-hover"
               onClick={handleDeleteClick}
               onMouseEnter={() => setIsHovered(true)}
