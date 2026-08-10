@@ -2,12 +2,14 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { userProfileIdAtom } from '@/context/account-state'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -23,6 +25,10 @@ function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
+  const docLink = useDocLink()
+  // TODO: Replace useDocLink with the EE-specific generator for the versioned
+  // `en/3.13.x/use/deploy/overview.mdx` URL once it is available.
+  const deployOverviewDocUrl = docLink('/use/deploy/overview' as DocPathWithoutLang)
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
   const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
   useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
@@ -66,7 +72,7 @@ function AppDeployContent({ appId }: { appId: string }) {
           <p className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
             <span>{t(($) => $['studio.description'])}</span>
             <a
-              href="https://docs.dify.ai/"
+              href={deployOverviewDocUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center text-text-accent hover:underline focus-visible:ring-1 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"

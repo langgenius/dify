@@ -654,6 +654,7 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+const mockDocLink = vi.hoisted(() => vi.fn((path: string) => `https://docs.example.com${path}`))
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -733,6 +734,10 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => mockDocLink,
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
@@ -775,6 +780,15 @@ describe('AppDeploy', () => {
     expect(screen.getByRole('cell', { name: /Preview/ })).toBeInTheDocument()
     expect(screen.getAllByRole('row')).toHaveLength(9)
     expect(screen.getByText('8 of 12 environments in use')).toBeInTheDocument()
+  })
+
+  it('links the deploy header to the enterprise deployment documentation', () => {
+    render(<AppDeploy />)
+
+    expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use/deploy/overview',
+    )
   })
 
   it.each(ACTION_MATRIX_CASES)(
