@@ -36,6 +36,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { CrawlPreviewPageSelection } from './crawl-selection-form'
 import {
   isValidWebsiteSourceDraft,
@@ -52,6 +53,12 @@ const sourceTypes = [
 const DEFAULT_INCLUDE_SUBPAGES = true
 const DEFAULT_MAX_PAGES = 100
 const CRAWL_POLL_INTERVAL_MS = 1500
+const CRAWL_PREVIEW_SKELETONS = [
+  { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
+  { id: 'medium', sourceWidth: 'w-26', titleWidth: 'w-42.5' },
+  { id: 'long', sourceWidth: 'w-29.5', titleWidth: 'w-47.5' },
+  { id: 'longest', sourceWidth: 'w-33', titleWidth: 'w-52.5' },
+] as const
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
 
@@ -110,10 +117,10 @@ const providers = {
     { icon: 'i-ri-box-3-line', label: 'Amazon S3' },
   ],
   websiteCrawl: [
-    { icon: 'i-ri-fire-fill text-orange-500', label: 'Firecrawl', available: true },
+    { icon: 'i-custom-public-common-firecrawl', label: 'Firecrawl', available: true },
     { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
-    { icon: 'i-ri-water-flash-line', label: 'WaterCrawl' },
-    { icon: 'i-ri-bug-line', label: 'FakeCrawler' },
+    { icon: 'i-custom-public-knowledge-watercrawl', label: 'WaterCrawl' },
+    { icon: 'i-ri-global-line text-text-accent', label: 'FakeCrawler' },
   ],
 } as const
 
@@ -144,13 +151,35 @@ function ConnectedSourceConfiguration({
           maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
           value={draft.sourceName}
           placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-          size="large"
+          size="medium"
           onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.preventDefault()
           }}
         />
       </Field>
+      <SyncPolicySelect disabled={disabled} draft={draft} onDraftChange={onDraftChange} />
+    </div>
+  )
+}
+
+function SyncPolicySelect({
+  className,
+  disabled,
+  draft,
+  onDraftChange,
+  size = 'medium',
+}: {
+  className?: string
+  disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  size?: 'large' | 'medium'
+}) {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       <Select<NewKnowledgeSourceDraft['syncPolicy']>
         name="syncPolicy"
         disabled={disabled}
@@ -160,7 +189,7 @@ function ConnectedSourceConfiguration({
         }}
       >
         <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-        <SelectTrigger size="large">
+        <SelectTrigger size={size}>
           {t(($) =>
             draft.syncPolicy === 'provider'
               ? $['newKnowledge.syncPolicyProvider']
@@ -185,6 +214,66 @@ function ConnectedSourceConfiguration({
         </SelectContent>
       </Select>
     </div>
+  )
+}
+
+function NotionSourceConfiguration({
+  disabled,
+  draft,
+  onConnect,
+  onDraftChange,
+}: {
+  disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onConnect: () => void
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+}) {
+  const { t } = useTranslation('dataset')
+  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const notionConnected = Boolean(
+    datasourceAuthQuery.data?.result.some(
+      (auth) =>
+        auth.credentials_list.length > 0 &&
+        [auth.name, auth.plugin_id, auth.provider].some((identity) =>
+          identity
+            .toLocaleLowerCase()
+            .replaceAll(/[^a-z0-9]/g, '')
+            .includes('notion'),
+        ),
+    ),
+  )
+
+  if (notionConnected) {
+    return (
+      <ConnectedSourceConfiguration
+        disabled={disabled}
+        draft={draft}
+        onDraftChange={onDraftChange}
+      />
+    )
+  }
+
+  return (
+    <section className="flex h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
+      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
+        <span aria-hidden className="i-custom-public-common-notion size-4.5" />
+      </span>
+      <h3 className="system-sm-semibold text-text-primary">
+        {t(($) => $['newKnowledge.notionNotConnected'])}
+      </h3>
+      <p className="max-w-xl system-xs-regular leading-3.75 text-text-tertiary">
+        {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
+      </p>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={disabled}
+        className="mt-auto"
+        onClick={onConnect}
+      >
+        {t(($) => $['newKnowledge.connectNotion'])}
+      </Button>
+    </section>
   )
 }
 
@@ -240,6 +329,10 @@ export function CreateSourceSetup({
     onDraftChange(nextDraft)
     setBackendBoundaryVisible(false)
     resetPreview()
+  }
+  const updateDraftWithoutReset = (nextDraft: NewKnowledgeSourceDraft) => {
+    onDraftChange(nextDraft)
+    setBackendBoundaryVisible(false)
   }
   const selectProvider = (provider: string) => {
     if (draft.sourceType === 'onlineDocuments')
@@ -333,15 +426,15 @@ export function CreateSourceSetup({
   }, [crawlState, draft, onWebsitePreviewSelectionChange, selectedPageIds, selectionPages])
 
   return (
-    <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
+    <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
       <Fieldset disabled={disabled}>
-        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium">
+        <FieldsetLegend className="mb-1.25 py-0 system-xs-medium">
           {t(($) => $['newKnowledge.sourceTypeLabel'])}
         </FieldsetLegend>
         <RadioGroup<NewKnowledgeSourceDraft['sourceType']>
           value={sourceType}
           disabled={disabled}
-          className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-default p-0.5 sm:grid-cols-3"
+          className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
           onValueChange={(value) => {
             setBackendBoundaryVisible(false)
             onSourceTypeChange(value)
@@ -352,7 +445,7 @@ export function CreateSourceSetup({
               key={option.value}
               value={option.value}
               className={cn(
-                'relative flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden',
+                'relative flex min-h-7 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium text-text-tertiary outline-hidden',
                 'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs',
                 'data-disabled:cursor-not-allowed data-disabled:opacity-60',
@@ -374,13 +467,15 @@ export function CreateSourceSetup({
             {t(($) => $['newKnowledge.providerLabel'])}
           </span>
           <Button
+            type="button"
             variant="ghost-accent"
             size="small"
             disabled={disabled}
-            className="h-auto px-0"
+            className="gap-0.5 px-2.75"
             onClick={showBackendBoundary}
           >
             {t(($) => $['newKnowledge.moreProviders'])}
+            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </Button>
         </div>
         <RadioGroup<string>
@@ -398,9 +493,9 @@ export function CreateSourceSetup({
                 key={provider.label}
                 value={provider.label}
                 className={cn(
-                  'flex min-h-10 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-3 system-xs-medium text-text-secondary outline-hidden',
+                  'relative flex h-8.5 items-center justify-center gap-1.5 rounded-lg border border-divider-subtle bg-background-default px-2.5 system-xs-medium text-text-secondary outline-hidden',
                   'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                  'data-checked:border-components-option-card-option-selected-border data-checked:text-text-primary',
+                  'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
                   'data-disabled:cursor-not-allowed data-disabled:opacity-60',
                 )}
               >
@@ -416,7 +511,7 @@ export function CreateSourceSetup({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="rootUrl" className="gap-1.5">
-              <FieldLabel>
+              <FieldLabel className="py-0.5">
                 {t(($) => $['newKnowledge.rootUrl'])}
                 <span aria-hidden className="ml-0.5 text-text-destructive">
                   *
@@ -440,7 +535,7 @@ export function CreateSourceSetup({
               />
             </Field>
             <Field name="sourceName" className="gap-1.5">
-              <FieldLabel>
+              <FieldLabel className="py-0.5">
                 {t(($) => $['newKnowledge.sourceName'])}
                 <span aria-hidden className="ml-0.5 text-text-destructive">
                   *
@@ -535,20 +630,28 @@ export function CreateSourceSetup({
               </Fieldset>
             </CollapsiblePanel>
           </Collapsible>
-          <Button
-            type="button"
-            variant="primary"
-            className="w-full"
-            disabled={disabled || crawlState === 'running' || !previewReady}
-            onClick={() => void startPreview()}
-          >
-            {crawlState === 'running'
-              ? t(($) => $['newKnowledge.crawling'])
-              : t(($) => $['newKnowledge.crawlAndPreview'])}
-          </Button>
+          {crawlState !== 'success' && (
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full"
+              disabled={disabled || crawlState === 'running' || !previewReady}
+              onClick={() => void startPreview()}
+            >
+              {crawlState === 'running'
+                ? t(($) => $['newKnowledge.crawling'])
+                : t(($) => $['newKnowledge.crawlAndPreview'])}
+            </Button>
+          )}
           <section
             aria-label={t(($) => $['newKnowledge.crawlPreview'])}
-            className="min-h-40 rounded-lg border border-dashed border-divider-regular px-4 py-4"
+            className={cn(
+              crawlState === 'running'
+                ? 'flex h-60 flex-col gap-3.5 overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle p-4'
+                : crawlState === 'success'
+                  ? ''
+                  : 'min-h-40 rounded-lg border border-dashed border-divider-regular px-4 py-4',
+            )}
           >
             {crawlState === 'idle' && (
               <div className="flex min-h-32 flex-col items-center justify-center text-center">
@@ -564,22 +667,52 @@ export function CreateSourceSetup({
               </div>
             )}
             {crawlState === 'running' && (
-              <div className="flex items-center gap-3">
+              <div className="flex h-6 shrink-0 items-center gap-2">
                 <span
                   aria-hidden
                   className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
                 />
-                <p role="status" className="min-w-0 flex-1 system-xs-medium text-text-primary">
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="min-w-0 flex-1 truncate system-xs-medium text-text-primary"
+                >
                   {t(($) => $['newKnowledge.crawlingPages'], {
                     count: previewPages.length,
                     host: new URL(draft.rootUrl).host,
                   })}
                 </p>
-                <Button type="button" size="small" onClick={() => stopPreview()}>
+                <Button
+                  type="button"
+                  variant="ghost-accent"
+                  size="small"
+                  className="ml-auto shrink-0"
+                  onClick={() => stopPreview()}
+                >
                   {t(($) => $['newKnowledge.stopCrawl'])}
                 </Button>
               </div>
             )}
+            {crawlState === 'running' &&
+              CRAWL_PREVIEW_SKELETONS.map(({ id, sourceWidth, titleWidth }) => (
+                <div key={id} aria-hidden className="flex h-8 shrink-0 items-center gap-2.5 py-1">
+                  <span className="size-4 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <span
+                      className={cn(
+                        'block h-2.5 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none',
+                        titleWidth,
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        'block h-2 animate-pulse rounded bg-background-section-burn motion-reduce:animate-none',
+                        sourceWidth,
+                      )}
+                    />
+                  </span>
+                </div>
+              ))}
             {crawlState === 'error' && (
               <p role="alert" className="system-xs-regular text-text-destructive">
                 {t(($) => $['newKnowledge.crawlStartFailed'])}
@@ -601,48 +734,35 @@ export function CreateSourceSetup({
               />
             )}
           </section>
+          {crawlState === 'success' && (
+            <SyncPolicySelect
+              className="w-full sm:w-75.25"
+              disabled={disabled}
+              draft={draft}
+              onDraftChange={updateDraftWithoutReset}
+              size="medium"
+            />
+          )}
         </div>
       )}
 
       {draft.sourceType !== 'websiteCrawl' && (
-        <div className="space-y-3">
-          {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' && (
-            <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
-              <div className="flex flex-col items-start gap-3">
-                <span
-                  aria-hidden
-                  className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-lg bg-background-section text-xl',
-                    availableProviders.find((provider) => provider.label === activeProvider)?.icon,
-                  )}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="system-sm-semibold text-text-primary">
-                    {t(($) => $['newKnowledge.notionNotConnected'])}
-                  </p>
-                  <p className="mt-1 system-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                disabled={disabled}
-                className="mt-4"
-                onClick={showBackendBoundary}
-              >
-                {t(($) => $['newKnowledge.connectNotion'])}
-              </Button>
-            </section>
-          )}
-          {!(draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion') && (
+        <>
+          {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
+            <NotionSourceConfiguration
+              disabled={disabled}
+              draft={draft}
+              onConnect={showBackendBoundary}
+              onDraftChange={updateDraft}
+            />
+          ) : (
             <ConnectedSourceConfiguration
               disabled={disabled}
               draft={draft}
               onDraftChange={updateDraft}
             />
           )}
-        </div>
+        </>
       )}
 
       {backendBoundaryVisible && (

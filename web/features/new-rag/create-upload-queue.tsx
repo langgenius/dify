@@ -1,5 +1,6 @@
 'use client'
 
+import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
@@ -32,8 +33,11 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function fileBadge(file: File) {
-  return documentUploadFileExtension(file.name).toLocaleUpperCase() || 'FILE'
+function fileIconClass(extension: string) {
+  if (extension === 'PDF') return 'i-ri-file-pdf-2-fill text-text-destructive'
+  if (extension === 'DOC' || extension === 'DOCX') return 'i-ri-file-word-2-fill text-text-accent'
+  if (extension === 'XLS' || extension === 'XLSX') return 'i-ri-file-excel-fill text-text-success'
+  return 'i-ri-file-text-fill text-text-tertiary'
 }
 
 function mergeFiles(current: QueuedUpload[], files: File[]) {
@@ -53,11 +57,13 @@ function mergeFiles(current: QueuedUpload[], files: File[]) {
 
 export function CreateUploadQueue({
   disabled,
+  uploadPhases = new Map(),
   uploading,
   uploads,
   onChange,
 }: {
   disabled: boolean
+  uploadPhases?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
@@ -72,7 +78,7 @@ export function CreateUploadQueue({
   }
 
   return (
-    <div className="mx-4 mb-4 space-y-2 border-t border-divider-subtle pt-4">
+    <div className="mx-[14.5px] -mt-[3.5px] mb-[14.5px] space-y-3">
       <input
         id={inputId}
         className="peer sr-only"
@@ -89,7 +95,7 @@ export function CreateUploadQueue({
       <label
         htmlFor={inputId}
         className={cn(
-          'flex min-h-20 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-4 py-3 text-center outline-hidden transition-colors motion-reduce:transition-none',
+          'flex h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-divider-regular bg-background-section px-4 text-center outline-hidden transition-colors motion-reduce:transition-none',
           'peer-focus-visible:ring-2 peer-focus-visible:ring-state-accent-solid',
           disabled
             ? 'cursor-not-allowed opacity-60'
@@ -111,89 +117,113 @@ export function CreateUploadQueue({
           addFiles([...event.dataTransfer.files])
         }}
       >
-        <span
-          aria-hidden
-          className={cn(
-            'size-5 text-text-tertiary',
-            uploading
-              ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-              : 'i-ri-upload-cloud-2-line',
-          )}
-        />
-        <span className="mt-1.5 system-sm-medium text-text-primary">
+        <span className="flex items-center gap-1.5 system-xs-medium text-text-primary">
+          <span
+            aria-hidden
+            className={cn(
+              'size-5 text-text-tertiary',
+              uploading
+                ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                : 'i-ri-upload-cloud-2-line',
+            )}
+          />
           {uploading
             ? t(($) => $['newKnowledge.uploadingFiles'])
-            : t(($) => $['newKnowledge.uploadFiles'])}
+            : t(($) => $['newKnowledge.uploadDropZoneTitle'])}
         </span>
-        <span className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.documentsDropHint'])}
+        <span className="system-2xs-medium text-text-tertiary">
+          {t(($) => $['newKnowledge.documentUploadFormats'])}
         </span>
       </label>
 
       {!!uploads.length && (
-        <ul className="space-y-1.5" aria-label={t(($) => $['newKnowledge.uploadFiles'])}>
-          {uploads.map((upload) => (
-            <li
-              key={upload.id}
-              className={cn(
-                'flex min-w-0 items-center gap-2 rounded-lg border border-divider-subtle bg-background-default px-3 py-2',
-                upload.issue &&
-                  'border-components-input-border-destructive bg-state-destructive-hover',
-              )}
-            >
-              <span
-                aria-hidden
+        <ul className="space-y-1" aria-label={t(($) => $['newKnowledge.uploadFiles'])}>
+          {uploads.map((upload) => {
+            const extension =
+              documentUploadFileExtension(upload.file.name).toLocaleUpperCase() || 'FILE'
+            const fileUploading = uploadPhases.get(upload.file) === 'pending'
+            return (
+              <li
+                key={upload.id}
+                aria-busy={fileUploading || undefined}
                 className={cn(
-                  'system-2xs-semibold flex h-7 min-w-9 shrink-0 items-center justify-center rounded bg-background-section px-1',
-                  upload.issue ? 'text-text-destructive' : 'text-text-tertiary',
+                  'group flex h-12 min-w-0 items-center overflow-hidden rounded-lg border-[0.5px] shadow-xs',
+                  upload.issue
+                    ? 'border-state-destructive-border bg-state-destructive-hover'
+                    : 'border-components-panel-border bg-components-panel-on-panel-item-bg',
                 )}
               >
-                {uploading && !upload.issue ? (
-                  <span className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none" />
-                ) : (
-                  fileBadge(upload.file)
-                )}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate system-xs-medium text-text-primary">
-                  {upload.file.name}
+                <span className="flex shrink-0 items-start p-3">
+                  <span aria-hidden className={cn('size-6', fileIconClass(extension))} />
                 </span>
-                <span
-                  className={cn(
-                    'block system-2xs-regular text-text-tertiary',
-                    upload.issue && 'text-text-destructive',
+                <span className="min-w-0 flex-1 py-1 pr-2 text-left">
+                  <span className="block truncate system-xs-medium text-text-primary">
+                    {upload.file.name}
+                  </span>
+                  <span className="mt-0.5 flex min-h-3 items-center gap-1 system-2xs-medium text-text-tertiary">
+                    {extension} · {formatFileSize(upload.file.size)}
+                    <span aria-hidden className="text-text-quaternary">
+                      ·
+                    </span>
+                    <span
+                      className={cn(
+                        'truncate',
+                        upload.issue ? 'text-text-destructive' : 'text-text-tertiary',
+                      )}
+                    >
+                      {fileUploading
+                        ? t(($) => $['newKnowledge.uploadingFiles'])
+                        : upload.issue === 'fileSize'
+                          ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])
+                          : upload.issue === 'fileType'
+                            ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
+                            : t(($) => $['newKnowledge.uploadCharactersUnavailable'])}
+                    </span>
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1 py-2 pr-3">
+                  {fileUploading ? (
+                    <span className="flex size-6 items-center justify-center">
+                      <span
+                        aria-hidden
+                        className="i-ri-loader-2-line size-3 animate-spin text-text-accent motion-reduce:animate-none"
+                      />
+                    </span>
+                  ) : (
+                    !upload.issue &&
+                    canPreviewLocalFile(upload.file) && (
+                      <Button
+                        size="small"
+                        className="shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                        onClick={() => openLocalFilePreview(upload.file)}
+                      >
+                        {t(($) => $['newKnowledge.preview'])}
+                      </Button>
+                    )
                   )}
-                >
-                  {uploading && !upload.issue
-                    ? t(($) => $['newKnowledge.uploadingFiles'])
-                    : upload.issue === 'fileSize'
-                      ? `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])}`
-                      : upload.issue === 'fileType'
-                        ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
-                        : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
+                  {upload.issue && (
+                    <span className="flex size-6 items-center justify-center">
+                      <span
+                        aria-hidden
+                        className="i-ri-error-warning-fill size-4 text-text-destructive"
+                      />
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-label={`${tCommon(($) => $['operation.remove'])} ${upload.file.name}`}
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+                    onClick={() =>
+                      onChange(uploads.filter((candidate) => candidate.id !== upload.id))
+                    }
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </button>
                 </span>
-              </span>
-              {!uploading && !upload.issue && canPreviewLocalFile(upload.file) && (
-                <Button
-                  size="small"
-                  className="shrink-0"
-                  onClick={() => openLocalFilePreview(upload.file)}
-                >
-                  {t(($) => $['newKnowledge.preview'])}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="small"
-                disabled={disabled}
-                aria-label={`${tCommon(($) => $['operation.remove'])} ${upload.file.name}`}
-                className="size-7 shrink-0 px-0"
-                onClick={() => onChange(uploads.filter((candidate) => candidate.id !== upload.id))}
-              >
-                <span aria-hidden className="i-ri-delete-bin-line size-4" />
-              </Button>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

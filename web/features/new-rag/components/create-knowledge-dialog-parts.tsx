@@ -11,6 +11,7 @@ export function StartMode({
   children,
   description,
   disabled = false,
+  endAdornment,
   icon,
   selected = false,
   title,
@@ -19,6 +20,7 @@ export function StartMode({
   children?: ReactNode
   description: string
   disabled?: boolean
+  endAdornment?: ReactNode
   icon: string
   selected?: boolean
   title: string
@@ -45,7 +47,8 @@ export function StartMode({
         aria-describedby={disabled ? `${descriptionId} ${unavailableId}` : descriptionId}
         disabled={disabled}
         className={cn(
-          'relative flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left outline-hidden',
+          'relative flex w-full items-center gap-3 px-4 text-left outline-hidden',
+          value === 'empty' || !selected ? 'min-h-15.5 py-3' : 'min-h-16 py-3.5',
           'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
         )}
@@ -62,12 +65,7 @@ export function StartMode({
             {description}
           </span>
         </span>
-        {value === 'source' && (
-          <span
-            aria-hidden
-            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
-          />
-        )}
+        {endAdornment}
         {disabled && (
           <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
             {t(($) => $['cornerLabel.unavailable'])}

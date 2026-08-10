@@ -22,7 +22,6 @@ const serviceMock = vi.hoisted(() => ({
   updateKfsSource: vi.fn(),
   updateSyncPolicy: vi.fn(),
   upload: vi.fn(),
-  uploadBulk: vi.fn(),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
   sourcesKey: vi.fn(() => ['console', 'knowledgeFs', 'sources']),
   documentsKey: vi.fn(() => ['console', 'knowledgeFs', 'documents']),
@@ -47,6 +46,10 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   rbacAtom: Symbol('rbacEnabledAtom'),
   uploadEnabled: true,
   rbacEnabled: true,
+}))
+
+const datasourceAuthStateMock = vi.hoisted(() => ({
+  result: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -156,6 +159,13 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: serviceMock.createCrawl,
 }))
 
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceListAuth: () => ({
+    data: { result: datasourceAuthStateMock.result },
+    isPending: false,
+  }),
+}))
+
 const createdKnowledge = {
   control_space_id: 'e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084',
   model_setup_required: false,
@@ -206,17 +216,17 @@ vi.mock('../knowledge-fs-upload', () => ({
   uploadKnowledgeFsDocuments: async (
     knowledgeSpaceId: string,
     uploads: Array<{ file: File; id: string }>,
+    _progress: Map<string, { phase: 'completed' | 'pending' }>,
+    onProgress?: (file: File, phase: 'completed' | 'pending') => void,
   ) => {
-    const files = uploads.map(({ file }) => file)
-    if (files.length === 1)
-      return serviceMock.upload({
-        body: { file: files[0] },
+    for (const { file } of uploads) {
+      onProgress?.(file, 'pending')
+      await serviceMock.upload({
+        body: { file },
         params: { control_space_id: knowledgeSpaceId },
       })
-    return serviceMock.uploadBulk({
-      body: { files },
-      params: { control_space_id: knowledgeSpaceId },
-    })
+      onProgress?.(file, 'completed')
+    }
   },
 }))
 
@@ -249,6 +259,14 @@ describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     globalThis.sessionStorage.clear()
+    datasourceAuthStateMock.result = [
+      {
+        credentials_list: [{ id: 'notion-credential-1' }],
+        name: 'Notion',
+        plugin_id: 'langgenius/notion_datasource',
+        provider: 'notion',
+      },
+    ]
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
     serviceMock.createKfsSource.mockResolvedValue(kfsSourceResponse())
@@ -348,11 +366,6 @@ describe('CreateKnowledgePage', () => {
     serviceMock.upload.mockResolvedValue({
       id: 'document-1',
     })
-    serviceMock.uploadBulk.mockResolvedValue({
-      accepted: 2,
-      excluded: 0,
-      items: [],
-    })
     permissionStateMock.keys = ['dataset.acl.access_config']
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
@@ -368,19 +381,17 @@ describe('CreateKnowledgePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps create reachable and reports an empty knowledge name', async () => {
+  it('keeps create disabled until the knowledge name is provided', async () => {
     const user = userEvent.setup()
     renderPage()
 
     const createButton = screen.getByRole('button', {
       name: 'dataset.newKnowledge.createTitle',
     })
+    expect(createButton).toBeDisabled()
+
+    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), 'Handbook')
     expect(createButton).toBeEnabled()
-
-    await user.click(createButton)
-
-    expect(await screen.findByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
-    expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {
@@ -784,18 +795,9 @@ describe('CreateKnowledgePage', () => {
     expect(onlineDocuments).toBeChecked()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Notion')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' })).toBeEnabled()
-    expect(
-      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
-    ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.sourceSetupBackendDependency',
-    )
+    expect(screen.queryByText('dataset.newKnowledge.notionNotConnected')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
     await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
@@ -810,6 +812,27 @@ describe('CreateKnowledgePage', () => {
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+  })
+
+  it('offers to connect Notion when the provider has no credential', async () => {
+    const user = userEvent.setup()
+    datasourceAuthStateMock.result = []
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' }))
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+
+    expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
   })
 
   it('disables upload before creating a space when direct upload is unavailable', () => {
@@ -918,9 +941,49 @@ describe('CreateKnowledgePage', () => {
       url: 'https://docs.dify.ai',
     })
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAll' })).toBeEnabled()
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeEnabled()
+    const syncPolicy = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.syncPolicy',
+    })
+    expect(syncPolicy).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
+    await user.click(syncPolicy)
+    await user.click(
+      await screen.findByRole('option', { name: 'dataset.newKnowledge.syncPolicyManual' }),
+    )
+    expect(syncPolicy).toHaveTextContent('dataset.newKnowledge.syncPolicyManual')
+    expect(screen.getByText('Getting started')).toBeInTheDocument()
+  })
+
+  it('shows and can stop an ongoing website crawl', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    serviceMock.getCrawlStatus.mockImplementation(() => new Promise(() => {}))
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.crawlingPages',
+    )
+    const stopButton = screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' })
+    expect(stopButton).toBeEnabled()
+
+    await user.click(stopButton)
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlStopped')
   })
 
   it('submits selected preview URLs for the server-side crawl import', async () => {
@@ -1111,27 +1174,59 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
-  it('shows the real uploading state on each valid file row', async () => {
+  it('marks only the file currently being uploaded as pending', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'upload'
+    vi.mocked(globalThis.crypto.randomUUID)
+      .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
+      .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
+      .mockReturnValue('33333333-3333-4333-8333-333333333333')
     serviceMock.upload.mockImplementation(() => new Promise(() => {}))
     renderPage()
     await fillRequiredFields(user)
-    await user.upload(
+    fireEvent.change(
       screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
         selector: 'input[type="file"]',
       }),
-      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+      {
+        target: {
+          files: [
+            new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+            new File(['content'], 'policy.pdf', { type: 'application/pdf' }),
+          ],
+        },
+      },
     )
     const queue = screen.getByRole('list', { name: 'dataset.newKnowledge.uploadFiles' })
-    const preview = within(queue).getByRole('button', { name: 'dataset.newKnowledge.preview' })
-    expect(preview).toBeEnabled()
+    const handbookRow = within(queue).getByText('handbook.md').closest('li')
+    const policyRow = within(queue).getByText('policy.pdf').closest('li')
+    expect(handbookRow).not.toBeNull()
+    expect(policyRow).not.toBeNull()
+    expect(
+      within(queue).getAllByRole('button', { name: 'dataset.newKnowledge.preview' }),
+    ).toHaveLength(2)
     expect(screen.queryByText('dataset.newKnowledge.previewUnavailable')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    expect(await within(queue).findByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
-    expect(within(queue).queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+    expect(
+      await within(handbookRow as HTMLElement).findByText('dataset.newKnowledge.uploadingFiles'),
+    ).toBeVisible()
+    expect(
+      within(handbookRow as HTMLElement).queryByRole('button', {
+        name: 'dataset.newKnowledge.preview',
+      }),
+    ).toBeNull()
+    expect(
+      within(policyRow as HTMLElement).getByText(
+        'dataset.newKnowledge.uploadCharactersUnavailable',
+      ),
+    ).toBeVisible()
+    expect(
+      within(policyRow as HTMLElement).getByRole('button', {
+        name: 'dataset.newKnowledge.preview',
+      }),
+    ).toBeEnabled()
   })
 
   it('previews a selected file locally without uploading it', () => {
@@ -1241,6 +1336,9 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByPlaceholderText('dataset.newKnowledge.namePlaceholder')).toBeInTheDocument()
     expect(
       screen.getByPlaceholderText('dataset.newKnowledge.descriptionPlaceholder'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /^dataset\.newKnowledge\.description$/ }),
     ).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.descriptionHelp')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startWithHelp')).toBeInTheDocument()
