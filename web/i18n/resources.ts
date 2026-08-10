@@ -1,6 +1,108 @@
 import type Resources from './resources.generated.d.ts'
 import { kebabCase } from 'string-ts'
 
+type RawResources = {
+  app: typeof app
+  appAnnotation: typeof appAnnotation
+  appApi: typeof appApi
+  appDebug: typeof appDebug
+  appLog: typeof appLog
+  appOverview: typeof appOverview
+  agentV2: typeof agentV2
+  billing: typeof billing
+  common: typeof common
+  custom: typeof custom
+  dataset: typeof dataset
+  datasetCreation: typeof datasetCreation
+  datasetDocuments: typeof datasetDocuments
+  datasetHitTesting: typeof datasetHitTesting
+  datasetPipeline: typeof datasetPipeline
+  datasetSettings: typeof datasetSettings
+  deployments: typeof deployments
+  deviceFlow: typeof deviceFlow
+  education: typeof education
+  explore: typeof explore
+  layout: typeof layout
+  login: typeof login
+  oauth: typeof oauth
+  permission: typeof permission
+  permissionKeys: typeof permissionKeys
+  pipeline: typeof pipeline
+  plugin: typeof plugin
+  pluginTags: typeof pluginTags
+  pluginTrigger: typeof pluginTrigger
+  register: typeof register
+  runLog: typeof runLog
+  share: typeof share
+  snippet: typeof snippet
+  time: typeof time
+  tools: typeof tools
+  workflow: typeof workflow
+}
+
+// This type-only bridge exposes runtime plural base keys; selector types cannot require callers to pass count.
+type PluralBaseResources = {
+  agentV2: {
+    'agentDetail.access.workflow.nodeCount': string
+    'agentDetail.configure.buildDraft.changesToApply': string
+    'agentDetail.configure.publishImpact.workflowCount': string
+  }
+  app: {
+    'accessControlDialog.groups': string
+    'accessControlDialog.members': string
+  }
+  billing: {
+    'plansCommon.teamMember': string
+  }
+  common: {
+    'members.recipientCount': string
+    'members.seatsRemaining': string
+    'members.sendInviteCount': string
+  }
+  dataset: {
+    docAllEnabled: string
+    partialEnabled: string
+  }
+  datasetDocuments: {
+    'segment.characters': string
+    'segment.childChunks': string
+    'segment.chunks': string
+    'segment.parentChunks': string
+    'segment.searchResults': string
+  }
+  deployments: {
+    'access.members.groupCount': string
+    'access.members.memberCount': string
+    'createGuide.target.bindingCount': string
+    'createGuide.target.envVarCount': string
+    'deployDrawer.bindingCount': string
+    'deployDrawer.envVarCount': string
+    'overview.apiKeysCount': string
+    'overview.apiTokenSummary.environments': string
+    'overview.chip.behind': string
+    'overview.chip.behindTooltip': string
+    'overview.latestRelease.releaseCount': string
+    'versions.disabledReason.releaseInUse': string
+  }
+  permission: {
+    'accessRule.summary': string
+    'role.copyMembersDescription': string
+  }
+  workflow: {
+    'changeHistory.stepBackward': string
+    'changeHistory.stepForward': string
+    'copilot.checklistFixAction': string
+    'copilot.checklistFixSummary': string
+    'copilot.checklistUnfixableNote': string
+    'nodes.iteration.error': string
+    'nodes.iteration.iteration': string
+    'nodes.loop.error': string
+    'nodes.loop.loop': string
+  }
+}
+
+export type Resources = RawResources & PluralBaseResources
+
 export const defaultNS = 'app' as const
 
 export const namespaces = [
