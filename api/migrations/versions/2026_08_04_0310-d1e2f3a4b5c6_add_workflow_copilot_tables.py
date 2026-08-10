@@ -1,7 +1,7 @@
 """add workflow copilot tables
 
 Revision ID: d1e2f3a4b5c6
-Revises: c3d4e5f6a7b8
+Revises: e4708db55c1d
 Create Date: 2026-08-04 03:10:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "d1e2f3a4b5c6"
-down_revision = "c3d4e5f6a7b8"
+down_revision = "e4708db55c1d"
 branch_labels = None
 depends_on = None
 

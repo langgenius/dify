@@ -21,12 +21,12 @@ def _service() -> WorkflowCopilotMemoryService:
     return WorkflowCopilotMemoryService(MagicMock())
 
 
-def test_build_history_text_empty_when_no_context():
+def test_build_history_text_empty_when_no_context() -> None:
     service = _service()
     assert service.build_history_text("", []) == ""
 
 
-def test_build_history_text_summary_only():
+def test_build_history_text_summary_only() -> None:
     service = _service()
     result = service.build_history_text("Earlier we built an LLM node.", [])
     assert "Summary of earlier conversation" in result
@@ -34,7 +34,7 @@ def test_build_history_text_summary_only():
     assert "Recent turns" not in result
 
 
-def test_build_history_text_recent_only():
+def test_build_history_text_recent_only() -> None:
     service = _service()
     result = service.build_history_text(
         "",
@@ -49,7 +49,7 @@ def test_build_history_text_recent_only():
     assert "Summary of earlier conversation" not in result
 
 
-def test_build_history_text_summary_and_recent_order():
+def test_build_history_text_summary_and_recent_order() -> None:
     service = _service()
     result = service.build_history_text(
         "prior summary",
@@ -59,7 +59,7 @@ def test_build_history_text_summary_and_recent_order():
     assert result.index("Summary of earlier conversation") < result.index("Recent turns")
 
 
-def test_compression_thresholds_are_sane():
+def test_compression_thresholds_are_sane() -> None:
     # Guard rails: keeping recent turns must not exceed the compress budget in a
     # way that makes compression impossible to trigger.
     assert COMPRESS_THRESHOLD_TOKENS > 0

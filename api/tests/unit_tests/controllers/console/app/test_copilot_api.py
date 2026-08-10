@@ -25,14 +25,16 @@ from controllers.console.app.error import ProviderNotInitializeError
 from core.errors.error import ProviderTokenNotInitError
 
 
-def _model_config_payload() -> dict:
+def _model_config_payload() -> dict[str, object]:
     return {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
 
 
-def _install_service(monkeypatch: pytest.MonkeyPatch, *, capture: dict, result: dict):
+def _install_service(
+    monkeypatch: pytest.MonkeyPatch, *, capture: dict[str, object], result: dict[str, object]
+) -> None:
     """Stub WorkflowCopilotService.generate, recording the kwargs it received."""
 
-    def _generate(**kwargs):
+    def _generate(**kwargs: object) -> tuple[str, dict[str, object]]:
         capture.update(kwargs)
         return "conv-1", result
 
@@ -41,8 +43,8 @@ def _install_service(monkeypatch: pytest.MonkeyPatch, *, capture: dict, result: 
     monkeypatch.setattr(copilot_module, "current_user", SimpleNamespace(id="acc-1"))
 
 
-def _post_body(**overrides) -> dict:
-    body = {
+def _post_body(**overrides: object) -> dict[str, object]:
+    body: dict[str, object] = {
         "app_id": "app-1",
         "message": "add an llm node",
         "model_config": _model_config_payload(),
@@ -52,7 +54,7 @@ def _post_body(**overrides) -> dict:
 
 
 def test_post_forwards_envelope_without_usage(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    capture: dict = {}
+    capture: dict[str, object] = {}
     _install_service(
         monkeypatch,
         capture=capture,
@@ -108,7 +110,7 @@ def test_post_defaults_reply_and_errors(app: Flask, monkeypatch: pytest.MonkeyPa
 def test_post_normalizes_mode(
     app: Flask, monkeypatch: pytest.MonkeyPatch, requested_mode: str, expected_mode: str
 ) -> None:
-    capture: dict = {}
+    capture: dict[str, object] = {}
     _install_service(monkeypatch, capture=capture, result={"message": "", "graph": None, "errors": []})
     api = copilot_module.WorkflowCopilotApi()
     method = unwrap(api.post)
@@ -124,12 +126,12 @@ def test_post_normalizes_mode(
 
 
 def test_post_forwards_current_graph_and_context_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    capture: dict = {}
+    capture: dict[str, object] = {}
     _install_service(monkeypatch, capture=capture, result={"message": "", "graph": None, "errors": []})
     api = copilot_module.WorkflowCopilotApi()
     method = unwrap(api.post)
 
-    graph = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
+    graph: dict[str, object] = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
     body = _post_body(current_graph=graph, context_node_ids=["n1"], conversation_id="conv-9")
 
     with app.test_request_context("/console/api/workflow-copilot", method="POST", json=body):
@@ -143,7 +145,7 @@ def test_post_forwards_current_graph_and_context_ids(app: Flask, monkeypatch: py
 
 
 def test_post_maps_provider_token_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    def _raise(**_kwargs):
+    def _raise(**_kwargs: object) -> None:
         raise ProviderTokenNotInitError("missing token")
 
     monkeypatch.setattr(copilot_module.WorkflowCopilotService, "generate", staticmethod(_raise))

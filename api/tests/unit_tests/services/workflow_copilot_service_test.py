@@ -13,7 +13,7 @@ import json
 from services.workflow_copilot_service import WorkflowCopilotService
 
 
-def _graph() -> dict:
+def _graph() -> dict[str, object]:
     return {
         "nodes": [
             {"id": "node1", "data": {"type": "start", "title": "Start"}},
@@ -28,19 +28,19 @@ def _graph() -> dict:
     }
 
 
-def test_focus_context_empty_without_ids():
+def test_focus_context_empty_without_ids() -> None:
     assert WorkflowCopilotService._build_focus_context(_graph(), []) == ""
 
 
-def test_focus_context_empty_without_graph():
+def test_focus_context_empty_without_graph() -> None:
     assert WorkflowCopilotService._build_focus_context(None, ["node2"]) == ""
 
 
-def test_focus_context_empty_when_id_absent_from_graph():
+def test_focus_context_empty_when_id_absent_from_graph() -> None:
     assert WorkflowCopilotService._build_focus_context(_graph(), ["ghost"]) == ""
 
 
-def test_focus_context_embeds_full_node_structure_not_bare_id():
+def test_focus_context_embeds_full_node_structure_not_bare_id() -> None:
     text = WorkflowCopilotService._build_focus_context(_graph(), ["node2"])
 
     # The block must carry the node's FULL structure, not just "id=node2".
@@ -54,7 +54,7 @@ def test_focus_context_embeds_full_node_structure_not_bare_id():
     assert [n["id"] for n in payload["nodes"]] == ["node2"]
 
 
-def test_focus_context_includes_incident_edges():
+def test_focus_context_includes_incident_edges() -> None:
     text = WorkflowCopilotService._build_focus_context(_graph(), ["node2"])
     payload = json.loads(text.split("\n")[-1])
     # Both edges touch node2, so both are surfaced for wiring context.
@@ -62,7 +62,7 @@ def test_focus_context_includes_incident_edges():
     assert edge_ids == {"e1", "e2"}
 
 
-def test_focus_context_multiple_nodes():
+def test_focus_context_multiple_nodes() -> None:
     text = WorkflowCopilotService._build_focus_context(_graph(), ["node1", "node3"])
     payload = json.loads(text.split("\n")[-1])
     assert {n["id"] for n in payload["nodes"]} == {"node1", "node3"}
