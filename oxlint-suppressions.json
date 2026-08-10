@@ -784,14 +784,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/chat/chat-with-history/sidebar/__tests__/operation.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
