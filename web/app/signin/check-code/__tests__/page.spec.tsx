@@ -87,6 +87,17 @@ describe('CheckCode', () => {
     vi.unstubAllGlobals()
   })
 
+  it('exposes the page title as the main heading', () => {
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Post-login profile bootstrap', () => {
     it('should resolve an inactive profile query before navigating to the console home', async () => {
       const user = userEvent.setup()
