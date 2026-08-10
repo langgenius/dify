@@ -23,6 +23,8 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
 
+const chatMaxWidthClassName = 'max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
+
 export function AgentPreviewChatSession({
   conversationSessionKey,
   agentId,
@@ -181,7 +183,12 @@ export function AgentPreviewChatSession({
   )
 
   return (
-    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-150 flex-col overflow-hidden">
+    <div
+      className={cn(
+        'relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden',
+        chatMaxWidthClassName,
+      )}
+    >
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}
@@ -220,7 +227,7 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? 'flex w-full max-w-150 flex-col items-start text-left'
+              ? cn('flex w-full flex-col items-start text-left', chatMaxWidthClassName)
               : 'pointer-events-none relative w-full',
           )}
         >
