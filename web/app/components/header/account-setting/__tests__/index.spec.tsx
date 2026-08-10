@@ -167,10 +167,8 @@ const baseConsoleState: ConsoleStateFixture = {
     current_env: 'testing',
     current_version: '0.1.0',
     latest_version: '0.1.0',
-    release_date: '',
     release_notes: '',
     version: '0.1.0',
-    can_auto_update: false,
   },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
