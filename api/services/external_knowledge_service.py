@@ -121,7 +121,6 @@ class ExternalDatasetService:
         if response.status_code == 403:
             raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
-
     @staticmethod
     def get_external_knowledge_api(
         external_knowledge_api_id: str, tenant_id: str, *, session: Session
