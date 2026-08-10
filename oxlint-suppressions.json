@@ -190,9 +190,6 @@
     }
   },
   "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
-    "jsx_a11y/label-has-associated-control": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
