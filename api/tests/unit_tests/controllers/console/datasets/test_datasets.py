@@ -833,6 +833,23 @@ class TestDatasetUseCheckApi:
         check_permission.assert_called_once_with(dataset, current_user, session)
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
+    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask):
+        api = DatasetUseCheckApi()
+        method = unwrap(api.get)
+        dataset = make_dataset(id="dataset-id")
+        session = MagicMock()
+        with (
+            app.test_request_context("/datasets/dataset-id/use-check"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission") as check_permission,
+            patch.object(DatasetService, "dataset_use_check", return_value=False),
+        ):
+            _, status = method(api, session, "tenant-1", make_account(), "dataset-id")
+
+        assert status == 200
+        check_permission.assert_not_called()
+
 
 @pytest.mark.parametrize(
     "api_cls",

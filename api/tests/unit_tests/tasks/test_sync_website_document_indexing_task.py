@@ -71,13 +71,15 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
     dataset = _dataset(tenant_id)
     document = _document(dataset)
     owned_segment = _segment(tenant_id=tenant_id, dataset_id=dataset.id, document_id=document.id)
-    foreign_dataset = _dataset(str(uuid.uuid4()))
-    foreign_segment = _segment(
-        tenant_id=foreign_dataset.tenant_id,
-        dataset_id=foreign_dataset.id,
-        document_id=document.id,
-    )
-    sqlite_session.add_all([dataset, document, owned_segment, foreign_dataset, foreign_segment])
+    other_dataset = _dataset(tenant_id)
+    decoy_segments = [
+        _segment(tenant_id=tenant_id, dataset_id=dataset.id, document_id=str(uuid.uuid4())),
+        _segment(tenant_id=tenant_id, dataset_id=other_dataset.id, document_id=document.id),
+        _segment(tenant_id=str(uuid.uuid4()), dataset_id=dataset.id, document_id=document.id),
+    ]
+    for index, segment in enumerate(decoy_segments):
+        segment.index_node_id = f"decoy-node-{index}"
+    sqlite_session.add_all([dataset, document, owned_segment, other_dataset, *decoy_segments])
     sqlite_session.commit()
 
     features = MagicMock()
@@ -93,4 +95,4 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
     processor_factory.return_value.init_index_processor.return_value.clean.assert_not_called()
     indexing_runner.return_value.run.assert_called_once()
     sqlite_session.expire_all()
-    assert list(sqlite_session.scalars(select(DocumentSegment.id))) == [foreign_segment.id]
+    assert set(sqlite_session.scalars(select(DocumentSegment.id))) == {segment.id for segment in decoy_segments}

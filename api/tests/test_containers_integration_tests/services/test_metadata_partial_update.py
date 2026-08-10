@@ -156,19 +156,28 @@ class TestMetadataPartialUpdate:
             )
             for metadata, value in zip(metadatas, ("Alice", "EU"), strict=True)
         ]
+        dataset_id = dataset.id
+        document_id = document.id
         session_factory = sessionmaker(bind=db_session_with_containers.get_bind())
         engine = db_session_with_containers.get_bind()
         locked_select_barrier = Barrier(2)
         locked_selects: list[None] = []
 
-        def synchronize_locked_select(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+        def synchronize_locked_select(
+            _conn: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: bool,
+        ) -> None:
             if "FROM documents" in statement and "FOR UPDATE" in statement:
                 locked_selects.append(None)
                 locked_select_barrier.wait(timeout=10)
 
         def update(metadata_args: MetadataOperationData) -> None:
             with session_factory() as session:
-                owned_dataset = session.get(Dataset, dataset.id)
+                owned_dataset = session.get(Dataset, dataset_id)
                 assert owned_dataset is not None
                 MetadataService.update_documents_metadata(
                     owned_dataset, metadata_args, current_account, session=session
@@ -188,7 +197,7 @@ class TestMetadataPartialUpdate:
             event.remove(engine, "before_cursor_execute", synchronize_locked_select)
 
         db_session_with_containers.expire_all()
-        updated_doc = db_session_with_containers.get(Document, document.id)
+        updated_doc = db_session_with_containers.get(Document, document_id)
         assert updated_doc is not None
         assert len(locked_selects) == 2
         assert updated_doc.doc_metadata == {"author": "Alice", "region": "EU"}

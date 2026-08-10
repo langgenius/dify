@@ -159,12 +159,14 @@ class DatasetMetadataServiceApi(DatasetApiResource):
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name, session=session)
+        metadata = MetadataService.update_metadata_name(
+            dataset, metadata_id_str, payload.name, cast(Account, current_user), session=session
+        )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @service_api_ns.doc(
@@ -195,12 +197,12 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         """Delete metadata."""
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session)
+        MetadataService.delete_metadata(dataset, metadata_id_str, session)
         return "", 204
 
 

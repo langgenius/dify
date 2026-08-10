@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -78,6 +79,7 @@ from ..datasets.error import (
 )
 from ..wraps import (
     account_initialization_required,
+    check_knowledge_rate_limit,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
@@ -298,10 +300,11 @@ class DocumentResource(Resource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
 
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
@@ -577,7 +580,6 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Documents deleted successfully")
     @with_current_user
     @with_current_tenant_id
@@ -598,11 +600,13 @@ class DatasetDocumentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
 
+        check_knowledge_rate_limit()
         try:
             document_ids = request.args.getlist("document_id")
             dataset_ref = DatasetRefService.create_dataset_ref(dataset)
@@ -1380,7 +1384,6 @@ class DocumentPauseApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document paused successfully")
     @with_current_user
     @with_current_tenant_id
@@ -1406,6 +1409,7 @@ class DocumentPauseApi(DocumentResource):
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
 
+        check_knowledge_rate_limit()
         try:
             # pause document
             DocumentService.pause_document(document, session)
@@ -1420,7 +1424,6 @@ class DocumentRecoverApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Document resumed successfully")
     @with_current_user
     @with_current_tenant_id
@@ -1445,6 +1448,7 @@ class DocumentRecoverApi(DocumentResource):
         # 403 if document is archived
         if DocumentService.check_archived(document):
             raise ArchivedDocumentImmutableError()
+        check_knowledge_rate_limit()
         try:
             # pause document
             DocumentService.recover_document(document, session)
@@ -1459,7 +1463,6 @@ class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
     @with_current_user
@@ -1482,19 +1485,16 @@ class DocumentRetryApi(DocumentResource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
 
         payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
-        documents = session.scalars(
-            select(Document).where(
-                Document.tenant_id == dataset.tenant_id,
-                Document.dataset_id == dataset.id,
-                Document.id.in_(payload.document_ids),
-            )
-        ).all()
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRefService.create_dataset_ref(dataset), payload.document_ids, session
+        )
         documents_by_id = {document.id: document for document in documents}
         retry_documents = []
         for document_id in payload.document_ids:
@@ -1517,6 +1517,7 @@ class DocumentRetryApi(DocumentResource):
                 logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
+        check_knowledge_rate_limit()
         DocumentService.retry_document(dataset_id_str, retry_documents, session)
 
         return "", 204
@@ -1699,7 +1700,9 @@ class DocumentGenerateSummaryApi(Resource):
             raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
 
         # Verify all documents exist and belong to the dataset
-        documents = DocumentService.get_documents_by_ids(dataset_id_str, document_list, session)
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRefService.create_dataset_ref(dataset), document_list, session
+        )
 
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}

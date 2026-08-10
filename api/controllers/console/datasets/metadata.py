@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
@@ -97,10 +98,11 @@ class DatasetMetadataCreateApi(Resource):
         dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
         metadata = MetadataService.get_dataset_metadatas(dataset, session)
         return dump_response(DatasetMetadataListResponse, metadata), 200
 
@@ -131,14 +133,12 @@ class DatasetMetadataApi(Resource):
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata = MetadataService.update_metadata_name(
-            dataset_id_str, metadata_id_str, name, current_user, current_tenant_id, session=session
-        )
+        metadata = MetadataService.update_metadata_name(dataset, metadata_id_str, name, current_user, session=session)
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @setup_required
@@ -147,17 +147,25 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
     @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def delete(self, session: Session, current_user: Account, dataset_id: UUID, metadata_id: UUID):
+    def delete(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        metadata_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session)
+        MetadataService.delete_metadata(dataset, metadata_id_str, session)
         # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
         return "", 204
 

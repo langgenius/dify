@@ -197,6 +197,12 @@ def tenant_ctx():
     return (MagicMock(is_dataset_editor=True, id="u1"), "tenant-1")
 
 
+@pytest.fixture(autouse=True)
+def bypass_knowledge_rate_limit():
+    with patch("controllers.console.datasets.datasets_document.check_knowledge_rate_limit") as check:
+        yield check
+
+
 @pytest.fixture
 def patch_tenant(tenant_ctx):
     return tenant_ctx
@@ -541,6 +547,27 @@ class TestDocumentResource:
             session=session,
         )
 
+    def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
+        api = DocumentResource()
+        session = MagicMock()
+        with (
+            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
+            ) as check_permission,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
+            ),
+        ):
+            api.get_document(session, "ds-1", "doc-1", MagicMock(), "tenant-1")
+
+        check_permission.assert_not_called()
+
 
 class TestDocumentApi:
     def test_get_success(self, app: Flask, patch_tenant):
@@ -871,7 +898,7 @@ class TestDocumentRetryApi:
         assert status == 204
         retry_mock.assert_called_once_with("ds-1", [], session)
 
-    def test_retry_foreign_dataset_has_no_side_effects(self, app: Flask, patch_tenant):
+    def test_retry_foreign_dataset_has_no_side_effects(self, app: Flask, patch_tenant, bypass_knowledge_rate_limit):
         api = DocumentRetryApi()
         method = unwrap(api.post)
         user, tenant_id = patch_tenant
@@ -891,6 +918,7 @@ class TestDocumentRetryApi:
                 method(api, session, tenant_id, user, "foreign-dataset")
 
         session.scalars.assert_not_called()
+        bypass_knowledge_rate_limit.assert_not_called()
         retry_document.assert_not_called()
 
 
@@ -899,7 +927,9 @@ class TestDocumentPauseRecoverApi:
         ("api_type", "service_method"),
         [(DocumentPauseApi, "pause_document"), (DocumentRecoverApi, "recover_document")],
     )
-    def test_patch_uses_scoped_document(self, app: Flask, patch_tenant, api_type, service_method):
+    def test_patch_uses_scoped_document(
+        self, app: Flask, patch_tenant, bypass_knowledge_rate_limit, api_type, service_method
+    ):
         api = api_type()
         method = unwrap(api.patch)
         user, tenant_id = patch_tenant
@@ -918,6 +948,7 @@ class TestDocumentPauseRecoverApi:
 
         assert (response, status) == ("", 204)
         get_document.assert_called_once_with(session, "ds-1", "doc-1", user, tenant_id)
+        bypass_knowledge_rate_limit.assert_called_once_with()
         process_document.assert_called_once_with(document, session)
 
 
@@ -1175,7 +1206,7 @@ class TestDatasetDocumentListApiDelete:
             with pytest.raises(DocumentIndexingError):
                 method(api, MagicMock(), tenant_id, user, "ds-1")
 
-    def test_delete_dataset_not_found(self, app: Flask, patch_tenant):
+    def test_delete_dataset_not_found(self, app: Flask, patch_tenant, bypass_knowledge_rate_limit):
         """Test deletion when dataset not found"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
@@ -1193,6 +1224,7 @@ class TestDatasetDocumentListApiDelete:
             with pytest.raises(NotFound):
                 method(api, MagicMock(), tenant_id, user, "foreign-dataset")
 
+        bypass_knowledge_rate_limit.assert_not_called()
         delete_documents.assert_not_called()
 
 

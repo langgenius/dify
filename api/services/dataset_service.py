@@ -1650,7 +1650,9 @@ class DocumentService:
             return None
 
     @staticmethod
-    def get_documents_by_ids(dataset_id: str, document_ids: Sequence[str], session: Session) -> Sequence[Document]:
+    def get_documents_by_ids(
+        dataset_ref: DatasetRef, document_ids: Sequence[str], session: Session
+    ) -> Sequence[Document]:
         """Fetch documents for a dataset in a single batch query."""
         if not document_ids:
             return []
@@ -1658,7 +1660,8 @@ class DocumentService:
         # Fetch all requested documents in one query to avoid N+1 lookups.
         documents: Sequence[Document] = session.scalars(
             select(Document).where(
-                Document.dataset_id == dataset_id,
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_id_list),
             )
         ).all()
@@ -1852,7 +1855,9 @@ class DocumentService:
         """
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, document_id_list, session)
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRef(tenant_id=tenant_id, dataset_id=dataset_id), document_id_list, session
+        )
         documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
 
         missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
@@ -1862,9 +1867,6 @@ class DocumentService:
         upload_file_ids: list[str] = []
         upload_file_ids_by_document_id: dict[str, str] = {}
         for document_id, document in documents_by_id.items():
-            if document.tenant_id != tenant_id:
-                raise Forbidden("No permission.")
-
             upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
                 document,
                 invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
@@ -1891,9 +1893,13 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_document_by_ids(document_ids: list[str], session: Session) -> Sequence[Document]:
+    def get_document_by_ids(
+        dataset_ref: DatasetRef, document_ids: Sequence[str], session: Session
+    ) -> Sequence[Document]:
         documents = session.scalars(
             select(Document).where(
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
                 Document.enabled == True,
                 Document.indexing_status == IndexingStatus.COMPLETED,

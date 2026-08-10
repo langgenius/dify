@@ -19,6 +19,11 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.metadata_service import MetadataService
 
+DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
+FOREIGN_DOCUMENT_ID = "22222222-2222-2222-2222-222222222222"
+METADATA_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+FOREIGN_METADATA_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
 
 def _account() -> Account:
     account = Account(name="User", email="user@example.com")
@@ -58,7 +63,7 @@ def _dataset(*, built_in_field_enabled: bool) -> Dataset:
 
 def _document() -> Document:
     return Document(
-        id="document-1",
+        id=DOCUMENT_ID,
         tenant_id="tenant-1",
         dataset_id="dataset-1",
         position=1,
@@ -121,8 +126,8 @@ def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> N
     metadata_args = MetadataOperationData(
         operation_data=[
             DocumentMetadataOperation(
-                document_id="document-1",
-                metadata_list=[MetadataDetail(id="foreign-metadata", name="spoofed", value="value")],
+                document_id=DOCUMENT_ID,
+                metadata_list=[MetadataDetail(id=FOREIGN_METADATA_ID, name="spoofed", value="value")],
                 partial_update=False,
             )
         ]
@@ -142,15 +147,15 @@ def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> N
 
 def test_update_documents_metadata_validates_all_documents_before_writes() -> None:
     session = MagicMock()
-    metadata = SimpleNamespace(id="metadata-1", name="canonical")
-    session.scalars.return_value.all.side_effect = [[metadata], ["document-1"]]
+    metadata = SimpleNamespace(id=METADATA_ID, name="canonical")
+    session.scalars.return_value.all.side_effect = [[metadata], [DOCUMENT_ID]]
     dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
     metadata_detail = MetadataDetail(id=metadata.id, name="spoofed", value="value")
     metadata_args = MetadataOperationData(
         operation_data=[
-            DocumentMetadataOperation(document_id="document-1", metadata_list=[metadata_detail], partial_update=False),
+            DocumentMetadataOperation(document_id=DOCUMENT_ID, metadata_list=[metadata_detail], partial_update=False),
             DocumentMetadataOperation(
-                document_id="foreign-document", metadata_list=[metadata_detail], partial_update=False
+                document_id=FOREIGN_DOCUMENT_ID, metadata_list=[metadata_detail], partial_update=False
             ),
         ]
     )
@@ -170,8 +175,8 @@ def test_update_documents_metadata_validates_all_documents_before_writes() -> No
 
 def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
     session = MagicMock()
-    metadata = SimpleNamespace(id="metadata-1", name="canonical")
-    session.scalars.return_value.all.side_effect = [[metadata], ["document-1"]]
+    metadata = SimpleNamespace(id=METADATA_ID, name="canonical")
+    session.scalars.return_value.all.side_effect = [[metadata], [DOCUMENT_ID]]
     dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
     document = _document()
     session.scalar.return_value = document
@@ -192,6 +197,16 @@ def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
         MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
 
     assert document.doc_metadata == {"canonical": "value"}
+
+
+def test_metadata_operation_normalizes_uuid_ids() -> None:
+    operation = DocumentMetadataOperation(
+        document_id=DOCUMENT_ID.upper(),
+        metadata_list=[MetadataDetail(id=METADATA_ID.upper(), name="ignored", value="value")],
+    )
+
+    assert operation.document_id == DOCUMENT_ID
+    assert operation.metadata_list[0].id == METADATA_ID
 
 
 def test_document_metadata_details_scopes_binding_to_document_owner() -> None:

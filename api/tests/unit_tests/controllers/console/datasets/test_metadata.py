@@ -1,6 +1,6 @@
 import uuid
 from inspect import unwrap
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -144,6 +144,25 @@ class TestDatasetMetadataGetApi:
         check_permission.assert_not_called()
         get_metadata.assert_not_called()
 
+    def test_get_metadata_relies_on_rbac_in_rbac_mode(self, app: Flask, current_user, dataset, dataset_id):
+        api = DatasetMetadataCreateApi()
+        method = unwrap(api.get)
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.metadata.dify_config.RBAC_ENABLED", True),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission") as check_permission,
+            patch.object(
+                MetadataService,
+                "get_dataset_metadatas",
+                return_value={"doc_metadata": [], "built_in_field_enabled": False},
+            ),
+        ):
+            _, status = method(api, MagicMock(), "tenant-1", current_user, dataset_id)
+
+        assert status == 200
+        check_permission.assert_not_called()
+
     def test_get_metadata_rejects_inaccessible_dataset(self, app: Flask, current_user, dataset, dataset_id):
         api = DatasetMetadataCreateApi()
         method = unwrap(api.get)
@@ -167,13 +186,13 @@ class TestDatasetMetadataApi:
         with (
             app.test_request_context("/"),
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
             patch.object(DatasetService, "check_dataset_permission"),
             patch.object(
                 MetadataService,
                 "update_metadata_name",
                 return_value={"id": "m1", "type": "string", "name": "updated-name"},
-            ),
+            ) as update_metadata,
         ):
             result, status = method(
                 api,
@@ -187,19 +206,23 @@ class TestDatasetMetadataApi:
         assert status == 200
         assert result["type"] == "string"
         assert result["name"] == "updated-name"
+        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=ANY)
+        update_metadata.assert_called_once_with(dataset, str(metadata_id), "updated-name", current_user, session=ANY)
 
     def test_delete_metadata_success(self, app: Flask, current_user, dataset, dataset_id, metadata_id):
         api = DatasetMetadataApi()
         method = unwrap(api.delete)
         with (
             app.test_request_context("/"),
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset) as get_dataset,
             patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataService, "delete_metadata"),
+            patch.object(MetadataService, "delete_metadata") as delete_metadata,
         ):
-            result, status = method(api, MagicMock(), current_user, dataset_id, metadata_id)
+            result, status = method(api, MagicMock(), "tenant-1", current_user, dataset_id, metadata_id)
         assert status == 204
         assert result == ""
+        get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=ANY)
+        delete_metadata.assert_called_once_with(dataset, str(metadata_id), ANY)
 
 
 class TestDatasetMetadataBuiltInFieldApi:
@@ -248,7 +271,9 @@ class TestDocumentMetadataEditApi:
         ):
             result, status = method(
                 api,
-                MetadataOperationData(operation_data=[{"document_id": "doc-1", "metadata_list": []}]),
+                MetadataOperationData(
+                    operation_data=[{"document_id": "00000000-0000-0000-0000-000000000001", "metadata_list": []}]
+                ),
                 MagicMock(),
                 dataset.tenant_id,
                 current_user,

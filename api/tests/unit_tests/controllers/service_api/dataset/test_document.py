@@ -47,6 +47,7 @@ from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
+from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
@@ -580,14 +581,14 @@ class TestDocumentServiceBatchMethods:
         session.add_all([make_serializable_document(id=document_id, dataset_id=dataset_id) for document_id in doc_ids])
         session.flush()
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
+        documents = DocumentService.get_documents_by_ids(DatasetRef("tenant-id", dataset_id), doc_ids, session)
 
         assert len(documents) == 2
         assert {document.id for document in documents} == set(doc_ids)
 
     def test_get_documents_by_ids_empty(self, sqlite_session: Session):
         """Test batch retrieval with empty list returns empty."""
-        assert DocumentService.get_documents_by_ids("ds_id", [], sqlite_session) == []
+        assert DocumentService.get_documents_by_ids(DatasetRef("tenant-id", "ds_id"), [], sqlite_session) == []
 
 
 class TestDocumentServiceFileOperations:
