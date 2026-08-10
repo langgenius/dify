@@ -1432,14 +1432,11 @@ class DatasetService:
         ).all()
 
     @staticmethod
-    def update_dataset_api_status(dataset_ref: DatasetRef, status: bool, session: Session):
-        dataset = DatasetService.get_dataset_for_tenant(dataset_ref.dataset_id, dataset_ref.tenant_id, session=session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        dataset.enable_api = status
-        if not current_user or not current_user.id:
+    def update_dataset_api_status(dataset: Dataset, status: bool, actor: Account, session: Session):
+        if not actor.id:
             raise ValueError("Current user or current user id not found")
-        dataset.updated_by = current_user.id
+        dataset.enable_api = status
+        dataset.updated_by = actor.id
         dataset.updated_at = naive_utc_now()
         session.flush()
 
@@ -2164,7 +2161,7 @@ class DocumentService:
 
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
-        sync_website_document_indexing_task.delay(dataset.tenant_id, dataset.id, document.id)
+        sync_website_document_indexing_task.delay(dataset.id, document.id)
 
     @staticmethod
     def get_documents_position(dataset_id, session: Session):

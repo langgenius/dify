@@ -376,7 +376,7 @@ class TestDocumentServiceMutations:
         session.add.assert_called_once_with(document)
         session.commit.assert_called_once()
         mock_redis.setex.assert_called_once_with("document_doc-1_is_sync", 600, 1)
-        sync_task.delay.assert_called_once_with(dataset.tenant_id, dataset.id, document.id)
+        sync_task.delay.assert_called_once_with(dataset.id, document.id)
 
 
 class TestDocumentServiceSaveDocumentWithoutDatasetId:

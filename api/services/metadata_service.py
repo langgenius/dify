@@ -9,9 +9,8 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import resolve_account_fallback
 from models import Account
-from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
+from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DatasetMetadataType
-from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -238,11 +237,10 @@ class MetadataService:
     def update_documents_metadata(
         dataset: Dataset,
         metadata_args: MetadataOperationData,
-        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
+        current_user: Account,
         *,
         session: Session,
     ):
-        current_user = resolve_account_fallback(current_user, fallback_tenant_id=dataset.tenant_id).account
         metadata_ids = {
             metadata_value.id
             for operation in metadata_args.operation_data
@@ -259,21 +257,35 @@ class MetadataService:
         if metadata_ids != set(metadata_by_id):
             raise ValueError("Metadata not found.")
 
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-        documents_by_id = {}
-        for document_id in {operation.document_id for operation in metadata_args.operation_data}:
-            document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
-            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
-            if document is None:
-                raise ValueError("Document not found.")
-            documents_by_id[document_id] = document
+        document_ids = {operation.document_id for operation in metadata_args.operation_data}
+        owned_document_ids = set(
+            session.scalars(
+                select(Document.id).where(
+                    Document.id.in_(document_ids),
+                    Document.tenant_id == dataset.tenant_id,
+                    Document.dataset_id == dataset.id,
+                )
+            ).all()
+        )
+        if document_ids != owned_document_ids:
+            raise ValueError("Document not found.")
 
         for operation in metadata_args.operation_data:
-            document = documents_by_id[operation.document_id]
-
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
+                document = session.scalar(
+                    select(Document)
+                    .where(
+                        Document.id == operation.document_id,
+                        Document.tenant_id == dataset.tenant_id,
+                        Document.dataset_id == dataset.id,
+                    )
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+                if document is None:
+                    raise ValueError("Document not found.")
                 if operation.partial_update:
                     doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                 else:

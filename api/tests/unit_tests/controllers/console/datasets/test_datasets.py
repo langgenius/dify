@@ -1447,7 +1447,7 @@ class TestDatasetEnableApiApi:
         assert response["result"] == "success"
         get_dataset.assert_called_once_with("dataset-1", "tenant-1", session=session)
         check_permission.assert_called_once_with(dataset, current_user, session)
-        update_status.assert_called_once_with(DatasetRef("tenant-1", "dataset-1"), enabled, session)
+        update_status.assert_called_once_with(dataset, enabled, current_user, session)
 
     def test_rejects_non_editor(self, app: Flask):
         api = DatasetEnableApiApi()

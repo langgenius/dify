@@ -1205,9 +1205,7 @@ class DatasetEnableApiApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        DatasetService.update_dataset_api_status(
-            DatasetRefService.create_dataset_ref(dataset), status == "enable", session
-        )
+        DatasetService.update_dataset_api_status(dataset, status == "enable", current_user, session)
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 

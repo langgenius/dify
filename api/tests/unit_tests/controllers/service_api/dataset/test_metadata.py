@@ -17,7 +17,7 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -541,6 +541,12 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
 
         assert status == 200
         assert response["result"] == "success"
+        mock_meta_svc.update_documents_metadata.assert_called_once_with(
+            mock_dataset,
+            ANY,
+            mock_current_user,
+            session=session,
+        )
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_update_documents_metadata_dataset_not_found(

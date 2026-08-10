@@ -8,7 +8,6 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -376,15 +375,6 @@ class TestDatasetServicePermissionsAndLifecycle:
             user=operator, dataset=dataset, session=db_session_with_containers
         )
 
-    def test_update_dataset_api_status_raises_not_found_for_missing_dataset(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
-        dataset_ref = DatasetRef(tenant_id=str(uuid4()), dataset_id=str(uuid4()))
-
-        with flask_app_with_containers.app_context():
-            with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
-
     def test_update_dataset_api_status_requires_current_user_id(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetPermissionIntegrationFactory.create_dataset(
@@ -393,11 +383,10 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
             enable_api=False,
         )
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-
-        with patch("services.dataset_service.current_user", SimpleNamespace(id=None)):
-            with pytest.raises(ValueError, match="Current user or current user id not found"):
-                DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
+        actor = Account(name="missing-id", email="missing-id@example.com")
+        actor.id = ""
+        with pytest.raises(ValueError, match="Current user or current user id not found"):
+            DatasetService.update_dataset_api_status(dataset, True, actor, session=db_session_with_containers)
 
     def test_update_dataset_api_status_updates_fields_and_commits(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -407,14 +396,10 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
             enable_api=False,
         )
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         now = datetime(2026, 4, 14, 18, 0, 0)
 
-        with (
-            patch("services.dataset_service.current_user", owner),
-            patch("services.dataset_service.naive_utc_now", return_value=now),
-        ):
-            DatasetService.update_dataset_api_status(dataset_ref, True, session=db_session_with_containers)
+        with patch("services.dataset_service.naive_utc_now", return_value=now):
+            DatasetService.update_dataset_api_status(dataset, True, owner, session=db_session_with_containers)
 
         db_session_with_containers.refresh(dataset)
         assert dataset.enable_api is True

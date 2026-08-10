@@ -60,7 +60,7 @@ def test_rejects_document_outside_dataset_before_side_effects(sqlite_session: Se
         patch("tasks.sync_website_document_indexing_task.FeatureService") as feature_service,
         patch("tasks.sync_website_document_indexing_task.IndexProcessorFactory") as processor_factory,
     ):
-        sync_website_document_indexing_task(tenant_id, requested_dataset.id, foreign_document.id)
+        sync_website_document_indexing_task(requested_dataset.id, foreign_document.id)
 
     feature_service.get_features.assert_not_called()
     processor_factory.assert_not_called()
@@ -88,7 +88,7 @@ def test_cleanup_is_owner_scoped_and_skips_empty_vector_ids(sqlite_session: Sess
         patch("tasks.sync_website_document_indexing_task.IndexingRunner") as indexing_runner,
         patch("tasks.sync_website_document_indexing_task.redis_client"),
     ):
-        sync_website_document_indexing_task(tenant_id, dataset.id, document.id)
+        sync_website_document_indexing_task(dataset.id, document.id)
 
     processor_factory.return_value.init_index_processor.return_value.clean.assert_not_called()
     indexing_runner.return_value.run.assert_called_once()

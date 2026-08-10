@@ -19,23 +19,21 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def sync_website_document_indexing_task(tenant_id: str, dataset_id: str, document_id: str):
+def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     """
     Async process document
-    :param tenant_id:
     :param dataset_id:
     :param document_id:
 
-    Usage: sync_website_document_indexing_task.delay(tenant_id, dataset_id, document_id)
+    Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
     """
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.scalar(
-            select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1)
-        )
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if dataset is None:
             raise ValueError("Dataset not found")
+        tenant_id = dataset.tenant_id
         dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id)
         document = DatasetRefService.get_document_by_ref(document_ref, session=session)

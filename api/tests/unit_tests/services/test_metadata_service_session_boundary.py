@@ -10,7 +10,6 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
-from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -103,7 +102,6 @@ def test_update_documents_metadata_uses_caller_session_for_uploader(sqlite_sessi
 
     with (
         patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
-        patch.object(DatasetRefService, "get_document_by_ref", return_value=document),
         patch("services.metadata_service.redis_client.delete"),
     ):
         MetadataService.update_documents_metadata(
@@ -145,7 +143,7 @@ def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> N
 def test_update_documents_metadata_validates_all_documents_before_writes() -> None:
     session = MagicMock()
     metadata = SimpleNamespace(id="metadata-1", name="canonical")
-    session.scalars.return_value.all.return_value = [metadata]
+    session.scalars.return_value.all.side_effect = [[metadata], ["document-1"]]
     dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
     metadata_detail = MetadataDetail(id=metadata.id, name="spoofed", value="value")
     metadata_args = MetadataOperationData(
@@ -159,7 +157,6 @@ def test_update_documents_metadata_validates_all_documents_before_writes() -> No
 
     with (
         pytest.raises(ValueError, match="Document not found"),
-        patch.object(DatasetRefService, "get_document_by_ref", side_effect=[_document(), None]),
         patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
         patch("services.metadata_service.redis_client.delete"),
     ):
@@ -174,9 +171,10 @@ def test_update_documents_metadata_validates_all_documents_before_writes() -> No
 def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
     session = MagicMock()
     metadata = SimpleNamespace(id="metadata-1", name="canonical")
-    session.scalars.return_value.all.return_value = [metadata]
+    session.scalars.return_value.all.side_effect = [[metadata], ["document-1"]]
     dataset = MagicMock(id="dataset-1", tenant_id="tenant-1", built_in_field_enabled=False)
     document = _document()
+    session.scalar.return_value = document
     metadata_args = MetadataOperationData(
         operation_data=[
             DocumentMetadataOperation(
@@ -188,7 +186,6 @@ def test_update_documents_metadata_uses_canonical_metadata_name() -> None:
     )
 
     with (
-        patch.object(DatasetRefService, "get_document_by_ref", return_value=document),
         patch.object(MetadataService, "knowledge_base_metadata_lock_check"),
         patch("services.metadata_service.redis_client.delete"),
     ):

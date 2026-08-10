@@ -579,15 +579,29 @@ class DatasetDocumentListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Documents deleted successfully")
+    @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def delete(self, session: Session, dataset_id: UUID):
+    def delete(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
+
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
 
         try:
             document_ids = request.args.getlist("document_id")
@@ -1448,18 +1462,41 @@ class DocumentRetryApi(DocumentResource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     @console_ns.response(204, "Documents retry started successfully")
+    @with_current_user
+    @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, dataset_id: UUID):
+    def post(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
         """retry document."""
-        payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str, session)
-        retry_documents = []
+        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
-        documents = DocumentService.get_documents_by_ids(dataset.id, payload.document_ids, session)
+
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
+        documents = session.scalars(
+            select(Document).where(
+                Document.tenant_id == dataset.tenant_id,
+                Document.dataset_id == dataset.id,
+                Document.id.in_(payload.document_ids),
+            )
+        ).all()
         documents_by_id = {document.id: document for document in documents}
+        retry_documents = []
         for document_id in payload.document_ids:
             try:
                 document = documents_by_id.get(document_id)
@@ -1521,7 +1558,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
     def get(
         self,
@@ -1536,6 +1573,8 @@ class WebsiteDocumentSyncApi(DocumentResource):
         dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
         if not dataset:
             raise NotFound("Dataset not found.")
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
         document_id_str = str(document_id)
         document = self.get_document(session, dataset.id, document_id_str, current_user, current_tenant_id)
         if document.data_source_type != "website_crawl":

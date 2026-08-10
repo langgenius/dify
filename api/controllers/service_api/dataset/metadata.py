@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from flask_login import current_user
@@ -17,6 +17,7 @@ from fields.dataset_fields import (
     DatasetMetadataResponse,
 )
 from libs.helper import dump_response
+from models import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     DocumentMetadataOperation,
@@ -316,6 +317,6 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
-        MetadataService.update_documents_metadata(dataset, metadata_args, session=session)
+        MetadataService.update_documents_metadata(dataset, metadata_args, cast(Account, current_user), session=session)
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
