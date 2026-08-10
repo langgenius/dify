@@ -1,10 +1,15 @@
 'use client'
 
-import type { CopilotActionKind, ProgressEntry, SessionView } from './types'
+import type { ChecklistErrorPayload, CopilotActionKind, ProgressEntry, SessionView } from './types'
 import Cookies from 'js-cookie'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { isSessionView, parseSSEFrame } from './types'
+
+// What seeds a new Fix session: either a failed workflow run (existing
+// run-fix flow) or a set of client-detected pre-publish checklist errors
+// (checklist-fix flow). Exactly one of the two is sent to the backend.
+type CreateSessionTarget = { failedRunId: string } | { checklistErrors: ChecklistErrorPayload[] }
 
 export type UseCopilotSessionParams = {
   baseUrl: string
@@ -18,6 +23,8 @@ export type UseCopilotSessionResult = {
   progressLog: ProgressEntry[]
   /** Creates a new Fix session for `failedRunId` and starts streaming its progress. */
   startFix: (appId: string, failedRunId: string) => Promise<boolean>
+  /** Creates a new checklist-fix session for `checklistErrors` and starts streaming its progress. */
+  startChecklistFix: (appId: string, checklistErrors: ChecklistErrorPayload[]) => Promise<boolean>
   /** Re-fetches the current session (GET). No-op if no session has been created yet. */
   refresh: () => Promise<boolean>
   /** Posts an action (`approve_repair`, `run_verify`, ...) against the current session. */
@@ -40,12 +47,17 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
       return h
     }
 
-    const create = (appId: string, failedRunId: string) =>
+    const create = (appId: string, target: CreateSessionTarget) =>
       fetch(`${root}/sessions`, {
         method: 'POST',
         credentials: 'include',
         headers: headers(true, true),
-        body: JSON.stringify({ app_id: appId, failed_run_id: failedRunId }),
+        body: JSON.stringify({
+          app_id: appId,
+          ...('failedRunId' in target
+            ? { failed_run_id: target.failedRunId }
+            : { checklist_errors: target.checklistErrors }),
+        }),
       })
 
     const get = (id: string) =>
@@ -159,10 +171,10 @@ export function useCopilotSession({
     [api, pushProgress],
   )
 
-  const startFix = useCallback(
-    async (appId: string, failedRunId: string) => {
+  const beginSession = useCallback(
+    async (appId: string, target: CreateSessionTarget) => {
       try {
-        const res = await api.create(appId, failedRunId)
+        const res = await api.create(appId, target)
         const parsed = await applyResponse(res)
         if (isSessionView(parsed)) startStream(parsed.SessionID)
         return true
@@ -172,6 +184,17 @@ export function useCopilotSession({
       }
     },
     [api, applyResponse, startStream],
+  )
+
+  const startFix = useCallback(
+    (appId: string, failedRunId: string) => beginSession(appId, { failedRunId }),
+    [beginSession],
+  )
+
+  const startChecklistFix = useCallback(
+    (appId: string, checklistErrors: ChecklistErrorPayload[]) =>
+      beginSession(appId, { checklistErrors }),
+    [beginSession],
   )
 
   const refresh = useCallback(async () => {
@@ -216,5 +239,15 @@ export function useCopilotSession({
     [api, applyResponse, view],
   )
 
-  return { view, lastRaw, lastError, progressLog, startFix, refresh, runAction, sendMessage }
+  return {
+    view,
+    lastRaw,
+    lastError,
+    progressLog,
+    startFix,
+    startChecklistFix,
+    refresh,
+    runAction,
+    sendMessage,
+  }
 }
