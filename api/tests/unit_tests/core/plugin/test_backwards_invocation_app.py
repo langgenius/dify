@@ -373,7 +373,7 @@ class TestPluginAppBackwardsInvocation:
         assert spy.call_count == 1
 
     def test_get_user_returns_end_user(self):
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app = _app()
         end_user = EndUser(
             id="uid",
             tenant_id=app.tenant_id,
@@ -393,7 +393,7 @@ class TestPluginAppBackwardsInvocation:
         assert user.app_id == app.id
 
     def test_get_user_returns_end_user_by_session_id(self):
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app = _app()
         end_user = EndUser(
             id="session-user",
             tenant_id=app.tenant_id,
@@ -410,8 +410,42 @@ class TestPluginAppBackwardsInvocation:
 
         assert user.id == "session-user"
 
+    def test_get_user_rejects_end_user_from_another_app(self):
+        app = _app()
+        end_user = EndUser(
+            id="uid",
+            tenant_id=app.tenant_id,
+            app_id="other-app",
+            type=EndUserType.BROWSER,
+            session_id="browser-session",
+            name="Browser user",
+            is_anonymous=True,
+        )
+        self.session.add(end_user)
+        self.session.commit()
+
+        with pytest.raises(ValueError, match="user not found"):
+            PluginAppBackwardsInvocation._get_user("uid", app)
+
+    def test_get_user_rejects_nonmatching_session_id(self):
+        app = _app()
+        end_user = EndUser(
+            id="session-user",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=EndUserType.BROWSER,
+            session_id="other-session",
+            name="External user",
+            is_anonymous=True,
+        )
+        self.session.add(end_user)
+        self.session.commit()
+
+        with pytest.raises(ValueError, match="user not found"):
+            PluginAppBackwardsInvocation._get_user("wecom-sender-1", app)
+
     def test_get_user_falls_back_to_account_user(self):
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app = _app()
         tenant = Tenant(name="Plugin tenant")
         tenant.id = app.tenant_id
         account = Account(name="Account user", email="account-user@example.com")
@@ -424,8 +458,21 @@ class TestPluginAppBackwardsInvocation:
 
         assert user.id == "account-user"
 
+    def test_get_user_rejects_account_from_another_tenant(self):
+        app = _app()
+        tenant = Tenant(name="Plugin tenant")
+        tenant.id = "other-tenant"
+        account = Account(name="Account user", email="account-user@example.com")
+        account.id = "account-user"
+        membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id)
+        self.session.add_all([tenant, account, membership])
+        self.session.commit()
+
+        with pytest.raises(ValueError, match="user not found"):
+            PluginAppBackwardsInvocation._get_user(account.id, app)
+
     def test_get_user_raises_when_user_not_found(self):
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app = _app()
         other_tenant_user = EndUser(
             id="uid",
             tenant_id="other-tenant",
@@ -500,12 +547,28 @@ class TestPluginAppBackwardsInvocation:
         other_workflow = _workflow(workflow_id="workflow-other", tenant_id="other-tenant")
         self.session.add_all([workflow, other_workflow])
         self.session.commit()
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", workflow_id="workflow-1")
+        app = _app(workflow_id="workflow-1")
 
         result = PluginAppBackwardsInvocation._get_workflow(app)
         assert result is not None
         assert result.id == workflow.id
         assert result.tenant_id == app.tenant_id
+
+    def test_get_workflow_rejects_workflow_from_another_tenant(self):
+        workflow = _workflow(tenant_id="other-tenant")
+        self.session.add(workflow)
+        self.session.commit()
+        app = _app(app_id=workflow.app_id, tenant_id="tenant-1", workflow_id=workflow.id)
+
+        assert PluginAppBackwardsInvocation._get_workflow(app) is None
+
+    def test_get_workflow_rejects_workflow_from_another_app(self):
+        workflow = _workflow(app_id="other-app")
+        self.session.add(workflow)
+        self.session.commit()
+        app = _app(app_id="app-1", tenant_id=workflow.tenant_id, workflow_id=workflow.id)
+
+        assert PluginAppBackwardsInvocation._get_workflow(app) is None
 
     def test_get_app_model_config_dict_uses_explicit_session_for_annotation_reply(self, mocker: MockerFixture):
         annotation_reply = {"enabled": False}
@@ -517,7 +580,7 @@ class TestPluginAppBackwardsInvocation:
             "core.plugin.backwards_invocation.app.load_annotation_reply_config",
             return_value=annotation_reply,
         )
-        app = SimpleNamespace(id="app-1", app_model_config_id="config-1")
+        app = _app(app_model_config_id="config-1")
 
         result = PluginAppBackwardsInvocation._get_app_model_config_dict(app)
 
@@ -527,3 +590,12 @@ class TestPluginAppBackwardsInvocation:
         queried_session, queried_app_id = load_annotation_reply_config.call_args.args
         assert isinstance(queried_session, Session)
         assert queried_app_id == "app-1"
+
+    def test_get_app_model_config_dict_rejects_config_from_another_app(self):
+        app_model_config = AppModelConfig(app_id="other-app", user_input_form=json.dumps([{"name": "bar"}]))
+        app_model_config.id = "config-1"
+        self.session.add(app_model_config)
+        self.session.commit()
+        app = _app(app_model_config_id=app_model_config.id)
+
+        assert PluginAppBackwardsInvocation._get_app_model_config_dict(app) is None

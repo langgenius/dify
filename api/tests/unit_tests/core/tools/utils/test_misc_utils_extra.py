@@ -478,7 +478,7 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
         dataset_id=dataset_one.id,
         document_id=document_two.id,
         index_node_id="node-2",
-        content="signed two",
+        content="raw two",
         hit_count=2,
         word_count=20,
         position=2,
@@ -494,7 +494,7 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
         dataset_id=dataset_two.id,
         document_id=document_one.id,
         index_node_id="node-1",
-        content="signed one",
+        content="raw one",
         hit_count=7,
         word_count=30,
         position=1,
@@ -512,14 +512,15 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     rerank_runner.run.return_value = [second_doc, first_doc]
     fake_current_app = SimpleNamespace(_get_current_object=lambda: _FakeFlaskApp())
 
-    with patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock:
-        with patch.object(multi_retriever_module, "current_app", fake_current_app):
-            with patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread):
-                with patch.object(multi_retriever_module.ModelManager, "for_tenant", return_value=model_manager):
-                    with patch.object(
-                        multi_retriever_module, "RerankModelRunner", return_value=rerank_runner
-                    ) as rerank_runner_class:
-                        result = tool.run(session=sqlite_session, query="hello")
+    with (
+        patch.object(DocumentSegment, "get_sign_content", lambda segment: segment.content.replace("raw", "signed")),
+        patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock,
+        patch.object(multi_retriever_module, "current_app", fake_current_app),
+        patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread),
+        patch.object(multi_retriever_module.ModelManager, "for_tenant", return_value=model_manager),
+        patch.object(multi_retriever_module, "RerankModelRunner", return_value=rerank_runner) as rerank_runner_class,
+    ):
+        result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
     rerank_runner_class.assert_called_once_with(model_manager.get_model_instance.return_value, session=sqlite_session)
@@ -529,6 +530,6 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     resource_info = callback.resources
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].score == 0.9
-    assert resource_info[0].content == "signed one"
+    assert resource_info[0].content == "raw one"
     assert resource_info[1].score == 0.4
-    assert resource_info[1].content == "question:signed two \nanswer:answer two"
+    assert resource_info[1].content == "question:raw two \nanswer:answer two"
