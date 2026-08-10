@@ -3,6 +3,7 @@ import type { AgentV2NodeType } from './types'
 import type { AppIconType } from '@/types/app'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { getAgentAppIconImageUrl } from '@/features/agent-v2/utils/agent-icon'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
@@ -37,7 +38,7 @@ function AgentNodeAvatar({
       iconType={getAppIconType(agent.icon_type)}
       icon={agent.icon ?? undefined}
       background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
+      imageUrl={getAgentAppIconImageUrl(agent)}
     />
   )
 }

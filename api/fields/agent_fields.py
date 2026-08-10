@@ -81,6 +81,7 @@ class AgentRosterResponse(ResponseModel):
     icon_type: AgentIconType | None = None
     icon: str | None = None
     icon_background: str | None = None
+    icon_url: str | None = None
     agent_kind: AgentKind
     scope: AgentScope
     source: AgentSource

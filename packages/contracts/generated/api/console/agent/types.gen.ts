@@ -624,6 +624,7 @@ export type AgentInviteOptionResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: AgentIconType | null
+  icon_url?: string | null
   id: string
   in_current_workflow_count?: number
   is_in_current_workflow?: boolean

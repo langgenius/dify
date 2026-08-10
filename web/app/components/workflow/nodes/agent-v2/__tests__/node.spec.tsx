@@ -99,6 +99,28 @@ describe('agent/node', () => {
     expect(container.querySelector('.h-1.px-3')).not.toBeInTheDocument()
   })
 
+  it('renders uploaded image icons using icon_url', () => {
+    mockUseAgentRosterDetail.mockReturnValue({
+      isPending: false,
+      data: {
+        id: 'agent-1',
+        name: 'Nadia',
+        description: 'Clarification Drafter',
+        icon: '29bdb007-4d8c-4888-83a2-7587abcafb26',
+        icon_background: '#E9D7FE',
+        icon_type: 'image',
+        icon_url: '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+      },
+    })
+
+    const { container } = render(<AgentV2Node id="agent-node" data={createData()} />)
+
+    expect(container.querySelector('img[alt="app icon"]')).toHaveAttribute(
+      'src',
+      '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+    )
+  })
+
   it('renders a stable roster placeholder while agent detail is loading', () => {
     mockUseAgentRosterDetail.mockReturnValue({ data: undefined })
 

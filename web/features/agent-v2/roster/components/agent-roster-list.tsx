@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { getAgentAppIconImageUrl } from '@/features/agent-v2/utils/agent-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
@@ -126,8 +127,11 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const publishedReferences = agent.published_references ?? []
   const hasPublishedReferences = publishedReferences.length > 0
   const isDraft = agent.active_config_is_published !== true
-  const imageUrl =
-    agent.icon_type === 'image' || agent.icon_type === 'link' ? agent.icon : undefined
+  const imageUrl = getAgentAppIconImageUrl({
+    icon_type: agent.icon_type,
+    icon: agent.icon,
+    icon_url: agent.icon_url,
+  })
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
 
   const handleEditOpen = () => {

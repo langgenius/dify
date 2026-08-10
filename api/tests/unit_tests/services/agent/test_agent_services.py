@@ -23,6 +23,7 @@ from models.agent import (
     AgentDriveFile,
     AgentDriveFileKind,
     AgentHomeSnapshot,
+    AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -231,6 +232,21 @@ def test_peek_authz_app_id_uses_the_roster_agent_app(sqlite_session: Session):
     result = AgentRosterService(session).peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
 
     assert result == "roster-app-1"
+
+
+def test_serialize_agent_includes_icon_url_for_image_icons(monkeypatch: pytest.MonkeyPatch):
+    agent = _agent()
+    agent.icon_type = AgentIconType.IMAGE
+    agent.icon = "upload-file-id"
+    monkeypatch.setattr(
+        "libs.helper.build_icon_url",
+        lambda icon_type, icon: f"/files/{icon}/file-preview?sign=test",
+    )
+
+    payload = AgentRosterService.serialize_agent(agent)
+
+    assert payload["icon"] == "upload-file-id"
+    assert payload["icon_url"] == "/files/upload-file-id/file-preview?sign=test"
 
 
 def test_peek_authz_app_id_returns_none_without_creating_a_backing_app(sqlite_session: Session):

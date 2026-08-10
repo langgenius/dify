@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { getAgentAppIconImageUrl } from '@/features/agent-v2/utils/agent-icon'
 import { EditInConsoleLink } from './edit-in-console-link'
 
 const i18nPrefix = 'nodes.agent'
@@ -42,6 +43,7 @@ type AgentRosterDisplayData = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  icon_url?: string | null
   id: string
   name: string
   role?: string | null
@@ -70,7 +72,7 @@ function AgentRosterAvatar({
       iconType={getAppIconType(agent.icon_type)}
       icon={agent.icon ?? undefined}
       background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
+      imageUrl={getAgentAppIconImageUrl(agent)}
       className={className}
     />
   )

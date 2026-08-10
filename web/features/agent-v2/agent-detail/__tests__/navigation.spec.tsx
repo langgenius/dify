@@ -132,6 +132,24 @@ describe('AgentDetailSection', () => {
     )
   })
 
+  it('renders uploaded image icons using icon_url', () => {
+    mocks.queryData = createAgent({
+      icon: '29bdb007-4d8c-4888-83a2-7587abcafb26',
+      icon_background: '#F5F3FF',
+      icon_type: 'image',
+      icon_url: '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+    })
+
+    const { container } = renderAgentDetailSection()
+    const image = container.querySelector('img[alt="app icon"]')
+
+    expect(image).toHaveAttribute(
+      'src',
+      '/files/29bdb007-4d8c-4888-83a2-7587abcafb26/file-preview?sign=abc',
+    )
+    expect(container.querySelector('em-emoji')).not.toBeInTheDocument()
+  })
+
   it('renders compact more actions beside the expanded sidebar agent identity', async () => {
     const user = userEvent.setup()
     renderAgentDetailSection()
