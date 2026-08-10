@@ -242,7 +242,7 @@ export function CrawlPreviewPageSelection({
 
   return (
     <section aria-labelledby="crawl-selection-summary">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3.5">
         <h3
           id="crawl-selection-summary"
           role="status"
@@ -286,7 +286,7 @@ export function CrawlPreviewPageSelection({
           />
           {t(($) => $['newKnowledge.selectAll'])}
         </label>
-        <ul className="min-h-0 flex-1 divide-y divide-divider-subtle overflow-y-auto">
+        <ul className="min-h-0 flex-1 overflow-y-auto">
           {pages.map((page, index) => {
             const skipReason = pageSkipReasons.get(page.pageId)
             const selectable = !skipReason

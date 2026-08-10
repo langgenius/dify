@@ -5,7 +5,7 @@ import type { CreateKnowledgeExitReason } from './components/create-knowledge-ex
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
 import type { WebsiteCrawlPreviewSelection } from './create-source-setup'
 import type { QueuedUpload } from './create-upload-queue'
-import type { KnowledgeFsUploadProgress } from './knowledge-fs-upload'
+import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -111,6 +111,9 @@ export function CreateKnowledgePage() {
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
+    () => new Map(),
+  )
   const [uploadError, setUploadError] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
@@ -122,6 +125,7 @@ export function CreateKnowledgePage() {
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
+  const nameSubmissionBlocked = !name.trim()
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
@@ -336,6 +340,13 @@ export function CreateKnowledgePage() {
             created.control_space_id,
             uploads.map(({ file, id }) => ({ file, id })),
             uploadProgressRef.current,
+            (file, phase) => {
+              setUploadPhases((current) => {
+                const next = new Map(current)
+                next.set(file, phase)
+                return next
+              })
+            },
           )
         } catch {
           setUploadError(true)
@@ -422,7 +433,7 @@ export function CreateKnowledgePage() {
               </header>
 
               <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-6 sm:px-10">
-                <div className="space-y-4">
+                <div className="flex flex-col gap-4">
                   <Field
                     name="name"
                     className="gap-1.5"
@@ -457,10 +468,7 @@ export function CreateKnowledgePage() {
                     <FieldError match="customError" />
                   </Field>
                   <Field name="description" className="gap-1.5">
-                    <FieldLabel>
-                      {t(($) => $['newKnowledge.description'])}{' '}
-                      {tCommon(($) => $['label.optional'])}
-                    </FieldLabel>
+                    <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
                     <Textarea
                       autoComplete="off"
                       className="min-h-20"
@@ -478,7 +486,7 @@ export function CreateKnowledgePage() {
                       {t(($) => $['newKnowledge.descriptionHelp'])}
                     </FieldDescription>
                   </Field>
-                  <div className="space-y-1.5">
+                  <div className="flex flex-col gap-1.5">
                     <Select
                       name="permission"
                       value={visibility}
@@ -527,7 +535,7 @@ export function CreateKnowledgePage() {
                   <FieldsetLegend className="py-0 system-md-semibold">
                     {t(($) => $['newKnowledge.startWith'])}
                   </FieldsetLegend>
-                  <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                  <p className="pb-1.5 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.startWithHelp'])}
                   </p>
                   <RadioGroup<NewKnowledgeStartMode>
@@ -553,6 +561,14 @@ export function CreateKnowledgePage() {
                       selected={startMode === 'source'}
                       title={t(($) => $['newKnowledge.connectSource'])}
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                      endAdornment={
+                        startMode === 'upload' ? (
+                          <span
+                            aria-hidden
+                            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+                          />
+                        ) : undefined
+                      }
                     >
                       <CreateSourceSetup
                         disabled={submissionLocked}
@@ -586,6 +602,7 @@ export function CreateKnowledgePage() {
                       <CreateUploadQueue
                         disabled={submissionPending}
                         uploads={uploads}
+                        uploadPhases={uploadPhases}
                         uploading={uploading}
                         onChange={(value) => {
                           setUploads(value)
@@ -623,7 +640,9 @@ export function CreateKnowledgePage() {
                     type="submit"
                     variant="primary"
                     loading={submissionPending}
-                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked}
+                    disabled={
+                      nameSubmissionBlocked || uploadSubmissionBlocked || sourceSubmissionBlocked
+                    }
                   >
                     {t(($) => $['newKnowledge.createTitle'])}
                   </Button>
