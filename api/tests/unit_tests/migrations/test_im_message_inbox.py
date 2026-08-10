@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import importlib.util
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from types import ModuleType
+from typing import Literal, Protocol, TypeGuard
 
 import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.dialects import mysql
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.schema import AddConstraint, CreateTable
+from sqlalchemy.sql.schema import SchemaItem
 
 import models.types
 from models.human_input_v2 import IMMessageInbox
@@ -21,23 +26,41 @@ _MIGRATION_PATH = (
 )
 
 
-def _load_migration_module():
+class _MigrationModule(Protocol):
+    op: object
+    upgrade: Callable[[], None]
+    downgrade: Callable[[], None]
+
+
+def _is_migration_module(module: ModuleType) -> TypeGuard[_MigrationModule]:
+    namespace = vars(module)
+    return "op" in namespace and callable(namespace.get("upgrade")) and callable(namespace.get("downgrade"))
+
+
+def _load_migration_module() -> _MigrationModule:
     spec = importlib.util.spec_from_file_location("im_message_inbox_migration", _MIGRATION_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    if not _is_migration_module(module):
+        raise RuntimeError("migration module does not expose the required operations")
     return module
 
 
-def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> None:
+def _run_migration_step(
+    module: _MigrationModule,
+    engine: sa.Engine,
+    step_name: Literal["upgrade", "downgrade"],
+) -> None:
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
         operations = Operations(context)
         original_op = module.op
         module.op = operations
         try:
-            getattr(module, step_name)()
+            step = module.upgrade if step_name == "upgrade" else module.downgrade
+            step()
         finally:
             module.op = original_op
 
@@ -45,14 +68,14 @@ def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> No
 class _MigrationTableCapture:
     table: sa.Table | None = None
 
-    def create_table(self, table_name: str, *elements: sa.SchemaItem, **_kwargs: object) -> None:
+    def create_table(self, table_name: str, *elements: SchemaItem, **_kwargs: object) -> None:
         self.table = sa.Table(table_name, sa.MetaData(), *elements)
 
     def create_index(self, *_args: object, **_kwargs: object) -> None:
         pass
 
 
-def _declared_migration_table(module: object) -> sa.Table:
+def _declared_migration_table(module: _MigrationModule) -> sa.Table:
     capture = _MigrationTableCapture()
     original_op = module.op
     module.op = capture
@@ -63,6 +86,13 @@ def _declared_migration_table(module: object) -> sa.Table:
     if capture.table is None:
         raise RuntimeError("migration did not declare the inbox table")
     return capture.table
+
+
+def _model_table() -> sa.Table:
+    table = IMMessageInbox.__table__
+    if not isinstance(table, sa.Table):
+        raise TypeError("IMMessageInbox must map to a concrete table")
+    return table
 
 
 def _processing_state_constraint(table: sa.Table) -> sa.CheckConstraint:
@@ -113,6 +143,7 @@ def test_legacy_inbox_model_module_is_removed() -> None:
 def test_inbox_upgrade_matches_single_table_model() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()
+    model_table = _model_table()
 
     _run_migration_step(module, engine, "upgrade")
 
@@ -137,7 +168,7 @@ def test_inbox_upgrade_matches_single_table_model() -> None:
         "updated_at",
     }
     assert {column["name"] for column in inspector.get_columns("im_message_inbox")} == expected_columns
-    assert {column.name for column in IMMessageInbox.__table__.columns} == expected_columns
+    assert {column.name for column in model_table.columns} == expected_columns
     assert {constraint["name"] for constraint in inspector.get_check_constraints("im_message_inbox")} == {
         "im_message_inbox_attempt_count_nonnegative",
         "im_message_inbox_processing_state_valid",
@@ -154,10 +185,13 @@ def test_inbox_upgrade_matches_single_table_model() -> None:
 def test_inbox_provider_metadata_lengths_match_model_and_migration() -> None:
     module = _load_migration_module()
     migration_table = _declared_migration_table(module)
+    model_table = _model_table()
 
     for column_name in ("provider_tenant_id", "provider_event_id", "provider_event_type"):
-        model_column = IMMessageInbox.__table__.columns[column_name]
+        model_column = model_table.columns[column_name]
         migration_column = migration_table.columns[column_name]
+        assert isinstance(model_column.type, sa.String)
+        assert isinstance(migration_column.type, sa.String)
         assert model_column.type.length == 128
         assert migration_column.type.length == 128
 
@@ -165,8 +199,9 @@ def test_inbox_provider_metadata_lengths_match_model_and_migration() -> None:
 def test_inbox_provider_metadata_uses_plain_strings() -> None:
     module = _load_migration_module()
     migration_table = _declared_migration_table(module)
+    model_table = _model_table()
 
-    for table in (IMMessageInbox.__table__, migration_table):
+    for table in (model_table, migration_table):
         assert type(table.columns.provider_tenant_id.type) is sa.String
         assert type(table.columns.provider_event_id.type) is sa.String
         mysql_ddl = str(CreateTable(table).compile(dialect=mysql.dialect()))
@@ -178,8 +213,9 @@ def test_inbox_provider_metadata_uses_plain_strings() -> None:
 
 
 def test_inbox_model_keeps_real_provider_id_as_only_deduplication_identity() -> None:
+    model_table = _model_table()
     unique_constraint = next(
-        constraint for constraint in IMMessageInbox.__table__.constraints if isinstance(constraint, sa.UniqueConstraint)
+        constraint for constraint in model_table.constraints if isinstance(constraint, sa.UniqueConstraint)
     )
 
     assert [column.name for column in unique_constraint.columns] == [
@@ -187,12 +223,12 @@ def test_inbox_model_keeps_real_provider_id_as_only_deduplication_identity() -> 
         "provider_tenant_id",
         "provider_event_id",
     ]
-    assert IMMessageInbox.__table__.columns.provider_event_id.nullable is True
+    assert model_table.columns.provider_event_id.nullable is True
     assert len(IMMessageInbox.metadata.tables) > 0
 
 
 def test_inbox_updated_at_is_a_repository_owned_transition_anchor() -> None:
-    updated_at = IMMessageInbox.__table__.columns.updated_at
+    updated_at = _model_table().columns.updated_at
 
     assert updated_at.onupdate is None
     assert updated_at.server_default is not None
@@ -201,7 +237,7 @@ def test_inbox_updated_at_is_a_repository_owned_transition_anchor() -> None:
 def test_processing_state_constraint_matches_model_without_timing_columns() -> None:
     module = _load_migration_module()
     migration_constraint = _processing_state_constraint(_declared_migration_table(module))
-    model_constraint = _processing_state_constraint(IMMessageInbox.__table__)
+    model_constraint = _processing_state_constraint(_model_table())
 
     model_ddl = str(AddConstraint(model_constraint).compile(dialect=mysql.dialect()))
     migration_ddl = str(AddConstraint(migration_constraint).compile(dialect=mysql.dialect()))
@@ -238,9 +274,9 @@ def test_processing_state_constraint_rejects_invalid_ownership(changes: dict[str
     module = _load_migration_module()
     _run_migration_step(module, engine, "upgrade")
 
-    with pytest.raises(sa.exc.IntegrityError):
+    with pytest.raises(IntegrityError):
         with engine.begin() as connection:
-            connection.execute(sa.insert(IMMessageInbox.__table__).values(**_inbox_values(**changes)))
+            connection.execute(sa.insert(_model_table()).values(**_inbox_values(**changes)))
 
 
 @pytest.mark.parametrize(
@@ -277,7 +313,7 @@ def test_processing_state_constraint_only_governs_claim_ownership(values: dict[s
     _run_migration_step(module, engine, "upgrade")
 
     with engine.begin() as connection:
-        connection.execute(sa.insert(IMMessageInbox.__table__).values(**values))
+        connection.execute(sa.insert(_model_table()).values(**values))
 
 
 def test_empty_inbox_schema_can_be_downgraded() -> None:
