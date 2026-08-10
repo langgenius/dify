@@ -1,3 +1,4 @@
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -52,3 +53,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
 
     assert "tasks.knowledge_fs_initial_source_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" in celery_app.conf["imports"]
+    assert celery_app.conf["beat_schedule"]["knowledge_fs_staged_upload_cleanup"] == {
+        "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
+        "schedule": timedelta(seconds=2),
+    }

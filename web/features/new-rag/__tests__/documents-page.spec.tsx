@@ -77,6 +77,8 @@ const metadataFieldsQuery = vi.hoisted(() => ({
 }))
 const updateSourceMutation = vi.hoisted(() => vi.fn())
 const uploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
+const stageUploadMutation = vi.hoisted(() => vi.fn())
+const discardStagedUploadMutation = vi.hoisted(() => vi.fn())
 const bulkUploadMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const queryCacheListeners = vi.hoisted(
   () =>
@@ -502,16 +504,21 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('../services/processing-task-events', () => ({ streamProcessingTaskEvents }))
 vi.mock('../knowledge-fs-upload', () => ({
+  discardKnowledgeFsStagedUpload: discardStagedUploadMutation,
+  stageKnowledgeFsDocument: async (file: File) => {
+    const result = await stageUploadMutation({ body: { file } })
+    return result.id
+  },
   uploadKnowledgeFsDocuments: async (
     knowledgeSpaceId: string,
-    uploads: Array<{ file: File; id: string }>,
+    uploads: Array<{ file: File; id: string; uploadId: string }>,
     _progress: Map<string, { phase: 'completed' | 'pending' }>,
     onProgress?: (file: File, phase: 'completed' | 'pending') => void,
   ) => {
-    for (const { file } of uploads) {
+    for (const { file, uploadId } of uploads) {
       onProgress?.(file, 'pending')
       await uploadMutation.mutateAsync({
-        body: { file },
+        body: { upload_id: uploadId },
         params: { control_space_id: knowledgeSpaceId },
       })
       onProgress?.(file, 'completed')
@@ -638,6 +645,12 @@ function openTasksDrawer() {
     screen.getByRole('button', {
       name: /dataset\.newKnowledge\.tasksWithAttention/,
     }),
+  )
+}
+
+async function waitForDocumentFilesStaged() {
+  await waitFor(() =>
+    expect(screen.queryByText('dataset.newKnowledge.uploadingFiles')).not.toBeInTheDocument(),
   )
 }
 
@@ -795,6 +808,10 @@ describe('DocumentsPage', () => {
       logicalDocumentId: 'document-1',
       statusUrl: '/tasks/job-1',
     })
+    stageUploadMutation.mockImplementation(({ body }: { body: { file: File } }) =>
+      Promise.resolve({ id: `staged-${body.file.name}` }),
+    )
+    discardStagedUploadMutation.mockResolvedValue(undefined)
     bulkUploadMutation.mutateAsync.mockResolvedValue({
       accepted: 2,
       bulkJobId: 'upload-1',
@@ -1649,10 +1666,16 @@ describe('DocumentsPage', () => {
     )
 
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))
+    await waitFor(() =>
+      expect(stageUploadMutation).toHaveBeenCalledWith({
+        body: { file: expect.objectContaining({ name: 'one.md' }) },
+      }),
+    )
+    await waitForDocumentFilesStaged()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
-      body: { file: expect.any(File) },
+      body: { upload_id: 'staged-one.md' },
       params: { control_space_id: 'space-1' },
     })
 
@@ -1662,6 +1685,7 @@ describe('DocumentsPage', () => {
       new File(['two'], 'two.md', { type: 'text/markdown' }),
       new File(['three'], 'three.txt', { type: 'text/plain' }),
     ])
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
     expect(queryClient.invalidateQueries).toHaveBeenCalled()
@@ -1709,6 +1733,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.pdf', { type: 'application/pdf' }),
       new File(['two'], 'two.pdf', { type: 'application/pdf' }),
     ])
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     const uploadRegion = screen.getByRole('region', {
@@ -1728,7 +1753,7 @@ describe('DocumentsPage', () => {
     await act(async () => resolveSecondUpload({}))
   })
 
-  it('previews a browser-supported staged document from its local file', () => {
+  it('previews a browser-supported staged document from its local file', async () => {
     const file = new File(['local content'], 'handbook.pdf', { type: 'application/pdf' })
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
@@ -1741,6 +1766,10 @@ describe('DocumentsPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
       fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
         target: { files: [file] },
+      })
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
       })
       fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
 
@@ -1784,6 +1813,7 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -1821,6 +1851,7 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     expect(settingsState.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
@@ -1850,13 +1881,14 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
-  it('cancels a staged upload without sending a request', async () => {
+  it('discards a staged upload without claiming it', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -1865,9 +1897,11 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['draft'], 'draft.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(discardStagedUploadMutation).toHaveBeenCalledWith('staged-draft.md')
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }),
     ).toBeInTheDocument()
@@ -1886,11 +1920,12 @@ describe('DocumentsPage', () => {
     fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
       target: { files: [validFile, unsupportedFile] },
     })
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     await waitFor(() =>
       expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
-        body: { file: validFile },
+        body: { upload_id: 'staged-one.md' },
         params: { control_space_id: 'space-1' },
       }),
     )
@@ -1924,6 +1959,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       oversizedFile,
     ])
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     queryClient.invalidateQueries.mockClear()
@@ -1933,6 +1969,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
@@ -6641,6 +6678,7 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
@@ -6672,6 +6710,7 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
@@ -6721,6 +6760,7 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
+    await waitForDocumentFilesStaged()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     const documentsHeading = screen.getByRole('heading', {
       name: 'dataset.newKnowledge.addDocument',
@@ -6843,6 +6883,7 @@ describe('DocumentsPage', () => {
     fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
       target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
     })
+    await waitForDocumentFilesStaged()
     fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())

@@ -41,6 +41,7 @@ from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from repositories.sqlalchemy_knowledge_fs_capability_issuance_auditor import (
     SQLAlchemyKnowledgeFSCapabilityIssuanceAuditor,
 )
+from services.feature_service import FeatureService
 from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
 from services.knowledge_fs.control_plane_service import (
     KnowledgeFSControlPlaneInvariantError,
@@ -89,6 +90,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentRevisionListResponse,
+    KnowledgeFSDocumentStagedUploadAcceptedResponse,
+    KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSExternalAccessPayload,
@@ -182,6 +185,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceListQuery,
     KnowledgeFSSpaceListResponse,
     KnowledgeFSSpaceUpdatePayload,
+    KnowledgeFSStagedUploadResponse,
     KnowledgeFSStreamCapabilityPayload,
     KnowledgeFSStreamCapabilityResponse,
     KnowledgeFSTraceEntriesQuery,
@@ -204,6 +208,13 @@ from services.knowledge_fs.product_remote import (
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, validate_query_image_references
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
+from services.knowledge_fs.staged_upload_service import (
+    KnowledgeFSStagedUploadConflictError,
+    KnowledgeFSStagedUploadInvalidError,
+    KnowledgeFSStagedUploadNotFoundError,
+    KnowledgeFSStagedUploadService,
+    KnowledgeFSStagedUploadTooLargeError,
+)
 from services.knowledge_fs_capability import (
     KnowledgeFSCapabilityConfigurationError,
     create_configured_knowledge_fs_capability_issuer,
@@ -221,6 +232,7 @@ register_schema_models(
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSMetadataFieldCreatePayload,
@@ -293,6 +305,7 @@ register_response_schema_models(
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
+    KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSGoldenQuestionBulkImportResponse,
     KnowledgeFSGoldenQuestionEvidenceMatchResponse,
@@ -334,6 +347,7 @@ register_response_schema_models(
     KnowledgeFSSpaceDetailResponse,
     KnowledgeFSSpaceListResponse,
     KnowledgeFSStreamCapabilityResponse,
+    KnowledgeFSStagedUploadResponse,
     KnowledgeFSTraceListResponse,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSLogicalDocumentResponse,
@@ -368,6 +382,14 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSOperationUnavailableHTTPError() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:
             raise NotFound() from exc
+        except KnowledgeFSStagedUploadNotFoundError as exc:
+            raise NotFound() from exc
+        except KnowledgeFSStagedUploadConflictError as exc:
+            raise Conflict() from exc
+        except KnowledgeFSStagedUploadTooLargeError as exc:
+            raise RequestEntityTooLarge() from exc
+        except KnowledgeFSStagedUploadInvalidError as exc:
+            raise UnprocessableEntity() from exc
         except KnowledgeFSProductRemoteError as exc:
             raise KnowledgeFSUpstreamUnavailableHTTPError() from exc
         except KnowledgeFSProductRequestRejectedError as exc:
@@ -410,6 +432,14 @@ _SMALL_FILE_UPLOAD_PARAMS = {
 _DOCUMENT_UPLOAD_PARAMS = {
     "file": {
         "description": "Document file to parse, chunk, and index (maximum 15 MB)",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
+_STAGED_UPLOAD_PARAMS = {
+    "file": {
+        "description": "Workspace-scoped document bytes staged before KnowledgeFS admission",
         "in": "formData",
         "type": "file",
         "required": True,
@@ -525,9 +555,18 @@ def _read_document_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
     )
 
 
+def _read_staged_upload(max_bytes: int) -> KnowledgeFSRemoteMultipartFile:
+    return _read_document_upload(max_bytes)
+
+
 def _actor() -> tuple[str, str]:
     account, tenant_id = current_account_with_tenant()
     return account.id, tenant_id
+
+
+def _staged_uploads() -> KnowledgeFSStagedUploadService:
+    session_maker = session_factory.get_session_maker()
+    return KnowledgeFSStagedUploadService(session_maker, facade=_console_services().facade)
 
 
 def _payload[PayloadT: BaseModel](model: type[PayloadT]) -> PayloadT:
@@ -604,6 +643,47 @@ class KnowledgeFSInitialSourcePreviewApi(Resource):
             payload=_payload(KnowledgeFSInitialSourcePreviewPayload),
         )
         return dump_response(KnowledgeFSInitialSourcePreviewResponse, result)
+
+
+@console_ns.route("/knowledge-fs/uploads")
+class KnowledgeFSStagedUploadsApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=_STAGED_UPLOAD_PARAMS)
+    @console_ns.response(
+        HTTPStatus.CREATED,
+        "KnowledgeFS document bytes staged in the current workspace",
+        console_ns.models[KnowledgeFSStagedUploadResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_rate_limit_check("knowledge")
+    @_knowledge_fs_errors
+    def post(self):
+        account, tenant_id = current_account_with_tenant()
+        file_size_limit_mb = FeatureService.get_knowledge_file_size_limit(tenant_id)
+        upload = _read_staged_upload(file_size_limit_mb * 1024 * 1024)
+        result = _staged_uploads().stage(
+            tenant_id=tenant_id,
+            account=account,
+            file_name=upload.filename,
+            content_type=upload.content_type,
+            body=upload.body,
+            file_size_limit_mb=file_size_limit_mb,
+        )
+        return dump_response(KnowledgeFSStagedUploadResponse, result), HTTPStatus.CREATED
+
+
+@console_ns.route("/knowledge-fs/uploads/<string:upload_id>")
+class KnowledgeFSStagedUploadApi(Resource):
+    @console_ns.response(HTTPStatus.NO_CONTENT, "KnowledgeFS staged upload discarded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, upload_id: str):
+        actor_id, tenant_id = _actor()
+        _staged_uploads().abort(tenant_id=tenant_id, account_id=actor_id, upload_id=upload_id)
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/knowledge-fs/spaces")
@@ -1227,11 +1307,16 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
         )
         return dump_response(KnowledgeFSDocumentListResponse, result)
 
-    @console_ns.doc(consumes=["multipart/form-data"], params=_DOCUMENT_UPLOAD_PARAMS)
+    @console_ns.expect(console_ns.models[KnowledgeFSDocumentStagedUploadPayload.__name__])
+    @console_ns.doc(
+        description=(
+            "Claim a workspace-staged upload. Multipart file bodies remain accepted as a legacy compatibility path."
+        )
+    )
     @console_ns.response(
         HTTPStatus.ACCEPTED,
         "KnowledgeFS document accepted for processing",
-        console_ns.models[KnowledgeFSDocumentUploadAcceptedResponse.__name__],
+        console_ns.models[KnowledgeFSDocumentStagedUploadAcceptedResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1240,13 +1325,24 @@ class KnowledgeFSSpaceDocumentsApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
-        result = _console_services().facade.create_document(
+        if request.is_json:
+            result = _staged_uploads().claim(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                payload=_payload(KnowledgeFSDocumentStagedUploadPayload),
+            )
+            return (
+                dump_response(KnowledgeFSDocumentStagedUploadAcceptedResponse, result),
+                HTTPStatus.ACCEPTED,
+            )
+        legacy_result = _console_services().facade.create_document(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             body_reader=_read_document_upload,
         )
-        return dump_response(KnowledgeFSDocumentUploadAcceptedResponse, result), HTTPStatus.ACCEPTED
+        return dump_response(KnowledgeFSDocumentUploadAcceptedResponse, legacy_result), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/metadata")

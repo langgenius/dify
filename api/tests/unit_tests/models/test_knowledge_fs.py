@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 
@@ -16,6 +17,8 @@ from models.knowledge_fs import (
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
+    KnowledgeFSStagedUpload,
+    KnowledgeFSStagedUploadStatus,
 )
 
 _KNOWLEDGE_FS_MODELS = (
@@ -28,6 +31,7 @@ _KNOWLEDGE_FS_MODELS = (
     KnowledgeFSCapabilityIssuanceAudit,
     KnowledgeFSCapabilityIssuanceReservation,
     KnowledgeFSLifecycleOutbox,
+    KnowledgeFSStagedUpload,
 )
 
 _FORBIDDEN_DEPENDENCIES = ("datasets", "documents", "dataset_permissions", "api_tokens")
@@ -52,6 +56,7 @@ def test_knowledge_fs_tables_are_independent_from_dataset_and_document_models() 
         "knowledge_fs_capability_issuance_audits",
         "knowledge_fs_capability_issuance_reservations",
         "knowledge_fs_lifecycle_outbox",
+        "knowledge_fs_staged_uploads",
     }
 
     for model in _KNOWLEDGE_FS_MODELS:
@@ -138,6 +143,35 @@ def test_lifecycle_outbox_supports_every_p1a_command_and_revision_fences() -> No
         "content_policy_revision",
         "revoke_sequence",
     } <= revision_columns
+
+
+def test_staged_upload_has_single_claim_and_resumable_session_fields() -> None:
+    columns = set(KnowledgeFSStagedUpload.__table__.columns.keys())
+    assert {
+        "tenant_id",
+        "account_id",
+        "upload_file_id",
+        "checksum_sha256_base64",
+        "expires_at",
+        "control_space_id",
+        "knowledge_space_id",
+        "upload_session_id",
+        "document_asset_id",
+        "compilation_job_id",
+        "claimed_at",
+        "row_version",
+    } <= columns
+    staged = KnowledgeFSStagedUpload(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        upload_file_id="upload-1",
+        file_name="handbook.pdf",
+        content_type="application/pdf",
+        size_bytes=10,
+        checksum_sha256_base64="checksum",
+        expires_at=datetime(2026, 8, 11, tzinfo=UTC),
+    )
+    assert staged.status is KnowledgeFSStagedUploadStatus.UPLOADED
 
 
 def test_capability_audit_persists_only_sanitized_issuance_evidence() -> None:

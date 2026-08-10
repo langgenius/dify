@@ -59,7 +59,11 @@ import {
 } from './create-knowledge-workflow'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
-import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
+} from './knowledge-fs-upload'
 import { createRequestId } from './request-id'
 import {
   createNewKnowledgeSourceDraft,
@@ -107,6 +111,7 @@ export function CreateKnowledgePage() {
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
   const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [stagingCount, setStagingCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
     () => new Map(),
@@ -114,18 +119,21 @@ export function CreateKnowledgePage() {
   const [uploadError, setUploadError] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const uploadsRef = useRef<QueuedUpload[]>([])
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
-  const submissionPending = createMutation.isPending || uploading
+  const submissionPending = createMutation.isPending || uploading || stagingCount > 0
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
   const nameSubmissionBlocked = !name.trim()
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
-    (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
+    (!uploadAvailable ||
+      !uploads.length ||
+      uploads.some((upload) => upload.issue || upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
   const sourceDraftChanged =
     JSON.stringify(sourceDraft) !==
@@ -232,6 +240,62 @@ export function CreateKnowledgePage() {
     setUploadError(false)
   }
 
+  const updateUploads = (update: (current: QueuedUpload[]) => QueuedUpload[]) => {
+    const next = update(uploadsRef.current)
+    uploadsRef.current = next
+    setUploads(next)
+  }
+
+  const handleUploadsChange = (nextUploads: QueuedUpload[]) => {
+    const previousUploads = uploadsRef.current
+    const nextIds = new Set(nextUploads.map(({ id }) => id))
+    const previousIds = new Set(previousUploads.map(({ id }) => id))
+    const removedUploads = previousUploads.filter(({ id }) => !nextIds.has(id))
+    const addedUploads = nextUploads.filter(({ id }) => !previousIds.has(id))
+    uploadsRef.current = nextUploads
+    setUploads(nextUploads)
+    resetUnsubmittedError()
+
+    for (const removed of removedUploads) {
+      if (removed.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(removed.stagedUploadId).catch(() => undefined)
+    }
+
+    for (const added of addedUploads) {
+      if (added.issue) continue
+      setStagingCount((count) => count + 1)
+      setUploadPhases((current) => new Map(current).set(added.file, 'pending'))
+      void stageKnowledgeFsDocument(added.file)
+        .then((stagedUploadId) => {
+          const stillQueued = uploadsRef.current.some(({ id }) => id === added.id)
+          if (!stillQueued) {
+            void discardKnowledgeFsStagedUpload(stagedUploadId).catch(() => undefined)
+            return
+          }
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagedUploadId, stagingFailed: false } : upload,
+            ),
+          )
+          setUploadPhases((current) => new Map(current).set(added.file, 'completed'))
+        })
+        .catch(() => {
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagingFailed: true } : upload,
+            ),
+          )
+          setUploadPhases((current) => {
+            const next = new Map(current)
+            next.delete(added.file)
+            return next
+          })
+          setUploadError(true)
+        })
+        .finally(() => setStagingCount((count) => Math.max(0, count - 1)))
+    }
+  }
+
   const requestClose = () => {
     if (submissionPending) return
     if (createdKnowledge) {
@@ -248,6 +312,10 @@ export function CreateKnowledgePage() {
   const confirmExit = () => {
     const confirmedReason = exitReason
     setExitReason(null)
+    for (const upload of uploadsRef.current) {
+      if (upload.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(upload.stagedUploadId).catch(() => undefined)
+    }
     if (confirmedReason === 'partial' && createdKnowledge) {
       browserBackExitRef.current = false
       replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.control_space_id))
@@ -304,7 +372,11 @@ export function CreateKnowledgePage() {
           await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
             created.control_space_id,
-            uploads.map(({ file, id }) => ({ file, id })),
+            uploads.map(({ file, id, stagedUploadId }) => ({
+              file,
+              id,
+              uploadId: stagedUploadId!,
+            })),
             uploadProgressRef.current,
             (file, phase) => {
               setUploadPhases((current) => {
@@ -540,11 +612,8 @@ export function CreateKnowledgePage() {
                         disabled={submissionPending}
                         uploads={uploads}
                         uploadPhases={uploadPhases}
-                        uploading={uploading}
-                        onChange={(value) => {
-                          setUploads(value)
-                          resetUnsubmittedError()
-                        }}
+                        uploading={uploading || stagingCount > 0}
+                        onChange={handleUploadsChange}
                       />
                     </StartMode>
                   </RadioGroup>

@@ -35,6 +35,8 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdQuery,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse,
+  zDeleteKnowledgeFsUploadsByUploadIdPath,
+  zDeleteKnowledgeFsUploadsByUploadIdResponse,
   zGetKnowledgeFsResearchTasksByTaskIdEventsPath,
   zGetKnowledgeFsResearchTasksByTaskIdEventsQuery,
   zGetKnowledgeFsResearchTasksByTaskIdEventsResponse,
@@ -290,6 +292,8 @@ import {
   zPostKnowledgeFsTasksByTaskIdStreamCapabilityBody,
   zPostKnowledgeFsTasksByTaskIdStreamCapabilityPath,
   zPostKnowledgeFsTasksByTaskIdStreamCapabilityResponse,
+  zPostKnowledgeFsUploadsBody,
+  zPostKnowledgeFsUploadsResponse,
   zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsBody,
   zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsPath,
   zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsResponse,
@@ -778,8 +782,13 @@ export const get12 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
 
+/**
+ * Claim a workspace-staged upload. Multipart file bodies remain accepted as a legacy compatibility path.
+ */
 export const post7 = oc
   .route({
+    description:
+      'Claim a workspace-staged upload. Multipart file bodies remain accepted as a legacy compatibility path.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postKnowledgeFsSpacesByControlSpaceIdDocuments',
@@ -2472,6 +2481,39 @@ export const tasks = {
   byTaskId: byTaskId4,
 }
 
+export const delete12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeFsUploadsByUploadId',
+    path: '/knowledge-fs/uploads/{upload_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteKnowledgeFsUploadsByUploadIdPath }))
+  .output(zDeleteKnowledgeFsUploadsByUploadIdResponse)
+
+export const byUploadId = {
+  delete: delete12,
+}
+
+export const post40 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeFsUploads',
+    path: '/knowledge-fs/uploads',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostKnowledgeFsUploadsBody }))
+  .output(zPostKnowledgeFsUploadsResponse)
+
+export const uploads = {
+  post: post40,
+  byUploadId,
+}
+
 export const knowledgeFs = {
   wellKnown,
   queryStream,
@@ -2479,6 +2521,7 @@ export const knowledgeFs = {
   sourceProviderPreview,
   spaces,
   tasks,
+  uploads,
 }
 
 export const contract = {

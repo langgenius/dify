@@ -20,6 +20,8 @@ const serviceMock = vi.hoisted(() => ({
   listWorkflowPages: vi.fn(),
   selectWorkflowPages: vi.fn(),
   startKfsCrawlPreview: vi.fn(),
+  stageUpload: vi.fn(),
+  discardUpload: vi.fn(),
   updateKfsSource: vi.fn(),
   updateSyncPolicy: vi.fn(),
   upload: vi.fn(),
@@ -405,16 +407,21 @@ const workflowResponse = (overrides: Record<string, unknown> = {}) => ({
 })
 
 vi.mock('../knowledge-fs-upload', () => ({
+  discardKnowledgeFsStagedUpload: serviceMock.discardUpload,
+  stageKnowledgeFsDocument: async (file: File) => {
+    const result = await serviceMock.stageUpload({ body: { file } })
+    return result.id
+  },
   uploadKnowledgeFsDocuments: async (
     knowledgeSpaceId: string,
-    uploads: Array<{ file: File; id: string }>,
+    uploads: Array<{ file: File; id: string; uploadId: string }>,
     _progress: Map<string, { phase: 'completed' | 'pending' }>,
     onProgress?: (file: File, phase: 'completed' | 'pending') => void,
   ) => {
-    for (const { file } of uploads) {
+    for (const { file, uploadId } of uploads) {
       onProgress?.(file, 'pending')
       await serviceMock.upload({
-        body: { file },
+        body: { upload_id: uploadId },
         params: { control_space_id: knowledgeSpaceId },
       })
       onProgress?.(file, 'completed')
@@ -569,6 +576,10 @@ describe('CreateKnowledgePage', () => {
     serviceMock.upload.mockResolvedValue({
       id: 'document-1',
     })
+    serviceMock.stageUpload.mockImplementation(({ body }: { body: { file: File } }) =>
+      Promise.resolve({ id: `staged-${body.file.name}` }),
+    )
+    serviceMock.discardUpload.mockResolvedValue(undefined)
     permissionStateMock.keys = ['dataset.acl.access_config']
     systemFeaturesStateMock.uploadEnabled = true
     systemFeaturesStateMock.rbacEnabled = true
@@ -904,6 +915,12 @@ describe('CreateKnowledgePage', () => {
       }),
       new File(['content'], 'handbook.md', { type: 'text/markdown' }),
     )
+    await waitFor(() =>
+      expect(serviceMock.stageUpload).toHaveBeenCalledWith({
+        body: { file: expect.objectContaining({ name: 'handbook.md' }) },
+      }),
+    )
+    expect(serviceMock.create).not.toHaveBeenCalled()
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
@@ -1051,7 +1068,7 @@ describe('CreateKnowledgePage', () => {
       ),
     )
     expect(serviceMock.upload).toHaveBeenCalledWith({
-      body: { file: expect.objectContaining({ name: 'handbook.md' }) },
+      body: { upload_id: 'staged-handbook.md' },
       params: { control_space_id: createdKnowledge.control_space_id },
     })
   })
@@ -1695,9 +1712,11 @@ describe('CreateKnowledgePage', () => {
     const policyRow = within(queue).getByText('policy.pdf').closest('li')
     expect(handbookRow).not.toBeNull()
     expect(policyRow).not.toBeNull()
-    expect(
-      within(queue).getAllByRole('button', { name: 'dataset.newKnowledge.preview' }),
-    ).toHaveLength(2)
+    await waitFor(() =>
+      expect(
+        within(queue).getAllByRole('button', { name: 'dataset.newKnowledge.preview' }),
+      ).toHaveLength(2),
+    )
     expect(screen.queryByText('dataset.newKnowledge.previewUnavailable')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
@@ -1765,7 +1784,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.create).toHaveBeenCalledOnce()
   })
 
-  it('previews a selected file locally without uploading it', () => {
+  it('previews a selected file locally without claiming it', async () => {
     navigationMock.startMode = 'upload'
     const file = new File(['local content'], 'handbook.md', { type: 'text/markdown' })
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
@@ -1780,6 +1799,10 @@ describe('CreateKnowledgePage', () => {
       }),
       { target: { files: [file] } },
     )
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
 
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))

@@ -85,6 +85,23 @@ export const zKnowledgeFsCredentialCreateResponse = z.object({
 })
 
 /**
+ * KnowledgeFSDocumentStagedUploadPayload
+ */
+export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
+  upload_id: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSDocumentStagedUploadAcceptedResponse
+ */
+export const zKnowledgeFsDocumentStagedUploadAcceptedResponse = z.object({
+  compilation_job_id: z.string(),
+  document_asset_id: z.string(),
+  status: z.literal('accepted').optional().default('accepted'),
+  upload_id: z.string(),
+})
+
+/**
  * KnowledgeFSDocumentReindexPayload
  */
 export const zKnowledgeFsDocumentReindexPayload = z.object({
@@ -661,6 +678,18 @@ export const zKnowledgeFsStreamCapabilityResponse = z.object({
 })
 
 /**
+ * KnowledgeFSStagedUploadResponse
+ */
+export const zKnowledgeFsStagedUploadResponse = z.object({
+  content_type: z.string(),
+  expires_at: z.iso.datetime(),
+  file_name: z.string(),
+  id: z.string(),
+  size_bytes: z.int().gt(0),
+  status: z.enum(['aborted', 'claimed', 'claiming', 'expired', 'failed', 'uploaded']),
+})
+
+/**
  * KnowledgeFSJWKResponse
  */
 export const zKnowledgeFsjwkResponse = z.object({
@@ -967,36 +996,6 @@ export const zKnowledgeFsCredentialItemResponse = z.object({
  */
 export const zKnowledgeFsCredentialListResponse = z.object({
   data: z.array(zKnowledgeFsCredentialItemResponse),
-})
-
-/**
- * KnowledgeFSDocumentUploadCompilationJobResponse
- */
-export const zKnowledgeFsDocumentUploadCompilationJobResponse = z.object({
-  id: z.string(),
-  stage: z.literal('queued'),
-})
-
-/**
- * KnowledgeFSDocumentUploadLogicalDocumentResponse
- */
-export const zKnowledgeFsDocumentUploadLogicalDocumentResponse = z.object({
-  id: z.string(),
-  revision: z.int().gte(1),
-})
-
-/**
- * KnowledgeFSDocumentUploadAcceptedResponse
- */
-export const zKnowledgeFsDocumentUploadAcceptedResponse = z.object({
-  asset: zKnowledgeFsDocumentResponse,
-  asset_status_url: z.string().nullish(),
-  compilation_job: zKnowledgeFsDocumentUploadCompilationJobResponse,
-  document_revision: z.int().gte(1),
-  logical_document: zKnowledgeFsDocumentUploadLogicalDocumentResponse,
-  logical_document_id: z.string(),
-  status: z.literal('accepted').nullish(),
-  status_url: z.string(),
 })
 
 /**
@@ -2488,9 +2487,8 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsQuery = z.object({
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   zKnowledgeFsDocumentListResponse
 
-export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsBody = z.object({
-  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
-})
+export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsBody =
+  zKnowledgeFsDocumentStagedUploadPayload
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
   control_space_id: z.string(),
@@ -2500,7 +2498,7 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
  * KnowledgeFS document accepted for processing
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
-  zKnowledgeFsDocumentUploadAcceptedResponse
+  zKnowledgeFsDocumentStagedUploadAcceptedResponse
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload
@@ -3752,3 +3750,21 @@ export const zPostKnowledgeFsTasksByTaskIdStreamCapabilityPath = z.object({
  */
 export const zPostKnowledgeFsTasksByTaskIdStreamCapabilityResponse =
   zKnowledgeFsStreamCapabilityResponse
+
+export const zPostKnowledgeFsUploadsBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
+/**
+ * KnowledgeFS document bytes staged in the current workspace
+ */
+export const zPostKnowledgeFsUploadsResponse = zKnowledgeFsStagedUploadResponse
+
+export const zDeleteKnowledgeFsUploadsByUploadIdPath = z.object({
+  upload_id: z.string(),
+})
+
+/**
+ * KnowledgeFS staged upload discarded
+ */
+export const zDeleteKnowledgeFsUploadsByUploadIdResponse = z.void()

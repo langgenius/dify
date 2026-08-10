@@ -1171,6 +1171,28 @@ class KnowledgeFSDocumentUploadAcceptedResponse(ResponseModel):
     status_url: str = Field(validation_alias=AliasChoices("status_url", "statusUrl"))
 
 
+class KnowledgeFSStagedUploadResponse(ResponseModel):
+    id: str
+    file_name: str = Field(validation_alias=AliasChoices("file_name", "fileName"))
+    content_type: str = Field(validation_alias=AliasChoices("content_type", "contentType"))
+    size_bytes: int = Field(gt=0, validation_alias=AliasChoices("size_bytes", "sizeBytes"))
+    status: Literal["uploaded", "claiming", "claimed", "failed", "aborted", "expired"]
+    expires_at: datetime = Field(validation_alias=AliasChoices("expires_at", "expiresAt"))
+
+
+class KnowledgeFSDocumentStagedUploadPayload(BaseModel):
+    upload_id: str = Field(min_length=1, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSDocumentStagedUploadAcceptedResponse(ResponseModel):
+    status: Literal["accepted"] = "accepted"
+    upload_id: str
+    document_asset_id: str
+    compilation_job_id: str
+
+
 class KnowledgeFSDocumentListResponse(ResponseModel):
     data: list[KnowledgeFSDocumentResponse] = Field(validation_alias=AliasChoices("data", "items"))
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
@@ -2862,6 +2884,8 @@ __all__ = [
     "KnowledgeFSDocumentReindexResponse",
     "KnowledgeFSDocumentResponse",
     "KnowledgeFSDocumentRevisionListResponse",
+    "KnowledgeFSDocumentStagedUploadAcceptedResponse",
+    "KnowledgeFSDocumentStagedUploadPayload",
     "KnowledgeFSDocumentUploadAcceptedResponse",
     "KnowledgeFSDocumentUploadCompilationJobResponse",
     "KnowledgeFSDocumentUploadLogicalDocumentResponse",
@@ -2963,6 +2987,7 @@ __all__ = [
     "KnowledgeFSSpaceListQuery",
     "KnowledgeFSSpaceListResponse",
     "KnowledgeFSSpaceUpdatePayload",
+    "KnowledgeFSStagedUploadResponse",
     "KnowledgeFSStreamCapabilityPayload",
     "KnowledgeFSStreamCapabilityResponse",
     "KnowledgeFSTechnicalSummary",

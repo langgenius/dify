@@ -5,7 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
-from tasks.knowledge_fs_lifecycle_tasks import run_knowledge_fs_lifecycle_worker
+from tasks.knowledge_fs_lifecycle_tasks import (
+    cleanup_knowledge_fs_staged_uploads,
+    run_knowledge_fs_lifecycle_worker,
+)
 
 
 def test_worker_self_check_returns_before_assembling_remote_when_rollout_is_not_ready() -> None:
@@ -66,3 +69,47 @@ def test_ready_worker_dispatches_a_bounded_batch_then_repairs_orphans() -> None:
         "product_enabled": True,
     }
     reconciler.reconcile.assert_called_once_with(limit=5, apply_repairs=True)
+
+
+def test_staged_upload_cleanup_returns_before_runtime_assembly_when_not_ready() -> None:
+    with (
+        patch(
+            "tasks.knowledge_fs_lifecycle_tasks.get_configured_knowledge_fs_lifecycle_worker_readiness",
+            return_value=KnowledgeFSLifecycleWorkerReadiness(False, ("worker_disabled",)),
+        ),
+        patch("tasks.knowledge_fs_lifecycle_tasks.get_knowledge_fs_runtime") as runtime,
+    ):
+        result = cleanup_knowledge_fs_staged_uploads.run()
+
+    assert result == 0
+    runtime.assert_not_called()
+
+
+def test_staged_upload_cleanup_uses_the_configured_batch_limit() -> None:
+    staged_uploads = MagicMock()
+    staged_uploads.cleanup_expired.return_value = 4
+    with (
+        patch(
+            "tasks.knowledge_fs_lifecycle_tasks.get_configured_knowledge_fs_lifecycle_worker_readiness",
+            return_value=KnowledgeFSLifecycleWorkerReadiness(True, ()),
+        ),
+        patch(
+            "tasks.knowledge_fs_lifecycle_tasks.session_factory.get_session_maker",
+            return_value="maker-1",
+        ),
+        patch(
+            "tasks.knowledge_fs_lifecycle_tasks.get_knowledge_fs_runtime",
+            return_value=SimpleNamespace(facade="facade-1"),
+        ) as runtime,
+        patch(
+            "tasks.knowledge_fs_lifecycle_tasks.KnowledgeFSStagedUploadService",
+            return_value=staged_uploads,
+        ) as service,
+        patch("tasks.knowledge_fs_lifecycle_tasks.dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE", 25),
+    ):
+        result = cleanup_knowledge_fs_staged_uploads.run()
+
+    assert result == 4
+    runtime.assert_called_once_with("maker-1")
+    service.assert_called_once_with("maker-1", facade="facade-1")
+    staged_uploads.cleanup_expired.assert_called_once_with(limit=25)

@@ -1038,7 +1038,8 @@ export type KnowledgeFsAdmittedQueryRequest = {
   activeEntityIds?: Array<string>
   knowledgeSpaceId: string
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   sessionId?: string | null
 }
 
@@ -1390,8 +1391,13 @@ export type KnowledgeFsQueryCreatePayload = {
   activeDocumentIds?: Array<string>
   activeEntityIds?: Array<string>
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   sessionId?: string | null
+}
+
+export type KnowledgeFsQueryImageReference = {
+  uploadFileId: string
 }
 
 export type KnowledgeFsQueryResponse = {
@@ -1408,7 +1414,8 @@ export type KnowledgeFsResearchTaskCreatePayload = {
     [key: string]: unknown
   }
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   topK?: number | null
 }
 
@@ -1453,7 +1460,8 @@ export type KnowledgeFsResearchTaskPlanBudgetResponse = {
 export type KnowledgeFsResearchTaskPlanPayload = {
   budgetUsd?: number | null
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
-  query: string
+  query?: string | null
+  queryImages?: Array<KnowledgeFsQueryImageReference>
   topK?: number | null
 }
 
@@ -1464,6 +1472,7 @@ export type KnowledgeFsResearchTaskPlanResponse = {
   }
   knowledge_space_id: string
   query: string
+  query_images?: Array<KnowledgeFsQueryImageReference>
   retrieval_plan: KnowledgeFsResearchTaskRetrievalPlanResponse
   steps: Array<{
     [key: string]: unknown
@@ -1487,6 +1496,7 @@ export type KnowledgeFsResearchTaskResponse = {
   }
   mode?: 'auto' | 'deep' | 'fast' | 'research' | null
   query: string
+  query_images?: Array<KnowledgeFsQueryImageReference>
   stage:
     | 'analyzing'
     | 'canceled'
@@ -1718,6 +1728,7 @@ export type KnowledgeFsSourceWorkflowResponse = {
   kind: string
   knowledge_space_id: string
   last_error_code?: string | null
+  last_error_message?: string | null
   max_execution_attempts: number
   progress_completed: number
   progress_failed: number

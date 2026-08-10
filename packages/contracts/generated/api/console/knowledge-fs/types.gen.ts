@@ -187,15 +187,15 @@ export type KnowledgeFsDocumentListResponse = {
   next_cursor?: string | null
 }
 
-export type KnowledgeFsDocumentUploadAcceptedResponse = {
-  asset: KnowledgeFsDocumentResponse
-  asset_status_url?: string | null
-  compilation_job: KnowledgeFsDocumentUploadCompilationJobResponse
-  document_revision: number
-  logical_document: KnowledgeFsDocumentUploadLogicalDocumentResponse
-  logical_document_id: string
-  status?: 'accepted' | null
-  status_url: string
+export type KnowledgeFsDocumentStagedUploadPayload = {
+  upload_id: string
+}
+
+export type KnowledgeFsDocumentStagedUploadAcceptedResponse = {
+  compilation_job_id: string
+  document_asset_id: string
+  status?: 'accepted'
+  upload_id: string
 }
 
 export type KnowledgeFsBulkDocumentDeletePayload = {
@@ -964,6 +964,15 @@ export type KnowledgeFsStreamCapabilityResponse = {
   url: string
 }
 
+export type KnowledgeFsStagedUploadResponse = {
+  content_type: string
+  expires_at: string
+  file_name: string
+  id: string
+  size_bytes: number
+  status: 'aborted' | 'claimed' | 'claiming' | 'expired' | 'failed' | 'uploaded'
+}
+
 export type KnowledgeFsjwkResponse = {
   alg: 'RS256'
   e: string
@@ -1111,16 +1120,6 @@ export type KnowledgeFsCredentialItemResponse = {
   principal: string
   revision: number
   status: string
-}
-
-export type KnowledgeFsDocumentUploadCompilationJobResponse = {
-  id: string
-  stage: 'queued'
-}
-
-export type KnowledgeFsDocumentUploadLogicalDocumentResponse = {
-  id: string
-  revision: number
 }
 
 export type KnowledgeFsBulkDocumentDeleteItemPayload = {
@@ -2033,9 +2032,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
-  body: {
-    file: Blob | File
-  }
+  body: KnowledgeFsDocumentStagedUploadPayload
   path: {
     control_space_id: string
   }
@@ -2044,7 +2041,7 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponses = {
-  202: KnowledgeFsDocumentUploadAcceptedResponse
+  202: KnowledgeFsDocumentStagedUploadAcceptedResponse
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
@@ -3661,3 +3658,35 @@ export type PostKnowledgeFsTasksByTaskIdStreamCapabilityResponses = {
 
 export type PostKnowledgeFsTasksByTaskIdStreamCapabilityResponse =
   PostKnowledgeFsTasksByTaskIdStreamCapabilityResponses[keyof PostKnowledgeFsTasksByTaskIdStreamCapabilityResponses]
+
+export type PostKnowledgeFsUploadsData = {
+  body: {
+    file: Blob | File
+  }
+  path?: never
+  query?: never
+  url: '/knowledge-fs/uploads'
+}
+
+export type PostKnowledgeFsUploadsResponses = {
+  201: KnowledgeFsStagedUploadResponse
+}
+
+export type PostKnowledgeFsUploadsResponse =
+  PostKnowledgeFsUploadsResponses[keyof PostKnowledgeFsUploadsResponses]
+
+export type DeleteKnowledgeFsUploadsByUploadIdData = {
+  body?: never
+  path: {
+    upload_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/uploads/{upload_id}'
+}
+
+export type DeleteKnowledgeFsUploadsByUploadIdResponses = {
+  204: void
+}
+
+export type DeleteKnowledgeFsUploadsByUploadIdResponse =
+  DeleteKnowledgeFsUploadsByUploadIdResponses[keyof DeleteKnowledgeFsUploadsByUploadIdResponses]

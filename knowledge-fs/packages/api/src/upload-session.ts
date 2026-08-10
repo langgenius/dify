@@ -820,7 +820,6 @@ function assertCreateReplay(existing: UploadSession, requested: UploadSession): 
   if (
     existing.tenantId !== requested.tenantId ||
     existing.knowledgeSpaceId !== requested.knowledgeSpaceId ||
-    existing.grantId !== requested.grantId ||
     existing.fileName !== requested.fileName ||
     existing.contentType !== requested.contentType ||
     existing.expectedSizeBytes !== requested.expectedSizeBytes ||

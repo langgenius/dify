@@ -15,6 +15,8 @@ from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_f
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
 from services.knowledge_fs.orphan_reconciler import KnowledgeFSOrphanReconciler
 from services.knowledge_fs.remote_registry import get_knowledge_fs_lifecycle_remote
+from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+from services.knowledge_fs.staged_upload_service import KnowledgeFSStagedUploadService
 
 
 class KnowledgeFSLifecycleWorkerResult(TypedDict):
@@ -55,4 +57,16 @@ def run_knowledge_fs_lifecycle_worker() -> KnowledgeFSLifecycleWorkerResult:
     return {"status": "ok", "dispatched": dispatched, "completed": completed, "reconciled": reconciled}
 
 
-__all__ = ["run_knowledge_fs_lifecycle_worker"]
+@shared_task(queue="knowledge_fs_lifecycle")
+def cleanup_knowledge_fs_staged_uploads() -> int:
+    readiness = get_configured_knowledge_fs_lifecycle_worker_readiness()
+    if not readiness.ready:
+        return 0
+    session_maker = session_factory.get_session_maker()
+    runtime = get_knowledge_fs_runtime(session_maker)
+    return KnowledgeFSStagedUploadService(session_maker, facade=runtime.facade).cleanup_expired(
+        limit=dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE
+    )
+
+
+__all__ = ["cleanup_knowledge_fs_staged_uploads", "run_knowledge_fs_lifecycle_worker"]

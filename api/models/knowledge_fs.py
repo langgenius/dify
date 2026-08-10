@@ -202,6 +202,15 @@ class KnowledgeFSLifecycleOutboxStatus(StrEnum):
     DEAD_LETTER = "dead_letter"
 
 
+class KnowledgeFSStagedUploadStatus(StrEnum):
+    UPLOADED = "uploaded"
+    CLAIMING = "claiming"
+    CLAIMED = "claimed"
+    FAILED = "failed"
+    ABORTED = "aborted"
+    EXPIRED = "expired"
+
+
 class KnowledgeFSControlSpace(DefaultFieldsDCMixin, TypeBase):
     """Dify product resource registered to at most one KnowledgeFS Space."""
 
@@ -596,6 +605,96 @@ class KnowledgeFSCapabilityIssuanceReservation(DefaultFieldsDCMixin, TypeBase):
     row_version: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("0"), default=0)
 
 
+class KnowledgeFSStagedUpload(DefaultFieldsDCMixin, TypeBase):
+    """Workspace-owned document bytes waiting to be claimed by one KnowledgeFS Space.
+
+    The raw file is persisted through Dify's shared ``UploadFile`` storage path. This
+    row owns the short-lived, single-claim lifecycle and the durable identifiers needed
+    to resume a claim after an upstream timeout without uploading the bytes again.
+    """
+
+    __tablename__ = "knowledge_fs_staged_uploads"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_staged_upload_pkey"),
+        UniqueConstraint("upload_file_id", name="kfs_staged_upload_file_uq"),
+        sa.ForeignKeyConstraint(
+            ["tenant_id"],
+            ["tenants.id"],
+            name="kfs_staged_upload_workspace_fk",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["upload_file_id"],
+            ["upload_files.id"],
+            name="kfs_staged_upload_file_fk",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["tenant_id", "control_space_id"],
+            ["knowledge_fs_control_spaces.tenant_id", "knowledge_fs_control_spaces.id"],
+            name="kfs_staged_upload_space_fk",
+            ondelete="RESTRICT",
+        ),
+        Index(
+            "kfs_staged_upload_owner_status_expiry_idx",
+            "tenant_id",
+            "account_id",
+            "status",
+            "expires_at",
+            "id",
+        ),
+        Index(
+            "kfs_staged_upload_expiry_idx",
+            "status",
+            "expires_at",
+            "id",
+        ),
+        sa.CheckConstraint("size_bytes > 0", name=sa.schema.conv("kfs_staged_upload_size_ck")),
+        sa.CheckConstraint("row_version >= 0", name=sa.schema.conv("kfs_staged_upload_version_ck")),
+        sa.CheckConstraint(
+            "status IN ('uploaded', 'claiming', 'claimed', 'failed', 'aborted', 'expired')",
+            name=sa.schema.conv("kfs_staged_upload_status_ck"),
+        ),
+        sa.CheckConstraint(
+            "(status = 'claimed' AND control_space_id IS NOT NULL "
+            "AND knowledge_space_id IS NOT NULL AND upload_session_id IS NOT NULL "
+            "AND document_asset_id IS NOT NULL AND compilation_job_id IS NOT NULL "
+            "AND claimed_at IS NOT NULL) OR "
+            "(status != 'claimed' AND claimed_at IS NULL)",
+            name=sa.schema.conv("kfs_staged_upload_claimed_fields_ck"),
+        ),
+        sa.CheckConstraint(
+            "(upload_session_id IS NULL AND knowledge_space_id IS NULL) OR "
+            "(upload_session_id IS NOT NULL AND knowledge_space_id IS NOT NULL "
+            "AND control_space_id IS NOT NULL)",
+            name=sa.schema.conv("kfs_staged_upload_session_scope_ck"),
+        ),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    file_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
+    checksum_sha256_base64: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    status: Mapped[KnowledgeFSStagedUploadStatus] = mapped_column(
+        EnumText(KnowledgeFSStagedUploadStatus, length=16),
+        nullable=False,
+        server_default=sa.text("'uploaded'"),
+        default=KnowledgeFSStagedUploadStatus.UPLOADED,
+    )
+    control_space_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    knowledge_space_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    upload_session_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    document_asset_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    compilation_job_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    row_version: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("0"), default=0)
+
+
 class KnowledgeFSLifecycleOutbox(DefaultFieldsDCMixin, TypeBase):
     """Durable command snapshot; it is never a product read-model source.
 
@@ -710,4 +809,6 @@ __all__ = [
     "KnowledgeFSRetrievalProfileIntentPayload",
     "KnowledgeFSRevokeCommandPayload",
     "KnowledgeFSScoreThresholdIntentPayload",
+    "KnowledgeFSStagedUpload",
+    "KnowledgeFSStagedUploadStatus",
 ]
