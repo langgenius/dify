@@ -35,13 +35,13 @@ _EXTENSION_KEY = "application_services"
 
 
 @dataclass(frozen=True, slots=True)
-class AccountApplicationServices:
+class AccountServices:
     profile: AccountProfileService
 
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
-    accounts: AccountApplicationServices
+    accounts: AccountServices
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
@@ -61,7 +61,7 @@ def build_application_services(
     installation_state = InstallationStateRepository(client=database_client)
     account_unit_of_work = SQLAlchemyAccountUnitOfWorkFactory(database_client)
     return ApplicationServices(
-        accounts=AccountApplicationServices(
+        accounts=AccountServices(
             profile=AccountProfileService(unit_of_work=account_unit_of_work),
         ),
         explore_banner_queries=ExploreBannerQueryService(
