@@ -1,5 +1,7 @@
-import { waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
+import { webAppLogout } from '@/service/webapp-auth'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import WebSSOForm from '../page'
 
@@ -42,5 +44,23 @@ describe('WebSSOForm redirect security', () => {
     await waitFor(() => {
       expect(navigationMocks.replace).toHaveBeenCalledWith('/')
     })
+  })
+
+  it('should expose the unavailable-state fallback as a button', async () => {
+    const user = userEvent.setup()
+    navigationMocks.searchParams = new URLSearchParams({
+      redirect_url: encodeURIComponent('/chatbot/share-app'),
+    })
+
+    renderWithConsoleQuery(<WebSSOForm />, {
+      systemFeatures: { webapp_auth: { enabled: true } },
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'share.login.backToHome' }))
+
+    expect(webAppLogout).toHaveBeenCalledWith('share-app')
+    expect(navigationMocks.replace).toHaveBeenCalledWith(
+      '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app',
+    )
   })
 })

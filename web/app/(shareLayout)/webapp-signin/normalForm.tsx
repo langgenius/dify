@@ -124,11 +124,11 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">
+          <h1 className="title-4xl-semi-bold text-text-primary">
             {systemFeatures.branding.enabled
               ? t(($) => $.pageTitleForE, { ns: 'login' })
               : t(($) => $.pageTitle, { ns: 'login' })}
-          </h2>
+          </h1>
           <p className="mt-2 body-md-regular text-text-tertiary">
             {t(($) => $.welcome, { ns: 'login' })}
           </p>

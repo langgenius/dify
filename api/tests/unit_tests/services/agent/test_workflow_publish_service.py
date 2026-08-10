@@ -29,7 +29,7 @@ def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSIO
     )
 
 
-def test_inline_binding_from_another_node_is_cloned(monkeypatch) -> None:
+def test_inline_binding_from_another_node_is_cloned(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     draft_workflow = _workflow()
     monkeypatch.setattr(
@@ -214,7 +214,7 @@ def test_publish_binding_replacement_returns_only_previous_inline_agent(
     assert copied.current_snapshot_id == "draft-inline-snapshot"
 
 
-def test_inline_binding_reuses_existing_node_owned_agent(monkeypatch) -> None:
+def test_inline_binding_reuses_existing_node_owned_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     draft_workflow = _workflow()
     existing_binding = WorkflowAgentNodeBinding(
@@ -262,7 +262,7 @@ def test_inline_binding_reuses_existing_node_owned_agent(monkeypatch) -> None:
     clone.assert_not_called()
 
 
-def test_resolve_existing_inline_binding_agent_returns_valid_agent_or_none(monkeypatch) -> None:
+def test_resolve_existing_inline_binding_agent_returns_valid_agent_or_none(monkeypatch: pytest.MonkeyPatch) -> None:
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -314,7 +314,7 @@ def test_resolve_roster_binding_rejects_unpublished_agent() -> None:
         )
 
 
-def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch) -> None:
+def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     source_agent = SimpleNamespace(id="source-agent")
     source_snapshot = SimpleNamespace(id="source-snapshot")
@@ -363,7 +363,7 @@ def test_clone_inline_graph_binding_for_node_rejects_missing_source(scalar_resul
         )
 
 
-def test_restore_clones_inline_binding_owned_by_published_workflow(monkeypatch) -> None:
+def test_restore_clones_inline_binding_owned_by_published_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
     source = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
