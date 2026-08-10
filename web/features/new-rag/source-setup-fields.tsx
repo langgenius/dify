@@ -30,11 +30,13 @@ const defaultSyncPolicies = ['provider', 'daily', 'manual'] as const
 export function SourceTypeSelector({
   appearance = 'page',
   disabled = false,
+  disabledValues = [],
   value,
   onChange,
 }: {
   appearance?: 'embedded' | 'page'
   disabled?: boolean
+  disabledValues?: readonly NewKnowledgeSourceType[]
   value: NewKnowledgeSourceType
   onChange: (value: NewKnowledgeSourceType) => void
 }) {
@@ -60,6 +62,7 @@ export function SourceTypeSelector({
           <RadioItem<NewKnowledgeSourceType>
             key={option.value}
             value={option.value}
+            disabled={disabled || disabledValues.includes(option.value)}
             className={cn(
               'relative flex items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden',
               appearance === 'embedded' ? 'min-h-7 px-2' : 'h-7',
@@ -92,7 +95,7 @@ export function SourceProviderRadioGroup<T extends string>({
 }: {
   disabled?: boolean
   layout: 'grid-four' | 'grid-three' | 'wrap'
-  options: Array<{ icon: ReactNode; value: T }>
+  options: Array<{ disabled?: boolean; icon: ReactNode; value: T }>
   size?: 'medium' | 'small'
   surface?: 'default' | 'transparent'
   value: T
@@ -113,6 +116,7 @@ export function SourceProviderRadioGroup<T extends string>({
         <RadioItem<T>
           key={option.value}
           value={option.value}
+          disabled={disabled || option.disabled}
           className={cn(
             'relative flex items-center justify-center gap-1.5 rounded-lg border border-divider-subtle system-xs-medium text-text-secondary outline-hidden',
             size === 'medium' ? 'h-8.5 px-2.5' : 'h-7.5 px-3',
