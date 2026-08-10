@@ -108,7 +108,9 @@ vi.mock('@/app/education-apply/verify-state-modal', () => ({
     isShow ? (
       <div data-testid="verify-state-modal">
         {title && <span data-testid="modal-title">{title}</span>}
-        {content && <span data-testid="modal-content">{content}</span>}
+        {content !== undefined && content !== null ? (
+          <span data-testid="modal-content">{content}</span>
+        ) : null}
         {email && <span data-testid="modal-email">{email}</span>}
         {showLink && <span data-testid="modal-show-link">link</span>}
       </div>
