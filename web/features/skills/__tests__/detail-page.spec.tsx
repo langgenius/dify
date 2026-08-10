@@ -2013,6 +2013,62 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('commits custom metadata on blur so another entry can be added and published', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      updated_at: 1784638400,
+    })
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.published',
+      }),
+    ).toBeDisabled()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataKey'),
+      'owner',
+    )
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
+      'support',
+    )
+    await user.tab()
+
+    expect(screen.getByRole('textbox', { name: 'owner value' })).toHaveValue('support')
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    ).toBeEnabled()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    )
+    await user.type(screen.getByPlaceholderText('skill.skillManagement.detail.metadataKey'), 'team')
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
+      'success',
+    )
+    await user.tab()
+
+    expect(screen.getByRole('textbox', { name: 'team value' })).toHaveValue('success')
+    expect(screen.getByRole('textbox', { name: 'owner value' })).toHaveValue('support')
+  })
+
   it('cancels custom metadata creation from both metadata fields', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
