@@ -501,7 +501,9 @@ describe('Annotation', () => {
 
     expect(latestListProps.selectedIds).toEqual([])
 
-    const configButton = document.querySelector('.action-btn') as HTMLButtonElement
+    const configButton = screen.getByRole('button', {
+      name: 'appAnnotation.initSetup.configTitle',
+    })
     fireEvent.click(configButton)
     expect(await screen.findByTestId('config-modal')).toBeInTheDocument()
 

@@ -442,8 +442,11 @@ const Debug: FC<IDebug> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={clearConversation}>
-                          <RefreshCcw01 className="size-4" />
+                        <ActionButton
+                          aria-label={t(($) => $['operation.refresh'], { ns: 'common' })}
+                          onClick={clearConversation}
+                        >
+                          <RefreshCcw01 aria-hidden="true" className="size-4" />
                         </ActionButton>
                       }
                     />
@@ -459,11 +462,13 @@ const Debug: FC<IDebug> = ({
                       <TooltipTrigger
                         render={
                           <ActionButton
+                            aria-expanded={expanded}
+                            aria-label={t(($) => $['panel.userInputField'], { ns: 'workflow' })}
                             state={expanded ? ActionButtonState.Active : undefined}
                             disabled={!canTestAndRun}
                             onClick={() => setExpanded(!expanded)}
                           >
-                            <RiEqualizer2Line className="size-4" />
+                            <RiEqualizer2Line aria-hidden="true" className="size-4" />
                           </ActionButton>
                         }
                       />

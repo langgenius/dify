@@ -25,6 +25,7 @@ from dify_agent.protocol.schemas import (
     RunComposition,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunLayerSpec,
     RunStartedEvent,
     RunSucceededEvent,
@@ -68,7 +69,14 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         ),
-        RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom", reason="shutdown")),
+        RunFailedEvent(
+            run_id="run-1",
+            data=RunFailedEventData(
+                error="boom",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                reason="shutdown",
+            ),
+        ),
         RunCancelledEvent(run_id="run-1", data=RunCancelledEventData(reason="user_cancelled")),
     ]
 
@@ -78,6 +86,31 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
 
         assert decoded.type == event.type
         assert decoded.run_id == event.run_id
+
+
+def test_run_failed_event_error_type_is_optional_and_round_trips() -> None:
+    legacy = RUN_EVENT_ADAPTER.validate_python(
+        {
+            "run_id": "legacy-run",
+            "type": "run_failed",
+            "data": {"error": "legacy failure", "reason": None},
+        }
+    )
+    classified = RunFailedEvent(
+        run_id="classified-run",
+        data=RunFailedEventData(
+            error="run limit reached",
+            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+        ),
+    )
+
+    decoded = RUN_EVENT_ADAPTER.validate_json(RUN_EVENT_ADAPTER.dump_json(classified))
+
+    assert isinstance(legacy, RunFailedEvent)
+    assert legacy.data.error_type is None
+    assert isinstance(decoded, RunFailedEvent)
+    assert decoded.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert protocol_exports.RunFailureType is RunFailureType
 
 
 def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:

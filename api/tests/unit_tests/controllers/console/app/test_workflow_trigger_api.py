@@ -142,7 +142,12 @@ def test_app_trigger_enable_uses_injected_tenant_id(app: Flask, database_session
         app.test_request_context("/", json=payload),
         patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
     ):
-        response = method(api, app_model.tenant_id, app_model)
+        response = method(
+            api,
+            workflow_trigger_module.ParserEnable(trigger_id=trigger.id, enable_trigger=True),
+            app_model.tenant_id,
+            app_model,
+        )
 
     assert response["id"] == trigger.id
     assert response["status"] == "enabled"

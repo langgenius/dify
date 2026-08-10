@@ -53,8 +53,10 @@ export default function DevicePage() {
     refetchOnMount: false,
   })
   const account = userResp?.profile
-  const { data: currentWorkspace } = useQuery({
-    ...consoleQuery.workspaces.current.post.queryOptions(),
+  const { data: currentWorkspaceName } = useQuery({
+    ...consoleQuery.workspaces.current.summary.get.queryOptions({
+      select: (workspace) => workspace.name,
+    }),
     enabled: !!account && !profileErr,
     retry: false,
     refetchOnWindowFocus: false,
@@ -175,7 +177,7 @@ export default function DevicePage() {
           accountEmail={account?.email}
           accountName={account?.name}
           accountAvatarUrl={account?.avatar_url ?? null}
-          defaultWorkspace={currentWorkspace?.name ?? undefined}
+          defaultWorkspace={currentWorkspaceName ?? undefined}
           onApproved={() => setView({ kind: 'success' })}
           onDenied={() => setView({ kind: 'error_expired' })}
           onError={(e) => setErrMsg(e)}

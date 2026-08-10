@@ -573,7 +573,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.3-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local
     restart: always
     env_file:
       - path: ./envs/core-services/shared.env
@@ -686,7 +686,6 @@ services:
       DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS:-3600}
       DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN:-}
       DIFY_AGENT_E2B_SHELLCTL_PORT: ${DIFY_AGENT_E2B_SHELLCTL_PORT:-5004}
-      DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES: ${PLUGIN_MAX_FILE_SIZE:-52428800}
       DIFY_AGENT_STUB_API_BASE_URL: ${DIFY_AGENT_STUB_API_BASE_URL:-http://agent_backend:5050/agent-stub}
       DIFY_AGENT_SANDBOX_FILES_BASE_URL: ${DIFY_AGENT_SANDBOX_FILES_BASE_URL:-http://api:5001}
       # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.

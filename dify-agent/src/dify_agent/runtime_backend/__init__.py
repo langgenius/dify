@@ -9,8 +9,6 @@ from .errors import (
     HomeSnapshotNotFoundError,
     RuntimeBackendError,
     SharedWorkspaceUnsupportedError,
-    WorkspaceFileTooLargeError,
-    WorkspacePathError,
     WorkspacePreservationUnsupportedError,
     WorkspaceUnavailableError,
 )
@@ -19,16 +17,11 @@ from .protocols import (
     ExecutionBindingBackend,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotBackend,
     HomeSnapshotCreateSpec,
     RuntimeBackendProfile,
     RuntimeLayout,
     RuntimeLease,
-    WorkspaceFileContent,
-    WorkspaceFileEntry,
-    WorkspaceListResult,
-    WorkspaceReadResult,
 )
 
 __all__ = [
@@ -40,7 +33,6 @@ __all__ = [
     "ExecutionBindingBackend",
     "ExecutionBindingCreateSpec",
     "ExecutionBindingDestroySpec",
-    "FileSystem",
     "HomeSnapshotBackend",
     "HomeSnapshotCreateError",
     "HomeSnapshotCreateSpec",
@@ -50,12 +42,6 @@ __all__ = [
     "RuntimeLayout",
     "RuntimeLease",
     "SharedWorkspaceUnsupportedError",
-    "WorkspaceFileContent",
-    "WorkspaceFileEntry",
-    "WorkspaceFileTooLargeError",
-    "WorkspaceListResult",
-    "WorkspacePathError",
     "WorkspacePreservationUnsupportedError",
-    "WorkspaceReadResult",
     "WorkspaceUnavailableError",
 ]

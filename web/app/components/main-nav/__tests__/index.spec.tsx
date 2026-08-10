@@ -3,12 +3,15 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type {
+  GetWorkspacesCurrentSummaryResponse,
+  TenantListItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -238,7 +241,7 @@ vi.mock('react-i18next', async () => {
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
+  const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'summary', 'get'] as const
   const currentPermissionsQueryKey = [
     ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
     { type: 'query' },
@@ -249,14 +252,16 @@ vi.mock('@/service/client', async (importOriginal) => {
       if (prop === 'workspaces') {
         return {
           current: {
-            post: {
-              key: () => currentWorkspaceQueryKey,
-              queryKey: () => currentWorkspaceQueryKey,
-              queryOptions: (options?: object) => ({
-                queryKey: currentWorkspaceQueryKey,
-                queryFn: () => new Promise(() => {}),
-                ...options,
-              }),
+            summary: {
+              get: {
+                key: () => currentWorkspaceQueryKey,
+                queryKey: () => currentWorkspaceQueryKey,
+                queryOptions: (options?: object) => ({
+                  queryKey: currentWorkspaceQueryKey,
+                  queryFn: () => new Promise(() => {}),
+                  ...options,
+                }),
+              },
             },
             rbac: {
               myPermissions: {
@@ -372,6 +377,14 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
+vi.mock('@/next/dynamic', async () => {
+  const { default: WebAppsSection } = await import('../components/web-apps-section')
+
+  return {
+    default: () => WebAppsSection,
+  }
+})
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -392,7 +405,41 @@ let mockPathname = '/apps'
 let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
 let mockInstalledAppsHasNextPage = false
-let mockWorkspaces: IWorkspace[] = []
+let mockWorkspaces: TenantListItemResponse[] = []
+
+function stubScrollRootIntersectionObserver() {
+  const observers: Array<{
+    callback: IntersectionObserverCallback
+    root: Element | Document | null | undefined
+  }> = []
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(nextCallback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        observers.push({ callback: nextCallback, root: options?.root })
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+
+  return async () => {
+    await waitFor(() => {
+      expect(observers.some(({ root }) => root instanceof Element)).toBe(true)
+    })
+    const observer = observers.find(({ root }) => root instanceof Element)
+    if (!observer) throw new Error('The scroll root observer was not created')
+
+    act(() => {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+  }
+}
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',
@@ -450,13 +497,8 @@ const consoleState: ConsoleStateFixture = {
     id: 'workspace-1',
     name: 'Solar Studio',
     plan: Plan.team,
-    status: 'normal',
-    created_at: 0,
+    credits: 7500,
     role: 'owner',
-    providers: [],
-    trial_credits: 10000,
-    trial_credits_used: 2500,
-    next_credit_reset_date: 0,
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
@@ -489,14 +531,18 @@ const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
 
 const renderMainNav = (
   systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
-  options: { store?: ReturnType<typeof createStore>; extra?: ReactNode } = {},
+  options: {
+    store?: ReturnType<typeof createStore>
+    extra?: ReactNode
+    educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+  } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
   const currentConsoleState = mockConsoleState.current ?? consoleState
   mockConsoleState.current = currentConsoleState
   queryClient.setQueryData(
-    consoleQuery.workspaces.current.post.queryKey(),
-    currentConsoleState.currentWorkspace as ICurrentWorkspace,
+    consoleQuery.workspaces.current.summary.get.queryKey(),
+    currentConsoleState.currentWorkspace as GetWorkspacesCurrentSummaryResponse,
   )
   queryClient.setQueryData(userProfileQueryOptions().queryKey, {
     profile: {
@@ -529,6 +575,7 @@ const renderMainNav = (
     </JotaiProvider>,
     {
       systemFeatures: resolvedSystemFeatures,
+      educationStatus: options.educationStatus,
       workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
       queryClient,
     },
@@ -577,7 +624,7 @@ describe('MainNav', () => {
     mockConsoleState.current = consoleState
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: false,
+      enableEducationPlan: false,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
@@ -724,13 +771,15 @@ describe('MainNav', () => {
   it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      isEducationAccount: true,
+      enableEducationPlan: true,
       isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
 
-    renderMainNav()
+    renderMainNav(defaultMainNavSystemFeatures, {
+      educationStatus: { is_student: true },
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
 
@@ -1308,11 +1357,20 @@ describe('MainNav', () => {
 
     renderMainNav()
 
+    const scrollViewport = await screen.findByRole('region', {
+      name: 'explore.sidebar.webApps',
+    })
+    scrollViewport.scrollTop = 240
+    scrollViewport.scrollTo = (optionsOrX?: ScrollToOptions | number, y?: number) => {
+      const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
+      scrollViewport.scrollTop = Number(top ?? 0)
+    }
     await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
     await waitFor(() => {
+      expect(scrollViewport.scrollTop).toBe(0)
       expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
       expect(screen.getByText('Beta Tool')).toBeInTheDocument()
     })
@@ -1351,7 +1409,6 @@ describe('MainNav', () => {
         screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
     })
-    expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'common.operation.search' }),
     ).not.toBeInTheDocument()
@@ -1393,34 +1450,90 @@ describe('MainNav', () => {
   })
 
   it('fetches the next installed web app page when the bottom sentinel enters the viewport', async () => {
-    let intersectionCallback: IntersectionObserverCallback | undefined
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class MockIntersectionObserver {
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          if (options?.root) intersectionCallback = callback
-        }
-
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
+    const triggerIntersection = stubScrollRootIntersectionObserver()
     mockInstalledApps = [createInstalledApp()]
     mockInstalledAppsHasNextPage = true
     renderMainNav()
     await screen.findByText('Alpha App')
 
-    act(() => {
-      intersectionCallback?.(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
+    await triggerIntersection()
 
     await waitFor(() => {
       expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledWith('next-page')
     })
+  })
+
+  it('shows next-page errors at the pagination boundary and retries from there', async () => {
+    const user = userEvent.setup()
+    let nextPageAttempts = 0
+    let resolveNextPage: (() => void) | undefined
+    const nextPagePending = new Promise<void>((resolve) => {
+      resolveNextPage = resolve
+    })
+    const triggerIntersection = stubScrollRootIntersectionObserver()
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsRequest.mockImplementation(
+      async ({ query }: { query: { cursor?: string; name?: string } }) => {
+        if (!query.cursor) {
+          return {
+            installed_apps: mockInstalledApps,
+            has_more: true,
+            next_cursor: 'next-page',
+          }
+        }
+
+        nextPageAttempts += 1
+        if (nextPageAttempts === 1) throw new Error('Failed to load the next page')
+
+        await nextPagePending
+
+        return {
+          installed_apps: [
+            createInstalledApp({
+              id: 'installed-2',
+              app: { ...createInstalledApp().app, name: 'Beta Tool' },
+            }),
+          ],
+          has_more: false,
+          next_cursor: null,
+        }
+      },
+    )
+    renderMainNav()
+    const firstAppLink = await screen.findByRole('link', {
+      name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
+    })
+
+    await triggerIntersection()
+
+    const paginationError = await screen.findByRole('alert')
+    expect(
+      firstAppLink.compareDocumentPosition(paginationError) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    retryButton.focus()
+    expect(retryButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
+      expect(retryButton).toBeInTheDocument()
+      expect(retryButton).toHaveFocus()
+      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    await user.keyboard('{Enter}')
+    expect(nextPageAttempts).toBe(2)
+
+    act(() => {
+      resolveNextPage?.()
+    })
+
+    expect(await screen.findByText('Beta Tool')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('collapses and expands installed web apps from the section arrow', async () => {

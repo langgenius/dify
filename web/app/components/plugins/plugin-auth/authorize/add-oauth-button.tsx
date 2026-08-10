@@ -101,12 +101,13 @@ const AddOAuthButton = ({
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
                   <ActionButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="shrink-0"
                     onClick={() => {
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <span className="i-ri-clipboard-line size-4" />
+                    <span aria-hidden className="i-ri-clipboard-line size-4" />
                   </ActionButton>
                 </div>
               )}

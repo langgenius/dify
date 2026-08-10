@@ -49,19 +49,21 @@ const SavedItems: FC<ISavedItemsProps> = ({
                 <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                   {isShowTextToSpeech && <NewAudioButton value={answer} />}
                   <ActionButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     onClick={() => {
                       copy(answer)
                       toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                     }}
                   >
-                    <RiClipboardLine className="size-4" />
+                    <RiClipboardLine aria-hidden="true" className="size-4" />
                   </ActionButton>
                   <ActionButton
+                    aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     onClick={() => {
                       onRemove(id)
                     }}
                   >
-                    <RiDeleteBinLine className="size-4" />
+                    <RiDeleteBinLine aria-hidden="true" className="size-4" />
                   </ActionButton>
                 </div>
               </div>
