@@ -213,9 +213,7 @@ class WorkflowCopilotService:
         if not focus_nodes:
             return ""
         focus_edges = [
-            e
-            for e in edges
-            if isinstance(e, dict) and (e.get("source") in wanted or e.get("target") in wanted)
+            e for e in edges if isinstance(e, dict) and (e.get("source") in wanted or e.get("target") in wanted)
         ]
 
         payload = {"nodes": focus_nodes, "edges": focus_edges}

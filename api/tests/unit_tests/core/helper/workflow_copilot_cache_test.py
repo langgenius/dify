@@ -65,9 +65,7 @@ def test_get_returns_none_when_fields_have_wrong_type(mocker: MockerFixture) -> 
     redis_mock = mocker.patch(_REDIS)
     # summary must be str and recent_messages must be list; a wrong shape must
     # degrade to a miss rather than propagate a malformed memory.
-    redis_mock.get.return_value = json.dumps(
-        {"summary": 123, "recent_messages": "nope"}
-    ).encode("utf-8")
+    redis_mock.get.return_value = json.dumps({"summary": 123, "recent_messages": "nope"}).encode("utf-8")
     assert WorkflowCopilotMemoryCache("c").get() is None
 
 
