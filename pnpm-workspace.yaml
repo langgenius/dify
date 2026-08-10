@@ -52,6 +52,7 @@ overrides:
 catalog:
   '@amplitude/analytics-browser': 2.45.5
   '@amplitude/plugin-session-replay-browser': 1.33.7
+  '@axe-core/playwright': 4.12.1
   '@base-ui/react': 1.7.0
   '@chromatic-com/storybook': 5.2.1
   '@cucumber/cucumber': 13.2.1
@@ -233,7 +234,6 @@ catalog:
   remark-directive: 4.0.0
   scheduler: 0.27.0
   server-only: 0.0.1
-  sharp: 0.35.3
   shiki: 4.4.2
   socket.io-client: 4.8.3
   sortablejs: 1.15.7

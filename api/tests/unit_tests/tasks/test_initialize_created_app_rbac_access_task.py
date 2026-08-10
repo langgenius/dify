@@ -11,7 +11,7 @@ def test_initialize_created_app_rbac_access_task_uses_rbac_queue():
     assert initialize_created_app_rbac_access_task.queue == APP_RBAC_QUEUE
 
 
-def test_initialize_created_app_rbac_access_task_batches_workspace_members(monkeypatch):
+def test_initialize_created_app_rbac_access_task_batches_workspace_members(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -44,7 +44,7 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
         assert call.kwargs["payload"].access_policy_ids == [task_module.APP_RBAC_DEFAULT_ACCESS_POLICY_ID]
 
 
-def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch):
+def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch: pytest.MonkeyPatch):
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 

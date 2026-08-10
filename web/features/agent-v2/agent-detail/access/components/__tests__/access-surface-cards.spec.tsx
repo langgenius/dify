@@ -55,9 +55,7 @@ vi.mock('@/context/account-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -72,9 +70,7 @@ vi.mock('@/context/workspace-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -89,9 +85,7 @@ vi.mock('@/context/permission-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -106,9 +100,7 @@ vi.mock('@/context/version-state', async () => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
@@ -209,6 +201,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    access_ready: true,
     enable_api: true,
     enable_site: true,
     icon_url: null,
@@ -587,17 +580,35 @@ describe('Agent access surface cards', () => {
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
       ).toBeDisabled()
     })
+
+    it('should keep the Web App switch disabled until the Agent is published', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_ready: false, enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe('Service API access', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
       })
       mocks.apiEnableMutation.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: false,
         service_api_base_url: 'https://api.example.test/v1',
@@ -629,6 +640,7 @@ describe('Agent access surface cards', () => {
     it('should manage API keys with the Agent API key endpoints', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValue({
+        access_ready: true,
         api_key_count: 1,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
@@ -690,6 +702,28 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+    })
+
+    it('should disable the Service API switch and key action until the Agent is published', async () => {
+      mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: false,
+        api_key_count: 0,
+        enabled: false,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(
+        await screen.findByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+        }),
+      ).toBeDisabled()
     })
   })
 

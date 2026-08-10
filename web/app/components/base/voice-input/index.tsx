@@ -249,11 +249,11 @@ function VoiceInput({
           </button>
         )}
         <div
+          role="timer"
           className={cn(
             'w-11.25 pl-1 text-xs font-medium',
             duration > 500 ? 'text-text-destructive' : 'text-text-secondary',
           )}
-          data-testid="voice-input-timer"
         >
           {`${minutes}:${seconds}`}
         </div>

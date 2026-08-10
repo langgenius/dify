@@ -5,6 +5,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
@@ -702,7 +703,7 @@ def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgent
     )
 
 
-def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monkeypatch):
+def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monkeypatch: pytest.MonkeyPatch):
     # ENG-638: a submitted form re-enters _run; the human's answer is threaded
     # into the second Agent run as deferred_tool_results.
     snapshot = CompositorSessionSnapshot(layers=[])
@@ -726,7 +727,7 @@ def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monk
     assert any(isinstance(event, StreamCompletedEvent) for event in events)
 
 
-def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
+def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch: pytest.MonkeyPatch):
     snapshot = CompositorSessionSnapshot(layers=[])
     store = FakeSessionStore(snapshot=snapshot)
     store.loaded_session = _pending_session(snapshot)
@@ -756,7 +757,7 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
     assert client.request is None  # no second Agent run was created
 
 
-def test_agent_node_expired_ask_human_failure_keeps_binding_identity(monkeypatch):
+def test_agent_node_expired_ask_human_failure_keeps_binding_identity(monkeypatch: pytest.MonkeyPatch):
     snapshot = CompositorSessionSnapshot(layers=[])
     store = FakeSessionStore(snapshot=snapshot)
     store.loaded_session = _pending_session(snapshot)

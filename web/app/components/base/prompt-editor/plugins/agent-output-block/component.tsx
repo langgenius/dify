@@ -79,6 +79,10 @@ const AgentOutputBlockComponent = ({
   const skipNameFocusRef = useRef(false)
 
   useEffect(() => {
+    latestDraftNameRef.current = name
+  }, [name])
+
+  useEffect(() => {
     if (!isEditing) return
     if (skipNameFocusRef.current) {
       skipNameFocusRef.current = false
@@ -96,7 +100,6 @@ const AgentOutputBlockComponent = ({
   if (name !== lastNodeName) {
     setLastNodeName(name)
     setDraftName(name)
-    latestDraftNameRef.current = name
   }
 
   const commitOutput = (

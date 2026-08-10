@@ -1,8 +1,9 @@
 'use client'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmountedRef } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -15,6 +16,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
@@ -30,6 +32,14 @@ type Props = Readonly<{
   loc: string
 }>
 
+const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+  isAboutToExpire: allow_refresh ?? false,
+  isEducationAccount: is_student ?? false,
+})
+
+// TODO: Remove this temporary gate once education applications and redemptions reopen.
+const EDUCATION_DISCOUNT_TEMPORARILY_PAUSED = true
+
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -40,9 +50,14 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const router = useRouter()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
-    useProviderContext()
-  const isAboutToExpire = allowRefreshEducationVerify
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: educationStatus } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: selectEducationPlanStatus,
+    }),
+  )
+  const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const { type } = plan
   const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
@@ -59,10 +74,17 @@ const PlanComp: FC<Props> = ({ loc }) => {
   })()
 
   const [showModal, setShowModal] = React.useState(false)
+  const [showEducationDiscountPausedModal, setShowEducationDiscountPausedModal] =
+    React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
+    if (EDUCATION_DISCOUNT_TEMPORARILY_PAUSED) {
+      setShowEducationDiscountPausedModal(true)
+      return
+    }
+
     if (isPending) return
     mutateAsync()
       .then((res) => {
@@ -163,6 +185,25 @@ const PlanComp: FC<Props> = ({ loc }) => {
           resetInDays={apiRateLimitResetInDays}
         />
       </div>
+      <VerifyStateModal
+        isShow={showEducationDiscountPausedModal}
+        title={t(($) => $['educationDiscountPaused.title'], { ns: 'education' })}
+        content={
+          <>
+            <span className="block">
+              {t(($) => $['educationDiscountPaused.description'], { ns: 'education' })}
+            </span>
+            <span className="mt-4 block">
+              {t(($) => $['educationDiscountPaused.thanks'], { ns: 'education' })}
+            </span>
+            <span className="mt-4 block system-xs-regular">
+              {t(($) => $['educationDiscountPaused.publishedAt'], { ns: 'education' })}
+            </span>
+          </>
+        }
+        onConfirm={() => setShowEducationDiscountPausedModal(false)}
+        onCancel={() => setShowEducationDiscountPausedModal(false)}
+      />
       <VerifyStateModal
         showLink
         email={userProfileEmail}

@@ -53,13 +53,16 @@ vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
 }))
 
-vi.mock('@/service/use-education', () => ({
-  useEducationAdd: () => ({ isPending: false, mutateAsync: mockEducationAdd }),
-  useInvalidateEducationStatus: () => vi.fn(),
-}))
-
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: vi.fn() }),
+}))
+
+vi.mock('@/service/use-education', () => ({
+  useEducationAutocomplete: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ data: [], has_next: false }),
+    isPending: false,
+    data: undefined,
+  }),
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -75,6 +78,20 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    account: {
+      education: {
+        get: {
+          key: () => ['account', 'education'],
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: ['account', 'education'],
+            ...options,
+          }),
+        },
+        post: {
+          mutationOptions: () => ({ mutationFn: mockEducationAdd }),
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
@@ -103,7 +120,6 @@ vi.mock('@/service/client', () => ({
 const setupContext = (isCurrentWorkspaceManager: boolean) => {
   mockProviderContext = {
     plan: { type: Plan.sandbox },
-    isEducationAccount: true,
     onPlanInfoChanged: vi.fn(),
   }
   mockConsoleState = {
@@ -117,8 +133,11 @@ const setupContext = (isCurrentWorkspaceManager: boolean) => {
   }
 }
 
-const renderPage = () => {
-  const { wrapper } = createConsoleQueryWrapper({ workspacePermissionKeys: null })
+const renderPage = (isEducationAccount = true) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    educationStatus: { is_student: isEducationAccount },
+    workspacePermissionKeys: null,
+  })
   return render(<EducationApplyPage />, {
     wrapper,
   })
@@ -209,5 +228,40 @@ describe('EducationApplyPage billing boundary', () => {
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
     expect(globalThis.location.reload).not.toHaveBeenCalled()
+  })
+
+  it('requires every education agreement before submitting an application', async () => {
+    setupContext(true)
+    mockEducationAdd.mockResolvedValue({ message: 'success' })
+    const user = userEvent.setup()
+    renderPage(false)
+
+    const submitButton = screen.getByRole('button', { name: 'education.submit' })
+    await user.type(
+      screen.getByPlaceholderText('education.form.schoolName.placeholder'),
+      'DifyUniversity',
+    )
+    await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.age' }))
+    await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.inSchool' }))
+
+    expect(submitButton).toBeDisabled()
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'education.form.terms.option.personalUse' }),
+    )
+
+    expect(submitButton).toBeEnabled()
+
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(mockEducationAdd.mock.calls[0]?.[0]).toEqual({
+        body: {
+          token: 'education-token',
+          role: 'Student',
+          institution: 'DifyUniversity',
+        },
+      })
+    })
   })
 })

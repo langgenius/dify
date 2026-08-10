@@ -15,7 +15,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, setup_required
+from controllers.console.wraps import email_password_login_enabled, model_validate, setup_required
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password
@@ -68,20 +68,20 @@ class ForgotPasswordSendEmailApi(Resource):
     @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
     @email_password_login_enabled
-    def post(self):
-        args = ForgotPasswordSendPayload.model_validate(console_ns.payload)
-        normalized_email = args.email.lower()
+    @model_validate(ForgotPasswordSendPayload)
+    def post(self, req_data: ForgotPasswordSendPayload):
+        normalized_email = req_data.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
 
-        if args.language is not None and args.language == "zh-Hans":
+        if req_data.language is not None and req_data.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
 
-        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
+        account = AccountService.get_account_by_email_with_case_fallback(req_data.email, session=db.session())
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -106,16 +106,16 @@ class ForgotPasswordCheckApi(Resource):
     @console_ns.response(400, "Invalid code or token")
     @setup_required
     @email_password_login_enabled
-    def post(self):
-        args = ForgotPasswordCheckPayload.model_validate(console_ns.payload)
+    @model_validate(ForgotPasswordCheckPayload)
+    def post(self, req_data: ForgotPasswordCheckPayload):
 
-        user_email = args.email.lower()
+        user_email = req_data.email.lower()
 
         is_forgot_password_error_rate_limit = AccountService.is_forgot_password_error_rate_limit(user_email)
         if is_forgot_password_error_rate_limit:
             raise EmailPasswordResetLimitError()
 
-        token_data = AccountService.get_reset_password_data(args.token)
+        token_data = AccountService.get_reset_password_data(req_data.token)
         if token_data is None:
             raise InvalidTokenError()
 
@@ -127,16 +127,16 @@ class ForgotPasswordCheckApi(Resource):
         if user_email != normalized_token_email:
             raise InvalidEmailError()
 
-        if args.code != token_data.get("code"):
+        if req_data.code != token_data.get("code"):
             AccountService.add_forgot_password_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
-        AccountService.revoke_reset_password_token(args.token)
+        AccountService.revoke_reset_password_token(req_data.token)
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_reset_password_token(
-            token_email, code=args.code, additional_data={"phase": "reset"}
+            token_email, code=req_data.code, additional_data={"phase": "reset"}
         )
 
         AccountService.reset_forgot_password_error_rate_limit(user_email)
@@ -156,15 +156,15 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
-    def post(self):
-        args = ForgotPasswordResetPayload.model_validate(console_ns.payload)
+    @model_validate(ForgotPasswordResetPayload)
+    def post(self, req_data: ForgotPasswordResetPayload):
 
         # Validate passwords match
-        if args.new_password != args.password_confirm:
+        if req_data.new_password != req_data.password_confirm:
             raise PasswordMismatchError()
 
         # Validate token and get reset data
-        reset_data = AccountService.get_reset_password_data(args.token)
+        reset_data = AccountService.get_reset_password_data(req_data.token)
         if not reset_data:
             raise InvalidTokenError()
         # Must use token in reset phase
@@ -172,11 +172,11 @@ class ForgotPasswordResetApi(Resource):
             raise InvalidTokenError()
 
         # Revoke token to prevent reuse
-        AccountService.revoke_reset_password_token(args.token)
+        AccountService.revoke_reset_password_token(req_data.token)
 
         # Generate secure salt and hash password
         salt = secrets.token_bytes(16)
-        password_hashed = hash_password(args.new_password, salt)
+        password_hashed = hash_password(req_data.new_password, salt)
 
         email = reset_data.get("email", "")
         account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())

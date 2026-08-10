@@ -43,9 +43,19 @@ vi.mock('@/next/link', () => ({
     children,
     href,
     className,
+    prefetch,
     ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode; href: string }) => (
-    <a href={href} className={className} {...props}>
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children?: ReactNode
+    href: string
+    prefetch?: boolean | null
+  }) => (
+    <a
+      href={href}
+      className={className}
+      data-prefetch={prefetch === null ? 'auto' : prefetch}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -93,6 +103,33 @@ describe('ContinueWorkItem', () => {
       screen.getByText('explore.continueWork.editedAt:{"time":"5 minutes ago"}'),
     ).toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(200000)
+  })
+
+  it('should enable prefetch after pointer intent', async () => {
+    const user = userEvent.setup()
+    renderItem(createApp())
+
+    const link = screen.getByRole('link', { name: /Continue App/ })
+
+    expect(link).toHaveAttribute('data-prefetch', 'false')
+
+    await user.hover(link)
+
+    expect(link).toHaveAttribute('data-prefetch', 'auto')
+  })
+
+  it('should enable prefetch after keyboard focus', async () => {
+    const user = userEvent.setup()
+    renderItem(createApp())
+
+    const link = screen.getByRole('link', { name: /Continue App/ })
+
+    expect(link).toHaveAttribute('data-prefetch', 'false')
+
+    await user.tab()
+
+    expect(link).toHaveFocus()
+    expect(link).toHaveAttribute('data-prefetch', 'auto')
   })
 
   it.each([

@@ -49,7 +49,7 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
-from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
+from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -487,7 +487,8 @@ class TrialAppWorkflowRunApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(WorkflowRunRequest)
+    def post(self, req_data: WorkflowRunRequest, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -498,8 +499,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        request_data = WorkflowRunRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
         try:
             app_id = app_model.id
             user_id = current_user.id
@@ -559,14 +559,14 @@ class TrialChatApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(ChatRequest)
+    def post(self, req_data: ChatRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        request_data = ChatRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         # Validate UUID values if provided
         if args.get("conversation_id"):
@@ -709,14 +709,13 @@ class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @model_validate(TextToSpeechRequest)
+    def post(self, req_data: TextToSpeechRequest, current_user: Account, trial_app):
         app_model = trial_app
         try:
-            request_data = TextToSpeechRequest.model_validate(console_ns.payload)
-
-            message_id = request_data.message_id
-            text = request_data.text
-            voice = request_data.voice
+            message_id = req_data.message_id
+            text = req_data.text
+            voice = req_data.voice
             message_ref = None
             if message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
@@ -770,13 +769,13 @@ class TrialCompletionApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(CompletionRequest)
+    def post(self, req_data: CompletionRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        request_data = CompletionRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False

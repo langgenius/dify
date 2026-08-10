@@ -122,6 +122,11 @@ vi.mock('@/app/components/billing/billing-page', () => ({
   default: () => <div data-testid="billing-page" />,
 }))
 
+vi.mock('@/app/components/custom/custom-page', () => ({
+  __esModule: true,
+  default: () => <div>custom.custom</div>,
+}))
+
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   __esModule: true,
   default: () => <div data-testid="data-source-page" />,
@@ -151,13 +156,7 @@ const baseConsoleState: ConsoleStateFixture = {
     id: '1',
     name: 'Workspace',
     plan: '',
-    status: '',
-    created_at: 0,
     role: 'owner',
-    providers: [],
-    trial_credits: 0,
-    trial_credits_used: 0,
-    next_credit_reset_date: 0,
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
@@ -168,10 +167,8 @@ const baseConsoleState: ConsoleStateFixture = {
     current_env: 'testing',
     current_version: '0.1.0',
     latest_version: '0.1.0',
-    release_date: '',
     release_notes: '',
     version: '0.1.0',
-    can_auto_update: false,
   },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [

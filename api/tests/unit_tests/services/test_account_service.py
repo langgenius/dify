@@ -456,14 +456,11 @@ class TestAccountService:
         sqlite_session.add(tenant_join)
         sqlite_session.commit()
 
-        with (
-            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
-            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
-        ):
+        with patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active:
             result = AccountService.load_user(account.id, sqlite_session)
 
             assert result is account
-            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
+            assert result.current_tenant_id == tenant.id
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session) -> None:
@@ -518,6 +515,54 @@ class TestAccountService:
             assert persisted_tenant_join is not None
             assert persisted_tenant_join.current is True
             assert persisted_tenant_join.last_opened_at == mock_now
+
+    def test_load_user_switches_from_archived_current_tenant(self, sqlite_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        archived_tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
+        available_tenant = Tenant(name="Available Workspace")
+        sqlite_session.add_all([account, archived_tenant, available_tenant])
+        sqlite_session.flush()
+        archived_join = TenantAccountJoin(
+            tenant_id=archived_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=True,
+        )
+        available_join = TenantAccountJoin(
+            tenant_id=available_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=False,
+        )
+        sqlite_session.add_all([archived_join, available_join])
+        sqlite_session.commit()
+
+        with patch.object(AccountService, "_refresh_account_last_active"):
+            result = AccountService.load_user(account.id, sqlite_session)
+
+        assert result is account
+        assert result.current_tenant_id == available_tenant.id
+        assert archived_join.current is False
+        assert available_join.current is True
+
+    def test_load_user_returns_none_without_normal_tenant(self, sqlite_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        archived_tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
+        sqlite_session.add_all([account, archived_tenant])
+        sqlite_session.flush()
+        archived_join = TenantAccountJoin(
+            tenant_id=archived_tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.NORMAL,
+            current=True,
+        )
+        sqlite_session.add(archived_join)
+        sqlite_session.commit()
+
+        result = AccountService.load_user(account.id, sqlite_session)
+
+        assert result is None
+        assert archived_join.current is False
 
     def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
