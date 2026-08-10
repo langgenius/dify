@@ -42,11 +42,9 @@ export function PublisherContent({
   crossAxisOffset = 0,
   debugWithMultipleModel = false,
   disabled = false,
-  draftHash,
   draftUpdatedAt,
   hasHumanInputNode = false,
   hasTriggerNode = false,
-  hasUnpublishedChanges,
   inputs,
   missingStartNode = false,
   multipleModelConfigs = [],
@@ -88,23 +86,10 @@ export function PublisherContent({
     onOpenStateChange(false)
   }
 
-  function handleOpenChange(nextOpen: boolean) {
-    if (disabled) {
-      closePublisher()
-      return
-    }
-
-    onToggle?.(nextOpen)
-    onOpenStateChange(nextOpen)
-  }
-
   const publish = usePublishController({
     appId: appDetail?.id,
     appMode: appDetail?.mode,
     appName: appDetail?.name,
-    debugWithMultipleModel,
-    draftHash,
-    hasUnpublishedChanges,
     onClose: closePublisher,
     onPublish,
     onRestore,
@@ -112,6 +97,18 @@ export function PublisherContent({
     publishedAt,
     supportsMultiEnvironment,
   })
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (disabled) {
+      closePublisher()
+      return
+    }
+
+    if (nextOpen) publish.resetPublished()
+    onToggle?.(nextOpen)
+    onOpenStateChange(nextOpen)
+  }
+
   const workflowLaunch = useWorkflowLaunch(inputs)
   const marketplace = useMarketplacePublish(appDetail?.id)
   const versionInfo = useVersionInfo({
@@ -127,6 +124,7 @@ export function PublisherContent({
     appId: appDetail?.id,
     appMode: appDetail?.mode,
     appName: appDetail?.name,
+    appPublished: publish.published,
     hasHumanInputNode,
     hasPublishedVersion: publish.hasPublishedVersion,
     hasTriggerNode,
@@ -135,7 +133,6 @@ export function PublisherContent({
     onPublish: publish.handlePublish,
     onRefreshData,
     outputs,
-    resolvedHasUnpublishedChanges: publish.resolvedHasUnpublishedChanges,
     toolPublished,
     workflowToolAvailable,
   })
@@ -201,12 +198,12 @@ export function PublisherContent({
             formatTimeFromNow,
             handlePublish: publish.handlePublish,
             handleRestore: publish.handleRestore,
-            hasUnpublishedChanges: publish.resolvedHasUnpublishedChanges,
             isChatApp: publish.isChatApp,
             isWorkflowApp: publish.isWorkflowApp,
             multipleModelConfigs,
             onEditVersion: versionInfo.openEditor,
             publishDisabled,
+            published: publish.published,
             publishedAt: publish.currentPublishedAt,
             startNodeLimitExceeded,
             upgradeHighlightStyle,

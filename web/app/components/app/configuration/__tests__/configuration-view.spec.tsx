@@ -297,7 +297,6 @@ const createViewModel = (
   onCompletionParamsChange: vi.fn(),
   onConfirmUseGPT4: vi.fn(),
   onEnableMultipleModelDebug: vi.fn(),
-  onFeatureStoreChange: vi.fn(),
   onFeaturesChange: vi.fn(),
   onHideDebugPanel: vi.fn(),
   onModelChange: vi.fn(),

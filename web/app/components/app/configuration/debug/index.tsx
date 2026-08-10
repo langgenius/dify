@@ -370,7 +370,7 @@ const Debug: FC<IDebug> = ({
           enabled: supportedVision,
         }
       })
-      setFeatures(newFeatures, { silent: true })
+      setFeatures(newFeatures)
     }
   }, [debugWithMultipleModel, featuresStore, mode, multipleModelConfigs, textGenerationModelList])
 

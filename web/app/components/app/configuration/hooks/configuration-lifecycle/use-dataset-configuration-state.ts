@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-export function useDatasetConfigurationState(dispatchPublishDraftChanged: () => void) {
+export function useDatasetConfigurationState() {
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
@@ -19,28 +19,17 @@ export function useDatasetConfigurationState(dispatchPublishDraftChanged: () => 
     },
   })
   const datasetConfigsRef = useRef(datasetConfigs)
-  const updateDatasetConfigs = useCallback(
-    (nextDatasetConfigs: DatasetConfigs) => {
-      setDatasetConfigs(nextDatasetConfigs)
-      datasetConfigsRef.current = nextDatasetConfigs
-      dispatchPublishDraftChanged()
-    },
-    [dispatchPublishDraftChanged],
-  )
+  const updateDatasetConfigs = useCallback((nextDatasetConfigs: DatasetConfigs) => {
+    setDatasetConfigs(nextDatasetConfigs)
+    datasetConfigsRef.current = nextDatasetConfigs
+  }, [])
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const updateDataSets = useCallback(
-    (nextDataSets: DataSet[]) => {
-      setDataSets(nextDataSets)
-      dispatchPublishDraftChanged()
-    },
-    [dispatchPublishDraftChanged],
-  )
 
   return {
     dataSets,
     datasetConfigs,
     datasetConfigsRef,
-    setDataSets: updateDataSets,
+    setDataSets,
     setDatasetConfigs: updateDatasetConfigs,
   }
 }

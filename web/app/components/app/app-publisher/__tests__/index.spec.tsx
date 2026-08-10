@@ -187,8 +187,15 @@ vi.mock('../built-in-publisher/summary-section', () => ({
     return (
       <div>
         {props.environmentTabs}
-        <button onClick={() => void props.handlePublish()}>publisher-summary-publish</button>
-        <button onClick={() => void props.handleRestore()}>publisher-summary-restore</button>
+        <button
+          disabled={props.publishDisabled || props.published}
+          onClick={() => void props.handlePublish()}
+        >
+          publisher-summary-publish
+        </button>
+        <button disabled={props.published} onClick={() => void props.handleRestore()}>
+          publisher-summary-restore
+        </button>
         <button onClick={props.onEditVersion}>publisher-summary-edit-version</button>
       </div>
     )
@@ -278,7 +285,7 @@ describe('AppPublisher', () => {
     expect(screen.queryByText('publisher-access-control')).not.toBeInTheDocument()
   })
 
-  it('should publish and track the publish event', async () => {
+  it('should publish once per open session and reset the lock after reopening', async () => {
     mockOnPublish.mockResolvedValue(undefined)
 
     render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
@@ -296,7 +303,16 @@ describe('AppPublisher', () => {
           app_name: 'Demo App',
         }),
       )
+      expect(sectionProps.summary?.published).toBe(true)
+      expect(screen.getByText('publisher-summary-publish')).toBeDisabled()
     })
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.summary?.published).toBe(false)
+    expect(screen.getByText('publisher-summary-publish')).toBeEnabled()
   })
 
   it('should refresh deployment workflow versions after publishing when multi-environment deployment is available', async () => {
@@ -321,10 +337,9 @@ describe('AppPublisher', () => {
     queryClient.setQueryDefaults(environmentsQuery.queryKey, { staleTime: Infinity })
     queryClient.setQueryData(environmentsQuery.queryKey, { data: [] })
 
-    renderWithConsoleQuery(
-      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
-      { queryClient },
-    )
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      queryClient,
+    })
 
     await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     await user.click(screen.getByText('publisher-summary-publish'))
@@ -349,10 +364,9 @@ describe('AppPublisher', () => {
     }
     mockOnPublish.mockResolvedValue(undefined)
 
-    renderWithConsoleQuery(
-      <AppPublisher hasUnpublishedChanges publishedAt={Date.now()} onPublish={mockOnPublish} />,
-      { queryClient },
-    )
+    renderWithConsoleQuery(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />, {
+      queryClient,
+    })
 
     await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     await user.click(screen.getByText('publisher-summary-publish'))
@@ -812,19 +826,11 @@ describe('AppPublisher', () => {
     expect(mockOnToggle).not.toHaveBeenCalled()
   })
 
-  it('should publish from the keyboard shortcut and restore the popover state', async () => {
+  it('should apply the per-open publish lock to the keyboard shortcut', async () => {
     const preventDefault = vi.fn()
-    const onRestore = vi.fn().mockResolvedValue(undefined)
     mockOnPublish.mockResolvedValue(undefined)
 
-    const { rerender } = render(
-      <AppPublisher
-        hasUnpublishedChanges
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-        onRestore={onRestore}
-      />,
-    )
+    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
 
     expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
     hotkeyMocks.handlers[0]!({ preventDefault })
@@ -834,46 +840,24 @@ describe('AppPublisher', () => {
       expect(mockOnPublish).toHaveBeenCalledTimes(1)
     })
 
-    rerender(
-      <AppPublisher
-        hasUnpublishedChanges={false}
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-        onRestore={onRestore}
-      />,
-    )
     hotkeyMocks.handlers.at(-1)!({ preventDefault })
     expect(mockOnPublish).toHaveBeenCalledTimes(1)
 
-    rerender(
-      <AppPublisher
-        hasUnpublishedChanges
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-        onRestore={onRestore}
-      />,
-    )
+    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    expect(sectionProps.summary?.published).toBe(false)
     hotkeyMocks.handlers.at(-1)!({ preventDefault })
     await waitFor(() => {
       expect(mockOnPublish).toHaveBeenCalledTimes(2)
     })
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    fireEvent.click(screen.getByText('publisher-summary-restore'))
-
-    await waitFor(() => {
-      expect(onRestore).toHaveBeenCalledTimes(1)
-    })
-    expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
   })
 
-  it('should require an explicit model selection when publishing in multiple model mode', () => {
+  it('should keep keyboard publishing available in multiple model mode', async () => {
     const preventDefault = vi.fn()
+    mockOnPublish.mockResolvedValue(undefined)
 
     render(
       <AppPublisher
         debugWithMultipleModel
-        hasUnpublishedChanges
         multipleModelConfigs={[
           {
             id: 'model-1',
@@ -889,8 +873,10 @@ describe('AppPublisher', () => {
 
     hotkeyMocks.handlers[0]!({ preventDefault })
 
-    expect(preventDefault).not.toHaveBeenCalled()
-    expect(mockOnPublish).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(preventDefault).toHaveBeenCalled()
+      expect(mockOnPublish).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should keep the popover open when restore and publish fail', async () => {
@@ -899,12 +885,7 @@ describe('AppPublisher', () => {
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
 
     render(
-      <AppPublisher
-        hasUnpublishedChanges
-        publishedAt={Date.now()}
-        onPublish={mockOnPublish}
-        onRestore={onRestore}
-      />,
+      <AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} onRestore={onRestore} />,
     )
 
     hotkeyMocks.handlers[0]!({ preventDefault })
@@ -1018,7 +999,7 @@ describe('AppPublisher', () => {
     )
   })
 
-  it('should derive workflow changes from draft and published hashes', async () => {
+  it('should keep workflow publishing available for an existing published version', async () => {
     const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
@@ -1029,54 +1010,24 @@ describe('AppPublisher', () => {
       hash: 'published-hash',
     }
 
-    const { rerender } = render(
-      <AppPublisher
-        draftHash="published-hash"
-        draftUpdatedAt={1_710_000_200_000}
-        publishedAt={1_710_000_100_000}
-      />,
-    )
-
-    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    expect(sectionProps.summary?.hasUnpublishedChanges).toBe(false)
-
-    rerender(
-      <AppPublisher
-        draftHash="changed-draft-hash"
-        draftUpdatedAt={1_710_000_100_000}
-        publishedAt={1_710_000_200_000}
-      />,
-    )
-    expect(sectionProps.summary?.hasUnpublishedChanges).toBe(true)
-  })
-
-  it('should keep workflow publishing available when the published hash is unavailable', async () => {
-    const user = userEvent.setup()
-    mockAppDetail = {
-      ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
-    }
-    mockPublishedWorkflow = {
-      created_at: 1_710_000_100,
-      hash: '',
-    }
-
+    mockOnPublish.mockResolvedValue(undefined)
     render(
       <AppPublisher
-        draftHash="draft-hash"
         draftUpdatedAt={1_710_000_200_000}
+        onPublish={mockOnPublish}
         publishedAt={1_710_000_100_000}
       />,
     )
 
     await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-
     expect(sectionProps.summary).toEqual(
       expect.objectContaining({
-        hasUnpublishedChanges: true,
+        published: false,
         publishedAt: 1_710_000_100_000,
       }),
     )
+    await user.click(screen.getByText('publisher-summary-publish'))
+    await waitFor(() => expect(mockOnPublish).toHaveBeenCalledOnce())
   })
 
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
@@ -1095,7 +1046,7 @@ describe('AppPublisher', () => {
 
     render(
       <WorkflowContext value={workflowStore as any}>
-        <AppPublisher draftHash="draft-hash" publishedAt={1_710_000_100_000} />
+        <AppPublisher publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
     )
 

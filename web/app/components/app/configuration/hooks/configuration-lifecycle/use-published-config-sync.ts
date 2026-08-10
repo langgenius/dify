@@ -15,7 +15,6 @@ import { PromptMode } from '@/models/debug'
 import { Resolution, TransferMethod } from '@/types/app'
 
 type UsePublishedConfigSyncParams = {
-  runWithoutTracking: <Result>(callback: () => Result) => Result
   setCanReturnToSimpleMode: (value: boolean) => void
   setChatPromptConfig: (value: ConfigurationPublishConfig['chatPromptConfig']) => void
   setCitationConfig: (value: MoreLikeThisConfig) => void
@@ -37,7 +36,6 @@ type UsePublishedConfigSyncParams = {
 }
 
 export function usePublishedConfigSync({
-  runWithoutTracking,
   setCanReturnToSimpleMode,
   setChatPromptConfig,
   setCitationConfig,
@@ -59,49 +57,44 @@ export function usePublishedConfigSync({
 }: UsePublishedConfigSyncParams) {
   return useCallback(
     (publishedConfig: ConfigurationPublishConfig) => {
-      runWithoutTracking(() => {
-        const publishedModelConfig = publishedConfig.modelConfig
-        setModelConfig(publishedModelConfig)
-        setCompletionParams(publishedConfig.completionParams)
-        setPromptModeState(publishedConfig.promptMode)
-        setCanReturnToSimpleMode(publishedConfig.promptMode !== PromptMode.advanced)
-        setChatPromptConfig(publishedConfig.chatPromptConfig)
-        setCompletionPromptConfig(publishedConfig.completionPromptConfig)
-        setDataSets(publishedModelConfig.dataSets || [])
-        setDatasetConfigs(publishedConfig.datasetConfigs)
-        setExternalDataToolsConfig(publishedConfig.externalDataToolsConfig)
-        setIntroduction(publishedModelConfig.opening_statement || '')
-        setSuggestedQuestions(publishedModelConfig.suggested_questions || [])
-        setMoreLikeThisConfig(publishedModelConfig.more_like_this || { enabled: false })
-        setSuggestedQuestionsAfterAnswerConfig(
-          publishedModelConfig.suggested_questions_after_answer || { enabled: false },
-        )
-        setSpeechToTextConfig(publishedModelConfig.speech_to_text || { enabled: false })
-        setTextToSpeechConfig(
-          publishedModelConfig.text_to_speech || {
-            enabled: false,
-            voice: '',
-            language: '',
-          },
-        )
-        setCitationConfig(publishedModelConfig.retriever_resource || { enabled: false })
-        setModerationConfig(publishedModelConfig.sensitive_word_avoidance || { enabled: false })
-        const publishedVisionConfig = publishedModelConfig.file_upload?.image
-        setVisionConfig(
-          {
-            enabled: publishedVisionConfig?.enabled || false,
-            number_limits: publishedVisionConfig?.number_limits || 2,
-            detail: publishedVisionConfig?.detail || Resolution.low,
-            transfer_methods: publishedVisionConfig?.transfer_methods || [
-              TransferMethod.local_file,
-            ],
-          },
-          true,
-        )
-      })
+      const publishedModelConfig = publishedConfig.modelConfig
+      setModelConfig(publishedModelConfig)
+      setCompletionParams(publishedConfig.completionParams)
+      setPromptModeState(publishedConfig.promptMode)
+      setCanReturnToSimpleMode(publishedConfig.promptMode !== PromptMode.advanced)
+      setChatPromptConfig(publishedConfig.chatPromptConfig)
+      setCompletionPromptConfig(publishedConfig.completionPromptConfig)
+      setDataSets(publishedModelConfig.dataSets || [])
+      setDatasetConfigs(publishedConfig.datasetConfigs)
+      setExternalDataToolsConfig(publishedConfig.externalDataToolsConfig)
+      setIntroduction(publishedModelConfig.opening_statement || '')
+      setSuggestedQuestions(publishedModelConfig.suggested_questions || [])
+      setMoreLikeThisConfig(publishedModelConfig.more_like_this || { enabled: false })
+      setSuggestedQuestionsAfterAnswerConfig(
+        publishedModelConfig.suggested_questions_after_answer || { enabled: false },
+      )
+      setSpeechToTextConfig(publishedModelConfig.speech_to_text || { enabled: false })
+      setTextToSpeechConfig(
+        publishedModelConfig.text_to_speech || {
+          enabled: false,
+          voice: '',
+          language: '',
+        },
+      )
+      setCitationConfig(publishedModelConfig.retriever_resource || { enabled: false })
+      setModerationConfig(publishedModelConfig.sensitive_word_avoidance || { enabled: false })
+      const publishedVisionConfig = publishedModelConfig.file_upload?.image
+      setVisionConfig(
+        {
+          enabled: publishedVisionConfig?.enabled || false,
+          number_limits: publishedVisionConfig?.number_limits || 2,
+          detail: publishedVisionConfig?.detail || Resolution.low,
+          transfer_methods: publishedVisionConfig?.transfer_methods || [TransferMethod.local_file],
+        },
+        true,
+      )
     },
     [
-      runWithoutTracking,
       setCanReturnToSimpleMode,
       setChatPromptConfig,
       setCitationConfig,

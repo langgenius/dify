@@ -39,7 +39,6 @@ import { useDatasetConfigurationState } from './configuration-lifecycle/use-data
 import { useFeatureConfigurationState } from './configuration-lifecycle/use-feature-configuration-state'
 import { useModelConfigurationState } from './configuration-lifecycle/use-model-configuration-state'
 import { useMultipleModelDebug } from './configuration-lifecycle/use-multiple-model-debug'
-import { usePublishChangeTracking } from './configuration-lifecycle/use-publish-change-tracking'
 import { usePublishedConfigSync } from './configuration-lifecycle/use-published-config-sync'
 
 export const useConfiguration = (): ConfigurationViewModel => {
@@ -62,18 +61,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
-  const {
-    dispatchPublishDraftChanged,
-    hasUnpublishedChanges,
-    latestPublishedAt,
-    markPublished,
-    resetUnpublishedChanges,
-    runWithoutTracking,
-    startTracking,
-    stopTracking,
-  } = usePublishChangeTracking({ appId, serverPublishedAt: serverLatestPublishedAt })
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
-  const featureConfiguration = useFeatureConfigurationState(dispatchPublishDraftChanged)
+  const featureConfiguration = useFeatureConfigurationState()
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<ConfigurationPublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -106,7 +95,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const [query, setQuery] = useState('')
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
   const modelConfiguration = useModelConfigurationState({
-    dispatchPublishDraftChanged,
     formattingChangedDispatcher,
   })
   const {
@@ -124,7 +112,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   // oxlint-disable-next-line eslint-react/use-state -- This custom hook returns a state object.
-  const datasetConfiguration = useDatasetConfigurationState(dispatchPublishDraftChanged)
+  const datasetConfiguration = useDatasetConfigurationState()
   const { dataSets, datasetConfigs, datasetConfigsRef, setDataSets, setDatasetConfigs } =
     datasetConfiguration
   const contextVar = modelConfig.configs.prompt_variables.find((item) => item.is_context_var)?.key
@@ -175,7 +163,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
     completionParams: completionParamsState,
     setCompletionParams,
     setStop: setTempStop,
-    onPublishConfigChange: dispatchPublishDraftChanged,
   })
   const {
     chatPromptConfig,
@@ -188,7 +175,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
   } = advancedPromptConfiguration
 
   const syncToPublishedConfig = usePublishedConfigSync({
-    runWithoutTracking,
     setCanReturnToSimpleMode,
     setChatPromptConfig,
     setCitationConfig,
@@ -216,9 +202,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
         setCanReturnToSimpleMode(true)
       }
       setPromptMode(nextMode)
-      dispatchPublishDraftChanged()
     },
-    [dispatchPublishDraftChanged, migrateToDefaultPrompt],
+    [migrateToDefaultPrompt],
   )
 
   const handleSelect = useDatasetSelectHandler({
@@ -267,13 +252,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
     },
     [formattingChangedDispatcher, setShowAppConfigureFeaturesModal],
   )
-  const handleFeatureStoreChange = useCallback<OnFeaturesChange>(
-    (features) => {
-      if (features) dispatchPublishDraftChanged()
-    },
-    [dispatchPublishDraftChanged],
-  )
-
   const handleAddPromptVariable = useCallback(
     (variables: PromptVariable[]) => {
       setModelConfig(
@@ -289,14 +267,11 @@ export const useConfiguration = (): ConfigurationViewModel => {
     appId,
     currentRerankModel: currentRerankModel?.model,
     currentRerankProvider: currentRerankProvider?.provider,
-    resetUnpublishedChanges,
     setAnnotationConfig,
     setCollectionList,
     setHasFetchedDetail,
     setMode,
     setPublishedConfig,
-    startTracking,
-    stopTracking,
     syncToPublishedConfig,
   })
 
@@ -340,7 +315,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
     hasSetBlockStatus,
     isAdvancedMode,
     isFunctionCall,
-    markPublished,
     mode,
     modelConfig,
     promptEmpty,
@@ -425,8 +399,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     appPublisherProps: {
       disabled: !appACLCapabilities.canReleaseAndVersion,
       publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
-      publishedAt: (latestPublishedAt || 0) * 1000,
-      hasUnpublishedChanges: !latestPublishedAt || hasUnpublishedChanges,
+      publishedAt: (serverLatestPublishedAt || 0) * 1000,
       debugWithMultipleModel,
       multipleModelConfigs,
       onPublish,
@@ -434,7 +407,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
       resetAppConfig: () => {
         if (!publishedConfig) return
         syncToPublishedConfig(publishedConfig)
-        resetUnpublishedChanges()
       },
     },
     contextValue,
@@ -458,7 +430,6 @@ export const useConfiguration = (): ConfigurationViewModel => {
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: enableMultipleModelDebug,
-    onFeatureStoreChange: handleFeatureStoreChange,
     onFeaturesChange: handleFeaturesChange,
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,

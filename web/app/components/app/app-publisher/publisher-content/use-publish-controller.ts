@@ -3,7 +3,7 @@ import type { AppPublisherProps, AppPublisherPublishParams } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQueryClient } from '@tanstack/react-query'
-import { use, useEffect } from 'react'
+import { use, useEffect, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -18,13 +18,7 @@ import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
-  | 'debugWithMultipleModel'
-  | 'draftHash'
-  | 'hasUnpublishedChanges'
-  | 'onPublish'
-  | 'onRestore'
-  | 'publishDisabled'
-  | 'publishedAt'
+  'onPublish' | 'onRestore' | 'publishDisabled' | 'publishedAt'
 > & {
   appId?: string
   appMode?: AppModeEnum
@@ -47,9 +41,6 @@ export function usePublishController({
   appId,
   appMode,
   appName,
-  debugWithMultipleModel = false,
-  draftHash,
-  hasUnpublishedChanges,
   onClose,
   onPublish,
   onRestore,
@@ -57,6 +48,7 @@ export function usePublishController({
   publishedAt,
   supportsMultiEnvironment,
 }: UsePublishControllerParams) {
+  const [published, setPublished] = useState(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
@@ -78,17 +70,11 @@ export function usePublishController({
         : undefined
       : publishedAt
   const hasPublishedVersion = Boolean(currentPublishedAt)
-  const workflowHasUnpublishedChanges =
-    !currentPublishedAt ||
-    !draftHash ||
-    !publishedWorkflow?.hash ||
-    draftHash !== publishedWorkflow.hash
-  const resolvedHasUnpublishedChanges =
-    hasUnpublishedChanges ?? (isWorkflowApp ? workflowHasUnpublishedChanges : !currentPublishedAt)
 
   async function handlePublish(params?: AppPublisherPublishParams) {
     try {
       await onPublish?.(params)
+      setPublished(true)
 
       const socket = appId ? webSocketClient.getSocket(appId) : null
       if (appId) {
@@ -118,6 +104,7 @@ export function usePublishController({
       })
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
+      setPublished(false)
     }
   }
 
@@ -129,9 +116,8 @@ export function usePublishController({
   }
 
   useHotkey(APP_PUBLISH_HOTKEY, (event) => {
-    if (debugWithMultipleModel) return
     event.preventDefault()
-    if (publishDisabled || (hasPublishedVersion && !resolvedHasUnpublishedChanges)) return
+    if (publishDisabled || published) return
     void handlePublish()
   })
 
@@ -166,7 +152,8 @@ export function usePublishController({
     isPublishedWorkflowLoading,
     isPublishedWorkflowSuccess,
     isWorkflowApp,
+    published,
     publishedWorkflow,
-    resolvedHasUnpublishedChanges,
+    resetPublished: () => setPublished(false),
   }
 }

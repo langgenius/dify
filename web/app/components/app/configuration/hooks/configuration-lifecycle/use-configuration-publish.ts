@@ -24,7 +24,6 @@ type UseConfigurationPublishParams = {
   hasSetBlockStatus: { history: boolean; query: boolean }
   isAdvancedMode: boolean
   isFunctionCall: boolean
-  markPublished: () => void
   mode: AppModeEnum
   modelConfig: ModelConfig
   promptEmpty: boolean
@@ -51,7 +50,6 @@ export function useConfigurationPublish({
   hasSetBlockStatus,
   isAdvancedMode,
   isFunctionCall,
-  markPublished,
   mode,
   modelConfig,
   promptEmpty,
@@ -98,7 +96,6 @@ export function useConfigurationPublish({
         t,
       })(updateModelConfig, modelAndParameter, features)
 
-      if (result) markPublished()
       return result
     },
     [
@@ -115,7 +112,6 @@ export function useConfigurationPublish({
       hasSetBlockStatus,
       isAdvancedMode,
       isFunctionCall,
-      markPublished,
       mode,
       modelConfig,
       promptEmpty,

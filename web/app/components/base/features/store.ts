@@ -12,21 +12,14 @@ export type FeaturesState = {
 }
 
 type FeaturesAction = {
-  setFeatures: (features: Features, options?: SetFeaturesOptions) => void
+  setFeatures: (features: Features) => void
 }
 
 export type FeatureStoreState = FeaturesState & FeaturesAction & FeaturesModal
 
 export type FeaturesStore = ReturnType<typeof createFeaturesStore>
 
-type SetFeaturesOptions = {
-  silent?: boolean
-}
-
-export const createFeaturesStore = (
-  initProps?: Partial<FeaturesState>,
-  onFeaturesChange?: (features: Features) => void,
-) => {
+export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
   const DEFAULT_PROPS: FeaturesState = {
     features: {
       moreLikeThis: {
@@ -66,10 +59,7 @@ export const createFeaturesStore = (
   return createStore<FeatureStoreState>()((set) => ({
     ...DEFAULT_PROPS,
     ...initProps,
-    setFeatures: (features, options) => {
-      set(() => ({ features }))
-      if (!options?.silent) onFeaturesChange?.(features)
-    },
+    setFeatures: (features) => set(() => ({ features })),
     showFeaturesModal: false,
     setShowFeaturesModal: (showFeaturesModal) => set(() => ({ showFeaturesModal })),
   }))

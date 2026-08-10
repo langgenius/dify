@@ -58,10 +58,10 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '3 minutes ago'}
         handlePublish={vi.fn()}
         handleRestore={handleRestore}
-        hasUnpublishedChanges
         isChatApp
         multipleModelConfigs={[]}
         publishDisabled={false}
+        published={false}
         publishedAt={Date.now()}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -70,9 +70,10 @@ describe('app-publisher sections', () => {
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.restore(?=$|:)/))
     expect(handleRestore).toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
   })
 
-  it('should disable restore for published chat apps without unpublished changes', async () => {
+  it('should disable publish and restore after publishing in the current open session', async () => {
     const user = userEvent.setup()
     const handleRestore = vi.fn()
 
@@ -83,10 +84,10 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '3 minutes ago'}
         handlePublish={vi.fn()}
         handleRestore={handleRestore}
-        hasUnpublishedChanges={false}
         isChatApp
         multipleModelConfigs={[]}
         publishDisabled={false}
+        published
         publishedAt={Date.now()}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -97,6 +98,8 @@ describe('app-publisher sections', () => {
       name: /(?:^|\.)common\.restore(?=$|:)/,
     })
     expect(restoreButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: /common\.published\b/ })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent(/common\.upToDate\b/)
     await user.click(restoreButton)
     expect(handleRestore).not.toHaveBeenCalled()
   })
@@ -112,6 +115,7 @@ describe('app-publisher sections', () => {
         isChatApp={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
+        published={false}
         publishedAt={undefined}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -121,10 +125,10 @@ describe('app-publisher sections', () => {
     expect(screen.getByText(/(?:^|\.)common\.notPublishedYet(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('P')).toBeInTheDocument()
-    expect(screen.getByText(/(?:^|\.)common\.unpublishedChanges(?=$|:)/)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
   })
 
-  it('should expose naming and the publish shortcut for an unnamed published workflow with no draft changes', () => {
+  it('should expose naming and keep publishing available for an unnamed published workflow', () => {
     const onEditVersion = vi.fn()
 
     render(
@@ -134,12 +138,12 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '17 days ago'}
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
-        hasUnpublishedChanges={false}
         isChatApp={false}
         isWorkflowApp
         multipleModelConfigs={[]}
         onEditVersion={onEditVersion}
         publishDisabled={false}
+        published={false}
         publishedAt={1_710_000_100_000}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -154,13 +158,13 @@ describe('app-publisher sections', () => {
     })
     fireEvent.click(nameButton)
     expect(onEditVersion).toHaveBeenCalledTimes(1)
-    const publishButton = screen.getByRole('button', { name: /common\.published\b/ })
-    expect(publishButton).toBeDisabled()
+    const publishButton = screen.getByRole('button', { name: /common\.publishUpdate\b/ })
+    expect(publishButton).toBeEnabled()
     expect(within(publishButton).getByText('P')).toBeInTheDocument()
-    expect(screen.getByText(/common\.noChanges\b/)).toBeInTheDocument()
+    expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
   })
 
-  it('should show named workflow metadata and publish update when its draft changed', () => {
+  it('should show named workflow metadata and keep publish update available', () => {
     const onEditVersion = vi.fn()
 
     render(
@@ -170,12 +174,12 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '2 minutes ago'}
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
-        hasUnpublishedChanges
         isChatApp={false}
         isWorkflowApp
         multipleModelConfigs={[]}
         onEditVersion={onEditVersion}
         publishDisabled={false}
+        published={false}
         publishedAt={1_710_000_100_000}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -195,8 +199,8 @@ describe('app-publisher sections', () => {
     )
     expect(onEditVersion).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
-    expect(screen.getByText(/common\.unpublishedChanges\b/)).toBeInTheDocument()
-    expect(screen.getByText(/common\.savedAt\b/)).toBeInTheDocument()
+    expect(screen.getByText(/common\.autoSaved\b/)).toBeInTheDocument()
+    expect(screen.getAllByText(/2 minutes ago/)).not.toHaveLength(0)
   })
 
   it('should keep non-workflow apps free of workflow version details and saved time', () => {
@@ -207,22 +211,22 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '2 minutes ago'}
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
-        hasUnpublishedChanges
         isChatApp
         isWorkflowApp={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
+        published={false}
         publishedAt={1_710_000_100_000}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
       />,
     )
 
-    expect(screen.getByText(/common\.latestPublished\b/)).toBeInTheDocument()
+    expect(screen.getAllByText(/common\.latestPublished\b/)).toHaveLength(1)
     expect(screen.queryByText('#5')).not.toBeInTheDocument()
     expect(screen.queryByText(/versionHistory\.nameIt\b/)).not.toBeInTheDocument()
-    expect(screen.getByText(/common\.unpublishedChanges\b/)).toBeInTheDocument()
-    expect(screen.queryByText(/common\.savedAt\b/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /common\.publishUpdate\b/ })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent(/common\.currentDraft\b/)
   })
 
   it('should keep multiple-model publishing available without publish config changes', () => {
@@ -235,10 +239,10 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '1 minute ago'}
         handlePublish={handlePublish}
         handleRestore={vi.fn()}
-        hasUnpublishedChanges={false}
         isChatApp={false}
         multipleModelConfigs={[{ id: '1' } as any]}
         publishDisabled={false}
+        published={false}
         publishedAt={Date.now()}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -258,10 +262,10 @@ describe('app-publisher sections', () => {
         formatTimeFromNow={() => '1 minute ago'}
         handlePublish={vi.fn()}
         handleRestore={vi.fn()}
-        hasUnpublishedChanges={false}
         isChatApp={false}
         multipleModelConfigs={[{ id: '1' } as any]}
         publishDisabled
+        published={false}
         publishedAt={Date.now()}
         startNodeLimitExceeded={false}
         upgradeHighlightStyle={{}}
@@ -282,6 +286,7 @@ describe('app-publisher sections', () => {
         isChatApp={false}
         multipleModelConfigs={[]}
         publishDisabled={false}
+        published={false}
         publishedAt={undefined}
         startNodeLimitExceeded
         upgradeHighlightStyle={{}}

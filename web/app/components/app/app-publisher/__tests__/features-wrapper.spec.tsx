@@ -133,7 +133,6 @@ describe('FeaturesWrappedAppPublisher', () => {
           citation: { enabled: true },
           annotationReply: { enabled: true },
         }),
-        { silent: true },
       )
     })
   })

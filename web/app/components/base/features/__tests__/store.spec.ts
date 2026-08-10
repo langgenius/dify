@@ -151,20 +151,6 @@ describe('createFeaturesStore', () => {
       expect(store.getState().features.moreLikeThis?.enabled).toBe(true)
       expect(store.getState().features.opening?.enabled).toBe(true)
     })
-
-    it('should notify publish tracking unless the update is silent', () => {
-      const onFeaturesChange = vi.fn()
-      const store = createFeaturesStore(undefined, onFeaturesChange)
-      const nextFeatures = {
-        moreLikeThis: { enabled: true },
-      }
-
-      store.getState().setFeatures(nextFeatures)
-      store.getState().setFeatures(nextFeatures, { silent: true })
-
-      expect(onFeaturesChange).toHaveBeenCalledOnce()
-      expect(onFeaturesChange).toHaveBeenCalledWith(nextFeatures)
-    })
   })
 
   describe('showFeaturesModal', () => {

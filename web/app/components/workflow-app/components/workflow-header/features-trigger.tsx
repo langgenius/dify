@@ -50,7 +50,6 @@ const FeaturesTrigger = () => {
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
-  const draftHash = useStore((s) => s.syncWorkflowDraftHash)
   const toolPublished = useStore((s) => s.toolPublished)
   const lastPublishedHasUserInput = useStore((s) => s.lastPublishedHasUserInput)
 
@@ -252,7 +251,6 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          draftHash,
           disabled: nodesReadOnly || !hasWorkflowNodes || !canReleaseAndVersion,
           toolPublished,
           inputs: variables,

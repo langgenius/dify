@@ -275,6 +275,7 @@
   "common.unpublished": "ไม่ได้เผยแพร่",
   "common.unpublishedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้เผยแพร่",
   "common.update": "อัพเดต",
+  "common.upToDate": "เป็นเวอร์ชันล่าสุด",
   "common.variableNamePlaceholder": "ชื่อตัวแปร",
   "common.versionHistory": "ประวัติรุ่น",
   "common.viewDetailInTracingPanel": "ดูรายละเอียด",

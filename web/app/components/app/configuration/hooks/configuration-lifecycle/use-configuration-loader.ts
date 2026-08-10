@@ -10,14 +10,11 @@ import { loadConfigurationState } from './load'
 type ConfigurationLoaderOperations = {
   currentRerankModel?: string
   currentRerankProvider?: string
-  resetUnpublishedChanges: () => void
   setAnnotationConfig: (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => void
   setCollectionList: Dispatch<SetStateAction<Collection[]>>
   setHasFetchedDetail: Dispatch<SetStateAction<boolean>>
   setMode: Dispatch<SetStateAction<AppModeEnum>>
   setPublishedConfig: Dispatch<SetStateAction<ConfigurationPublishConfig | null>>
-  startTracking: () => void
-  stopTracking: () => void
   syncToPublishedConfig: (config: ConfigurationPublishConfig) => void
 }
 
@@ -30,7 +27,6 @@ export function useConfigurationLoader({
 
   useEffect(() => {
     const current = operationsRef.current
-    current.stopTracking()
     void (async () => {
       const configurationState = await loadConfigurationState({
         appId,
@@ -46,8 +42,6 @@ export function useConfigurationLoader({
         current.setAnnotationConfig(configurationState.annotationConfig, true)
 
       current.setPublishedConfig(configurationState.publishedConfig)
-      current.resetUnpublishedChanges()
-      current.startTracking()
       current.setHasFetchedDetail(true)
     })()
   }, [appId])

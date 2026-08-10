@@ -33,7 +33,6 @@ export type ConfigurationViewModel = {
   onCompletionParamsChange: (params: FormValue) => void
   onConfirmUseGPT4: () => void
   onEnableMultipleModelDebug: () => void
-  onFeatureStoreChange: OnFeaturesChange
   onFeaturesChange: OnFeaturesChange
   onHideDebugPanel: () => void
   onModelChange: ComponentProps<typeof ModelParameterModal>['setModel']

@@ -15,12 +15,12 @@ type UseWorkflowToolParams = {
   appId?: string
   appMode?: AppModeEnum
   appName?: string
+  appPublished: boolean
   hasHumanInputNode: boolean
   hasPublishedVersion: boolean
   hasTriggerNode: boolean
   inputs?: InputVar[]
   outputs?: Variable[]
-  resolvedHasUnpublishedChanges: boolean
   toolPublished?: boolean
   workflowToolAvailable: boolean
   onClosePublisher: () => void
@@ -36,6 +36,7 @@ export function useWorkflowTool({
   appId,
   appMode,
   appName,
+  appPublished,
   hasHumanInputNode,
   hasPublishedVersion,
   hasTriggerNode,
@@ -44,7 +45,6 @@ export function useWorkflowTool({
   onPublish,
   onRefreshData,
   outputs,
-  resolvedHasUnpublishedChanges,
   toolPublished,
   workflowToolAvailable,
 }: UseWorkflowToolParams) {
@@ -71,7 +71,7 @@ export function useWorkflowTool({
   const configuration = useConfigureButton({
     enabled: visible && canManageTools,
     published,
-    detailNeedUpdate: published && !resolvedHasUnpublishedChanges,
+    detailNeedUpdate: published && appPublished,
     workflowAppId: appId ?? '',
     icon,
     name: appName ?? '',

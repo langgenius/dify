@@ -16,10 +16,6 @@ export type AppPublisherProps = {
   publishedAt?: number
   /** only needed in workflow / chatflow mode */
   draftUpdatedAt?: number
-  /** Current persisted workflow draft hash, used to compare with the published workflow. */
-  draftHash?: string
-  /** Non-workflow editors should pass their local dirty state. */
-  hasUnpublishedChanges?: boolean
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */

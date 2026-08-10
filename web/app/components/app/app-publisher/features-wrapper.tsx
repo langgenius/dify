@@ -83,7 +83,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
       } as FileUpload
     })
-    setFeatures(newFeatures, { silent: true })
+    setFeatures(newFeatures)
     setRestoreConfirmOpen(false)
   }
 

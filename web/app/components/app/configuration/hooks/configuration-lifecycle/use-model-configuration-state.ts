@@ -46,10 +46,8 @@ function createInitialModelConfig(): ModelConfig {
 }
 
 export function useModelConfigurationState({
-  dispatchPublishDraftChanged,
   formattingChangedDispatcher,
 }: {
-  dispatchPublishDraftChanged: () => void
   formattingChangedDispatcher: () => void
 }) {
   const [completionParams, setCompletionParams] = useState<FormValue>({})
@@ -77,17 +75,8 @@ export function useModelConfigurationState({
         setTempStop([])
       }
       setCompletionParams(params)
-      dispatchPublishDraftChanged()
     },
-    [dispatchPublishDraftChanged, getTempStop, setTempStop],
-  )
-
-  const updateModelConfig = useCallback(
-    (nextModelConfig: ModelConfig) => {
-      setModelConfig(nextModelConfig)
-      dispatchPublishDraftChanged()
-    },
-    [dispatchPublishDraftChanged],
+    [getTempStop, setTempStop],
   )
 
   const updateVisionConfig = useCallback(
@@ -98,10 +87,9 @@ export function useModelConfigurationState({
         detail: config.detail || Resolution.low,
         transfer_methods: config.transfer_methods || [TransferMethod.local_file],
       })
-      dispatchPublishDraftChanged()
       if (!notNoticeFormattingChanged) formattingChangedDispatcher()
     },
-    [dispatchPublishDraftChanged, formattingChangedDispatcher],
+    [formattingChangedDispatcher],
   )
 
   return {
@@ -109,7 +97,7 @@ export function useModelConfigurationState({
     modelConfig,
     modelModeTypeRef,
     setCompletionParams: updateCompletionParams,
-    setModelConfig: updateModelConfig,
+    setModelConfig,
     setTempStop,
     setVisionConfig: updateVisionConfig,
     visionConfig,

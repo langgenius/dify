@@ -33,10 +33,10 @@ type PublisherSummarySectionProps = Pick<
   handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
   handleRestore: () => Promise<void>
   environmentTabs?: ReactNode
-  hasUnpublishedChanges?: boolean
   isChatApp: boolean
   isWorkflowApp?: boolean
   onEditVersion?: () => void
+  published: boolean
   upgradeHighlightStyle: CSSProperties
   versionInfo?: PublisherVersionInfo | null
 }
@@ -48,12 +48,12 @@ export function PublisherSummarySection({
   formatTimeFromNow,
   handlePublish,
   handleRestore,
-  hasUnpublishedChanges,
   isChatApp,
   isWorkflowApp = false,
   multipleModelConfigs = [],
   onEditVersion,
   publishDisabled = false,
+  published,
   publishedAt,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
@@ -61,19 +61,17 @@ export function PublisherSummarySection({
 }: PublisherSummarySectionProps) {
   const { t } = useTranslation()
   const hasPublishedVersion = Boolean(publishedAt)
-  const resolvedHasUnpublishedChanges = hasUnpublishedChanges ?? !hasPublishedVersion
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
   const publisherName = versionInfo?.created_by?.name
   const markedName = versionInfo?.marked_name
   const markedComment = versionInfo?.marked_comment
-  const publishButtonDisabled =
-    publishDisabled || (hasPublishedVersion && !resolvedHasUnpublishedChanges)
-  const publishButtonLabel = !hasPublishedVersion
-    ? t(($) => $['common.publish'], { ns: 'workflow' })
-    : resolvedHasUnpublishedChanges
+  const publishButtonDisabled = publishDisabled || published
+  const publishButtonLabel = published
+    ? t(($) => $['common.published'], { ns: 'workflow' })
+    : hasPublishedVersion
       ? t(($) => $['common.publishUpdate'], { ns: 'workflow' })
-      : t(($) => $['common.published'], { ns: 'workflow' })
+      : t(($) => $['common.publish'], { ns: 'workflow' })
 
   return (
     <div className="flex flex-col gap-3 p-4">
@@ -164,7 +162,7 @@ export function PublisherSummarySection({
                 size="small"
                 className="h-6 shrink-0 gap-1"
                 onClick={handleRestore}
-                disabled={!resolvedHasUnpublishedChanges}
+                disabled={published}
               >
                 <span aria-hidden className="i-ri-reset-left-line size-3.5" />
                 {t(($) => $['common.restore'], { ns: 'workflow' })}
@@ -176,7 +174,7 @@ export function PublisherSummarySection({
       <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
-            disabled={publishDisabled}
+            disabled={publishButtonDisabled}
             multipleModelConfigs={multipleModelConfigs}
             onSelect={(item) => handlePublish(item)}
           />
@@ -227,22 +225,21 @@ export function PublisherSummarySection({
       </div>
       <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
         <PublisherTimelineMarker position="bottom" />
-        <p className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
-          {resolvedHasUnpublishedChanges ? (
+        <p role="status" className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
+          {published ? (
+            isWorkflowApp ? (
+              t(($) => $['common.published'], { ns: 'workflow' })
+            ) : (
+              t(($) => $['common.upToDate'], { ns: 'workflow' })
+            )
+          ) : isWorkflowApp && Boolean(draftUpdatedAt) ? (
             <>
-              {t(($) => $['common.unpublishedChanges'], { ns: 'workflow' })}
-              {isWorkflowApp && Boolean(draftUpdatedAt) && (
-                <>
-                  {' · '}
-                  {t(($) => $['common.savedAt'], {
-                    ns: 'workflow',
-                    time: formatTimeFromNow(draftUpdatedAt!),
-                  })}
-                </>
-              )}
+              {t(($) => $['common.autoSaved'], { ns: 'workflow' })}
+              {' · '}
+              {formatTimeFromNow(draftUpdatedAt!)}
             </>
           ) : (
-            t(($) => $['common.noChanges'], { ns: 'workflow' })
+            t(($) => $['common.currentDraft'], { ns: 'workflow' })
           )}
         </p>
       </div>

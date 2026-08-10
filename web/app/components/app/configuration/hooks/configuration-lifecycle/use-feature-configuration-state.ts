@@ -9,50 +9,25 @@ import { useCallback, useState } from 'react'
 import { useFormattingChangedDispatcher } from '@/app/components/app/configuration/debug/hooks'
 import { ANNOTATION_DEFAULT } from '@/config'
 
-function useTrackedState<Value>(initialValue: Value, onChange: () => void) {
-  const [value, setValue] = useState(initialValue)
-  const updateValue = useCallback(
-    (nextValue: Value) => {
-      setValue(nextValue)
-      onChange()
-    },
-    [onChange],
-  )
-  return [value, updateValue] as const
-}
-
-export function useFeatureConfigurationState(dispatchPublishDraftChanged: () => void) {
-  const [introduction, setIntroduction] = useTrackedState('', dispatchPublishDraftChanged)
-  const [suggestedQuestions, setSuggestedQuestions] = useTrackedState<string[]>(
-    [],
-    dispatchPublishDraftChanged,
-  )
-  const [moreLikeThisConfig, setMoreLikeThisConfig] = useTrackedState<MoreLikeThisConfig>(
-    { enabled: false },
-    dispatchPublishDraftChanged,
-  )
+export function useFeatureConfigurationState() {
+  const [introduction, setIntroduction] = useState('')
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
+  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] =
-    useTrackedState<MoreLikeThisConfig>({ enabled: false }, dispatchPublishDraftChanged)
-  const [speechToTextConfig, setSpeechToTextConfig] = useTrackedState<MoreLikeThisConfig>(
-    { enabled: false },
-    dispatchPublishDraftChanged,
-  )
-  const [textToSpeechConfig, setTextToSpeechConfig] = useTrackedState<TextToSpeechConfig>(
-    { enabled: false, voice: '', language: '' },
-    dispatchPublishDraftChanged,
-  )
-  const [citationConfig, setCitationConfig] = useTrackedState<MoreLikeThisConfig>(
-    { enabled: false },
-    dispatchPublishDraftChanged,
-  )
-  const [moderationConfig, setModerationConfig] = useTrackedState<ModerationConfig>(
-    { enabled: false },
-    dispatchPublishDraftChanged,
-  )
-  const [externalDataToolsConfig, setExternalDataToolsConfig] = useTrackedState<ExternalDataTool[]>(
-    [],
-    dispatchPublishDraftChanged,
-  )
+    useState<MoreLikeThisConfig>({ enabled: false })
+  const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig>({
+    enabled: false,
+    voice: '',
+    language: '',
+  })
+  const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({ enabled: false })
+  const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({ enabled: false })
+  const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
     id: '',
     enabled: false,
