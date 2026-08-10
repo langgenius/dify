@@ -258,8 +258,6 @@ class TestBannerApi:
     def test_get_banners_rejects_invalid_content(
         self,
         app: Flask,
-        monkeypatch: pytest.MonkeyPatch,
-        banner_session: Session,
     ):
         api = banner_module.BannerApi()
         banner = _banner(
@@ -269,6 +267,5 @@ class TestBannerApi:
             created_at=datetime(2024, 1, 4),
         )
 
-        with app.test_request_context("/"):
-            with pytest.raises(ValidationError):
-                banner_module.BannerApi().get()
+        with app.test_request_context("/"), pytest.raises(ValidationError):
+                api.get()
