@@ -505,8 +505,8 @@ export function AgentWorkingDirectoryPanel({
     enabled: open && !!selectedWorkingDirectoryFile && isImagePreviewFile,
   })
   const handleDownloadFile = useCallback(
-    async (action: AgentSkillDetailDownloadAction) => {
-      if (!selectedWorkingDirectoryFile || isFileDownloadPending) return
+    async (action: AgentSkillDetailDownloadAction, targetFile = selectedWorkingDirectoryFile) => {
+      if (!targetFile || isFileDownloadPending) return
 
       if (source.type === 'agent') {
         setDownloadActionLoadingTarget(action)
@@ -518,10 +518,10 @@ export function AgentWorkingDirectoryPanel({
             body: {
               caller_type: source.callerType,
               caller_id: source.callerId,
-              path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+              path: toSandboxApiPath(targetFile.id),
             },
           })
-          downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
+          downloadUrl({ url: result.url, fileName: targetFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
         } catch {
           // The generated client reports the mutation failure through its shared error handler.
@@ -541,10 +541,10 @@ export function AgentWorkingDirectoryPanel({
           },
           body: {
             node_execution_id: source.nodeExecutionId,
-            path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+            path: toSandboxApiPath(targetFile.id),
           },
         })
-        downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
+        downloadUrl({ url: result.url, fileName: targetFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
       } catch {
         // The generated client reports the mutation failure through its shared error handler.
@@ -560,6 +560,15 @@ export function AgentWorkingDirectoryPanel({
       downloadAgentSandboxFile,
       downloadWorkflowSandboxFile,
     ],
+  )
+  const handleSelectFile = useCallback(
+    (selectedFile: AgentFileNode) => {
+      setSelectedFileId(selectedFile.id)
+      if (selectedFile.icon === 'image') return
+
+      void handleDownloadFile('header', selectedFile)
+    },
+    [handleDownloadFile],
   )
 
   return (
@@ -658,7 +667,7 @@ export function AgentWorkingDirectoryPanel({
             )
           },
           onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(toSandboxHomePath(file.id)),
-          onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
+          onSelectFile: handleSelectFile,
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (
               <span
