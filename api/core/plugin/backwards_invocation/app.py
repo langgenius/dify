@@ -270,8 +270,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).limit(1))
                 if app:
                     session.expunge(app)
-        except Exception:
-            raise ValueError("app not found")
+        except Exception as e:
+            raise ValueError("app not found") from e
 
         if not app:
             raise ValueError("app not found")

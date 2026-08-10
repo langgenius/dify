@@ -453,8 +453,8 @@ class ApiToolManageService:
 
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
-        except Exception:
-            raise ValueError("invalid schema")
+        except Exception as e:
+            raise ValueError("invalid schema") from e
 
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
