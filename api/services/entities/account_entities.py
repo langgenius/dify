@@ -1,5 +1,7 @@
 """Framework-neutral contracts for Console account use cases."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -93,3 +95,84 @@ class AccountInitializationResult:
 class AccountDeletionChallenge:
     token: str
     code: str
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeEmailVerification:
+    email: str
+    token: str
+
+
+class AccountEmailResetStatus(StrEnum):
+    UPDATED = "updated"
+    ACCOUNT_NOT_FOUND = "account_not_found"
+    EMAIL_CHANGED = "email_changed"
+    EMAIL_IN_USE = "email_in_use"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEmailResetResult:
+    status: AccountEmailResetStatus
+    account: AccountSnapshot | None = None
+
+
+class AccountChangeEmailPhase(StrEnum):
+    OLD_EMAIL = "old_email"
+    OLD_EMAIL_VERIFIED = "old_email_verified"
+    NEW_EMAIL = "new_email"
+    NEW_EMAIL_VERIFIED = "new_email_verified"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountChangeEmailToken:
+    account_id: str
+    email: str
+    old_email: str
+    code: str
+
+    def is_bound_to_account(self, account_id: str) -> bool:
+        return self.account_id == account_id
+
+
+@dataclass(frozen=True, slots=True)
+class AccountChangeEmailOldEmailToken(AccountChangeEmailToken):
+    phase = AccountChangeEmailPhase.OLD_EMAIL
+
+    def promote(self) -> AccountChangeEmailOldEmailVerifiedToken:
+        return AccountChangeEmailOldEmailVerifiedToken(
+            account_id=self.account_id,
+            email=self.email,
+            old_email=self.old_email,
+            code=self.code,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AccountChangeEmailOldEmailVerifiedToken(AccountChangeEmailToken):
+    phase = AccountChangeEmailPhase.OLD_EMAIL_VERIFIED
+
+
+@dataclass(frozen=True, slots=True)
+class AccountChangeEmailNewEmailToken(AccountChangeEmailToken):
+    phase = AccountChangeEmailPhase.NEW_EMAIL
+
+    def promote(self) -> AccountChangeEmailNewEmailVerifiedToken:
+        return AccountChangeEmailNewEmailVerifiedToken(
+            account_id=self.account_id,
+            email=self.email,
+            old_email=self.old_email,
+            code=self.code,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AccountChangeEmailNewEmailVerifiedToken(AccountChangeEmailToken):
+    phase = AccountChangeEmailPhase.NEW_EMAIL_VERIFIED
+
+
+type AccountChangeEmailTokenData = (
+    AccountChangeEmailOldEmailToken
+    | AccountChangeEmailOldEmailVerifiedToken
+    | AccountChangeEmailNewEmailToken
+    | AccountChangeEmailNewEmailVerifiedToken
+)

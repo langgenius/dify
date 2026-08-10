@@ -157,3 +157,35 @@ def test_account_repository_initializes_account_and_consumes_invitation_atomical
     assert persisted_invitation.status == InvitationCodeStatus.USED
     assert persisted_invitation.used_by_account_id == "account-1"
     assert persisted_invitation.used_by_tenant_id == "workspace-1"
+
+
+def test_account_repository_updates_email_and_removes_integrations_atomically(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    integration = AccountIntegrate(
+        account_id="account-1",
+        provider="google",
+        open_id="google-user",
+        encrypted_token="encrypted-token",
+    )
+    sqlite_session.add(integration)
+    sqlite_session.commit()
+    integration_id = integration.id
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    assert repository.email_exists("new@example.com") is False
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="new@example.com",
+    )
+
+    assert result.account is not None
+    assert result.account.email == "new@example.com"
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Account, "account-1")
+    assert persisted is not None
+    assert persisted.email == "new@example.com"
+    assert sqlite_session.get(AccountIntegrate, integration_id) is None
