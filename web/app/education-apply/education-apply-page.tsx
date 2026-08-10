@@ -39,6 +39,7 @@ const EducationApplyAgeContent = () => {
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
+  const [personalUseChecked, setPersonalUseChecked] = useState(false)
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
   const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
@@ -260,7 +261,7 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.age'], { ns: 'education' })}
                   </label>
-                  <label className="flex">
+                  <label className="mb-2 flex">
                     <Checkbox
                       className="mr-2 shrink-0"
                       checked={inSchoolChecked}
@@ -268,11 +269,26 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.inSchool'], { ns: 'education' })}
                   </label>
+                  <label className="flex">
+                    <Checkbox
+                      className="mr-2 shrink-0"
+                      checked={personalUseChecked}
+                      onCheckedChange={setPersonalUseChecked}
+                    />
+                    {t(($) => $['form.terms.option.personalUse'], { ns: 'education' })}
+                  </label>
                 </div>
               </div>
               <Button
                 variant="primary"
-                disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
+                disabled={
+                  !ageChecked ||
+                  !inSchoolChecked ||
+                  !personalUseChecked ||
+                  !schoolName ||
+                  !role ||
+                  isPending
+                }
                 onClick={handleSubmit}
               >
                 {t(($) => $.submit, { ns: 'education' })}
