@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from weave.trace_server.trace_server_interface import TraceStatus
 
+import core.ops.weave_trace.weave_trace as weave_trace_module
 from core.ops.entities.config_entity import WeaveConfig
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
@@ -602,7 +603,8 @@ class TestWorkflowTrace:
     def test_workflow_trace_no_nodes_no_message_id(self, trace_instance, monkeypatch):
         """Workflow trace with no nodes and no message_id."""
         self._setup_repo(monkeypatch, nodes=[])
-        monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+        service_account = MagicMock(current_tenant_id="creator-active-tenant")
+        monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: service_account)
 
         trace_instance.start_call = MagicMock()
         trace_instance.finish_call = MagicMock()
@@ -612,6 +614,10 @@ class TestWorkflowTrace:
 
         # Only workflow run: start_call and finish_call each called once
         assert trace_instance.start_call.call_count == 1
+
+        # Node executions must be read from the run's tenant, not the creator's active workspace.
+        factory = weave_trace_module.DifyCoreRepositoryFactory
+        assert factory.create_workflow_node_execution_repository.call_args.kwargs["tenant_id"] == "tenant-1"
         assert trace_instance.finish_call.call_count == 1
 
     def test_workflow_trace_with_message_id(self, trace_instance, monkeypatch):

@@ -241,19 +241,12 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-                current_tenant = (
-                    session.query(TenantAccountJoin).filter_by(account_id=service_account.id, current=True).first()
-                )
-                if not current_tenant:
-                    raise ValueError(f"Current tenant not found for account {service_account.id}")
-
-                service_account.set_tenant_id(current_tenant.tenant_id)
-
             repository = SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=session_maker,
                 user=service_account,
                 app_id=trace_info.metadata.get("app_id"),
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                tenant_id=app.tenant_id,
             )
 
             executions = repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)

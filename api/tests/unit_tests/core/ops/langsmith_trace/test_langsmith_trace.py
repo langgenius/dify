@@ -259,11 +259,16 @@ def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
     mock_factory = MagicMock()
     mock_factory.create_workflow_node_execution_repository.return_value = repo
     monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.DifyCoreRepositoryFactory", mock_factory)
-    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+    service_account = MagicMock(current_tenant_id="creator-active-tenant")
+    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: service_account)
 
     trace_instance.add_run = MagicMock()
     trace_instance.workflow_trace(trace_info)
     assert trace_instance.add_run.called
+
+    # Node executions must be read from the run's tenant, not the creator's active workspace.
+    kwargs = mock_factory.create_workflow_node_execution_repository.call_args.kwargs
+    assert kwargs["tenant_id"] == "tenant-1"
 
 
 def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):

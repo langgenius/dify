@@ -129,6 +129,23 @@ class TestCeleryWorkflowNodeExecutionRepository:
             )
 
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_save_uses_explicit_tenant_over_user_tenant(
+        self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        """An explicit tenant_id wins over the acting user's own tenant."""
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            tenant_id="record-owner-tenant",
+        )
+
+        repo.save(sample_workflow_node_execution)
+
+        assert mock_task.delay.call_args[1]["tenant_id"] == "record-owner-tenant"
+
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_caches_and_queues_celery_task(
         self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution
     ):
