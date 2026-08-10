@@ -187,19 +187,23 @@ export function FileEditor({
     () => normalizeSkillDraftContentForEditing(draftContent),
     [draftContent],
   )
-  const markdownContent = useMemo(
-    () =>
-      isSkillManifestFile
-        ? parseMarkdownContent(editableDraftContent)
-        : {
-            body: stripSkillFrontmatterForDisplay(editableDraftContent),
-            description: '',
-            displayName: '',
-            metadata: [],
-            name: '',
-          },
-    [editableDraftContent, isSkillManifestFile],
-  )
+  const markdownContent = useMemo(() => {
+    if (!isSkillManifestFile) {
+      return {
+        body: stripSkillFrontmatterForDisplay(editableDraftContent),
+        description: '',
+        displayName: '',
+        metadata: [],
+        name: '',
+      }
+    }
+
+    const parsed = parseMarkdownContent(editableDraftContent)
+    return {
+      ...parsed,
+      name: parsed.name.startsWith('untitled-skill-') ? '' : parsed.name,
+    }
+  }, [editableDraftContent, isSkillManifestFile])
   const csvRows = useMemo(() => parseCsvRows(editableDraftContent), [editableDraftContent])
   const hasPublishedVersion = !!detail?.latest_published_version_id
   const latestPublishedAt = detail?.latest_published_at
@@ -466,6 +470,8 @@ export function FileEditor({
     setMetadataAdding(false)
     setMetadataKey('')
     setMetadataValue('')
+    metadataKeyDraftRef.current = ''
+    metadataValueDraftRef.current = ''
     setReferencePicker(null)
     setExternalContentRevision(0)
   }, [editorInstanceKey])
@@ -858,6 +864,8 @@ export function FileEditor({
     updateDraftContent(
       addMarkdownMetadata(draftContentRef.current, nextKey, valueOverride ?? metadataValue),
     )
+    metadataKeyDraftRef.current = ''
+    metadataValueDraftRef.current = ''
     setMetadataKey('')
     setMetadataValue('')
     setMetadataAdding(false)
@@ -870,6 +878,8 @@ export function FileEditor({
   }
 
   const handleCancelAddMetadata = () => {
+    metadataKeyDraftRef.current = ''
+    metadataValueDraftRef.current = ''
     setMetadataKey('')
     setMetadataValue('')
     setMetadataAdding(false)
@@ -1091,7 +1101,18 @@ export function FileEditor({
                       )
                     })}
                     {!readonly && metadataAdding && (
-                      <div className="w-full space-y-0.5">
+                      <div
+                        className="w-full space-y-0.5"
+                        onBlurCapture={(event) => {
+                          if (event.currentTarget.contains(event.relatedTarget as Node | null))
+                            return
+
+                          handleAddMetadata(
+                            metadataKeyDraftRef.current,
+                            metadataValueDraftRef.current,
+                          )
+                        }}
+                      >
                         <div className="flex h-6 items-center gap-1">
                           <input
                             ref={metadataKeyInputRef}

@@ -1168,6 +1168,35 @@ describe('SkillDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hides the empty draft marker after Builder fills only the Skill description', async () => {
+    mocks.skillDetail = createDefaultSkillDraftDetail({
+      description: 'Generate consistent character illustrations from a short prompt.',
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content:
+            '---\nname: character-illustration\ndescription: Generate consistent character illustrations from a short prompt.\nmetadata:\n  display-name: Character illustration\n---\n\n<!-- dify-skill-empty-draft -->\n',
+          tool_file_id: null,
+          size: 190,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByDisplayValue(
+        'Generate consistent character illustrations from a short prompt.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('<!-- dify-skill-empty-draft -->')).not.toBeInTheDocument()
+  })
+
   it('treats a newly created empty Skill draft as Builder creation mode', async () => {
     mocks.skillDetail = createDefaultSkillDraftDetail({
       description: '',
@@ -2013,6 +2042,62 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('commits custom metadata on blur so another entry can be added and published', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      updated_at: 1784638400,
+    })
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.published',
+      }),
+    ).toBeDisabled()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataKey'),
+      'owner',
+    )
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
+      'support',
+    )
+    await user.tab()
+
+    expect(screen.getByRole('textbox', { name: 'owner value' })).toHaveValue('support')
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    ).toBeEnabled()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.addMetadata',
+      }),
+    )
+    await user.type(screen.getByPlaceholderText('skill.skillManagement.detail.metadataKey'), 'team')
+    await user.type(
+      screen.getByPlaceholderText('skill.skillManagement.detail.metadataValue'),
+      'success',
+    )
+    await user.tab()
+
+    expect(screen.getByRole('textbox', { name: 'team value' })).toHaveValue('success')
+    expect(screen.getByRole('textbox', { name: 'owner value' })).toHaveValue('support')
+  })
+
   it('cancels custom metadata creation from both metadata fields', async () => {
     const user = userEvent.setup()
     renderSkillDetailPage()
@@ -2269,6 +2354,51 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('retries a Skill Builder attachment request with the original attachment', async () => {
+    const user = userEvent.setup()
+    mocks.sendSkillAssistMessage.mockImplementation(({ onCompleted, onData }) => {
+      onData?.('Used the guide.', true, {})
+      onCompleted?.()
+      return Promise.resolve()
+    })
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.send',
+      }),
+    )
+    await screen.findByText('Used the guide.')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.retryResponse',
+      }),
+    )
+
+    await waitFor(() => expect(mocks.sendSkillAssistMessage).toHaveBeenCalledTimes(2))
+    expect(mocks.sendSkillAssistMessage.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        attachments: [
+          {
+            mime_type: 'text/markdown',
+            name: 'guide.md',
+            size: 10,
+            tool_file_id: 'tool-file-1',
+          },
+        ],
+      }),
+    )
+  })
+
   it('removes uploaded Skill Builder attachments before sending', async () => {
     const user = userEvent.setup()
     const { container } = renderSkillDetailPage()
@@ -2343,6 +2473,50 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(promptInput).toHaveValue('Use the attached guide')
+  })
+
+  it('ignores an in-flight attachment after restarting Skill Builder', async () => {
+    const user = userEvent.setup()
+    let resolveUpload!: (file: {
+      id: string
+      mime_type: string
+      name: string
+      size: number
+    }) => void
+    mocks.uploadSkillFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve
+        }),
+    )
+    const { container } = renderSkillDetailPage()
+
+    await screen.findByText('skill.skillManagement.detail.builder.title')
+    const attachmentInput = getBuilderAttachmentInput(container)
+    expect(attachmentInput).not.toBeNull()
+    await user.upload(
+      attachmentInput!,
+      new File(['# Guide'], 'guide.md', {
+        type: 'text/markdown',
+      }),
+    )
+    await waitFor(() => expect(mocks.uploadSkillFile).toHaveBeenCalledOnce())
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.builder.restart',
+      }),
+    )
+    expect(attachmentInput).toHaveValue('')
+
+    await act(async () => {
+      resolveUpload({
+        id: 'tool-file-1',
+        mime_type: 'text/markdown',
+        name: 'guide.md',
+        size: 10,
+      })
+    })
+    expect(screen.queryByText('guide.md')).not.toBeInTheDocument()
   })
 
   it('disables Skill Builder suggestions while an attachment is uploading', async () => {
@@ -3057,6 +3231,11 @@ describe('SkillDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
     )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'skill.skillManagement.detail.restoreVersion',
+      }),
+    )
 
     await waitFor(() => {
       expect(mocks.restoreSkillMutationFn).toHaveBeenCalledWith(
@@ -3121,6 +3300,11 @@ describe('SkillDetailPage', () => {
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'skill.skillManagement.detail.restoreVersion',
+      }),
     )
 
     await waitFor(() => {
@@ -3922,6 +4106,42 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('does not overwrite an existing file when creating a duplicate name', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        ...(createSkillDetail().files ?? []),
+        {
+          id: 'notes-file',
+          path: 'notes.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content: '# Existing notes',
+          tool_file_id: null,
+          size: 16,
+          hash: 'notes-hash',
+        },
+      ],
+    })
+    renderSkillDetailPage()
+
+    await waitFor(() => {
+      expect(getFileTreeItem('notes.md')).toBeInTheDocument()
+    })
+    await openRootCreateMenu(user)
+    await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
+    const fileNameInput = await screen.findByPlaceholderText('File name')
+
+    await user.type(fileNameInput, 'notes.md')
+    await user.click(screen.getByTestId('skill-detail-sidebar-header'))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.detail.fileAlreadyExists')
+    })
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
   it('creates a JSON file with a code-editor-compatible MIME type', async () => {

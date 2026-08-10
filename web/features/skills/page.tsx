@@ -429,7 +429,9 @@ function SkillCard({
               <h2 className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
               </h2>
-              <p className="truncate system-xs-regular text-text-tertiary">{skill.name}</p>
+              {!skill.name.startsWith('untitled-skill-') && (
+                <p className="truncate system-xs-regular text-text-tertiary">{skill.name}</p>
+              )}
             </div>
           </div>
           <div className="px-4 py-1 system-xs-regular text-text-tertiary">

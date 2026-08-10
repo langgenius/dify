@@ -6,6 +6,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   ChangeEvent,
+  ComponentPropsWithoutRef,
   CSSProperties,
   FocusEventHandler,
   FormEvent,
@@ -13,11 +14,13 @@ import type {
   MouseEvent,
   RefObject,
 } from 'react'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { visit } from 'unist-util-visit'
 import { Markdown } from '@/app/components/base/markdown'
 import useTimestamp from '@/hooks/use-timestamp'
 import styles from './markdown-editor.module.css'
@@ -29,9 +32,97 @@ import {
   getSkillFileIconClass,
   getSkillVersionTitle,
   isDirectory,
-  parseMarkdownBodyReferences,
   renderMarkdownLiveEditorContent,
 } from './shared'
+
+type SkillMarkdownLinkProps = ComponentPropsWithoutRef<'a'> & { node?: unknown }
+
+const SKILL_REFERENCE_URL_PREFIX = 'https://dify.local/__skill_reference__/'
+
+function getMarkdownReferencePath(href: string | undefined) {
+  if (href?.startsWith(SKILL_REFERENCE_URL_PREFIX)) {
+    try {
+      return decodeURIComponent(href.slice(SKILL_REFERENCE_URL_PREFIX.length))
+    } catch {
+      return href.slice(SKILL_REFERENCE_URL_PREFIX.length)
+    }
+  }
+
+  if (!href || href.startsWith('#') || href.startsWith('//') || /^[a-z][a-z\d+.-]*:/i.test(href))
+    return
+
+  try {
+    return decodeURIComponent(href)
+  } catch {
+    return href
+  }
+}
+
+function encodeSkillMarkdownReferenceLinks() {
+  return (tree: Parameters<typeof visit>[0]) => {
+    visit(tree, 'link', (node) => {
+      const linkNode = node as { url?: string }
+      const referencePath = getMarkdownReferencePath(linkNode.url)
+      if (!referencePath) return
+
+      linkNode.url = `${SKILL_REFERENCE_URL_PREFIX}${encodeURIComponent(referencePath)}`
+    })
+  }
+}
+
+const SKILL_REFERENCE_REMARK_PLUGINS = [encodeSkillMarkdownReferenceLinks]
+
+function useSkillMarkdownComponents(onOpenReference?: (path: string) => void) {
+  return useMemo<NonNullable<MarkdownProps['customComponents']>>(
+    () => ({
+      a: ({ children, href }: SkillMarkdownLinkProps) => {
+        const referencePath = getMarkdownReferencePath(href)
+        if (!referencePath) {
+          return (
+            <a
+              href={href}
+              target={href?.startsWith('#') ? undefined : '_blank'}
+              rel={href?.startsWith('#') ? undefined : 'noopener noreferrer'}
+              className="cursor-pointer underline decoration-primary-700! decoration-dashed"
+            >
+              {children}
+            </a>
+          )
+        }
+
+        const referenceLabel =
+          typeof children === 'string' || typeof children === 'number'
+            ? String(children)
+            : getPathBaseName(referencePath)
+
+        return (
+          <button
+            type="button"
+            data-reference-path={referencePath}
+            title={referencePath}
+            className="inline-flex cursor-pointer flex-col items-start px-0.5 py-px align-baseline outline-hidden focus-visible:rounded-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={() => onOpenReference?.(referencePath)}
+          >
+            <span className="inline-flex min-w-[18px] items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs">
+              <span className="inline-flex min-w-0 items-center gap-0.5">
+                <span className="inline-flex shrink-0 items-center justify-center p-px">
+                  <span
+                    aria-hidden
+                    className={cn('size-3.5 shrink-0', getReferenceIconClass(referencePath))}
+                  />
+                </span>
+                <span className="max-w-48 truncate system-xs-medium">
+                  {getReferenceDisplayLabel(referencePath, referenceLabel)}
+                </span>
+              </span>
+            </span>
+          </button>
+        )
+      },
+    }),
+    [onOpenReference],
+  )
+}
 
 function EditorPlaceholder({
   className,
@@ -444,7 +535,7 @@ export function MarkdownBodyReferencePreview({
   onOpenReference?: (path: string) => void
   placeholder: string
 }) {
-  const segments = parseMarkdownBodyReferences(body)
+  const customComponents = useSkillMarkdownComponents(onOpenReference)
 
   if (!body) {
     return (
@@ -455,35 +546,12 @@ export function MarkdownBodyReferencePreview({
   }
 
   return (
-    <div className={cn('text-[15px]/7 whitespace-pre-wrap text-text-secondary', className)}>
-      {segments.map((segment) => {
-        if (segment.type === 'text') return <span key={segment.key}>{segment.text}</span>
-
-        return (
-          <button
-            type="button"
-            key={segment.key}
-            className="inline-flex cursor-pointer flex-col items-start px-0.5 py-px align-baseline outline-hidden focus-visible:rounded-[5px] focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            title={segment.path}
-            onClick={() => onOpenReference?.(segment.path)}
-          >
-            <span className="inline-flex min-w-[18px] items-center overflow-hidden rounded-[5px] border border-state-accent-hover-alt bg-state-accent-hover py-px pr-1 pl-px text-text-accent shadow-xs">
-              <span className="inline-flex min-w-0 items-center gap-0.5">
-                <span className="inline-flex shrink-0 items-center justify-center p-px">
-                  <span
-                    aria-hidden
-                    className={cn('size-3.5 shrink-0', getReferenceIconClass(segment.path))}
-                  />
-                </span>
-                <span className="max-w-48 truncate system-xs-medium">
-                  {getReferenceDisplayLabel(segment.path, segment.label)}
-                </span>
-              </span>
-            </span>
-          </button>
-        )
-      })}
-    </div>
+    <Markdown
+      content={body}
+      customComponents={customComponents}
+      remarkPlugins={SKILL_REFERENCE_REMARK_PLUGINS}
+      className={cn('text-[15px]/7 text-text-secondary', className)}
+    />
   )
 }
 
@@ -515,8 +583,8 @@ export function MarkdownLiveBodyEditor({
   } | null>(null)
   const currentLine = getCurrentLine(body, selectionOffset)
   const showPlaceholder = (!focused && !body.trim()) || (focused && currentLine.blank)
-  // Keep the live editor mounted so slash references and keyboard input use one stable target.
-  const showRenderedPreview = false
+  const showRenderedPreview = !focused && Boolean(body.trim())
+  const customComponents = useSkillMarkdownComponents(onOpenReference)
 
   const syncSelection = () => {
     const root = editorRef.current
@@ -560,7 +628,11 @@ export function MarkdownLiveBodyEditor({
             onOpenReference(decodeURIComponent(href))
           }}
           onMouseDown={(event) => {
-            if (event.target instanceof HTMLElement && event.target.closest('a[href]')) return
+            if (
+              event.target instanceof HTMLElement &&
+              event.target.closest('a[href], button[data-reference-path]')
+            )
+              return
 
             event.preventDefault()
             setFocused(true)
@@ -572,7 +644,11 @@ export function MarkdownLiveBodyEditor({
             window.requestAnimationFrame(() => editorRef.current?.focus())
           }}
         >
-          <Markdown content={body} />
+          <Markdown
+            content={body}
+            customComponents={customComponents}
+            remarkPlugins={SKILL_REFERENCE_REMARK_PLUGINS}
+          />
         </div>
       )}
       {!showRenderedPreview && (

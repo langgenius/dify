@@ -294,6 +294,7 @@ export function SkillBuilderPanel({
   const [attachments, setAttachments] = useState<SkillBuilderAttachment[]>([])
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
+  const attachmentUploadGenerationRef = useRef(0)
   const [isSending, setIsSending] = useState(false)
   const [thinkingElapsedSeconds, setThinkingElapsedSeconds] = useState(0)
   const thinkingElapsedSecondsRef = useRef(0)
@@ -385,6 +386,7 @@ export function SkillBuilderPanel({
   useEffect(() => {
     return () => {
       assistAbortControllerRef.current?.abort()
+      attachmentUploadGenerationRef.current += 1
     }
   }, [])
 
@@ -405,12 +407,14 @@ export function SkillBuilderPanel({
   const handleRestart = () => {
     assistAbortControllerRef.current?.abort()
     assistAbortControllerRef.current = null
+    attachmentUploadGenerationRef.current += 1
     setPrompt('')
     messagesRef.current = initialMessages
     rawAssistantMessagesRef.current.clear()
     setMessages(initialMessages)
     setAttachments([])
     setIsUploadingAttachment(false)
+    if (attachmentInputRef.current) attachmentInputRef.current.value = ''
     setIsSending(false)
     setThinkingElapsedSeconds(0)
     thinkingElapsedSecondsRef.current = 0
@@ -420,6 +424,7 @@ export function SkillBuilderPanel({
   const handleClose = () => {
     assistAbortControllerRef.current?.abort()
     assistAbortControllerRef.current = null
+    attachmentUploadGenerationRef.current += 1
     isSendingRef.current = false
     setIsSending(false)
     setThinkingElapsedSeconds(0)
@@ -460,9 +465,14 @@ export function SkillBuilderPanel({
     }
 
     setIsUploadingAttachment(true)
+    const uploadGeneration = attachmentUploadGenerationRef.current
     const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
     try {
       const uploadedFile = await uploadSkillFile(file)
+      if (uploadGeneration !== attachmentUploadGenerationRef.current) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        return
+      }
 
       setAttachments((currentAttachments) => [
         ...currentAttachments,
@@ -476,6 +486,10 @@ export function SkillBuilderPanel({
         },
       ])
     } catch (error) {
+      if (uploadGeneration !== attachmentUploadGenerationRef.current) {
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
+        return
+      }
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       toast.error(
         error instanceof Error
@@ -483,8 +497,10 @@ export function SkillBuilderPanel({
           : t(($) => $['skillManagement.detail.builder.attachFailed']),
       )
     } finally {
-      setIsUploadingAttachment(false)
-      if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+      if (uploadGeneration === attachmentUploadGenerationRef.current) {
+        setIsUploadingAttachment(false)
+        if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+      }
     }
   }
 
@@ -507,9 +523,12 @@ export function SkillBuilderPanel({
     return skillMd && isTextFile(skillMd) ? skillMd : undefined
   }
 
-  const handleSend = (messageText = prompt) => {
+  const handleSend = (
+    messageText = prompt,
+    messageAttachments: SkillBuilderAttachment[] = attachments,
+  ) => {
     const trimmedPrompt = messageText.trim()
-    const attachedFiles = attachments
+    const attachedFiles = messageAttachments
     if (
       !canSendBuilderMessage ||
       (!trimmedPrompt && attachedFiles.length === 0) ||
@@ -737,7 +756,8 @@ export function SkillBuilderPanel({
       .slice(0, messageIndex)
       .reverse()
       .find((message) => message.role === 'user')
-    if (previousUserMessage) handleSend(previousUserMessage.content)
+    if (previousUserMessage)
+      handleSend(previousUserMessage.content, previousUserMessage.attachments ?? [])
   }
 
   return (

@@ -74,6 +74,7 @@ const mocks = vi.hoisted(() => ({
   downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
   workspaceSkillsQueryOptions: vi.fn((_options: unknown) => ({})),
   workspaceSkillsInfiniteOptions: vi.fn((_options: unknown) => ({})),
+  workspaceSkillTagsQueryOptions: vi.fn((_options: unknown) => ({})),
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
   fetch: vi.fn(),
@@ -103,8 +104,21 @@ vi.mock('@/config', async (importOriginal) => ({
   API_PREFIX: 'http://localhost:5001/console/api',
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['dataset.tag.manage'],
+  }))
+})
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    tags: {
+      get: {
+        queryOptions: mocks.workspaceSkillTagsQueryOptions,
+      },
+    },
     agent: {
       byAgentId: {
         config: {
@@ -447,6 +461,13 @@ describe('AgentSkills', () => {
         initialPageParam,
       }
     })
+    mocks.workspaceSkillTagsQueryOptions.mockImplementation(() => ({
+      queryKey: ['workspace-skill-tags'],
+      queryFn: async () => [
+        { id: 'tag-support', name: 'support', type: 'skill', binding_count: '1' },
+        { id: 'tag-sales', name: 'sales', type: 'skill', binding_count: '1' },
+      ],
+    }))
   })
 
   afterEach(() => {
@@ -741,6 +762,25 @@ describe('AgentSkills', () => {
 
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
+  })
+
+  it('should open the workspace skill tag filter and show skill tags', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+
+    const tagFilter = await screen.findByRole('combobox', { name: 'common.tag.placeholder' })
+    await user.click(tagFilter)
+    expect(await screen.findByRole('option', { name: /support/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.tag.manageTags' })).not.toBeInTheDocument()
   })
 
   it('should open the library flow from the prompt and return the selected skill', async () => {

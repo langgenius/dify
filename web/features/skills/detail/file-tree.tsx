@@ -481,6 +481,10 @@ export function FileTree({
     }
 
     const path = joinSkillPath(inlineAction.parentPath, name)
+    if (files.some((file) => file.path === path)) {
+      toast.error(t(($) => $['skillManagement.detail.fileAlreadyExists']))
+      return
+    }
     if (inlineAction.nodeType === 'directory') {
       mutateFile(
         {
