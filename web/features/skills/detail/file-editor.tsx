@@ -101,6 +101,7 @@ export function FileEditor({
   onExitVersion,
   onCloseFile,
   onDraftDetailChange,
+  onSaveConflictConfirm,
   onSelectFile,
   openFiles,
   previewFilePath,
@@ -124,6 +125,7 @@ export function FileEditor({
   onExitVersion: () => void
   onCloseFile: (path: string) => void
   onDraftDetailChange: (detail: SkillDetailResponse) => void
+  onSaveConflictConfirm: (onConfirm: () => void | Promise<void>) => void
   onSelectFile: (path: string) => void
   openFiles: SkillFileResponse[]
   previewFilePath: string | undefined
@@ -158,12 +160,17 @@ export function FileEditor({
   const [referenceSelectedIndex, setReferenceSelectedIndex] = useState(0)
   const [saveStatus, setSaveStatus] = useState<'dirty' | 'error' | 'saved' | 'saving'>('saved')
   const [hasSaveConflict, setHasSaveConflict] = useState(false)
+  const [saveConflictReloadContent, setSaveConflictReloadContent] = useState<string | null>(null)
+  const [saveConflictReloadDetail, setSaveConflictReloadDetail] =
+    useState<SkillDetailResponse | null>(null)
   const [fileObjectUrl, setFileObjectUrl] = useState<string>()
   const [savedAt, setSavedAt] = useState<number | undefined>(initialSavedAt)
   const [externalContentRevision, setExternalContentRevision] = useState(0)
   const draftContentRef = useRef(initialContent)
   const lastSavedContentRef = useRef(initialContent)
   const saveConflictContentRef = useRef<string | null>(null)
+  const saveConflictReloadContentRef = useRef<string | null>(null)
+  const handleSaveConflictReloadRef = useRef<() => void>(() => {})
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const pendingPublishAfterSaveRef = useRef(false)
@@ -323,7 +330,8 @@ export function FileEditor({
       if (!currentDetail || !currentFile || !canEdit || isSavingDraft) return false
       if (saveConflictContentRef.current === content) {
         setHasSaveConflict(true)
-        toast.error(t(($) => $['skillManagement.detail.saveConflict']))
+        if (saveConflictReloadContentRef.current != null)
+          onSaveConflictConfirm(handleSaveConflictReloadRef.current)
         return false
       }
 
@@ -368,14 +376,15 @@ export function FileEditor({
               errorPayload ?? error,
               'current_updated_at',
             )
-            const currentFileHash = getErrorDetailString(errorPayload ?? error, 'current_file_hash')
             const currentFileContent = getErrorDetailString(
               errorPayload ?? error,
               'current_file_content',
             )
             let latestDetail: SkillDetailResponse | undefined
             try {
-              latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
+              latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
+                updateCache: false,
+              })
             } catch {
               latestDetail = undefined
             }
@@ -393,36 +402,30 @@ export function FileEditor({
               lastSavedContentRef.current = normalizeSkillDraftContentForEditing(latestFile.content)
             else if (currentFileContent != null)
               lastSavedContentRef.current = normalizeSkillDraftContentForEditing(currentFileContent)
-            if (refetchedDetail) {
-              detailRef.current = refetchedDetail
-              fileMutationCoordinator.latestDetail = refetchedDetail
-              fileRef.current = latestFile ?? currentFile
-              setSkillDetailCache(queryClient, skillId, refetchedDetail)
-              onDraftDetailChange(refetchedDetail)
-            } else {
-              const recoveredDetail = {
-                ...currentDetail,
-                updated_at: latestUpdatedAt,
-              }
-              detailRef.current = recoveredDetail
-              fileMutationCoordinator.latestDetail = recoveredDetail
-              fileRef.current = {
-                ...currentFile,
-                hash: currentFileHash ?? currentFile.hash,
-              }
+            const recoveredDetail = refetchedDetail ?? {
+              ...currentDetail,
+              updated_at: latestUpdatedAt,
             }
+            fileMutationCoordinator.latestDetail = recoveredDetail
 
+            const latestContent =
+              latestFile?.content != null
+                ? normalizeSkillDraftContentForEditing(latestFile.content)
+                : currentFileContent != null
+                  ? normalizeSkillDraftContentForEditing(currentFileContent)
+                  : null
+            saveConflictReloadContentRef.current = latestContent
             saveConflictContentRef.current =
               draftContentRef.current === lastSavedContentRef.current
                 ? null
                 : draftContentRef.current
+            setSaveConflictReloadContent(latestContent)
+            setSaveConflictReloadDetail(recoveredDetail)
 
             setHasSaveConflict(saveConflictContentRef.current != null)
             setSavedAt(latestUpdatedAt * 1000)
-            setSaveStatus(
-              draftContentRef.current === lastSavedContentRef.current ? 'saved' : 'dirty',
-            )
-            toast.error(t(($) => $['skillManagement.detail.saveConflict']))
+            setSaveStatus('saved')
+            onSaveConflictConfirm(handleSaveConflictReloadRef.current)
             return false
           } catch {
             setSaveStatus('error')
@@ -441,12 +444,59 @@ export function FileEditor({
       fileMutationCoordinator,
       isSavingDraft,
       onDraftDetailChange,
+      onSaveConflictConfirm,
       queryClient,
       saveDraftFile,
       skillId,
       t,
     ],
   )
+  const handleSaveConflictReload = useCallback(async () => {
+    let latestDetail = saveConflictReloadDetail
+    try {
+      latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {
+        updateCache: false,
+      })
+    } catch {
+      // Keep the snapshot fetched when the conflict was detected as a fallback.
+    }
+
+    const latestFile = latestDetail ? findFileByPath(latestDetail.files ?? [], filePath) : undefined
+    const latestContent =
+      latestFile && isTextFile(latestFile) && latestFile.content != null
+        ? normalizeSkillDraftContentForEditing(latestFile.content)
+        : saveConflictReloadContent
+    if (latestContent == null) return
+
+    if (latestDetail) {
+      detailRef.current = latestDetail
+      fileMutationCoordinator.latestDetail = latestDetail
+      if (latestFile) fileRef.current = latestFile
+      setSkillDetailCache(queryClient, skillId, latestDetail)
+      onDraftDetailChange(latestDetail)
+    }
+    draftContentRef.current = latestContent
+    lastSavedContentRef.current = latestContent
+    saveConflictContentRef.current = null
+    saveConflictReloadContentRef.current = null
+    setDraftContent(latestContent)
+    setHasSaveConflict(false)
+    setSaveConflictReloadContent(null)
+    setSaveConflictReloadDetail(null)
+    setSaveStatus('saved')
+    setExternalContentRevision((revision) => revision + 1)
+  }, [
+    fileMutationCoordinator,
+    filePath,
+    onDraftDetailChange,
+    queryClient,
+    saveConflictReloadContent,
+    saveConflictReloadDetail,
+    skillId,
+  ])
+  useEffect(() => {
+    handleSaveConflictReloadRef.current = handleSaveConflictReload
+  }, [handleSaveConflictReload])
   const canEditRef = useRef(canEdit)
   const saveDraftContentRef = useRef(saveDraftContent)
 

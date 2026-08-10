@@ -1358,9 +1358,8 @@ class SkillManagementService:
         normalized = suggestion.strip().lower()
         if "kebab" in normalized or "display-name" in normalized or "display name" in normalized:
             return True
-        return (
-            any(marker in normalized for marker in ("review", "confirm", "choose", "finalize"))
-            and any(marker in normalized for marker in ("name", "名称", "名字", "命名"))
+        return any(marker in normalized for marker in ("review", "confirm", "choose", "finalize")) and any(
+            marker in normalized for marker in ("name", "名称", "名字", "命名")
         )
 
     def _resolve_assistant_model(

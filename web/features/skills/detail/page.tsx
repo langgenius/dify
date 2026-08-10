@@ -4,6 +4,7 @@
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
+import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -37,6 +38,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [restoreVersionConfirmOpen, setRestoreVersionConfirmOpen] = useState(false)
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
   const [hasLocalUnpublishedChanges, setHasLocalUnpublishedChanges] = useState(false)
+  const [saveConflictConfirm, setSaveConflictConfirm] = useState<
+    (() => void | Promise<void>) | null
+  >(null)
   const [publishedOverride, setPublishedOverride] = useState<{
     id: string
     publishedAt: number
@@ -119,7 +123,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   if (
     detail &&
     (!fileMutationCoordinator.latestDetail ||
-      detail.updated_at >= fileMutationCoordinator.latestDetail.updated_at)
+      detail.updated_at > fileMutationCoordinator.latestDetail.updated_at)
   )
     fileMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
@@ -151,8 +155,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
 
   useEffect(() => {
     if (!draftDetailOverride || !queriedDetail) return
-    if (queriedDetail.updated_at >= draftDetailOverride.updated_at)
-      setDraftDetailOverride(undefined)
+    if (queriedDetail.updated_at > draftDetailOverride.updated_at) setDraftDetailOverride(undefined)
   }, [draftDetailOverride, queriedDetail])
 
   const handleDraftDetailChange = useCallback((nextDetail: SkillDetailResponse) => {
@@ -371,6 +374,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
+          onSaveConflictConfirm={(onConfirm) => {
+            setSaveConflictConfirm(() => onConfirm)
+          }}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
           onOpenBuilder={
@@ -390,6 +396,42 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           selectedVersionId={activeVersionId}
           skillId={skillId}
         />
+        {saveConflictConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+            <div
+              aria-modal="true"
+              className="w-120 max-w-[calc(100vw-2rem)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-lg"
+              role="alertdialog"
+            >
+              <h2 className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
+              </h2>
+              <p className="mt-2 system-md-regular text-text-tertiary">
+                {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
+              </p>
+              <div className="flex items-center justify-end gap-2 pt-6">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setSaveConflictConfirm(null)}
+                >
+                  {t(($) => $['skillManagement.detail.saveConflictCancel'])}
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={async () => {
+                    const onConfirm = saveConflictConfirm
+                    await onConfirm()
+                    setSaveConflictConfirm(null)
+                  }}
+                >
+                  {t(($) => $['skillManagement.detail.saveConflictReload'])}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         {rightPanelMode === 'builder' && (
           <SkillBuilderPanel
             detail={detail}

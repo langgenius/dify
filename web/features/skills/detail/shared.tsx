@@ -1554,9 +1554,10 @@ function refetchSkillDetail(skillId: string) {
 export async function refreshSkillDetailAfterConflict(
   queryClient: ReturnType<typeof useQueryClient>,
   skillId: string,
+  options: { updateCache?: boolean } = {},
 ) {
   const detail = await refetchSkillDetail(skillId)
-  setSkillDetailCache(queryClient, skillId, detail)
+  if (options.updateCache !== false) setSkillDetailCache(queryClient, skillId, detail)
   return detail
 }
 
