@@ -88,10 +88,12 @@ function ChecklistRecheck({
   fixableItems,
   unfixableItems,
   onRecheck,
+  isRefreshingDraft,
 }: {
   fixableItems: ChecklistItem[]
   unfixableItems: ChecklistItem[]
   onRecheck: () => void
+  isRefreshingDraft: boolean
 }) {
   const { t } = useTranslation()
 
@@ -111,7 +113,13 @@ function ChecklistRecheck({
           })}
         </div>
       )}
-      <Button variant="secondary" size="small" onClick={onRecheck}>
+      <Button
+        variant="secondary"
+        size="small"
+        disabled={isRefreshingDraft}
+        loading={isRefreshingDraft}
+        onClick={onRecheck}
+      >
         {t(($) => $['copilot.checklistRecheckAction'], { ns: 'workflow' })}
         {fixableItems.length > 0 ? ` (${fixableItems.length})` : ''}
       </Button>
@@ -129,6 +137,7 @@ export type CopilotSessionViewProps = {
   fixableChecklistItems: ChecklistItem[]
   unfixableChecklistItems: ChecklistItem[]
   onRecheck: () => void
+  isRefreshingDraftForRecheck: boolean
 }
 
 function CopilotSessionView({
@@ -141,6 +150,7 @@ function CopilotSessionView({
   fixableChecklistItems,
   unfixableChecklistItems,
   onRecheck,
+  isRefreshingDraftForRecheck,
 }: CopilotSessionViewProps) {
   const { t } = useTranslation()
   const actionLabels = useActionLabels()
@@ -154,6 +164,7 @@ function CopilotSessionView({
           fixableItems={fixableChecklistItems}
           unfixableItems={unfixableChecklistItems}
           onRecheck={onRecheck}
+          isRefreshingDraft={isRefreshingDraftForRecheck}
         />
       )}
 
