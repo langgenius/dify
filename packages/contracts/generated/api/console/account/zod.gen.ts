@@ -186,41 +186,51 @@ export const zAccountPasswordPayload = z.object({
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z.union([
-  z.object({
-    avatar: z.string().optional(),
-    interface_language: z.string().optional(),
-    interface_theme: z.enum(['dark', 'light']).optional(),
-    name: z.string().min(3).max(30),
-    timezone: z.string().optional(),
-  }),
-  z.object({
-    avatar: z.string(),
-    interface_language: z.string().optional(),
-    interface_theme: z.enum(['dark', 'light']).optional(),
-    name: z.string().min(3).max(30).optional(),
-    timezone: z.string().optional(),
-  }),
-  z.object({
-    avatar: z.string().optional(),
-    interface_language: z.string(),
-    interface_theme: z.enum(['dark', 'light']).optional(),
-    name: z.string().min(3).max(30).optional(),
-    timezone: z.string().optional(),
-  }),
-  z.object({
-    avatar: z.string().optional(),
-    interface_language: z.string().optional(),
-    interface_theme: z.enum(['dark', 'light']),
-    name: z.string().min(3).max(30).optional(),
-    timezone: z.string().optional(),
-  }),
-  z.object({
-    avatar: z.string().optional(),
-    interface_language: z.string().optional(),
-    interface_theme: z.enum(['dark', 'light']).optional(),
-    name: z.string().min(3).max(30).optional(),
-    timezone: z.string(),
-  }),
+  z
+    .object({
+      avatar: z.string().optional(),
+      interface_language: z.string().optional(),
+      interface_theme: z.enum(['dark', 'light']).optional(),
+      name: z.string().min(3).max(30),
+      timezone: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      avatar: z.string(),
+      interface_language: z.string().optional(),
+      interface_theme: z.enum(['dark', 'light']).optional(),
+      name: z.string().min(3).max(30).optional(),
+      timezone: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      avatar: z.string().optional(),
+      interface_language: z.string(),
+      interface_theme: z.enum(['dark', 'light']).optional(),
+      name: z.string().min(3).max(30).optional(),
+      timezone: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      avatar: z.string().optional(),
+      interface_language: z.string().optional(),
+      interface_theme: z.enum(['dark', 'light']),
+      name: z.string().min(3).max(30).optional(),
+      timezone: z.string().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      avatar: z.string().optional(),
+      interface_language: z.string().optional(),
+      interface_theme: z.enum(['dark', 'light']).optional(),
+      name: z.string().min(3).max(30).optional(),
+      timezone: z.string(),
+    })
+    .strict(),
 ])
 
 /**

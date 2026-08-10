@@ -231,7 +231,12 @@ class TestAccountProfilePatchApi:
         validator = Draft202012Validator(schema)
 
         assert len(schema["anyOf"]) == 5
-        for payload in ({}, {"name": None}, {"unexpected": "value"}):
+        for payload in (
+            {},
+            {"name": None},
+            {"unexpected": "value"},
+            {"name": "Jane", "unexpected": "value"},
+        ):
             assert list(validator.iter_errors(payload))
 
         validator.validate({"name": "Jane"})
