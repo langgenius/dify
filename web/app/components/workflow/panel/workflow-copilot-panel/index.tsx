@@ -1,16 +1,36 @@
+import type { ChecklistErrorPayload } from '@/app/components/workflow-copilot/types'
+import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
+import type { CommonEdgeType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useEdges } from 'reactflow'
+import { useCopilotSession } from '@/app/components/workflow-copilot/use-copilot-session'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { useChecklist } from '@/app/components/workflow/hooks/use-checklist'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useCopilotSession } from '@/app/components/workflow-copilot/use-copilot-session'
 import { API_PREFIX } from '@/config'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
+import ChecklistToFix from './checklist-to-fix'
 import CopilotSessionView from './copilot-session-view'
 import RunToFix from './run-to-fix'
+
+// Maps a client-side `ChecklistItem` onto the backend's `ChecklistError` JSON
+// shape, used both to seed a checklist-fix session and to report the
+// still-failing items on a `recheck` action.
+const toChecklistErrorPayload = (item: ChecklistItem): ChecklistErrorPayload => ({
+  node_id: item.id,
+  node_type: String(item.type),
+  title: item.title,
+  messages: item.errorMessages,
+  unconnected: !!item.unConnected,
+  plugin_missing: !!item.isPluginMissing,
+})
 
 function WorkflowCopilotPanel() {
   const { t } = useTranslation()
@@ -37,15 +57,41 @@ function WorkflowCopilotPanel() {
 
   const [manualRunId, setManualRunId] = useState('')
   const [isStarting, setIsStarting] = useState(false)
+  const [isStartingChecklistFix, setIsStartingChecklistFix] = useState(false)
   const [messageText, setMessageText] = useState('')
 
-  const { view, lastError, progressLog, startFix, runAction, sendMessage } = useCopilotSession({
-    baseUrl: API_PREFIX,
-    workspaceId: currentWorkspace.id,
-  })
+  // The pre-publish checklist is computed client-side from the current draft
+  // canvas, exactly like the header checklist popover and the pre-run
+  // validation gate — it stays reactive to canvas edits made both by the
+  // user and (once landed) by the copilot's own applied repairs.
+  const nodes = useNodes()
+  const edges = useEdges<CommonEdgeType>()
+  const flowType = useHooksStore((s) => s.configsMap?.flowType)
+  const checklistItems = useChecklist(nodes, edges, { flowType })
+  // Config errors (`errorMessages`) are addressable via the backend's
+  // `set_node_config` repair; unconnected nodes and missing plugins are
+  // structural and not auto-fixable in v1 (see `bizcopilot.ChecklistError`
+  // doc comment), so they're surfaced but excluded from the fixable count
+  // even when they also carry a message (e.g. "plugin not installed").
+  const { fixableChecklistItems, unfixableChecklistItems } = useMemo(() => {
+    const fixable: ChecklistItem[] = []
+    const unfixable: ChecklistItem[] = []
+    checklistItems.forEach((item) => {
+      if (item.unConnected || item.isPluginMissing) unfixable.push(item)
+      else if (item.errorMessages.length > 0) fixable.push(item)
+    })
+    return { fixableChecklistItems: fixable, unfixableChecklistItems: unfixable }
+  }, [checklistItems])
+
+  const { view, lastError, progressLog, startFix, startChecklistFix, runAction, sendMessage } =
+    useCopilotSession({
+      baseUrl: API_PREFIX,
+      workspaceId: currentWorkspace.id,
+    })
 
   const resolvedRunId = manualRunId.trim() || latestFailedRun?.id || ''
   const canStartFix = !!appId && !!currentWorkspace.id && !!resolvedRunId
+  const canStartChecklistFix = !!appId && !!currentWorkspace.id && fixableChecklistItems.length > 0
 
   const handleStartFix = useCallback(() => {
     if (!canStartFix) return
@@ -53,12 +99,33 @@ function WorkflowCopilotPanel() {
     void startFix(appId, resolvedRunId).finally(() => setIsStarting(false))
   }, [appId, canStartFix, resolvedRunId, startFix])
 
+  const handleStartChecklistFix = useCallback(() => {
+    if (!canStartChecklistFix || !appId) return
+    setIsStartingChecklistFix(true)
+    void startChecklistFix(appId, checklistItems.map(toChecklistErrorPayload)).finally(() =>
+      setIsStartingChecklistFix(false),
+    )
+  }, [appId, canStartChecklistFix, checklistItems, startChecklistFix])
+
   const handleRunAction = useCallback(
     (kind: Parameters<typeof runAction>[0]) => {
       void runAction(kind, kind === 'provide_testdata' ? { mode: 'mock' } : {})
     },
     [runAction],
   )
+
+  // Drives `checklist.await_recheck`: report the *current* client-side
+  // checklist back to the session. `passed` only reflects fixable (config)
+  // items — unfixable structural ones can't be resolved by this loop, so
+  // they mustn't block it from handing off to the publish/keep/re-fix
+  // decision gate. All still-outstanding items (fixable and unfixable) are
+  // still sent in `remaining` so the session's record stays accurate.
+  const handleRecheck = useCallback(() => {
+    void runAction('recheck', {
+      passed: fixableChecklistItems.length === 0,
+      remaining: checklistItems.map(toChecklistErrorPayload),
+    })
+  }, [checklistItems, fixableChecklistItems, runAction])
 
   const handleSendMessage = useCallback(() => {
     if (!messageText.trim()) return
@@ -102,15 +169,29 @@ function WorkflowCopilotPanel() {
 
       <div className="grow overflow-y-auto rounded-b-2xl">
         {!view && (
-          <RunToFix
-            isRunHistoryLoading={isRunHistoryLoading}
-            latestFailedRun={latestFailedRun}
-            manualRunId={manualRunId}
-            onManualRunIdChange={setManualRunId}
-            canStartFix={canStartFix}
-            isStarting={isStarting}
-            onStartFix={handleStartFix}
-          />
+          <>
+            <RunToFix
+              isRunHistoryLoading={isRunHistoryLoading}
+              latestFailedRun={latestFailedRun}
+              manualRunId={manualRunId}
+              onManualRunIdChange={setManualRunId}
+              canStartFix={canStartFix}
+              isStarting={isStarting}
+              onStartFix={handleStartFix}
+            />
+            {checklistItems.length > 0 && (
+              <>
+                <div className="mx-4 border-t border-components-panel-border" />
+                <ChecklistToFix
+                  fixableItems={fixableChecklistItems}
+                  unfixableItems={unfixableChecklistItems}
+                  canStartChecklistFix={canStartChecklistFix}
+                  isStarting={isStartingChecklistFix}
+                  onStartChecklistFix={handleStartChecklistFix}
+                />
+              </>
+            )}
+          </>
         )}
         {view && (
           <CopilotSessionView
@@ -120,6 +201,9 @@ function WorkflowCopilotPanel() {
             messageText={messageText}
             onMessageTextChange={setMessageText}
             onSendMessage={handleSendMessage}
+            fixableChecklistItems={fixableChecklistItems}
+            unfixableChecklistItems={unfixableChecklistItems}
+            onRecheck={handleRecheck}
           />
         )}
         {lastError && (
