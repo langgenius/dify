@@ -1,8 +1,7 @@
 """Workflow run response schemas for console APIs.
 
-Most workflow-run endpoints should document and serialize responses with the
-Pydantic models in this module. The remaining Flask-RESTX field dictionaries are
-kept only for workflow app-log endpoints that still build legacy log models.
+Workflow-run endpoints should document and serialize responses with the
+Pydantic models in this module.
 """
 
 from __future__ import annotations
@@ -10,44 +9,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask_restx import Namespace, fields
 from pydantic import AliasChoices, Field, field_validator
 
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
-from libs.helper import TimestampField, to_timestamp
-
-workflow_run_for_log_fields = {
-    "id": fields.String,
-    "version": fields.String,
-    "status": fields.String,
-    "triggered_from": fields.String,
-    "error": fields.String,
-    "elapsed_time": fields.Float,
-    "total_tokens": fields.Integer,
-    "total_steps": fields.Integer,
-    "created_at": TimestampField,
-    "finished_at": TimestampField,
-    "exceptions_count": fields.Integer,
-}
-
-
-def build_workflow_run_for_log_model(api_or_ns: Namespace):
-    return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
-
-
-workflow_run_for_archived_log_fields = {
-    "id": fields.String,
-    "status": fields.String,
-    "triggered_from": fields.String,
-    "elapsed_time": fields.Float,
-    "total_tokens": fields.Integer,
-}
-
-
-def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
-    return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
+from libs.helper import to_timestamp
 
 
 class WorkflowRunForLogResponse(ResponseModel):
