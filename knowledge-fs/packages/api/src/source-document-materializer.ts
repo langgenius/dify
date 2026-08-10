@@ -166,7 +166,7 @@ export function createSourceDocumentMaterializer(
           const admittedObjectStorage = createDeletionAdmittedObjectStorage({
             admission: deps.objectWriteAdmission,
             objectStorage: deps.objectStorage,
-            scope: { knowledgeSpaceId, tenantId },
+            scope: { knowledgeSpaceId, sourceId, tenantId },
           });
           const materialized: MaterializedSourceDocument[] = [];
           const failed: FailedSourceDocument[] = [];

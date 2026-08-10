@@ -29,6 +29,54 @@ const now = "2026-07-14T12:00:00.000Z";
 describe.each(["postgres", "tidb"] as const)(
   "database source-product workflow repository (%s)",
   (dialect) => {
+    it("admits a Source workflow while a different Source is being deleted", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      let deletingSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99";
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") return activeSpace();
+        if (input.tableName === "deletion_jobs") {
+          const admittedSourceId = input.params[2];
+          return admittedSourceId && admittedSourceId !== deletingSourceId
+            ? empty()
+            : oneRow("deletion_jobs");
+        }
+        if (input.tableName === "knowledge_space_permission_snapshots") {
+          return { rows: [permissionRow()], rowsAffected: 1 };
+        }
+        if (isAccessLock(input.tableName)) return oneRow(input.tableName);
+        if (input.tableName === "sources") {
+          return { rows: [sourceRow([])], rowsAffected: 1 };
+        }
+        if (input.tableName === "source_workflow_runs" && input.operation === "select") {
+          return empty();
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await expect(repository.start(newSourceRun())).resolves.toMatchObject({
+        id: runId,
+        sourceId,
+      });
+      const deletionAdmission = calls.find((call) => call.tableName === "deletion_jobs");
+      expect(deletionAdmission?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
+      expect(deletionAdmission?.sql).toContain(
+        dialect === "postgres"
+          ? `"target_type" <> 'source' OR "target_id" = $3`
+          : "`target_type` <> 'source' OR `target_id` = ?",
+      );
+
+      calls.length = 0;
+      deletingSourceId = sourceId;
+      await expect(repository.start(newSourceRun())).rejects.toMatchObject({
+        code: "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
+      });
+      expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
+        false,
+      );
+    });
+
     it("applies frozen candidate ACL before LIMIT", async () => {
       let select: DatabaseExecuteInput | undefined;
       const database = testDatabase(dialect, async (input) => {

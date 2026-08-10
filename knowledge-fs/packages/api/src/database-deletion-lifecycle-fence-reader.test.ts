@@ -76,7 +76,57 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[0]?.sql).not.toContain("state");
       expect(calls[0]?.sql).toContain("deletion_jobs");
       expect(calls[0]?.sql).toContain("active_slot");
+      expect(calls[0]?.sql).toContain(
+        dialect === "postgres"
+          ? `"target_type" <> 'source' OR "target_id" = COALESCE($3::uuid, "target_id")`
+          : "`target_type` <> 'source' OR `target_id` = COALESCE(?, `target_id`)",
+      );
       expect(calls[0]?.sql).toContain("CASE");
+    });
+
+    it("keeps active Source deletion fences scoped to the requested Source", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const deletingSourceId = "20000000-0000-4000-8000-000000000002";
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input): Promise<DatabaseExecuteResult> => {
+          calls.push({ ...input, params: [...input.params] });
+          const requestedSourceId = input.params[2];
+          return requestedSourceId === deletingSourceId
+            ? {
+                rows: [
+                  {
+                    id: "active-source-deletion",
+                    knowledge_space_id: "space-1",
+                    target_id: deletingSourceId,
+                    target_type: "source",
+                    tenant_id: "tenant-1",
+                  },
+                ],
+                rowsAffected: 1,
+              }
+            : { rows: [], rowsAffected: 0 };
+        },
+        kind: dialect,
+        transaction: async (callback) =>
+          callback({ execute: async () => ({ rows: [], rowsAffected: 0 }) }),
+      });
+      const reader = createDatabaseDeletionLifecycleFenceReader(database);
+
+      await expect(
+        reader.getActiveFence({
+          knowledgeSpaceId: "space-1",
+          sourceId: "20000000-0000-4000-8000-000000000001",
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toBeNull();
+      await expect(
+        reader.getActiveFence({
+          knowledgeSpaceId: "space-1",
+          sourceId: deletingSourceId,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toMatchObject({ targetId: deletingSourceId, targetType: "source" });
+      expect(calls).toHaveLength(2);
     });
 
     it("binds absent child targets as null and maps source/document tombstones", async () => {

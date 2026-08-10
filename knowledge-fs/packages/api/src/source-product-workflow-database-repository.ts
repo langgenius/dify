@@ -26,7 +26,10 @@ import {
   type KnowledgeSpacePermissionSnapshot,
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
-import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
+import {
+  lockKnowledgeSpaceForDeletionAdmission,
+  lockKnowledgeSpaceForSourceWorkflowAdmission,
+} from "./knowledge-space-deletion-admission";
 import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
 import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
 import {
@@ -74,7 +77,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
   return {
     start: (record) =>
       database.transaction(async (tx) => {
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, tx, record))) {
+        if (!(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, record))) {
           throw new SourceWorkflowError(
             "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
             "Knowledge space is missing or deletion-fenced",
@@ -1023,7 +1026,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       }),
     upsertSyncPolicy: (policy) =>
       database.transaction(async (tx) => {
-        if (!(await lockKnowledgeSpaceForDeletionAdmission(database, tx, policy))) {
+        if (!(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, policy))) {
           throw new SourceWorkflowError(
             "SOURCE_WORKFLOW_SPACE_NOT_WRITABLE",
             "Knowledge space is missing or deletion-fenced",
@@ -1211,7 +1214,8 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         const queued: SourceWorkflowRun[] = [];
         for (const candidateRow of candidates.rows) {
           const candidate = mapPolicy(candidateRow);
-          if (!(await lockKnowledgeSpaceForDeletionAdmission(database, tx, candidate))) continue;
+          if (!(await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, candidate)))
+            continue;
           let sourceRow: DatabaseRow | undefined;
           try {
             const permission = await assertSourceWorkflowPermissionFence(
@@ -1641,7 +1645,7 @@ async function getRunForMutationAdmission(
 } | null> {
   const candidate = await getRun(database, tx, runId, false);
   if (!candidate) return null;
-  const writable = await lockKnowledgeSpaceForDeletionAdmission(database, tx, candidate);
+  const writable = await lockKnowledgeSpaceForSourceWorkflowAdmission(database, tx, candidate);
   const terminalizingThroughDeletionFence = !writable && allowDeletionFencedTerminalization;
   if (
     !writable &&

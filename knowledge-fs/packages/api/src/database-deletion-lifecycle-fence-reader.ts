@@ -12,10 +12,11 @@ import type {
 const tombstoneTable = "deletion_tombstones";
 
 /**
- * Reads active space-wide deletion admission fences plus the permanent target tombstone hierarchy.
+ * Reads active deletion admission fences plus the permanent target tombstone hierarchy.
  *
- * Any active deletion blocks new mutations across the space so cleanup and primary proof cannot
- * race a sibling writer. Completed tombstones remain irreversible target-specific write fences.
+ * Source-scoped writers may overlap deletion of a different Source. Space, document, and matching
+ * Source deletions still fence them; writers without a Source scope remain space-wide. Completed
+ * tombstones remain irreversible target-specific write fences.
  */
 export function createDatabaseDeletionLifecycleFenceReader(
   database: DatabaseAdapter,
@@ -50,7 +51,7 @@ function tombstoneHierarchySql(database: DatabaseAdapter): string {
   const documentAssetId = idParam(4);
   const columns = ["id", "tenant_id", "knowledge_space_id", "target_type", "target_id"];
   const selected = columns.map(q).join(", ");
-  return `SELECT ${selected} FROM (SELECT ${selected}, 0 AS ${q("fence_priority")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1 UNION ALL SELECT ${selected}, 1 AS ${q("fence_priority")} FROM ${q(tombstoneTable)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ((${q("target_type")} = 'knowledge_space' AND ${q("target_id")} = ${p(2)}) OR (${q("target_type")} = 'source' AND ((${sourceId} IS NOT NULL AND ${q("target_id")} = ${sourceId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_id")} IN (SELECT source_document.${q("source_id")} FROM ${q("document_assets")} source_document WHERE source_document.${q("knowledge_space_id")} = ${p(2)} AND source_document.${q("id")} = ${documentAssetId} AND source_document.${q("source_id")} IS NOT NULL)))) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'document_asset' AND ${q("target_id")} = ${documentAssetId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'logical_document' AND ${q("target_id")} IN (SELECT logical_revision.${q("document_id")} FROM ${q("document_revisions")} logical_revision WHERE logical_revision.${q("tenant_id")} = ${p(1)} AND logical_revision.${q("knowledge_space_id")} = ${p(2)} AND logical_revision.${q("document_asset_id")} = ${documentAssetId})))) AS lifecycle_fence ORDER BY ${q("fence_priority")} ASC, CASE ${q("target_type")} WHEN 'knowledge_space' THEN 0 WHEN 'source' THEN 1 ELSE 2 END ASC LIMIT 1;`;
+  return `SELECT ${selected} FROM (SELECT ${selected}, 0 AS ${q("fence_priority")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1 AND (${q("target_type")} <> 'source' OR ${q("target_id")} = COALESCE(${sourceId}, ${q("target_id")})) UNION ALL SELECT ${selected}, 1 AS ${q("fence_priority")} FROM ${q(tombstoneTable)} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ((${q("target_type")} = 'knowledge_space' AND ${q("target_id")} = ${p(2)}) OR (${q("target_type")} = 'source' AND ((${sourceId} IS NOT NULL AND ${q("target_id")} = ${sourceId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_id")} IN (SELECT source_document.${q("source_id")} FROM ${q("document_assets")} source_document WHERE source_document.${q("knowledge_space_id")} = ${p(2)} AND source_document.${q("id")} = ${documentAssetId} AND source_document.${q("source_id")} IS NOT NULL)))) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'document_asset' AND ${q("target_id")} = ${documentAssetId}) OR (${documentAssetId} IS NOT NULL AND ${q("target_type")} = 'logical_document' AND ${q("target_id")} IN (SELECT logical_revision.${q("document_id")} FROM ${q("document_revisions")} logical_revision WHERE logical_revision.${q("tenant_id")} = ${p(1)} AND logical_revision.${q("knowledge_space_id")} = ${p(2)} AND logical_revision.${q("document_asset_id")} = ${documentAssetId})))) AS lifecycle_fence ORDER BY ${q("fence_priority")} ASC, CASE ${q("target_type")} WHEN 'knowledge_space' THEN 0 WHEN 'source' THEN 1 ELSE 2 END ASC LIMIT 1;`;
 }
 
 function mapFence(row: DatabaseRow): ActiveDeletionLifecycleFence {

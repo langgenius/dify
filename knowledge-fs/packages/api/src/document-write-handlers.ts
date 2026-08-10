@@ -1113,7 +1113,11 @@ export function registerDocumentWriteHandlers({
       const admittedObjectStorage = createDeletionAdmittedObjectStorage({
         admission: objectWriteAdmission,
         objectStorage: adapter.objectStorage,
-        scope: { knowledgeSpaceId, tenantId: subject.tenantId },
+        scope: {
+          knowledgeSpaceId,
+          ...(upload.sourceId ? { sourceId: upload.sourceId } : {}),
+          tenantId: subject.tenantId,
+        },
       });
 
       await assertWritable();

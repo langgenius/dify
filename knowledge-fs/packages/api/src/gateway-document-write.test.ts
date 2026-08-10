@@ -290,11 +290,22 @@ describe("document write gateway integration", () => {
       maxListLimit: 10,
       maxManifests: 10,
     });
+    const admittedScopes: Array<{
+      knowledgeSpaceId: string;
+      sourceId?: string | undefined;
+      tenantId: string;
+    }> = [];
     const parser = createRecordingParser();
     const app = createKnowledgeGateway({
       adapter,
       artifactSegments,
       auth: createTestAuthVerifier(),
+      deletionObjectWriteAdmission: {
+        withSpaceWriteAdmission: async (scope, write) => {
+          admittedScopes.push({ ...scope });
+          return write();
+        },
+      },
       documentAssets: createInMemoryDocumentAssetRepository({
         maxAssets: 10,
         now: () => "2026-05-09T11:00:00.000Z",
@@ -368,6 +379,13 @@ describe("document write gateway integration", () => {
       sourceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
       version: 1,
     });
+    expect(admittedScopes).toEqual([
+      {
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        sourceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+        tenantId: "tenant-1",
+      },
+    ]);
 
     await expect(adapter.objectStorage.headObject(expectedObjectKey)).resolves.toMatchObject({
       contentType: "text/markdown",
