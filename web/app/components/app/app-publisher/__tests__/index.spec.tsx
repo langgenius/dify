@@ -315,7 +315,7 @@ describe('AppPublisher', () => {
     expect(screen.getByText('publisher-summary-publish')).toBeEnabled()
   })
 
-  it('should refresh deployment workflow versions after publishing when multi-environment deployment is available', async () => {
+  it('should refresh deployment data after publishing when multi-environment deployment is available', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -345,15 +345,26 @@ describe('AppPublisher', () => {
     await user.click(screen.getByText('publisher-summary-publish'))
 
     const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions('app-1')
+    const environmentDeploymentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+        },
+      })
     await waitFor(() => {
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: workflowVersionsQuery.queryKey,
       })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: environmentDeploymentsQuery.queryKey,
+      })
     })
   })
 
-  it('should not refresh deployment workflow versions after publishing without multi-environment deployment', async () => {
+  it('should not refresh deployment data after publishing without multi-environment deployment', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')

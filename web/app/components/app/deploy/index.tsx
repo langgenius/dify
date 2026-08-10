@@ -65,10 +65,12 @@ function AppDeployContent({ appId }: { appId: string }) {
   return (
     <>
       <main className="flex h-full flex-col bg-components-panel-bg">
-        <header className="shrink-0 px-6 pt-3 pb-2">
-          <h1 className="title-xl-semi-bold text-text-primary">
-            {tCommon(($) => $['appMenus.deploy'])}
-          </h1>
+        <header className="flex shrink-0 flex-col gap-y-0.5 px-6 pt-3 pb-2">
+          <div className="flex h-6 items-center">
+            <h1 className="title-xl-semi-bold text-text-primary">
+              {tCommon(($) => $['appMenus.deploy'])}
+            </h1>
+          </div>
           <p className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
             <span>{t(($) => $['studio.description'])}</span>
             <a

@@ -8,6 +8,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { consoleQuery } from '@/service/client'
 import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
@@ -27,14 +28,23 @@ type UsePublishControllerParams = Pick<
   onClose: () => void
 }
 
-function refreshAppDeploymentWorkflowVersions(queryClient: QueryClient, appId: string) {
+function refreshAppDeploymentData(queryClient: QueryClient, appId: string) {
   const workflowVersionsQuery = appWorkflowVersionsInfiniteQueryOptions(appId)
-
-  void queryClient
-    .invalidateQueries({ queryKey: workflowVersionsQuery.queryKey })
-    .catch((error) => {
-      console.warn('[app-publisher] refresh deployment workflow versions failed', error)
+  const environmentDeploymentsQuery =
+    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+      input: {
+        params: {
+          app_id: appId,
+        },
+      },
     })
+
+  void Promise.all([
+    queryClient.invalidateQueries({ queryKey: workflowVersionsQuery.queryKey }),
+    queryClient.invalidateQueries({ queryKey: environmentDeploymentsQuery.queryKey }),
+  ]).catch((error) => {
+    console.warn('[app-publisher] refresh deployment data failed', error)
+  })
 }
 
 export function usePublishController({
@@ -79,7 +89,7 @@ export function usePublishController({
       const socket = appId ? webSocketClient.getSocket(appId) : null
       if (appId) {
         invalidateAppWorkflow(appId)
-        if (supportsMultiEnvironment) refreshAppDeploymentWorkflowVersions(queryClient, appId)
+        if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       } else {
         console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
       }
@@ -128,7 +138,7 @@ export function usePublishController({
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
       if (action !== 'published') return
 
-      if (supportsMultiEnvironment) refreshAppDeploymentWorkflowVersions(queryClient, appId)
+      if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       void queryClient
         .fetchQuery(appWorkflowQueryOptions(appId))
         .then((publishedWorkflow) => {
