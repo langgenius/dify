@@ -21,7 +21,7 @@ import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { EventEmitter } from './event-emitter'
-import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
+import { emitWithAuthGuard, isDefaultSocketUrl, webSocketClient } from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
@@ -185,6 +185,7 @@ export class CollaborationManager {
   private visibilityListenerAttached = false
   private crdtTrusted = false
   private hasEstablishedConnection = false
+  private localDraftFallbackActive = false
   private rebuildCrdtOnNextConnect = false
   private reconnectedWithFreshDoc = false
   private awaitingSnapshotImport = false
@@ -729,6 +730,7 @@ export class CollaborationManager {
   private forceDisconnect = ({
     preserveConnectIntent = false,
   }: { preserveConnectIntent?: boolean } = {}): void => {
+    this.localDraftFallbackActive = false
     if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
 
     this.clearInitialSyncRetry()
@@ -782,7 +784,10 @@ export class CollaborationManager {
 
   canUseLocalDraftFallback(): boolean {
     // A graph from a previously connected session must recover through collaboration before saving.
-    return !this.isConnected() && !this.hasEstablishedConnection
+    return (
+      this.localDraftFallbackActive ||
+      (isDefaultSocketUrl() && !this.isConnected() && !this.hasEstablishedConnection)
+    )
   }
 
   getNodes(): Node[] {
@@ -799,12 +804,28 @@ export class CollaborationManager {
   }
 
   canPersistLocalGraph(): boolean {
+    if (this.localDraftFallbackActive) return true
     return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
   }
 
   canApplyLocalGraphMutation(): boolean {
-    if (!this.currentAppId) return true
+    if (this.localDraftFallbackActive || !this.currentAppId) return true
     return this.canPersistLocalGraph() && this.getActiveSocket()?.connected === true
+  }
+
+  private activateLocalDraftFallback(socket: Socket): void {
+    // Before the first connection, ReactFlow still holds the HTTP draft baseline. Once a
+    // collaboration session has existed, that graph may be stale and must recover through CRDT.
+    if (!isDefaultSocketUrl() || this.localDraftFallbackActive || this.hasEstablishedConnection)
+      return
+    if (this.getActiveSocket() !== socket || !this.currentAppId) return
+
+    const appId = this.currentAppId
+    this.localDraftFallbackActive = true
+    this.clearInitialSyncRetry()
+    this.pendingInitialSync = false
+    webSocketClient.disconnect(appId)
+    this.emitGraphReadyState()
   }
 
   private emitGraphReadyState(): void {
@@ -1932,6 +1953,7 @@ export class CollaborationManager {
 
     socket.on('connect_error', (error: Error) => {
       console.error('WebSocket connection error:', error)
+      this.activateLocalDraftFallback(socket)
       this.eventEmitter.emit('stateChange', { isConnected: false, error: error.message })
     })
 

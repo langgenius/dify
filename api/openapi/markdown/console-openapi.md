@@ -1269,7 +1269,7 @@ List a directory in an Agent App conversation sandbox
 | agent_id | path | Agent ID | Yes | string (uuid) |
 | caller_id | query | Agent App caller ID | Yes | string |
 | caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
-| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
+| path | query | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | No | string, <br>**Default:** . |
 
 #### Responses
 
@@ -1277,26 +1277,8 @@ List a directory in an Agent App conversation sandbox
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 
-### [GET] /agent/{agent_id}/sandbox/files/read
-Read a text/binary preview file in an Agent App conversation sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| caller_id | query | Agent App caller ID | Yes | string |
-| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
-| path | query | File path relative to the sandbox workspace | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /agent/{agent_id}/sandbox/files/upload
-Upload one Agent App sandbox file and return a signed download URL
+### [POST] /agent/{agent_id}/sandbox/files/download
+Create a ToolFile from one Agent App Binding file and return its download URL
 
 #### Parameters
 
@@ -1308,13 +1290,31 @@ Upload one Agent App sandbox file and return a signed download URL
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
+|  Yes | **application/json**: [AgentSandboxDownloadPayload](#agentsandboxdownloadpayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
+| 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/sandbox/files/read
+Read a text/binary preview file in an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| caller_id | query | Agent App caller ID | Yes | string |
+| caller_type | query |  | Yes | string, <br>**Available values:** "build_draft", "conversation" |
+| path | query | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [POST] /agent/{agent_id}/skills/upload
 Upload + standardize a Skill into an Agent App drive
@@ -3817,7 +3817,7 @@ List a directory in a workflow Agent node sandbox
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
 | node_execution_id | query | Workflow node execution ID | Yes | string |
-| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
+| path | query | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | No | string, <br>**Default:** . |
 
 #### Responses
 
@@ -3825,27 +3825,8 @@ List a directory in a workflow Agent node sandbox
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 
-### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
-Read a text/binary preview file in a workflow Agent node sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | path | Workflow Agent node ID | Yes | string |
-| workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
-| node_execution_id | query | Workflow node execution ID | Yes | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
-Upload one workflow Agent sandbox file and return a signed download URL
+### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download
+Create a ToolFile from one workflow Agent Binding file and return its download URL
 
 #### Parameters
 
@@ -3859,13 +3840,32 @@ Upload one workflow Agent sandbox file and return a signed download URL
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload)<br> |
+|  Yes | **application/json**: [WorkflowAgentSandboxDownloadPayload](#workflowagentsandboxdownloadpayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
+| 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
+Read a text/binary preview file in a workflow Agent node sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| node_id | path | Workflow Agent node ID | Yes | string |
+| workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
+| node_execution_id | query | Workflow node execution ID | Yes | string |
+| path | query | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments
 **Get all comments for a workflow**
@@ -7031,13 +7031,6 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
-
-### [POST] /info
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
 
 ### [GET] /installed-apps
 #### Parameters
@@ -11777,13 +11770,6 @@ Returns information about why and where the workflow is paused.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 
-### [POST] /workspaces/current
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
-
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
@@ -12304,6 +12290,20 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+
+### [GET] /workspaces/current/model-providers/credits
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider credits retrieved successfully | **application/json**: [ModelProviderCreditsResponse](#modelprovidercreditsresponse)<br> |
+
+### [GET] /workspaces/current/model-providers/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
@@ -12850,6 +12850,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
+### [GET] /workspaces/current/plugin/installed-ids
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Plugin category to include | Yes | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
+
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
 
@@ -13108,8 +13121,11 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language used for localized label and description search | No | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 | page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
+| query | query | Case-insensitive search query | No | string |
+| tags | query | Match any plugin tag | No | [ string ] |
 | category | path |  | Yes | string |
 
 #### Responses
@@ -13708,6 +13724,14 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [GET] /workspaces/current/summary
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
+| 409 | Current workspace is archived |  |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
@@ -14515,6 +14539,13 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
+
+### [GET] /workspaces/custom-config
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -15979,9 +16010,19 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 #### AgentKnowledgeMetadataCondition
 
+One manual metadata filter clause.
+
+``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+every save (a stable row key and a reference to the selected metadata
+field). They are persisted here for round-tripping the composer's draft
+state but are stripped before building the Agent runtime request, whose
+DTO only accepts ``name``/``comparison_operator``/``value``.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| id | string |  | No |
+| metadata_id | string |  | No |
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>number |  | No |
 
@@ -16380,6 +16421,14 @@ section may be empty, which is how callers express "no knowledge layer".
 | workflow_id | string |  | No |
 | workflow_node_id | string |  | No |
 
+#### AgentSandboxDownloadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| caller_id | string | Agent App caller ID | Yes |
+| caller_type | string, <br>**Available values:** "build_draft", "conversation" | *Enum:* `"build_draft"`, `"conversation"` | Yes |
+| path | string | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes |
+
 #### AgentSandboxProviderConfig
 
 | Name | Type | Description | Required |
@@ -16388,14 +16437,6 @@ section may be empty, which is how callers express "no knowledge layer".
 | env | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 | image | string |  | No |
 | working_dir | string |  | No |
-
-#### AgentSandboxUploadPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| caller_id | string | Agent App caller ID | Yes |
-| caller_type | string, <br>**Available values:** "build_draft", "conversation" | *Enum:* `"build_draft"`, `"conversation"` | Yes |
-| path | string | File path relative to the sandbox workspace | Yes |
 
 #### AgentScope
 
@@ -16599,6 +16640,13 @@ Reference to model credentials resolved only at runtime.
 | type | string |  | Yes |
 
 #### AgentSoulModelSettings
+
+Model parameters for the Agent Soul model.
+
+Model plugins can declare arbitrary parameters via ``parameter_rules``
+(e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+fields typed below, so extra keys must round-trip through persistence
+rather than being dropped.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -18296,6 +18344,16 @@ Model class for credential form schema.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CredentialType | string |  |  |
+
+#### CurrentWorkspaceSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plan | string |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### CustomConfigurationResponse
 
@@ -22506,6 +22564,7 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expired_at | string |  | Yes |
+| license_expiry_notice_enabled | boolean |  | Yes |
 | seats | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 | status | [LicenseStatus](#licensestatus) |  | Yes |
 | workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
@@ -22991,6 +23050,30 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
+#### ModelProviderCreditsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| exhausted_at | integer |  | Yes |
+| is_exhausted | boolean |  | Yes |
+| is_unlimited | boolean |  | Yes |
+| next_credit_reset_date | integer |  | Yes |
+| pool_type | string |  | Yes |
+| quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
+| quota_used | integer |  | Yes |
+| remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+
+#### ModelProviderCustomConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| current_credential_usable | boolean |  | Yes |
+| has_custom_models | boolean | Whether custom model configuration exists, including saved model credentials. | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+
 #### ModelProviderListResponse
 
 | Name | Type | Description | Required |
@@ -23002,6 +23085,49 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
+
+#### ModelProviderPluginSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| installation_id | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| version | string |  | Yes |
+
+#### ModelProviderSummaryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelProviderSummaryResponse](#modelprovidersummaryresponse) ] |  | Yes |
+| plugins | object |  | Yes |
+
+#### ModelProviderSummaryResponse
+
+Fields required to render the collapsed model-provider list.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| custom_configuration | [ModelProviderCustomConfigurationSummaryResponse](#modelprovidercustomconfigurationsummaryresponse) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | No |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| is_configured | boolean |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| plugin_id | string |  | Yes |
+| preferred_provider_type | [ProviderType](#providertype) |  | Yes |
+| provider | string |  | Yes |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| system_configuration | [ModelProviderSystemConfigurationSummaryResponse](#modelprovidersystemconfigurationsummaryresponse) |  | Yes |
+
+#### ModelProviderSystemConfigurationSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
 
 #### ModelSelectorScope
 
@@ -23991,8 +24117,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| language | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US | Language used for localized label and description search<br>*Enum:* `"en_US"`, `"ja_JP"`, `"pt_BR"`, `"zh_Hans"` | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
+| query | string | Case-insensitive search query | No |
+| tags | [ string ] | Match any plugin tag | No |
 
 #### PluginCategoryListResponse
 
@@ -24192,6 +24321,18 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugins | [ [PluginInstallationItemResponse](#plugininstallationitemresponse) ] |  | Yes |
+
+#### PluginInstalledIdsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Plugin category to include | Yes |
+
+#### PluginInstalledIdsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_ids | [ string ] |  | Yes |
 
 #### PluginListResponse
 
@@ -25007,6 +25148,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | SSOProtocol | string |  |  |
 
+#### SandboxDownloadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
+
 #### SandboxFileEntryResponse
 
 | Name | Type | Description | Required |
@@ -25039,12 +25186,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | size | integer |  | No |
 | text | string |  | No |
 | truncated | boolean |  | Yes |
-
-#### SandboxUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| url | string |  | Yes |
 
 #### SavedMessageCreatePayload
 
@@ -26852,12 +26993,12 @@ How a workflow node is bound to an Agent.
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
-#### WorkflowAgentSandboxUploadPayload
+#### WorkflowAgentSandboxDownloadPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | node_execution_id | string | Workflow node execution ID | Yes |
-| path | string | File path relative to the sandbox workspace | Yes |
+| path | string | Binding path: relative paths start in Workspace; exact `~` and paths beginning with `~/` start in Home; `~user` is an ordinary relative path from Workspace; absolute paths remain absolute; `..` and paths outside Workspace are governed by backend isolation, not a Workspace-root restriction | Yes |
 
 #### WorkflowAppLogPaginationResponse
 

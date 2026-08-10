@@ -32,6 +32,7 @@ export type SystemFeatureModel = {
 
 export type LicenseModel = {
   expired_at: string
+  license_expiry_notice_enabled: boolean
   seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel

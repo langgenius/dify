@@ -151,9 +151,12 @@ class FeatureService:
         Non-enterprise deployments have no license, so an unconstrained default
         (unlimited seats/workspaces) is returned.
         """
-        if not dify_config.ENTERPRISE_ENABLED:
-            return feature_entities.LicenseModel()
-        return cls._build_license(EnterpriseService.get_info())
+        if dify_config.ENTERPRISE_ENABLED:
+            license_model = cls._build_license(EnterpriseService.get_info())
+            license_model.license_expiry_notice_enabled = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
+        else:
+            license_model = feature_entities.LicenseModel()
+        return license_model
 
     @staticmethod
     def is_explore_banner_enabled() -> bool:

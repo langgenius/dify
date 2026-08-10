@@ -1337,7 +1337,7 @@ export function WebsiteCrawlPreview({
             onOpenChange={setOptionsExpanded}
             className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default"
           >
-            <CollapsibleTrigger className="h-8.5 min-h-8.5 justify-start rounded-none px-3">
+            <CollapsibleTrigger className="h-8.5 min-h-8.5 justify-start rounded-none px-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset">
               <span
                 aria-hidden
                 className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"

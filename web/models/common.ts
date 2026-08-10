@@ -26,61 +26,6 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   roles: Role[]
 }
 
-const ProviderName = {
-  OPENAI: 'openai',
-  AZURE_OPENAI: 'azure_openai',
-  ANTHROPIC: 'anthropic',
-  Replicate: 'replicate',
-  HuggingfaceHub: 'huggingface_hub',
-  MiniMax: 'minimax',
-  Spark: 'spark',
-  Tongyi: 'tongyi',
-  ChatGLM: 'chatglm',
-} as const
-type ProviderName = (typeof ProviderName)[keyof typeof ProviderName]
-type ProviderAzureToken = {
-  openai_api_base?: string
-  openai_api_key?: string
-}
-type ProviderAnthropicToken = {
-  anthropic_api_key?: string
-}
-type Provider = {
-  [Name in ProviderName]: {
-    provider_name: Name
-  } & {
-    provider_type: 'custom' | 'system'
-    is_valid: boolean
-    is_enabled: boolean
-    last_used: string
-    token?: string | ProviderAzureToken | ProviderAnthropicToken
-  }
-}[ProviderName]
-
-export type IWorkspace = {
-  id: string
-  name: string
-  plan: string
-  status: string
-  created_at: number
-  last_opened_at?: number | null
-  current: boolean
-}
-
-export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
-  role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
-  providers: Provider[]
-  trial_credits: number
-  trial_credits_used: number
-  trial_credits_exhausted_at: number
-  next_credit_reset_date: number
-  trial_end_reason?: string
-  custom_config?: {
-    remove_webapp_brand?: boolean
-    replace_webapp_logo?: string
-  }
-}
-
 export type DataSourceNotionPage = {
   page_icon: null | {
     type: string | null

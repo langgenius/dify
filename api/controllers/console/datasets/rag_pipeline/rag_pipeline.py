@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -21,6 +20,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
     knowledge_pipeline_publish_enabled,
+    model_validate,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -104,12 +104,17 @@ class PipelineTemplateListApi(Resource):
     @enterprise_license_required
     @with_current_tenant_id
     @with_session
-    def get(self, session: Session, current_tenant_id: str) -> JsonResponseWithStatus:
-        query = PipelineTemplateListQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(PipelineTemplateListQuery)
+    def get(
+        self,
+        req_data: PipelineTemplateListQuery,
+        session: Session,
+        current_tenant_id: str,
+    ) -> JsonResponseWithStatus:
         # get pipeline templates
         pipeline_templates = RagPipelineService.get_pipeline_templates(
-            type=query.type,
-            language=query.language,
+            type=req_data.type,
+            language=req_data.language,
             current_tenant_id=current_tenant_id,
             session=session,
         )
@@ -125,11 +130,11 @@ class PipelineTemplateDetailApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @with_session
-    def get(self, session: Session, template_id: str) -> JsonResponseWithStatus:
-        query = PipelineTemplateDetailQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(PipelineTemplateDetailQuery)
+    def get(self, req_data: PipelineTemplateDetailQuery, session: Session, template_id: str) -> JsonResponseWithStatus:
         pipeline_template = RagPipelineService.get_pipeline_template_detail(
             template_id,
-            type=query.type,
+            type=req_data.type,
             session=session,
         )
         if pipeline_template is None:
@@ -147,9 +152,15 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    def patch(self, current_tenant_id: str, current_user: Account, template_id: str) -> tuple[str, int]:
-        payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
-        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(payload.model_dump())
+    @model_validate(CustomizedPipelineTemplatePayload)
+    def patch(
+        self,
+        req_data: CustomizedPipelineTemplatePayload,
+        current_tenant_id: str,
+        current_user: Account,
+        template_id: str,
+    ) -> tuple[str, int]:
+        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(req_data.model_dump())
         RagPipelineService.update_customized_pipeline_template(
             template_id, pipeline_template_info, current_user, current_tenant_id, session=db.session()
         )
@@ -192,10 +203,16 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @knowledge_pipeline_publish_enabled
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, pipeline_id: str) -> tuple[str, int]:
-        payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
+    @model_validate(CustomizedPipelineTemplatePayload)
+    def post(
+        self,
+        req_data: CustomizedPipelineTemplatePayload,
+        current_tenant_id: str,
+        current_user: Account,
+        pipeline_id: str,
+    ) -> tuple[str, int]:
         rag_pipeline_service = RagPipelineService(db.session())
         rag_pipeline_service.publish_customized_pipeline_template(
-            pipeline_id, payload.model_dump(), current_user, current_tenant_id, session=db.session()
+            pipeline_id, req_data.model_dump(), current_user, current_tenant_id, session=db.session()
         )
         return "", 204

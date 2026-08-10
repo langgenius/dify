@@ -52,6 +52,7 @@ overrides:
 catalog:
   '@amplitude/analytics-browser': 2.45.5
   '@amplitude/plugin-session-replay-browser': 1.33.7
+  '@axe-core/playwright': 4.12.1
   '@base-ui/react': 1.7.0
   '@chromatic-com/storybook': 5.2.1
   '@cucumber/cucumber': 13.2.1

@@ -24,7 +24,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
@@ -119,22 +119,23 @@ class MessageFeedbackApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(
+        self, req_data: MessageFeedbackPayload, current_user: Account, installed_app: InstalledApp, message_id: UUID
+    ):
         app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
 
         message_id_str = str(message_id)
 
-        payload = MessageFeedbackPayload.model_validate(console_ns.payload or {})
-
         try:
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id_str,
                 user=current_user,
-                rating=FeedbackRating(payload.rating) if payload.rating else None,
-                content=payload.content,
+                rating=FeedbackRating(req_data.rating) if req_data.rating else None,
+                content=req_data.content,
                 session=db.session(),
             )
         except MessageNotExistsError:

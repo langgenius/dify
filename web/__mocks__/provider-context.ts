@@ -7,9 +7,12 @@ import { defaultPlan } from '@/app/components/billing/config'
 // Avoid being mocked in tests
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
+  modelProviderPlugins: {},
   refreshModelProviders: async () => {},
   isLoadingModelProviders: false,
+  isSuccessModelProviders: false,
   textGenerationModelList: [],
+  supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
@@ -18,13 +21,9 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
   enableEducationPlan: false,
   isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
   licenseLimit: {
     workspace_members: {
@@ -45,7 +44,7 @@ export const createMockProviderContextValue = (
 
   return {
     ...merged,
-    refreshModelProviders: merged.refreshModelProviders ?? (async () => {}),
+    refreshModelProviders: merged.refreshModelProviders ?? noop,
     onPlanInfoChanged: merged.onPlanInfoChanged ?? noop,
     refreshLicenseLimit: merged.refreshLicenseLimit ?? noop,
   }
