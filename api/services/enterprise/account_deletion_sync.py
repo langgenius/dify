@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from redis import RedisError
@@ -109,10 +110,21 @@ def sync_account_deletion(account_id: str, *, source: str, session: Session) -> 
     # Fetch all workspaces the account belongs to
     workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
 
-    # Queue sync task for each workspace
+    return sync_account_deletion_memberships(
+        account_id=account_id,
+        workspace_ids=[join.tenant_id for join in workspace_joins],
+        source=source,
+    )
+
+
+def sync_account_deletion_memberships(account_id: str, workspace_ids: Sequence[str], *, source: str) -> bool:
+    """Queue deletion synchronization after membership persistence has been read and closed."""
+    if not dify_config.ENTERPRISE_ENABLED:
+        return True
+
     success = True
-    for join in workspace_joins:
-        if not _queue_task(workspace_id=join.tenant_id, member_id=account_id, source=source):
+    for workspace_id in workspace_ids:
+        if not _queue_task(workspace_id=workspace_id, member_id=account_id, source=source):
             success = False
 
     return success

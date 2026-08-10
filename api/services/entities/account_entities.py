@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,3 +66,30 @@ class AccountIntegrationStatus:
     provider: str
     created_at: datetime | None
     is_bound: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AccountInitialization:
+    interface_language: str
+    interface_theme: str
+    timezone: str
+    initialized_at: datetime
+
+
+class AccountInitializationStatus(StrEnum):
+    INITIALIZED = "initialized"
+    ACCOUNT_NOT_FOUND = "account_not_found"
+    ALREADY_INITIALIZED = "already_initialized"
+    INVALID_INVITATION = "invalid_invitation"
+
+
+@dataclass(frozen=True, slots=True)
+class AccountInitializationResult:
+    status: AccountInitializationStatus
+    account: AccountSnapshot | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountDeletionChallenge:
+    token: str
+    code: str

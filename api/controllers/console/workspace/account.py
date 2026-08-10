@@ -9,10 +9,8 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
-from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from constants.languages import supported_language
 from controllers.common.fields import (
     AvatarUrlResponse,
@@ -25,6 +23,7 @@ from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailChangeLimitError,
+    EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
@@ -52,17 +51,14 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
-from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import login_required
 from machinery.context import RequestContext
-from models import Account, InvitationCode
-from models.account import AccountStatus, InvitationCodeStatus
+from models import Account
 from services import account_errors
 from services.account_service import AccountService
 from services.billing_service import BillingService
@@ -304,44 +300,24 @@ def _update_account_profile(request_context: RequestContext, changes: AccountPro
 class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @with_current_user
-    def post(self, account: Account):
-        if account.status == "active":
-            raise AccountAlreadyInitedError()
-
+    @console_account_admission(require_initialized=False)
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountInitPayload.model_validate(payload)
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            if not args.invitation_code:
-                raise ValueError("invitation_code is required")
-
-            # check invitation code
-            invitation_code = db.session.scalar(
-                select(InvitationCode)
-                .where(
-                    InvitationCode.code == args.invitation_code,
-                    InvitationCode.status == InvitationCodeStatus.UNUSED,
-                )
-                .limit(1)
+        try:
+            application_services().accounts.initialization.initialize(
+                request_context,
+                interface_language=args.interface_language,
+                timezone=args.timezone,
+                invitation_code=args.invitation_code,
             )
-
-            if not invitation_code:
-                raise InvalidInvitationCodeError()
-
-            invitation_code.status = InvitationCodeStatus.USED
-            invitation_code.used_at = naive_utc_now()
-            invitation_code.used_by_tenant_id = account.current_tenant_id
-            invitation_code.used_by_account_id = account.id
-
-        account.interface_language = args.interface_language
-        account.timezone = args.timezone
-        account.interface_theme = "light"
-        account.status = AccountStatus.ACTIVE
-        account.initialized_at = naive_utc_now()
-        db.session.commit()
+        except account_errors.AccountAlreadyInitializedError:
+            raise AccountAlreadyInitedError() from None
+        except account_errors.InvalidInvitationCodeError:
+            raise InvalidInvitationCodeError() from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -511,14 +487,15 @@ class AccountIntegrateApi(Resource):
 
 @console_ns.route("/account/delete/verify")
 class AccountDeleteVerifyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        token, code = AccountService.generate_account_deletion_verification_code(account)
-        AccountService.send_account_deletion_verification_email(account, code)
+    @console_account_admission()
+    def get(self, request_context: RequestContext):
+        try:
+            token = application_services().accounts.deletion.issue_verification(request_context)
+        except account_errors.AccountDeletionRateLimitError as error:
+            raise EmailCodeAccountDeletionRateLimitExceededError(error.retry_after_minutes) from None
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
 
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
@@ -527,18 +504,19 @@ class AccountDeleteVerifyApi(Resource):
 class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    def post(self, account: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountDeletePayload.model_validate(payload)
 
-        if not AccountService.verify_account_deletion_code(args.token, args.code):
-            raise InvalidAccountDeletionCodeError()
-
-        AccountService.delete_account(account, session=db.session())
+        try:
+            application_services().accounts.deletion.request_deletion(
+                request_context,
+                token=args.token,
+                code=args.code,
+            )
+        except account_errors.InvalidAccountDeletionVerificationError:
+            raise InvalidAccountDeletionCodeError() from None
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

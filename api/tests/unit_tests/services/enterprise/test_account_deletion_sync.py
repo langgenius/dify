@@ -18,6 +18,7 @@ from models.account import TenantAccountJoin
 from services.enterprise.account_deletion_sync import (
     _queue_task,
     sync_account_deletion,
+    sync_account_deletion_memberships,
     sync_workspace_member_removal,
 )
 
@@ -76,6 +77,23 @@ class TestSyncWorkspaceMemberRemoval:
         result = sync_workspace_member_removal(workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source")
 
         assert result is False
+
+
+def test_sync_account_deletion_memberships_queues_preloaded_workspace_ids() -> None:
+    with (
+        patch("services.enterprise.account_deletion_sync.dify_config") as mock_config,
+        patch("services.enterprise.account_deletion_sync._queue_task", return_value=True) as queue_task,
+    ):
+        mock_config.ENTERPRISE_ENABLED = True
+
+        result = sync_account_deletion_memberships(
+            account_id="account-1",
+            workspace_ids=("workspace-1", "workspace-2"),
+            source="account_deleted",
+        )
+
+    assert result is True
+    assert [call.kwargs["workspace_id"] for call in queue_task.call_args_list] == ["workspace-1", "workspace-2"]
 
 
 @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)

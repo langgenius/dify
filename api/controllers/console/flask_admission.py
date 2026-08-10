@@ -22,6 +22,7 @@ from models.account import TenantAccountRole
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
+    require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_resource_scope: RBACResourceScope | None = None,
@@ -34,9 +35,9 @@ def console_account_admission[T, **P, R](
     """Declare Console account admission and inject a stable RequestContext.
 
     All combinations use this decorator factory. Requirements are data, while
-    the execution order stays fixed: edition, setup, login/CSRF, account
-    initialization, optional enterprise license, role/RBAC checks, then context
-    construction.
+    the execution order stays fixed: edition, setup, login/CSRF, optional
+    account initialization, optional enterprise license, role/RBAC checks, then
+    context construction.
     """
 
     if (rbac_resource_scope is None) != (rbac_permission is None):
@@ -72,7 +73,8 @@ def console_account_admission[T, **P, R](
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
-        admitted = account_initialization_required(admitted)
+        if require_initialized:
+            admitted = account_initialization_required(admitted)
         admitted = login_required(admitted)
         admitted = setup_required(admitted)
 

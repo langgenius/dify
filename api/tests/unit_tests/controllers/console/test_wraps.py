@@ -279,6 +279,33 @@ class TestCurrentContextInjection:
             "status": 500,
         }
 
+    def test_console_account_admission_can_admit_uninitialized_accounts(self):
+        current_user = make_account()
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.account_initialization_required",
+                side_effect=lambda view: view,
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(require_initialized=False)
+                def post(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                result = Handler().post()
+
+        assert result.account_id == current_user.id
+        account_initialization_required.assert_not_called()
+
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
             @with_current_tenant_id
