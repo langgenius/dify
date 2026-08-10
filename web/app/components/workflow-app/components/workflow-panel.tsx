@@ -5,7 +5,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Panel from '@/app/components/workflow/panel'
 import CommentsPanel from '@/app/components/workflow/panel/comments-panel'
 import { useStore } from '@/app/components/workflow/store'
-import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import dynamic from '@/next/dynamic'
 import { useIsChatMode } from '../hooks/use-is-chat-mode'
 
@@ -32,12 +31,6 @@ const ChatVariablePanel = dynamic(
 )
 const GlobalVariablePanel = dynamic(
   () => import('@/app/components/workflow/panel/global-variable-panel'),
-  {
-    ssr: false,
-  },
-)
-const WorkflowCopilotPanel = dynamic(
-  () => import('@/app/components/workflow/panel/workflow-copilot'),
   {
     ssr: false,
   },
@@ -82,7 +75,6 @@ const WorkflowPanelOnRight = () => {
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore((s) => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore((s) => s.showGlobalVariablePanel)
-  const showCopilotPanel = useStore((s) => s.showCopilotPanel)
   const controlMode = useStore((s) => s.controlMode)
 
   return (
@@ -93,7 +85,6 @@ const WorkflowPanelOnRight = () => {
       {showDebugAndPreviewPanel && !isChatMode && <WorkflowPreview />}
       {showChatVariablePanel && isChatMode && <ChatVariablePanel />}
       {showGlobalVariablePanel && <GlobalVariablePanel />}
-      {ENABLE_FEATURE_PREVIEW && showCopilotPanel && <WorkflowCopilotPanel />}
       {controlMode === 'comment' && <CommentsPanel />}
     </>
   )

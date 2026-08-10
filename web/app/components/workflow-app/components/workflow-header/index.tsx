@@ -3,11 +3,9 @@ import { memo, useCallback, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
-import { ENABLE_FEATURE_PREVIEW } from '@/config'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import { useIsChatMode } from '../../hooks/use-is-chat-mode'
 import ChatVariableTrigger from './chat-variable-trigger'
-import CopilotTrigger from './copilot-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
@@ -39,10 +37,6 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
-          // Workflow Copilot is a preview feature — only surface its entry
-          // when NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW is on (same gate as the
-          // /create·/refine slash commands).
-          left: ENABLE_FEATURE_PREVIEW ? <CopilotTrigger /> : null,
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
         },

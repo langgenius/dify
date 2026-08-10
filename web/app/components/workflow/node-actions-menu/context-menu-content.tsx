@@ -63,11 +63,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
               {t(($) => $['common.duplicate'], { ns: 'workflow' })}
             </NodeActionsMenuItemContent>
           </ContextMenuItem>
-          {model.canAddToCopilot && (
-            <ContextMenuItem onClick={model.handleAddToCopilot}>
-              {t(($) => $['workflowGenerator.addToCopilot'], { ns: 'workflow' })}
-            </ContextMenuItem>
-          )}
         </ContextMenuGroup>
       )}
       {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
