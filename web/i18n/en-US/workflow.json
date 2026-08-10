@@ -280,7 +280,6 @@
   "common.workflowProcessPaused": "Workflow Process paused",
   "common.workflowProcessRunning": "Workflow Process running",
   "common.workflowProcessSucceeded": "Workflow Process succeeded",
-  "common.workflowProcessing": "Canvas is read-only right now",
   "common.workflowSaveStatus": "Workflow save status",
   "customWebhook": "Custom Webhook",
   "debug.copyLastRun": "Copy Last Run",
@@ -1319,7 +1318,6 @@
   "versionHistory.title": "Versions",
   "workflowGenerator.applied": "Applied",
   "workflowGenerator.appliedRefineHint": "Applied — refine anytime with ⌘K → /refine",
-  "workflowGenerator.apply": "Apply",
   "workflowGenerator.applyFailed": "Failed to apply workflow",
   "workflowGenerator.applyToCurrent": "Apply to current draft",
   "workflowGenerator.applyToNew": "Create new app",
@@ -1359,7 +1357,6 @@
   "workflowGenerator.examples.workflow.translate": "Translate text to multiple languages",
   "workflowGenerator.generate": "Generate",
   "workflowGenerator.generateFailed": "Failed to generate workflow",
-  "workflowGenerator.generating": "Generating…",
   "workflowGenerator.instruction": "Instructions",
   "workflowGenerator.instructionPlaceholder": "Describe the workflow you want — what input, what processing, what output.",
   "workflowGenerator.instructionRequired": "Please write an instruction first",
@@ -1367,7 +1364,6 @@
   "workflowGenerator.modelRequired": "Please pick a model before generating.",
   "workflowGenerator.modes.chatflow": "Chatflow",
   "workflowGenerator.modes.workflow": "Workflow",
-  "workflowGenerator.noModel": "Please configure a default LLM in Settings → Model Provider first.",
   "workflowGenerator.overwriteMessage": "Applying this workflow will replace the current draft graph. This cannot be undone.",
   "workflowGenerator.overwriteTitle": "Overwrite the current draft?",
   "workflowGenerator.phases.building": "Building nodes…",
@@ -1380,10 +1376,7 @@
   "workflowGenerator.refineTitle": "Refine {{mode}}",
   "workflowGenerator.regenerate": "Regenerate",
   "workflowGenerator.reload": "Reload",
-  "workflowGenerator.retry": "Retry",
   "workflowGenerator.studioApply": "Apply",
   "workflowGenerator.studioButton": "Generate",
-  "workflowGenerator.title": "Generate {{mode}}",
-  "workflowGenerator.tokens": "tokens",
-  "workflowGenerator.undo": "Undo"
+  "workflowGenerator.title": "Generate {{mode}}"
 }

@@ -1378,6 +1378,5 @@
   "workflowGenerator.reload": "重新加载",
   "workflowGenerator.studioApply": "应用",
   "workflowGenerator.studioButton": "生成",
-  "workflowGenerator.title": "生成 {{mode}}",
-  "workflowGenerator.tokens": "tokens"
+  "workflowGenerator.title": "生成 {{mode}}"
 }

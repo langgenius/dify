@@ -20,13 +20,6 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
-  # Local dev workaround: the internal bnpm registry mirror is missing the
-  # `time` metadata field for these two entries, so no-downgrade trust
-  # verification rejects them. The packages themselves resolve fine (tarballs
-  # exist on public npm and are cached in the pnpm store). Revert before
-  # upstreaming if the mirror catches up.
-  - agentation@3.0.2
-  - vitest-canvas-mock@1.1.4
 packages:
   - web
   - e2e
