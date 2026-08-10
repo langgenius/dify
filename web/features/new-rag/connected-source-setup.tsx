@@ -5,13 +5,12 @@ import type {
   KnowledgeFsSourcePageResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
-  NewKnowledgeOnlineDocumentsProvider,
   NewKnowledgeOnlineDocumentsSourceDraft,
-  NewKnowledgeOnlineDriveProvider,
   NewKnowledgeOnlineDriveSourceDraft,
   NewKnowledgeSourceDraft,
 } from './routes'
 import type { Source, SourceConnection, SourceProvider } from './source-models'
+import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -40,8 +39,14 @@ import {
   sourceSyncPolicyFromApi,
 } from './source-models'
 import {
+  discoverSourceProviderOptions,
+  normalizeSourceProviderName,
+  sourceProviderOptionForDraft,
+} from './source-provider-options'
+import {
   SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderNotInstalledCard,
   SourceProviderRadioGroup,
   SourceSyncPolicyField,
 } from './source-setup-fields'
@@ -96,73 +101,25 @@ const CONNECTION_STATUS_PRIORITY: Record<SourceConnection['status'], number> = {
   revoked: 4,
 }
 
-const providerOptions = {
-  onlineDocuments: [
-    {
-      aliases: ['notion'],
-      icon: 'i-custom-public-common-notion',
-      label: 'Notion',
-    },
-    {
-      aliases: ['google docs', 'googledocs', 'google drive', 'googledrive'],
-      icon: 'i-ri-file-text-fill text-[#4d8bf5]',
-      label: 'Google Docs',
-    },
-    {
-      aliases: ['confluence'],
-      icon: 'i-custom-public-common-confluence',
-      label: 'Confluence',
-    },
-  ],
-  onlineDrive: [
-    {
-      aliases: ['google drive', 'googledrive'],
-      icon: 'i-custom-public-common-google-drive',
-      label: 'Google Drive',
-    },
-    {
-      aliases: ['onedrive', 'microsoft onedrive'],
-      icon: 'i-ri-cloud-line',
-      label: 'OneDrive',
-    },
-    {
-      aliases: ['amazon s3', 'amazons3', 's3'],
-      icon: 'i-ri-box-3-line',
-      label: 'Amazon S3',
-    },
-  ],
-} as const
-
-const providerPackageIds: Record<ConnectedSourceDraft['provider'], string | undefined> = {
-  'Amazon S3': 'langgenius/aws_s3_storage',
-  Confluence: 'langgenius/confluence_datasource',
-  'Google Docs': 'langgenius/google_drive',
-  'Google Drive': 'langgenius/google_drive',
-  Notion: 'langgenius/notion_datasource',
-  OneDrive: 'langgenius/onedrive_datasource',
-}
-
-function normalizeProviderName(value: string) {
-  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
-}
-
 function usesDriveTransport(draft: ConnectedSourceDraft) {
   return draft.sourceType === 'onlineDrive' || draft.provider === 'Google Docs'
 }
 
-function providerForDraft(providers: SourceProvider[], draft: ConnectedSourceDraft) {
+function providerForDraft(
+  providers: SourceProvider[],
+  draft: ConnectedSourceDraft,
+  option?: SourceProviderOption,
+) {
   const capability = usesDriveTransport(draft) ? 'online-drive' : 'online-document'
-  const option = providerOptions[draft.sourceType].find((item) => item.label === draft.provider)
-  if (!option) return undefined
   const aliases = new Set(
-    [option.label, ...option.aliases].map((candidate) => normalizeProviderName(candidate)),
+    [draft.provider, option?.label ?? ''].map(normalizeSourceProviderName).filter(Boolean),
   )
   const capableProviders = providers.filter((provider) =>
     provider.capabilities.includes(capability),
   )
   return (
     capableProviders.find((provider) => {
-      const names = [provider.id, provider.displayName].map(normalizeProviderName)
+      const names = [provider.id, provider.displayName].map(normalizeSourceProviderName)
       return names.some(
         (name) =>
           aliases.has(name) ||
@@ -176,45 +133,19 @@ function providerForDraft(providers: SourceProvider[], draft: ConnectedSourceDra
   )
 }
 
-function datasourceProviderForDraft(
-  datasourcePlugins: DataSourceItem[],
-  draft: ConnectedSourceDraft,
-) {
-  const option = providerOptions[draft.sourceType].find((item) => item.label === draft.provider)
-  if (!option) return undefined
-  const aliases = [option.label, ...option.aliases].map(normalizeProviderName)
-  const providerType = usesDriveTransport(draft) ? 'online_drive' : 'online_document'
-  for (const plugin of datasourcePlugins) {
-    if (plugin.declaration.provider_type !== providerType) continue
-    const identities = [
-      plugin.declaration.identity.label.en_US,
-      plugin.declaration.identity.name,
-      plugin.plugin_id,
-      plugin.provider,
-    ].map(normalizeProviderName)
-    const datasource = plugin.declaration.datasources.find((action) => {
-      const actionIdentities = [
-        action.identity.label.en_US,
-        action.identity.name,
-        action.identity.provider,
-      ].map(normalizeProviderName)
-      return [...identities, ...actionIdentities].some((identity) =>
-        aliases.some((alias) => identity.includes(alias) || alias.includes(identity)),
-      )
-    })
-    if (datasource)
-      return {
-        datasource,
-        plugin,
+function datasourceProviderForOption(option?: SourceProviderOption) {
+  return option?.installed
+    ? {
+        datasource: option.datasource,
+        plugin: option.plugin,
       }
-  }
-  return undefined
+    : undefined
 }
 
 type ProviderBrandIconValue = DataSourceItem['declaration']['identity']['icon']
 
 function datasourceProviderIcon(
-  datasourceProvider: ReturnType<typeof datasourceProviderForDraft>,
+  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
 ): ProviderBrandIconValue | undefined {
   return datasourceProvider?.plugin.declaration.identity.icon
 }
@@ -222,7 +153,7 @@ function datasourceProviderIcon(
 function credentialRegion(credential: DataSourceCredential | undefined) {
   const region = Object.entries(credential?.credential ?? {}).find(
     ([key, value]) =>
-      ['awsregion', 'region', 'regionname'].includes(normalizeProviderName(key)) &&
+      ['awsregion', 'region', 'regionname'].includes(normalizeSourceProviderName(key)) &&
       typeof value === 'string' &&
       value.trim(),
   )?.[1]
@@ -231,7 +162,7 @@ function credentialRegion(credential: DataSourceCredential | undefined) {
 
 function datasourceAuthForProvider(
   providers: DataSourceAuth[],
-  datasourceProvider: ReturnType<typeof datasourceProviderForDraft>,
+  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
 ) {
   if (!datasourceProvider) return undefined
   return providers.find(
@@ -250,7 +181,7 @@ function preferredCredential(provider?: DataSourceAuth) {
 
 function connectionMatchesDatasource(
   connection: SourceConnection,
-  datasourceProvider: ReturnType<typeof datasourceProviderForDraft>,
+  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
   credential: DataSourceCredential | undefined,
 ) {
   if (!datasourceProvider) return false
@@ -266,7 +197,7 @@ function connectionMatchesDatasource(
 function findProviderConnection(
   connections: SourceConnection[],
   providerId: string | undefined,
-  datasourceProvider: ReturnType<typeof datasourceProviderForDraft>,
+  datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
   credential: DataSourceCredential | undefined,
 ) {
   if (!providerId || !datasourceProvider) return undefined
@@ -285,16 +216,15 @@ function findProviderConnection(
     )[0]
 }
 
-function providerIntegrationPath(draft: ConnectedSourceDraft) {
+function providerIntegrationPath(option?: SourceProviderOption) {
   const base = buildIntegrationPath('data-source')
-  const packageId = providerPackageIds[draft.provider]
-  if (!packageId) return base
-  const query = new URLSearchParams({ 'package-ids': JSON.stringify([packageId]) })
+  if (!option) return base
+  const query = new URLSearchParams({ 'package-ids': JSON.stringify([option.packageId]) })
   return `${base}?${query.toString()}`
 }
 
 function providerScheme(providerName: string) {
-  const normalized = normalizeProviderName(providerName)
+  const normalized = normalizeSourceProviderName(providerName)
   if (normalized.includes('notion')) return 'notion'
   if (normalized.includes('googledocs')) return 'gdocs'
   if (normalized.includes('googledrive')) return 'gdrive'
@@ -312,7 +242,7 @@ function sourceUri(
   const scheme = providerScheme(`${draft.provider} ${provider.id} ${provider.displayName}`)
   if (scheme === 's3') {
     const bucket = Object.entries(connection.configuration).find(([key]) =>
-      ['bucket', 'bucketname'].includes(normalizeProviderName(key)),
+      ['bucket', 'bucketname'].includes(normalizeSourceProviderName(key)),
     )?.[1]
     if (typeof bucket === 'string' && bucket.trim()) return `s3://${bucket.trim()}`
   }
@@ -386,18 +316,17 @@ function requestStatus(error: unknown) {
 }
 
 function ProviderSelector({
-  datasourcePlugins,
-  draft,
+  options,
+  providerKey,
   onChange,
   onMoreProviders,
 }: {
-  datasourcePlugins: DataSourceItem[]
-  draft: ConnectedSourceDraft
-  onChange: (provider: string) => void
+  options: SourceProviderOption[]
+  providerKey: string
+  onChange: (providerKey: string) => void
   onMoreProviders: () => void
 }) {
   const { t } = useTranslation('dataset')
-  const options = providerOptions[draft.sourceType]
   return (
     <Fieldset>
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -416,27 +345,22 @@ function ProviderSelector({
         </Button>
       </div>
       <SourceProviderRadioGroup
-        value={draft.provider}
+        value={providerKey}
         layout="wrap"
-        options={options.map((option) => {
-          const optionProvider = datasourceProviderForDraft(datasourcePlugins, {
-            ...draft,
-            provider: option.label,
-          } as ConnectedSourceDraft)
-          return {
-            icon: (
-              <ProviderBrandIcon
-                fallbackIcon={option.icon}
-                icon={
-                  option.label === 'Google Docs'
-                    ? undefined
-                    : datasourceProviderIcon(optionProvider)
-                }
-              />
-            ),
-            value: option.label,
-          }
-        })}
+        options={options.map((option) => ({
+          icon: (
+            <ProviderBrandIcon
+              fallbackIcon={option.fallbackIcon}
+              icon={
+                option.installed
+                  ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
+                  : undefined
+              }
+            />
+          ),
+          label: option.label,
+          value: option.key,
+        }))}
         size="small"
         onChange={onChange}
       />
@@ -471,14 +395,15 @@ function ProviderBrandIcon({
 function OAuthConnectionCard({
   draft,
   icon,
+  providerOption,
   onConnect,
 }: {
   draft: ConnectedSourceDraft
   icon?: ProviderBrandIconValue
+  providerOption: InstalledSourceProviderOption
   onConnect: () => void
 }) {
   const { t } = useTranslation('dataset')
-  const option = providerOptions[draft.sourceType].find((item) => item.label === draft.provider)
   return (
     <SourceConnectionRequiredCard
       actionLabel={t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
@@ -489,7 +414,7 @@ function OAuthConnectionCard({
               provider: draft.provider,
             })
       }
-      icon={<ProviderBrandIcon fallbackIcon={option?.icon ?? 'i-ri-links-line'} icon={icon} />}
+      icon={<ProviderBrandIcon fallbackIcon={providerOption.fallbackIcon} icon={icon} />}
       title={
         draft.provider === 'Notion'
           ? t(($) => $['newKnowledge.notionNotConnected'])
@@ -1707,9 +1632,15 @@ export function ConnectedSourceSetup({
       retry: false,
     }),
   )
-  const provider = providerForDraft(providersQuery.data ?? [], draft)
+  const providerOptions = useMemo(
+    () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, draft.sourceType],
+  )
+  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
+  const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const provider = providerForDraft(providersQuery.data ?? [], draft, providerOption)
   const driveTransport = usesDriveTransport(draft)
-  const datasourceProvider = datasourceProviderForDraft(datasourcePluginsQuery.data ?? [], draft)
+  const datasourceProvider = datasourceProviderForOption(installedProviderOption)
   const datasourceAuth = datasourceAuthForProvider(
     datasourceAuthQuery.data?.result ?? [],
     datasourceProvider,
@@ -1866,23 +1797,27 @@ export function ConnectedSourceSetup({
     providersQuery.isPending,
     provisionConnection,
   ])
-  const selectProvider = (nextProvider: string) => {
+  const selectProvider = (providerKey: string) => {
+    const nextProvider = providerOptions.find((option) => option.key === providerKey)
+    if (!nextProvider) return
     setConnectionOverride(undefined)
     setProvisionError(false)
     if (draft.sourceType === 'onlineDocuments') {
       onDraftChange({
         ...draft,
-        provider: nextProvider as NewKnowledgeOnlineDocumentsProvider,
+        provider: nextProvider.label,
+        providerKey: nextProvider.key,
         sourceName: '',
       })
       return
     }
     onDraftChange({
       ...draft,
-      provider: nextProvider as NewKnowledgeOnlineDriveProvider,
+      provider: nextProvider.label,
+      providerKey: nextProvider.key,
       sourceName: '',
       syncPolicy:
-        nextProvider === 'Amazon S3' && draft.syncPolicy === 'provider'
+        nextProvider.label === 'Amazon S3' && draft.syncPolicy === 'provider'
           ? 'daily'
           : draft.syncPolicy,
     })
@@ -1890,8 +1825,8 @@ export function ConnectedSourceSetup({
   return (
     <div className="flex flex-col gap-4">
       <ProviderSelector
-        datasourcePlugins={datasourcePluginsQuery.data ?? []}
-        draft={draft}
+        options={providerOptions}
+        providerKey={providerOption?.key ?? ''}
         onChange={selectProvider}
         onMoreProviders={() =>
           globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
@@ -1923,7 +1858,19 @@ export function ConnectedSourceSetup({
             {t(($) => $['newKnowledge.retryProviderLoad'])}
           </Button>
         </div>
-      ) : !provider ? (
+      ) : providerOption && !providerOption.installed ? (
+        <SourceProviderNotInstalledCard
+          icon={<ProviderBrandIcon fallbackIcon={providerOption.fallbackIcon} />}
+          provider={providerOption.label}
+          onInstall={() =>
+            globalThis.open(
+              providerIntegrationPath(providerOption),
+              '_blank',
+              'noopener,noreferrer',
+            )
+          }
+        />
+      ) : !installedProviderOption || !provider ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{draft.provider}</p>
           <p className="mt-1 system-xs-regular text-text-tertiary">
@@ -1977,7 +1924,11 @@ export function ConnectedSourceSetup({
             <Button
               variant="primary"
               onClick={() =>
-                globalThis.open(providerIntegrationPath(draft), '_blank', 'noopener,noreferrer')
+                globalThis.open(
+                  providerIntegrationPath(installedProviderOption),
+                  '_blank',
+                  'noopener,noreferrer',
+                )
               }
             >
               {t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
@@ -2018,12 +1969,18 @@ export function ConnectedSourceSetup({
         <OAuthConnectionCard
           draft={draft}
           icon={datasourceProviderIcon(datasourceProvider)}
+          providerOption={installedProviderOption}
           onConnect={() =>
-            globalThis.open(providerIntegrationPath(draft), '_blank', 'noopener,noreferrer')
+            globalThis.open(
+              providerIntegrationPath(installedProviderOption),
+              '_blank',
+              'noopener,noreferrer',
+            )
           }
         />
       )}
       {!connection &&
+        Boolean(installedProviderOption) &&
         provider?.available &&
         !provisioningConnection &&
         !queryError &&

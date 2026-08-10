@@ -1,13 +1,9 @@
 'use client'
 
 import type { DatasourceProviderAuthListResponse } from '@dify/contracts/api/console/auth/types.gen'
-import type {
-  NewKnowledgeSourceDraft,
-  NewKnowledgeSourceType,
-  NewKnowledgeWebsiteProvider,
-} from './routes'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
@@ -43,7 +39,15 @@ import {
   sourceConnectionListFromApi,
   sourceProviderListFromApi,
 } from './source-models'
-import { SourceProviderRadioGroup, SourceTypeSelector } from './source-setup-fields'
+import {
+  discoverSourceProviderOptions,
+  sourceProviderOptionForDraft,
+} from './source-provider-options'
+import {
+  SourceProviderNotInstalledCard,
+  SourceProviderRadioGroup,
+  SourceTypeSelector,
+} from './source-setup-fields'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type ProviderField = Provider['configuration'][number]
@@ -52,37 +56,6 @@ type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
 const WEBSITE_SOURCE_PROVIDER_ID = 'plugin-daemon-website'
-const WEBSITE_PROVIDER_OPTIONS: Array<{
-  aliases: string[]
-  icon: string
-  value: NewKnowledgeWebsiteProvider
-}> = [
-  {
-    aliases: ['firecrawl'],
-    icon: 'i-custom-public-common-firecrawl',
-    value: 'Firecrawl',
-  },
-  {
-    aliases: ['jina', 'jina reader', 'jinareader'],
-    icon: 'i-custom-public-llm-jina',
-    value: 'Jina Reader',
-  },
-  {
-    aliases: ['watercrawl'],
-    icon: 'i-custom-public-knowledge-watercrawl',
-    value: 'WaterCrawl',
-  },
-  {
-    aliases: ['fakecrawler'],
-    icon: 'i-ri-global-line text-text-accent',
-    value: 'FakeCrawler',
-  },
-]
-const WEBSITE_PROVIDER_PACKAGE_IDS: Partial<Record<NewKnowledgeWebsiteProvider, string>> = {
-  Firecrawl: 'langgenius/firecrawl_datasource',
-  'Jina Reader': 'langgenius/jina_datasource',
-  WaterCrawl: 'watercrawl/watercrawl_datasource',
-}
 const MANAGED_PROVIDER_FIELD_NAMES = new Set([
   'credentialId',
   'datasource',
@@ -110,20 +83,10 @@ function fieldValue(value: string, type: ProviderField['type']) {
   return value.trim()
 }
 
-function normalizeProviderName(value: string) {
-  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
-}
-
-function websiteProviderOption(provider: NewKnowledgeWebsiteProvider) {
-  return WEBSITE_PROVIDER_OPTIONS.find((option) => option.value === provider)
-}
-
-function websiteProviderIntegrationPath(provider?: NewKnowledgeWebsiteProvider) {
+function websiteProviderIntegrationPath(provider?: SourceProviderOption) {
   const base = buildIntegrationPath('data-source')
   if (!provider) return base
-  const packageId = WEBSITE_PROVIDER_PACKAGE_IDS[provider]
-  if (!packageId) return base
-  const query = new URLSearchParams({ 'package-ids': JSON.stringify([packageId]) })
+  const query = new URLSearchParams({ 'package-ids': JSON.stringify([provider.packageId]) })
   return `${base}?${query.toString()}`
 }
 
@@ -131,38 +94,7 @@ function findWebsiteSourceProvider(providers: Provider[]) {
   return providers.find((provider) => provider.id === WEBSITE_SOURCE_PROVIDER_ID)
 }
 
-function findWebsiteDatasourceProvider(
-  datasourcePlugins: DataSourceItem[],
-  providerName: NewKnowledgeWebsiteProvider,
-) {
-  if (providerName === 'FakeCrawler') return undefined
-  const option = websiteProviderOption(providerName)
-  if (!option) return undefined
-  const aliases = [option.value, ...option.aliases].map(normalizeProviderName)
-  for (const plugin of datasourcePlugins) {
-    if (plugin.declaration.provider_type !== 'website_crawl') continue
-    const pluginIdentities = [
-      plugin.declaration.identity.label.en_US,
-      plugin.declaration.identity.name,
-      plugin.plugin_id,
-      plugin.provider,
-    ].map(normalizeProviderName)
-    const datasource = plugin.declaration.datasources.find((candidate) => {
-      const datasourceIdentities = [
-        candidate.identity.label.en_US,
-        candidate.identity.name,
-        candidate.identity.provider,
-      ].map(normalizeProviderName)
-      return [...pluginIdentities, ...datasourceIdentities].some((identity) =>
-        aliases.some((alias) => identity.includes(alias) || alias.includes(identity)),
-      )
-    })
-    if (datasource) return { datasource, plugin }
-  }
-  return undefined
-}
-
-type WebsiteDatasourceProvider = NonNullable<ReturnType<typeof findWebsiteDatasourceProvider>>
+type WebsiteDatasourceProvider = InstalledSourceProviderOption
 
 function findDatasourceAuth(
   providers: DatasourceProviderAuthListResponse['result'],
@@ -278,13 +210,15 @@ function getSupportedAuthKinds(provider: Provider, credentialId?: string) {
 function ProviderSelector({
   disabled = false,
   onMoreProviders,
-  provider,
+  options,
+  providerKey,
   onChange,
 }: {
   disabled?: boolean
   onMoreProviders: () => void
-  provider: NewKnowledgeWebsiteProvider
-  onChange: (provider: NewKnowledgeWebsiteProvider) => void
+  options: SourceProviderOption[]
+  providerKey: string
+  onChange: (providerKey: string) => void
 }) {
   const { t } = useTranslation('dataset')
 
@@ -307,17 +241,28 @@ function ProviderSelector({
         </Button>
       </div>
       <SourceProviderRadioGroup
-        value={provider}
+        value={providerKey}
         disabled={disabled}
-        layout="grid-four"
-        options={WEBSITE_PROVIDER_OPTIONS.map((option) => ({
-          icon: <span aria-hidden className={`${option.icon} size-4`} />,
-          value: option.value,
+        layout="wrap"
+        options={options.map((option) => ({
+          icon: <WebsiteProviderIcon option={option} />,
+          label: option.label,
+          value: option.key,
         }))}
+        size="small"
         onChange={onChange}
       />
     </Fieldset>
   )
+}
+
+function WebsiteProviderIcon({ option }: { option: SourceProviderOption }) {
+  const icon = option.installed
+    ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
+    : undefined
+  if (typeof icon === 'string' && icon)
+    return <img aria-hidden alt="" className="size-4 shrink-0 object-contain" src={icon} />
+  return <span aria-hidden className={`${option.fallbackIcon} size-4 shrink-0`} />
 }
 
 function ProviderFieldControl({
@@ -421,7 +366,7 @@ function ConnectionForm({
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
-  providerName: NewKnowledgeWebsiteProvider
+  providerName: string
   credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
@@ -582,7 +527,7 @@ function ManagedProviderConnection({
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
-  providerName: NewKnowledgeWebsiteProvider
+  providerName: string
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -687,6 +632,7 @@ function UnconfiguredProvider({
   onDraftChange,
   onReconcile,
   provider,
+  providerOption,
   providerName,
   credentialId,
 }: {
@@ -697,7 +643,8 @@ function UnconfiguredProvider({
   onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
-  providerName: NewKnowledgeWebsiteProvider
+  providerOption: InstalledSourceProviderOption
+  providerName: string
   credentialId?: string
 }) {
   const { t } = useTranslation('dataset')
@@ -733,10 +680,7 @@ function UnconfiguredProvider({
   return (
     <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span
-          aria-hidden
-          className={`${websiteProviderOption(providerName)?.icon ?? 'i-ri-global-line'} size-4.5`}
-        />
+        <WebsiteProviderIcon option={providerOption} />
       </span>
       <h3 className="system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
@@ -993,12 +937,13 @@ export function AddSourcePage({
     }),
   )
   const provider = findWebsiteSourceProvider(providersQuery.data ?? [])
-  const websiteProviderName =
-    sourceDraft.sourceType === 'websiteCrawl' ? sourceDraft.provider : 'Firecrawl'
-  const datasourceProvider = useMemo(
-    () => findWebsiteDatasourceProvider(datasourcePluginsQuery.data ?? [], websiteProviderName),
-    [datasourcePluginsQuery.data, websiteProviderName],
+  const websiteProviderOptions = useMemo(
+    () => discoverSourceProviderOptions('websiteCrawl', datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data],
   )
+  const websiteProviderOption = sourceProviderOptionForDraft(websiteProviderOptions, sourceDraft)
+  const websiteProviderName = websiteProviderOption?.label ?? sourceDraft.provider
+  const datasourceProvider = websiteProviderOption?.installed ? websiteProviderOption : undefined
   const datasourceProviders = datasourceAuthQuery.data?.result ?? []
   const datasourceCredential = findDatasourceCredential(datasourceProviders, datasourceProvider)
   const difyManagedProvider = provider ? isDifyManagedProvider(provider) : false
@@ -1368,12 +1313,21 @@ export function AddSourcePage({
             <>
               <ProviderSelector
                 disabled={websiteSetupLocked}
-                provider={sourceDraft.provider}
+                options={websiteProviderOptions}
+                providerKey={websiteProviderOption?.key ?? ''}
                 onMoreProviders={() =>
                   globalThis.open(websiteProviderIntegrationPath(), '_blank', 'noopener,noreferrer')
                 }
-                onChange={(provider) => {
-                  updateSourceDraft({ ...sourceDraft, provider })
+                onChange={(providerKey) => {
+                  const nextProvider = websiteProviderOptions.find(
+                    (option) => option.key === providerKey,
+                  )
+                  if (!nextProvider) return
+                  updateSourceDraft({
+                    ...sourceDraft,
+                    provider: nextProvider.label,
+                    providerKey: nextProvider.key,
+                  })
                 }}
               />
               {queryError ? (
@@ -1395,33 +1349,21 @@ export function AddSourcePage({
                     {t(($) => $['newKnowledge.retryProviderLoad'])}
                   </Button>
                 </div>
-              ) : !provider ? (
+              ) : websiteProviderOption && !websiteProviderOption.installed ? (
+                <SourceProviderNotInstalledCard
+                  icon={<WebsiteProviderIcon option={websiteProviderOption} />}
+                  provider={websiteProviderOption.label}
+                  onInstall={() =>
+                    globalThis.open(
+                      websiteProviderIntegrationPath(websiteProviderOption),
+                      '_blank',
+                      'noopener,noreferrer',
+                    )
+                  }
+                />
+              ) : !datasourceProvider || !provider ? (
                 <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.providerUnavailable'])}
-                </div>
-              ) : !datasourceProvider ? (
-                <div className="rounded-xl bg-background-section p-4">
-                  <p className="system-sm-semibold text-text-primary">{websiteProviderName}</p>
-                  <p className="mt-1 system-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.providerUnavailable'])}
-                  </p>
-                  {websiteProviderName !== 'FakeCrawler' && (
-                    <Button
-                      variant="primary"
-                      className="mt-3"
-                      onClick={() =>
-                        globalThis.open(
-                          websiteProviderIntegrationPath(websiteProviderName),
-                          '_blank',
-                          'noopener,noreferrer',
-                        )
-                      }
-                    >
-                      {t(($) => $['newKnowledge.configureProvider'], {
-                        provider: websiteProviderName,
-                      })}
-                    </Button>
-                  )}
                 </div>
               ) : !provider.available || !supportsDirectConnection ? (
                 <div className="rounded-xl bg-background-section p-4">
@@ -1462,7 +1404,7 @@ export function AddSourcePage({
                   onConnected={rememberConnection}
                   onConfigureManagedProvider={() =>
                     globalThis.open(
-                      websiteProviderIntegrationPath(websiteProviderName),
+                      websiteProviderIntegrationPath(websiteProviderOption),
                       '_blank',
                       'noopener,noreferrer',
                     )
@@ -1470,6 +1412,7 @@ export function AddSourcePage({
                   onDraftChange={setConnectionDraftDirty}
                   onReconcile={reconcileConnection}
                   provider={provider}
+                  providerOption={datasourceProvider}
                   providerName={websiteProviderName}
                 />
               )}

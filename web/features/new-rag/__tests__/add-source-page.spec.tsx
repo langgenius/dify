@@ -495,6 +495,35 @@ const jinaDatasourceAuth: DatasourceProviderAuthListResponse['result'][number] =
   provider: 'jinareader',
 }
 
+const customCrawlerDatasourcePlugin: DataSourceItem = {
+  ...firecrawlDatasourcePlugin,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    datasources: [
+      {
+        description: { en_US: 'Acme crawler', zh_Hans: 'Acme crawler' },
+        identity: {
+          author: 'acme',
+          label: { en_US: 'Acme Crawler', zh_Hans: 'Acme Crawler' },
+          name: 'acme_crawler',
+          provider: 'acme',
+        },
+        parameters: [],
+      },
+    ],
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      author: 'acme',
+      description: { en_US: 'Acme crawler', zh_Hans: 'Acme crawler' },
+      label: { en_US: 'Acme Crawler', zh_Hans: 'Acme Crawler' },
+      name: 'acme_crawler',
+    },
+  },
+  plugin_id: 'acme/acme_crawler',
+  plugin_unique_identifier: 'acme/acme_crawler:1.0.0@local',
+  provider: 'acme',
+}
+
 const connection = (
   status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked',
   version = 2,
@@ -698,10 +727,10 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
     expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
     expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
-    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'dataset.newKnowledge.configureProvider:{"provider":"Jina Reader"}',
+        name: 'plugin.installPlugin',
       }),
     )
     expect(openMock).toHaveBeenCalledWith(
@@ -742,7 +771,7 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
-    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
     expect(
       screen.queryByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' }),
     ).not.toBeInTheDocument()
@@ -1133,14 +1162,16 @@ describe('AddSourcePage', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
-  it('renders every designed website provider and the provider-management action', async () => {
+  it('discovers installed website providers and keeps the provider-management action', async () => {
     const user = userEvent.setup()
+    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(
       screen.getByRole('group', { name: 'dataset.newKnowledge.providerLabel' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'FakeCrawler' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Acme Crawler' })).toBeEnabled()
+    expect(screen.queryByRole('radio', { name: 'FakeCrawler' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }))
     expect(openMock).toHaveBeenCalledWith(
       '/integrations/data-source',

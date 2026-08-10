@@ -552,6 +552,25 @@ describe('ConnectedSourceSetup', () => {
     )
   })
 
+  it('distinguishes an uninstalled provider from an installed provider without credentials', async () => {
+    const user = userEvent.setup()
+    renderSetup({
+      ...defaultDraft,
+      provider: 'Confluence',
+    })
+
+    expect(await screen.findByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.notionNotConnected')).not.toBeInTheDocument()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'plugin.installPlugin' }))
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fconfluence_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
+  })
+
   it('starts the selected Notion import and completes setup without waiting for indexing', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({

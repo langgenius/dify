@@ -95,7 +95,7 @@ export function SourceProviderRadioGroup<T extends string>({
 }: {
   disabled?: boolean
   layout: 'grid-four' | 'grid-three' | 'wrap'
-  options: Array<{ disabled?: boolean; icon: ReactNode; value: T }>
+  options: Array<{ disabled?: boolean; icon: ReactNode; label?: ReactNode; value: T }>
   size?: 'medium' | 'small'
   surface?: 'default' | 'transparent'
   value: T
@@ -127,7 +127,7 @@ export function SourceProviderRadioGroup<T extends string>({
           )}
         >
           {option.icon}
-          <span className="truncate">{option.value}</span>
+          <span className="truncate">{option.label ?? option.value}</span>
         </RadioItem>
       ))}
     </RadioGroup>
@@ -270,6 +270,34 @@ export function SourceConnectionRequiredCard({
         onClick={onConnect}
       >
         {actionLabel}
+      </Button>
+    </section>
+  )
+}
+
+export function SourceProviderNotInstalledCard({
+  icon,
+  provider,
+  onInstall,
+}: {
+  icon: ReactNode
+  provider: string
+  onInstall: () => void
+}) {
+  const { t: tPlugin } = useTranslation('plugin')
+  const { t: tWorkflow } = useTranslation('workflow')
+
+  return (
+    <section className="flex min-h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
+      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
+        {icon}
+      </span>
+      <h3 className="system-sm-semibold text-text-primary">{provider}</h3>
+      <p className="system-xs-regular text-text-tertiary">
+        {tWorkflow(($) => $['nodes.common.pluginNotInstalled'])}
+      </p>
+      <Button type="button" variant="primary" className="mt-auto" onClick={onInstall}>
+        {tPlugin(($) => $.installPlugin)}
       </Button>
     </section>
   )
