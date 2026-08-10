@@ -73,7 +73,9 @@ class ElasticSearchJaVector(ElasticSearchVector):
                             "type": "object",
                             "properties": {
                                 "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
-                                "document_id": {"type": "keyword"},  # Map document_id to keyword type; required for document-scoped retrieval
+                                "document_id": {
+                                    "type": "keyword"
+                                },  # Map document_id to keyword type; required for document-scoped retrieval
                             },
                         },
                     }
@@ -92,9 +94,7 @@ class ElasticSearchJaVectorFactory(ElasticSearchVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.ELASTICSEARCH_JA, collection_name)
-            )
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH_JA, collection_name))
 
         config = current_app.config
         return ElasticSearchJaVector(
