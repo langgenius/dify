@@ -113,6 +113,13 @@ def test_repository_owns_processing_policy_and_returns_typed_retry_results(sqlit
     assert exhausted == RetryExhausted(second.record_id)
 
 
+def test_empty_backlog_rejects_naive_now_at_persistence_boundary(sqlite_engine: Engine) -> None:
+    repository, _ = _repository(sqlite_engine)
+
+    with pytest.raises(ValueError, match="timestamp must be timezone-aware"):
+        repository.backlog(now=datetime(2026, 8, 2, 8))
+
+
 def test_insert_resolves_identified_duplicate_without_mutating_existing_record(sqlite_engine: Engine) -> None:
     repository, session_maker = _repository(sqlite_engine)
     first = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)

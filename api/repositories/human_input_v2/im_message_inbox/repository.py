@@ -331,6 +331,7 @@ class SQLAlchemyIMMessageInboxRepository:
     def backlog(self, *, now: datetime) -> InboxBacklog:
         """Measure backlog without reading or filtering Provider payloads."""
 
+        current = _naive_utc(now).replace(tzinfo=UTC)
         with self._session_maker() as session:
             count_rows = session.execute(
                 select(IMMessageInbox.status, func.count(IMMessageInbox.id)).group_by(IMMessageInbox.status)
@@ -344,5 +345,5 @@ class SQLAlchemyIMMessageInboxRepository:
         age = None
         if oldest_pending is not None:
             oldest = oldest_pending.replace(tzinfo=UTC) if oldest_pending.tzinfo is None else oldest_pending
-            age = max(_naive_utc(now).replace(tzinfo=UTC) - oldest, timedelta())
+            age = max(current - oldest, timedelta())
         return InboxBacklog(counts, age)
