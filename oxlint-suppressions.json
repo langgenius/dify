@@ -96,14 +96,6 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/components/authenticated-layout.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -147,9 +139,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "jsx_a11y/tabindex-no-positive": {
-      "count": 3
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -160,14 +149,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/(shareLayout)/webapp-signin/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
@@ -190,9 +171,6 @@
     }
   },
   "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
-    "jsx_a11y/label-has-associated-control": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -200,14 +178,6 @@
   "web/app/components/app-sidebar/app-info/app-operations.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
-    }
-  },
-  "web/app/components/app-sidebar/dataset-info/menu-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
@@ -806,14 +776,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/chat/chat-with-history/sidebar/__tests__/operation.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -839,22 +801,6 @@
   },
   "web/app/components/base/chat/chat/answer/agent-content.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/chat/chat/answer/human-input-content/content-wrapper.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/chat/chat/answer/tool-detail.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -1900,14 +1846,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/qrcode/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/search-input/index.stories.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 3
@@ -2038,11 +1976,6 @@
   "web/app/components/datasets/chunk.tsx": {
     "jsx_a11y/label-has-associated-control": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/common/credential-icon.tsx": {
-    "jsx_a11y/alt-text": {
-      "count": 1
     }
   },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
@@ -2814,12 +2747,6 @@
     }
   },
   "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -3750,14 +3677,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/header/scroll-to-selected-node-button.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/header/test-run-menu.tsx": {
@@ -4882,22 +4801,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/tool/components/__tests__/copy-id.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/tool/components/copy-id.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/tool/components/mixed-variable-text-input/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -5169,14 +5072,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/panel/chat-variable-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/chat-variable-panel/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -5395,9 +5290,6 @@
     }
   },
   "web/app/components/workflow/run/output-panel.tsx": {
-    "jsx_a11y/no-noninteractive-tabindex": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }
@@ -5722,9 +5614,6 @@
     }
   },
   "web/app/signup/components/input-mail.tsx": {
-    "jsx_a11y/tabindex-no-positive": {
-      "count": 2
-    },
     "no-restricted-imports": {
       "count": 1
     }

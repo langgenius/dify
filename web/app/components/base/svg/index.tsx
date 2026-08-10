@@ -11,11 +11,13 @@ type ISVGBtnProps = {
 const SVGBtn = ({ isSVG, setIsSVG }: ISVGBtnProps) => {
   return (
     <ActionButton
+      aria-label="SVG"
+      aria-pressed={isSVG}
       onClick={() => {
         setIsSVG((prevIsSVG) => !prevIsSVG)
       }}
     >
-      <div className={cn('size-4', isSVG ? s.svgIconed : s.svgIcon)}></div>
+      <span aria-hidden="true" className={cn('block size-4', isSVG ? s.svgIconed : s.svgIcon)} />
     </ActionButton>
   )
 }

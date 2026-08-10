@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Provider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SourceAppPicker } from '../source-app-picker'
 
@@ -26,14 +27,19 @@ const mocks = vi.hoisted(() => {
     isLoading: false,
   }
 
-  return {
-    sourceAppsQuery,
-    useInfiniteScroll: vi.fn(() => ({
-      rootRef: vi.fn(),
-      sentinelRef: vi.fn(),
-    })),
-  }
+  return { sourceAppsQuery }
 })
+
+type ObserverRecord = {
+  callback: IntersectionObserverCallback
+  options?: IntersectionObserverInit
+}
+
+const observers: ObserverRecord[] = []
+
+function getInfiniteScrollObserver() {
+  return observers.find(({ options }) => options?.rootMargin === '0px 0px 160px 0px')
+}
 
 vi.mock('@/features/deployments/create-release/state', async () => {
   const { atom } = await import('jotai')
@@ -55,10 +61,6 @@ vi.mock('@/features/deployments/create-release/state', async () => {
   }
 })
 
-vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
-  useInfiniteScroll: mocks.useInfiniteScroll,
-}))
-
 function renderSourceAppPicker(disabled: boolean) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -69,19 +71,40 @@ function renderSourceAppPicker(disabled: boolean) {
   })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <SourceAppPicker
-        value={{ id: 'app-1', name: 'Workflow 1', mode: 'workflow', icon_url: null }}
-        onChange={() => undefined}
-        disabled={disabled}
-      />
-    </QueryClientProvider>,
+    <Provider>
+      <QueryClientProvider client={queryClient}>
+        <SourceAppPicker
+          value={{ id: 'app-1', name: 'Workflow 1', mode: 'workflow', icon_url: null }}
+          onChange={() => undefined}
+          disabled={disabled}
+        />
+      </QueryClientProvider>
+    </Provider>,
   )
 }
 
 describe('SourceAppPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.sourceAppsQuery.fetchNextPage.mockReset()
+    observers.length = 0
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        readonly root = null
+        readonly rootMargin = ''
+        readonly scrollMargin = ''
+        readonly thresholds: ReadonlyArray<number> = []
+        readonly disconnect = vi.fn()
+        readonly observe = vi.fn()
+        readonly takeRecords = () => []
+        readonly unobserve = vi.fn()
+
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          observers.push({ callback, options })
+        }
+      },
+    )
     Object.assign(mocks.sourceAppsQuery, {
       data: {
         pages: [
@@ -96,12 +119,15 @@ describe('SourceAppPicker', () => {
         ],
       },
       error: null,
-      fetchNextPage: vi.fn(),
       hasNextPage: true,
       isFetching: false,
       isFetchingNextPage: false,
       isLoading: false,
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('should disable the switch control when disabled', () => {
@@ -117,40 +143,21 @@ describe('SourceAppPicker', () => {
     const user = userEvent.setup()
 
     renderSourceAppPicker(false)
-
-    expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fetchNextPage: expect.any(Function),
-        hasNextPage: true,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isLoading: false,
-      }),
-      expect.objectContaining({
-        enabled: false,
-        rootMargin: '0px 0px 160px 0px',
-        threshold: 0.1,
-      }),
-    )
+    expect(getInfiniteScrollObserver()).toBeUndefined()
 
     await user.click(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' }))
 
     await waitFor(() => {
-      expect(mocks.useInfiniteScroll).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          fetchNextPage: expect.any(Function),
-          hasNextPage: true,
-          isFetching: false,
-          isFetchingNextPage: false,
-          isLoading: false,
-        }),
-        expect.objectContaining({
-          enabled: true,
-          rootMargin: '0px 0px 160px 0px',
-          threshold: 0.1,
-        }),
+      expect(getInfiniteScrollObserver()).toBeDefined()
+    })
+    act(() => {
+      getInfiniteScrollObserver()?.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
       )
     })
+
+    expect(mocks.sourceAppsQuery.fetchNextPage).toHaveBeenCalledWith({ cancelRefetch: false })
     expect(
       screen.queryByRole('button', { name: /createModal\.loadMoreApps/ }),
     ).not.toBeInTheDocument()

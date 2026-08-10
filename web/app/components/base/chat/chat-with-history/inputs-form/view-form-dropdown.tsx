@@ -13,10 +13,11 @@ const ViewFormDropdown = () => {
         render={(props, state) => (
           <ActionButton
             {...props}
+            aria-label={t(($) => $['chat.viewChatSettings'], { ns: 'share' })}
             size="l"
             state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
           >
-            <RiChatSettingsLine className="h-4.5 w-4.5" />
+            <RiChatSettingsLine aria-hidden="true" className="h-4.5 w-4.5" />
           </ActionButton>
         )}
       />
