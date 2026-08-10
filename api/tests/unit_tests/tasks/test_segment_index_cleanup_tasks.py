@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Generator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -63,7 +63,7 @@ def indexed_segment(sqlite_session: Session) -> tuple[Dataset, Document, Documen
 @contextmanager
 def _record_transaction_events(
     sqlite_session_factory: sessionmaker[Session], phase_events: list[str]
-) -> Iterator[None]:
+) -> Generator[None]:
     """Record real commits made by the task-owned SQLite session."""
     session_type = sqlite_session_factory.class_
 
