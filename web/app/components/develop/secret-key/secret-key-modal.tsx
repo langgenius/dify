@@ -206,7 +206,7 @@ const SecretKeyModal = ({ isShow = false, appId, canManage, onClose }: ISecretKe
                       <CopyFeedback content={api.token} />
                       {canManage && (
                         <ActionButton
-                          aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+                          aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${generateToken(api.token)}`}
                           onClick={() => {
                             setDelKeyId(api.id)
                             setShowConfirmDelete(true)
