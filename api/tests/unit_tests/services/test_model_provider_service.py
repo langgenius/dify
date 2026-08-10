@@ -8,6 +8,7 @@ from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import CredentialConfiguration
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -377,7 +378,7 @@ class TestModelProviderServiceConfiguration:
     def test_preferred_provider_fallback_uses_custom_presence_not_configuration_status(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(service_module.dify_config, "EDITION", "SELF_HOSTED")
+        monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         state = _ProviderSummaryState(has_custom_provider=True)
 
         preferred_provider_type = ModelProviderService._get_preferred_provider_type(

@@ -21,7 +21,7 @@ from controllers.common.fields import SimpleResultMessageResponse, SimpleResultR
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import (
     LLMBadRequestError,
@@ -1267,12 +1267,19 @@ class DocumentMetadataApi(DocumentResource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def put(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @model_validate(DocumentMetadataUpdatePayload)
+    def put(
+        self,
+        req_data: DocumentMetadataUpdatePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
         document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
-
-        req_data = DocumentMetadataUpdatePayload.model_validate(request.get_json() or {})
 
         doc_type = req_data.doc_type
         doc_metadata = req_data.doc_metadata

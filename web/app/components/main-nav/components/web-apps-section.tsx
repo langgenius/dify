@@ -14,6 +14,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ScrollArea,
@@ -28,9 +29,9 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SearchInput } from '@/app/components/base/search-input'
 import AppNavItem from '@/app/components/explore/installed-app-navigation/app-nav-item'
-import { InfiniteScrollSentinel } from '@/app/components/explore/installed-app-navigation/infinite-scroll-sentinel'
 import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -39,6 +40,9 @@ import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
+
+const getPreloadDistance = (scrollContainer: Element) =>
+  Math.max(160, Math.min(scrollContainer.clientHeight * 0.25, 320))
 
 const selectInstalledApps = (data: InfiniteData<InstalledAppListResponse, string | undefined>) =>
   data.pages.flatMap((page) => page.installed_apps)
@@ -78,9 +82,7 @@ const WebAppsSectionContent = () => {
   )
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
-  const canLoadMore = Boolean(
-    installedAppsQuery.hasNextPage && !installedAppsQuery.isFetching && !installedAppsQuery.error,
-  )
+  const canLoadMore = !installedAppsQuery.isFetching && !installedAppsQuery.error
 
   const handleSearchTextChange = (value: string) => {
     scrollRef.current?.scrollTo({ top: 0 })
@@ -123,8 +125,6 @@ const WebAppsSectionContent = () => {
   const renderAppNavItem = (installedApp: (typeof installedApps)[number]) => (
     <AppNavItem
       key={installedApp.id}
-      variant="mainNav"
-      prefetchOnIntent
       app={installedApp}
       ariaLabel={t(($) => $['mainNav.webApps.openApp'], {
         ns: 'common',
@@ -195,23 +195,21 @@ const WebAppsSectionContent = () => {
             role="region"
           >
             <ScrollAreaContent style={{ minWidth: 0 }} className="w-full max-w-full px-2">
-              {installedAppsQuery.isError && (
+              {installedAppsQuery.isError && !installedAppsQuery.isFetchNextPageError && (
                 <div
                   className="flex flex-col items-start gap-1 px-2 py-2 system-xs-regular text-text-tertiary"
                   role="alert"
                 >
                   <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
-                  <button
-                    type="button"
-                    className="text-text-accent outline-hidden hover:underline focus-visible:underline"
+                  <Button
+                    size="small"
+                    variant="secondary"
                     onClick={() => {
-                      if (installedAppsQuery.isFetchNextPageError)
-                        void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
-                      else void installedAppsQuery.refetch()
+                      void installedAppsQuery.refetch()
                     }}
                   >
                     {t(($) => $['operation.retry'], { ns: 'common' })}
-                  </button>
+                  </Button>
                 </div>
               )}
               {!installedAppsQuery.isError && installedApps.length === 0 && (
@@ -231,16 +229,39 @@ const WebAppsSectionContent = () => {
                   ))}
                 </div>
               )}
-              {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
-              <InfiniteScrollSentinel
-                canLoadMore={canLoadMore}
-                fetchNextPage={() =>
-                  installedAppsQuery.fetchNextPage({
-                    cancelRefetch: false,
-                  })
-                }
-                scrollRootRef={scrollRef}
-              />
+              {installedAppsQuery.hasNextPage && (
+                <div className="relative">
+                  <InfiniteScrollSentinel
+                    canLoadMore={canLoadMore}
+                    onLoadMore={() => {
+                      void installedAppsQuery.fetchNextPage({
+                        cancelRefetch: false,
+                      })
+                    }}
+                    preloadDistance={getPreloadDistance}
+                    scrollContainerRef={scrollRef}
+                  />
+                  <InstalledAppPaginationSkeleton />
+                  {installedAppsQuery.isFetchNextPageError && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center gap-2 bg-background-body px-2 system-xs-regular text-text-tertiary"
+                      role="alert"
+                    >
+                      <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+                      <Button
+                        loading={installedAppsQuery.isFetchingNextPage}
+                        size="small"
+                        variant="secondary"
+                        onClick={() => {
+                          void installedAppsQuery.fetchNextPage({ cancelRefetch: false })
+                        }}
+                      >
+                        {t(($) => $['operation.retry'], { ns: 'common' })}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </ScrollAreaContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar>

@@ -20,7 +20,7 @@ from dify_agent.runtime.event_sink import (
     RunEventSink,
     RunFinalizationResult,
     TerminalRunEvent,
-    terminal_event_status_and_error,
+    terminal_event_status_fields,
 )
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
@@ -51,10 +51,15 @@ if ARGV[3] == "1" then
 else
     record.error = cjson.null
 end
+if ARGV[5] == "1" then
+    record.error_type = ARGV[6]
+else
+    record.error_type = cjson.null
+end
 
-local ttl = tonumber(ARGV[6])
+local ttl = tonumber(ARGV[8])
 local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[5])
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[7])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 return {1, ARGV[1], event_id}
@@ -126,7 +131,7 @@ class RedisRunStore(RunEventSink):
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first terminal event and update its run record."""
-        status, error = terminal_event_status_and_error(event)
+        status, error, error_type = terminal_event_status_fields(event)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         evaluation = cast(
             Awaitable[object],
@@ -139,6 +144,8 @@ class RedisRunStore(RunEventSink):
                 event.created_at.isoformat(),
                 "1" if error is not None else "0",
                 error or "",
+                "1" if error_type is not None else "0",
+                error_type.value if error_type is not None else "",
                 payload,
                 str(self.run_retention_seconds),
             ),

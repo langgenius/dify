@@ -32,9 +32,9 @@ import { consoleQuery } from '@/service/client'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
+import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
 import { Uploader } from './uploader'
 
@@ -142,10 +142,12 @@ function CreateFromDSLModal({
       {
         type: response.status === 'completed' ? 'success' : 'warning',
         description:
-          response.status === 'completed-with-warnings'
-            ? getDSLImportWarningDescription(response.warnings) ||
-              t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
-            : undefined,
+          response.status === 'completed-with-warnings' ? (
+            <DSLImportWarningDescription
+              warnings={response.warnings}
+              fallback={t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })}
+            />
+          ) : undefined,
       },
     )
     if (!response.app_id || !appMode) return

@@ -1,7 +1,7 @@
 import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -14,6 +14,8 @@ from controllers.console.app.mcp_server import (
     AppMCPServerController,
     AppMCPServerRefreshController,
     AppMCPServerResponse,
+    MCPServerCreatePayload,
+    MCPServerUpdatePayload,
 )
 from controllers.console.wraps import RBACPermission, RBACResourceScope
 from models.enums import AppMCPServerStatus
@@ -142,17 +144,20 @@ class TestAppMCPServerController:
         api = AppMCPServerController()
         method = unwrap(api.post)
         payload = {"parameters": {"timeout": 30}}
+        req_data = MCPServerCreatePayload.model_validate(payload)
         app = Flask(__name__)
         app.config["TESTING"] = True
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.app.mcp_server.db.session", sqlite_session),
             patch("controllers.console.app.mcp_server.AppMCPServer.generate_server_code", return_value="server-code"),
         ):
             response, status_code = method(
-                api, "tenant-1", app_model=SimpleNamespace(id="app-1", name="Demo App", description="App description")
+                api,
+                req_data,
+                "tenant-1",
+                app_model=SimpleNamespace(id="app-1", name="Demo App", description="App description"),
             )
 
         server = sqlite_session.scalar(select(AppMCPServer))
@@ -165,6 +170,7 @@ class TestAppMCPServerController:
         api = AppMCPServerController()
         method = unwrap(api.put)
         payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
+        req_data = MCPServerUpdatePayload.model_validate(payload)
         app = Flask(__name__)
         app.config["TESTING"] = True
         server = _server(name="Old", description="Old")
@@ -174,11 +180,11 @@ class TestAppMCPServerController:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.app.mcp_server.db.session", sqlite_session),
         ):
             response = method(
                 api,
+                req_data,
                 app_model=SimpleNamespace(
                     id="app-1", tenant_id="tenant-1", name="Demo App", description="App description"
                 ),
@@ -206,6 +212,7 @@ class TestAppMCPServerController:
         api = AppMCPServerController()
         method = unwrap(api.put)
         payload = {"id": "server-1", "description": "Updated", "parameters": {"timeout": 30}, "status": "active"}
+        req_data = MCPServerUpdatePayload.model_validate(payload)
         app = Flask(__name__)
         app.config["TESTING"] = True
         foreign_server = _server(
@@ -220,12 +227,12 @@ class TestAppMCPServerController:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch("controllers.console.app.mcp_server.db.session", sqlite_session),
             pytest.raises(NotFound),
         ):
             method(
                 api,
+                req_data,
                 app_model=SimpleNamespace(
                     id="app-1", tenant_id="tenant-1", name="Demo App", description="App description"
                 ),

@@ -15,11 +15,11 @@ import {
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { TitleTooltip } from '../../shared/components/title-tooltip'
 import {
   createReleaseSourceAppsAtom,
@@ -152,22 +152,9 @@ export function SourceAppPicker({
   const sourceAppsIsFetching = useAtomValue(createReleaseSourceAppsIsFetchingAtom)
   const sourceAppsIsFetchingNextPage = useAtomValue(createReleaseSourceAppsIsFetchingNextPageAtom)
   const sourceAppsIsLoading = useAtomValue(createReleaseSourceAppsIsLoadingAtom)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const selectedApp = apps.find((app) => app.id === value?.id) ?? null
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(
-    {
-      error: sourceAppsError,
-      fetchNextPage: sourceAppsFetchNextPage,
-      hasNextPage: sourceAppsHasNextPage,
-      isFetching: sourceAppsIsFetching,
-      isFetchingNextPage: sourceAppsIsFetchingNextPage,
-      isLoading: sourceAppsIsLoading,
-    },
-    {
-      enabled: isShow && !disabled,
-      rootMargin: '0px 0px 160px 0px',
-      threshold: 0.1,
-    },
-  )
+  const canLoadMore = isShow && !disabled && !sourceAppsIsFetching && !sourceAppsError
 
   return (
     <Combobox<AppPartial>
@@ -227,7 +214,7 @@ export function SourceAppPicker({
               />
             </ComboboxInputGroup>
           </div>
-          <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto p-1">
+          <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto p-1">
             {(sourceAppsIsLoading || sourceAppsIsFetchingNextPage) && apps.length === 0 && (
               <SourceAppPickerSkeleton />
             )}
@@ -242,7 +229,16 @@ export function SourceAppPicker({
                 {t(($) => $['createModal.loadingApps'])}
               </div>
             )}
-            {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
+            {sourceAppsHasNextPage && (
+              <InfiniteScrollSentinel
+                canLoadMore={canLoadMore}
+                onLoadMore={() => {
+                  void sourceAppsFetchNextPage({ cancelRefetch: false })
+                }}
+                preloadDistance={160}
+                scrollContainerRef={scrollContainerRef}
+              />
+            )}
           </div>
         </div>
       </ComboboxContent>

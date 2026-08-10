@@ -16,6 +16,8 @@ from services.entities.feature_entities import (
     VectorSpaceLimitationModel,
 )
 from services.feature_query_service import FeatureQueryService
+from services.schema_definition_service import SchemaDefinitionService
+from services.setup_service import SetupService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_query_service import WorkspaceQueryService
 
@@ -32,6 +34,8 @@ def _request_context() -> RequestContext:
 def _install_application_services(mocker: MockerFixture):
     feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
     services = ApplicationServices(
+        schema_definitions=create_autospec(SchemaDefinitionService, instance=True, spec_set=True),
+        setup=create_autospec(SetupService, instance=True, spec_set=True),
         feature_queries=feature_queries,
         workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
         workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),

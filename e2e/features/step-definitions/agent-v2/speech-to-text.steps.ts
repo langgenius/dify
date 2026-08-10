@@ -50,10 +50,9 @@ When(
     const page = this.getPage()
     const agentId = getCurrentAgentId(this)
 
-    await expect(page.getByTestId('voice-input-timer')).toHaveText(
-      voiceInputTestMaterial.recordingDuration,
-      { timeout: 15_000 },
-    )
+    await expect(page.getByRole('timer')).toHaveText(voiceInputTestMaterial.recordingDuration, {
+      timeout: 15_000,
+    })
 
     const responsePromise = page.waitForResponse(
       (response) =>

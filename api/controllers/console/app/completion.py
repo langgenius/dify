@@ -29,6 +29,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -160,11 +161,11 @@ class CompletionMessageApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, session: Session, current_user: Account, app_model: App):
-        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True, by_alias=True)
+    @model_validate(CompletionMessagePayload)
+    def post(self, req_data: CompletionMessagePayload, session: Session, current_user: Account, app_model: App):
+        args = req_data.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args_model.response_mode != "blocking"
+        streaming = req_data.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         try:

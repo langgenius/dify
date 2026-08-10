@@ -331,19 +331,9 @@ def test_app_list_query_accepts_single_repeated_tag_id(app_module):
     assert query.tag_ids == [tag_id]
 
 
-def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
-    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
-    app_service = MagicMock()
-    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
-
-    app_module.console_ns.payload = payload
-    try:
-        with pytest.raises(ValidationError):
-            _unwrap(app_module.AppListApi().post)(unbound_session, "tenant-1", SimpleNamespace(id="account-1"))
-    finally:
-        app_module.console_ns.payload = None
-
-    app_service.create_app.assert_not_called()
+def test_create_app_endpoint_rejects_agent_mode(app_module):
+    with pytest.raises(ValidationError):
+        app_module.CreateAppPayload.model_validate({"name": "Iris", "mode": "agent", "description": "Agent app"})
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
@@ -650,7 +640,17 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
                 replace_whitelist,
             )
 
-            resp, status = method(app_module.AppListApi(), unbound_session, "tenant-1", SimpleNamespace(id="acct-1"))
+            resp, status = method(
+                app_module.AppListApi(),
+                app_module.CreateAppPayload(
+                    name="Created App",
+                    description="Summary",
+                    mode="advanced-chat",
+                ),
+                unbound_session,
+                "tenant-1",
+                SimpleNamespace(id="acct-1"),
+            )
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
@@ -1076,6 +1076,7 @@ def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: 
 
             resp, status = method(
                 app_module.AppCopyApi(),
+                app_module.CopyAppPayload(),
                 "tenant-1",
                 SimpleNamespace(id="acct-1"),
                 app_model=SimpleNamespace(id="app-original"),

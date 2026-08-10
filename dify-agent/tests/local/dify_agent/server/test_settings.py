@@ -313,12 +313,6 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
     assert profile.execution_bindings.template == "difys-default-team/dify-agent-local-sandbox"
 
 
-def test_sandbox_file_upload_limit_defaults_to_tool_file_limit() -> None:
-    settings = ServerSettings()
-
-    assert settings.sandbox_file_upload_max_bytes == 50 * 1024 * 1024
-
-
 def test_build_runtime_backend_profile_rejects_missing_enterprise_endpoint(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
