@@ -1168,6 +1168,35 @@ describe('SkillDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('hides the empty draft marker after Builder fills only the Skill description', async () => {
+    mocks.skillDetail = createDefaultSkillDraftDetail({
+      description: 'Generate consistent character illustrations from a short prompt.',
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content:
+            '---\nname: character-illustration\ndescription: Generate consistent character illustrations from a short prompt.\nmetadata:\n  display-name: Character illustration\n---\n\n<!-- dify-skill-empty-draft -->\n',
+          tool_file_id: null,
+          size: 190,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    expect(
+      await screen.findByDisplayValue(
+        'Generate consistent character illustrations from a short prompt.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('<!-- dify-skill-empty-draft -->')).not.toBeInTheDocument()
+  })
+
   it('treats a newly created empty Skill draft as Builder creation mode', async () => {
     mocks.skillDetail = createDefaultSkillDraftDetail({
       description: '',

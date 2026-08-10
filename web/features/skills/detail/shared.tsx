@@ -505,11 +505,13 @@ export function parseMarkdownContent(content: string): ParsedMarkdownContent {
     })
   }
 
+  const body = lines
+    .slice(closingIndex + 1)
+    .join('\n')
+    .trimStart()
+
   return {
-    body: lines
-      .slice(closingIndex + 1)
-      .join('\n')
-      .trimStart(),
+    body: normalizeSkillDraftContentForEditing(body),
     description,
     displayName,
     metadata,
