@@ -265,9 +265,8 @@ class SQLAlchemyIMMessageInboxRepository:
             if record is None:
                 return LostLease(record_id, claim_token)
             attempts_exhausted = record.attempt_count >= self._policy.maximum_attempts
-            # Assigning an unchanged ORM timestamp leaves it clean and lets the column's
-            # database onupdate replace the injected retry anchor. Keep the locked read for
-            # attempt policy, then explicitly write every transition value through Core.
+            # Use an explicit Core UPDATE so the injected retry transition timestamp is
+            # reliably written even when it equals the previous value.
             result = session.connection().execute(
                 sa.update(IMMessageInbox)
                 .where(
