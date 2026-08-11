@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResourceVarInputs } from '../types'
 import type {
@@ -18,7 +19,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
@@ -32,7 +33,7 @@ import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/compone
 import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType } from '@/app/components/workflow/types'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -94,7 +95,10 @@ const FormInputItem: FC<Props> = ({
   inPanel,
 }) => {
   const language = useLanguage()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const timezone = userProfile.timezone ?? 'UTC'
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
