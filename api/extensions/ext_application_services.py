@@ -65,7 +65,7 @@ def build_application_services(
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
-            is_enabled=FeatureService.is_explore_banner_enabled,
+            enabled=FeatureService.is_explore_banner_enabled(),
         ),
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
