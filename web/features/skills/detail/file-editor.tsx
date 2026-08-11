@@ -127,7 +127,7 @@ export function FileEditor({
   onExitVersion: () => void
   onCloseFile: (path: string) => void
   onDraftDetailChange: (detail: SkillDetailResponse) => void
-  onSaveConflictConfirm: (onConfirm: () => void | Promise<void>, onCancel: () => void) => void
+  onSaveConflictConfirm: (onConfirm: () => void | Promise<void>) => void
   onSelectFile: (path: string) => void
   openFiles: SkillFileResponse[]
   previewFilePath: string | undefined
@@ -173,7 +173,6 @@ export function FileEditor({
   const saveConflictContentRef = useRef<string | null>(null)
   const saveConflictReloadContentRef = useRef<string | null>(null)
   const handleSaveConflictReloadRef = useRef<() => void>(() => {})
-  const handleSaveConflictCancelRef = useRef<() => void>(() => {})
   const detailRef = useRef(detail)
   const fileRef = useRef(file)
   const pendingPublishAfterSaveRef = useRef(false)
@@ -334,10 +333,7 @@ export function FileEditor({
       if (saveConflictContentRef.current === content) {
         setHasSaveConflict(true)
         if (saveConflictReloadContentRef.current != null)
-          onSaveConflictConfirm(
-            handleSaveConflictReloadRef.current,
-            handleSaveConflictCancelRef.current,
-          )
+          onSaveConflictConfirm(handleSaveConflictReloadRef.current)
         return false
       }
 
@@ -431,10 +427,7 @@ export function FileEditor({
             setHasSaveConflict(saveConflictContentRef.current != null)
             setSavedAt(latestUpdatedAt * 1000)
             setSaveStatus('saved')
-            onSaveConflictConfirm(
-              handleSaveConflictReloadRef.current,
-              handleSaveConflictCancelRef.current,
-            )
+            onSaveConflictConfirm(handleSaveConflictReloadRef.current)
             return false
           } catch {
             setSaveStatus('error')
@@ -522,17 +515,6 @@ export function FileEditor({
     saveConflictReloadDetail,
     skillId,
   ])
-  const handleSaveConflictCancel = useCallback(() => {
-    saveConflictContentRef.current = null
-    saveConflictReloadContentRef.current = null
-    setHasSaveConflict(false)
-    setSaveConflictReloadContent(null)
-    setSaveConflictReloadDetail(null)
-    setSaveStatus(draftContentRef.current === lastSavedContentRef.current ? 'saved' : 'dirty')
-  }, [])
-  useEffect(() => {
-    handleSaveConflictCancelRef.current = handleSaveConflictCancel
-  }, [handleSaveConflictCancel])
   useEffect(() => {
     handleSaveConflictReloadRef.current = handleSaveConflictReload
   }, [handleSaveConflictReload])
@@ -1297,6 +1279,7 @@ export function FileEditor({
                   ) : (
                     <div className="relative min-h-[360px]">
                       <MarkdownLiveBodyEditor
+                        key={editorRenderKey}
                         body={markdownContent.body}
                         contentRevision={externalContentRevision}
                         editorRef={liveBodyEditorRef}

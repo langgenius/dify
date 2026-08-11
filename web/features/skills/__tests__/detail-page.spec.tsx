@@ -1555,7 +1555,7 @@ describe('SkillDetailPage', () => {
     })
   })
 
-  it('refreshes the skill detail timestamp without retrying autosave after a conflict', async () => {
+  it('reloads the latest draft before allowing autosave after a conflict', async () => {
     const user = userEvent.setup()
     const latestDetail = createSkillDetail({
       updated_at: 1784638499,
@@ -1616,11 +1616,77 @@ describe('SkillDetailPage', () => {
       // Expected: conflict blocks autosave until the user edits again.
     }
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: 'skill.skillManagement.detail.saveConflictCancel' }),
+    ).not.toBeInTheDocument()
     mocks.skillDetail = latestDetail
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.saveConflictReload' }),
     )
     expect(getSourceEditor()).toHaveValue(latestDetail.files?.[0]?.content ?? '')
+
+    await user.type(getSourceEditor(), '\nMy changes after loading the latest draft')
+
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      },
+      { timeout: 2500 },
+    )
+    expect(mocks.saveDraftFileMutationFn.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          content: expect.stringContaining('My changes after loading the latest draft'),
+          expected_updated_at: latestDetail.updated_at,
+        }),
+      }),
+    )
+  }, 10000)
+
+  it('discards live editor content when loading the latest draft after a conflict', async () => {
+    const user = userEvent.setup()
+    const latestDetail = createSkillDetail({
+      updated_at: 1784638499,
+      files: [
+        {
+          ...createSkillDetail().files![0]!,
+          content:
+            '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n# Latest content from another tab\n',
+          hash: 'hash-2',
+        },
+      ],
+    })
+    mocks.saveDraftFileMutationFn.mockRejectedValueOnce({
+      code: 'skill_conflict',
+      details: {
+        current_file_content: latestDetail.files?.[0]?.content ?? '',
+        current_updated_at: latestDetail.updated_at,
+        expected_updated_at: 1784638487,
+      },
+    })
+    renderSkillDetailPage()
+
+    const livePreview = await screen.findByRole('textbox', {
+      name: 'skill.skillManagement.detail.referenceFiles.livePlaceholder',
+    })
+    await user.click(livePreview)
+    const liveEditor = await waitFor(() => getLiveMarkdownEditor())
+    liveEditor.textContent = '# Local unsaved content'
+    fireEvent.input(liveEditor)
+
+    expect(await screen.findByRole('alertdialog', {}, { timeout: 5000 })).toBeInTheDocument()
+    mocks.skillDetail = latestDetail
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.saveConflictReload' }),
+    )
+
+    await waitFor(() => {
+      const reloadedLivePreview = screen.getByRole('textbox', {
+        name: 'skill.skillManagement.detail.referenceFiles.livePlaceholder',
+      })
+      expect(reloadedLivePreview).toHaveTextContent('Latest content from another tab')
+      expect(reloadedLivePreview).not.toHaveTextContent('Local unsaved content')
+    })
   }, 10000)
 
   it('uses conflict details from response errors without retrying autosave', async () => {
