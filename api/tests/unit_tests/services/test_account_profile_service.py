@@ -7,12 +7,9 @@ from unittest.mock import Mock
 import pytest
 
 from machinery.context import RequestContext
+from services.account_errors import AccountNotFoundError, EmptyAccountProfileChangesError
 from services.account_ports import AccountRepository
-from services.account_profile_service import (
-    AccountNotFoundError,
-    AccountProfileService,
-    EmptyAccountProfileChangesError,
-)
+from services.account_profile_service import AccountProfileService
 from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
 
 

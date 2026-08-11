@@ -38,6 +38,7 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
+    InvalidAccountProfileChangesError,
 )
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -46,6 +47,7 @@ from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAcco
 from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.account_errors import EmptyAccountProfileChangesError
 from services.entities.account_entities import AccountProfileChanges
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
@@ -270,6 +272,28 @@ class TestAccountProfilePatchApi:
             request_context,
             AccountProfileChanges(name="Jane", interface_language="en-US", timezone="UTC"),
         )
+
+    def test_maps_empty_profile_changes_error(self, app: Flask):
+        api = AccountProfileApi()
+        method = inspect.unwrap(api.patch)
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        profile = MagicMock()
+        profile.update.side_effect = EmptyAccountProfileChangesError
+
+        with (
+            app.test_request_context("/account/profile", method="PATCH", json={"name": "Jane"}),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
+        ):
+            with pytest.raises(InvalidAccountProfileChangesError):
+                method(api, request_context)
 
     @pytest.mark.parametrize("payload", [{}, {"name": None}, {"unexpected": "value"}])
     def test_rejects_empty_null_or_unknown_changes(self, payload: dict[str, object]):

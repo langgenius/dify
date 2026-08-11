@@ -1,16 +1,9 @@
 """Application service for reading and updating the current account profile."""
 
 from machinery.context import RequestContext
+from services.account_errors import AccountNotFoundError, EmptyAccountProfileChangesError
 from services.account_ports import AccountUnitOfWorkFactory
 from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
-
-
-class AccountNotFoundError(Exception):
-    """The admitted account no longer exists."""
-
-
-class EmptyAccountProfileChangesError(ValueError):
-    """A profile update did not contain a supported field."""
 
 
 class AccountProfileService:

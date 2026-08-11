@@ -19,6 +19,12 @@ class CurrentPasswordIncorrectError(BaseHTTPException):
     code = 400
 
 
+class InvalidAccountProfileChangesError(BaseHTTPException):
+    error_code = "invalid_account_profile_changes"
+    description = "At least one supported account profile field is required."
+    code = 400
+
+
 class InvalidInvitationCodeError(BaseHTTPException):
     error_code = "invalid_invitation_code"
     description = "Invalid invitation code."

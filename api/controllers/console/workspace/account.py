@@ -41,6 +41,7 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
+    InvalidAccountProfileChangesError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
@@ -67,7 +68,7 @@ from models import Account, AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.account_profile_service import AccountNotFoundError as ServiceAccountNotFoundError
+from services import account_errors
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.entities.account_entities import AccountProfileChanges
@@ -331,8 +332,10 @@ register_response_schema_models(
 def _update_account_profile(request_context: RequestContext, changes: AccountProfileChanges) -> dict[str, object]:
     try:
         account = application_services().accounts.profile.update(request_context, changes)
-    except ServiceAccountNotFoundError:
-        raise AccountNotFound() from None
+    except account_errors.AccountNotFoundError as error:
+        raise AccountNotFound() from error
+    except account_errors.EmptyAccountProfileChangesError as error:
+        raise InvalidAccountProfileChangesError() from error
     return dump_response(AccountResponse, account)
 
 
