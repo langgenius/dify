@@ -178,6 +178,16 @@ describe('useSnippetInit', () => {
     expect(result.current.data?.draft.graph.viewport).toEqual({ x: 10, y: 20, zoom: 1.2 })
   })
 
+  it('should mark workflow data as loaded after the draft request completes', async () => {
+    const { result } = renderHook(() => useSnippetInit('snippet-1'))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
+  })
+
   it('should not return stale draft data while the draft workflow request is pending', () => {
     mockFetchSnippetDraftWorkflow.mockReturnValue(new Promise(() => {}))
 

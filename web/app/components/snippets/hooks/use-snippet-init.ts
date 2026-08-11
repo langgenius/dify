@@ -87,6 +87,7 @@ export const useSnippetInit = (snippetId: string) => {
           setSyncWorkflowDraftHash(response.hash)
         }
 
+        workflowStore.setState({ isWorkflowDataLoaded: true })
         setDraftWorkflowState({
           snippetId,
           data: response,

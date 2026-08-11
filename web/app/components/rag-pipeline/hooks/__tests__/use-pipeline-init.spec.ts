@@ -156,6 +156,14 @@ describe('usePipelineInit', () => {
         expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('test-hash')
       })
     })
+
+    it('should mark workflow data as loaded after a successful fetch', async () => {
+      renderHook(() => usePipelineInit())
+
+      await waitFor(() => {
+        expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
+      })
+    })
   })
 
   describe('environment variables handling', () => {

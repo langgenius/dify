@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
+import { useEffect } from 'react'
 import { render } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
@@ -8,8 +9,13 @@ const mockSetTriggerStatuses = vi.fn()
 const mockSetInputs = vi.fn()
 const mockSetShowInputsPanel = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
-const mockWorkflowStoreSetState = vi.fn()
+let mockIsWorkflowDataLoaded = true
+const mockWorkflowStoreSetState = vi.fn((state: Record<string, unknown>) => {
+  if (typeof state.isWorkflowDataLoaded === 'boolean')
+    mockIsWorkflowDataLoaded = state.isWorkflowDataLoaded
+})
 const mockDebouncedCancel = vi.fn()
+const mockFinalDraftSync = vi.fn()
 const mockFetchRunDetail = vi.fn()
 const mockInitialNodes = vi.fn()
 const mockInitialEdges = vi.fn()
@@ -62,6 +68,7 @@ let searchParamsValue: string | null = null
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
   getState: () => ({
+    isWorkflowDataLoaded: mockIsWorkflowDataLoaded,
     setInputs: mockSetInputs,
     setShowInputsPanel: mockSetShowInputsPanel,
     setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
@@ -189,7 +196,7 @@ vi.mock('@/app/components/workflow/context', () => ({
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
-  default: ({
+  default: function WorkflowMainMock({
     nodes,
     edges,
     viewport,
@@ -197,19 +204,32 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     nodes: Array<Record<string, unknown>>
     edges: Array<Record<string, unknown>>
     viewport: Record<string, unknown>
-  }) => (
-    <div
-      data-testid="workflow-app-main"
-      data-nodes={JSON.stringify(nodes)}
-      data-edges={JSON.stringify(edges)}
-      data-viewport={JSON.stringify(viewport)}
-    />
-  ),
+  }) {
+    useEffect(() => {
+      return () => {
+        const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = mockWorkflowStore.getState()
+        if (!isWorkflowDataLoaded) return
+
+        debouncedSyncWorkflowDraft.cancel()
+        mockFinalDraftSync()
+      }
+    }, [])
+
+    return (
+      <div
+        data-testid="workflow-app-main"
+        data-nodes={JSON.stringify(nodes)}
+        data-edges={JSON.stringify(edges)}
+        data-viewport={JSON.stringify(viewport)}
+      />
+    )
+  },
 }))
 
 describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsWorkflowDataLoaded = true
     appStoreState = {
       appDetail: {
         id: 'app-1',
@@ -298,7 +318,7 @@ describe('WorkflowApp', () => {
     expect(mockSetTriggerStatuses).not.toHaveBeenCalled()
   })
 
-  it('should replay workflow inputs from replayRunId and clean up workflow state on unmount', async () => {
+  it('should replay workflow inputs from replayRunId', async () => {
     searchParamsValue = 'run-1'
     mockFetchRunDetail.mockResolvedValue({
       inputs:
@@ -321,9 +341,15 @@ describe('WorkflowApp', () => {
     })
 
     unmount()
+  })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: false })
-    expect(mockDebouncedCancel).toHaveBeenCalled()
+  it('should keep loaded workflow state available for the canvas unmount sync', () => {
+    const { unmount } = render(<WorkflowApp />)
+
+    unmount()
+
+    expect(mockFinalDraftSync).toHaveBeenCalledTimes(1)
+    expect(mockDebouncedCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should skip replay lookups when replayRunId is missing', () => {

@@ -677,6 +677,25 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
+  it('should cancel the pending debounced save before the final unmount sync', () => {
+    vi.useFakeTimers()
+    try {
+      const pendingSync = vi.fn()
+      const { store, unmount } = renderSubject({
+        initialStoreState: { isWorkflowDataLoaded: true },
+      })
+      store.getState().debouncedSyncWorkflowDraft(pendingSync)
+
+      unmount()
+      vi.advanceTimersByTime(5000)
+
+      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(pendingSync).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('should skip the unmount save before workflow data has loaded', () => {
     const { unmount } = renderSubject()
 
