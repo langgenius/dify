@@ -1,7 +1,7 @@
 //go:build integration
 
-// Package tests runs the same acceptance test suite against both the Python
-// and Go shellctl server implementations to verify API compatibility.
+// Package tests runs the same acceptance test suite against every configured
+// shellctl server implementation to verify API compatibility.
 //
 // Prerequisites:
 //
@@ -25,9 +25,13 @@ import (
 var (
 	goURL     = envOrDefault("SHELLCTL_GO_URL", "http://localhost:15005")
 	authToken = envOrDefault("SHELLCTL_TEST_TOKEN", "test-token-123")
+	rustURL   = os.Getenv("SHELLCTL_RUST_URL")
+	rustToken = envOrDefault("SHELLCTL_RUST_TEST_TOKEN", authToken)
 
 	goURLNoIsolation     = os.Getenv("SHELLCTL_GO_URL_NO_ISOLATION")
 	authTokenNoIsolation = os.Getenv("SHELLCTL_TEST_TOKEN_NO_ISOLATION")
+	rustURLNoIsolation   = os.Getenv("SHELLCTL_RUST_URL_NO_ISOLATION")
+	rustTokenNoIsolation = envOrDefault("SHELLCTL_RUST_TEST_TOKEN_NO_ISOLATION", authTokenNoIsolation)
 
 	httpClient = &http.Client{Timeout: 120 * time.Second}
 )
@@ -36,19 +40,28 @@ var (
 type target struct {
 	name    string
 	baseURL string
+	token   string
 }
 
 func targets() []target {
-	return []target{
-		{name: "go", baseURL: goURL},
+	result := []target{
+		{name: "go", baseURL: goURL, token: authToken},
 	}
+	if rustURL != "" {
+		result = append(result, target{name: "rust", baseURL: rustURL, token: rustToken})
+	}
+	return result
 }
 
-func noIsolationTarget() (target, bool) {
-	if goURLNoIsolation == "" {
-		return target{}, false
+func noIsolationTargets() []target {
+	var result []target
+	if goURLNoIsolation != "" {
+		result = append(result, target{name: "go-no-isolation", baseURL: goURLNoIsolation, token: authTokenNoIsolation})
 	}
-	return target{name: "go-no-isolation", baseURL: goURLNoIsolation}, true
+	if rustURLNoIsolation != "" {
+		result = append(result, target{name: "rust-no-isolation", baseURL: rustURLNoIsolation, token: rustTokenNoIsolation})
+	}
+	return result
 }
 
 func TestMain(m *testing.M) {
@@ -59,7 +72,7 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
-	if tgt, ok := noIsolationTarget(); ok {
+	for _, tgt := range noIsolationTargets() {
 		if !waitForServer(tgt) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s server not ready at %s\n", tgt.name, tgt.baseURL)
 			os.Exit(1)
@@ -69,8 +82,8 @@ func TestMain(m *testing.M) {
 	for _, tgt := range targets() {
 		warmupJob(tgt)
 	}
-	if tgt, ok := noIsolationTarget(); ok {
-		warmupJobWithToken(tgt, authTokenNoIsolation)
+	for _, tgt := range noIsolationTargets() {
+		warmupJob(tgt)
 	}
 	os.Exit(m.Run())
 }
@@ -101,7 +114,7 @@ func warmupJob(tgt target) {
 	for attempt := 0; attempt < 3; attempt++ {
 		req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 		resp, err := warmupClient.Do(req)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "WARN: %s warmup job attempt %d failed: %v\n", tgt.name, attempt+1, err)
@@ -458,7 +471,7 @@ func TestDeleteJob(t *testing.T) {
 			// Delete it
 			req, _ := http.NewRequest("DELETE",
 				fmt.Sprintf("%s/v1/jobs/%s", tgt.baseURL, jobID), nil)
-			req.Header.Set("Authorization", "Bearer "+authToken)
+			req.Header.Set("Authorization", "Bearer "+tgt.token)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
@@ -489,7 +502,7 @@ func TestForceDeleteRunningJob(t *testing.T) {
 			// Force delete
 			req, _ := http.NewRequest("DELETE",
 				fmt.Sprintf("%s/v1/jobs/%s?force=true&grace_seconds=1", tgt.baseURL, jobID), nil)
-			req.Header.Set("Authorization", "Bearer "+authToken)
+			req.Header.Set("Authorization", "Bearer "+tgt.token)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
@@ -754,23 +767,27 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 // TestLandlockDisabledAllowsWriteOutsideHome uses the pre-started no-isolation
 // container (SHELLCTL_ENABLE_PATH_ISOLATION=false) and verifies that isolation is off.
 func TestLandlockDisabledAllowsWriteOutsideHome(t *testing.T) {
-	tgt, ok := noIsolationTarget()
-	if !ok {
+	targets := noIsolationTargets()
+	if len(targets) == 0 {
 		t.Skip("SHELLCTL_GO_URL_NO_ISOLATION not set; no-isolation container not available")
 	}
 
-	// With isolation disabled, writes to /tmp should succeed.
-	// /tmp is world-writable (Unix perms) but blocked by Landlock when enabled.
-	result := runJobWithToken(t, tgt, authTokenNoIsolation, map[string]any{
-		"script":  "touch /tmp/landlock-disabled-test && echo write_ok",
-		"env":     map[string]string{"HOME": "/home/dify"},
-		"timeout": 10,
-	})
-	assertJobDone(t, result)
-	assertExitCode(t, result, 0)
-	output := result["output"].(string)
-	if !strings.Contains(output, "write_ok") {
-		t.Errorf("expected write to /tmp to succeed with isolation disabled, got %q", output)
+	for _, tgt := range targets {
+		t.Run(tgt.name, func(t *testing.T) {
+			// With isolation disabled, writes to /tmp should succeed.
+			// /tmp is world-writable but blocked by Landlock when enabled.
+			result := runJob(t, tgt, map[string]any{
+				"script":  "touch /tmp/landlock-disabled-test && echo write_ok",
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			output := result["output"].(string)
+			if !strings.Contains(output, "write_ok") {
+				t.Errorf("expected write to /tmp to succeed with isolation disabled, got %q", output)
+			}
+		})
 	}
 }
 
@@ -826,7 +843,7 @@ func doGet(t *testing.T, tgt target, path string, withAuth bool) *http.Response 
 	t.Helper()
 	req, _ := http.NewRequest("GET", tgt.baseURL+path, nil)
 	if withAuth {
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -841,7 +858,7 @@ func doPost(t *testing.T, tgt target, path string, payload map[string]any, withA
 	req, _ := http.NewRequest("POST", tgt.baseURL+path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if withAuth {
-		req.Header.Set("Authorization", "Bearer "+authToken)
+		req.Header.Set("Authorization", "Bearer "+tgt.token)
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -912,47 +929,4 @@ func envOrDefault(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
-}
-
-func warmupJobWithToken(tgt target, token string) {
-	warmupClient := &http.Client{Timeout: 180 * time.Second}
-	payload, _ := json.Marshal(map[string]any{
-		"script":  "echo warmup",
-		"timeout": 10,
-	})
-	for attempt := 0; attempt < 3; attempt++ {
-		req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(payload))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp, err := warmupClient.Do(req)
-		if err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-		if resp.StatusCode == 200 {
-			return
-		}
-		time.Sleep(2 * time.Second)
-	}
-}
-
-func runJobWithToken(t *testing.T, tgt target, token string, payload map[string]any) map[string]any {
-	t.Helper()
-	body, _ := json.Marshal(payload)
-	req, _ := http.NewRequest("POST", tgt.baseURL+"/v1/jobs/run", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		t.Fatalf("[%s] POST /v1/jobs/run failed: %v", tgt.name, err)
-	}
-	assertStatus(t, resp, 200)
-	respBody := readBody(t, resp)
-	var result map[string]any
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		t.Fatalf("[%s] failed to parse run response: %v\nbody: %s", tgt.name, err, string(respBody))
-	}
-	return result
 }

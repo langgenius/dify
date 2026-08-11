@@ -2,7 +2,7 @@
 set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-project_dir=$(CDPATH= cd -- "$script_dir/../../../.." && pwd)
+project_dir=$(CDPATH= cd -- "$script_dir/../../../../.." && pwd)
 container_name="dify-agent-runtime-backend-integration-$$"
 image="${DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE:-langgenius/dify-agent-local-sandbox:1.16.0}"
 token="${DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN:-runtime-backend-integration}"
@@ -31,10 +31,11 @@ until curl --fail --silent "$endpoint/healthz" >/dev/null; do
   sleep 0.1
 done
 
-cd "$project_dir"
+cd "$project_dir/dify-agent"
 NO_PROXY=127.0.0.1,localhost \
   DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT="$endpoint" \
   DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN="$token" \
-  pdm run pytest --import-mode=importlib \
-    tests/integration/dify_agent/runtime_backend/test_runtime_backend_lifecycle.py \
+  PYTHONPATH=src \
+  uv run --extra server pytest --import-mode=importlib \
+    tests/integration/dify_agent/runtime_backend/test_working_environment.py \
     -k local -q -rs "$@"

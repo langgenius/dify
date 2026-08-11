@@ -110,6 +110,43 @@ func (t *TmuxController) CreateJobSession(
 	return nil
 }
 
+// StartJob creates the tmux session and attaches the output pipe in one tmux
+// client invocation. Keeping both commands in the same client avoids a
+// process launch and removes the cold-start window between session creation
+// and pipe attachment.
+func (t *TmuxController) StartJob(
+	jobID, jobDir, cwd, readyFile string,
+	cols, rows int,
+	mode jobmode.Mode,
+) error {
+	runnerCmd := shellJoin([]string{
+		t.config.RunnerPath(), jobDir, jobID, cwd, string(mode),
+	})
+	pipeCmd := t.buildPipeCommand(jobID, jobDir, readyFile)
+	result, err := t.runTmuxNoCheck(t.startJobArgs(jobID, runnerCmd, pipeCmd, cols, rows)...)
+	if err != nil {
+		return err
+	}
+	if result.exitCode != 0 {
+		return NewServerError(500, "tmux_new_session_failed",
+			strings.TrimSpace(result.stderr))
+	}
+	return nil
+}
+
+func (t *TmuxController) startJobArgs(jobID, runnerCmd, pipeCmd string, cols, rows int) []string {
+	return []string{
+		"-f", "/dev/null",
+		"new-session", "-d",
+		"-s", JobSessionName(jobID),
+		"-x", fmt.Sprintf("%d", cols),
+		"-y", fmt.Sprintf("%d", rows),
+		runnerCmd,
+		";",
+		"pipe-pane", "-o", "-t", JobPaneTarget(jobID), pipeCmd,
+	}
+}
+
 // EnableOutputPipe attaches the sanitize→output pipeline via tmux pipe-pane.
 func (t *TmuxController) EnableOutputPipe(jobID, jobDir string, readyFile string) error {
 	pipeCmd := t.buildPipeCommand(jobID, jobDir, readyFile)
