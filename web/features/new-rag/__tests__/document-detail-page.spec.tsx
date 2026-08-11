@@ -247,6 +247,12 @@ const outlineOptions = vi.hoisted(() =>
     queryKind: 'outline',
   })),
 )
+const metadataFieldsOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'metadata-fields'],
+  })),
+)
 const documentTasksOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
     ...options,
@@ -472,9 +478,7 @@ vi.mock('@/service/client', () => ({
           metadata: {
             get: {
               key: () => ['knowledge-fs', 'metadata-fields'],
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryKey: ['knowledge-fs', 'metadata-fields', input],
-              }),
+              queryOptions: metadataFieldsOptions,
             },
           },
           jobs: {
@@ -714,9 +718,19 @@ describe('DocumentDetailPage', () => {
       query: { cursor: 'next' },
     })
     expect(outlineOptions).toHaveBeenCalledWith({
+      context: { silent: true },
       input: {
         params: { control_space_id: 'space-1', document_id: 'asset-1' },
       },
+      retry: false,
+    })
+    expect(metadataFieldsOptions).toHaveBeenCalledWith({
+      context: { silent: true },
+      input: {
+        params: { control_space_id: 'space-1' },
+        query: { limit: 100 },
+      },
+      retry: false,
     })
     expect(infiniteInput(documentTasksOptions.mock.lastCall?.[0])(null)).toEqual({
       params: { control_space_id: 'space-1' },
@@ -1080,31 +1094,46 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByLabelText('reviewed_at')).toHaveAttribute('type', 'datetime-local')
   })
 
-  it('keeps the edit action busy while resolving metadata types', async () => {
+  it('enters metadata editing immediately while field types are still resolving', async () => {
     const user = userEvent.setup()
-    let resolveMetadataRefetch!: (value: { data: DocumentMetadataField[] }) => void
     documentQuery.data = logicalDocument({ userMetadata: { category: '' } })
     metadataFieldsQuery.data = undefined
-    metadataFieldsQuery.refetch.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveMetadataRefetch = resolve
-        }),
-    )
+    metadataFieldsQuery.isPending = true
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    const editButton = screen.getByRole('button', { name: 'common.operation.edit' })
-    await user.click(editButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
-    expect(editButton).toHaveAttribute('aria-disabled', 'true')
-    await user.click(editButton)
+    expect(await screen.findByLabelText('category')).toBeInTheDocument()
+    expect(metadataFieldsQuery.refetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps metadata editing usable and exposes retry when the field catalog fails', async () => {
+    const user = userEvent.setup()
+    documentQuery.data = logicalDocument({ userMetadata: { category: 'support' } })
+    metadataFieldsQuery.data = undefined
+    metadataFieldsQuery.error = new Error('metadata catalog unavailable')
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const category = screen.getByLabelText('category')
+    expect(category).toBeEnabled()
+    await user.clear(category)
+    await user.type(category, 'product')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+    expect(
+      screen.getByText('dataset.newKnowledge.documentLoadErrorDescription'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
 
-    await act(async () => {
-      resolveMetadataRefetch({ data: [metadataField()] })
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { category: 'product' } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
-    expect(await screen.findByLabelText('category')).toBeInTheDocument()
   })
 
   it('converts UTC metadata timestamps to local datetime input values', async () => {

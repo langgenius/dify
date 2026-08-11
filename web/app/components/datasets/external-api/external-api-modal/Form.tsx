@@ -15,6 +15,7 @@ type FormProps = {
   onChange: (val: CreateExternalAPIReq) => void
   formSchemas: FormSchema[]
   inputClassName?: string
+  errors?: Partial<Record<'api_key' | 'endpoint' | 'name', string>>
 }
 
 const Form: FC<FormProps> = React.memo(
@@ -26,6 +27,7 @@ const Form: FC<FormProps> = React.memo(
     onChange,
     formSchemas,
     inputClassName,
+    errors,
   }) => {
     const { t, i18n } = useTranslation()
     const docLink = useDocLink()
@@ -50,6 +52,8 @@ const Form: FC<FormProps> = React.memo(
         variable === 'name'
           ? value[variable]
           : value.settings[variable as keyof typeof value.settings] || ''
+      const fieldError = errors?.[variable as keyof typeof errors]
+      const errorId = `${variable}-error`
 
       return (
         <div
@@ -80,11 +84,18 @@ const Form: FC<FormProps> = React.memo(
             type={type === 'secret' ? 'password' : 'text'}
             id={variable}
             name={variable}
+            aria-describedby={fieldError ? errorId : undefined}
+            aria-invalid={Boolean(fieldError)}
             value={fieldValue}
             onChange={(val) => handleFormChange(variable, val.target.value)}
             required={required}
             className={cn(inputClassName)}
           />
+          {fieldError && (
+            <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
+              {fieldError}
+            </p>
+          )}
         </div>
       )
     }

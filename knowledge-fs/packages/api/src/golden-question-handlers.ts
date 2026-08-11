@@ -191,18 +191,25 @@ export function registerGoldenQuestionHandlers({
         knowledgeSpaceId,
         now,
       });
-      if (!evidenceMatcher) {
-        return context.json({ error: "Golden question evidence matching is unavailable" }, 503);
-      }
       const body = context.req.valid("json");
-      const matches = await evidenceMatcher.match({
-        evidenceTexts: body.rows.map((row) => row.evidence),
-        knowledgeSpaceId,
-        minimumSimilarity: body.minimumSimilarity,
-        permissionScope: permission.candidateGrants,
-        tenantId: permission.tenantId,
-        topK: 1,
-      });
+      let matches: readonly {
+        readonly candidates: readonly GoldenQuestionEvidenceCandidate[];
+        readonly matched: boolean;
+      }[] = [];
+      if (evidenceMatcher) {
+        try {
+          matches = await evidenceMatcher.match({
+            evidenceTexts: body.rows.map((row) => row.evidence),
+            knowledgeSpaceId,
+            minimumSimilarity: body.minimumSimilarity,
+            permissionScope: permission.candidateGrants,
+            tenantId: permission.tenantId,
+            topK: 1,
+          });
+        } catch (error) {
+          if (!(error instanceof GoldenQuestionEvidenceMatchingUnavailableError)) throw error;
+        }
+      }
       const matchedAt = now();
       const prepared = body.rows.map((row, rowIndex) => {
         const match = matches[rowIndex];

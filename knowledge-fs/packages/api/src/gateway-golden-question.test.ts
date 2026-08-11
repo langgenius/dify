@@ -1,6 +1,7 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import { describe, expect, it } from "vitest";
 
+import { GoldenQuestionEvidenceMatchingUnavailableError } from "./golden-question-evidence-matcher";
 import { createGoldenEvidenceFixtures } from "./golden-question-test-fixtures";
 import {
   createInMemoryFailedQueryRepository,
@@ -324,6 +325,77 @@ describe("golden question gateway", () => {
       items: [
         { question: "How long is the refund window?" },
         { question: "What is the warranty?" },
+      ],
+    });
+  });
+
+  it("imports valid CSV rows as drafts when an empty space cannot match evidence", async () => {
+    const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const generatedIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f3a41",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f3a42",
+    ];
+    const goldenQuestions = createInMemoryGoldenQuestionRepository({
+      generateId: () => generatedIds.shift() as string,
+      maxListLimit: 10,
+      maxQuestions: 10,
+    });
+    const app = createKnowledgeGateway({
+      adapter: createNodePlatformAdapter({ env: {} }),
+      auth: createTestAuthVerifier(),
+      goldenQuestionEvidenceMatcher: {
+        match: async () => {
+          throw new GoldenQuestionEvidenceMatchingUnavailableError(
+            "Golden question evidence matching requires an active embedding profile",
+          );
+        },
+      },
+      goldenQuestions,
+      knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
+        generateId: () => knowledgeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+    });
+    await createSpace(app, knowledgeSpaceId);
+
+    const response = await app.request(
+      `/knowledge-spaces/${knowledgeSpaceId}/golden-questions/bulk-import`,
+      {
+        body: JSON.stringify({
+          rows: [
+            {
+              evidence: "退款期为 30 天",
+              question: "退款期多久？",
+              tags: ["billing", "政策"],
+            },
+            {
+              evidence: "在设置中启用 SSO",
+              question: "如何启用 SSO？",
+              tags: ["enterprise", "security"],
+            },
+          ],
+        }),
+        headers: { ...bearer(writeToken), "content-type": "application/json" },
+        method: "POST",
+      },
+    );
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      activeCount: 0,
+      draftCount: 2,
+      items: [
+        { rowIndex: 0, status: "draft" },
+        { rowIndex: 1, status: "draft" },
+      ],
+    });
+    await expect(
+      goldenQuestions.listTrusted({ knowledgeSpaceId, limit: 10 }),
+    ).resolves.toMatchObject({
+      items: [
+        { question: "退款期多久？", tags: ["billing", "政策"] },
+        { question: "如何启用 SSO？", tags: ["enterprise", "security"] },
       ],
     });
   });

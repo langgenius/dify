@@ -258,6 +258,182 @@ describe('RetrievalTestPage', () => {
     })
   })
 
+  it('admits only one research task while the first Start request is pending', async () => {
+    let resolvePlan: ((value: Awaited<ReturnType<typeof apiMock.planResearch>>) => void) | undefined
+    const pendingPlan = new Promise<Awaited<ReturnType<typeof apiMock.planResearch>>>((resolve) => {
+      resolvePlan = resolve
+    })
+    apiMock.planResearch.mockReturnValueOnce(pendingPlan)
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Compare the refund policies',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.research',
+      }),
+    )
+    const start = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.startResearch',
+    })
+    await user.click(start)
+    await user.click(start)
+
+    expect(apiMock.planResearch).toHaveBeenCalledOnce()
+    resolvePlan?.({
+      budget: { budget_usd: 1, exceeds_budget: false },
+      estimates: {},
+      knowledge_space_id: 'space-1',
+      query: 'Compare the refund policies',
+      retrieval_plan: { top_k: 8 },
+      steps: [],
+      strategy_version: 'research-dry-run-planner-v1',
+    })
+    await waitFor(() => expect(apiMock.createResearch).toHaveBeenCalledOnce())
+  })
+
+  it.each([
+    {
+      label: 'dataset.newKnowledge.settings.retrievalMode.fast',
+      mode: 'fast',
+    },
+    {
+      label: 'dataset.newKnowledge.settings.retrievalMode.deep',
+      mode: 'deep',
+    },
+  ] as const)(
+    'admits only one $mode query while the first Start request is pending',
+    async ({ label, mode }) => {
+      let resolveAdmission: ((value: Record<string, never>) => void) | undefined
+      apiMock.queryAdmission.mockReturnValueOnce(
+        new Promise<Record<string, never>>((resolve) => {
+          resolveAdmission = resolve
+        }),
+      )
+      const user = userEvent.setup()
+      renderPage()
+
+      await user.type(
+        screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+        `Run one ${mode} query`,
+      )
+      if (mode === 'deep') await user.click(screen.getByRole('button', { name: label }))
+      const start = screen.getByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.run',
+      })
+      act(() => {
+        start.click()
+        start.click()
+      })
+
+      expect(apiMock.queryAdmission).toHaveBeenCalledOnce()
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode, query: `Run one ${mode} query` },
+        params: { control_space_id: 'space-1' },
+      })
+      expect(apiMock.streamQuery).not.toHaveBeenCalled()
+
+      await act(async () => resolveAdmission?.({}))
+      await waitFor(() => expect(apiMock.streamQuery).toHaveBeenCalledOnce())
+    },
+  )
+
+  it('admits only one query when Retry is triggered twice while admission is pending', async () => {
+    apiMock.traces = [
+      {
+        completed: false,
+        created_at: '2026-07-29T00:00:00.000Z',
+        duration_ms: 30_000,
+        id: 'trace-failed',
+        mode: 'fast',
+        profile: {},
+        query: 'Retry this query once',
+        result_count: 0,
+        scores: {},
+        stages: [{ name: 'query.generate', status: 'error' }],
+      },
+    ]
+    let resolveAdmission: ((value: Record<string, never>) => void) | undefined
+    apiMock.queryAdmission.mockReturnValueOnce(
+      new Promise<Record<string, never>>((resolve) => {
+        resolveAdmission = resolve
+      }),
+    )
+    renderPage({ searchParams: '?trace=trace-failed' })
+
+    const retry = await screen.findByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.retry',
+    })
+    act(() => {
+      retry.click()
+      retry.click()
+    })
+
+    expect(apiMock.queryAdmission).toHaveBeenCalledOnce()
+    expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+      body: { mode: 'fast', query: 'Retry this query once' },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(apiMock.streamQuery).not.toHaveBeenCalled()
+
+    await act(async () => resolveAdmission?.({}))
+    await waitFor(() => expect(apiMock.streamQuery).toHaveBeenCalledOnce())
+  })
+
+  it('keeps a newly admitted empty-space Research run visible through its terminal event', async () => {
+    apiMock.createResearch.mockResolvedValueOnce({
+      cost: {},
+      created_at: 1_800_000_000,
+      id: 'research-1',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      query: 'Anything here?',
+      stage: 'queued',
+      updated_at: 1_800_000_000,
+    })
+    apiMock.streamResearchEvents.mockImplementation(
+      async ({ onEvent }: { onEvent: (event: Record<string, unknown>) => void }) => {
+        onEvent({
+          createdAt: '2027-01-15T08:00:01.000Z',
+          id: 'research-failed-1',
+          payload: { error: 'Published runtime snapshot unavailable' },
+          researchTaskJobId: 'research-1',
+          sequence: 1,
+          stage: 'failed',
+          type: 'research_task.failed',
+        })
+        return { cursor: '1', reconnect: false, terminal: true }
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Anything here?',
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.research',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
+    )
+
+    const record = await screen.findByRole('button', { name: /Anything here\?/ })
+    expect(record).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      await screen.findByText('dataset.newKnowledge.retrievalTest.noChunksTitle'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.emptyTitle'),
+    ).not.toBeInTheDocument()
+  })
+
   it('replays research progress events and shows actual stage durations', async () => {
     apiMock.researchTasks = [
       {
@@ -457,15 +633,50 @@ describe('RetrievalTestPage', () => {
 
       renderPage()
 
-      expect(screen.getByText('dataset.newKnowledge.retrievalTest.justNow')).toBeInTheDocument()
+      expect(screen.getAllByText('dataset.newKnowledge.retrievalTest.justNow')).not.toHaveLength(0)
       act(() => vi.advanceTimersByTime(30_001))
-      expect(
-        screen.queryByText('dataset.newKnowledge.retrievalTest.justNow'),
-      ).not.toBeInTheDocument()
-      expect(screen.getByText('A recent retrieval run')).toBeInTheDocument()
+      expect(screen.queryAllByText('dataset.newKnowledge.retrievalTest.justNow')).toHaveLength(0)
+      expect(screen.getByRole('button', { name: /A recent retrieval run/ })).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('selects the newest persisted record instead of showing the no-runs empty state', () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-newest',
+        mode: 'fast',
+        profile: {},
+        query: 'Newest persisted query',
+        result_count: 0,
+        scores: {},
+        stages: [],
+      },
+      {
+        completed: true,
+        created_at: '2026-07-28T00:00:00.000Z',
+        id: 'trace-older',
+        mode: 'fast',
+        profile: {},
+        query: 'Older persisted query',
+        result_count: 0,
+        scores: {},
+        stages: [],
+      },
+    ]
+
+    renderPage()
+
+    expect(screen.getByRole('button', { name: /Newest persisted query/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.emptyTitle'),
+    ).not.toBeInTheDocument()
   })
 
   it('renders generated Research answer deltas while the task is still active', async () => {
@@ -543,7 +754,7 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByText('What is the warranty?'))
+    await user.click(screen.getByRole('button', { name: /What is the warranty\?/ }))
 
     expect(await screen.findByText('The persisted warranty answer.')).toBeInTheDocument()
     expect(
@@ -618,7 +829,7 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderPage()
 
-    await user.click(screen.getByText('What is the warranty?'))
+    await user.click(screen.getByRole('button', { name: /What is the warranty\?/ }))
 
     await waitFor(() => {
       const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
@@ -676,7 +887,7 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByText('Compare the refund policies'))
+    await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
 
     await waitFor(() => expect(apiMock.streamCapability).toHaveBeenCalledTimes(2))
     expect(apiMock.streamResearchEvents).toHaveBeenNthCalledWith(
@@ -737,7 +948,7 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByText('Compare the refund policies'))
+    await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
 
     await waitFor(() => expect(apiMock.refetchTasks).toHaveBeenCalledOnce())
     await waitFor(() => expect(apiMock.refetchPartials).toHaveBeenCalledOnce())
@@ -763,7 +974,7 @@ describe('RetrievalTestPage', () => {
     expect(
       screen.getByText('dataset.newKnowledge.retrievalTest.retrievingActive · 2/4'),
     ).toBeInTheDocument()
-    await user.click(screen.getByText('Compare the refund policies'))
+    await user.click(screen.getByRole('button', { name: /Compare the refund policies/ }))
     const queryInput = screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder')
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
@@ -938,7 +1149,7 @@ describe('RetrievalTestPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByText('What is the refund policy?'))
+    await user.click(screen.getByRole('button', { name: /What is the refund policy\?/ }))
 
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),

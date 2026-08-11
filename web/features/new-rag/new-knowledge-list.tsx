@@ -201,6 +201,20 @@ export function NewKnowledgeList({
               />
             )}
           </div>
+        ) : normalizedSearchValue && visibleKnowledgeSpaces.length === 0 ? (
+          <div className="px-4 pt-2 pb-8 sm:px-8">
+            <NewKnowledgePageState
+              title={tCommon(($) => $['operation.noSearchResults'], {
+                content: t(($) => $.knowledge),
+              })}
+              description={searchValue.trim()}
+              action={
+                <Button onClick={() => setSearchValue('')}>
+                  {tCommon(($) => $['operation.clear'])}
+                </Button>
+              }
+            />
+          </div>
         ) : knowledgeSpaces.length === 0 && creatorIds.length === 0 ? (
           <NewKnowledgeEmptyState
             canConnect={canConnect}

@@ -1,0 +1,5 @@
+KnowledgeFS QA synthetic corpus
+
+Unique marker: KF_QA_MARKER_20260811_X9Z
+This intentionally duplicates kf-qa-marker.txt to test duplicate-content handling.
+

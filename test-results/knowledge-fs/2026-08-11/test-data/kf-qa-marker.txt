@@ -1,0 +1,8 @@
+KnowledgeFS QA synthetic corpus
+
+Unique marker: KF_QA_MARKER_20260811_X9Z
+The marker is used only to verify parsing, indexing, retrieval, citations, and deletion cleanup.
+
+中文校验：知识库测试标记是 KF_QA_MARKER_20260811_X9Z。
+English check: the KnowledgeFS test marker is KF_QA_MARKER_20260811_X9Z.
+

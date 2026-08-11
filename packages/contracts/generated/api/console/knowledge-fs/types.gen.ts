@@ -437,6 +437,8 @@ export type KnowledgeFsDocumentBatchDownloadPayload = {
   document_ids: Array<string>
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type KnowledgeFsLogicalDocumentDeletePayload = {
   expectedRevision: number
 }
@@ -2520,7 +2522,7 @@ export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipData
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses = {
-  200: Blob | File
+  200: BinaryFileResponse
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
@@ -2591,7 +2593,7 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDown
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses = {
-  200: Blob | File
+  200: BinaryFileResponse
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =

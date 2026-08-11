@@ -74,10 +74,12 @@ export function documentMetadataFieldFromApi(
 export function documentMetadataFieldsQueryOptions(knowledgeSpaceId: string) {
   return {
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({
+      context: { silent: true },
       input: {
         params: { control_space_id: knowledgeSpaceId },
         query: { limit: 100 },
       },
+      retry: false,
     }),
     select: (response: { data: KnowledgeFsMetadataFieldResponse[] }) =>
       response.data.map(documentMetadataFieldFromApi),

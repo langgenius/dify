@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { KnowledgeSpaceShell } from '../knowledge-space-shell'
@@ -73,6 +73,23 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
 
+vi.mock('../components/knowledge-fs-api-access-dialog', () => ({
+  KnowledgeFsApiAccessDialog: ({
+    canManageCredentials,
+    enabled,
+    open,
+  }: {
+    canManageCredentials: boolean
+    enabled: boolean
+    open: boolean
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="knowledge-fs-api-access">
+        {String(enabled)}:{String(canManageCredentials)}
+      </div>
+    ) : null,
+}))
+
 describe('KnowledgeSpaceShell', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -91,6 +108,7 @@ describe('KnowledgeSpaceShell', () => {
 
     expect(queryOptionsMock).toHaveBeenCalledWith({
       input: { params: { control_space_id: 'space-1' } },
+      context: { silent: true },
     })
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
@@ -140,6 +158,24 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 
+  it('keeps all navigation discoverable in a three-column mobile grid', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    const navigation = screen.getByRole('navigation', { name: 'Support knowledge' })
+    expect(navigation).toHaveClass('grid', 'grid-cols-3', 'sm:flex', 'sm:flex-col')
+    expect(navigation).not.toHaveClass('overflow-x-auto')
+    expect(within(navigation).getAllByRole('link')).toHaveLength(6)
+    expect(
+      within(navigation).getByRole('link', { name: 'common.datasetMenus.settings' }),
+    ).toBeInTheDocument()
+  })
+
   it('shows API access as inactive when either public channel is disabled', () => {
     queryMock.data = {
       control_space_id: 'space-1',
@@ -152,6 +188,23 @@ describe('KnowledgeSpaceShell', () => {
     render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
 
     expect(screen.getByText('dataset.newKnowledge.apiAccessInactive')).toBeInTheDocument()
+  })
+
+  it('opens the real KnowledgeFS credential management path', async () => {
+    const user = userEvent.setup()
+    queryMock.data = {
+      control_space_id: 'space-1',
+      permission_keys: ['knowledge_space_access_config', 'knowledge_space_api_key_manage'],
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+
+    expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
+      'true:true',
+    )
   })
 
   it('does not invent sidebar metadata when the summary profile is unavailable', () => {

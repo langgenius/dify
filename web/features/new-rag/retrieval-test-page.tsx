@@ -1047,19 +1047,15 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [composerDraft, setComposerDraft] = useState<ComposerDraft>({ mode: 'fast', query: '' })
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
   const [localSelected, setLocalSelected] = useState<SelectedRun>()
-  const selected: SelectedRun | undefined = linkedResearchId
-    ? { id: linkedResearchId, kind: 'research' }
-    : linkedTraceId
-      ? { id: linkedTraceId, kind: 'trace' }
-      : localSelected
-  const selectedHistoryKey =
-    selected && selected.kind !== 'local' ? `${selected.kind}:${selected.id}` : undefined
   const [researchPlans, setResearchPlans] = useState<
     Record<string, KnowledgeFsResearchTaskPlanResponse>
   >({})
   const [researchEvents, setResearchEvents] = useState<Record<string, ResearchTaskProgressEvent[]>>(
     {},
   )
+  const [admittedResearchTasks, setAdmittedResearchTasks] = useState<
+    Record<string, KnowledgeFsResearchTaskResponse>
+  >({})
   const [researchExpanded, setResearchExpanded] = useState<Record<string, boolean>>({})
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
@@ -1070,6 +1066,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     taskId: string
   }>()
   const queryAbortControllerRef = useRef<AbortController>(undefined)
+  const runInFlightRef = useRef(false)
 
   useEffect(
     () => () => {
@@ -1088,12 +1085,34 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
-    refetchInterval: (current) =>
-      current.state.data?.data.some((task) => researchTaskIsActive(task)) ? 1000 : false,
+    refetchInterval: (current) => {
+      const persistedTasks = current.state.data?.data ?? []
+      const persistedById = new Map(persistedTasks.map((task) => [task.id, task]))
+      const admittedTaskIsActive = Object.values(admittedResearchTasks).some((task) => {
+        const persisted = persistedById.get(task.id)
+        const effectiveTask =
+          persisted && persisted.updated_at >= task.updated_at ? persisted : task
+        return researchTaskIsActive(effectiveTask)
+      })
+      return admittedTaskIsActive || persistedTasks.some((task) => researchTaskIsActive(task))
+        ? 1000
+        : false
+    },
   })
+  const researchTasks = useMemo(() => {
+    const byId = new Map(
+      Object.values(admittedResearchTasks).map((task) => [task.id, task] as const),
+    )
+    for (const persisted of researchTasksQuery.data?.data ?? []) {
+      const admitted = byId.get(persisted.id)
+      if (!admitted || persisted.updated_at >= admitted.updated_at)
+        byId.set(persisted.id, persisted)
+    }
+    return [...byId.values()]
+  }, [admittedResearchTasks, researchTasksQuery.data?.data])
   const records = useMemo(
-    () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasksQuery.data?.data ?? []),
-    [researchTasksQuery.data?.data, tracesQuery.data?.data],
+    () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasks),
+    [researchTasks, tracesQuery.data?.data],
   )
   const localRecord: RetrievalTestRecord | undefined =
     localRun && localRun.status !== 'running'
@@ -1113,6 +1132,17 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     records.some((record) => record.kind === 'trace' && record.id === localRun.traceId),
   )
   const displayRecords = localRecord && !traceAlreadyListed ? [localRecord, ...records] : records
+  const requestedSelection: SelectedRun | undefined = linkedResearchId
+    ? { id: linkedResearchId, kind: 'research' }
+    : linkedTraceId
+      ? { id: linkedTraceId, kind: 'trace' }
+      : localSelected
+  const newestRecord = displayRecords[0]
+  const selected: SelectedRun | undefined =
+    requestedSelection ??
+    (newestRecord ? { id: newestRecord.id, kind: newestRecord.kind } : undefined)
+  const selectedHistoryKey =
+    selected && selected.kind !== 'local' ? `${selected.kind}:${selected.id}` : undefined
   const selectedRecord = records.find(
     (record) => record.id === selected?.id && record.kind === selected.kind,
   )
@@ -1130,7 +1160,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       : (selectedHistoryRecord?.mode ?? 'fast')
   const selectedResearchTask =
     selected?.kind === 'research'
-      ? researchTasksQuery.data?.data.find((task) => task.id === selected.id)
+      ? researchTasks.find((task) => task.id === selected.id)
       : undefined
   const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
   const selectedResearchActiveRef = useRef(selectedResearchActive)
@@ -1222,6 +1252,27 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   event,
                 ),
               }))
+              setAdmittedResearchTasks((current) => {
+                const task = current[selectedResearchTaskId]
+                if (!task) return current
+                const eventTime = Date.parse(event.createdAt)
+                const updatedAt = Number.isFinite(eventTime)
+                  ? Math.max(task.updated_at, Math.floor(eventTime / 1000))
+                  : task.updated_at
+                return {
+                  ...current,
+                  [selectedResearchTaskId]: {
+                    ...task,
+                    ...(event.stage === 'canceled' ||
+                    event.stage === 'completed' ||
+                    event.stage === 'failed'
+                      ? { completed_at: updatedAt }
+                      : {}),
+                    stage: event.stage,
+                    updated_at: updatedAt,
+                  },
+                }
+              })
               const terminal =
                 event.stage === 'canceled' ||
                 event.stage === 'completed' ||
@@ -1409,7 +1460,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
 
   const runFastQuery = async () => {
     const cleanQuery = query.trim()
-    if (!cleanQuery) return
+    if (!cleanQuery || runInFlightRef.current) return
+    runInFlightRef.current = true
     queryAbortControllerRef.current?.abort()
     const controller = new AbortController()
     queryAbortControllerRef.current = controller
@@ -1494,12 +1546,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     } finally {
       if (queryAbortControllerRef.current === controller)
         queryAbortControllerRef.current = undefined
+      runInFlightRef.current = false
     }
   }
 
   const startResearch = async () => {
     const cleanQuery = query.trim()
-    if (!cleanQuery) return
+    if (!cleanQuery || runInFlightRef.current) return
+    runInFlightRef.current = true
     try {
       const plan = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
         body: { mode: 'research', query: cleanQuery },
@@ -1514,6 +1568,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         },
         params: { control_space_id: knowledgeSpaceId },
       })
+      setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
       setResearchPlans((current) => ({ ...current, [task.id]: plan }))
       setResearchExpanded((current) => ({ ...current, [task.id]: true }))
       setComposerDraft({
@@ -1530,6 +1585,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       await researchTasksQuery.refetch()
     } catch {
       toast.error(t(($) => $['newKnowledge.retrievalTest.failedDescription']))
+    } finally {
+      runInFlightRef.current = false
     }
   }
 

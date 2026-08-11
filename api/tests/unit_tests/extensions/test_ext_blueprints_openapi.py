@@ -30,7 +30,7 @@ import importlib
 from collections.abc import Iterator
 
 import pytest
-from flask import Blueprint
+from flask import Blueprint, Response
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -54,6 +54,12 @@ def _probe_view() -> tuple[str, int]:
     return "ok", 200
 
 
+def _download_probe_view() -> Response:
+    response = Response("document", content_type="text/plain")
+    response.headers["Content-Disposition"] = "attachment; filename=document.txt"
+    return response
+
+
 @pytest.fixture
 def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Blueprint]]:
     """Replace each production blueprint singleton with a fresh, unregistered copy.
@@ -74,6 +80,8 @@ def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Blue
         )
         if module_name == "controllers.openapi":
             replacement.add_url_rule("/_probe", endpoint="_probe", view_func=_probe_view)
+        if module_name == "controllers.console":
+            replacement.add_url_rule("/_download", endpoint="_download", view_func=_download_probe_view)
         monkeypatch.setattr(module, "bp", replacement)
         fresh[module_name] = replacement
     return fresh
@@ -122,3 +130,27 @@ def test_openapi_blueprint_absent_when_disabled(
     assert not hasattr(openapi_bp, "_dify_cors_applied")
     openapi_rules = [r for r in app.url_map.iter_rules() if r.rule.startswith("/openapi/v1")]
     assert openapi_rules == []
+
+
+def test_console_cors_exposes_download_filename(
+    monkeypatch: pytest.MonkeyPatch,
+    fresh_blueprints: dict[str, Blueprint],
+) -> None:
+    origin = "http://localhost:3000"
+    monkeypatch.setattr(dify_config, "OPENAPI_ENABLED", False)
+    monkeypatch.setattr(dify_config, "inner_CONSOLE_CORS_ALLOW_ORIGINS", origin)
+
+    app = _build_app()
+    ext_blueprints.init_app(app)
+    console_bp = fresh_blueprints["controllers.console"]
+    assert app.blueprints[console_bp.name] is console_bp
+
+    response = app.test_client().get(
+        "/console/api/_download",
+        headers={"Origin": origin},
+    )
+
+    exposed_headers = {
+        header.strip().lower() for header in response.headers["Access-Control-Expose-Headers"].split(",")
+    }
+    assert "content-disposition" in exposed_headers

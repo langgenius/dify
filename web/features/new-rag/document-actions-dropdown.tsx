@@ -23,19 +23,22 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DocumentAction = 'remove' | 'rename' | 'retry' | 'toggle-availability'
+export type DocumentAction = 'download' | 'remove' | 'rename' | 'retry' | 'toggle-availability'
 
 export function DocumentActionsDropdown({
   canEdit,
+  canDownload,
   className,
   documentEnabled,
   documentTitle,
   onRemove,
+  onDownload,
   onRename,
   onReindex,
   onRetry,
   onToggleAvailability,
   pendingAction,
+  downloadDisabled,
   removeDisabled,
   reindexDisabled,
   retryDisabled,
@@ -43,10 +46,13 @@ export function DocumentActionsDropdown({
   toggleAvailabilityDisabled,
   unavailableReasonId,
 }: {
+  canDownload: boolean
   canEdit: boolean
   className?: string
   documentEnabled: boolean
   documentTitle: string
+  downloadDisabled: boolean
+  onDownload: () => Promise<boolean>
   onRemove: () => Promise<boolean>
   onRename: (title: string) => Promise<boolean>
   onReindex: () => void
@@ -129,9 +135,10 @@ export function DocumentActionsDropdown({
             )}
           </DropdownMenuItem>
           <DropdownMenuItem
-            aria-describedby={unavailableReasonId}
+            aria-describedby={downloadDisabled || !canDownload ? unavailableReasonId : undefined}
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            disabled
+            disabled={!canDownload || busy || downloadDisabled}
+            onClick={() => void onDownload()}
           >
             <span aria-hidden className="i-ri-download-line size-4" />
             {t(($) => $['newKnowledge.downloadDocuments'])}

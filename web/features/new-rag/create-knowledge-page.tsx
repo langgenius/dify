@@ -83,6 +83,8 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const { t: tDatasetCreation } = useTranslation('datasetCreation')
+  const { t: tWorkflow } = useTranslation('workflow')
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -127,13 +129,18 @@ export function CreateKnowledgePage() {
   const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
+  const validUploads = uploads.filter(({ issue }) => !issue)
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
-  const nameSubmissionBlocked = !name.trim()
+  const normalizedName = name.trim()
+  const normalizedDescription = description.trim()
+  const nameLengthInvalid = Array.from(normalizedName).length > NAME_MAX_LENGTH
+  const descriptionLengthInvalid = Array.from(normalizedDescription).length > DESCRIPTION_MAX_LENGTH
+  const nameSubmissionBlocked = !normalizedName || nameLengthInvalid || descriptionLengthInvalid
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable ||
-      !uploads.length ||
-      uploads.some((upload) => upload.issue || upload.stagingFailed || !upload.stagedUploadId))
+      !validUploads.length ||
+      validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
   const sourceDraftChanged =
     JSON.stringify(sourceDraft) !==
@@ -336,9 +343,7 @@ export function CreateKnowledgePage() {
   const handleSubmit = async () => {
     if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
 
-    const normalizedName = name.trim()
-    const normalizedDescription = description.trim()
-    if (!normalizedName) return
+    if (!normalizedName || nameLengthInvalid || descriptionLengthInvalid) return
 
     const latestInitialSource = initialSourceRef.current ?? initialSource
     if (startMode === 'source' && !latestInitialSource) return
@@ -372,7 +377,7 @@ export function CreateKnowledgePage() {
           await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
             created.control_space_id,
-            uploads.map(({ file, id, stagedUploadId }) => ({
+            validUploads.map(({ file, id, stagedUploadId }) => ({
               file,
               id,
               uploadId: stagedUploadId!,
@@ -452,6 +457,7 @@ export function CreateKnowledgePage() {
                   <Field
                     name="name"
                     className="gap-1.5"
+                    invalid={nameLengthInvalid}
                     validate={(value) => {
                       if (typeof value === 'string' && value.length > 0 && !value.trim())
                         return t(($) => $['newKnowledge.nameRequired'])
@@ -467,8 +473,10 @@ export function CreateKnowledgePage() {
                     </FieldLabel>
                     <FieldControl
                       autoComplete="off"
+                      aria-describedby={
+                        nameLengthInvalid ? 'knowledge-create-name-error' : undefined
+                      }
                       disabled={submissionLocked}
-                      maxLength={NAME_MAX_LENGTH}
                       placeholder={t(($) => $['newKnowledge.namePlaceholder'])}
                       required
                       value={name}
@@ -480,15 +488,20 @@ export function CreateKnowledgePage() {
                     <FieldError match="valueMissing">
                       {t(($) => $['newKnowledge.nameRequired'])}
                     </FieldError>
+                    <FieldError id="knowledge-create-name-error" match={nameLengthInvalid}>
+                      {tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])}
+                    </FieldError>
                     <FieldError match="customError" />
                   </Field>
-                  <Field name="description" className="gap-1.5">
+                  <Field name="description" className="gap-1.5" invalid={descriptionLengthInvalid}>
                     <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
                     <Textarea
                       autoComplete="off"
+                      aria-describedby={
+                        descriptionLengthInvalid ? 'knowledge-create-description-error' : undefined
+                      }
                       className="min-h-20"
                       disabled={submissionLocked}
-                      maxLength={DESCRIPTION_MAX_LENGTH}
                       name="description"
                       placeholder={t(($) => $['newKnowledge.descriptionPlaceholder'])}
                       value={description}
@@ -500,6 +513,14 @@ export function CreateKnowledgePage() {
                     <FieldDescription>
                       {t(($) => $['newKnowledge.descriptionHelp'])}
                     </FieldDescription>
+                    <FieldError
+                      id="knowledge-create-description-error"
+                      match={descriptionLengthInvalid}
+                    >
+                      {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                        maxLength: DESCRIPTION_MAX_LENGTH,
+                      })}
+                    </FieldError>
                   </Field>
                   <div className="flex flex-col gap-1.5">
                     <Select

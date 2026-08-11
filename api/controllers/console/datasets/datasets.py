@@ -51,7 +51,7 @@ from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, U
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
-from services.api_token_service import ApiTokenCache
+from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.app_service import AppService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -1093,7 +1093,25 @@ class DatasetApiKeyApi(Resource):
         keys = session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return dump_response(ApiKeyList, {"data": keys})
+        return dump_response(
+            ApiKeyList,
+            {
+                "data": [
+                    {
+                        "created_at": key.created_at,
+                        "id": key.id,
+                        "last_used_at": get_effective_token_last_used_at(
+                            key.token,
+                            key.type,
+                            key.last_used_at,
+                        ),
+                        "token": key.token,
+                        "type": key.type,
+                    }
+                    for key in keys
+                ]
+            },
+        )
 
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")

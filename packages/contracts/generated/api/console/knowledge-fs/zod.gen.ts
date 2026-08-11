@@ -240,6 +240,13 @@ export const zKnowledgeFsDocumentBatchDownloadPayload = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * KnowledgeFSLogicalDocumentDeletePayload
  */
 export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
@@ -2905,11 +2912,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipPa
 })
 
 /**
- * Success
+ * KnowledgeFS logical documents ZIP
  */
-export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse = z.custom<
-  Blob | File
->((value) => value instanceof Blob || value instanceof File)
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
+  zBinaryFileResponse
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
   zKnowledgeFsLogicalDocumentDeletePayload
@@ -2963,10 +2969,10 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDo
   })
 
 /**
- * Success
+ * KnowledgeFS logical document
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
-  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)
+  zBinaryFileResponse
 
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersBody = zKnowledgeFsMembersReplacePayload
 

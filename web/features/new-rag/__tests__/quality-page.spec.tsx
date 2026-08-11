@@ -370,7 +370,7 @@ describe('QualityPage', () => {
     )
   })
 
-  it('shows both required-field messages after an empty golden question submission', async () => {
+  it('clears each required-field message as soon as that field becomes valid', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -393,17 +393,46 @@ describe('QualityPage', () => {
       'New question',
     )
     expect(
-      screen.getByText('dataset.newKnowledge.qualityPage.questionRequired'),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
-    expect(
       screen.queryByText('dataset.newKnowledge.qualityPage.questionRequired'),
     ).not.toBeInTheDocument()
     expect(
       screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
     ).toBeInTheDocument()
+
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'Expected answer',
+    )
+    expect(
+      screen.queryByText('dataset.newKnowledge.qualityPage.questionRequired'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.qualityPage.annotationRequired'),
+    ).not.toBeInTheDocument()
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
+  })
+
+  it('explains when evidence matching is unavailable instead of showing an unknown error', async () => {
+    serviceMock.matchEvidence.mockRejectedValueOnce(new Response(null, { status: 503 }))
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.findEvidence' }),
+    )
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.qualityPage.noEvidenceMatch'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
   })
 
   it('reveals the full annotation and submits edits through the update contract', async () => {

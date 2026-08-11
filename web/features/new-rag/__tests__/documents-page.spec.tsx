@@ -66,6 +66,9 @@ const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
 const updateLogicalDocumentMutation = vi.hoisted(() => vi.fn())
 const bulkUpdateLogicalDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadBlobMock = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
 const createMetadataField = vi.hoisted(() => vi.fn())
 const renameMetadataField = vi.hoisted(() => vi.fn())
@@ -255,6 +258,7 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
@@ -432,9 +436,15 @@ vi.mock('@/service/client', () => ({
           logicalDocuments: {
             get: listLogicalDocuments,
             patch: bulkUpdateLogicalDocumentsMutation,
+            downloadZip: {
+              post: downloadDocumentsMutation,
+            },
             byDocumentId: {
               delete: removeDocumentMutation,
               patch: updateLogicalDocumentMutation,
+              download: {
+                get: downloadDocumentMutation,
+              },
             },
           },
           metadata: {
@@ -512,8 +522,8 @@ vi.mock('@/service/client', () => ({
 vi.mock('../services/processing-task-events', () => ({ streamProcessingTaskEvents }))
 vi.mock('../knowledge-fs-upload', () => ({
   discardKnowledgeFsStagedUpload: discardStagedUploadMutation,
-  stageKnowledgeFsDocument: async (file: File) => {
-    const result = await stageUploadMutation({ body: { file } })
+  stageKnowledgeFsDocument: async (file: File, signal?: AbortSignal) => {
+    const result = await stageUploadMutation({ body: { file } }, { signal })
     return result.id
   },
   uploadKnowledgeFsDocuments: async (
@@ -712,22 +722,30 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
     sourcesQuery.refetch.mockResolvedValue({ error: null })
-    permissionStateMock.datasetKeys = ['dataset.acl.edit']
+    permissionStateMock.datasetKeys = ['dataset.acl.edit', 'dataset.acl.document_download']
     permissionStateMock.error = null
     permissionStateMock.fetching = false
     permissionStateMock.loading = false
     permissionStateMock.retry.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
     permissionStateMock.refreshAfterDenial.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
+    downloadDocumentMutation.mockResolvedValue(new Blob(['document']))
+    downloadDocumentsMutation.mockResolvedValue(
+      new Blob(['documents'], { type: 'application/zip' }),
+    )
     getTaskSnapshot.mockResolvedValue(task({ state: 'succeeded' }))
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
@@ -938,7 +956,7 @@ describe('DocumentsPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ])
-    expect(rowMenuItems[2]).toHaveAttribute('aria-disabled', 'true')
+    expect(rowMenuItems[2]).not.toHaveAttribute('aria-disabled', 'true')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -946,6 +964,26 @@ describe('DocumentsPage', () => {
     )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('downloads the active revision from the document action menu', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'report', title: 'Report.pdf' })] }],
+    }
+    const file = new File(['report'], 'source-report.md', { type: 'text/markdown' })
+    downloadDocumentMutation.mockResolvedValue(file)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
   it('creates a metadata field without scanning or rewriting documents', async () => {
@@ -1735,9 +1773,12 @@ describe('DocumentsPage', () => {
 
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))
     await waitFor(() =>
-      expect(stageUploadMutation).toHaveBeenCalledWith({
-        body: { file: expect.objectContaining({ name: 'one.md' }) },
-      }),
+      expect(stageUploadMutation).toHaveBeenCalledWith(
+        {
+          body: { file: expect.objectContaining({ name: 'one.md' }) },
+        },
+        { signal: expect.any(AbortSignal) },
+      ),
     )
     await waitForDocumentFilesStaged()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -1976,6 +2017,130 @@ describe('DocumentsPage', () => {
     expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
   })
 
+  it('times out an exact 15 MiB staging request and discards a late success', async () => {
+    vi.useFakeTimers()
+    let resolveStaging!: (value: { id: string }) => void
+    let stagingSignal: AbortSignal | undefined
+    stageUploadMutation.mockImplementationOnce(
+      (_input: unknown, options: { signal?: AbortSignal }) =>
+        new Promise((resolve) => {
+          stagingSignal = options.signal
+          resolveStaging = resolve
+        }),
+    )
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+      searchParams: '?upload=1',
+    })
+
+    try {
+      const maxSizeFile = new File(['boundary'], 'boundary.txt', { type: 'text/plain' })
+      Object.defineProperty(maxSizeFile, 'size', { value: 15 * 1024 * 1024 })
+      fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+        target: { files: [maxSizeFile] },
+      })
+
+      expect(stageUploadMutation).toHaveBeenCalledOnce()
+      expect(stagingSignal?.aborted).toBe(false)
+
+      await act(async () => {
+        vi.advanceTimersByTime(30_000)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(stagingSignal?.aborted).toBe(true)
+      expect(toastMock.error).toHaveBeenCalledOnce()
+      expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
+      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+      expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
+
+      await act(async () => {
+        resolveStaging({ id: 'late-boundary-upload' })
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(discardStagedUploadMutation).toHaveBeenCalledOnce()
+      expect(discardStagedUploadMutation).toHaveBeenCalledWith('late-boundary-upload')
+      expect(toastMock.error).toHaveBeenCalledOnce()
+      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('cancels exact 15 MiB staging and ignores a late failure', async () => {
+    const user = userEvent.setup()
+    let rejectStaging!: (reason: unknown) => void
+    let stagingSignal: AbortSignal | undefined
+    stageUploadMutation.mockImplementationOnce(
+      (_input: unknown, options: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          stagingSignal = options.signal
+          rejectStaging = reject
+        }),
+    )
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    const maxSizeFile = new File(['draft'], 'draft.txt', { type: 'text/plain' })
+    Object.defineProperty(maxSizeFile, 'size', { value: 15 * 1024 * 1024 })
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [maxSizeFile] },
+    })
+
+    expect(stageUploadMutation).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(stagingSignal?.aborted).toBe(true)
+    expect(toastMock.error).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' }),
+    ).toBeInTheDocument()
+
+    await act(async () => {
+      rejectStaging(new Error('late staging failure'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(discardStagedUploadMutation).not.toHaveBeenCalled()
+    expect(toastMock.error).not.toHaveBeenCalled()
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('reports a real staging failure when another file in the batch is canceled', async () => {
+    const user = userEvent.setup()
+    const canceledFile = new File(['cancel'], 'cancel.txt', { type: 'text/plain' })
+    const failedFile = new File(['fail'], 'fail.txt', { type: 'text/plain' })
+    let canceledSignal: AbortSignal | undefined
+    let rejectFailedStaging!: (reason: unknown) => void
+    stageUploadMutation.mockImplementation(
+      ({ body }: { body: { file: File } }, options: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          if (body.file === canceledFile) canceledSignal = options.signal
+          if (body.file === failedFile) rejectFailedStaging = reject
+        }),
+    )
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [canceledFile, failedFile] },
+    })
+
+    expect(stageUploadMutation).toHaveBeenCalledTimes(2)
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }))
+    expect(canceledSignal?.aborted).toBe(true)
+
+    await act(async () => {
+      rejectFailedStaging(new Error('staging service unavailable'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(toastMock.error).toHaveBeenCalledOnce()
+    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentUploadFailed')
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+  })
+
   it('excludes unsupported files locally while uploading valid files', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -1999,6 +2164,34 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('rejects empty files locally while staging a one-byte file from a mixed selection', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
+    const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+      emptyFile,
+      oneByteFile,
+    ])
+
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.selectedFiles:.*"total":2.*"valid":1/),
+    ).toBeVisible()
+    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    await waitFor(() =>
+      expect(stageUploadMutation).toHaveBeenCalledWith(
+        {
+          body: { file: expect.objectContaining({ name: 'one-byte.txt', size: 1 }) },
+        },
+        { signal: expect.any(AbortSignal) },
+      ),
+    )
+    expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+  })
+
   it('rejects oversized files before invoking an upload contract', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
@@ -2013,6 +2206,22 @@ describe('DocumentsPage', () => {
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
     expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize')).toBeVisible()
+  })
+
+  it('rejects empty files locally with a field-level reason', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
+      target: { files: [emptyFile] },
+    })
+
+    expect(stageUploadMutation).not.toHaveBeenCalled()
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
   })
 
   it('reports local exclusions and API upload failures', async () => {
@@ -2849,7 +3058,7 @@ describe('DocumentsPage', () => {
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
     expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
-    expect(orderedActions[1]).toBeDisabled()
+    expect(orderedActions[1]).toBeEnabled()
     expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
     expect(orderedActions[2]).toBeEnabled()
     expect(orderedActions[3]).toHaveAccessibleName('common.operation.remove')
@@ -2891,7 +3100,7 @@ describe('DocumentsPage', () => {
     })
     expect(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     await user.click(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
     )
@@ -2911,6 +3120,43 @@ describe('DocumentsPage', () => {
         screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
       ).not.toBeInTheDocument(),
     )
+  })
+
+  it('downloads selected active revisions as a ZIP archive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', title: 'One.pdf' }),
+            document({ id: 'two', title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+    const archive = new File(['documents'], 'space-1-documents.zip', {
+      type: 'application/zip',
+    })
+    downloadDocumentsMutation.mockResolvedValue(archive)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    await user.click(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'space-1-documents.zip',
+    })
   })
 
   it('confirms removal of selected documents from the designed bulk action', async () => {

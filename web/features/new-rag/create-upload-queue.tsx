@@ -1,5 +1,6 @@
 'use client'
 
+import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
@@ -15,7 +16,7 @@ import { createRequestId } from './request-id'
 export type QueuedUpload = {
   file: File
   id: string
-  issue?: 'fileSize' | 'fileType'
+  issue?: DocumentUploadIssue
   stagedUploadId?: string
   stagingFailed?: boolean
 }
@@ -54,6 +55,7 @@ export function CreateUploadQueue({
   const { t } = useTranslation('dataset')
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
+  const validUploadCount = uploads.filter(({ issue }) => !issue).length
 
   const addFiles = (files: File[]) => {
     if (!disabled && files.length) onChange(mergeFiles(uploads, files))
@@ -119,15 +121,26 @@ export function CreateUploadQueue({
       </label>
 
       {!!uploads.length && (
-        <DocumentUploadFileList
-          ariaLabel={t(($) => $['newKnowledge.uploadFiles'])}
-          disabled={disabled}
-          idleStatus={t(($) => $['newKnowledge.uploadCharactersUnavailable'])}
-          items={uploads}
-          uploadProgress={uploadPhases}
-          variant="compact"
-          onRemove={(upload) => onChange(uploads.filter((candidate) => candidate.id !== upload.id))}
-        />
+        <section aria-label={t(($) => $['newKnowledge.uploadFiles'])}>
+          <h3 className="system-sm-semibold text-text-primary">
+            {t(($) => $['newKnowledge.selectedFiles'], {
+              total: uploads.length,
+              valid: validUploadCount,
+            })}
+          </h3>
+          <DocumentUploadFileList
+            ariaLabel={t(($) => $['newKnowledge.uploadFiles'])}
+            className="mt-2"
+            disabled={disabled}
+            idleStatus={t(($) => $['newKnowledge.uploadCharactersUnavailable'])}
+            items={uploads}
+            uploadProgress={uploadPhases}
+            variant="compact"
+            onRemove={(upload) =>
+              onChange(uploads.filter((candidate) => candidate.id !== upload.id))
+            }
+          />
+        </section>
       )}
     </div>
   )

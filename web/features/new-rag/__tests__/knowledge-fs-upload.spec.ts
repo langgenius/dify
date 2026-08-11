@@ -44,11 +44,15 @@ describe('uploadKnowledgeFsDocuments', () => {
 
   it('stages and discards files through the generated Dify API contract', async () => {
     const file = new File(['one'], 'one.md', { type: 'text/markdown' })
+    const controller = new AbortController()
 
-    await expect(stageKnowledgeFsDocument(file)).resolves.toBe('staged-upload-1')
+    await expect(stageKnowledgeFsDocument(file, controller.signal)).resolves.toBe('staged-upload-1')
     await discardKnowledgeFsStagedUpload('staged-upload-1')
 
-    expect(serviceMock.stageUpload).toHaveBeenCalledWith({ body: { file } })
+    expect(serviceMock.stageUpload).toHaveBeenCalledWith(
+      { body: { file } },
+      { context: { silent: true }, signal: controller.signal },
+    )
     expect(serviceMock.discardUpload).toHaveBeenCalledWith({
       params: { upload_id: 'staged-upload-1' },
     })
@@ -79,12 +83,14 @@ describe('uploadKnowledgeFsDocuments', () => {
           body: { upload_id: 'staged-upload-0' },
           params: { control_space_id: 'control-space-1' },
         },
+        { context: { silent: true } },
       ],
       [
         {
           body: { upload_id: 'staged-upload-1' },
           params: { control_space_id: 'control-space-1' },
         },
+        { context: { silent: true } },
       ],
     ])
     expect(onProgress.mock.calls).toEqual([

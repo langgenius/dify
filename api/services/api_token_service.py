@@ -6,7 +6,7 @@ Includes Redis cache operations, database queries, and single-flight concurrency
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, override
 
 from pydantic import BaseModel
@@ -272,6 +272,39 @@ def record_token_usage(auth_token: str, scope: str | None) -> None:
         redis_client.set(key, naive_utc_now().isoformat(), ex=3600)
     except Exception as e:
         logger.warning("Failed to record token usage: %s", e)
+
+
+def get_effective_token_last_used_at(
+    auth_token: str,
+    scope: str | None,
+    persisted_last_used_at: datetime | None,
+) -> datetime | None:
+    """Return the newest persisted or pending usage timestamp for a token."""
+    try:
+        value = redis_client.get(ApiTokenCache.make_active_key(auth_token, scope))
+        if value is None:
+            return persisted_last_used_at
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+        pending_last_used_at = datetime.fromisoformat(value)
+    except (UnicodeDecodeError, TypeError, ValueError) as e:
+        logger.warning("Failed to parse pending token usage: %s", e)
+        return persisted_last_used_at
+    except Exception as e:
+        logger.warning("Failed to read pending token usage: %s", e)
+        return persisted_last_used_at
+
+    if persisted_last_used_at is None:
+        return pending_last_used_at
+
+    def as_naive_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(UTC).replace(tzinfo=None)
+
+    if as_naive_utc(pending_last_used_at) > as_naive_utc(persisted_last_used_at):
+        return pending_last_used_at
+    return persisted_last_used_at
 
 
 # ---------------------------------------------------------------------

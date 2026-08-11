@@ -16,6 +16,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -31,8 +32,11 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    rbac_permission_required,
     setup_required,
 )
 from core.db.session_factory import session_factory
@@ -299,6 +303,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    BinaryFileResponse,
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingResponse,
@@ -1304,9 +1309,19 @@ class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
 class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentBatchDownloadPayload.__name__])
     @console_ns.produces(["application/zip"])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical documents ZIP",
+        console_ns.models[BinaryFileResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET,
+        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+    )
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
         actor_id, tenant_id = _actor()
@@ -1342,9 +1357,15 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
 class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
     @console_ns.produces(["application/octet-stream"])
+    @console_ns.response(HTTPStatus.OK, "KnowledgeFS logical document", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET,
+        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+    )
     @_knowledge_fs_errors
     def get(self, control_space_id: str, document_id: str):
         actor_id, tenant_id = _actor()

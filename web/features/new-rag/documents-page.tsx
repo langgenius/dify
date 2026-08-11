@@ -2,6 +2,7 @@
 
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
+import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
@@ -26,6 +27,7 @@ import {
 } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
@@ -75,6 +77,7 @@ const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
+const DOCUMENT_STAGING_REQUEST_TIMEOUT = 30_000
 const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
 const documentFilterParser = parseAsStringLiteral([
@@ -96,6 +99,20 @@ const documentUploadParser = parseAsStringLiteral(['1'] as const).withOptions({
 const documentMetadataParser = parseAsStringLiteral(['1'] as const).withOptions({
   history: 'replace',
 })
+
+class DocumentStagingCanceledError extends Error {
+  constructor() {
+    super('Document staging was canceled')
+    this.name = 'DocumentStagingCanceledError'
+  }
+}
+
+class DocumentStagingTimeoutError extends Error {
+  constructor() {
+    super('Document staging timed out')
+    this.name = 'DocumentStagingTimeoutError'
+  }
+}
 
 const uploadExclusionReasonKey = {
   batch_byte_limit_exceeded: 'batchLimit',
@@ -146,7 +163,8 @@ async function findBackgroundTasks(
 }
 
 type UploadExclusionReasonKey =
-  (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
+  | DocumentUploadIssue
+  | (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
 
 type TerminalTaskPin = {
   observedAt: string
@@ -240,9 +258,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
   const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
+  const hasDocumentDownloadPermission = hasPermission(
+    datasetDefaultPermissionKeys,
+    DatasetACLPermission.DocumentDownload,
+  )
   const permissionPending = workspacePermissionKeysLoading
   const permissionQueryError = Boolean(workspacePermissionKeysError)
   const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
+  const canDownload = hasDocumentDownloadPermission && !permissionPending && !permissionQueryError
   const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
@@ -252,7 +275,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const uploadRequestIdsRef = useRef(new Map<string, string>())
   const stagedUploadIdsRef = useRef(new Map<File, string>())
   const stagingPromisesRef = useRef(new Map<File, Promise<string>>())
-  const discardAfterStagingRef = useRef(new Set<File>())
+  const stagingControllersRef = useRef(new Map<File, AbortController>())
   const reindexPendingRef = useRef(false)
   const documentActionPendingRef = useRef(false)
   const bulkActionPendingRef = useRef(false)
@@ -317,7 +340,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ReadonlyMap<File, KnowledgeFsUploadPhase>
   >(() => new Map())
   const [bulkActionPending, setBulkActionPending] = useState<
-    'disable' | 'reindex' | 'remove' | undefined
+    'disable' | 'download' | 'reindex' | 'remove' | undefined
   >()
   const [pendingDocumentAction, setPendingDocumentAction] = useState<
     { action: DocumentAction; documentId: string } | undefined
@@ -417,37 +440,79 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const active = stagingPromisesRef.current.get(file)
       if (active) return active
 
-      discardAfterStagingRef.current.delete(file)
-      const promise = stageKnowledgeFsDocument(file)
-        .then((uploadId) => {
-          if (discardAfterStagingRef.current.delete(file)) {
-            void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
-            return uploadId
+      const controller = new AbortController()
+      let settled = false
+      let timeout: number | undefined
+      const promise = new Promise<string>((resolve, reject) => {
+        function cleanup() {
+          if (timeout !== undefined) window.clearTimeout(timeout)
+          controller.signal.removeEventListener('abort', handleAbort)
+          if (stagingControllersRef.current.get(file) === controller) {
+            stagingPromisesRef.current.delete(file)
+            stagingControllersRef.current.delete(file)
           }
-          stagedUploadIdsRef.current.set(file, uploadId)
-          return uploadId
-        })
-        .finally(() => stagingPromisesRef.current.delete(file))
+        }
+        function rejectOnce(error: unknown) {
+          if (settled) return
+          settled = true
+          cleanup()
+          reject(error)
+        }
+        function handleAbort() {
+          rejectOnce(
+            controller.signal.reason instanceof Error
+              ? controller.signal.reason
+              : new DocumentStagingCanceledError(),
+          )
+        }
+        controller.signal.addEventListener('abort', handleAbort, { once: true })
+        timeout = window.setTimeout(
+          () => controller.abort(new DocumentStagingTimeoutError()),
+          DOCUMENT_STAGING_REQUEST_TIMEOUT,
+        )
+        void stageKnowledgeFsDocument(file, controller.signal).then(
+          (uploadId) => {
+            if (settled) {
+              void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+              return
+            }
+            settled = true
+            cleanup()
+            stagedUploadIdsRef.current.set(file, uploadId)
+            resolve(uploadId)
+          },
+          (error) => {
+            rejectOnce(error)
+          },
+        )
+      })
       stagingPromisesRef.current.set(file, promise)
+      stagingControllersRef.current.set(file, controller)
       return promise
     })
     if (!tasks.length) return
 
     const results = await Promise.allSettled(tasks)
-    const failed = results.find(
+    const failures = results.filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
     )
+    const failed =
+      failures.find(({ reason }) => !(reason instanceof DocumentStagingCanceledError)) ??
+      failures[0]
     if (failed) throw failed.reason
   }, [])
   const discardStagedFile = useCallback((file: File) => {
-    if (stagingPromisesRef.current.has(file)) discardAfterStagingRef.current.add(file)
+    stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
     const uploadId = stagedUploadIdsRef.current.get(file)
     stagedUploadIdsRef.current.delete(file)
     if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
   }, [])
   const discardStagedUploadObjects = useCallback(() => {
     const uploadIds = [...stagedUploadIdsRef.current.values()]
-    for (const file of stagingPromisesRef.current.keys()) discardAfterStagingRef.current.add(file)
+    for (const controller of stagingControllersRef.current.values())
+      controller.abort(new DocumentStagingCanceledError())
+    stagingControllersRef.current.clear()
+    stagingPromisesRef.current.clear()
     stagedUploadIdsRef.current.clear()
     uploadProgressRef.current.clear()
     uploadRequestIdsRef.current.clear()
@@ -479,6 +544,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     discardAllStagedFiles()
     closeUploadForm()
   }, [closeUploadForm, discardAllStagedFiles])
+  useEffect(
+    () => () => {
+      discardStagedUploadObjects()
+    },
+    [discardStagedUploadObjects],
+  )
   useEffect(() => {
     if (uploadRequest !== '1' || permissionPending || canUpload) return
     discardStagedUploadObjects()
@@ -752,6 +823,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         [...selectedDocumentIds].filter((documentId) => availableDocumentIds.has(documentId)),
       ),
     [availableDocumentIds, selectedDocumentIds],
+  )
+  const downloadableSelectedDocumentIds = useMemo(
+    () =>
+      documents.flatMap((document) =>
+        validSelectedDocumentIds.has(document.id) && document.active ? [document.id] : [],
+      ),
+    [documents, validSelectedDocumentIds],
   )
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
@@ -1844,6 +1922,39 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [canWrite, documents, handleWritePermissionDenied, knowledgeSpaceId, refreshDocuments, t],
   )
 
+  const handleDownloadDocument = useCallback(
+    async (documentId: string) => {
+      if (!canDownload || documentActionPendingRef.current) return false
+      const currentDocument = documents.find((document) => document.id === documentId)
+      if (!currentDocument?.active) return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'download', documentId })
+      try {
+        const file =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
+            {
+              params: { control_space_id: knowledgeSpaceId, document_id: documentId },
+            },
+          )
+        downloadBlob({
+          data: file,
+          fileName:
+            typeof File !== 'undefined' && file instanceof File && file.name
+              ? file.name
+              : currentDocument.title,
+        })
+        return true
+      } catch {
+        toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [canDownload, documents, knowledgeSpaceId, tCommon],
+  )
+
   const handleToggleDocumentAvailability = useCallback(
     async (documentId: string) => {
       if (!canWrite || documentActionPendingRef.current) return false
@@ -1925,6 +2036,32 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     t,
     validSelectedDocumentIds,
   ])
+
+  const handleDownloadDocuments = useCallback(async () => {
+    if (!canDownload || !downloadableSelectedDocumentIds.length || bulkActionPendingRef.current)
+      return
+    bulkActionPendingRef.current = true
+    setBulkActionPending('download')
+    try {
+      const file =
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
+          body: { document_ids: downloadableSelectedDocumentIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      downloadBlob({
+        data: file,
+        fileName:
+          typeof File !== 'undefined' && file instanceof File && file.name
+            ? file.name
+            : 'knowledge-documents.zip',
+      })
+    } catch {
+      toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+    } finally {
+      bulkActionPendingRef.current = false
+      setBulkActionPending(undefined)
+    }
+  }, [canDownload, downloadableSelectedDocumentIds, knowledgeSpaceId, tCommon])
 
   const handleRemoveDocuments = useCallback(async () => {
     if (
@@ -2688,6 +2825,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               try {
                 await stageFiles(files)
               } catch (error) {
+                if (error instanceof DocumentStagingCanceledError) return
                 toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
                 throw error
               }
@@ -2714,6 +2852,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             activeTaskCount={activeTasks.length}
             allSelected={allFilteredSelected}
             attentionTaskBadge={attentionTaskBadge}
+            canDownload={canDownload}
             canEdit={canWrite}
             canUpload={canUpload}
             completingResults={completingFilteredResults}
@@ -2733,6 +2872,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onAddDocument={() => openUploadForm()}
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
+            onDownloadDocument={handleDownloadDocument}
             onOpenMetadata={() => setMetadataOpen(true)}
             onOpenTasks={() => setTasksOpen(true)}
             onRemoveDocument={handleRemoveDocument}
@@ -2775,8 +2915,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           actionPending={bulkActionPending}
           disabled={selectionDisabled}
           disabledReason={reindexUnavailableReason}
+          downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
           onClear={() => setSelectedDocumentIds(new Set())}
           onDisable={() => void handleDisableDocuments()}
+          onDownload={() => void handleDownloadDocuments()}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null))
               bulkActionsHadFocusRef.current = false

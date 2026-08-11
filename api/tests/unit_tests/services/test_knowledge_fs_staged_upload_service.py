@@ -21,6 +21,7 @@ from models.knowledge_fs import (
     KnowledgeFSStagedUploadStatus,
 )
 from models.model import Account, UploadFile
+from services import file_service as file_service_module
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.knowledge_fs import staged_upload_service as staged_upload_module
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
@@ -274,6 +275,51 @@ def test_stage_persists_workspace_owned_upload(
         persisted = session.get(KnowledgeFSStagedUpload, response.id)
         assert persisted is not None
         assert persisted.checksum_sha256_base64 == b64encode(sha256(_BODY).digest()).decode()
+
+
+@pytest.mark.parametrize(
+    ("file_name", "content_type", "body"),
+    [
+        ("notes.txt", "text/plain", b"KnowledgeFS notes"),
+        ("guide.md", "text/markdown", b"# KnowledgeFS guide"),
+    ],
+)
+def test_stage_accepts_supported_text_files_with_the_real_file_service(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    file_name: str,
+    content_type: str,
+    body: bytes,
+) -> None:
+    backend = FakeStorage()
+    monkeypatch.setattr(file_service_module, "storage", backend)
+    monkeypatch.setattr(staged_upload_module, "storage", backend)
+    monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed")
+    account = Account(name="KnowledgeFS tester", email="knowledge-fs@example.com")
+    account.id = _ACCOUNT_ID
+    service = KnowledgeFSStagedUploadService(
+        sqlite_session_factory,
+        facade=cast(KnowledgeFSDataFacade, MagicMock()),
+    )
+
+    response = service.stage(
+        tenant_id=_TENANT_ID,
+        account=account,
+        file_name=file_name,
+        content_type=content_type,
+        body=body,
+        file_size_limit_mb=15,
+    )
+
+    assert response.file_name == file_name
+    assert response.content_type == content_type
+    assert response.size_bytes == len(body)
+    assert response.status == "uploaded"
+    assert list(backend.objects.values()) == [body]
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSStagedUpload, response.id)
+        assert persisted is not None
+        assert persisted.upload_file_id
 
 
 def test_stage_rejects_empty_and_maps_file_service_errors(

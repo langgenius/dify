@@ -13,10 +13,13 @@ type UploadProgressEntry = {
 export type KnowledgeFsUploadPhase = 'completed' | 'pending'
 export type KnowledgeFsUploadProgress = Map<string, UploadProgressEntry>
 
-export async function stageKnowledgeFsDocument(file: File) {
-  const staged = await consoleClient.knowledgeFs.uploads.post({
-    body: { file },
-  })
+export async function stageKnowledgeFsDocument(file: File, signal?: AbortSignal) {
+  const staged = await consoleClient.knowledgeFs.uploads.post(
+    {
+      body: { file },
+    },
+    { context: { silent: true }, signal },
+  )
   return staged.id
 }
 
@@ -36,10 +39,13 @@ export async function uploadKnowledgeFsDocuments(
     if (progress.get(upload.id)?.phase === 'completed') continue
     progress.set(upload.id, { phase: 'pending' })
     onProgress?.(upload.file, 'pending')
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post({
-      body: { upload_id: upload.uploadId },
-      params: { control_space_id: controlSpaceId },
-    })
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post(
+      {
+        body: { upload_id: upload.uploadId },
+        params: { control_space_id: controlSpaceId },
+      },
+      { context: { silent: true } },
+    )
     progress.set(upload.id, { phase: 'completed' })
     onProgress?.(upload.file, 'completed')
   }

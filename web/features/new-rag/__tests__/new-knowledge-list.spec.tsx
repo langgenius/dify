@@ -504,6 +504,35 @@ describe('NewKnowledgeList', () => {
     expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
   })
 
+  it('shows a search-specific empty state and restores the loaded list when cleared', async () => {
+    const user = userEvent.setup()
+    setResolvedPage([
+      {
+        createdAt: '2026-07-15T00:00:00Z',
+        id: 'space-1',
+        name: 'Support knowledge',
+        revision: 1,
+        slug: 'support-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-18T00:00:00Z',
+      },
+    ])
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
+    await user.type(search, 'no matching knowledge')
+
+    expect(
+      screen.getByText('common.operation.noSearchResults:{"content":"dataset.knowledge"}'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('no matching knowledge')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'dataset.knowledge' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByText('common.operation.clear'))
+    expect(search).toHaveValue('')
+    expect(screen.getByRole('link', { name: 'Support knowledge' })).toBeInTheDocument()
+  })
+
   it('filters the collection by selected creators and clears the filter', async () => {
     const user = userEvent.setup()
     setResolvedPage([
