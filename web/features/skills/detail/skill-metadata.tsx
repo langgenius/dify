@@ -5,28 +5,20 @@ import type {
   SkillReferenceResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
+import type { TagComboboxItem } from '@/features/tag-management/components/tag-combobox-item'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxInputGroup,
-  ComboboxItem,
-  ComboboxItemText,
-  ComboboxList,
-  ComboboxSeparator,
-  ComboboxTrigger,
-} from '@langgenius/dify-ui/combobox'
+import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { isCreateTagOption } from '@/features/tag-management/components/tag-combobox-item'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagSearchContentView } from '@/features/tag-management/components/tag-search-content'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { SkillPublishShortcut } from './publish-bar'
@@ -61,8 +53,8 @@ export function SkillTagsEditor({
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
   const normalizedTagSearch = tagSearch.trim()
-  const tagOptions = useMemo(() => {
-    const options: string[] = []
+  const tagOptions = useMemo<TagComboboxItem[]>(() => {
+    const options: TagComboboxItem[] = []
     const seenTags = new Set<string>()
     const addOption = (tag: string) => {
       const normalizedTag = tag.trim()
@@ -70,25 +62,32 @@ export function SkillTagsEditor({
       if (!normalizedTag || seenTags.has(tagKey)) return
 
       seenTags.add(tagKey)
-      options.push(normalizedTag)
+      options.push({
+        id: `skill-tag:${tagKey}`,
+        name: normalizedTag,
+        type: 'skill',
+        binding_count: '0',
+      })
     }
 
     for (const tag of tags) addOption(tag)
     for (const tag of tagsQuery.data?.data ?? []) addOption(tag.tag)
     for (const tag of draftTags) addOption(tag)
     const hasExactMatch = options.some(
-      (tag) => tag.toLocaleLowerCase() === normalizedTagSearch.toLocaleLowerCase(),
+      (tag) => tag.name.toLocaleLowerCase() === normalizedTagSearch.toLocaleLowerCase(),
     )
-    if (normalizedTagSearch && !hasExactMatch)
-      options.push(`${SKILL_TAG_CREATE_OPTION_PREFIX}${normalizedTagSearch}`)
+    if (normalizedTagSearch && !hasExactMatch) {
+      options.push({
+        id: `${SKILL_TAG_CREATE_OPTION_PREFIX}${normalizedTagSearch}`,
+        name: normalizedTagSearch,
+        type: 'skill',
+        binding_count: '0',
+        isCreateOption: true,
+      })
+    }
 
     return options
   }, [draftTags, normalizedTagSearch, tags, tagsQuery.data?.data])
-
-  const getTagOptionLabel = (tag: string) =>
-    tag.startsWith(SKILL_TAG_CREATE_OPTION_PREFIX)
-      ? tag.slice(SKILL_TAG_CREATE_OPTION_PREFIX.length)
-      : tag
 
   const saveTags = (nextTags: string[]) => {
     if (!detail || metadataMutation.isPending) return
@@ -165,35 +164,31 @@ export function SkillTagsEditor({
       <div className="mt-3 flex flex-wrap items-center gap-1">
         {tags.map(renderTagBadge)}
         {!readonly && (
-          <Combobox<string, true>
+          <Combobox<TagComboboxItem, true>
             items={tagOptions}
             multiple
             open={addOpen}
             onOpenChange={handleOpenChange}
-            value={draftTags}
+            value={tagOptions.filter(
+              (tag) => !isCreateTagOption(tag) && draftTags.includes(tag.name),
+            )}
             onValueChange={(nextTags) => {
-              const createOption = nextTags.find((tag) =>
-                tag.startsWith(SKILL_TAG_CREATE_OPTION_PREFIX),
-              )
+              const createOption = nextTags.find(isCreateTagOption)
               if (createOption) {
-                setDraftTags((currentTags) => [...currentTags, getTagOptionLabel(createOption)])
+                setDraftTags((currentTags) => [...currentTags, createOption.name])
                 setTagSearch('')
                 return
               }
 
-              setDraftTags(
-                tagOptions.filter(
-                  (tag) =>
-                    !tag.startsWith(SKILL_TAG_CREATE_OPTION_PREFIX) && nextTags.includes(tag),
-                ),
-              )
+              setDraftTags(nextTags.filter((tag) => !isCreateTagOption(tag)).map((tag) => tag.name))
             }}
             inputValue={tagSearch}
             onInputValueChange={setTagSearch}
             filter={(tag, query) =>
-              getTagOptionLabel(tag).toLocaleLowerCase().includes(query.toLocaleLowerCase())
+              tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
             }
-            itemToStringLabel={getTagOptionLabel}
+            itemToStringLabel={(tag) => tag.name}
+            isItemEqualToValue={(item, value) => item.id === value.id}
           >
             <ComboboxTrigger
               icon={false}
@@ -212,94 +207,17 @@ export function SkillTagsEditor({
             <ComboboxContent
               placement="bottom-start"
               sideOffset={4}
-              popupClassName="w-[232px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+              popupClassName="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
             >
-              <div className="p-2 pb-1">
-                <ComboboxInputGroup className="h-8 border-divider-subtle bg-components-input-bg-normal shadow-none">
-                  <span
-                    aria-hidden
-                    className="ml-2 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-                  />
-                  <ComboboxInput
-                    aria-label={tCommon(($) => $['tag.selectorPlaceholder'])}
-                    placeholder={tCommon(($) => $['tag.selectorPlaceholder'])}
-                    className="pl-2"
-                  />
-                  {tagSearch && (
-                    <button
-                      type="button"
-                      aria-label={tCommon(($) => $['operation.clear'])}
-                      className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active"
-                      onClick={() => setTagSearch('')}
-                      onPointerDown={(event) => event.preventDefault()}
-                    >
-                      <span aria-hidden className="i-ri-close-line size-4" />
-                    </button>
-                  )}
-                </ComboboxInputGroup>
-              </div>
-              <ComboboxList<string> className="max-h-58">
-                {(tag) => {
-                  if (tag.startsWith(SKILL_TAG_CREATE_OPTION_PREFIX)) {
-                    const tagName = getTagOptionLabel(tag)
-                    return (
-                      <ComboboxItem key={tag} value={tag} className="grid-cols-[1fr]">
-                        <ComboboxItemText className="flex items-center gap-1 px-0">
-                          <span
-                            aria-hidden
-                            className="i-ri-add-line size-4 shrink-0 text-text-tertiary"
-                          />
-                          <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
-                            {`${tCommon(($) => $['tag.create'])} `}
-                            <span className="system-md-medium">{`'${tagName}'`}</span>
-                          </span>
-                        </ComboboxItemText>
-                      </ComboboxItem>
-                    )
-                  }
-
-                  const selected = draftTags.includes(tag)
-                  return (
-                    <ComboboxItem key={tag} value={tag} className="grid-cols-[auto_1fr] gap-1">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          'flex size-4 shrink-0 items-center justify-center rounded-sm shadow-xs',
-                          selected
-                            ? 'bg-components-checkbox-bg text-components-checkbox-icon'
-                            : 'border border-components-checkbox-border bg-components-checkbox-bg-unchecked',
-                        )}
-                      >
-                        {selected && <span className="i-ri-check-line size-3" />}
-                      </span>
-                      <ComboboxItemText className="system-md-regular">{tag}</ComboboxItemText>
-                    </ComboboxItem>
-                  )
-                }}
-              </ComboboxList>
-              <ComboboxEmpty>{tCommon(($) => $['tag.noTag'])}</ComboboxEmpty>
-              <div role="separator" aria-orientation="horizontal" className="my-0">
-                <ComboboxSeparator />
-              </div>
-              <div className="p-1">
-                <button
-                  type="button"
-                  className="flex h-8 w-full cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-left text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  aria-label={tCommon(($) => $['tag.manageTags'])}
-                  onClick={() => {
-                    handleOpenChange(false)
-                    setShowTagManagement(true)
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className="i-ri-price-tag-3-line size-4 shrink-0 text-text-tertiary"
-                  />
-                  <span className="min-w-0 grow truncate px-1 system-md-regular">
-                    {tCommon(($) => $['tag.manageTags'])}
-                  </span>
-                </button>
-              </div>
+              <TagSearchContentView
+                type="skill"
+                inputValue={tagSearch}
+                onInputValueChange={setTagSearch}
+                canBindOrUnbindTags
+                canManageTags
+                onOpenTagManagement={() => setShowTagManagement(true)}
+                onClose={() => handleOpenChange(false)}
+              />
             </ComboboxContent>
           </Combobox>
         )}

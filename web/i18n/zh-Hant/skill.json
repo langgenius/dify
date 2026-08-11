@@ -58,7 +58,7 @@
   "skillManagement.detail.publish": "發布",
   "skillManagement.detail.publishFailed": "Skill 發布失敗。",
   "skillManagement.detail.publishSuccess": "Skill 已發布。",
-  "skillManagement.detail.published": "Published",
+  "skillManagement.detail.published": "已發布",
   "skillManagement.detail.publishedAt": "{{time}}發佈",
   "skillManagement.detail.publishing": "發佈中...",
   "skillManagement.detail.readonly": "唯讀",

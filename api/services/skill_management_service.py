@@ -1797,6 +1797,13 @@ class SkillManagementService:
             skill_display_name = skill.display_name
             skill_description = skill.description
             skill_name_manually_edited = skill.name_manually_edited
+            manifest = manifest.model_copy(
+                update={
+                    "name": skill_name,
+                    "display_name": skill_display_name,
+                    "description": skill_description,
+                }
+            )
             version_number = (
                 session.scalar(select(func.max(SkillVersion.version_number)).where(SkillVersion.skill_id == skill.id))
                 or 0
@@ -2218,21 +2225,22 @@ class SkillManagementService:
             return [
                 {
                     "id": skill.id,
-                    "name": skill.name,
+                    "name": published_name,
                     "file_id": version.archive_tool_file_id,
-                    "description": skill.description,
+                    "description": published_description,
                     "size": version.archive_size,
                     "hash": version.hash_code,
                     "mime_type": "application/zip",
                 }
                 for _binding, skill, version in rows
+                for published_name, published_description in [self._published_skill_identity(skill, version)]
             ]
 
     def pull_runtime_agent_skill(self, *, tenant_id: str, agent_id: str, name: str) -> PublishedSkillArchive:
         """Pull one bound published workspace Skill by Skill name."""
         normalized_name = validate_skill_name(name)
         with session_factory.create_session() as session:
-            row = session.execute(
+            rows = session.execute(
                 select(Skill, SkillVersion)
                 .join(AgentSkillBinding, AgentSkillBinding.skill_id == Skill.id)
                 .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
@@ -2240,19 +2248,49 @@ class SkillManagementService:
                     AgentSkillBinding.tenant_id == tenant_id,
                     AgentSkillBinding.agent_id == agent_id,
                     Skill.tenant_id == tenant_id,
-                    Skill.name == normalized_name,
                 )
-            ).first()
+            )
+            row = next(
+                (
+                    (skill, version)
+                    for skill, version in rows
+                    if self._published_skill_identity(skill, version)[0] == normalized_name
+                ),
+                None,
+            )
             if row is None:
                 raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
             skill, version = row
             tool_file_id = version.archive_tool_file_id
-            filename = f"{skill.name}.zip"
+            filename = f"{self._published_skill_identity(skill, version)[0]}.zip"
         return PublishedSkillArchive(
             filename=filename,
             mime_type="application/zip",
             payload=self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
         )
+
+    def _published_skill_identity(self, skill: Skill, version: SkillVersion) -> tuple[str, str]:
+        """Return metadata from the published snapshot, falling back for old versions."""
+        manifest = version.manifest
+        if manifest.name is not None:
+            return manifest.name, manifest.description or ""
+
+        try:
+            archive_bytes = self._load_tool_file_bytes(
+                tenant_id=skill.tenant_id,
+                file_id=version.archive_tool_file_id,
+            )
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                content = archive.read(_SKILL_MD).decode("utf-8")
+            frontmatter = self._parse_frontmatter(content)
+        except (OSError, UnicodeDecodeError, ValueError, KeyError, zipfile.BadZipFile, SkillManagementServiceError):
+            return skill.name, skill.description
+
+        name = frontmatter.get("name")
+        description = frontmatter.get("description")
+        if not isinstance(name, str) or not name:
+            return skill.name, skill.description
+        return name, description if isinstance(description, str) else ""
 
     def replace_agent_bindings(
         self,

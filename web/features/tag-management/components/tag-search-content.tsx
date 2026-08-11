@@ -29,7 +29,11 @@ type TagSearchContentProps = {
   showTagManagement?: boolean
 }
 
-export const TagSearchContent = ({
+type TagSearchContentViewProps = TagSearchContentProps & {
+  canManageTags: boolean
+}
+
+export const TagSearchContentView = ({
   type,
   inputValue,
   onInputValueChange,
@@ -37,10 +41,9 @@ export const TagSearchContent = ({
   onClose,
   canBindOrUnbindTags = false,
   showTagManagement = true,
-}: TagSearchContentProps) => {
+  canManageTags,
+}: TagSearchContentViewProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length
   const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
@@ -142,4 +145,14 @@ export const TagSearchContent = ({
       )}
     </div>
   )
+}
+
+export const TagSearchContent = (props: TagSearchContentProps) => {
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canManageTags = hasPermission(
+    workspacePermissionKeys,
+    getTagManagePermissionKey(props.type),
+  )
+
+  return <TagSearchContentView {...props} canManageTags={canManageTags} />
 }
