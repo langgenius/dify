@@ -6,6 +6,8 @@ import pytest
 from sqlalchemy import inspect
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import Workflow, WorkflowRun
 
@@ -297,6 +299,33 @@ def test_validate_inputs_with_default_value():
     )
 
     assert result == [{"id": "file1", "name": "doc1.pdf"}, {"id": "file2", "name": "doc2.pdf"}]
+
+
+def test_validate_inputs_file_list_default_grants_upload_file_access():
+    """FILE_LIST default values are configured by the app builder, not the end
+    user making the request, so WebApp requests (which scope file lookups to
+    files owned by the current end user) must have the default's upload files
+    explicitly granted or they are rejected as invalid."""
+    base_app_generator = BaseAppGenerator()
+
+    var_file_list = VariableEntity(
+        variable="test_file_list",
+        label="test_file_list",
+        type=VariableEntityType.FILE_LIST,
+        required=False,
+        default=[{"transfer_method": "local_file", "upload_file_id": "default-file-id"}],
+    )
+
+    scope = FileAccessScope(
+        tenant_id="tenant-1",
+        user_id="end-user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        base_app_generator._validate_inputs(variable_entity=var_file_list, value=None)
+        assert "default-file-id" in get_current_file_access_scope().granted_upload_file_ids
 
 
 def test_validate_inputs_optional_file_with_empty_string():

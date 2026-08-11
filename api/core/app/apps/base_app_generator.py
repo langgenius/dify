@@ -13,7 +13,12 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    grant_upload_file_access,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -216,6 +221,18 @@ class BaseAppGenerator:
             # If default is also None, return None directly
             if value is None:
                 return None
+            # File defaults are configured by the app builder, not the requesting
+            # user, so grant access explicitly or end-user-scoped requests (e.g.
+            # WebApp) would reject them as not owned by the current user.
+            if variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}:
+                mappings = value if isinstance(value, list) else [value]
+                grant_upload_file_access(
+                    file_id
+                    for mapping in mappings
+                    if isinstance(mapping, dict)
+                    for file_id in [file_factory.resolve_mapping_file_id(mapping, "upload_file_id")]
+                    if file_id
+                )
 
         # Treat empty placeholders for optional file inputs as unset
         if (
