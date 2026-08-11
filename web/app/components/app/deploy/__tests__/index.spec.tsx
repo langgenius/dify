@@ -662,9 +662,10 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock({
     'common.operation.cancel': 'Cancel',
     'deployments.deployTab.confirmUndeploy': 'Undeploy',
-    'deployments.deployTab.undeployConfirmDesc':
-      'The environment endpoint will become unavailable, but the version will not be deleted.',
-    'deployments.deployTab.undeployConfirmTitle': 'Undeploy {{name}}?',
+    'deployments.studio.undeployConfirmDesc':
+      "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
+    'deployments.studio.undeployConfirmTitle':
+      'Undeploy {{versionName}} from {{envName}}',
     'deployments.deployTab.undeployConfirmWarning':
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
@@ -1267,7 +1268,9 @@ describe('AppDeploy', () => {
         name: 'deployments.deployTab.undeploy',
       }),
     )
-    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Undeploy Sprint-42 from Canary',
+    })
     await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
 
     expect(await screen.findByText('7 of 12 environments in use')).toBeInTheDocument()
@@ -1740,10 +1743,12 @@ describe('AppDeploy', () => {
       }),
     )
 
-    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Undeploy Sprint-42 from Canary',
+    })
     expect(
       within(dialog).getByText(
-        'The environment endpoint will become unavailable, but the version will not be deleted.',
+        "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
       ),
     ).toBeInTheDocument()
     expect(
@@ -1779,7 +1784,9 @@ describe('AppDeploy', () => {
         name: 'deployments.deployTab.undeploy',
       }),
     )
-    const dialog = await screen.findByRole('alertdialog', { name: 'Undeploy Canary?' })
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Undeploy Sprint-42 from Canary',
+    })
 
     await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }))
 

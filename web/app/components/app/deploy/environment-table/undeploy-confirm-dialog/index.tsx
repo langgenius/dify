@@ -15,6 +15,7 @@ type UndeployConfirmDialogProps = {
   environmentName: string
   isPending?: boolean
   open: boolean
+  versionName: string
   onConfirm: () => void
   onOpenChange: (open: boolean) => void
 }
@@ -23,6 +24,7 @@ export function UndeployConfirmDialog({
   environmentName,
   isPending = false,
   open,
+  versionName,
   onConfirm,
   onOpenChange,
 }: UndeployConfirmDialogProps) {
@@ -39,11 +41,14 @@ export function UndeployConfirmDialog({
       <AlertDialogContent className="w-120">
         <div className="flex flex-col items-start gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['deployTab.undeployConfirmTitle'], { name: environmentName })}
+            {t(($) => $['studio.undeployConfirmTitle'], {
+              envName: environmentName,
+              versionName,
+            })}
           </AlertDialogTitle>
           <AlertDialogDescription render={<div />} className="flex flex-col gap-2">
             <p className="system-md-regular text-text-secondary">
-              {t(($) => $['deployTab.undeployConfirmDesc'])}
+              {t(($) => $['studio.undeployConfirmDesc'])}
             </p>
             <p className="system-md-medium text-text-warning">
               {t(($) => $['deployTab.undeployConfirmWarning'])}

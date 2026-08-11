@@ -66,6 +66,10 @@ export function EnvironmentRowActions({
   const { t } = useTranslation('deployments')
   const { t: tWorkflow } = useTranslation('workflow')
   const defaultVersionName = tWorkflow(($) => $['versionHistory.defaultName'])
+  const currentVersionName = getWorkflowVersionName(
+    row.deployment?.current_version,
+    defaultVersionName,
+  )
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
   const actions = getEnvironmentDeploymentActions(row)
@@ -171,6 +175,7 @@ export function EnvironmentRowActions({
         environmentName={row.environment.display_name}
         isPending={isUndeploying}
         open={showUndeployConfirm}
+        versionName={currentVersionName}
         onConfirm={handleUndeploy}
         onOpenChange={setShowUndeployConfirm}
       />
