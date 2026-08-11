@@ -18,6 +18,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentOutlineResponse,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSDocumentReindexResponse,
     KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
@@ -54,6 +55,30 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_document_reindex_response_preserves_disabled_items() -> None:
+    response = KnowledgeFSDocumentReindexResponse.model_validate(
+        {
+            "bulkJobId": "bulk-job-1",
+            "items": [{"documentId": "document-1", "status": "disabled"}],
+            "total": 1,
+        }
+    )
+
+    assert response.model_dump(mode="json") == {
+        "bulk_job_id": "bulk-job-1",
+        "items": [
+            {
+                "asset": None,
+                "compilation_job": None,
+                "document_id": "document-1",
+                "status": "disabled",
+                "status_url": None,
+            }
+        ],
+        "total": 1,
+    }
 
 
 def test_space_create_initial_source_is_a_backward_compatible_discriminated_union() -> None:

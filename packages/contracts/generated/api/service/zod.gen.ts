@@ -1442,7 +1442,7 @@ export const zKnowledgeFsDocumentReindexItemResponse = z.object({
   asset: zKnowledgeFsDocumentResponse.nullish(),
   compilation_job: z.record(z.string(), z.unknown()).nullish(),
   document_id: z.string().nullish(),
-  status: z.enum(['not_found', 'queued']),
+  status: z.enum(['disabled', 'not_found', 'queued']),
   status_url: z.string().nullish(),
 })
 

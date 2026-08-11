@@ -1721,20 +1721,26 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const missingIds = result.items
         .filter((item) => item.status === 'not_found')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const queuedCount = result.items.length - missingIds.length
+      const disabledIds = result.items
+        .filter((item) => item.status === 'disabled')
+        .flatMap((item) => (item.document_id ? [item.document_id] : []))
+      const queuedCount = result.items.filter((item) => item.status === 'queued').length
       if (!queuedCount) {
-        setSelectedDocumentIds(new Set())
+        setSelectedDocumentIds(new Set(disabledIds))
         toast.error(
-          t(($) => $['newKnowledge.documentsReindexPartial'], {
-            missing: missingIds.length,
-            queued: 0,
-          }),
+          disabledIds.length
+            ? t(($) => $['newKnowledge.documentsReindexFailed'])
+            : t(($) => $['newKnowledge.documentsReindexPartial'], {
+                missing: missingIds.length,
+                queued: 0,
+              }),
         )
         refreshDocumentsAndTasks()
         return
       }
-      setSelectedDocumentIds(new Set(missingIds))
-      if (missingIds.length)
+      setSelectedDocumentIds(new Set([...missingIds, ...disabledIds]))
+      if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else if (missingIds.length)
         toast.warning(
           t(($) => $['newKnowledge.documentsReindexPartial'], {
             missing: missingIds.length,
@@ -1773,13 +1779,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           body: { documentIds: [documentId] },
           params: { control_space_id: knowledgeSpaceId },
         })
-        if (!result.items[0] || result.items[0].status === 'not_found')
+        const item = result.items[0]
+        if (!item || item.status === 'not_found')
           toast.error(
             t(($) => $['newKnowledge.documentsReindexPartial'], {
               missing: 1,
               queued: 0,
             }),
           )
+        else if (item.status === 'disabled')
+          toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
         else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
         refreshDocumentsAndTasks()
       } catch (error) {
