@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
@@ -64,9 +64,9 @@ class _KeywordForHelpers(BaseKeyword):
         return []
 
 
-def test_abstract_methods_raise_not_implemented():
+def test_abstract_methods_raise_not_implemented(unbound_session: Session):
     keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
-    session = MagicMock()
+    session = unbound_session
 
     with pytest.raises(NotImplementedError):
         keyword.create([], session)
@@ -87,7 +87,7 @@ def test_abstract_methods_raise_not_implemented():
         keyword.search("query", session=session)
 
 
-def test_filter_duplicate_texts_removes_existing_doc_ids():
+def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session):
     keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"), existing_ids={"duplicate"})
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
@@ -95,7 +95,7 @@ def test_filter_duplicate_texts_removes_existing_doc_ids():
         SimpleNamespace(page_content="without-metadata", metadata=None),
     ]
 
-    filtered = keyword._filter_duplicate_texts(texts, session=MagicMock())
+    filtered = keyword._filter_duplicate_texts(texts, session=unbound_session)
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
     assert any(text.metadata is None for text in filtered)
