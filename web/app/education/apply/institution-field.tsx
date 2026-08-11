@@ -12,7 +12,7 @@ import {
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,15 +34,18 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
-  const isSearchReady = !!searchQuery && searchQuery === debouncedSearchQuery
+  const hasSearchQuery = !!searchQuery
+  const isDebouncing = hasSearchQuery && searchQuery !== debouncedSearchQuery
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isError,
+    isFetching,
     isFetchingNextPage,
     isFetchNextPageError,
     isPending,
+    isPlaceholderData,
     isSuccess,
   } = useInfiniteQuery({
     ...consoleQuery.account.education.autocomplete.get.infiniteOptions({
@@ -57,14 +60,19 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
       getNextPageParam: (lastPage, pages) =>
         lastPage.has_next ? (lastPage.curr_page ?? pages.length - 1) + 1 : undefined,
     }),
-    enabled: isSearchReady,
+    enabled: hasSearchQuery && !!debouncedSearchQuery,
+    placeholderData: keepPreviousData,
   })
-  const suggestions = isSearchReady ? (data?.pages.flatMap((page) => page.data ?? []) ?? []) : []
-  const isLoading = isPending || isFetchingNextPage
-  const shouldOpenPopup = isPopupOpen && isSearchReady
+  const suggestions = hasSearchQuery ? (data?.pages.flatMap((page) => page.data ?? []) ?? []) : []
+  const isSearching = isDebouncing || isPending || (isFetching && !isFetchingNextPage)
+  const isLoading = isSearching || isFetchingNextPage
+  const shouldOpenPopup = isPopupOpen && hasSearchQuery
   const shouldShowEmpty = shouldOpenPopup && isSuccess && !isLoading && suggestions.length === 0
-  const shouldShowLoading = shouldOpenPopup && isLoading
+  const shouldAnnounceLoading = shouldOpenPopup && isLoading
   const shouldShowError = shouldOpenPopup && isError && !isLoading
+  const shouldShowFooter = shouldOpenPopup && (isLoading || hasNextPage || shouldShowError)
+  const canLoadMore =
+    shouldOpenPopup && !isDebouncing && !isPlaceholderData && !isFetching && !isFetchNextPageError
 
   const handleValueChange = (inputValue: string, eventDetails: AutocompleteChangeEventDetails) => {
     onValueChange(inputValue)
@@ -115,33 +123,43 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                 </AutocompleteItem>
               )}
             </AutocompleteCollection>
-            {hasNextPage ? (
-              <InfiniteScrollSentinel
-                canLoadMore={shouldOpenPopup && !isFetchingNextPage && !isFetchNextPageError}
-                onLoadMore={() => {
-                  void fetchNextPage({ cancelRefetch: false })
-                }}
-                preloadDistance={5}
-                scrollContainerRef={listRef}
-              />
+            {shouldShowFooter ? (
+              <div
+                className="relative flex h-10 items-center justify-center px-3"
+                aria-hidden="true"
+              >
+                {hasNextPage ? (
+                  <InfiniteScrollSentinel
+                    className="absolute inset-x-0 top-0"
+                    canLoadMore={canLoadMore}
+                    onLoadMore={() => {
+                      void fetchNextPage({ cancelRefetch: false })
+                    }}
+                    preloadDistance={5}
+                    scrollContainerRef={listRef}
+                  />
+                ) : null}
+                {shouldShowError ? (
+                  <span className="system-sm-regular text-text-destructive">
+                    {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+                  </span>
+                ) : (
+                  <Loading className="h-10" />
+                )}
+              </div>
             ) : null}
           </AutocompleteList>
           <AutocompleteEmpty>
             {shouldShowEmpty ? t(($) => $['form.schoolName.noResults'], { ns: 'education' }) : null}
           </AutocompleteEmpty>
           <AutocompleteStatus className="p-0">
-            {shouldShowLoading ? (
-              <>
-                <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
-                <div aria-hidden="true">
-                  <Loading className="h-10" />
-                </div>
-              </>
-            ) : shouldShowError ? (
-              <div className="px-3 py-2 text-text-destructive">
-                {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
-              </div>
-            ) : null}
+            <span className="sr-only">
+              {shouldAnnounceLoading
+                ? t(($) => $.loading, { ns: 'common' })
+                : shouldShowError
+                  ? t(($) => $['dynamicSelect.error'], { ns: 'common' })
+                  : null}
+            </span>
           </AutocompleteStatus>
         </AutocompleteContent>
       </Autocomplete>

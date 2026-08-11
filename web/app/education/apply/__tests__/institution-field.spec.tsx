@@ -8,9 +8,11 @@ const educationAutocompleteQueryMock = vi.hoisted(() => ({
   fetchNextPage: vi.fn(),
   hasNextPage: false,
   isError: false,
+  isFetching: false,
   isFetchingNextPage: false,
   isFetchNextPageError: false,
   isPending: false,
+  isPlaceholderData: false,
   isSuccess: true,
   data: {
     pages: [
@@ -23,7 +25,15 @@ const educationAutocompleteQueryMock = vi.hoisted(() => ({
   },
 }))
 
+const debouncedValueMock = vi.hoisted(() => ({
+  hold: false,
+  value: '',
+}))
+
+const keepPreviousDataMock = vi.hoisted(() => vi.fn((previousData: unknown) => previousData))
+
 vi.mock('@tanstack/react-query', () => ({
+  keepPreviousData: keepPreviousDataMock,
   useInfiniteQuery: (options: unknown) => {
     educationAutocompleteQueryMock.options(options)
     return educationAutocompleteQueryMock
@@ -45,7 +55,8 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('foxact/use-debounced-value', () => ({
-  useDebouncedValue: <T,>(value: T) => value,
+  useDebouncedValue: <T,>(value: T) =>
+    debouncedValueMock.hold ? (debouncedValueMock.value as T) : value,
 }))
 
 const ControlledInstitutionField = () => {
@@ -87,11 +98,15 @@ describe('InstitutionField', () => {
     vi.clearAllMocks()
     educationAutocompleteQueryMock.hasNextPage = false
     educationAutocompleteQueryMock.isError = false
+    educationAutocompleteQueryMock.isFetching = false
     educationAutocompleteQueryMock.isFetchingNextPage = false
     educationAutocompleteQueryMock.isFetchNextPageError = false
     educationAutocompleteQueryMock.isPending = false
+    educationAutocompleteQueryMock.isPlaceholderData = false
     educationAutocompleteQueryMock.isSuccess = true
     educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpha University', 'Beta College']
+    debouncedValueMock.hold = false
+    debouncedValueMock.value = ''
   })
 
   afterEach(() => {
@@ -152,6 +167,41 @@ describe('InstitutionField', () => {
     expect(input).toHaveValue('Dify Academy')
   })
 
+  it('keeps previous suggestions open while a new search settles', async () => {
+    const user = userEvent.setup()
+    const view = render(<ControlledInstitutionField />)
+    const input = screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/)
+
+    await user.type(input, 'A')
+    expect(await screen.findByText('Alpha University')).toBeInTheDocument()
+
+    debouncedValueMock.hold = true
+    debouncedValueMock.value = 'A'
+    await user.type(input, 'l')
+
+    expect(input).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Alpha University')).toBeInTheDocument()
+
+    debouncedValueMock.hold = false
+    educationAutocompleteQueryMock.isFetching = true
+    educationAutocompleteQueryMock.isPlaceholderData = true
+    view.rerender(<ControlledInstitutionField />)
+
+    expect(input).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Alpha University')).toBeInTheDocument()
+    expect(educationAutocompleteQueryMock.options.mock.lastCall?.[0]).toMatchObject({
+      placeholderData: keepPreviousDataMock,
+    })
+
+    educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpine University']
+    educationAutocompleteQueryMock.isFetching = false
+    educationAutocompleteQueryMock.isPlaceholderData = false
+    view.rerender(<ControlledInstitutionField />)
+
+    expect(screen.getByText('Alpine University')).toBeInTheDocument()
+    expect(screen.queryByText('Alpha University')).not.toBeInTheDocument()
+  })
+
   it('requests the next page when the suggestions sentinel enters the preload area', async () => {
     const user = userEvent.setup()
     const triggerIntersection = stubIntersectionObserver()
@@ -188,6 +238,10 @@ describe('InstitutionField', () => {
     )
 
     expect(await screen.findByText('Alpha University')).toBeInTheDocument()
-    expect(screen.getByText('common.dynamicSelect.error').closest('[role="status"]')).not.toBeNull()
+    expect(
+      screen
+        .getAllByText('common.dynamicSelect.error')
+        .some((element) => element.closest('[role="status"]') !== null),
+    ).toBe(true)
   })
 })
