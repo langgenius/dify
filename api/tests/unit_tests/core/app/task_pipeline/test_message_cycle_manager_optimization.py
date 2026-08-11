@@ -418,7 +418,7 @@ class TestMessageCycleManagerOptimization:
         assert conversation.name == (long_query[:47] + "...")
         assert any(record.levelno == logging.ERROR for record in caplog.records)
 
-    def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
+    def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager, unbound_session: Session):
         """Populate task metadata from annotation reply events.
 
         Args: message_cycle_manager with TaskStateMetadata and a mocked AppAnnotationService.
@@ -431,7 +431,7 @@ class TestMessageCycleManagerOptimization:
             id="ann-1",
             account_id="acct-1",
         )
-        session = Mock()
+        session = unbound_session
 
         with (
             patch("core.app.task_pipeline.message_cycle_manager.AppAnnotationService") as mock_service,

@@ -5,6 +5,7 @@ import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { ActionButton } from '@/app/components/base/action-button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
@@ -27,6 +28,7 @@ const PromptGeneratorBtn: FC<Props> = ({
   editorId,
   currentPrompt,
 }) => {
+  const { t } = useTranslation()
   const [showAutomatic, setShowAutomatic] = useState(false)
   const handleAutomaticRes = useCallback(
     (res: GenRes) => {
@@ -38,8 +40,12 @@ const PromptGeneratorBtn: FC<Props> = ({
   const configsMap = useHooksStore((s) => s.configsMap)
   return (
     <div className={cn(className)}>
-      <ActionButton className="hover:bg-[#155EFF]/8" onClick={() => setShowAutomatic(true)}>
-        <Generator className="size-4 text-primary-600" />
+      <ActionButton
+        aria-label={t(($) => $['operation.automatic'], { ns: 'appDebug' })}
+        className="hover:bg-[#155EFF]/8"
+        onClick={() => setShowAutomatic(true)}
+      >
+        <Generator aria-hidden className="size-4 text-primary-600" />
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
