@@ -64,6 +64,17 @@ describe('HomeHeader', () => {
     )
   })
 
+  it('falls back to the public Creator Center for a custom Marketplace origin', () => {
+    mocks.marketplaceUrlPrefix = 'http://localhost:3000'
+
+    render(<HomeHeader isMarketplacePlatform />)
+
+    expect(screen.getByRole('link', { name: 'Creator Center' })).toHaveAttribute(
+      'href',
+      'https://creators.dify.ai/',
+    )
+  })
+
   it('links the Guide action to Dify documentation', () => {
     render(<HomeHeader isMarketplacePlatform />)
 

@@ -18,10 +18,30 @@ type HomeHeaderProps = {
   language?: string
 }
 
+const PUBLIC_CREATOR_CENTER_URL = 'https://creators.dify.ai/'
+
+const getCreatorCenterUrl = (marketplaceUrlPrefix: string) => {
+  if (!marketplaceUrlPrefix) return PUBLIC_CREATOR_CENTER_URL
+
+  try {
+    const marketplaceUrl = new URL(marketplaceUrlPrefix)
+    const [service, ...domain] = marketplaceUrl.hostname.split('.')
+    if (!service?.startsWith('marketplace') || domain.length === 0)
+      return PUBLIC_CREATOR_CENTER_URL
+
+    marketplaceUrl.hostname = [service.replace(/^marketplace/, 'creators'), ...domain].join('.')
+    marketplaceUrl.pathname = '/'
+    marketplaceUrl.search = ''
+    marketplaceUrl.hash = ''
+    return marketplaceUrl.toString()
+  }
+  catch {
+    return PUBLIC_CREATOR_CENTER_URL
+  }
+}
+
 const CreatorCenter = () => {
-  const creatorCenterUrl = MARKETPLACE_URL_PREFIX
-    ? new URL(MARKETPLACE_URL_PREFIX.replace('marketplace', 'creators')).toString()
-    : 'https://creators.dify.ai/'
+  const creatorCenterUrl = getCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
 
   return (
     <Link href={creatorCenterUrl} target="_blank" rel="noopener noreferrer">
