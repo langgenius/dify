@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   skillDetailGetFn: vi.fn(),
   skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
+  agentSkillBindingsKey: vi.fn((_options: unknown): unknown[] => ['agent-skill-bindings']),
   skillListKey: vi.fn((_options: unknown): unknown[] => ['skills']),
   skillTags: [] as { count: number; tag: string }[],
   skillMetadataMutationFn: vi.fn(),
@@ -187,6 +188,15 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     workspaces: {
       current: {
+        agents: {
+          byAgentId: {
+            skills: {
+              get: {
+                key: mocks.agentSkillBindingsKey,
+              },
+            },
+          },
+        },
         skills: {
           get: {
             key: mocks.skillListKey,

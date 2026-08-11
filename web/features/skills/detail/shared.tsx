@@ -1465,6 +1465,9 @@ export function invalidateSkillDetail(
       },
     }),
   })
+  void queryClient.invalidateQueries({
+    queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({ type: 'query' }),
+  })
 }
 
 export function setSkillDetailCache(
