@@ -1017,9 +1017,6 @@ def test_set_datasource_variables_success(
     mock_db_exec.node_type = "datasource"
     mock_repo_instance._to_db_model.return_value = mock_db_exec
 
-    # Mock Session and begin
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=mocker.MagicMock())
-
     # Mock DraftVariableSaver
     mock_saver_instance = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mock_saver_instance)
@@ -1171,10 +1168,6 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
         get_execution_by_id=mocker.Mock(return_value="db")
     )
     mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mocker.Mock())
-    session_ctx = mocker.MagicMock()
-    session_ctx.begin.return_value = mocker.MagicMock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
-
     rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
 
     getter = handle_node_run_result.call_args.kwargs["getter"]
@@ -1212,11 +1205,6 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
     )
     saver = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
-
-    session_ctx = mocker.MagicMock()
-    begin_ctx = mocker.MagicMock()
-    session_ctx.begin.return_value = begin_ctx
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
 
     result = rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {"q": "x"}, account)
 
@@ -1884,10 +1872,7 @@ def test_get_pipeline_raises_when_pipeline_missing(
         rag_pipeline_service.service.get_pipeline("t1", "d1")
 
 
-def test_init_uses_default_sessionmaker_when_none(
-    mocker: MockerFixture, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker", return_value=sqlite_session_factory)
+def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_session: Session) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
     create_exec_repo = mocker.patch(
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository"
@@ -1898,8 +1883,11 @@ def test_init_uses_default_sessionmaker_when_none(
 
     RagPipelineService(session=sqlite_session, session_maker=None)
 
-    create_exec_repo.assert_called_once_with(sqlite_session_factory)
-    create_run_repo.assert_called_once_with(sqlite_session_factory)
+    exec_session_maker = create_exec_repo.call_args.args[0]
+    run_session_maker = create_run_repo.call_args.args[0]
+    assert exec_session_maker is run_session_maker
+    assert exec_session_maker.kw["bind"] is sqlite_session.get_bind()
+    assert exec_session_maker.kw["expire_on_commit"] is False
 
 
 def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture, sqlite_session: Session) -> None:
