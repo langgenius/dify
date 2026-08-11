@@ -173,6 +173,7 @@ integration-test:
 	SHELLCTL_TEST_TOKEN=$$AUTH_TOKEN \
 	SHELLCTL_RUST_URL=http://localhost:$$HOST_PORT_RUST \
 	SHELLCTL_RUST_TEST_TOKEN=$$AUTH_TOKEN \
+	SHELLCTL_RUST_IMAGE=$(RUST_IMAGE_NAME) \
 	SHELLCTL_GO_URL_NO_ISOLATION=http://localhost:$$HOST_PORT_NOISO \
 	SHELLCTL_TEST_TOKEN_NO_ISOLATION=$$AUTH_TOKEN_NOISO \
 	SHELLCTL_RUST_URL_NO_ISOLATION=http://localhost:$$HOST_PORT_RUST_NOISO \
@@ -212,7 +213,7 @@ integration-down:
 
 integration:
 	@trap '$(MAKE) integration-down' EXIT INT TERM; \
-	$(MAKE) integration-up && $(MAKE) integration-test
+	$(MAKE) integration-up && $(MAKE) integration-test && $(MAKE) integration-test-rollout
 
 # --- E2B Template sync ---
 #

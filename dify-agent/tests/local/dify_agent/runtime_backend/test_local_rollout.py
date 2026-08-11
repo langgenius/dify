@@ -10,6 +10,7 @@ from shellctl.shared import HealthResponse
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend import (
+    BindingAcquireError,
     BindingCreateError,
     BindingDestroyError,
     ExecutionBindingAllocation,
@@ -96,6 +97,7 @@ class _HealthClient:
     status: str = "ok"
     error: Exception | None = None
     wait_forever: bool = False
+    close_error: Exception | None = None
     closed: bool = False
 
     async def health(self) -> HealthResponse:
@@ -107,6 +109,8 @@ class _HealthClient:
 
     async def close(self) -> None:
         self.closed = True
+        if self.close_error is not None:
+            raise self.close_error
 
 
 @dataclass(slots=True)
@@ -202,6 +206,29 @@ async def test_health_probe_is_bounded_and_closes_timed_out_client() -> None:
     assert client.closed is True
 
 
+@pytest.mark.anyio
+async def test_health_probe_preserves_probe_error_when_close_also_fails() -> None:
+    client = _HealthClient(
+        error=ConnectionError("health failed"),
+        close_error=RuntimeError("close failed"),
+    )
+
+    with pytest.raises(ConnectionError, match="health failed"):
+        await _health_probe(client)()
+
+    assert client.closed is True
+
+
+@pytest.mark.anyio
+async def test_health_probe_surfaces_close_error_after_success() -> None:
+    client = _HealthClient(close_error=RuntimeError("close failed"))
+
+    with pytest.raises(RuntimeError, match="close failed"):
+        await _health_probe(client)()
+
+    assert client.closed is True
+
+
 def test_canary_hash_is_deterministic_and_tracks_requested_percentage() -> None:
     specs = [_spec(binding_id=f"binding-{index}", workspace_id=f"workspace-{index}") for index in range(1_000)]
 
@@ -212,6 +239,12 @@ def test_canary_hash_is_deterministic_and_tracks_requested_percentage() -> None:
     assert 200 <= sum(first_pass) <= 300
     assert not any(_is_rust_canary(spec, 0) for spec in specs)
     assert all(_is_rust_canary(spec, 100) for spec in specs)
+
+
+@pytest.mark.parametrize("percent", [-1, 101])
+def test_router_rejects_canary_percentage_outside_closed_interval(percent: int) -> None:
+    with pytest.raises(ValueError, match="between 0 and 100"):
+        _ = _fixture(canary_percent=percent)
 
 
 @pytest.mark.anyio
@@ -314,6 +347,19 @@ async def test_mutating_rust_failure_is_never_replayed_to_go() -> None:
 
 
 @pytest.mark.anyio
+async def test_mutating_go_failure_is_never_replayed_to_rust() -> None:
+    fixture = _fixture(canary_percent=0)
+    fixture.go_bindings.create_error = BindingCreateError("Go may already have mutated state")
+    bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
+
+    with pytest.raises(BindingCreateError, match="already have mutated"):
+        _ = await bindings.create_binding(_spec())
+
+    assert len(fixture.go_bindings.creates) == 1
+    assert fixture.rust_bindings.creates == []
+
+
+@pytest.mark.anyio
 async def test_existing_rust_resource_never_falls_back_to_go() -> None:
     fixture = _fixture(canary_percent=0, probe_error=ConnectionError("rust unavailable"))
     bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
@@ -354,6 +400,31 @@ async def test_legacy_unprefixed_binding_ref_remains_owned_by_go() -> None:
     assert lease.implementation == "go"
     assert fixture.go_bindings.acquires == ["binding-legacy:workspace-legacy"]
     assert fixture.rust_bindings.acquires == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("binding_ref", ["", "go+", "rust+"])
+async def test_acquire_rejects_empty_native_refs(binding_ref: str) -> None:
+    fixture = _fixture(canary_percent=100)
+    bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
+
+    with pytest.raises(BindingAcquireError, match="must not be empty|include a native ref"):
+        _ = await bindings.acquire(binding_ref)
+
+    assert fixture.go_bindings.acquires == []
+    assert fixture.rust_bindings.acquires == []
+
+
+@pytest.mark.anyio
+async def test_explicit_go_prefix_is_decoded_but_never_leaks_to_go_backend() -> None:
+    fixture = _fixture(canary_percent=100)
+    bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
+
+    lease = await bindings.acquire("go+binding-1")
+
+    assert isinstance(lease, RoutedLocalRuntimeLease)
+    assert lease.implementation == "go"
+    assert fixture.go_bindings.acquires == ["binding-1"]
 
 
 @pytest.mark.anyio
@@ -407,3 +478,43 @@ async def test_release_rejects_lease_from_outside_router() -> None:
 
     assert fixture.rust_bindings.releases == []
     assert fixture.go_bindings.releases == []
+
+
+@pytest.mark.anyio
+async def test_home_snapshot_dispatches_to_go_and_rust_owners() -> None:
+    fixture = _fixture(canary_percent=100)
+    snapshots = RoutedLocalHomeSnapshotBackend(router=fixture.router)
+    spec = HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="snapshot-1")
+
+    go_ref = await snapshots.create_from_runtime(
+        spec=spec,
+        source=RoutedLocalRuntimeLease(implementation="go", inner=_Lease(owner="go")),
+    )
+    rust_ref = await snapshots.create_from_runtime(
+        spec=spec,
+        source=RoutedLocalRuntimeLease(implementation="rust", inner=_Lease(owner="rust")),
+    )
+
+    assert go_ref == "home-snapshot-1"
+    assert rust_ref == "rust+home-snapshot-1"
+    await snapshots.delete(go_ref)
+    await snapshots.delete(rust_ref)
+    assert fixture.go_snapshots.deletes == ["home-snapshot-1"]
+    assert fixture.rust_snapshots.deletes == ["home-snapshot-1"]
+
+
+@pytest.mark.anyio
+async def test_home_snapshot_rejects_unrouted_lease_and_malformed_ref() -> None:
+    fixture = _fixture(canary_percent=100)
+    snapshots = RoutedLocalHomeSnapshotBackend(router=fixture.router)
+    spec = HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="snapshot-1")
+
+    with pytest.raises(TypeError, match="requires a routed"):
+        _ = await snapshots.create_from_runtime(spec=spec, source=_Lease(owner="foreign"))
+    with pytest.raises(ValueError, match="include a native ref"):
+        await snapshots.delete("rust+")
+
+    assert fixture.go_snapshots.creates == []
+    assert fixture.rust_snapshots.creates == []
+    assert fixture.go_snapshots.deletes == []
+    assert fixture.rust_snapshots.deletes == []

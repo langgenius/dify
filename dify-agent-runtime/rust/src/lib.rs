@@ -440,6 +440,14 @@ pub struct OutputWindow {
     pub offset: usize,
     pub truncated: bool,
 }
+
+fn bounded_positive(value: Option<usize>, default: usize, maximum: usize) -> usize {
+    value
+        .filter(|value| *value > 0)
+        .unwrap_or(default)
+        .min(maximum)
+}
+
 fn valid_prefix(data: &[u8], max: usize) -> usize {
     let end = max.min(data.len());
     (0..=end)
@@ -450,12 +458,19 @@ fn valid_prefix(data: &[u8], max: usize) -> usize {
 fn read_window(path: &FsPath, offset: usize, limit: usize) -> Result<OutputWindow, RuntimeError> {
     let data = match fs::read(path) {
         Ok(v) => v,
-        Err(e) if e.kind() == io::ErrorKind::NotFound && offset == 0 => {
-            return Ok(OutputWindow {
-                output: String::new(),
-                offset: 0,
-                truncated: false,
-            });
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            if offset == 0 {
+                return Ok(OutputWindow {
+                    output: String::new(),
+                    offset: 0,
+                    truncated: false,
+                });
+            }
+            return Err(RuntimeError::new(
+                400,
+                "invalid_offset",
+                "offset exceeds current file size 0",
+            ));
         }
         Err(e) => return Err(RuntimeError::internal(e.to_string())),
     };
@@ -908,10 +923,11 @@ impl Runtime {
             read_job(&conn, id)?
         };
         let path = self.output_path(&job);
-        let limit = req
-            .output_limit
-            .unwrap_or(self.config.default_output_limit)
-            .min(self.config.max_output_limit);
+        let limit = bounded_positive(
+            req.output_limit,
+            self.config.default_output_limit,
+            self.config.max_output_limit,
+        );
         let timeout = if req.timeout > 0.0 {
             Duration::from_secs_f64(req.timeout.min(self.config.max_wait_timeout.as_secs_f64()))
         } else {
@@ -1170,7 +1186,7 @@ impl Runtime {
                 started_at: v.started_at,
                 ended_at: v.ended_at,
             });
-            if out.len() >= q.limit.unwrap_or(50).min(200) {
+            if out.len() >= bounded_positive(q.limit, 50, 200) {
                 break;
             }
         }
@@ -1383,9 +1399,11 @@ async fn tail_handler(
         let v = r.live_view(&id)?;
         let w = tail_window(
             &r.output_path(&j),
-            q.output_limit
-                .unwrap_or(r.config.default_output_limit)
-                .min(r.config.max_output_limit),
+            bounded_positive(
+                q.output_limit,
+                r.config.default_output_limit,
+                r.config.max_output_limit,
+            ),
         )?;
         Ok(Json(r.result(&v, &j, w)))
     })
@@ -1768,6 +1786,101 @@ pub async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::sync::Barrier;
+
+    struct TestDir {
+        path: PathBuf,
+    }
+
+    impl TestDir {
+        fn new(label: &str) -> Self {
+            let path = env::temp_dir().join(format!(
+                "dify-runtime-{label}-{}-{}",
+                std::process::id(),
+                job_id()
+            ));
+            fs::create_dir_all(&path).unwrap();
+            Self { path }
+        }
+
+        fn path(&self) -> &FsPath {
+            &self.path
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+
+    fn test_job(id: &str, status: Status, exit_code: Option<i32>) -> Job {
+        Job {
+            id: id.into(),
+            script_path: format!("jobs/{id}/script"),
+            output_path: format!("jobs/{id}/output.log"),
+            cwd: "/tmp".into(),
+            cols: 80,
+            rows: 24,
+            status,
+            session_name: session_name(id),
+            pane_target: pane_target(id),
+            exit_code,
+            _reason: None,
+            _message: None,
+            created_at: "2026-01-01T00:00:00Z".into(),
+            started_at: None,
+            ended_at: None,
+            _updated_at: "2026-01-01T00:00:00Z".into(),
+        }
+    }
+
+    fn insert_test_job(conn: &Connection, job: &Job) {
+        conn.execute(
+            "INSERT INTO jobs (job_id,script_path,output_path,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,exit_code,created_at,started_at,ended_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+            params![
+                &job.id,
+                &job.script_path,
+                &job.output_path,
+                &job.cwd,
+                job.cols,
+                job.rows,
+                job.status.as_str(),
+                &job.session_name,
+                &job.pane_target,
+                job.exit_code,
+                &job.created_at,
+                job.started_at.as_deref(),
+                job.ended_at.as_deref(),
+                &job._updated_at,
+            ],
+        )
+        .unwrap();
+    }
+
+    struct MaterializeCase<'a> {
+        id: &'a str,
+        status: Status,
+        exit_code: Option<i32>,
+        session: bool,
+        pipe: Option<bool>,
+        pipe_failed: bool,
+        starting: bool,
+    }
+
+    fn materialize_case(conn: &mut Connection, case: MaterializeCase<'_>) -> Option<Job> {
+        let job = test_job(case.id, case.status, case.exit_code);
+        insert_test_job(conn, &job);
+        materialize(
+            conn,
+            &job,
+            case.session,
+            case.pipe,
+            case.pipe_failed,
+            case.starting,
+        )
+        .unwrap()
+    }
 
     #[test]
     fn sanitizer_matches_runtime_contract() {
@@ -1810,15 +1923,335 @@ mod tests {
 
     #[test]
     fn sqlite_runner_exit_is_idempotent_for_terminal_jobs() {
-        let dir = std::env::temp_dir().join(format!("dify-runtime-db-{}", job_id()));
-        fs::create_dir_all(&dir).unwrap();
-        let conn = db_open(&dir.join("shellctl.db"), 5000).unwrap();
+        let dir = TestDir::new("db-idempotent");
+        let conn = db_open(&dir.path().join("shellctl.db"), 5000).unwrap();
         conn.execute("INSERT INTO jobs (job_id,script_path,output_path,cwd,status,session_name,pane_target,created_at,updated_at) VALUES ('job','script','out','/','running','s','s:0.0','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')", []).unwrap();
         db_record_runner_exit(&conn, "job", 7, "2026-01-01T00:00:01Z").unwrap();
         db_record_runner_exit(&conn, "job", 9, "2026-01-01T00:00:02Z").unwrap();
         let job = read_job(&conn, "job").unwrap();
         assert_eq!(job.status, Status::Exited);
         assert_eq!(job.exit_code, Some(7));
-        let _ = fs::remove_dir_all(dir);
+        assert_eq!(job.ended_at.as_deref(), Some("2026-01-01T00:00:01Z"));
+    }
+
+    #[test]
+    fn status_round_trips_and_rejects_unknown_values() {
+        for status in [
+            Status::Created,
+            Status::Starting,
+            Status::Running,
+            Status::Exited,
+            Status::Terminated,
+            Status::Failed,
+            Status::Lost,
+        ] {
+            assert_eq!(Status::try_from(status.as_str()).unwrap(), status);
+            assert_eq!(
+                status.terminal(),
+                !matches!(status, Status::Created | Status::Starting | Status::Running)
+            );
+        }
+        let error = Status::try_from("corrupt").unwrap_err();
+        assert_eq!(error.status, 500);
+        assert_eq!(error.code, "internal_error");
+    }
+
+    #[test]
+    fn config_paths_stay_under_the_selected_state_root() {
+        let dir = TestDir::new("config");
+        let config = Config {
+            state_dir: dir.path().join("state"),
+            runtime_dir: dir.path().join("runtime"),
+            ..Config::default()
+        };
+        assert_eq!(config.jobs_dir(), dir.path().join("state/jobs"));
+        assert_eq!(config.db_path(), dir.path().join("state/shellctl.db"));
+        assert_eq!(config.tmux_socket(), dir.path().join("runtime/tmux.sock"));
+        assert_eq!(
+            config.runner_path(),
+            dir.path().join("runtime/bin/shellctl-runner")
+        );
+    }
+
+    #[test]
+    fn bounded_positive_defaults_zero_and_caps_large_values() {
+        assert_eq!(bounded_positive(None, 16, 512), 16);
+        assert_eq!(bounded_positive(Some(0), 16, 512), 16);
+        assert_eq!(bounded_positive(Some(32), 16, 512), 32);
+        assert_eq!(bounded_positive(Some(1024), 16, 512), 512);
+    }
+
+    #[test]
+    fn output_windows_cover_missing_files_offsets_and_utf8_boundaries() {
+        let dir = TestDir::new("output-window");
+        let missing = dir.path().join("missing.log");
+        let empty = read_window(&missing, 0, 8).unwrap();
+        assert_eq!(empty.output, "");
+        assert_eq!(empty.offset, 0);
+
+        let error = read_window(&missing, 1, 8).unwrap_err();
+        assert_eq!(error.status, 400);
+        assert_eq!(error.code, "invalid_offset");
+
+        let path = dir.path().join("output.log");
+        fs::write(&path, "A世界B").unwrap();
+        let first = read_window(&path, 0, 4).unwrap();
+        assert_eq!(first.output, "A世");
+        assert_eq!(first.offset, 4);
+        assert!(first.truncated);
+
+        let inside_codepoint = read_window(&path, 2, 4).unwrap();
+        assert_eq!(inside_codepoint.output, "界");
+        assert_eq!(inside_codepoint.offset, 7);
+        assert!(inside_codepoint.truncated);
+
+        let error = read_window(&path, 99, 8).unwrap_err();
+        assert_eq!(error.status, 400);
+        assert_eq!(error.code, "invalid_offset");
+
+        let tail = tail_window(&path, 5).unwrap();
+        assert_eq!(tail.output, "界B");
+        assert_eq!(tail.offset, "A世界B".len());
+    }
+
+    #[test]
+    fn transition_enforces_compare_and_swap_and_terminal_metadata() {
+        let dir = TestDir::new("transition");
+        let conn = db_open(&dir.path().join("shellctl.db"), 5000).unwrap();
+        insert_test_job(&conn, &test_job("job", Status::Created, None));
+
+        let running = transition(
+            &conn,
+            "job",
+            Status::Running,
+            &[Status::Created],
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(running.status, Status::Running);
+        assert!(running.started_at.is_some());
+
+        let stale = transition(
+            &conn,
+            "job",
+            Status::Failed,
+            &[Status::Created],
+            Some("stale"),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(stale.status, Status::Running);
+
+        let ended = transition(
+            &conn,
+            "job",
+            Status::Terminated,
+            &[Status::Running],
+            None,
+            None,
+            Some("2026-01-01T00:00:03Z"),
+        )
+        .unwrap();
+        assert_eq!(ended.status, Status::Terminated);
+        assert_eq!(ended.exit_code, Some(0));
+        assert_eq!(ended.ended_at.as_deref(), Some("2026-01-01T00:00:03Z"));
+    }
+
+    #[test]
+    fn runner_exit_reports_unknown_jobs() {
+        let dir = TestDir::new("unknown-exit");
+        let conn = db_open(&dir.path().join("shellctl.db"), 5000).unwrap();
+        let error = db_record_runner_exit(&conn, "missing", 0, "2026-01-01T00:00:00Z").unwrap_err();
+        assert_eq!(error.status, 404);
+        assert_eq!(error.code, "job_not_found");
+    }
+
+    #[test]
+    fn concurrent_runner_exit_updates_are_idempotent() {
+        let dir = TestDir::new("concurrent-exit");
+        let db_path = dir.path().join("shellctl.db");
+        let conn = db_open(&db_path, 5000).unwrap();
+        insert_test_job(&conn, &test_job("job", Status::Running, None));
+        drop(conn);
+
+        let workers = 12;
+        let barrier = Arc::new(Barrier::new(workers));
+        let mut handles = Vec::new();
+        for code in 0..workers {
+            let barrier = barrier.clone();
+            let state_dir = dir.path().to_path_buf();
+            handles.push(thread::spawn(move || {
+                barrier.wait();
+                let ended_at = format!("2026-01-01T00:00:{code:02}Z");
+                record_runner_exit(&state_dir, "job", code as i32, &ended_at, 5000)
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap().unwrap();
+        }
+
+        let conn = db_connect(&db_path, 5000, false).unwrap();
+        let job = read_job(&conn, "job").unwrap();
+        let winner = job.exit_code.unwrap();
+        assert!((0..workers as i32).contains(&winner));
+        assert_eq!(
+            job.ended_at.as_deref(),
+            Some(format!("2026-01-01T00:00:{winner:02}Z").as_str())
+        );
+    }
+
+    #[test]
+    fn materialize_recovers_each_nonterminal_runtime_state() {
+        let dir = TestDir::new("materialize");
+        let mut conn = db_open(&dir.path().join("shellctl.db"), 5000).unwrap();
+
+        let exited = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "exited",
+                status: Status::Running,
+                exit_code: Some(23),
+                session: false,
+                pipe: None,
+                pipe_failed: false,
+                starting: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(exited.status, Status::Exited);
+        assert_eq!(exited.exit_code, Some(23));
+
+        let lost = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "lost",
+                status: Status::Running,
+                exit_code: None,
+                session: false,
+                pipe: None,
+                pipe_failed: false,
+                starting: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(lost.status, Status::Lost);
+
+        let failed = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "failed",
+                status: Status::Running,
+                exit_code: None,
+                session: true,
+                pipe: Some(false),
+                pipe_failed: true,
+                starting: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(failed.status, Status::Failed);
+
+        let running = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "running",
+                status: Status::Starting,
+                exit_code: None,
+                session: true,
+                pipe: Some(true),
+                pipe_failed: false,
+                starting: false,
+            },
+        )
+        .unwrap();
+        assert_eq!(running.status, Status::Running);
+
+        let guarded = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "guarded",
+                status: Status::Starting,
+                exit_code: None,
+                session: false,
+                pipe: None,
+                pipe_failed: false,
+                starting: true,
+            },
+        );
+        assert!(guarded.is_none());
+        assert_eq!(read_job(&conn, "guarded").unwrap().status, Status::Starting);
+
+        let terminal = materialize_case(
+            &mut conn,
+            MaterializeCase {
+                id: "terminal",
+                status: Status::Terminated,
+                exit_code: Some(0),
+                session: false,
+                pipe: None,
+                pipe_failed: true,
+                starting: false,
+            },
+        );
+        assert!(terminal.is_none());
+        assert_eq!(
+            read_job(&conn, "terminal").unwrap().status,
+            Status::Terminated
+        );
+    }
+
+    #[test]
+    fn exit_metadata_requires_a_complete_atomic_marker_set() {
+        let dir = TestDir::new("exit-metadata");
+        assert!(drained_exit_metadata(dir.path()).is_none());
+
+        fs::write(dir.path().join(".pipe-drained"), []).unwrap();
+        assert!(drained_exit_metadata(dir.path()).is_none());
+
+        fs::write(dir.path().join("runner-exit-code"), "not-an-int\n").unwrap();
+        fs::write(dir.path().join("runner-ended-at"), "2026-01-01T00:00:00Z\n").unwrap();
+        assert!(drained_exit_metadata(dir.path()).is_none());
+
+        fs::write(dir.path().join("runner-exit-code"), "17\n").unwrap();
+        assert_eq!(
+            drained_exit_metadata(dir.path()),
+            Some((17, "2026-01-01T00:00:00Z".into()))
+        );
+    }
+
+    #[test]
+    fn atomic_write_replaces_complete_values_without_leaving_temp_files() {
+        let dir = TestDir::new("atomic-write");
+        let path = dir.path().join("value");
+        atomic_write(&path, "first").unwrap();
+        atomic_write(&path, "second").unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), "second\n");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn shell_helpers_quote_metacharacters_and_classify_tmux_errors() {
+        assert_eq!(shell_quote("plain"), "'plain'");
+        assert_eq!(shell_quote("a'b"), "'a'\\''b'");
+        assert!(tmux_missing("can't find pane: shellctl-job:0.0"));
+        assert!(tmux_missing("NO SERVER RUNNING on /tmp/tmux.sock"));
+        assert!(!tmux_missing("permission denied"));
+    }
+
+    #[test]
+    fn sanitizer_handles_split_osc_terminators_and_trailing_carriage_returns() {
+        let mut sanitizer = PtySanitizer::default();
+        assert!(sanitizer.feed(b"before\x1b]0;title\x1b").is_empty());
+        assert_eq!(sanitizer.feed(b"\\after\rreplace\r"), Vec::<u8>::new());
+        assert_eq!(sanitizer.flush(), b"replace");
+    }
+
+    #[test]
+    fn runner_rejects_incomplete_invocations_without_touching_state() {
+        assert_eq!(run_runner(&[]), 125);
+        assert_eq!(run_runner(&["--exec".into()]), 125);
     }
 }
