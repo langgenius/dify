@@ -345,7 +345,7 @@ def test_directory_returns_one_ordered_complete_snapshot(mocker) -> None:
     assert client.directory_calls == [{"limit": 200}, {"limit": 200, "cursor": "cursor-2"}]
 
 
-def test_directory_excludes_slackbot_system_user(mocker: MockerFixture) -> None:
+def test_directory_excludes_slack_owned_special_users(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.append(
         SlackResponse(
@@ -358,6 +358,13 @@ def test_directory_excludes_slackbot_system_user(mocker: MockerFixture) -> None:
                         "is_bot": False,
                         "is_app_user": False,
                         "profile": {"real_name_normalized": "Slackbot"},
+                    },
+                    {
+                        "id": "USLACK",
+                        "deleted": False,
+                        "is_bot": False,
+                        "is_app_user": False,
+                        "profile": {"real_name_normalized": "Slack"},
                     },
                     {
                         "id": "user-1",
@@ -380,6 +387,25 @@ def test_directory_excludes_slackbot_system_user(mocker: MockerFixture) -> None:
 
     assert isinstance(result, Directory)
     assert [entry.provider_user_id for entry in result.entries] == ["user-1"]
+
+
+def test_directory_rejects_unhashable_provider_user_id_without_raising(mocker: MockerFixture) -> None:
+    client = FakeWebClient()
+    client.directory_responses.append(
+        SlackResponse(
+            {
+                "ok": True,
+                "members": [{"id": [], "profile": {}}],
+                "response_metadata": {"next_cursor": ""},
+            }
+        )
+    )
+    adapter = _adapter(mocker, client)
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, DirectoryReadFailure)
+    assert result.reason == "Slack returned an invalid directory entry."
 
 
 def test_directory_page_failure_discards_entries(mocker) -> None:
