@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "ana sayfa",
   "agentDetail.configure.workingDirectory.open": "Çalışma dizinini aç",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "Çalışma dizinine dön",
+  "agentDetail.configure.workingDirectory.savedFiles": "Kaydedilen dosyalar",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "Geçici dosyalar",
   "agentDetail.configure.workingDirectory.title": "Çalışma dizini",
   "agentDetail.configure.workingDirectory.treeLabel": "Çalışma dizini dosyaları",
   "agentDetail.configure.workingDirectory.workingDirectory": "çalışma dizini",
