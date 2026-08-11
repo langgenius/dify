@@ -372,6 +372,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "skill.view",
     "skill.edit",
+    "skill.publish",
     "skill.delete",
     "api_extension.manage",
     "plugin.install",

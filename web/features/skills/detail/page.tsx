@@ -23,6 +23,7 @@ import {
   getSkillVersionTitle,
   isDirectory,
   setSkillDetailCache,
+  showSkillErrorToast,
 } from './shared'
 import { DetailSkeleton } from './shell'
 import { RestoreVersionDialog, VersionPanel } from './version-panel'
@@ -102,7 +103,9 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     enabled: !!activeVersionId,
   })
   const publishMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
@@ -265,8 +268,11 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
           })
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.publishFailed']))
+        onError: (error) => {
+          showSkillErrorToast(
+            error,
+            t(($) => $['skillManagement.detail.publishFailed']),
+          )
         },
       },
     )
