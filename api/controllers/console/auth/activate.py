@@ -112,7 +112,12 @@ class ActivateApi(Resource):
     )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):
-        """Accept an invitation, binding an optional session to the invited account."""
+        """Accept an invitation without letting an existing session act for another account.
+
+        Token-only activation remains available for legacy clients. When the request already
+        carries a console session, that session must belong to the account encoded in the
+        invitation before the token is consumed or tenant membership is changed.
+        """
         args = ActivatePayload.model_validate(console_ns.payload or {})
         authenticated_account_id: str | None = None
         if extract_access_token(request) is not None:
