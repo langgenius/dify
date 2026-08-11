@@ -15,8 +15,20 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 
-from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
-from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginPayload, EmailCodeLoginSendEmailApi
+from controllers.console.auth.error import (
+    EmailCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+    TurnstileServiceUnavailableError,
+    TurnstileVerificationFailedError,
+)
+from controllers.console.auth.login import (
+    EmailCodeLoginApi,
+    EmailCodeLoginPayload,
+    EmailCodeLoginSendEmailApi,
+    EmailCodeSendPayload,
+    EmailPayload,
+)
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
@@ -25,6 +37,7 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from services.errors.account import AccountRegisterError
+from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 
 
 def encode_code(code: str) -> str:
@@ -42,6 +55,11 @@ def test_email_code_login_payload_rejects_invalid_timezone():
                 "timezone": "",
             }
         )
+
+
+def test_turnstile_token_is_scoped_to_email_code_send_payload():
+    assert "turnstile_token" in EmailCodeSendPayload.model_fields
+    assert "turnstile_token" not in EmailPayload.model_fields
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -153,7 +171,8 @@ class TestEmailCodeLoginSendEmailApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
-    def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app: Flask):
+    @patch("controllers.console.auth.login.TurnstileService.verify")
+    def test_send_email_code_ip_rate_limited(self, mock_verify, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test email code sending blocked by IP rate limit.
 
@@ -165,10 +184,105 @@ class TestEmailCodeLoginSendEmailApi:
         mock_is_ip_limit.return_value = True
 
         # Act & Assert
-        with app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}):
-            api = EmailCodeLoginSendEmailApi()
+        with (
+            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
+        ):
             with pytest.raises(EmailSendIpLimitError):
-                api.post()
+                EmailCodeLoginSendEmailApi().post()
+
+        mock_verify.assert_not_called()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email", return_value="token")
+    @patch("controllers.console.auth.login.TurnstileService.verify")
+    def test_cloud_send_verifies_turnstile_before_sending_email(
+        self,
+        mock_verify,
+        mock_send_email,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        mock_account,
+    ):
+        mock_get_user.return_value = mock_account
+
+        with (
+            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            app.test_request_context(
+                "/email-code-login",
+                method="POST",
+                json={"email": "test@example.com", "turnstile_token": "verified-token"},
+                headers={"CF-Connecting-IP": "203.0.113.8"},
+            ),
+        ):
+            response = EmailCodeLoginSendEmailApi().post()
+
+        assert response["result"] == "success"
+        mock_verify.assert_called_once_with(token="verified-token", remote_ip="203.0.113.8")
+        mock_send_email.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("service_error", "http_error"),
+        [
+            (TurnstileChallengeRejectedError(), TurnstileVerificationFailedError),
+            (TurnstileUpstreamError(), TurnstileServiceUnavailableError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    def test_cloud_send_maps_turnstile_errors_without_looking_up_account(
+        self,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        service_error: Exception,
+        http_error: type[Exception],
+    ):
+        with (
+            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.login.TurnstileService.verify", side_effect=service_error),
+            app.test_request_context(
+                "/email-code-login",
+                method="POST",
+                json={"email": "test@example.com", "turnstile_token": "challenge-token"},
+            ),
+            pytest.raises(http_error),
+        ):
+            EmailCodeLoginSendEmailApi().post()
+
+        mock_get_user.assert_not_called()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.auth.login.AccountService.get_user_through_email")
+    @patch("controllers.console.auth.login.AccountService.send_email_code_login_email", return_value="token")
+    @patch("controllers.console.auth.login.TurnstileService.verify")
+    def test_self_hosted_send_does_not_call_turnstile(
+        self,
+        mock_verify,
+        mock_send_email,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        mock_account,
+    ):
+        mock_get_user.return_value = mock_account
+
+        with (
+            patch("controllers.console.auth.login.dify_config.EDITION", "SELF_HOSTED"),
+            app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
+        ):
+            response = EmailCodeLoginSendEmailApi().post()
+
+        assert response["result"] == "success"
+        mock_verify.assert_not_called()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")

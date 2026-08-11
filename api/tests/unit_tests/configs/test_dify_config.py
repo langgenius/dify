@@ -3,6 +3,7 @@ import os
 import pytest
 from flask import Flask
 from packaging.version import Version
+from pydantic import SecretStr
 from yarl import URL
 
 from configs.app_config import DifyConfig
@@ -108,6 +109,18 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
         "langgenius/openai",
         "langgenius/gemini",
     ]
+
+
+def test_turnstile_config_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("TURNSTILE_SECRET_KEY", " test-secret ")
+    monkeypatch.setenv("TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev, Login.Example.COM. ")
+
+    config = DifyConfig(_env_file=None)
+
+    assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
+    assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
+    assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
