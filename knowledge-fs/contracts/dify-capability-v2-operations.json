@@ -1573,6 +1573,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "logical_documents.delete",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "DELETE",
+      "operationId": "requestBulkLogicalDocumentDeletion",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/logical-documents/bulk",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "documents.delete",
       "allowedCallerKinds": [
         "interactive",

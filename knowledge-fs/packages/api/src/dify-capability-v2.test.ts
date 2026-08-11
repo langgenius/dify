@@ -426,6 +426,12 @@ describe("Dify Capability v2 request guard", () => {
         "documents.bulk.delete",
         "knowledge_space",
       ],
+      requestBulkLogicalDocumentDeletion: [
+        "DELETE",
+        "/knowledge-spaces/{id}/logical-documents/bulk",
+        "logical_documents.delete",
+        "knowledge_space",
+      ],
       requestDocumentDeletion: [
         "DELETE",
         "/knowledge-spaces/{id}/documents/{documentId}",

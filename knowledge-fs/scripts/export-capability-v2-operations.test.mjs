@@ -20,7 +20,7 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 112);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 113);
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "createSourceCrawlImportWorkflow",
