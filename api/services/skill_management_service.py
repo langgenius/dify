@@ -2233,7 +2233,9 @@ class SkillManagementService:
                     "mime_type": "application/zip",
                 }
                 for _binding, skill, version in rows
-                for published_name, published_description in [self._published_skill_identity(skill, version)]
+                for published_name, _published_display_name, published_description in [
+                    self._published_skill_identity(skill, version)
+                ]
             ]
 
     def pull_runtime_agent_skill(self, *, tenant_id: str, agent_id: str, name: str) -> PublishedSkillArchive:
@@ -2262,35 +2264,102 @@ class SkillManagementService:
                 raise SkillManagementServiceError("skill_not_found", "skill not found", status_code=404)
             skill, version = row
             tool_file_id = version.archive_tool_file_id
-            filename = f"{self._published_skill_identity(skill, version)[0]}.zip"
+            published_name, published_display_name, published_description = self._published_skill_identity(
+                skill, version
+            )
+            archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id)
+            archive_bytes = self._normalize_published_archive_identity(
+                archive_bytes,
+                name=published_name,
+                display_name=published_display_name,
+                description=published_description,
+            )
+            filename = f"{published_name}.zip"
         return PublishedSkillArchive(
             filename=filename,
             mime_type="application/zip",
-            payload=self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
+            payload=archive_bytes,
         )
 
-    def _published_skill_identity(self, skill: Skill, version: SkillVersion) -> tuple[str, str]:
+    @classmethod
+    def _published_skill_identity(cls, skill: Skill, version: SkillVersion) -> tuple[str, str, str]:
         """Return metadata from the published snapshot, falling back for old versions."""
         manifest = version.manifest
         if manifest.name is not None:
-            return manifest.name, manifest.description or ""
+            display_name = manifest.display_name or " ".join(part.capitalize() for part in manifest.name.split("-"))
+            return manifest.name, display_name, manifest.description or ""
 
         try:
-            archive_bytes = self._load_tool_file_bytes(
+            archive_bytes = cls._load_tool_file_bytes(
                 tenant_id=skill.tenant_id,
                 file_id=version.archive_tool_file_id,
             )
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
                 content = archive.read(_SKILL_MD).decode("utf-8")
-            frontmatter = self._parse_frontmatter(content)
+            frontmatter = cls._parse_frontmatter(content)
         except (OSError, UnicodeDecodeError, ValueError, KeyError, zipfile.BadZipFile, SkillManagementServiceError):
-            return skill.name, skill.description
+            return skill.name, skill.display_name, skill.description
 
         name = frontmatter.get("name")
         description = frontmatter.get("description")
         if not isinstance(name, str) or not name:
-            return skill.name, skill.description
-        return name, description if isinstance(description, str) else ""
+            return skill.name, skill.display_name, skill.description
+        return name, cls._display_name_from_frontmatter(metadata=frontmatter, name=name), (
+            description if isinstance(description, str) else ""
+        )
+
+    @classmethod
+    def _normalize_published_archive_identity(
+        cls,
+        archive_bytes: bytes,
+        *,
+        name: str,
+        display_name: str,
+        description: str,
+    ) -> bytes:
+        """Keep the runtime archive metadata aligned with its published manifest."""
+        try:
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                skill_md = archive.read(_SKILL_MD).decode("utf-8")
+                frontmatter_match = _FRONTMATTER_RE.match(skill_md)
+                if frontmatter_match is None:
+                    return archive_bytes
+                frontmatter = cls._parse_frontmatter(skill_md)
+                current_name = frontmatter.get("name")
+                current_description = frontmatter.get("description")
+                current_display_name = cls._display_name_from_frontmatter(metadata=frontmatter, name=str(current_name))
+                if (
+                    current_name == name
+                    and current_description == description
+                    and current_display_name == display_name
+                ):
+                    return archive_bytes
+
+                metadata = frontmatter.get("metadata")
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                frontmatter["name"] = name
+                frontmatter["description"] = description
+                metadata["display-name"] = display_name
+                frontmatter["metadata"] = metadata
+                serialized_frontmatter = yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False).rstrip()
+                normalized_skill_md = (
+                    f"---\n{serialized_frontmatter}\n---\n\n"
+                    f"{skill_md[frontmatter_match.end() :].lstrip(chr(10) + chr(13))}"
+                )
+
+                output = io.BytesIO()
+                with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as normalized_archive:
+                    for info in archive.infolist():
+                        payload = (
+                            normalized_skill_md.encode("utf-8")
+                            if info.filename == _SKILL_MD
+                            else archive.read(info)
+                        )
+                        normalized_archive.writestr(info.filename, payload)
+                return output.getvalue()
+        except (OSError, UnicodeDecodeError, ValueError, KeyError, zipfile.BadZipFile, SkillManagementServiceError):
+            return archive_bytes
 
     def replace_agent_bindings(
         self,
@@ -3099,8 +3168,9 @@ class SkillManagementService:
             skill_id: (file_count, latest_draft_updated_at) for skill_id, file_count, latest_draft_updated_at in rows
         }
 
-    @staticmethod
+    @classmethod
     def _serialize_agent_binding_skill(
+        cls,
         *,
         binding: AgentSkillBinding,
         skill: Skill,
@@ -3115,13 +3185,19 @@ class SkillManagementService:
             or latest_draft_updated_at is None
             or latest_draft_updated_at.replace(tzinfo=None) > version.created_at.replace(tzinfo=None)
         )
+        if version is None:
+            name = skill.name
+            display_name = skill.display_name
+            description = skill.description
+        else:
+            name, display_name, description = cls._published_skill_identity(skill, version)
         return {
             "id": skill.id,
             "priority": binding.priority,
-            "name": skill.name,
-            "display_name": skill.display_name,
+            "name": name,
+            "display_name": display_name,
             "icon": skill.icon,
-            "description": skill.description,
+            "description": description,
             "tags": tags,
             "status": "draft" if has_unpublished_draft else "published",
             "file_count": file_count,
