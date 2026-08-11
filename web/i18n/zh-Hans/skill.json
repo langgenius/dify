@@ -123,7 +123,7 @@
   "skillManagement.detail.publishReferencesTitle": "发布 Skill",
   "skillManagement.detail.publishSuccess": "Skill 已发布。",
   "skillManagement.detail.publishUpdate": "发布更新",
-  "skillManagement.detail.published": "Published",
+  "skillManagement.detail.published": "已发布",
   "skillManagement.detail.publishedAt": "{{time}}发布",
   "skillManagement.detail.publishedVersion": "已发布 #{{number}}",
   "skillManagement.detail.publishing": "发布中...",
