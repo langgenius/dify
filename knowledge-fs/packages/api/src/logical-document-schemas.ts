@@ -53,6 +53,9 @@ export const LogicalDocumentPublicSchema = z
     active: LogicalDocumentActiveRevisionSchema.nullable(),
     activeRevision: z.number().int().positive().optional(),
     createdAt: z.string(),
+    disabledAt: z.string().optional(),
+    disabledBySubjectId: z.string().optional(),
+    enabled: z.boolean(),
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
     providerItemId: z.string().optional(),
@@ -86,6 +89,45 @@ export const PatchDocumentUserMetadataSchema = z
   .object({
     expectedRowVersion: z.number().int().nonnegative(),
     patch: z.record(z.unknown()),
+  })
+  .strict();
+
+export const PatchDocumentAvailabilitySchema = z
+  .object({
+    enabled: z.boolean(),
+    expectedRowVersion: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const BulkPatchDocumentAvailabilitySchema = z
+  .object({
+    documents: z
+      .array(
+        z
+          .object({
+            documentId: z.string().uuid(),
+            expectedRowVersion: z.number().int().nonnegative(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100),
+    enabled: z.boolean(),
+  })
+  .strict();
+
+export const BulkPatchDocumentAvailabilityResponseSchema = z
+  .object({
+    items: z.array(
+      z.union([
+        LogicalDocumentPublicSchema,
+        z.object({
+          documentId: z.string().uuid(),
+          status: z.enum(["conflict", "not_found"]),
+        }),
+      ]),
+    ),
+    total: z.number().int().nonnegative(),
   })
   .strict();
 

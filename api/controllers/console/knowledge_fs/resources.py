@@ -66,6 +66,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBadCaseTraceReferenceResponse,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkDeletionAcceptedResponse,
+    KnowledgeFSBulkDocumentAvailabilityPayload,
+    KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCrawlImportPayload,
@@ -76,6 +78,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCredentialCreateResponse,
     KnowledgeFSCredentialListResponse,
     KnowledgeFSCursorQuery,
+    KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
@@ -215,9 +218,11 @@ register_schema_models(
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSCredentialCreatePayload,
     KnowledgeFSCursorQuery,
+    KnowledgeFSBulkDocumentAvailabilityPayload,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSMetadataFieldCreatePayload,
@@ -277,6 +282,7 @@ register_response_schema_models(
     KnowledgeFSBadCaseResponse,
     KnowledgeFSBadCaseTraceReferenceResponse,
     KnowledgeFSBulkDeletionAcceptedResponse,
+    KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCredentialCreateResponse,
     KnowledgeFSCredentialListResponse,
@@ -1131,6 +1137,26 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
         )
         return dump_response(KnowledgeFSLogicalDocumentListResponse, result)
 
+    @console_ns.expect(console_ns.models[KnowledgeFSBulkDocumentAvailabilityPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical document availability updated",
+        console_ns.models[KnowledgeFSBulkDocumentAvailabilityResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def patch(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.bulk_update_logical_document_availability(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSBulkDocumentAvailabilityPayload),
+        )
+        return dump_response(KnowledgeFSBulkDocumentAvailabilityResponse, result)
+
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>")
 class KnowledgeFSSpaceLogicalDocumentApi(Resource):
@@ -1150,6 +1176,27 @@ class KnowledgeFSSpaceLogicalDocumentApi(Resource):
             account_id=actor_id,
             control_space_id=control_space_id,
             document_id=document_id,
+        )
+        return dump_response(KnowledgeFSLogicalDocumentResponse, result)
+
+    @console_ns.expect(console_ns.models[KnowledgeFSDocumentAvailabilityPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical document availability updated",
+        console_ns.models[KnowledgeFSLogicalDocumentResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def patch(self, control_space_id: str, document_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.update_logical_document_availability(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+            payload=_payload(KnowledgeFSDocumentAvailabilityPayload),
         )
         return dump_response(KnowledgeFSLogicalDocumentResponse, result)
 

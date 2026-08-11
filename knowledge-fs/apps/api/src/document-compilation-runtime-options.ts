@@ -61,6 +61,7 @@ import {
   createDocumentCompilationPublicationCoordinator,
   createDocumentCompilationPublicationProcessor,
   createDocumentCompilationRuntime,
+  DocumentCompilationProcessingError,
   createDocumentCompilationWorker,
   createDocumentCompilationWorkerAttemptProcessor,
   createDocumentOutlineBuilder,
@@ -498,6 +499,13 @@ export function createApiDocumentCompilationRuntime({
       jobs,
     }) =>
       createDocumentCompilationWorker({
+        assertDocumentAvailable: async (input) => {
+          if (!(await repositories.logicalDocuments.isAssetEnabled?.(input)))
+            throw new DocumentCompilationProcessingError(
+              "Document was disabled before compilation started",
+              { code: "DOCUMENT_DISABLED", retryable: false },
+            );
+        },
         assets: repositories.assets,
         candidateComposer,
         ...(deletionFence ? { deletionFence } : {}),

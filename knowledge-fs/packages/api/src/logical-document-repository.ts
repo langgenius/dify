@@ -45,6 +45,9 @@ export type DocumentRevisionState = "candidate" | "active" | "superseded" | "fai
 export interface LogicalDocument {
   readonly activeRevision?: number | undefined;
   readonly createdAt: string;
+  readonly disabledAt?: string | undefined;
+  readonly disabledBySubjectId?: string | undefined;
+  readonly enabled?: boolean | undefined;
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly providerItemId?: string | undefined;
@@ -154,6 +157,13 @@ export interface PatchDocumentUserMetadataInput extends LogicalDocumentLookup {
   readonly requestedBySubjectId?: string | undefined;
 }
 
+export interface PatchDocumentAvailabilityInput extends LogicalDocumentLookup {
+  readonly enabled: boolean;
+  readonly expectedRowVersion: number;
+  readonly now: string;
+  readonly subjectId: string;
+}
+
 export interface ListLogicalDocumentsInput extends LogicalDocumentScope {
   readonly candidateGrants: readonly string[];
   readonly cursor?: LogicalDocumentCursor | undefined;
@@ -184,6 +194,7 @@ export interface SourceActiveDocumentInventoryCursor {
 export interface SourceActiveDocumentInventoryItem {
   readonly contentHash: string;
   readonly documentId: string;
+  readonly enabled?: boolean | undefined;
   readonly etag?: string | undefined;
   readonly providerItemId: string;
   readonly revision: number;
@@ -234,6 +245,12 @@ export interface LogicalDocumentRepository {
     readonly knowledgeSpaceId: string;
     readonly tenantId: string;
   }): Promise<boolean>;
+  isAssetEnabled?(input: {
+    readonly documentAssetId: string;
+    readonly documentAssetVersion: number;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  }): Promise<boolean>;
   /**
    * Proves that an exact run-owned revision is failed, was never active, and is the asset's only
    * logical reference before a durable physical-deletion request is admitted.
@@ -264,6 +281,7 @@ export interface LogicalDocumentRepository {
     readonly nextCursor?: SourceActiveDocumentInventoryCursor | undefined;
   }>;
   patchUserMetadata(input: PatchDocumentUserMetadataInput): Promise<LogicalDocument>;
+  patchAvailability?(input: PatchDocumentAvailabilityInput): Promise<LogicalDocument>;
 }
 
 export interface DocumentRevisionPublicationFenceResolver {
@@ -445,6 +463,7 @@ export function createInMemoryLogicalDocumentRepository({
         }
         document = {
           createdAt: input.now,
+          enabled: true,
           id: documentId,
           knowledgeSpaceId: input.knowledgeSpaceId,
           ...(input.providerItemId ? { providerItemId: input.providerItemId } : {}),
@@ -585,6 +604,18 @@ export function createInMemoryLogicalDocumentRepository({
       }
       return false;
     },
+    isAssetEnabled: async (input) =>
+      [...documents.values()].some(
+        (document) =>
+          document.tenantId === input.tenantId &&
+          document.knowledgeSpaceId === input.knowledgeSpaceId &&
+          document.enabled !== false &&
+          (revisions.get(document.id) ?? []).some(
+            (revision) =>
+              revision.documentAssetId === input.documentAssetId &&
+              revision.documentAssetVersion === input.documentAssetVersion,
+          ),
+      ),
     isFailedSourceRevisionCleanupEligible: async (input) => {
       const document = documents.get(input.documentId);
       if (
@@ -708,6 +739,7 @@ export function createInMemoryLogicalDocumentRepository({
         return {
           contentHash: active.contentHash,
           documentId: document.id,
+          enabled: document.enabled !== false,
           ...(etag ? { etag } : {}),
           providerItemId: document.providerItemId,
           revision: active.revision,
@@ -744,6 +776,32 @@ export function createInMemoryLogicalDocumentRepository({
         rowVersion: document.rowVersion + 1,
         updatedAt: input.now,
         userMetadata: applyUserMetadataPatch(document.userMetadata, input.patch),
+      };
+      documents.set(document.id, cloneDocument(updated));
+      return cloneDocument(updated);
+    },
+    patchAvailability: async (input) => {
+      const document = getScoped(input);
+      if (document.rowVersion !== input.expectedRowVersion) {
+        throw new LogicalDocumentConflictError(
+          document.activeRevision ?? null,
+          document.activeRevision ?? null,
+          input.expectedRowVersion,
+          document.rowVersion,
+        );
+      }
+      if (document.status === "deleting") {
+        throw new LogicalDocumentValidationError("Deleting documents cannot change availability");
+      }
+      if ((document.enabled ?? true) === input.enabled) return cloneDocument(document);
+      const updated: LogicalDocument = {
+        ...document,
+        ...(input.enabled
+          ? { disabledAt: undefined, disabledBySubjectId: undefined }
+          : { disabledAt: input.now, disabledBySubjectId: input.subjectId }),
+        enabled: input.enabled,
+        rowVersion: document.rowVersion + 1,
+        updatedAt: input.now,
       };
       documents.set(document.id, cloneDocument(updated));
       return cloneDocument(updated);
@@ -1377,6 +1435,21 @@ export function createDatabaseLogicalDocumentRepository({
       });
       return result.rows.length > 0;
     },
+    isAssetEnabled: async (input) => {
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [
+          input.tenantId,
+          input.knowledgeSpaceId,
+          input.documentAssetId,
+          input.documentAssetVersion,
+        ],
+        sql: `SELECT document.${q(database, "id")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "enabled")} = ${database.dialect === "postgres" ? "TRUE" : "1"} AND revision.${q(database, "document_asset_id")} = ${p(database, 3)} AND revision.${q(database, "document_asset_version")} = ${p(database, 4)} LIMIT 1;`,
+        tableName: "logical_documents",
+      });
+      return result.rows.length > 0;
+    },
     isFailedSourceRevisionCleanupEligible: (input) =>
       database.transaction(async (transaction) => {
         await requireWritableSpace(database, transaction, input);
@@ -1509,7 +1582,7 @@ export function createDatabaseLogicalDocumentRepository({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `SELECT document.${q(database, "id")} AS ${q(database, "document_id")}, document.${q(database, "provider_item_id")}, document.${q(database, "row_version")}, revision.${q(database, "revision")}, revision.${q(database, "content_hash")}, revision.${q(database, "system_metadata")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "source_id")} = ${p(database, 3)} AND document.${q(database, "status")} = 'ready'${cursorFilter} ORDER BY document.${q(database, "provider_item_id")} ASC, document.${q(database, "id")} ASC LIMIT ${p(database, params.length)};`,
+        sql: `SELECT document.${q(database, "id")} AS ${q(database, "document_id")}, document.${q(database, "provider_item_id")}, document.${q(database, "row_version")}, document.${q(database, "enabled")}, revision.${q(database, "revision")}, revision.${q(database, "content_hash")}, revision.${q(database, "system_metadata")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "source_id")} = ${p(database, 3)} AND document.${q(database, "status")} = 'ready'${cursorFilter} ORDER BY document.${q(database, "provider_item_id")} ASC, document.${q(database, "id")} ASC LIMIT ${p(database, params.length)};`,
         tableName: "logical_documents",
       });
       const items = result.rows.slice(0, input.limit).map((row) => {
@@ -1518,6 +1591,7 @@ export function createDatabaseLogicalDocumentRepository({
         return {
           contentHash: stringColumn(row, "content_hash"),
           documentId: stringColumn(row, "document_id"),
+          enabled: databaseBooleanColumn(row, "enabled", true),
           ...(etag ? { etag } : {}),
           providerItemId: stringColumn(row, "provider_item_id"),
           revision: numberColumn(row, "revision"),
@@ -1590,6 +1664,51 @@ export function createDatabaseLogicalDocumentRepository({
             tenantId: input.tenantId,
             userMetadata: metadata,
           });
+        }
+        const updated = await readDocument(transaction, input);
+        if (!updated) throw new LogicalDocumentNotFoundError("Logical document not found");
+        return updated;
+      }),
+    patchAvailability: (input) =>
+      database.transaction(async (transaction) => {
+        await requireWritableSpace(database, transaction, input);
+        const document = await readDocument(transaction, input, true);
+        if (!document) throw new LogicalDocumentNotFoundError("Logical document not found");
+        if (document.rowVersion !== input.expectedRowVersion) {
+          throw new LogicalDocumentConflictError(
+            document.activeRevision ?? null,
+            document.activeRevision ?? null,
+            input.expectedRowVersion,
+            document.rowVersion,
+          );
+        }
+        if (document.status === "deleting") {
+          throw new LogicalDocumentValidationError("Deleting documents cannot change availability");
+        }
+        if ((document.enabled ?? true) === input.enabled) return document;
+        const result = await transaction.execute({
+          maxRows: 0,
+          operation: "update",
+          params: [
+            input.enabled,
+            input.enabled ? null : input.now,
+            input.enabled ? null : (input.subjectId ?? null),
+            input.now,
+            input.tenantId,
+            input.knowledgeSpaceId,
+            input.documentId,
+            input.expectedRowVersion,
+          ],
+          sql: `UPDATE ${q(database, "logical_documents")} SET ${q(database, "enabled")} = ${p(database, 1)}, ${q(database, "disabled_at")} = ${p(database, 2)}, ${q(database, "disabled_by_subject_id")} = ${p(database, 3)}, ${q(database, "updated_at")} = ${p(database, 4)}, ${q(database, "row_version")} = ${q(database, "row_version")} + 1 WHERE ${q(database, "tenant_id")} = ${p(database, 5)} AND ${q(database, "knowledge_space_id")} = ${p(database, 6)} AND ${q(database, "id")} = ${p(database, 7)} AND ${q(database, "row_version")} = ${p(database, 8)};`,
+          tableName: "logical_documents",
+        });
+        if (result.rowsAffected !== 1) {
+          throw new LogicalDocumentConflictError(
+            document.activeRevision ?? null,
+            document.activeRevision ?? null,
+            input.expectedRowVersion,
+            document.rowVersion,
+          );
         }
         const updated = await readDocument(transaction, input);
         if (!updated) throw new LogicalDocumentNotFoundError("Logical document not found");
@@ -2215,6 +2334,13 @@ function mapDocument(row: DatabaseRow): LogicalDocument {
       ? { activeRevision: optionalNumberColumn(row, "active_revision") }
       : {}),
     createdAt: stringColumn(row, "created_at"),
+    ...(optionalStringColumn(row, "disabled_at")
+      ? { disabledAt: optionalStringColumn(row, "disabled_at") }
+      : {}),
+    ...(optionalStringColumn(row, "disabled_by_subject_id")
+      ? { disabledBySubjectId: optionalStringColumn(row, "disabled_by_subject_id") }
+      : {}),
+    enabled: row.enabled === undefined ? true : Boolean(row.enabled),
     id: stringColumn(row, "id"),
     knowledgeSpaceId: stringColumn(row, "knowledge_space_id"),
     ...(optionalStringColumn(row, "provider_item_id")
@@ -2231,6 +2357,12 @@ function mapDocument(row: DatabaseRow): LogicalDocument {
     updatedAt: stringColumn(row, "updated_at"),
     userMetadata: jsonObjectColumn(row, "user_metadata"),
   };
+}
+
+function databaseBooleanColumn(row: DatabaseRow, column: string, fallback: boolean): boolean {
+  const value = row[column];
+  if (value === undefined || value === null) return fallback;
+  return value === true || value === 1 || value === "1";
 }
 
 function mapRevision(row: DatabaseRow): DocumentRevision {

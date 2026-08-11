@@ -44,6 +44,7 @@ import {
 } from "./logical-document-repository";
 import {
   cancelDocumentProcessingTaskRoute,
+  bulkPatchDocumentAvailabilityRoute,
   changeDocumentChunkStateRoute,
   getDocumentChunkRoute,
   getDocumentProcessingTaskRoute,
@@ -55,6 +56,7 @@ import {
   listLogicalDocumentsRoute,
   listSpaceProcessingTasksRoute,
   patchDocumentMetadataRoute,
+  patchDocumentAvailabilityRoute,
   patchDocumentSettingsRoute,
   retryDocumentProcessingTaskRoute,
   rollbackDocumentRevisionRoute,
@@ -370,6 +372,101 @@ export function registerLogicalDocumentHandlers({
         return context.json({ error: "Document not found" }, 404);
       throw error;
     }
+  });
+
+  register(patchDocumentAvailabilityRoute, async (context) => {
+    const params = context.req.valid("param");
+    const body = context.req.valid("json");
+    if (
+      !logicalDocuments?.patchAvailability ||
+      !(await authorizeVisibleDocument(
+        context,
+        params,
+        "write",
+        logicalDocuments,
+        assets,
+        authorization,
+        spaces,
+      ))
+    ) {
+      return context.json({ error: "Document not found" }, 404);
+    }
+    try {
+      const updated = await logicalDocuments.patchAvailability({
+        documentId: params.documentId,
+        enabled: body.enabled,
+        expectedRowVersion: body.expectedRowVersion,
+        knowledgeSpaceId: params.id,
+        now: now(),
+        subjectId: context.get("subject").subjectId,
+        tenantId: context.get("subject").tenantId,
+      });
+      const full = await logicalDocuments.get({
+        documentId: updated.id,
+        knowledgeSpaceId: updated.knowledgeSpaceId,
+        tenantId: updated.tenantId,
+      });
+      if (!full) return context.json({ error: "Document not found" }, 404);
+      return context.json(toPublicDocument(full), 200);
+    } catch (error) {
+      if (error instanceof LogicalDocumentConflictError)
+        return context.json({ error: error.message }, 409);
+      if (error instanceof LogicalDocumentValidationError)
+        return context.json({ error: error.message }, 409);
+      throw error;
+    }
+  });
+
+  register(bulkPatchDocumentAvailabilityRoute, async (context) => {
+    const params = context.req.valid("param");
+    const body = context.req.valid("json");
+    if (!logicalDocuments?.patchAvailability)
+      return context.json({ error: "Document not found" }, 404);
+    const patchAvailability = logicalDocuments.patchAvailability.bind(logicalDocuments);
+    const items = [];
+    for (const requested of body.documents) {
+      const visible = await authorizeVisibleDocument(
+        context,
+        { id: params.id, documentId: requested.documentId },
+        "write",
+        logicalDocuments,
+        assets,
+        authorization,
+        spaces,
+      );
+      if (!visible) {
+        items.push({ documentId: requested.documentId, status: "not_found" as const });
+        continue;
+      }
+      try {
+        await patchAvailability({
+          documentId: requested.documentId,
+          enabled: body.enabled,
+          expectedRowVersion: requested.expectedRowVersion,
+          knowledgeSpaceId: params.id,
+          now: now(),
+          subjectId: context.get("subject").subjectId,
+          tenantId: context.get("subject").tenantId,
+        });
+        const full = await logicalDocuments.get({
+          documentId: requested.documentId,
+          knowledgeSpaceId: params.id,
+          tenantId: context.get("subject").tenantId,
+        });
+        if (full) items.push(toPublicDocument(full));
+        else items.push({ documentId: requested.documentId, status: "not_found" as const });
+      } catch (error) {
+        if (
+          error instanceof LogicalDocumentConflictError ||
+          error instanceof LogicalDocumentValidationError
+        ) {
+          items.push({ documentId: requested.documentId, status: "conflict" as const });
+          continue;
+        }
+        throw error;
+      }
+    }
+    return context.json({ items, total: items.length }, 200);
   });
 
   register(listDocumentChunksRoute, async (context) => {
@@ -1038,6 +1135,11 @@ function toPublicDocument(document: LogicalDocumentWithActiveRevision) {
     ...(document.activeRevision ? { activeRevision: document.activeRevision } : {}),
     active: document.active ? toPublicRevision(document.active) : null,
     createdAt: document.createdAt,
+    ...(document.disabledAt ? { disabledAt: document.disabledAt } : {}),
+    ...(document.disabledBySubjectId
+      ? { disabledBySubjectId: document.disabledBySubjectId }
+      : {}),
+    enabled: document.enabled ?? true,
     id: document.id,
     knowledgeSpaceId: document.knowledgeSpaceId,
     ...(document.providerItemId ? { providerItemId: document.providerItemId } : {}),

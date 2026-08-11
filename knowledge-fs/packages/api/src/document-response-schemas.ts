@@ -140,7 +140,7 @@ export const BulkDocumentReindexResponseSchema = z
         BulkDocumentReindexQueuedItemSchema,
         z.object({
           documentId: z.string().uuid(),
-          status: z.literal("not_found"),
+          status: z.enum(["disabled", "not_found"]),
         }),
       ]),
     ),

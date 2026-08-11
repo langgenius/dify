@@ -1567,6 +1567,9 @@ const tables = [
       idColumn(),
       varcharColumn("tenant_id", 255),
       idColumn("knowledge_space_id"),
+      boolColumn("enabled"),
+      timestampColumn("disabled_at", true),
+      varcharColumn("disabled_by_subject_id", 255, true),
       idColumn("source_id", true),
       varcharColumn("source_scope", 128),
       varcharColumn("kind", 32),
@@ -2807,6 +2810,15 @@ const tables = [
   {
     name: "logical_documents",
     checkConstraints: [
+      {
+        expression: {
+          postgres:
+            '(("enabled" AND "disabled_at" IS NULL AND "disabled_by_subject_id" IS NULL) OR (NOT "enabled" AND "disabled_at" IS NOT NULL AND "disabled_by_subject_id" IS NOT NULL))',
+          tidb:
+            "((`enabled` AND `disabled_at` IS NULL AND `disabled_by_subject_id` IS NULL) OR (NOT `enabled` AND `disabled_at` IS NOT NULL AND `disabled_by_subject_id` IS NOT NULL))",
+        },
+        name: "logical_documents_availability_ck",
+      },
       {
         expression: {
           postgres: `"status" IN ('pending', 'ready', 'failed', 'deleting')`,

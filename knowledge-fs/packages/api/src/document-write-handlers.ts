@@ -425,6 +425,15 @@ export function registerDocumentWriteHandlers({
           })
         : null;
       const assetId = logicalDocument?.active?.documentAssetId ?? documentId;
+      if (logicalDocument && logicalDocument.enabled === false) {
+        items.push({ documentId, status: "disabled" as const });
+        bulkItems.push({
+          documentId,
+          error: "DOCUMENT_DISABLED",
+          status: "canceled",
+        });
+        continue;
+      }
       const asset =
         logicalDocument && !logicalDocument.active
           ? null

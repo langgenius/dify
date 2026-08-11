@@ -4,6 +4,8 @@ import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contr
 import { ErrorResponseSchema } from "./gateway-route-schemas";
 import {
   BoundedCursorQuerySchema,
+  BulkPatchDocumentAvailabilityResponseSchema,
+  BulkPatchDocumentAvailabilitySchema,
   DocumentChunkListQuerySchema,
   DocumentChunkListResponseSchema,
   DocumentChunkParamsSchema,
@@ -20,6 +22,7 @@ import {
   LogicalDocumentPublicSchema,
   LogicalDocumentRevisionParamsSchema,
   PatchDocumentSettingsSchema,
+  PatchDocumentAvailabilitySchema,
   PatchDocumentUserMetadataSchema,
   RollbackDocumentRevisionSchema,
 } from "./logical-document-schemas";
@@ -67,6 +70,50 @@ export const getLogicalDocumentRoute = createRoute({
     200: {
       content: { "application/json": { schema: LogicalDocumentPublicSchema } },
       description: "Logical document",
+    },
+    ...commonErrors,
+  },
+});
+
+export const patchDocumentAvailabilityRoute = createRoute({
+  method: "patch",
+  operationId: "patchLogicalDocumentAvailability",
+  path: "/knowledge-spaces/{id}/logical-documents/{documentId}/availability",
+  request: {
+    body: {
+      content: { "application/json": { schema: PatchDocumentAvailabilitySchema } },
+      required: true,
+    },
+    params: LogicalDocumentParamsSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: LogicalDocumentPublicSchema } },
+      description: "Updated logical document availability",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Document availability CAS conflict",
+    },
+    ...commonErrors,
+  },
+});
+
+export const bulkPatchDocumentAvailabilityRoute = createRoute({
+  method: "patch",
+  operationId: "bulkPatchLogicalDocumentAvailability",
+  path: "/knowledge-spaces/{id}/logical-documents/bulk/availability",
+  request: {
+    body: {
+      content: { "application/json": { schema: BulkPatchDocumentAvailabilitySchema } },
+      required: true,
+    },
+    params: LogicalDocumentParamsSchema.pick({ id: true }),
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: BulkPatchDocumentAvailabilityResponseSchema } },
+      description: "Per-document availability results",
     },
     ...commonErrors,
   },

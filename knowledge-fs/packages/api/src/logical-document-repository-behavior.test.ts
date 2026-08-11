@@ -1402,6 +1402,7 @@ describe("logical document repository behavior coverage", () => {
         {
           contentHash: "a".repeat(64),
           documentId: documentIds[0],
+          enabled: true,
           providerItemId: "provider-a",
           revision: 1,
           rowVersion: 1,

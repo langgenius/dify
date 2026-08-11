@@ -20,6 +20,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBadCaseTraceReferenceResponse,
     KnowledgeFSBadCaseUpdatePayload,
     KnowledgeFSBulkDeletionAcceptedResponse,
+    KnowledgeFSBulkDocumentAvailabilityPayload,
+    KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCatQuery,
@@ -29,6 +31,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSDiffQuery,
     KnowledgeFSDiffResponse,
+    KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
@@ -626,6 +629,43 @@ class KnowledgeFSDataFacade:
             path_parameters=(("documentId", document_id),),
         )
         return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
+
+    def update_logical_document_availability(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        document_id: str,
+        payload: KnowledgeFSDocumentAvailabilityPayload,
+    ) -> KnowledgeFSLogicalDocumentResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="updateLogicalDocumentAvailability",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+            payload=payload,
+        )
+        return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
+
+    def bulk_update_logical_document_availability(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSBulkDocumentAvailabilityPayload,
+    ) -> KnowledgeFSBulkDocumentAvailabilityResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="bulkUpdateLogicalDocumentAvailability",
+            payload=payload,
+        )
+        return KnowledgeFSBulkDocumentAvailabilityResponse.model_validate(raw)
 
     def delete_logical_document(
         self,

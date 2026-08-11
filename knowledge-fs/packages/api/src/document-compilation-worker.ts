@@ -63,6 +63,14 @@ import type { RetrievalEvaluationRunner } from "./retrieval-evaluation-runners";
 import type { SemanticIngestionPostProcessor } from "./semantic-ingestion-postprocessor";
 
 export interface DocumentCompilationWorkerOptions {
+  readonly assertDocumentAvailable?:
+    | ((input: {
+        readonly documentAssetId: string;
+        readonly documentAssetVersion: number;
+        readonly knowledgeSpaceId: string;
+        readonly tenantId: string;
+      }) => Promise<void>)
+    | undefined;
   readonly assets: DocumentAssetRepository;
   readonly candidateComposer?: DocumentCompilationWorkerCandidateComposer | undefined;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
@@ -200,6 +208,7 @@ const DocumentCompilationPayloadSchema = z.object({
 });
 
 export function createDocumentCompilationWorker({
+  assertDocumentAvailable,
   assets,
   candidateComposer,
   deletionFence,
@@ -258,6 +267,12 @@ export function createDocumentCompilationWorker({
       let cleanupStaleObjectWrites = async (): Promise<void> => undefined;
 
       try {
+        await assertDocumentAvailable?.({
+          documentAssetId: input.documentAssetId,
+          documentAssetVersion: input.version,
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          tenantId: input.tenantId,
+        });
         if (publicationGenerationId !== undefined && !candidateComposer) {
           throw new Error(
             "Generation-scoped document compilation requires a publication coordinator",

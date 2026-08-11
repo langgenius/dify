@@ -2176,7 +2176,8 @@ async function processWebsiteSync(
     const contentHash = createHash("sha256").update(body).digest("hex");
     const providerItemId = page.providerItemId;
     const filename = webFilename(page.title ?? page.sourceUrl, providerItemId);
-    if (inventory.get(providerItemId)?.contentHash !== contentHash) {
+    const prior = inventory.get(providerItemId);
+    if (prior?.enabled !== false && prior?.contentHash !== contentHash) {
       await materializeCandidates(
         input,
         execution,
@@ -2276,7 +2277,7 @@ async function processOnlineDocumentSync(
   for (const [index, { page, providerItemId, workspaceId }] of entries.entries()) {
     if (index < cursor.offset) continue;
     const prior = inventory.get(providerItemId);
-    if (!prior || !page.lastEditedTime || prior.etag !== page.lastEditedTime) {
+    if (prior?.enabled !== false && (!prior || !page.lastEditedTime || prior.etag !== page.lastEditedTime)) {
       const run = execution.run();
       const content = await execution.external(
         (signal) =>
@@ -2401,7 +2402,7 @@ async function processOnlineDriveSync(
     if (index < cursor.offset) continue;
     const providerItemId = file.providerItemId;
     const prior = inventory.get(providerItemId);
-    {
+    if (prior?.enabled !== false) {
       const run = execution.run();
       const download = await execution.external(
         (signal) =>
@@ -2594,7 +2595,7 @@ function missingInventory(
   seenProviderItemIds: ReadonlySet<string>,
 ): readonly SourceActiveDocumentInventoryItem[] {
   return [...inventory.values()]
-    .filter((item) => !seenProviderItemIds.has(item.providerItemId))
+    .filter((item) => item.enabled !== false && !seenProviderItemIds.has(item.providerItemId))
     .sort(
       (left, right) =>
         left.providerItemId.localeCompare(right.providerItemId) ||

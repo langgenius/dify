@@ -1145,6 +1145,13 @@ class KnowledgeFSLogicalDocumentResponse(ResponseModel):
         default=None, ge=1, validation_alias=AliasChoices("active_revision", "activeRevision")
     )
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    disabled_at: datetime | None = Field(
+        default=None, validation_alias=AliasChoices("disabled_at", "disabledAt")
+    )
+    disabled_by_subject_id: str | None = Field(
+        default=None, validation_alias=AliasChoices("disabled_by_subject_id", "disabledBySubjectId")
+    )
+    enabled: bool = True
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     provider_item_id: str | None = Field(
@@ -1161,6 +1168,37 @@ class KnowledgeFSLogicalDocumentResponse(ResponseModel):
 class KnowledgeFSLogicalDocumentListResponse(ResponseModel):
     data: list[KnowledgeFSLogicalDocumentResponse] = Field(validation_alias=AliasChoices("data", "items"))
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
+
+
+class KnowledgeFSDocumentAvailabilityPayload(BaseModel):
+    enabled: bool
+    expected_row_version: int = Field(ge=0, alias="expectedRowVersion")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSBulkDocumentAvailabilityItem(BaseModel):
+    document_id: str = Field(alias="documentId")
+    expected_row_version: int = Field(ge=0, alias="expectedRowVersion")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSBulkDocumentAvailabilityPayload(BaseModel):
+    documents: list[KnowledgeFSBulkDocumentAvailabilityItem] = Field(min_length=1, max_length=100)
+    enabled: bool
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSBulkDocumentAvailabilityFailureResponse(ResponseModel):
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    status: Literal["conflict", "not_found"]
+
+
+class KnowledgeFSBulkDocumentAvailabilityResponse(ResponseModel):
+    items: list[KnowledgeFSLogicalDocumentResponse | KnowledgeFSBulkDocumentAvailabilityFailureResponse]
+    total: int = Field(ge=0)
 
 
 class KnowledgeFSDocumentRevisionListResponse(ResponseModel):
@@ -2767,6 +2805,10 @@ __all__ = [
     "KnowledgeFSBackgroundTaskListResponse",
     "KnowledgeFSBackgroundTaskResponse",
     "KnowledgeFSBulkDeletionAcceptedResponse",
+    "KnowledgeFSBulkDocumentAvailabilityFailureResponse",
+    "KnowledgeFSBulkDocumentAvailabilityItem",
+    "KnowledgeFSBulkDocumentAvailabilityPayload",
+    "KnowledgeFSBulkDocumentAvailabilityResponse",
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
     "KnowledgeFSCrawlImportPayload",
@@ -2778,6 +2820,7 @@ __all__ = [
     "KnowledgeFSCredentialItemResponse",
     "KnowledgeFSCredentialListResponse",
     "KnowledgeFSCursorQuery",
+    "KnowledgeFSDocumentAvailabilityPayload",
     "KnowledgeFSDocumentChunkListQuery",
     "KnowledgeFSDocumentChunkListResponse",
     "KnowledgeFSDocumentChunkResponse",

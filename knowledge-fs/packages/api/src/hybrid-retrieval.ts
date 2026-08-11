@@ -1141,7 +1141,7 @@ function retrievalMetadataFilterSql(
   filters: RetrievalMetadataFilters,
   params: DatabaseQueryValue[],
 ): string {
-  const predicates: string[] = [];
+  const predicates: string[] = [retrievalEnabledDocumentPredicate(database, nodeAlias)];
   addInFilterSql(
     database,
     predicates,
@@ -1225,6 +1225,12 @@ function retrievalMetadataFilterSql(
   });
 
   return predicates.length === 0 ? "" : ` AND ${predicates.join(" AND ")}`;
+}
+
+function retrievalEnabledDocumentPredicate(database: DatabaseAdapter, nodeAlias: string): string {
+  const documentAlias = "retrieval_logical_document";
+  const revisionAlias = "retrieval_active_revision";
+  return `EXISTS (SELECT 1 FROM ${quoteDatabaseIdentifier(database, "logical_documents")} ${documentAlias} JOIN ${quoteDatabaseIdentifier(database, "document_revisions")} ${revisionAlias} ON ${qualifiedDatabaseIdentifier(database, revisionAlias, "tenant_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "tenant_id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "knowledge_space_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "knowledge_space_id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "document_id")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "id")} AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "revision")} = ${qualifiedDatabaseIdentifier(database, documentAlias, "active_revision")} WHERE ${qualifiedDatabaseIdentifier(database, documentAlias, "knowledge_space_id")} = ${qualifiedDatabaseIdentifier(database, nodeAlias, "knowledge_space_id")} AND ${qualifiedDatabaseIdentifier(database, documentAlias, "enabled")} = TRUE AND ${qualifiedDatabaseIdentifier(database, documentAlias, "status")} <> 'deleting' AND ${qualifiedDatabaseIdentifier(database, revisionAlias, "document_asset_id")} = ${qualifiedDatabaseIdentifier(database, nodeAlias, "document_asset_id")})`;
 }
 
 function retrievalAccessFilterSql({
