@@ -256,12 +256,39 @@ class AgentConfigService:
             user_id=user_id,
         )
         if kind == "skill":
-            skill = self._require_skill(target.agent_soul, name=name)
+            try:
+                skill = self._require_skill(target.agent_soul, name=name)
+                return self._resolve_download_request(
+                    tenant_id=tenant_id,
+                    file_kind=skill.file_kind,
+                    file_id=self._available_skill_file_id(skill),
+                    filename=f"{skill.name}.zip",
+                    default_mime_type="application/zip",
+                    missing_code="config_skill_not_found",
+                    missing_message="config skill payload is missing",
+                )
+            except AgentConfigServiceError as exc:
+                if exc.code != "config_skill_not_found":
+                    raise
+
+            runtime_skill = next(
+                (
+                    item
+                    for item in SkillManagementService().list_runtime_agent_skills(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                    )
+                    if item["name"] == name
+                ),
+                None,
+            )
+            if runtime_skill is None:
+                raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404)
             return self._resolve_download_request(
                 tenant_id=tenant_id,
-                file_kind=skill.file_kind,
-                file_id=self._available_skill_file_id(skill),
-                filename=f"{skill.name}.zip",
+                file_kind="tool_file",
+                file_id=str(runtime_skill["file_id"]),
+                filename=f"{runtime_skill['name']}.zip",
                 default_mime_type="application/zip",
                 missing_code="config_skill_not_found",
                 missing_message="config skill payload is missing",

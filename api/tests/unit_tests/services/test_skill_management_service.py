@@ -1043,6 +1043,71 @@ def test_list_agent_bindings_returns_draft_skill_card_data() -> None:
     assert bindings["data"][0]["latest_published_at"] is None
 
 
+def test_list_agent_bindings_uses_latest_published_metadata_when_draft_changes() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="finance-sop",
+            display_name="Finance SOP",
+            description="Published finance workflow.",
+        ),
+    )
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {
+                    "path": "SKILL.md",
+                    "kind": "file",
+                    "storage": "text",
+                    "content": _skill_md(
+                        name="finance-sop",
+                        description="Published finance workflow.",
+                        body="# Finance",
+                    ),
+                }
+            ]
+        ),
+    )
+    service.publish_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillPublishPayload(),
+    )
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(
+            files=[
+                {
+                    "path": "SKILL.md",
+                    "kind": "file",
+                    "storage": "text",
+                    "content": _skill_md(
+                        name="finance-sop-draft",
+                        description="Unpublished finance workflow.",
+                        body="# Draft Finance",
+                    ),
+                }
+            ]
+        ),
+    )
+
+    binding = service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["data"][0]
+    assert binding["name"] == "finance-sop"
+    assert binding["display_name"] == "Finance SOP"
+    assert binding["description"] == "Published finance workflow."
+    assert binding["status"] == "draft"
+
+
 def test_replace_agent_bindings_rejects_skill_name_conflict_with_agent_config_skill() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
@@ -2919,3 +2984,24 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             "mime_type": "application/zip",
         }
     ]
+
+
+def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:
+    archive_buffer = io.BytesIO()
+    with zipfile.ZipFile(archive_buffer, "w") as archive:
+        archive.writestr("SKILL.md", _skill_md(name="draft-name", description="Draft description"))
+        archive.writestr("references/example.md", "Example")
+
+    normalized = SkillManagementService._normalize_published_archive_identity(
+        archive_buffer.getvalue(),
+        name="published-name",
+        display_name="Published Name",
+        description="Published description",
+    )
+
+    with zipfile.ZipFile(io.BytesIO(normalized)) as archive:
+        skill_md = archive.read("SKILL.md").decode("utf-8")
+        assert "name: published-name" in skill_md
+        assert "description: Published description" in skill_md
+        assert "display-name: Published Name" in skill_md
+        assert archive.read("references/example.md") == b"Example"

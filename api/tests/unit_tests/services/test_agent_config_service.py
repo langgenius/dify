@@ -790,6 +790,49 @@ def test_pull_skill_falls_back_to_workspace_runtime_skill() -> None:
     )
 
 
+def test_request_download_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    expected = SimpleNamespace(
+        filename="workspace-skill.zip",
+        mime_type="application/zip",
+        size=123,
+        download_uri="/files/tools/workspace.zip?signature=1",
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+        patch.object(service, "_resolve_download_request", return_value=expected) as resolve_download_request,
+    ):
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "name": "workspace-skill",
+                "file_id": "workspace-archive-id",
+            }
+        ]
+        download = service.request_download(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="skill",
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert download is expected
+    resolve_download_request.assert_called_once_with(
+        tenant_id=TENANT,
+        file_kind="tool_file",
+        file_id="workspace-archive-id",
+        filename="workspace-skill.zip",
+        default_mime_type="application/zip",
+        missing_code="config_skill_not_found",
+        missing_message="config skill payload is missing",
+    )
+
+
 def test_pull_skill_maps_missing_workspace_runtime_skill_to_config_error() -> None:
     service = AgentConfigService()
     target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
