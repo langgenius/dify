@@ -3000,7 +3000,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string | Document ID whose metadata should be updated. | Yes |
+| document_id | string (uuid) | Document ID whose metadata should be updated. | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
 | partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
@@ -3513,7 +3513,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string | Metadata field ID. | Yes |
+| id | string (uuid) | Metadata field ID. | Yes |
 | name | string | Metadata field name. | Yes |
 | value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
