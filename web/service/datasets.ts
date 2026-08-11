@@ -135,7 +135,7 @@ export const createExternalAPI = ({
 }: {
   body: CreateExternalAPIReq
 }): Promise<ExternalAPIItem> => {
-  return post<ExternalAPIItem>('/datasets/external-knowledge-api', { body })
+  return post<ExternalAPIItem>('/datasets/external-knowledge-api', { body }, { silent: true })
 }
 
 export const createExternalKnowledgeBase = ({

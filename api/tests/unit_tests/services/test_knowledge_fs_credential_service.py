@@ -244,6 +244,12 @@ def test_cached_credential_validation_expires_denies_and_accepts_without_databas
     with pytest.raises(KnowledgeFSCredentialValidationError, match="Invalid"):
         service.validate_service_credential(raw_credential="not-kfs", required_action="documents.list")
 
+    with pytest.raises(KnowledgeFSCredentialValidationError, match="Invalid"):
+        service.validate_service_credential(
+            raw_credential="dataset-legacy-api-key",
+            required_action="queries.create",
+        )
+
     expired = KnowledgeFSServiceCredentialProfile(
         "tenant-1",
         "control-1",

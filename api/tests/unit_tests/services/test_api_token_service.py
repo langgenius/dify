@@ -92,6 +92,50 @@ class TestRecordTokenUsage:
             api_token_service_module.record_token_usage("token-123", "app")
 
 
+class TestGetEffectiveTokenLastUsedAt:
+    def test_should_surface_pending_usage_before_the_batch_flush(self):
+        pending = datetime(2026, 8, 11, 12, 30, 0)
+
+        with patch.object(api_token_service_module, "redis_client") as mock_redis:
+            mock_redis.get.return_value = pending.isoformat().encode()
+            result = api_token_service_module.get_effective_token_last_used_at(
+                "token-123",
+                "dataset",
+                None,
+            )
+
+        assert result == pending
+        mock_redis.get.assert_called_once_with(ApiTokenCache.make_active_key("token-123", "dataset"))
+
+    def test_should_keep_a_newer_persisted_usage_timestamp(self):
+        pending = datetime(2026, 8, 11, 12, 30, 0)
+        persisted = datetime(2026, 8, 11, 12, 31, 0)
+
+        with patch.object(api_token_service_module, "redis_client") as mock_redis:
+            mock_redis.get.return_value = pending.isoformat()
+            result = api_token_service_module.get_effective_token_last_used_at(
+                "token-123",
+                "dataset",
+                persisted,
+            )
+
+        assert result == persisted
+
+    @pytest.mark.parametrize("value", [None, b"not-a-timestamp"])
+    def test_should_fall_back_to_the_persisted_timestamp(self, value):
+        persisted = datetime(2026, 8, 11, 12, 30, 0)
+
+        with patch.object(api_token_service_module, "redis_client") as mock_redis:
+            mock_redis.get.return_value = value
+            result = api_token_service_module.get_effective_token_last_used_at(
+                "token-123",
+                "dataset",
+                persisted,
+            )
+
+        assert result == persisted
+
+
 class TestFetchTokenWithSingleFlight:
     def test_should_return_cached_token_when_lock_acquired_and_cache_filled(self):
         auth_token = "token-123"

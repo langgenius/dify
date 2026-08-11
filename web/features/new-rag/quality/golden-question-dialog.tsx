@@ -29,6 +29,17 @@ function parseTags(value: string) {
     .filter(Boolean)
 }
 
+function errorStatus(error: unknown): number | undefined {
+  if (error instanceof Response) return error.status
+  if (!error || typeof error !== 'object') return undefined
+  const status = 'status' in error ? error.status : undefined
+  if (typeof status === 'number') return status
+  const data = 'data' in error ? error.data : undefined
+  if (!data || typeof data !== 'object') return undefined
+  const dataStatus = 'status' in data ? data.status : undefined
+  return typeof dataStatus === 'number' ? dataStatus : undefined
+}
+
 export function GoldenQuestionDialog({
   error,
   initialValue,
@@ -57,7 +68,7 @@ export function GoldenQuestionDialog({
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [questionInvalid, setQuestionInvalid] = useState(false)
   const [annotationInvalid, setAnnotationInvalid] = useState(false)
-  const [matchError, setMatchError] = useState(false)
+  const [matchError, setMatchError] = useState<'unavailable' | 'unknown'>()
   const matchMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
   )
@@ -91,14 +102,14 @@ export function GoldenQuestionDialog({
 
   const findEvidence = async () => {
     if (!evidenceText.trim()) return
-    setMatchError(false)
+    setMatchError(undefined)
     try {
       await matchMutation.mutateAsync({
         body: { evidence: evidenceText.trim() },
         params: { control_space_id: knowledgeSpaceId },
       })
-    } catch {
-      setMatchError(true)
+    } catch (error) {
+      setMatchError(errorStatus(error) === 503 ? 'unavailable' : 'unknown')
     }
   }
 
@@ -131,7 +142,10 @@ export function GoldenQuestionDialog({
                 className="h-22 resize-y"
                 placeholder={t(($) => $['newKnowledge.qualityPage.questionPlaceholder'])}
                 value={question}
-                onValueChange={setQuestion}
+                onValueChange={(value) => {
+                  setQuestion(value)
+                  if (value.trim()) setQuestionInvalid(false)
+                }}
               />
               {questionInvalid && (
                 <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
@@ -149,7 +163,10 @@ export function GoldenQuestionDialog({
                 className={mode === 'edit' ? 'h-22 min-h-22 resize-y' : 'h-16 min-h-16 resize-y'}
                 placeholder={t(($) => $['newKnowledge.qualityPage.annotationPlaceholder'])}
                 value={annotation}
-                onValueChange={setAnnotation}
+                onValueChange={(value) => {
+                  setAnnotation(value)
+                  if (value.trim()) setAnnotationInvalid(false)
+                }}
               />
               {annotationInvalid && (
                 <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
@@ -164,7 +181,11 @@ export function GoldenQuestionDialog({
                 className="h-20 resize-y"
                 placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
                 value={evidenceText}
-                onValueChange={setEvidenceText}
+                onValueChange={(value) => {
+                  setEvidenceText(value)
+                  setMatchError(undefined)
+                  matchMutation.reset()
+                }}
               />
               <div className="mt-2 flex items-center justify-between gap-3">
                 <span className="system-xs-regular text-text-tertiary">
@@ -195,7 +216,13 @@ export function GoldenQuestionDialog({
                   </Button>
                 </div>
               </div>
-              {matchError && <FieldError match>{t(($) => $.unknownError)}</FieldError>}
+              {matchError && (
+                <FieldError match>
+                  {matchError === 'unavailable'
+                    ? t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])
+                    : t(($) => $.unknownError)}
+                </FieldError>
+              )}
               {matchMutation.isSuccess && candidates.length === 0 && (
                 <p className="mt-2 body-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}

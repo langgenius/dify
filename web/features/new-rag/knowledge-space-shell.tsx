@@ -4,7 +4,6 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +15,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { KnowledgeFsApiAccessDialog } from './components/knowledge-fs-api-access-dialog'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
 import {
   newKnowledgeDetailPath,
@@ -79,10 +79,12 @@ export function KnowledgeSpaceShell({
   const { t: tCommon } = useTranslation('common')
   const { t: tApp } = useTranslation('app')
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [apiAccessDialogOpen, setApiAccessDialogOpen] = useState(false)
   const pathname = usePathname()
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
+      context: { silent: true },
     }),
     refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
     retry: (failureCount, error) => {
@@ -94,6 +96,9 @@ export function KnowledgeSpaceShell({
   })
   const canManageAccess = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
     'knowledge_space_access_config',
+  )
+  const canManageCredentials = (knowledgeSpaceQuery.data?.permission_keys ?? []).includes(
+    'knowledge_space_api_key_manage',
   )
   const externalAccessQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryOptions({
@@ -162,7 +167,6 @@ export function KnowledgeSpaceShell({
     pathname === retrievalTestPath || pathname.startsWith(`${retrievalTestPath}/`)
   const qualityActive = pathname === qualityPath || pathname.startsWith(`${qualityPath}/`)
   const settingsActive = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`)
-  const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
     'flex h-8 shrink-0 items-center gap-2 rounded-lg pr-1 pl-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
   const navIcon = (className: string) => (
@@ -260,7 +264,7 @@ export function KnowledgeSpaceShell({
             </div>
           </div>
           <nav
-            className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
+            className="grid grid-cols-3 gap-0.5 px-2 py-1 sm:flex sm:flex-1 sm:flex-col"
             aria-label={knowledgeSpaceName}
           >
             <Link
@@ -363,7 +367,7 @@ export function KnowledgeSpaceShell({
                 'w-full border-[0.5px] border-components-panel-border text-text-secondary',
                 sidebarExpanded ? 'justify-start' : 'justify-center px-0',
               )}
-              onClick={showDeferredPage}
+              onClick={() => setApiAccessDialogOpen(true)}
             >
               {navIcon('i-custom-vender-knowledge-api-aggregate')}
               {sidebarExpanded && (
@@ -392,6 +396,13 @@ export function KnowledgeSpaceShell({
           {children}
         </section>
       </div>
+      <KnowledgeFsApiAccessDialog
+        canManageCredentials={canManageCredentials}
+        enabled={apiAccessEnabled}
+        knowledgeSpaceId={knowledgeSpaceId}
+        open={apiAccessDialogOpen}
+        onOpenChange={setApiAccessDialogOpen}
+      />
     </div>
   )
 }

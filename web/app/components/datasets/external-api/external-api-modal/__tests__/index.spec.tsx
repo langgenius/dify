@@ -220,6 +220,25 @@ describe('AddExternalAPIModal', () => {
       })
     })
 
+    it('shows one localized field error and does not request an invalid endpoint', async () => {
+      render(<AddExternalAPIModal {...defaultProps} />)
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Test' } })
+      const endpointInput = screen.getByLabelText(/api endpoint/i)
+      fireEvent.change(endpointInput, { target: { value: 'not-a-url' } })
+      fireEvent.change(screen.getByLabelText(/api key/i), { target: { value: 'key12345' } })
+
+      fireEvent.click(screen.getByText('dataset.externalAPIForm.save').closest('button')!)
+
+      const alerts = await screen.findAllByRole('alert')
+      expect(alerts).toHaveLength(1)
+      expect(alerts[0]).toHaveTextContent('dataset.newKnowledge.invalidRootUrl')
+      expect(endpointInput).toHaveAttribute('aria-invalid', 'true')
+      expect(endpointInput).toHaveAccessibleDescription('dataset.newKnowledge.invalidRootUrl')
+      expect(createExternalAPI).not.toHaveBeenCalled()
+      expect(mockNotify).not.toHaveBeenCalled()
+    })
+
     it('should handle create API error', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       vi.mocked(createExternalAPI).mockRejectedValue(new Error('Create failed'))
@@ -240,7 +259,7 @@ describe('AddExternalAPIModal', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'Failed to save/update External API',
+          message: 'common.api.actionFailed',
         })
       })
 

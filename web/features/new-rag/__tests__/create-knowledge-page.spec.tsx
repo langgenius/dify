@@ -608,6 +608,38 @@ describe('CreateKnowledgePage', () => {
     expect(createButton).toBeEnabled()
   })
 
+  it('accepts a 40-character name and submits the exact value', async () => {
+    const user = userEvent.setup()
+    const boundaryName = '知'.repeat(40)
+    renderPage()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      boundaryName,
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create).toHaveBeenCalledWith({
+      body: expect.objectContaining({ name: boundaryName }),
+    })
+  })
+
+  it('keeps a 41-character name visible, identifies the field, and blocks the request', async () => {
+    const user = userEvent.setup()
+    const invalidName = '知'.repeat(41)
+    renderPage()
+
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    await user.type(nameInput, invalidName)
+
+    expect(nameInput).toHaveValue(invalidName)
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {
     const user = userEvent.setup()
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -1684,6 +1716,30 @@ describe('CreateKnowledgePage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty upload before staging or creating the knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    renderPage()
+    await fillRequiredFields(user)
+    const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
+
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      emptyFile,
+    )
+
+    expect(screen.getByText('empty.txt')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(serviceMock.stageUpload).not.toHaveBeenCalled()
+    expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 

@@ -5,7 +5,7 @@ import type {
 import type { ReactNode } from 'react'
 import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { KnowledgeSettingsForm } from '../knowledge-settings-form'
@@ -389,6 +389,48 @@ describe('KnowledgeSettingsForm', () => {
     })
   })
 
+  it('accepts 2000 description characters and blocks 2001 with a field error', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const descriptionInput = screen.getByRole('textbox', {
+      name: 'datasetSettings.form.desc',
+    })
+    const saveButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.saveChanges',
+    })
+    const invalidDescription = '知'.repeat(2001)
+    fireEvent.change(descriptionInput, { target: { value: invalidDescription } })
+
+    expect(descriptionInput).toHaveValue(invalidDescription)
+    expect(descriptionInput).toHaveAttribute('aria-invalid', 'true')
+    expect(descriptionInput).toHaveAccessibleDescription(
+      'workflow.chatVariable.modal.descriptionTooLong:{"maxLength":2000}',
+    )
+    expect(saveButton).toBeDisabled()
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+
+    const boundaryDescription = '知'.repeat(2000)
+    fireEvent.change(descriptionInput, { target: { value: `${boundaryDescription} ` } })
+    expect(descriptionInput).toHaveAttribute('aria-invalid', 'true')
+    expect(saveButton).toBeDisabled()
+    expect(serviceMock.patchSpace).not.toHaveBeenCalled()
+
+    fireEvent.change(descriptionInput, { target: { value: boundaryDescription } })
+    expect(descriptionInput).not.toHaveAttribute('aria-invalid', 'true')
+    expect(saveButton).toBeEnabled()
+    await user.click(saveButton)
+
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+      {
+        body: { description: boundaryDescription },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+  })
+
   it('disables API access directly and preserves unrelated channels', async () => {
     const user = userEvent.setup()
     renderForm()
@@ -416,6 +458,43 @@ describe('KnowledgeSettingsForm', () => {
       }),
     ).toBeDisabled()
     expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
+  it('restores the API access switch after failure and retries the intended value', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
+    renderForm({
+      externalAccess: {
+        ...externalAccess,
+        agent_enabled: false,
+        service_api_enabled: false,
+      },
+    })
+
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.apiAgentAccess',
+    })
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    await user.click(apiAccessSwitch)
+
+    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
+      {
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          service_api_enabled: true,
+          workflow_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    await waitFor(() => expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true'))
   })
 
   it('requires the exact knowledge name before deletion', async () => {

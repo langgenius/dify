@@ -66,6 +66,17 @@ const emptyExternalAPIFormData: CreateExternalAPIReq = {
   },
 }
 
+function isValidHttpEndpoint(value: string) {
+  try {
+    const endpoint = new URL(value)
+    return (
+      (endpoint.protocol === 'http:' || endpoint.protocol === 'https:') && Boolean(endpoint.host)
+    )
+  } catch {
+    return false
+  }
+}
+
 const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   data,
   onSave,
@@ -77,6 +88,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [endpointError, setEndpointError] = useState<string>()
   const [formData, setFormData] = useState<CreateExternalAPIReq>(() =>
     isEditMode && data ? data : emptyExternalAPIFormData,
   )
@@ -86,9 +98,15 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       : Object.values(value).some((v) => v.trim() === ''),
   )
   const handleDataChange = (val: CreateExternalAPIReq) => {
+    if (val.settings.endpoint !== formData.settings.endpoint) setEndpointError(undefined)
     setFormData(val)
   }
   const handleSave = async () => {
+    const endpoint = formData.settings.endpoint.trim()
+    if (!isValidHttpEndpoint(endpoint)) {
+      setEndpointError(t(($) => $['newKnowledge.invalidRootUrl'], { ns: 'dataset' }))
+      return
+    }
     if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
       toast.error(t(($) => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' }))
       setLoading(false)
@@ -103,11 +121,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           formData.settings.api_key === '[__HIDDEN__]' ? '[__HIDDEN__]' : formData.settings.api_key
         await onEdit({
           ...formData,
-          settings: { ...formData.settings, api_key: apiKeyToSend },
+          settings: { ...formData.settings, api_key: apiKeyToSend, endpoint },
         })
         toast.success('External API updated successfully')
       } else {
-        const res = await createExternalAPI({ body: formData })
+        const res = await createExternalAPI({
+          body: { ...formData, settings: { ...formData.settings, endpoint } },
+        })
         if (res && res.id) {
           toast.success('External API saved successfully')
           onSave(res)
@@ -116,7 +136,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       onCancel()
     } catch (error) {
       console.error('Error saving/updating external API:', error)
-      toast.error('Failed to save/update External API')
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoading(false)
     }
@@ -195,6 +215,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             value={formData}
             onChange={handleDataChange}
             formSchemas={formSchemas}
+            errors={{ endpoint: endpointError }}
             className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3"
           />
           <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
@@ -205,9 +226,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               type="submit"
               variant="primary"
               onClick={() => {
+                if (!isValidHttpEndpoint(formData.settings.endpoint.trim())) {
+                  setEndpointError(t(($) => $['newKnowledge.invalidRootUrl'], { ns: 'dataset' }))
+                  return
+                }
                 if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-                else if (isEditMode && onEdit) onEdit(formData)
-                else handleSave()
+                else void handleSave()
               }}
               disabled={hasEmptyInputs || loading}
             >

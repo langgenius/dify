@@ -949,11 +949,12 @@ def test_task_stream_capability_uses_broker(
 
 def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, object]] = []
+    credential_calls: list[dict[str, object]] = []
     profile = SimpleNamespace(tenant_id="tenant-1", control_space_id="control-1")
 
     class Credentials:
         def validate_service_credential(self, **kwargs):
-            _ = kwargs
+            credential_calls.append(kwargs)
             return profile
 
     class Broker:
@@ -983,4 +984,10 @@ def test_service_query_admission_uses_broker(monkeypatch: pytest.MonkeyPatch) ->
     assert response["operation_id"] == "createQuery"
     assert response["request"]["knowledgeSpaceId"] == "space-1"
     assert response["url"] == "https://api.dify.test/v1/knowledge-fs/query-stream"
+    assert credential_calls == [
+        {
+            "raw_credential": "kfs_test_credential_value_123456",
+            "required_action": "queries.create",
+        }
+    ]
     assert calls == [{"profile": profile, "operation_id": "createQuery"}]

@@ -2,6 +2,7 @@
 
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
+import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
@@ -75,6 +76,7 @@ const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
 const TERMINAL_RECONCILIATION_REQUEST_TIMEOUT = 3000
+const DOCUMENT_STAGING_REQUEST_TIMEOUT = 30_000
 const BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const MAX_BLOCKED_ACTIVE_TASK_REFRESH_INTERVAL = 30000
 const documentFilterParser = parseAsStringLiteral([
@@ -96,6 +98,20 @@ const documentUploadParser = parseAsStringLiteral(['1'] as const).withOptions({
 const documentMetadataParser = parseAsStringLiteral(['1'] as const).withOptions({
   history: 'replace',
 })
+
+class DocumentStagingCanceledError extends Error {
+  constructor() {
+    super('Document staging was canceled')
+    this.name = 'DocumentStagingCanceledError'
+  }
+}
+
+class DocumentStagingTimeoutError extends Error {
+  constructor() {
+    super('Document staging timed out')
+    this.name = 'DocumentStagingTimeoutError'
+  }
+}
 
 const uploadExclusionReasonKey = {
   batch_byte_limit_exceeded: 'batchLimit',
@@ -146,7 +162,8 @@ async function findBackgroundTasks(
 }
 
 type UploadExclusionReasonKey =
-  (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
+  | DocumentUploadIssue
+  | (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
 
 type TerminalTaskPin = {
   observedAt: string
@@ -252,7 +269,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const uploadRequestIdsRef = useRef(new Map<string, string>())
   const stagedUploadIdsRef = useRef(new Map<File, string>())
   const stagingPromisesRef = useRef(new Map<File, Promise<string>>())
-  const discardAfterStagingRef = useRef(new Set<File>())
+  const stagingControllersRef = useRef(new Map<File, AbortController>())
   const reindexPendingRef = useRef(false)
   const documentActionPendingRef = useRef(false)
   const bulkActionPendingRef = useRef(false)
@@ -417,37 +434,79 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const active = stagingPromisesRef.current.get(file)
       if (active) return active
 
-      discardAfterStagingRef.current.delete(file)
-      const promise = stageKnowledgeFsDocument(file)
-        .then((uploadId) => {
-          if (discardAfterStagingRef.current.delete(file)) {
-            void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
-            return uploadId
+      const controller = new AbortController()
+      let settled = false
+      let timeout: number | undefined
+      const promise = new Promise<string>((resolve, reject) => {
+        function cleanup() {
+          if (timeout !== undefined) window.clearTimeout(timeout)
+          controller.signal.removeEventListener('abort', handleAbort)
+          if (stagingControllersRef.current.get(file) === controller) {
+            stagingPromisesRef.current.delete(file)
+            stagingControllersRef.current.delete(file)
           }
-          stagedUploadIdsRef.current.set(file, uploadId)
-          return uploadId
-        })
-        .finally(() => stagingPromisesRef.current.delete(file))
+        }
+        function rejectOnce(error: unknown) {
+          if (settled) return
+          settled = true
+          cleanup()
+          reject(error)
+        }
+        function handleAbort() {
+          rejectOnce(
+            controller.signal.reason instanceof Error
+              ? controller.signal.reason
+              : new DocumentStagingCanceledError(),
+          )
+        }
+        controller.signal.addEventListener('abort', handleAbort, { once: true })
+        timeout = window.setTimeout(
+          () => controller.abort(new DocumentStagingTimeoutError()),
+          DOCUMENT_STAGING_REQUEST_TIMEOUT,
+        )
+        void stageKnowledgeFsDocument(file, controller.signal).then(
+          (uploadId) => {
+            if (settled) {
+              void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+              return
+            }
+            settled = true
+            cleanup()
+            stagedUploadIdsRef.current.set(file, uploadId)
+            resolve(uploadId)
+          },
+          (error) => {
+            rejectOnce(error)
+          },
+        )
+      })
       stagingPromisesRef.current.set(file, promise)
+      stagingControllersRef.current.set(file, controller)
       return promise
     })
     if (!tasks.length) return
 
     const results = await Promise.allSettled(tasks)
-    const failed = results.find(
+    const failures = results.filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
     )
+    const failed =
+      failures.find(({ reason }) => !(reason instanceof DocumentStagingCanceledError)) ??
+      failures[0]
     if (failed) throw failed.reason
   }, [])
   const discardStagedFile = useCallback((file: File) => {
-    if (stagingPromisesRef.current.has(file)) discardAfterStagingRef.current.add(file)
+    stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
     const uploadId = stagedUploadIdsRef.current.get(file)
     stagedUploadIdsRef.current.delete(file)
     if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
   }, [])
   const discardStagedUploadObjects = useCallback(() => {
     const uploadIds = [...stagedUploadIdsRef.current.values()]
-    for (const file of stagingPromisesRef.current.keys()) discardAfterStagingRef.current.add(file)
+    for (const controller of stagingControllersRef.current.values())
+      controller.abort(new DocumentStagingCanceledError())
+    stagingControllersRef.current.clear()
+    stagingPromisesRef.current.clear()
     stagedUploadIdsRef.current.clear()
     uploadProgressRef.current.clear()
     uploadRequestIdsRef.current.clear()
@@ -479,6 +538,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     discardAllStagedFiles()
     closeUploadForm()
   }, [closeUploadForm, discardAllStagedFiles])
+  useEffect(
+    () => () => {
+      discardStagedUploadObjects()
+    },
+    [discardStagedUploadObjects],
+  )
   useEffect(() => {
     if (uploadRequest !== '1' || permissionPending || canUpload) return
     discardStagedUploadObjects()
@@ -2679,6 +2744,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               try {
                 await stageFiles(files)
               } catch (error) {
+                if (error instanceof DocumentStagingCanceledError) return
                 toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
                 throw error
               }

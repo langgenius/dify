@@ -1319,14 +1319,24 @@ class TestDatasetApiKeyApi:
         )
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]
-        with app.test_request_context("/"):
+        pending_last_used_at = datetime.datetime(2026, 8, 11, 12, 30, 0, tzinfo=datetime.UTC)
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets.get_effective_token_last_used_at",
+                side_effect=[pending_last_used_at, None],
+            ) as mock_effective_last_used,
+        ):
             response = method(api, session, "tenant-1")
         assert "data" in response
         assert len(response["data"]) == 2
         assert response["data"][0]["id"] == "key-1"
         assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][0]["last_used_at"] == int(pending_last_used_at.timestamp())
         assert response["data"][1]["id"] == "key-2"
         assert response["data"][1]["token"] == "ds-def"
+        assert response["data"][1]["last_used_at"] is None
+        assert mock_effective_last_used.call_count == 2
 
     def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()

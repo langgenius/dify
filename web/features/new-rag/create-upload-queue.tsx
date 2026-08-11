@@ -1,5 +1,6 @@
 'use client'
 
+import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useState } from 'react'
@@ -15,7 +16,7 @@ import { createRequestId } from './request-id'
 export type QueuedUpload = {
   file: File
   id: string
-  issue?: 'fileSize' | 'fileType'
+  issue?: DocumentUploadIssue
   stagedUploadId?: string
   stagingFailed?: boolean
 }

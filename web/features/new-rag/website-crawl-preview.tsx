@@ -430,6 +430,7 @@ export function WebsiteCrawlPreview({
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const rootUrlErrorId = useId()
+  const pageLimitErrorId = useId()
   const [rootUrl, setRootUrl] = useState(initialDraft?.rootUrl ?? '')
   const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
   const [urlTouched, setUrlTouched] = useState(false)
@@ -568,23 +569,26 @@ export function WebsiteCrawlPreview({
   }, [])
 
   const normalizedURL = useMemo(() => normalizeWebsiteSourceUrl(rootUrl), [rootUrl])
-  const normalizedLimit =
-    typeof pageLimit === 'number'
-      ? Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
-      : DEFAULT_PAGE_LIMIT
+  const pageLimitValid =
+    typeof pageLimit === 'number' &&
+    Number.isInteger(pageLimit) &&
+    pageLimit >= 1 &&
+    pageLimit <= MAX_PAGE_LIMIT
   const configuration = useMemo<CrawlConfiguration | undefined>(
     () =>
       normalizedURL &&
       sourceName.trim() &&
-      sourceName.trim().length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
+      sourceName.trim().length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH &&
+      typeof pageLimit === 'number' &&
+      pageLimitValid
         ? {
             includeSubpages,
-            limit: normalizedLimit,
+            limit: pageLimit,
             name: sourceName.trim(),
             url: normalizedURL.toString(),
           }
         : undefined,
-    [includeSubpages, normalizedLimit, normalizedURL, sourceName],
+    [includeSubpages, pageLimit, pageLimitValid, normalizedURL, sourceName],
   )
   const currentConfigurationKey = configuration ? configurationKey(configuration) : undefined
   const previewConfigurationMatches = Boolean(
@@ -1354,7 +1358,7 @@ export function WebsiteCrawlPreview({
                           ? $['newKnowledge.booleanTrue']
                           : $['newKnowledge.booleanFalse'],
                       )} · ${t(($) => $['newKnowledge.maxPages'])}: ${
-                        pageLimit || DEFAULT_PAGE_LIMIT
+                        pageLimit === '' ? DEFAULT_PAGE_LIMIT : pageLimit
                       }`}
                 </span>
               )}
@@ -1365,35 +1369,44 @@ export function WebsiteCrawlPreview({
                   <Checkbox checked={includeSubpages} onCheckedChange={setIncludeSubpages} />
                   {t(($) => $['newKnowledge.includeSubpages'])}
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="system-xs-regular text-text-secondary">
-                    {t(($) => $['newKnowledge.maxPages'])}
-                  </span>
-                  <NumberField
-                    min={1}
-                    max={MAX_PAGE_LIMIT}
-                    value={pageLimit === '' ? null : pageLimit}
-                    onValueChange={(value) =>
-                      setPageLimit(
-                        value === null
-                          ? ''
-                          : Math.min(Math.max(Math.trunc(value), 1), MAX_PAGE_LIMIT),
-                      )
-                    }
-                  >
-                    <NumberFieldGroup className="ml-auto w-28">
-                      <NumberFieldInput
-                        aria-label={t(($) => $['newKnowledge.maxPages'])}
-                        onBlur={() => {
-                          if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
-                        }}
-                      />
-                      <NumberFieldControls>
-                        <NumberFieldIncrement />
-                        <NumberFieldDecrement />
-                      </NumberFieldControls>
-                    </NumberFieldGroup>
-                  </NumberField>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="system-xs-regular text-text-secondary">
+                      {t(($) => $['newKnowledge.maxPages'])}
+                    </span>
+                    <NumberField
+                      allowOutOfRange
+                      min={1}
+                      max={MAX_PAGE_LIMIT}
+                      step={1}
+                      value={pageLimit === '' ? null : pageLimit}
+                      onValueChange={(value) => setPageLimit(value === null ? '' : value)}
+                    >
+                      <NumberFieldGroup className="ml-auto w-28">
+                        <NumberFieldInput
+                          aria-label={t(($) => $['newKnowledge.maxPages'])}
+                          aria-describedby={!pageLimitValid ? pageLimitErrorId : undefined}
+                          aria-invalid={!pageLimitValid}
+                          onBlur={() => {
+                            if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
+                          }}
+                        />
+                        <NumberFieldControls>
+                          <NumberFieldIncrement />
+                          <NumberFieldDecrement />
+                        </NumberFieldControls>
+                      </NumberFieldGroup>
+                    </NumberField>
+                  </div>
+                  {!pageLimitValid && (
+                    <p
+                      id={pageLimitErrorId}
+                      className="text-right system-xs-regular text-text-destructive"
+                      role="alert"
+                    >
+                      {t(($) => $['newKnowledge.maxPages'])}: 1–{MAX_PAGE_LIMIT}
+                    </p>
+                  )}
                 </div>
               </div>
             </CollapsiblePanel>

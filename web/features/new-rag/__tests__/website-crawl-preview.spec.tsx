@@ -518,19 +518,41 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
   })
 
-  it('caps crawl previews at the selection contract limit', async () => {
+  it.each(['0', '1.5', '201'])(
+    'keeps invalid page limit %s visible and blocks the crawl request',
+    async (invalidLimit) => {
+      render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+      const user = await fillValidForm()
+      await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
+      const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
+      await user.clear(pageLimit)
+      await user.type(pageLimit, invalidLimit)
+
+      expect(pageLimit).toHaveValue(invalidLimit)
+      expect(pageLimit).toHaveAttribute('aria-invalid', 'true')
+      expect(pageLimit).toHaveAccessibleDescription('dataset.newKnowledge.maxPages: 1–200')
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+      ).toBeDisabled()
+      expect(clientMock.createSource).not.toHaveBeenCalled()
+      expect(clientMock.startPreview).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([1, 200])('submits the exact valid page limit %s', async (validLimit) => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
     const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
-    await user.type(pageLimit, '1000')
-    await user.tab()
-    expect(pageLimit).toHaveValue('200')
+    await user.type(pageLimit, String(validLimit))
+    expect(pageLimit).toHaveValue(String(validLimit))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
-    expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(200)
+    expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.crawlOptions.limit).toBe(
+      validLimit,
+    )
   })
 
   it('preserves a replacement crawl page limit after clearing the input', async () => {

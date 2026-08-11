@@ -41,6 +41,7 @@ export function documentOutlineQueryOptions({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.outline
 
   return outlineQuery.get.queryOptions({
+    context: { silent: true },
     input: documentAssetId
       ? {
           params: {
@@ -49,5 +50,6 @@ export function documentOutlineQueryOptions({
           },
         }
       : skipToken,
+    retry: false,
   })
 }

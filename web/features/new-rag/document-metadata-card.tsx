@@ -105,7 +105,6 @@ export function DocumentMetadataCard({
   const router = useRouter()
   const [drafts, setDrafts] = useState<MetadataDraft[]>([])
   const [editing, setEditing] = useState(false)
-  const [preparing, setPreparing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
   const [retryableCreateName, setRetryableCreateName] = useState<string>()
@@ -124,11 +123,18 @@ export function DocumentMetadataCard({
     ...documentMetadataFieldsQueryOptions(controlSpaceId),
     enabled: editing,
   })
-  const fields = metadataFieldsQuery.data ?? []
+  const fields = useMemo(() => metadataFieldsQuery.data ?? [], [metadataFieldsQuery.data])
+  const resolvedDrafts = useMemo(() => {
+    const fieldTypes = new Map(fields.map((field) => [field.name, field.type]))
+    return drafts.map((draft) => ({
+      ...draft,
+      type: fieldTypes.get(draft.name) ?? draft.type,
+    }))
+  }, [drafts, fields])
   const renderedItems = useMemo(
     () =>
       editing
-        ? drafts.map((draft) => ({
+        ? resolvedDrafts.map((draft) => ({
             id: draft.id,
             name: draft.name,
             type: draft.type,
@@ -140,7 +146,7 @@ export function DocumentMetadataCard({
             type: documentMetadataType(value),
             value,
           })),
-    [drafts, editing, entries],
+    [editing, entries, resolvedDrafts],
   )
 
   const invalidateMetadataQueries = async () => {
@@ -158,21 +164,11 @@ export function DocumentMetadataCard({
     ])
   }
 
-  const startEditing = async () => {
-    if (!canEdit || preparing) return
-    setPreparing(true)
-    try {
-      let availableFields = fields
-      if (!metadataFieldsQuery.data) {
-        const result = await metadataFieldsQuery.refetch()
-        availableFields = result.data ?? []
-      }
-      setEditBaseline({ metadata: document.userMetadata, rowVersion: document.rowVersion })
-      setDrafts(metadataDrafts(document, availableFields))
-      setEditing(true)
-    } finally {
-      setPreparing(false)
-    }
+  const startEditing = () => {
+    if (!canEdit) return
+    setEditBaseline({ metadata: document.userMetadata, rowVersion: document.rowVersion })
+    setDrafts(metadataDrafts(document, fields))
+    setEditing(true)
   }
 
   const cancelEditing = () => {
@@ -239,11 +235,11 @@ export function DocumentMetadataCard({
     if (!canEdit || saving) return
     const patch: Record<string, unknown> = {}
     const original = new Map(editableDocumentMetadataEntries(editBaseline.metadata))
-    const nextNames = new Set(drafts.map((draft) => draft.name))
+    const nextNames = new Set(resolvedDrafts.map((draft) => draft.name))
     for (const name of original.keys()) {
       if (!nextNames.has(name)) patch[name] = null
     }
-    for (const draft of drafts) {
+    for (const draft of resolvedDrafts) {
       const value = metadataValueFromInput(draft.value, draft.type)
       if (!original.has(draft.name) || !Object.is(original.get(draft.name), value))
         patch[draft.name] = value
@@ -282,13 +278,7 @@ export function DocumentMetadataCard({
         <p className="mt-1 system-xs-regular text-text-tertiary">
           {t(($) => $['metadata.documentMetadata.metadataToolTip'])}
         </p>
-        <Button
-          className="mt-2"
-          disabled={!canEdit}
-          loading={preparing}
-          onClick={() => void startEditing()}
-          variant="primary"
-        >
+        <Button className="mt-2" disabled={!canEdit} onClick={startEditing} variant="primary">
           {t(($) => $['metadata.documentMetadata.startLabeling'])}
           <span aria-hidden className="ml-1 i-ri-arrow-right-line size-4" />
         </Button>
@@ -302,12 +292,7 @@ export function DocumentMetadataCard({
           {t(($) => $['metadata.metadata'])}
         </h2>
         {!editing && canEdit && (
-          <Button
-            loading={preparing}
-            onClick={() => void startEditing()}
-            size="small"
-            variant="ghost"
-          >
+          <Button onClick={startEditing} size="small" variant="ghost">
             <span aria-hidden className="mr-1 i-ri-edit-line size-3.5" />
             {tCommon(($) => $['operation.edit'])}
           </Button>

@@ -40,7 +40,11 @@ import { consoleQuery } from '@/service/client'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
-import { isKnowledgeModelSetupReady, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
+import {
+  isKnowledgeModelSetupReady,
+  KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
+  KNOWLEDGE_NAME_MAX_LENGTH,
+} from './constants'
 import { newKnowledgeListPath } from './routes'
 
 const TOP_K_MIN = 1
@@ -48,6 +52,7 @@ const TOP_K_MAX = 10
 const SCORE_THRESHOLD_MIN = 0
 const SCORE_THRESHOLD_MAX = 1
 const NAME_ERROR_ID = 'knowledge-name-error'
+const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
@@ -215,6 +220,7 @@ export function KnowledgeSettingsForm({
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
   const { t: tAppDebug } = useTranslation('appDebug')
+  const { t: tWorkflow } = useTranslation('workflow')
   const queryClient = useQueryClient()
   const router = useRouter()
   const { data: reasoningModelList } = useModelList(ModelTypeEnum.textGeneration)
@@ -284,6 +290,7 @@ export function KnowledgeSettingsForm({
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const deleteCancelRef = useRef<HTMLButtonElement>(null)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const pendingExternalAccessEnabledRef = useRef(initialApiEnabled)
   const completedBasicSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
   const handledMigrationIdRef = useRef<string | undefined>(undefined)
   const pendingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
@@ -333,6 +340,7 @@ export function KnowledgeSettingsForm({
   const basicDirty = spaceDirty || membersDirty
   const isDirty = basicDirty
   const nameInvalid = !name.trim()
+  const descriptionInvalid = Array.from(description).length > KNOWLEDGE_DESCRIPTION_MAX_LENGTH
   const membersInvalid =
     canManageAccess && visibility === 'partial_members' && selectedMemberIds.length === 0
 
@@ -379,7 +387,8 @@ export function KnowledgeSettingsForm({
   const fieldsDisabled = !canEdit || isSaving
   const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
   const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
-  const saveDisabled = !basicDirty || nameInvalid || membersInvalid || isSaving || serverConflict
+  const saveDisabled =
+    !basicDirty || nameInvalid || descriptionInvalid || membersInvalid || isSaving || serverConflict
   const startDraft = () => onDraftStart?.()
 
   const resetDraft = () => {
@@ -516,6 +525,7 @@ export function KnowledgeSettingsForm({
   const performExternalAccessSave = async (enabled: boolean) => {
     if (!canEdit || !canManageAccess || externalAccessMutation.isPending) return
 
+    pendingExternalAccessEnabledRef.current = enabled
     setSaveErrorSlice(undefined)
     try {
       await externalAccessMutation.mutateAsync({
@@ -527,8 +537,10 @@ export function KnowledgeSettingsForm({
         },
         params: { control_space_id: space.control_space_id },
       })
+      setApiEnabled(enabled)
       await invalidateSettingsQueries()
     } catch {
+      setApiEnabled(initialApiEnabled)
       setSaveErrorSlice('externalAccess')
     }
   }
@@ -630,7 +642,7 @@ export function KnowledgeSettingsForm({
 
   const retrySave = () => {
     if (saveErrorSlice === 'externalAccess') {
-      void performExternalAccessSave(apiEnabled)
+      void performExternalAccessSave(pendingExternalAccessEnabledRef.current)
       return
     }
     if (saveErrorSlice === 'settings') {
@@ -840,19 +852,37 @@ export function KnowledgeSettingsForm({
         </SettingsRow>
 
         <SettingsRow label={tSettings(($) => $['form.desc'])}>
-          <Textarea
-            aria-label={tSettings(($) => $['form.desc'])}
-            autoComplete="off"
-            name="knowledge-description"
-            value={description}
-            disabled={fieldsDisabled}
-            placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
-            className="min-h-20 resize-none"
-            onValueChange={(value) => {
-              startDraft()
-              setDescription(value)
-            }}
-          />
+          <div>
+            <Textarea
+              aria-label={tSettings(($) => $['form.desc'])}
+              aria-describedby={descriptionInvalid ? DESCRIPTION_ERROR_ID : undefined}
+              aria-invalid={descriptionInvalid}
+              autoComplete="off"
+              name="knowledge-description"
+              value={description}
+              disabled={fieldsDisabled}
+              placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
+              className={cn(
+                'min-h-20 resize-none',
+                descriptionInvalid && 'ring-1 ring-text-destructive',
+              )}
+              onValueChange={(value) => {
+                startDraft()
+                setDescription(value)
+              }}
+            />
+            {descriptionInvalid && (
+              <p
+                id={DESCRIPTION_ERROR_ID}
+                className="mt-1 system-xs-regular text-text-destructive"
+                role="alert"
+              >
+                {tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                  maxLength: KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
+                })}
+              </p>
+            )}
+          </div>
         </SettingsRow>
 
         <SettingsRow label={tSettings(($) => $['form.permissions'])}>
