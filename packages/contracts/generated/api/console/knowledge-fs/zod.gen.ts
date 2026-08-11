@@ -277,6 +277,20 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
 })
 
 /**
+ * KnowledgeFSDocumentBatchDownloadPayload
+ */
+export const zKnowledgeFsDocumentBatchDownloadPayload = z.object({
+  document_ids: z.array(z.string()).min(1).max(100),
+})
+
+/**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * KnowledgeFSLogicalDocumentDeletePayload
  */
 export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
@@ -2845,6 +2859,19 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.obj
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsBulkDocumentAvailabilityResponse
 
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipBody =
+  zKnowledgeFsDocumentBatchDownloadPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical documents ZIP
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
+  zBinaryFileResponse
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
   zKnowledgeFsLogicalDocumentDeletePayload
 
@@ -2889,6 +2916,18 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+  })
+
+/**
+ * KnowledgeFS logical document
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
+  zBinaryFileResponse
 
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersBody = zKnowledgeFsMembersReplacePayload
 

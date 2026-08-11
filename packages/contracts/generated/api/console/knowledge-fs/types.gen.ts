@@ -428,6 +428,12 @@ export type KnowledgeFsBulkDocumentAvailabilityResponse = {
   total: number
 }
 
+export type KnowledgeFsDocumentBatchDownloadPayload = {
+  document_ids: Array<string>
+}
+
+export type BinaryFileResponse = Blob | File
+
 export type KnowledgeFsLogicalDocumentDeletePayload = {
   expectedRevision: number
 }
@@ -2468,6 +2474,22 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipData = {
+  body: KnowledgeFsDocumentBatchDownloadPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/download-zip'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses = {
+  200: BinaryFileResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body: KnowledgeFsLogicalDocumentDeletePayload
   headers: {
@@ -2521,6 +2543,23 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdRe
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/download'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses = {
+  200: BinaryFileResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersData = {
   body: KnowledgeFsMembersReplacePayload

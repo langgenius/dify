@@ -16,6 +16,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -297,6 +298,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    BinaryFileResponse,
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingResponse,
@@ -1277,6 +1279,11 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
 class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
     @console_ns.expect(console_ns.models[KnowledgeFSDocumentBatchDownloadPayload.__name__])
     @console_ns.produces(["application/zip"])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical documents ZIP",
+        console_ns.models[BinaryFileResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1315,6 +1322,7 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
 class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
     @console_ns.produces(["application/octet-stream"])
+    @console_ns.response(HTTPStatus.OK, "KnowledgeFS logical document", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

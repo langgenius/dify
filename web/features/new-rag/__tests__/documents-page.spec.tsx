@@ -66,6 +66,9 @@ const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
 const updateLogicalDocumentMutation = vi.hoisted(() => vi.fn())
 const bulkUpdateLogicalDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadBlobMock = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
 const createMetadataField = vi.hoisted(() => vi.fn())
 const renameMetadataField = vi.hoisted(() => vi.fn())
@@ -255,6 +258,7 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
@@ -432,9 +436,15 @@ vi.mock('@/service/client', () => ({
           logicalDocuments: {
             get: listLogicalDocuments,
             patch: bulkUpdateLogicalDocumentsMutation,
+            downloadZip: {
+              post: downloadDocumentsMutation,
+            },
             byDocumentId: {
               delete: removeDocumentMutation,
               patch: updateLogicalDocumentMutation,
+              download: {
+                get: downloadDocumentMutation,
+              },
             },
           },
           metadata: {
@@ -712,22 +722,30 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
     sourcesQuery.refetch.mockResolvedValue({ error: null })
-    permissionStateMock.datasetKeys = ['dataset.acl.edit']
+    permissionStateMock.datasetKeys = ['dataset.acl.edit', 'dataset.acl.document_download']
     permissionStateMock.error = null
     permissionStateMock.fetching = false
     permissionStateMock.loading = false
     permissionStateMock.retry.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
     permissionStateMock.refreshAfterDenial.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
+    downloadDocumentMutation.mockResolvedValue(new Blob(['document']))
+    downloadDocumentsMutation.mockResolvedValue(
+      new Blob(['documents'], { type: 'application/zip' }),
+    )
     getTaskSnapshot.mockResolvedValue(task({ state: 'succeeded' }))
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
@@ -938,7 +956,7 @@ describe('DocumentsPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ])
-    expect(rowMenuItems[2]).toHaveAttribute('aria-disabled', 'true')
+    expect(rowMenuItems[2]).not.toHaveAttribute('aria-disabled', 'true')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -946,6 +964,26 @@ describe('DocumentsPage', () => {
     )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('downloads the active revision from the document action menu', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'report', title: 'Report.pdf' })] }],
+    }
+    const file = new File(['report'], 'source-report.md', { type: 'text/markdown' })
+    downloadDocumentMutation.mockResolvedValue(file)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
   it('creates a metadata field without scanning or rewriting documents', async () => {
@@ -2874,7 +2912,7 @@ describe('DocumentsPage', () => {
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
     expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
-    expect(orderedActions[1]).toBeDisabled()
+    expect(orderedActions[1]).toBeEnabled()
     expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
     expect(orderedActions[2]).toBeEnabled()
     expect(orderedActions[3]).toHaveAccessibleName('common.operation.remove')
@@ -2916,7 +2954,7 @@ describe('DocumentsPage', () => {
     })
     expect(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     await user.click(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
     )
@@ -2936,6 +2974,43 @@ describe('DocumentsPage', () => {
         screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
       ).not.toBeInTheDocument(),
     )
+  })
+
+  it('downloads selected active revisions as a ZIP archive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', title: 'One.pdf' }),
+            document({ id: 'two', title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+    const archive = new File(['documents'], 'space-1-documents.zip', {
+      type: 'application/zip',
+    })
+    downloadDocumentsMutation.mockResolvedValue(archive)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    await user.click(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'space-1-documents.zip',
+    })
   })
 
   it('confirms removal of selected documents from the designed bulk action', async () => {
