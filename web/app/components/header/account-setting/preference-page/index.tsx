@@ -9,12 +9,12 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { refreshUserProfileAtom, userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { useRouter } from '@/next/navigation'
@@ -43,8 +43,11 @@ const isThemeOption = (value: string): value is ThemeOption => {
 
 export default function PreferencePage() {
   const locale = useLocale()
-  const userProfile = useAtomValue(userProfileAtom)
-  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
+  const queryClient = useQueryClient()
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -85,7 +88,7 @@ export default function PreferencePage() {
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      refreshUserProfile()
+      await queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
     } catch (e) {
       toast.error((e as Error).message)
     } finally {

@@ -11,9 +11,9 @@ import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -48,7 +48,10 @@ const PlanComp: FC<Props> = ({ loc }) => {
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const router = useRouter()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { plan, enableEducationPlan } = useProviderContext()
   const { data: educationStatus } = useQuery(

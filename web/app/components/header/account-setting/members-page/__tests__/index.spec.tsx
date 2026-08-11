@@ -19,10 +19,6 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -39,6 +35,7 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () =>
   renderWithConsoleQuery(<MembersPage />, {
+    accountProfile: mockConsoleState.current.userProfile,
     systemFeatures: { is_email_setup: true },
   })
 

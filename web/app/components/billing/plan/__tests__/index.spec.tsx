@@ -10,13 +10,6 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { email: 'user@example.com' },
-  }))
-})
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -78,6 +71,7 @@ vi.mock('../assets', () => ({
 
 const renderPlan = (educationStatus = { allow_refresh: false, is_student: false }) => {
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: { email: 'user@example.com' },
     educationStatus,
     systemFeatures: { deployment_edition: 'CLOUD' },
   })

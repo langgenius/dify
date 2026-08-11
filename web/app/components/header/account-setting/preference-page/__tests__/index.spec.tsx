@@ -1,29 +1,22 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { ToastHost } from '@langgenius/dify-ui/toast'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { timezones } from '@/utils/timezone'
 import PreferencePage from '../index'
 
 const mockRefresh = vi.fn()
-const mockMutateUserProfile = vi.fn()
 let mockLocale: string | undefined = 'en-US'
 let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    refreshUserProfile: mockMutateUserProfile,
-  }))
-})
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => mockLocale,
@@ -54,12 +47,15 @@ const createUserProfile = (
 })
 
 const renderPage = () => {
-  render(
-    <>
+  const queryClient = createAccountProfileQueryClient(mockUserProfile)
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const rendered = render(
+    <QueryClientProvider client={queryClient}>
       <PreferencePage />
       <ToastHost />
-    </>,
+    </QueryClientProvider>,
   )
+  return { ...rendered, invalidateQueries }
 }
 
 const getSectionByLabel = (sectionLabel: string) => {
@@ -171,7 +167,7 @@ describe('PreferencePage - Interactions', () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
     updateUserProfileMock.mockResolvedValueOnce({ result: 'success' })
 
-    renderPage()
+    const { invalidateQueries } = renderPage()
 
     await selectOption('common.language.timezone', midwayTimezone.name)
 
@@ -181,6 +177,9 @@ describe('PreferencePage - Interactions', () => {
         url: '/account/timezone',
         body: { timezone: midwayTimezone.value },
       })
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: [['console', 'account', 'profile', 'get'], { type: 'query' }],
     })
   }, 15000)
 

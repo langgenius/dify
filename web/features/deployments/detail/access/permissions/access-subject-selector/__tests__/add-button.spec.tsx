@@ -1,19 +1,12 @@
 import type { AccessControlAccount, Subject } from '@/models/access-control'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SubjectType } from '@/models/access-control'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AccessSubjectAddButton } from '../add-button'
 
 const mockUseSearchAccessSubjects = vi.hoisted(() => vi.fn())
-
-vi.mock('@/context/account-state', async () => {
-  const { atom } = await import('jotai')
-
-  return {
-    userProfileAtom: atom({ email: 'current@example.com' }),
-  }
-})
 
 vi.mock('@/service/access-control/use-access-subjects', () => ({
   useSearchAccessSubjects: (...args: unknown[]) => mockUseSearchAccessSubjects(...args),
