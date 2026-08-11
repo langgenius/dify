@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
+from libs.helper import build_icon_url
 from models.account import Account
 from models.agent import (
     Agent,
@@ -239,9 +240,12 @@ def test_serialize_agent_includes_icon_url_for_image_icons(monkeypatch: pytest.M
     agent.icon_type = AgentIconType.IMAGE
     agent.icon = "upload-file-id"
     monkeypatch.setattr(
-        "libs.helper.build_icon_url",
-        lambda icon_type, icon: f"/files/{icon}/file-preview?sign=test",
+        "libs.helper.file_helpers.get_signed_file_url",
+        lambda upload_file_id: f"/files/{upload_file_id}/file-preview?sign=test",
     )
+
+    # Pin AgentIconType → build_icon_url compatibility (StrEnum str() fallback, not IconType).
+    assert build_icon_url(AgentIconType.IMAGE, "upload-file-id") == "/files/upload-file-id/file-preview?sign=test"
 
     payload = AgentRosterService.serialize_agent(agent)
 
