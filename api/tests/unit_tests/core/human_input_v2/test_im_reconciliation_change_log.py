@@ -20,13 +20,9 @@ def test_change_log_values_are_immutable_and_contain_no_transport_material() -> 
 
     assert missing_names == []
     field_names = {
-        field.name
-        for name in _CHANGE_VALUE_NAMES
-        for field in dataclasses.fields(getattr(im_integration, name))
+        field.name for name in _CHANGE_VALUE_NAMES for field in dataclasses.fields(getattr(im_integration, name))
     }
-    assert not any(
-        fragment in field_name for field_name in field_names for fragment in _FORBIDDEN_FIELD_FRAGMENTS
-    )
+    assert not any(fragment in field_name for field_name in field_names for fragment in _FORBIDDEN_FIELD_FRAGMENTS)
     for name in _CHANGE_VALUE_NAMES:
         value_type = getattr(im_integration, name)
         assert value_type.__dataclass_params__.frozen is True

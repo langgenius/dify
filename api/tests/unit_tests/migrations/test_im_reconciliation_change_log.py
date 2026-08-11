@@ -76,13 +76,14 @@ def test_upgrade_adds_change_log_shape_and_preserves_historical_results() -> Non
         for constraint in inspector.get_unique_constraints(HumanInputIMReconciliationChange.__tablename__)
     }
     assert change_uniques == {"human_input_im_reconciliation_changes_run_operation_uq"}
-    assert {constraint["name"] for constraint in inspector.get_check_constraints(
-        HumanInputIMReconciliationChange.__tablename__
-    )} == {"snapshot_present", "snapshot_operation_shape", "subject_identifier_shape"}
+    assert {
+        constraint["name"]
+        for constraint in inspector.get_check_constraints(HumanInputIMReconciliationChange.__tablename__)
+    } == {"snapshot_present", "snapshot_operation_shape", "subject_identifier_shape"}
     with engine.begin() as connection:
-        stored = connection.execute(
-            sa.text("SELECT id, operation_key FROM human_input_im_sync_results")
-        ).mappings().one()
+        stored = (
+            connection.execute(sa.text("SELECT id, operation_key FROM human_input_im_sync_results")).mappings().one()
+        )
         assert stored == {"id": "result-1", "operation_key": None}
 
 

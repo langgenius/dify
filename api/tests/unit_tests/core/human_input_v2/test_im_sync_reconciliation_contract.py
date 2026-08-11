@@ -59,16 +59,9 @@ def test_planner_exposes_immutable_composite_plan_values() -> None:
 def test_planner_imports_no_transport_or_infrastructure_layer() -> None:
     source = inspect.getsource(sync_reconciliation)
     tree = ast.parse(source)
-    imported_modules = {
-        alias.name
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import)
-        for alias in node.names
-    }
+    imported_modules = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
     imported_modules.update(
-        node.module
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module is not None
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
     )
 
     assert not any(
@@ -86,7 +79,5 @@ def test_planner_public_values_do_not_expose_scope_or_transport_material() -> No
     }
 
     assert not any(
-        fragment in field_name
-        for field_name in public_field_names
-        for fragment in _FORBIDDEN_PUBLIC_FIELD_FRAGMENTS
+        fragment in field_name for field_name in public_field_names for fragment in _FORBIDDEN_PUBLIC_FIELD_FRAGMENTS
     )

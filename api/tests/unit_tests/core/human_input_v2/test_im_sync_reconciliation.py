@@ -394,9 +394,7 @@ def test_structural_corruption_returns_all_deterministically_ordered_blockers() 
     )
 
     assert isinstance(generated, BlockedReconciliation)
-    assert [block.code for block in generated.blockers] == sorted(
-        [block.code for block in generated.blockers], key=str
-    )
+    assert [block.code for block in generated.blockers] == sorted([block.code for block in generated.blockers], key=str)
     assert {block.code for block in generated.blockers} == {
         ReconciliationBlockCode.DUPLICATE_PROVIDER_USER_ID,
         ReconciliationBlockCode.DUPLICATE_CURRENT_IDENTITY,

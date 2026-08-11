@@ -20,9 +20,7 @@ from models.human_input_v2 import HumanInputIMReconciliationChange, HumanInputIM
 
 _MIGRATIONS_DIRECTORY = Path(__file__).resolve().parents[3] / "migrations/versions"
 _BASE_MIGRATION_PATH = _MIGRATIONS_DIRECTORY / "2026_07_25_1100-6d9f2b4c5e7a_add_human_input_v2_im_control_plane.py"
-_CHANGE_MIGRATION_PATH = (
-    _MIGRATIONS_DIRECTORY / "2026_08_11_1000-b7d3e5f9a1c2_add_im_reconciliation_change_log.py"
-)
+_CHANGE_MIGRATION_PATH = _MIGRATIONS_DIRECTORY / "2026_08_11_1000-b7d3e5f9a1c2_add_im_reconciliation_change_log.py"
 _HISTORICAL_RESULT_ID = "00000000-0000-0000-0000-000000000101"
 _INTEGRATION_ID = "00000000-0000-0000-0000-000000000201"
 _HISTORICAL_RUN_ID = "00000000-0000-0000-0000-000000000301"
@@ -126,9 +124,9 @@ def test_upgrade_enforces_postgresql_shape_constraints_and_preserves_history(mig
     assert {constraint["name"] for constraint in inspector.get_unique_constraints(result_table, schema=schema)} >= {
         "human_input_im_sync_results_run_operation_uq"
     }
-    assert {
-        constraint["name"] for constraint in inspector.get_unique_constraints(change_table, schema=schema)
-    } == {"human_input_im_reconciliation_changes_run_operation_uq"}
+    assert {constraint["name"] for constraint in inspector.get_unique_constraints(change_table, schema=schema)} == {
+        "human_input_im_reconciliation_changes_run_operation_uq"
+    }
     assert {constraint["name"] for constraint in inspector.get_check_constraints(change_table, schema=schema)} == {
         "snapshot_operation_shape",
         "snapshot_present",
@@ -141,13 +139,16 @@ def test_upgrade_enforces_postgresql_shape_constraints_and_preserves_history(mig
 
     quoted_schema = engine.dialect.identifier_preparer.quote_schema(schema)
     with engine.begin() as connection:
-        historical = connection.execute(
-            sa.text(
-                f"SELECT id, operation_key FROM {quoted_schema}.human_input_im_sync_results "
-                "WHERE id = :result_id"
-            ),
-            {"result_id": _HISTORICAL_RESULT_ID},
-        ).mappings().one()
+        historical = (
+            connection.execute(
+                sa.text(
+                    f"SELECT id, operation_key FROM {quoted_schema}.human_input_im_sync_results WHERE id = :result_id"
+                ),
+                {"result_id": _HISTORICAL_RESULT_ID},
+            )
+            .mappings()
+            .one()
+        )
     assert str(historical["id"]) == _HISTORICAL_RESULT_ID
     assert historical["operation_key"] is None
 
@@ -189,8 +190,7 @@ def test_downgrade_removes_only_forward_history_schema(migration_schema) -> None
     inspector = sa.inspect(engine)
     assert HumanInputIMReconciliationChange.__tablename__ not in inspector.get_table_names(schema=schema)
     assert "operation_key" not in {
-        column["name"]
-        for column in inspector.get_columns(HumanInputIMSyncResult.__tablename__, schema=schema)
+        column["name"] for column in inspector.get_columns(HumanInputIMSyncResult.__tablename__, schema=schema)
     }
     with engine.begin() as connection:
         assert connection.scalar(sa.text(f"SELECT id FROM {quoted_schema}.unrelated_state")) == 1

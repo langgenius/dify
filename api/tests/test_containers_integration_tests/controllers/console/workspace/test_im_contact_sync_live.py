@@ -94,9 +94,7 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
     result_counts: dict[str, int] = latest_payload["run"]["result_counts"]
     assert sum(result_counts.values()) > 0
 
-    result_bucket, expected_total = next(
-        (bucket, count) for bucket, count in result_counts.items() if count > 0
-    )
+    result_bucket, expected_total = next((bucket, count) for bucket, count in result_counts.items() if count > 0)
     first_page_response = test_client_with_containers.get(
         f"{_SYNC_RUNS_PATH}/latest/results",
         query_string={"result": result_bucket, "page": 1, "limit": 1},
@@ -122,14 +120,10 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
 
     db_session_with_containers.expire_all()
     persisted_result_count = db_session_with_containers.scalar(
-        select(func.count(HumanInputIMSyncResult.id)).where(
-            HumanInputIMSyncResult.sync_run_id == str(sync_run_id)
-        )
+        select(func.count(HumanInputIMSyncResult.id)).where(HumanInputIMSyncResult.sync_run_id == str(sync_run_id))
     )
     persisted_identity_count = db_session_with_containers.scalar(
-        select(func.count(HumanInputIMIdentity.id)).where(
-            HumanInputIMIdentity.integration_id == str(integration.id)
-        )
+        select(func.count(HumanInputIMIdentity.id)).where(HumanInputIMIdentity.integration_id == str(integration.id))
     )
     assert persisted_result_count == sum(result_counts.values())
     assert persisted_identity_count == persisted_result_count
@@ -163,9 +157,7 @@ def _persist_live_slack_integration(
                 "encrypted_signing_secret": encrypter.encrypt_token(
                     str(workspace_id), credentials["SLACK_SIGNING_SECRET"]
                 ),
-                "encrypted_bot_token": encrypter.encrypt_token(
-                    str(workspace_id), credentials["SLACK_BOT_TOKEN"]
-                ),
+                "encrypted_bot_token": encrypter.encrypt_token(str(workspace_id), credentials["SLACK_BOT_TOKEN"]),
                 "encrypted_app_token": encrypter.encrypt_token(
                     str(workspace_id), credentials["SLACK_APP_SOCKET_TOKEN"]
                 ),
