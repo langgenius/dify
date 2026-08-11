@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Turnstile from '../turnstile'
 
@@ -21,27 +22,77 @@ type TurnstileOptions = {
 const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   render: vi.fn(),
+  scriptIsCached: false,
   scriptProps: undefined as ScriptProps | undefined,
 }))
 
 let turnstileOptions: TurnstileOptions | undefined
 
-vi.mock('@/next/script', () => ({
-  default: (props: ScriptProps) => {
+vi.mock('@/next/script', async () => {
+  const { useEffect, useRef } = await vi.importActual<typeof import('react')>('react')
+
+  function ScriptMock(props: ScriptProps) {
+    const { onReady } = props
+    const hasCalledOnReadyRef = useRef(false)
     mocks.scriptProps = props
+
+    useEffect(() => {
+      if (!mocks.scriptIsCached || hasCalledOnReadyRef.current) return
+      hasCalledOnReadyRef.current = true
+      onReady?.()
+    }, [onReady])
+
     return null
-  },
-}))
+  }
+
+  return {
+    default: ScriptMock,
+  }
+})
 
 describe('Turnstile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.scriptIsCached = false
     mocks.scriptProps = undefined
     turnstileOptions = undefined
     Object.defineProperty(window, 'turnstile', {
       configurable: true,
       value: undefined,
     })
+  })
+
+  it('keeps a cached-script widget mounted after Strict Mode replays effects', async () => {
+    const mountedWidgets = new Map<string, HTMLElement>()
+    mocks.scriptIsCached = true
+    mocks.render.mockImplementation((container: HTMLElement) => {
+      const widgetId = `widget-${mocks.render.mock.calls.length}`
+      const widget = document.createElement('div')
+      widget.setAttribute('role', 'region')
+      widget.setAttribute('aria-label', 'Turnstile challenge')
+      container.appendChild(widget)
+      mountedWidgets.set(widgetId, widget)
+      return widgetId
+    })
+    mocks.remove.mockImplementation((widgetId: string) => {
+      mountedWidgets.get(widgetId)?.remove()
+      mountedWidgets.delete(widgetId)
+    })
+    Object.defineProperty(window, 'turnstile', {
+      configurable: true,
+      value: {
+        remove: mocks.remove,
+        render: mocks.render,
+      },
+    })
+
+    render(
+      <StrictMode>
+        <Turnstile siteKey="site-key" onVerify={vi.fn()} onInvalidate={vi.fn()} />
+      </StrictMode>,
+    )
+
+    expect(await screen.findByRole('region', { name: 'Turnstile challenge' })).toBeInTheDocument()
   })
 
   it('shows a recoverable error when the script fails to load', async () => {

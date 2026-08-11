@@ -1,5 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Script from '@/next/script'
 
@@ -34,69 +34,91 @@ type TurnstileProps = {
 export default function Turnstile({ siteKey, onVerify, onInvalidate }: TurnstileProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
-  const widgetIdRef = useRef<string | undefined>(undefined)
+  const onVerifyRef = useRef(onVerify)
+  const onInvalidateRef = useRef(onInvalidate)
   const [hasError, setHasError] = useState(false)
+  const [isScriptReady, setIsScriptReady] = useState(false)
   const [scriptGeneration, setScriptGeneration] = useState(0)
 
-  const removeWidget = () => {
-    const widgetId = widgetIdRef.current
-    widgetIdRef.current = undefined
-
-    const turnstile = getTurnstileApi()
-    if (!widgetId || !turnstile) return
-    turnstile.remove(widgetId)
-  }
-
   useEffect(() => {
-    return () => {
-      const widgetId = widgetIdRef.current
-      widgetIdRef.current = undefined
+    onVerifyRef.current = onVerify
+    onInvalidateRef.current = onInvalidate
+  }, [onInvalidate, onVerify])
 
-      const turnstile = getTurnstileApi()
-      if (!widgetId || !turnstile) return
-      turnstile.remove(widgetId)
-    }
+  const invalidate = useCallback(() => {
+    onInvalidateRef.current()
   }, [])
 
-  const handleChallengeError = () => {
-    onInvalidate()
-    removeWidget()
+  const handleChallengeError = useCallback(() => {
+    invalidate()
     setHasError(true)
-  }
+  }, [invalidate])
 
-  const renderWidget = () => {
+  useEffect(() => {
+    if (!isScriptReady || hasError) return
+
     const turnstile = getTurnstileApi()
-    if (!containerRef.current || !turnstile || widgetIdRef.current) return
+    const container = containerRef.current
+    if (!container || !turnstile) return
 
+    let widgetId: string | undefined
     try {
-      widgetIdRef.current = turnstile.render(containerRef.current, {
+      widgetId = turnstile.render(container, {
         sitekey: siteKey,
         action: 'signin_code',
         appearance: 'always',
         size: 'flexible',
         theme: 'auto',
-        callback: onVerify,
+        callback: (token) => {
+          onVerifyRef.current(token)
+        },
         'error-callback': () => {
           handleChallengeError()
           return true
         },
-        'expired-callback': onInvalidate,
-        'timeout-callback': onInvalidate,
+        'expired-callback': invalidate,
+        'timeout-callback': invalidate,
         'unsupported-callback': handleChallengeError,
       })
     } catch {
-      handleChallengeError()
+      queueMicrotask(handleChallengeError)
     }
+
+    return () => {
+      if (!widgetId) return
+      turnstile.remove(widgetId)
+    }
+  }, [handleChallengeError, hasError, invalidate, isScriptReady, siteKey])
+
+  const handleScriptReady = () => {
+    if (getTurnstileApi()) {
+      setIsScriptReady(true)
+      return
+    }
+
+    onInvalidateRef.current()
+    setIsScriptReady(false)
+    setHasError(true)
+  }
+
+  const handleScriptError = () => {
+    onInvalidateRef.current()
+    setIsScriptReady(false)
+    setHasError(true)
   }
 
   const handleRetry = () => {
     const canReuseLoadedScript = Boolean(getTurnstileApi())
 
-    removeWidget()
     setHasError(false)
 
-    if (canReuseLoadedScript) renderWidget()
-    else setScriptGeneration((current) => current + 1)
+    if (canReuseLoadedScript) {
+      setIsScriptReady(true)
+      return
+    }
+
+    setIsScriptReady(false)
+    setScriptGeneration((current) => current + 1)
   }
 
   const scriptId = scriptGeneration
@@ -128,8 +150,8 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate }: Turnstile
         id={scriptId}
         src={scriptSrc}
         strategy="afterInteractive"
-        onReady={renderWidget}
-        onError={handleChallengeError}
+        onReady={handleScriptReady}
+        onError={handleScriptError}
       />
     </>
   )
