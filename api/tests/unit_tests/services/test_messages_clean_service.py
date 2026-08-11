@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from enums.cloud_plan import CloudPlan
+from services.retention.conversation.messages_clean_app_scan import EligibleAppRoundRobinScanner, EligibleAppScanBatch
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
     BillingSandboxPolicy,
@@ -296,6 +297,130 @@ class TestBillingSandboxPolicyFilterMessageIds:
         called_tenant_ids = set(plan_provider.call_args[0][0])
         assert called_tenant_ids == {"tenant1", "tenant2"}
 
+    def test_plan_provider_reuses_job_level_cache(self):
+        """Test that repeated tenants are not fetched from billing more than once."""
+        # Arrange
+        now = self.CURRENT_TIMESTAMP
+        tenant_plans = {
+            "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+            "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+        }
+        plan_provider = MagicMock(
+            side_effect=lambda tenant_ids: {tenant_id: tenant_plans[tenant_id] for tenant_id in tenant_ids}
+        )
+        policy = BillingSandboxPolicy(
+            plan_provider=plan_provider,
+            graceful_period_days=self.GRACEFUL_PERIOD_DAYS,
+            current_timestamp=now,
+        )
+
+        # Act
+        first_result = policy.filter_message_ids(
+            [make_simple_message("msg1", "app1")],
+            {"app1": "tenant1"},
+        )
+        second_result = policy.filter_message_ids(
+            [
+                make_simple_message("msg2", "app1"),
+                make_simple_message("msg3", "app2"),
+            ],
+            {"app1": "tenant1", "app2": "tenant2"},
+        )
+
+        # Assert
+        assert set(first_result) == {"msg1"}
+        assert set(second_result) == {"msg2", "msg3"}
+        assert plan_provider.call_count == 2
+        assert set(plan_provider.call_args_list[0].args[0]) == {"tenant1"}
+        assert set(plan_provider.call_args_list[1].args[0]) == {"tenant2"}
+
+    def test_whitelisted_tenants_are_not_fetched_from_plan_provider(self):
+        """Test that whitelisted tenants are skipped before billing plan lookup."""
+        # Arrange
+        plan_provider = make_plan_provider({})
+        policy = BillingSandboxPolicy(
+            plan_provider=plan_provider,
+            graceful_period_days=self.GRACEFUL_PERIOD_DAYS,
+            tenant_whitelist=["tenant1"],
+            current_timestamp=self.CURRENT_TIMESTAMP,
+        )
+
+        # Act
+        result = policy.filter_message_ids(
+            [make_simple_message("msg1", "app1")],
+            {"app1": "tenant1"},
+        )
+
+        # Assert
+        assert list(result) == []
+        plan_provider.assert_not_called()
+
+    def test_filter_app_to_tenant_returns_only_eligible_apps(self):
+        """Test eligible-app discovery filters out paid, grace-period, and whitelisted tenants."""
+        now = self.CURRENT_TIMESTAMP
+        expired_old = now - (15 * 24 * 60 * 60)
+        expired_recent = now - (3 * 24 * 60 * 60)
+        plan_provider = make_plan_provider(
+            {
+                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_old},
+                "tenant3": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_recent},
+                "tenant4": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+                "tenant5": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+            }
+        )
+        policy = BillingSandboxPolicy(
+            plan_provider=plan_provider,
+            graceful_period_days=self.GRACEFUL_PERIOD_DAYS,
+            tenant_whitelist=["tenant5"],
+            current_timestamp=now,
+        )
+
+        result = policy.filter_app_to_tenant(
+            {
+                "app1": "tenant1",
+                "app2": "tenant2",
+                "app3": "tenant3",
+                "app4": "tenant4",
+                "app5": "tenant5",
+            }
+        )
+
+        assert result == {"app1": "tenant1", "app2": "tenant2"}
+
+    def test_revalidate_message_ids_uses_fresh_provider(self):
+        """Test delete-time revalidation bypasses the job-level cached provider."""
+        cached_plan_provider = make_plan_provider(
+            {
+                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+            }
+        )
+        fresh_plan_provider = make_plan_provider(
+            {
+                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant2": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+            }
+        )
+        policy = BillingSandboxPolicy(
+            plan_provider=cached_plan_provider,
+            fresh_plan_provider=fresh_plan_provider,
+            graceful_period_days=self.GRACEFUL_PERIOD_DAYS,
+            current_timestamp=self.CURRENT_TIMESTAMP,
+        )
+        messages = [
+            make_simple_message("msg1", "app1"),
+            make_simple_message("msg2", "app2"),
+        ]
+        app_to_tenant = {"app1": "tenant1", "app2": "tenant2"}
+
+        discovery_result = policy.filter_message_ids(messages, app_to_tenant)
+        revalidated_result = policy.revalidate_message_ids(messages, app_to_tenant)
+
+        assert set(discovery_result) == {"msg1", "msg2"}
+        assert set(revalidated_result) == {"msg1"}
+        fresh_plan_provider.assert_called_once()
+
     def test_complex_mixed_scenario(self):
         """Test complex scenario with mixed plans, expirations, whitelist, and missing mappings."""
         # Arrange
@@ -435,6 +560,7 @@ class TestCreateMessageCleanPolicy:
         assert policy._graceful_period_days == 14
         assert list(policy._tenant_whitelist) == whitelist
         assert policy._plan_provider == mock_plan_provider
+        assert policy._fresh_plan_provider == mock_billing_service.get_plan_bulk
         assert policy._current_timestamp == 1234567
 
 
@@ -497,6 +623,38 @@ class TestMessagesCleanServiceFromTimeRange:
                 batch_size=-100,
             )
 
+        with pytest.raises(ValueError, match="max_candidate_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                max_candidate_batch_size=0,
+            )
+
+        with pytest.raises(ValueError, match="delete_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                delete_batch_size=0,
+            )
+
+        with pytest.raises(ValueError, match="per_app_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                per_app_batch_size=0,
+            )
+
+        with pytest.raises(ValueError, match="app_page_size .* must be greater than 0"):
+            MessagesCleanService.from_time_range(
+                policy=policy,
+                start_from=start_from,
+                end_before=end_before,
+                app_page_size=0,
+            )
+
     def test_valid_params_creates_instance(self):
         """Test that valid parameters create a correctly configured instance."""
         # Arrange
@@ -512,6 +670,11 @@ class TestMessagesCleanServiceFromTimeRange:
             start_from=start_from,
             end_before=end_before,
             batch_size=batch_size,
+            max_candidate_batch_size=5000,
+            delete_batch_size=200,
+            per_app_batch_size=100,
+            app_page_size=50,
+            scan_strategy="global",
             dry_run=dry_run,
         )
 
@@ -521,6 +684,12 @@ class TestMessagesCleanServiceFromTimeRange:
         assert service._start_from == start_from
         assert service._end_before == end_before
         assert service._batch_size == batch_size
+        assert service._candidate_batch_size == batch_size
+        assert service._max_candidate_batch_size == 5000
+        assert service._delete_batch_size == 200
+        assert service._per_app_batch_size == 100
+        assert service._app_page_size == 50
+        assert service._scan_strategy == "global"
         assert service._dry_run == dry_run
 
     def test_default_params(self):
@@ -539,6 +708,12 @@ class TestMessagesCleanServiceFromTimeRange:
 
         # Assert
         assert service._batch_size == 1000  # default
+        assert service._candidate_batch_size == 1000  # default
+        assert service._max_candidate_batch_size == 1000  # default
+        assert service._delete_batch_size == 1000  # default
+        assert service._per_app_batch_size == 1000  # default
+        assert service._app_page_size == 500  # default
+        assert service._scan_strategy == "auto"  # default
         assert service._dry_run is False  # default
 
     def test_explicit_task_label(self):
@@ -590,6 +765,18 @@ class TestMessagesCleanServiceFromDays:
         with pytest.raises(ValueError, match="batch_size .* must be greater than 0"):
             MessagesCleanService.from_days(policy=policy, days=30, batch_size=-500)
 
+        with pytest.raises(ValueError, match="max_candidate_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy=policy, days=30, max_candidate_batch_size=0)
+
+        with pytest.raises(ValueError, match="delete_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy=policy, days=30, delete_batch_size=0)
+
+        with pytest.raises(ValueError, match="per_app_batch_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy=policy, days=30, per_app_batch_size=0)
+
+        with pytest.raises(ValueError, match="app_page_size .* must be greater than 0"):
+            MessagesCleanService.from_days(policy=policy, days=30, app_page_size=0)
+
     def test_valid_params_creates_instance(self):
         """Test that valid parameters create a correctly configured instance."""
         # Arrange
@@ -606,6 +793,11 @@ class TestMessagesCleanServiceFromDays:
                 policy=policy,
                 days=days,
                 batch_size=batch_size,
+                max_candidate_batch_size=2500,
+                delete_batch_size=250,
+                per_app_batch_size=125,
+                app_page_size=25,
+                scan_strategy="global",
                 dry_run=dry_run,
             )
 
@@ -616,6 +808,12 @@ class TestMessagesCleanServiceFromDays:
         assert service._start_from is None
         assert service._end_before == expected_end_before
         assert service._batch_size == batch_size
+        assert service._candidate_batch_size == batch_size
+        assert service._max_candidate_batch_size == 2500
+        assert service._delete_batch_size == 250
+        assert service._per_app_batch_size == 125
+        assert service._app_page_size == 25
+        assert service._scan_strategy == "global"
         assert service._dry_run == dry_run
 
     def test_default_params(self):
@@ -635,6 +833,152 @@ class TestMessagesCleanServiceFromDays:
         assert service._batch_size == 1000  # default
         assert service._dry_run is False  # default
         assert service._metrics._base_attributes["task_label"] == "custom"
+
+
+class TestMessagesCleanServiceBatchHelpers:
+    """Unit tests for cache and adaptive batch helpers."""
+
+    def test_load_app_to_tenant_mapping_reuses_cache(self):
+        class ExecuteResult:
+            def __init__(self, rows: list[tuple[str, str]]) -> None:
+                self._rows = rows
+
+            def all(self) -> list[tuple[str, str]]:
+                return self._rows
+
+        class FakeSession:
+            execute_calls: int
+
+            def __init__(self) -> None:
+                self.execute_calls = 0
+
+            def execute(self, _stmt: object) -> ExecuteResult:
+                self.execute_calls += 1
+                return ExecuteResult([("app1", "tenant1")])
+
+        session = FakeSession()
+        cache: dict[str, str | None] = {}
+
+        first_mapping, first_cache_misses, first_found = MessagesCleanService._load_app_to_tenant_mapping(
+            session=session,  # type: ignore[arg-type]
+            app_ids=["app1"],
+            app_to_tenant_cache=cache,
+        )
+        second_mapping, second_cache_misses, second_found = MessagesCleanService._load_app_to_tenant_mapping(
+            session=session,  # type: ignore[arg-type]
+            app_ids=["app1"],
+            app_to_tenant_cache=cache,
+        )
+
+        assert first_mapping == {"app1": "tenant1"}
+        assert second_mapping == {"app1": "tenant1"}
+        assert first_cache_misses == 1
+        assert first_found == 1
+        assert second_cache_misses == 0
+        assert second_found == 0
+        assert session.execute_calls == 1
+
+    def test_candidate_batch_size_grows_for_low_hit_rate(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=1000,
+            max_candidate_batch_size=50000,
+            delete_batch_size=1000,
+        )
+
+        smoothed_hit_rate, next_batch_size = service._adjust_candidate_batch_size(
+            smoothed_hit_rate=None,
+            candidate_count=10000,
+            eligible_count=55,
+        )
+
+        assert smoothed_hit_rate == 0.0055
+        assert next_batch_size == 50000
+
+    def test_candidate_batch_size_shrinks_when_hit_rate_is_high(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=10000,
+            max_candidate_batch_size=50000,
+            delete_batch_size=1000,
+        )
+
+        _smoothed_hit_rate, next_batch_size = service._adjust_candidate_batch_size(
+            smoothed_hit_rate=None,
+            candidate_count=10000,
+            eligible_count=10000,
+        )
+
+        assert next_batch_size == 1000
+
+    def test_iter_message_id_chunks_uses_delete_batch_size(self):
+        chunks = list(MessagesCleanService._iter_message_id_chunks(["msg1", "msg2", "msg3", "msg4", "msg5"], 2))
+
+        assert chunks == [["msg1", "msg2"], ["msg3", "msg4"], ["msg5"]]
+
+    def test_eligible_app_scanner_filters_apps_and_round_robins(self):
+        class ExecuteResult:
+            def __init__(self, rows: list[tuple[str, str] | tuple[str, str, datetime.datetime]]) -> None:
+                self._rows = rows
+
+            def all(self) -> list[tuple[str, str] | tuple[str, str, datetime.datetime]]:
+                return self._rows
+
+        class FakeSession:
+            def __init__(self) -> None:
+                self.rows_by_call: list[list[tuple[str, str] | tuple[str, str, datetime.datetime]]] = [
+                    [
+                        ("app1", "tenant1"),
+                        ("app2", "tenant2"),
+                        ("app3", "tenant3"),
+                    ],
+                    [("msg1", "app1", datetime.datetime(2024, 1, 1, 0, 0, 0))],
+                    [("msg2", "app2", datetime.datetime(2024, 1, 1, 0, 0, 1))],
+                ]
+
+            def execute(self, _stmt: object) -> ExecuteResult:
+                return ExecuteResult(self.rows_by_call.pop(0))
+
+            def __enter__(self) -> "FakeSession":
+                return self
+
+            def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+                return None
+
+        class FakeSessionFactory:
+            def __init__(self) -> None:
+                self.session = FakeSession()
+
+            def __call__(self) -> FakeSession:
+                return self.session
+
+        plan_provider = make_plan_provider(
+            {
+                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant3": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+            }
+        )
+        policy = BillingSandboxPolicy(plan_provider=plan_provider, current_timestamp=1000)
+        scanner = EligibleAppRoundRobinScanner(
+            policy=policy,
+            start_from=datetime.datetime(2023, 12, 1),
+            end_before=datetime.datetime(2024, 2, 1),
+            app_page_size=10,
+            per_app_batch_size=1,
+        )
+
+        batch = scanner.fetch_batch(FakeSessionFactory(), target_message_count=2)  # type: ignore[arg-type]
+
+        assert [message.id for message in batch.messages] == ["msg1", "msg2"]
+        assert batch.app_to_tenant == {"app1": "tenant1", "app2": "tenant2"}
+        assert batch.app_fetches == 2
+        assert scanner.scanned_apps == 3
+        assert scanner.eligible_apps == 2
 
 
 class TestMessagesCleanServiceRun:
@@ -666,6 +1010,126 @@ class TestMessagesCleanServiceRun:
         assert result == expected_stats
         assert len(completion_calls) == 1
         assert completion_calls[0]["status"] == "success"
+
+    def test_run_uses_eligible_app_strategy_for_sandbox_policy(self):
+        service = MessagesCleanService(
+            policy=BillingSandboxPolicy(plan_provider=make_plan_provider({})),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+        )
+        expected_stats = {
+            "batches": 1,
+            "total_messages": 10,
+            "filtered_messages": 5,
+            "total_deleted": 5,
+        }
+        service._clean_messages_by_eligible_apps = MagicMock(return_value=expected_stats)  # type: ignore[method-assign]
+        service._clean_messages_by_time_range = MagicMock()  # type: ignore[method-assign]
+
+        result = service.run()
+
+        assert result == expected_stats
+        service._clean_messages_by_eligible_apps.assert_called_once()
+        service._clean_messages_by_time_range.assert_not_called()
+
+    def test_global_strategy_forces_global_scan(self):
+        service = MessagesCleanService(
+            policy=BillingSandboxPolicy(plan_provider=make_plan_provider({})),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            scan_strategy="global",
+        )
+        expected_stats = {
+            "batches": 1,
+            "total_messages": 10,
+            "filtered_messages": 5,
+            "total_deleted": 5,
+        }
+        service._clean_messages_by_time_range = MagicMock(return_value=expected_stats)  # type: ignore[method-assign]
+        service._clean_messages_by_eligible_apps = MagicMock()  # type: ignore[method-assign]
+
+        result = service.run()
+
+        assert result == expected_stats
+        service._clean_messages_by_time_range.assert_called_once()
+        service._clean_messages_by_eligible_apps.assert_not_called()
+
+    def test_eligible_app_strategy_requires_supported_policy(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            scan_strategy="eligible_apps",
+        )
+
+        with pytest.raises(ValueError, match="eligible-app cleanup policy"):
+            service.run()
+
+    def test_eligible_app_strategy_revalidates_before_dry_run_counting(self):
+        class FakeSessionFactory:
+            pass
+
+        class FakeScanner:
+            scanned_apps = 2
+            eligible_apps = 2
+            empty_apps = 0
+
+            def __init__(self, **_kwargs: object) -> None:
+                self.call_count = 0
+
+            def fetch_batch(self, _session_factory: object, *, target_message_count: int) -> EligibleAppScanBatch:
+                del target_message_count
+                self.call_count += 1
+                if self.call_count == 1:
+                    return EligibleAppScanBatch(
+                        messages=[
+                            make_simple_message("msg1", "app1"),
+                            make_simple_message("msg2", "app2"),
+                        ],
+                        app_to_tenant={"app1": "tenant1", "app2": "tenant2"},
+                        app_fetches=2,
+                        exhausted_apps=2,
+                    )
+                return EligibleAppScanBatch(messages=[], app_to_tenant={}, app_fetches=0, exhausted_apps=0)
+
+        policy = BillingSandboxPolicy(
+            plan_provider=make_plan_provider(
+                {
+                    "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                    "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                }
+            ),
+            fresh_plan_provider=make_plan_provider(
+                {
+                    "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                    "tenant2": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+                }
+            ),
+            current_timestamp=1000,
+        )
+        service = MessagesCleanService(
+            policy=policy,
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            dry_run=True,
+        )
+
+        fake_db = MagicMock()
+        fake_db.engine = object()
+        with (
+            patch(
+                "services.retention.conversation.messages_clean_service.sessionmaker",
+                return_value=FakeSessionFactory(),
+            ),
+            patch("services.retention.conversation.messages_clean_service.EligibleAppRoundRobinScanner", FakeScanner),
+            patch("services.retention.conversation.messages_clean_service.db", fake_db),
+        ):
+            stats = service.run()
+
+        assert stats["batches"] == 2
+        assert stats["total_messages"] == 2
+        assert stats["filtered_messages"] == 1
+        assert stats["total_deleted"] == 0
 
     def test_run_records_completion_metrics_on_failure(self):
         # Arrange
