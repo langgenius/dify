@@ -15,10 +15,6 @@ export const userProfileIdAtom = atom((get) => {
   return get(userProfileAtom).id
 })
 
-export const userProfileEmailAtom = atom((get) => {
-  return get(userProfileAtom).email
-})
-
 export const accountProfileMetaAtom = atom((get) => {
   return get(accountProfileQueryAtom).data.meta
 })
