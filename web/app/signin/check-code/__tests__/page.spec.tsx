@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { emailLoginWithCode } from '@/service/common'
+import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import CheckCode from '../page'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -16,12 +16,43 @@ const serviceBaseMocks = vi.hoisted(() => ({
   get: vi.fn(),
 }))
 
+const turnstileMocks = vi.hoisted(() => ({
+  deploymentEdition: 'COMMUNITY',
+  siteKey: '',
+}))
+
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({
+    queryKey: ['system-features'],
+    queryFn: () => Promise.resolve({ deployment_edition: turnstileMocks.deploymentEdition }),
+  }),
+}))
+
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
+  get TURNSTILE_SITE_KEY() {
+    return turnstileMocks.siteKey
+  },
+}))
+
+vi.mock('@/app/components/signin/countdown', () => ({
+  default: ({ onResend, resendDisabled }: { onResend?: () => void; resendDisabled?: boolean }) => (
+    <button type="button" disabled={resendDisabled} onClick={onResend}>
+      resend-code
+    </button>
+  ),
+}))
+
+vi.mock('../../components/turnstile', () => ({
+  default: ({ onVerify }: { onVerify: (token: string) => void }) => (
+    <button type="button" onClick={() => onVerify('fresh-turnstile-token')}>
+      verify-turnstile
+    </button>
+  ),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -48,13 +79,17 @@ vi.mock('@/utils/timezone', () => ({
 }))
 
 function createQueryClient() {
-  return new QueryClient({
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   })
+  queryClient.setQueryData(['system-features'], {
+    deployment_edition: turnstileMocks.deploymentEdition,
+  })
+  return queryClient
 }
 
 const accountProfile: GetAccountProfileResponse = {
@@ -80,6 +115,8 @@ describe('CheckCode', () => {
       redirect_url: '/apps',
       token: 'email-login-token',
     })
+    turnstileMocks.deploymentEdition = 'COMMUNITY'
+    turnstileMocks.siteKey = ''
     vi.mocked(emailLoginWithCode).mockResolvedValue({ result: 'success' })
   })
 
@@ -117,6 +154,64 @@ describe('CheckCode', () => {
     await user.keyboard(key)
 
     expect(navigationMocks.back).toHaveBeenCalledOnce()
+  })
+
+  it('uses a fresh Turnstile token for each Cloud resend', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    expect(resendButton).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+
+    await user.click(resendButton)
+
+    expect(resendButton).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'verify-turnstile' }))
+
+    await waitFor(() => {
+      expect(sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.any(String),
+        'fresh-turnstile-token',
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('does not require Turnstile outside Cloud based on the site key alone', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    turnstileMocks.siteKey = 'site-key-not-used-outside-cloud'
+    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    expect(resendButton).toBeEnabled()
+    await user.click(resendButton)
+
+    expect(sendEMailLoginCode).toHaveBeenCalledWith(
+      'user@example.com',
+      expect.any(String),
+      undefined,
+    )
   })
 
   describe('Post-login profile bootstrap', () => {
