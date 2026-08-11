@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
@@ -194,14 +195,107 @@ class TestAppAccessMode:
 # AppWebAuthPermission
 # ---------------------------------------------------------------------------
 class TestAppWebAuthPermission:
-    @patch("controllers.web.app.WebAppAuthService.is_app_require_permission_check", return_value=False)
-    def test_returns_true_when_no_permission_check_required(self, mock_check: MagicMock, app: Flask) -> None:
-        with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
+    @patch("controllers.web.app.application_services")
+    def test_returns_true_without_reading_passport_when_no_permission_check_required(
+        self, application_services: MagicMock, app: Flask
+    ) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = False
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport") as extract_passport,
+        ):
             result = AppWebAuthPermission().get()
 
         assert result == {"result": True}
+        webapp_access.requires_permission_check.assert_called_once_with("app-1")
+        webapp_access.is_user_allowed.assert_not_called()
+        extract_passport.assert_not_called()
 
-    def test_raises_when_missing_app_id(self, app: Flask) -> None:
-        with app.test_request_context("/webapp/permission", headers={"X-App-Code": "code1"}):
+    @pytest.mark.parametrize(
+        ("decoded", "expected_user_id", "allowed"),
+        [
+            pytest.param({"user_id": "user-1"}, "user-1", True, id="identified-user"),
+            pytest.param({}, "visitor", False, id="visitor-fallback"),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_checks_private_app_permission(
+        self,
+        application_services: MagicMock,
+        decoded: dict[str, str],
+        expected_user_id: str,
+        allowed: bool,
+        app: Flask,
+    ) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = True
+        webapp_access.is_user_allowed.return_value = allowed
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport", return_value="passport") as extract_passport,
+            patch("controllers.web.app.PassportService") as passport_service,
+        ):
+            passport_service.return_value.verify.return_value = decoded
+            result = AppWebAuthPermission().get()
+
+        assert result == {"result": allowed}
+        webapp_access.requires_permission_check.assert_called_once_with("app-1")
+        extract_passport.assert_called_once()
+        passport_service.return_value.verify.assert_called_once_with("passport")
+        webapp_access.is_user_allowed.assert_called_once_with(user_id=expected_user_id, app_id="app-1")
+
+    @patch("controllers.web.app.application_services")
+    def test_private_app_requires_passport(self, application_services: MagicMock, app: Flask) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = True
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport", return_value=None),
+            pytest.raises(Unauthorized, match="Access token is missing"),
+        ):
+            AppWebAuthPermission().get()
+
+        webapp_access.is_user_allowed.assert_not_called()
+
+    @patch("controllers.web.app.application_services")
+    def test_invalid_passport_unauthorized_is_propagated(self, application_services: MagicMock, app: Flask) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = True
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+        invalid_passport = Unauthorized("Invalid passport")
+
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
+            patch("controllers.web.app.PassportService") as passport_service,
+        ):
+            passport_service.return_value.verify.side_effect = invalid_passport
+            with pytest.raises(Unauthorized, match="Invalid passport") as raised:
+                AppWebAuthPermission().get()
+
+        assert raised.value is invalid_passport
+        webapp_access.is_user_allowed.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("path", "headers"),
+        [
+            pytest.param("/webapp/permission", {"X-App-Code": "code1"}, id="missing-app-id"),
+            pytest.param("/webapp/permission?appId=app-1", {}, id="missing-app-code"),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_raises_when_app_reference_is_missing(
+        self, application_services: MagicMock, path: str, headers: dict[str, str], app: Flask
+    ) -> None:
+        with app.test_request_context(path, headers=headers):
             with pytest.raises(ValueError, match="appId"):
                 AppWebAuthPermission().get()
+
+        application_services.assert_not_called()
