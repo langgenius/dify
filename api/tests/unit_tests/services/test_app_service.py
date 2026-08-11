@@ -3,32 +3,95 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import event
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
+from models.account import TenantAccountJoin, TenantAccountRole
+from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
 
+def _persist_account(session: Session) -> Account:
+    tenant = Tenant(name="App Service Workspace")
+    account = Account(name="Test Account", email=f"app-service-{uuid4()}@example.com")
+    membership = TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.OWNER,
+    )
+    account._current_tenant = tenant
+    session.add_all([tenant, account, membership])
+    session.commit()
+    return account
+
+
+def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App") -> App:
+    app = App(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        name=name,
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+    )
+    session.add(app)
+    session.commit()
+    return app
+
+
+def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: str = "Old") -> tuple[App, Agent]:
+    tenant_id = str(uuid4())
+    creator_id = str(uuid4())
+    app = App(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        name=app_name,
+        description="old",
+        mode=AppMode.AGENT,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+        created_by=creator_id,
+    )
+    agent = Agent(
+        tenant_id=tenant_id,
+        name=agent_name,
+        description="old",
+        role="research assistant",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        icon_type=AgentIconType.EMOJI,
+        icon="robot",
+        icon_background="#fff",
+        app_id=app.id,
+        created_by=creator_id,
+    )
+    session.add_all([app, agent])
+    session.commit()
+    return app, agent
+
+
 class TestCreateAppTransactionBoundary:
-    def test_commits_database_state_before_external_side_effects(self) -> None:
-        session = MagicMock()
-        account = Account(name="Test Account", email="test@example.com")
-        account.id = "account-1"
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
+    def test_commits_database_state_before_external_side_effects(self, sqlite_session: Session) -> None:
+        account = _persist_account(sqlite_session)
         phase_events: list[str] = []
-        session.commit.side_effect = lambda: phase_events.append("commit")
+        event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
 
         with (
             patch(
@@ -45,21 +108,18 @@ class TestCreateAppTransactionBoundary:
             ),
             patch("services.app_service.dify_config.BILLING_ENABLED", False),
         ):
-            AppService().create_app(
-                "tenant-1",
+            app = AppService().create_app(
+                account.current_tenant_id,
                 CreateAppParams(name="Workflow", mode=AppMode.WORKFLOW.value),
                 account,
-                session=session,
+                session=sqlite_session,
             )
 
         assert phase_events == ["commit", "signal", "commit", "external"]
+        assert sqlite_session.get(App, app.id) is app
 
-    def test_falls_back_when_default_model_schema_is_unavailable(self) -> None:
-        session = MagicMock()
-        account = Account(name="Test Account", email="test@example.com")
-        account.id = "account-1"
-        account._current_tenant = Tenant(name="Test Tenant")
-        account._current_tenant.id = "tenant-1"
+    def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
+        account = _persist_account(sqlite_session)
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
         model_instance = SimpleNamespace(
@@ -71,9 +131,6 @@ class TestCreateAppTransactionBoundary:
         model_manager = MagicMock()
         model_manager.get_default_model_instance.return_value = model_instance
         model_manager.get_default_provider_model_name.return_value = ("openai", "gpt-4o")
-        added_objects: list[object] = []
-        session.add.side_effect = added_objects.append
-
         with (
             patch("services.app_service.ModelManager.for_tenant", return_value=model_manager),
             patch("services.app_service.app_was_created.send"),
@@ -85,13 +142,14 @@ class TestCreateAppTransactionBoundary:
             patch("services.app_service.dify_config.BILLING_ENABLED", False),
         ):
             app = AppService().create_app(
-                "tenant-1",
+                account.current_tenant_id,
                 CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
                 account,
-                session=session,
+                session=sqlite_session,
             )
 
-        app_model_config = next(obj for obj in added_objects if isinstance(obj, AppModelConfig))
+        app_model_config = sqlite_session.get(AppModelConfig, app.app_model_config_id)
+        assert app_model_config is not None
         assert app.mode == AppMode.CHAT
         assert app_model_config.model_dict == {
             "provider": "openai",
@@ -100,7 +158,7 @@ class TestCreateAppTransactionBoundary:
             "completion_params": {},
         }
         model_manager.get_default_provider_model_name.assert_called_once_with(
-            tenant_id="tenant-1", model_type=ModelType.LLM
+            tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
 
 
@@ -108,17 +166,17 @@ class TestCreateAppTransactionBoundary:
     "update_status",
     [AppService.update_app_site_status, AppService.update_app_api_status],
 )
-def test_app_status_updates_commit_before_signal(update_status: Callable[..., App]) -> None:
-    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False, mode=AppMode.CHAT))
-    session = MagicMock()
+def test_app_status_updates_commit_before_signal(update_status: Callable[..., App], sqlite_session: Session) -> None:
+    account = _persist_account(sqlite_session)
+    app = _persist_app(sqlite_session, tenant_id=account.current_tenant_id or "")
     phase_events: list[str] = []
-    session.commit.side_effect = lambda: phase_events.append("commit")
+    event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
 
     with (
-        patch("services.app_service.current_user", SimpleNamespace(id="account-1")),
+        patch("services.app_service.current_user", account),
         patch("services.app_service.app_was_updated.send", side_effect=lambda *_args: phase_events.append("signal")),
     ):
-        update_status(AppService(), app, True, session=session)
+        update_status(AppService(), app, True, session=sqlite_session)
 
     assert phase_events == ["commit", "signal"]
 
@@ -130,27 +188,20 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
         AppService.update_app_api_status,
     ],
 )
-def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[..., App]) -> None:
-    app = cast(
-        App,
-        SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            mode=AppMode.AGENT,
-            enable_site=False,
-            enable_api=False,
-        ),
-    )
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(id="agent-1")
+def test_unpublished_agent_app_access_cannot_be_enabled(
+    update_status: Callable[..., App], sqlite_session: Session
+) -> None:
+    app, _ = _persist_agent_app(sqlite_session)
+    commits: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
 
     with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
         with pytest.raises(AgentAccessNotReadyError):
-            update_status(AppService(), app, True, session=session)
+            update_status(AppService(), app, True, session=sqlite_session)
 
     assert app.enable_site is False
     assert app.enable_api is False
-    session.commit.assert_not_called()
+    assert commits == []
 
 
 class TestOpenapiVisibilityHelpers:
@@ -160,127 +211,96 @@ class TestOpenapiVisibilityHelpers:
     gate passes" check so the controller can stay free of SQL.
     """
 
-    def test_get_app_by_id_is_plain_session_get(self):
+    def test_get_app_by_id_is_plain_session_get(self, sqlite_session: Session):
         """``get_app_by_id`` must NOT apply status / visibility filters
         — callers (e.g. the openapi auth pipeline) need to differentiate
         404 (missing) from 403 (``enable_api`` off) and would lose that
         signal if the helper coalesced both into ``None``.
         """
-        mock_session = MagicMock()
-        sentinel_app = App(
-            status="archived",
-        )  # explicitly NOT "normal"
-        mock_session.get.return_value = sentinel_app
+        sentinel_app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        sentinel_app.status = "archived"  # type: ignore[assignment]
 
-        assert AppService.get_app_by_id("app-uuid", mock_session) is sentinel_app
-        mock_session.get.assert_called_once_with(App, "app-uuid")
+        assert AppService.get_app_by_id(sentinel_app.id, sqlite_session) is sentinel_app
 
-    def test_get_app_by_id_returns_none_when_missing(self):
-        mock_session = MagicMock()
-        mock_session.get.return_value = None
+    def test_get_app_by_id_returns_none_when_missing(self, sqlite_session: Session):
+        assert AppService.get_app_by_id(str(uuid4()), sqlite_session) is None
 
-        assert AppService.get_app_by_id("missing", mock_session) is None
-
-    def test_get_visible_app_by_id_returns_app_when_visible(self):
-        mock_session = MagicMock()
-        app = App(
-            status="normal",
-        )
-        mock_session.get.return_value = app
+    def test_get_visible_app_by_id_returns_app_when_visible(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is app
+            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is app
 
-        mock_session.get.assert_called_once_with(App, "app-uuid")
+    def test_get_visible_app_by_id_returns_none_when_row_missing(self, sqlite_session: Session):
+        assert AppService.get_visible_app_by_id(str(uuid4()), sqlite_session) is None
 
-    def test_get_visible_app_by_id_returns_none_when_row_missing(self):
-        mock_session = MagicMock()
-        mock_session.get.return_value = None
-
-        assert AppService.get_visible_app_by_id("missing", mock_session) is None
-
-    def test_get_visible_app_by_id_returns_none_when_status_not_normal(self):
+    def test_get_visible_app_by_id_returns_none_when_status_not_normal(self, sqlite_session: Session):
         """Soft-deleted/archived rows must not surface on the openapi
         surface — the helper hides them by returning ``None``.
         """
-        mock_session = MagicMock()
-        app = App(
-            status="archived",
-        )
-        mock_session.get.return_value = app
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        app.status = "archived"  # type: ignore[assignment]
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is None
+            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
 
-    def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self):
+    def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self, sqlite_session: Session):
         """``is_openapi_visible`` is the per-row counterpart to
         ``apply_openapi_gate`` — when it returns False the helper must
         treat the row as invisible (not "found but unauthorized").
         """
-        mock_session = MagicMock()
-        app = App(
-            status="normal",
-        )
-        mock_session.get.return_value = app
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
 
         with patch("services.app_service.is_openapi_visible", return_value=False):
-            assert AppService.get_visible_app_by_id("app-uuid", mock_session) is None
+            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
 
-    def test_find_visible_apps_by_name_returns_scalars_through_visibility_gate(self):
+    def test_find_visible_apps_by_name_returns_scalars_through_visibility_gate(self, sqlite_session: Session):
         """Tenant-scoped name lookup. The helper passes the SELECT through
         ``apply_openapi_gate`` and materialises ``.scalars()`` into a list
         so the controller can branch on length (404 / single / 409).
         """
-        mock_session = MagicMock()
-        rows = [App(), App()]
-        mock_session.execute.return_value.scalars.return_value = iter(rows)
+        tenant_id = str(uuid4())
+        rows = [
+            _persist_app(sqlite_session, tenant_id=tenant_id, name="my-app"),
+            _persist_app(sqlite_session, tenant_id=tenant_id, name="my-app"),
+        ]
+        _persist_app(sqlite_session, tenant_id=str(uuid4()), name="my-app")
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_name(name="my-app", tenant_id="tenant-1", session=mock_session)
+            out = AppService.find_visible_apps_by_name(name="my-app", tenant_id=tenant_id, session=sqlite_session)
 
-        assert out == rows
+        assert {app.id for app in out} == {app.id for app in rows}
         # Visibility gate must wrap the SELECT exactly once.
         gate.assert_called_once()
-        mock_session.execute.assert_called_once()
 
-    def test_find_visible_apps_by_name_returns_empty_list_on_no_match(self):
-        mock_session = MagicMock()
-        mock_session.execute.return_value.scalars.return_value = iter([])
-
+    def test_find_visible_apps_by_name_returns_empty_list_on_no_match(self, sqlite_session: Session):
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q):
-            out = AppService.find_visible_apps_by_name(name="nope", tenant_id="tenant-1", session=mock_session)
+            out = AppService.find_visible_apps_by_name(name="nope", tenant_id=str(uuid4()), session=sqlite_session)
 
         assert out == []
 
-    def test_find_visible_apps_by_ids_short_circuits_on_empty_input(self):
+    def test_find_visible_apps_by_ids_short_circuits_on_empty_input(self, unbound_session: Session):
         """Empty id list must not emit ``WHERE id IN ()`` — Postgres
         rejects empty IN lists and the call is a guaranteed no-op
         anyway. The helper returns ``[]`` without touching the session.
         """
-        mock_session = MagicMock()
+        assert AppService.find_visible_apps_by_ids([], unbound_session) == []
 
-        assert AppService.find_visible_apps_by_ids([], mock_session) == []
-        mock_session.execute.assert_not_called()
-
-    def test_find_visible_apps_by_ids_passes_through_visibility_gate(self):
+    def test_find_visible_apps_by_ids_passes_through_visibility_gate(self, sqlite_session: Session):
         """Bulk fetch routes through ``apply_openapi_gate`` exactly once
         and materialises the scalar rows. **No** status filter is
         applied here — the EE permitted-external pipeline filters
         non-normal hits in Python so its page count stays anchored.
         """
-        mock_session = MagicMock()
-        rows = [App(), App()]
-        mock_session.execute.return_value.scalars.return_value.all.return_value = rows
+        rows = [_persist_app(sqlite_session, tenant_id=str(uuid4())) for _ in range(2)]
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_ids(["a", "b"], mock_session)
+            out = AppService.find_visible_apps_by_ids([app.id for app in rows], sqlite_session)
 
-        assert out == rows
+        assert {app.id for app in out} == {app.id for app in rows}
         gate.assert_called_once()
-        mock_session.execute.assert_called_once()
 
 
-@pytest.mark.parametrize("sqlite_session", [(Account, App, AppModelConfig)], indirect=True)
 def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session: Session) -> None:
     tenant_id = str(uuid4())
     other_tenant_id = str(uuid4())
@@ -370,28 +390,39 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 
 
 class TestAppMeta:
-    def test_loads_workflow_with_caller_session(self):
-        session = MagicMock()
-        session.get.return_value = SimpleNamespace(graph_dict={"nodes": []})
-        app = cast(App, SimpleNamespace(mode=AppMode.WORKFLOW, workflow_id="workflow-1"))
+    def test_loads_workflow_with_caller_session(self, sqlite_session: Session):
+        tenant_id = str(uuid4())
+        app = _persist_app(sqlite_session, tenant_id=tenant_id)
+        app.mode = AppMode.WORKFLOW
+        workflow = Workflow(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app.id,
+            type="workflow",
+            version="draft",
+            graph='{"nodes": []}',
+            features="{}",
+            created_by=str(uuid4()),
+        )
+        app.workflow_id = workflow.id
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
 
-        assert AppService().get_app_meta(app, session=session) == {"tool_icons": {}}
+        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
 
-        session.get.assert_called_once_with(Workflow, "workflow-1")
+    def test_loads_app_model_config_with_caller_session(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        config = AppModelConfig(app_id=app.id, agent_mode='{"tools": []}')
+        sqlite_session.add(config)
+        sqlite_session.flush()
+        app.app_model_config_id = config.id
+        sqlite_session.commit()
 
-    def test_loads_app_model_config_with_caller_session(self):
-        session = MagicMock()
-        session.get.return_value = SimpleNamespace(agent_mode_dict={"tools": []})
-        app = cast(App, SimpleNamespace(mode=AppMode.CHAT, app_model_config_id="config-1"))
-
-        assert AppService().get_app_meta(app, session=session) == {"tool_icons": {}}
-
-        session.get.assert_called_once_with(AppModelConfig, "config-1")
+        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
 
 
 class TestGetApp:
-    def test_legacy_agent_detection_uses_caller_session(self):
-        session = MagicMock()
+    def test_legacy_agent_detection_uses_caller_session(self, unbound_session: Session):
         app = App(
             mode=AppMode.CHAT,
         )
@@ -404,13 +435,12 @@ class TestGetApp:
             patch.object(App, "app_model_config_with_session") as get_model_config,
             patch("services.app_service.current_user", account),
         ):
-            assert AppService().get_app(app, session=session) is app
+            assert AppService().get_app(app, session=unbound_session) is app
 
-        is_agent.assert_called_once_with(session=session)
+        is_agent.assert_called_once_with(session=unbound_session)
         get_model_config.assert_not_called()
 
-    def test_agent_model_config_uses_caller_session(self):
-        session = MagicMock()
+    def test_agent_model_config_uses_caller_session(self, unbound_session: Session):
         app = App(
             mode=AppMode.AGENT_CHAT,
         )
@@ -423,10 +453,10 @@ class TestGetApp:
             patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config,
             patch("services.app_service.current_user", account),
         ):
-            assert AppService().get_app(app, session=session) is app
+            assert AppService().get_app(app, session=unbound_session) is app
 
         is_agent.assert_not_called()
-        get_model_config.assert_called_once_with(session=session)
+        get_model_config.assert_called_once_with(session=unbound_session)
 
 
 class TestAgentAppType:
@@ -459,43 +489,16 @@ class TestAgentAppType:
         )
         assert app.bound_agent_id is None
 
-    def test_update_agent_app_syncs_backing_agent_identity(self):
-        from models.agent import AgentIconType
-        from models.model import AppMode, IconType
-        from services.app_service import AppService
-
-        app = SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            mode=AppMode.AGENT,
-            name="Old",
-            description="old",
-            role="draft",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            use_icon_as_answer_icon=False,
-            max_active_requests=None,
-            created_by="account-1",
-        )
-        backing_agent = SimpleNamespace(
-            name="Old",
-            description="old",
-            role="draft",
-            icon_type=AgentIconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            updated_by=None,
-            updated_at=None,
-        )
+    def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
+        app, backing_agent = _persist_agent_app(sqlite_session)
+        account_id = str(uuid4())
 
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=account_id)),
+            patch("services.app_service.app_was_updated.send"),
         ):
-            mock_db.session.scalar.return_value = backing_agent
             updated_app = AppService().update_app(
-                app,  # type: ignore[arg-type]
+                app,
                 {
                     "name": "Iris",
                     "description": "agent app",
@@ -506,7 +509,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=mock_db.session,
+                session=sqlite_session,
             )
 
         assert updated_app.name == "Iris"
@@ -516,46 +519,18 @@ class TestAgentAppType:
         assert backing_agent.icon_type == AgentIconType.IMAGE
         assert backing_agent.icon == "file-id"
         assert backing_agent.icon_background == "#123456"
-        assert backing_agent.updated_by == "account-2"
+        assert backing_agent.updated_by == account_id
         assert backing_agent.updated_at == updated_app.updated_at
 
-    def test_update_agent_app_preserves_role_when_args_omit_it(self):
-        from models.agent import AgentIconType
-        from models.model import AppMode, IconType
-        from services.app_service import AppService
-
-        app = SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            mode=AppMode.AGENT,
-            name="Old",
-            description="old",
-            role="draft",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            use_icon_as_answer_icon=False,
-            max_active_requests=None,
-            created_by="account-1",
-        )
-        backing_agent = SimpleNamespace(
-            name="Old",
-            description="old",
-            role="research assistant",
-            icon_type=AgentIconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            updated_by=None,
-            updated_at=None,
-        )
+    def test_update_agent_app_preserves_role_when_args_omit_it(self, sqlite_session: Session):
+        app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.app_was_updated.send"),
         ):
-            mock_db.session.scalar.return_value = backing_agent
             AppService().update_app(
-                app,  # type: ignore[arg-type]
+                app,
                 {
                     "name": "Iris",
                     "description": "agent app",
@@ -565,48 +540,20 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=mock_db.session,
+                session=sqlite_session,
             )
 
         assert backing_agent.role == "research assistant"
 
-    def test_update_agent_app_clears_role_when_args_set_empty_string(self):
-        from models.agent import AgentIconType
-        from models.model import AppMode, IconType
-        from services.app_service import AppService
-
-        app = SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            mode=AppMode.AGENT,
-            name="Old",
-            description="old",
-            role="draft",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            use_icon_as_answer_icon=False,
-            max_active_requests=None,
-            created_by="account-1",
-        )
-        backing_agent = SimpleNamespace(
-            name="Old",
-            description="old",
-            role="research assistant",
-            icon_type=AgentIconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            updated_by=None,
-            updated_at=None,
-        )
+    def test_update_agent_app_clears_role_when_args_set_empty_string(self, sqlite_session: Session):
+        app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.app_was_updated.send"),
         ):
-            mock_db.session.scalar.return_value = backing_agent
             AppService().update_app(
-                app,  # type: ignore[arg-type]
+                app,
                 {
                     "name": "Iris",
                     "description": "agent app",
@@ -617,50 +564,34 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=mock_db.session,
+                session=sqlite_session,
             )
 
         assert backing_agent.role == ""
 
-    def test_update_agent_app_duplicate_name_rolls_back_and_raises_conflict(self):
-        from models.agent import AgentIconType
-        from models.model import AppMode, IconType
-        from services.app_service import AppService
-
-        app = SimpleNamespace(
-            id="app-1",
-            tenant_id="tenant-1",
-            mode=AppMode.AGENT,
-            name="Old",
-            description="old",
-            role="draft",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            use_icon_as_answer_icon=False,
-            max_active_requests=None,
-            created_by="account-1",
+    def test_update_agent_app_duplicate_name_rolls_back_and_raises_conflict(self, sqlite_session: Session):
+        app, backing_agent = _persist_agent_app(sqlite_session)
+        existing = Agent(
+            tenant_id=app.tenant_id,
+            name="Existing Agent",
+            description="existing",
+            role="",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            status=AgentStatus.ACTIVE,
         )
-        backing_agent = SimpleNamespace(
-            name="Old",
-            description="old",
-            role="research assistant",
-            icon_type=AgentIconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            updated_by=None,
-            updated_at=None,
-        )
+        sqlite_session.add(existing)
+        sqlite_session.commit()
+        rollback_events: list[str] = []
+        event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
 
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.app_was_updated.send"),
         ):
-            mock_db.session.scalar.return_value = backing_agent
-            mock_db.session.commit.side_effect = IntegrityError("duplicate", None, None)
             with pytest.raises(AgentNameConflictError):
                 AppService().update_app(
-                    app,  # type: ignore[arg-type]
+                    app,
                     {
                         "name": "Existing Agent",
                         "description": "agent app",
@@ -671,23 +602,39 @@ class TestAgentAppType:
                         "use_icon_as_answer_icon": False,
                         "max_active_requests": 0,
                     },
-                    session=mock_db.session,
+                    session=sqlite_session,
                 )
 
-        mock_db.session.rollback.assert_called_once()
+        assert rollback_events == ["rollback"]
+        sqlite_session.expire_all()
+        assert sqlite_session.get(Agent, backing_agent.id).name == "Old"  # type: ignore[union-attr]
 
-    def test_delete_agent_app_archives_backing_agent(self):
-        from models.agent import AgentStatus
-        from models.model import AppMode
-        from services.app_service import AppService
-
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-        backing_agent = SimpleNamespace(id="agent-1", status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
+    def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session):
+        app, backing_agent = _persist_agent_app(sqlite_session)
+        workflow_agents = [
+            Agent(
+                tenant_id=app.tenant_id,
+                name=f"Workflow Agent {index}",
+                description="",
+                role="",
+                scope=AgentScope.WORKFLOW_ONLY,
+                source=AgentSource.WORKFLOW,
+                status=AgentStatus.ACTIVE,
+                app_id=app.id,
+                workflow_id=str(uuid4()),
+                workflow_node_id=f"node-{index}",
+            )
+            for index in range(2)
+        ]
+        sqlite_session.add_all(workflow_agents)
+        sqlite_session.commit()
+        account_id = str(uuid4())
         events: list[str] = []
+        event.listen(sqlite_session, "after_commit", lambda _session: events.append("commit"))
 
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=account_id)),
+            patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.FeatureService"),
@@ -712,62 +659,67 @@ class TestAgentAppType:
                 side_effect=lambda **_kwargs: events.append("enqueue"),
             ) as mock_enqueue_collection,
         ):
-            mock_db.session.scalar.return_value = backing_agent
-            mock_db.session.commit.side_effect = lambda: events.append("commit")
-            workflow_agents = MagicMock()
-            workflow_agents.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
-            bindings = MagicMock()
-            bindings.all.return_value = []
-            mock_db.session.scalars.side_effect = [workflow_agents, bindings]
-            AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
+            AppService().delete_app(app, session=sqlite_session)
 
         assert events == ["retire-app-workspaces", "commit", "retire-workflow-agents", "enqueue"]
-        assert backing_agent.status == AgentStatus.ARCHIVED
-        assert backing_agent.archived_by == "account-2"
-        assert backing_agent.archived_at is not None
-        mock_db.session.delete.assert_called_once_with(app)
+        sqlite_session.expire_all()
+        persisted_agent = sqlite_session.get(Agent, backing_agent.id)
+        assert persisted_agent is not None
+        assert sqlite_session.get(App, app.id) is None
+        assert persisted_agent.status == AgentStatus.ARCHIVED
+        assert persisted_agent.archived_by == account_id
+        assert persisted_agent.archived_at is not None
         mock_workflow_retirement.assert_called_once_with(
-            tenant_id="tenant-1",
-            agent_ids=["workflow-agent-1", "workflow-agent-2"],
-            account_id="account-2",
+            tenant_id=app.tenant_id,
+            agent_ids=[agent.id for agent in workflow_agents],
+            account_id=account_id,
         )
         mock_retire_workspaces.assert_called_once_with(
-            session=mock_db.session,
-            tenant_id="tenant-1",
-            app_id="app-1",
+            session=sqlite_session,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
         )
         mock_retire_homes.assert_called_once_with(
-            session=mock_db.session,
-            tenant_id="tenant-1",
-            agent_id="agent-1",
+            session=sqlite_session,
+            tenant_id=app.tenant_id,
+            agent_id=backing_agent.id,
         )
         mock_enqueue_collection.assert_called_once_with(
-            tenant_id="tenant-1",
+            tenant_id=app.tenant_id,
             workspace_ids=["workspace-1"],
             binding_ids=["workflow-binding-1"],
             home_snapshot_ids=["home-1", "workflow-home-1"],
         )
 
-    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self):
-        from models.model import AppMode
-        from services.app_service import AppService
-
-        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        app.mode = AppMode.WORKFLOW
+        workflow_agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Workflow Agent",
+            description="",
+            role="",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            status=AgentStatus.ACTIVE,
+            app_id=app.id,
+            workflow_id=str(uuid4()),
+            workflow_node_id="node-1",
+        )
+        sqlite_session.add(workflow_agent)
+        sqlite_session.commit()
+        monkeypatch.setattr(sqlite_session, "commit", MagicMock(side_effect=RuntimeError("commit failed")))
         with (
-            patch("services.app_service.db") as mock_db,
-            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
         ):
-            mock_db.session.scalar.return_value = None
-            workflow_agents = MagicMock()
-            workflow_agents.all.return_value = ["workflow-agent-1"]
-            mock_db.session.scalars.return_value = workflow_agents
-            mock_db.session.commit.side_effect = RuntimeError("commit failed")
-
             with pytest.raises(RuntimeError, match="commit failed"):
-                AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
+                AppService().delete_app(app, session=sqlite_session)
 
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
