@@ -726,6 +726,7 @@ class TestAgentAppType:
         assert backing_agent.archived_by == "account-2"
         assert backing_agent.archived_at is not None
         mock_db.session.delete.assert_called_once_with(app)
+        mock_db.session.query.return_value.filter.return_value.delete.assert_called_once_with(synchronize_session=False)
         mock_workflow_retirement.assert_called_once_with(
             tenant_id="tenant-1",
             agent_ids=["workflow-agent-1", "workflow-agent-2"],
