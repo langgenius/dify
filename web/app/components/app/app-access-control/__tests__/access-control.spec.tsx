@@ -53,21 +53,6 @@ vi.mock('@/service/client', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  return {
-    userProfileAtom: atom({
-      id: 'user-1',
-      name: 'Test User',
-      email: 'test@dify.ai',
-      avatar: '',
-      avatar_url: null,
-      is_password_set: false,
-      timezone: 'UTC',
-    }),
-  }
-})
-
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
   return {

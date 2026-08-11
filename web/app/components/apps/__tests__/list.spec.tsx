@@ -86,6 +86,13 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     apps: {
       get: {
         key: () => ['console', 'apps', 'get'],
@@ -117,13 +124,6 @@ vi.mock('@/service/client', () => ({
 
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -502,6 +502,7 @@ type RenderListOptions = {
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: ConsoleQueryWrapper, systemFeatures } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
   mockSystemFeatures = systemFeatures

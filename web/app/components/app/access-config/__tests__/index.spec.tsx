@@ -18,6 +18,7 @@ let mockIsRbacEnabled = true
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
+    accountProfile: mockConsoleState.userProfile,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
@@ -44,10 +45,6 @@ const mockMutations = vi.hoisted(() => ({
   removeMemberBindings: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
