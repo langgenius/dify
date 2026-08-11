@@ -33,6 +33,7 @@ import {
   getSkillVersionTitle,
   isDirectory,
   renderMarkdownLiveEditorContent,
+  serializeMarkdownLiveEditorNode,
   setMarkdownLiveEditorSelectionOffset,
 } from './shared'
 
@@ -152,6 +153,107 @@ function getSelectionRect(root: HTMLElement) {
   if (!root.contains(range.startContainer)) return
   range.collapse(true)
   return range.getBoundingClientRect()
+}
+
+function getLineBoxTop(rect: DOMRect, rootRect: DOMRect, lineHeight: number) {
+  const leadingInset = Number.isFinite(lineHeight) ? Math.max((lineHeight - rect.height) / 2, 0) : 0
+
+  return Math.max(rect.top - rootRect.top - leadingInset, 0)
+}
+
+function getSelectionLinePosition(root: HTMLElement) {
+  const selection = root.ownerDocument.getSelection()
+  if (!selection?.isCollapsed || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0)
+  if (!root.contains(range.startContainer)) return
+
+  const rootRect = root.getBoundingClientRect()
+  const lineHeight = Number.parseFloat(
+    root.ownerDocument.defaultView?.getComputedStyle(root).lineHeight ?? '',
+  )
+  let selectionRect = getSelectionRect(root)
+
+  if (!selectionRect?.height && range.startContainer !== root) {
+    const selectionNode = range.startContainer
+    let lineElement =
+      selectionNode instanceof HTMLElement ? selectionNode : selectionNode?.parentElement
+
+    while (lineElement?.parentElement && lineElement.parentElement !== root)
+      lineElement = lineElement.parentElement
+
+    if (lineElement?.parentElement === root) selectionRect = lineElement.getBoundingClientRect()
+  }
+
+  if (!selectionRect?.height) {
+    const prefixRange = range.cloneRange()
+    prefixRange.selectNodeContents(root)
+    prefixRange.setEnd(range.startContainer, range.startOffset)
+    const prefixRects = Array.from(prefixRange.getClientRects())
+    const lastPrefixRect = prefixRects.at(-1)
+
+    if (lastPrefixRect && Number.isFinite(lineHeight)) {
+      // Chrome emits zero-width rects for trailing newlines. Anchor to the last painted
+      // content rect, then advance by the serialized line breaks so none are counted twice.
+      let lastContentRect: DOMRect | undefined
+      for (let index = prefixRects.length - 1; index >= 0; index--) {
+        const rect = prefixRects[index]
+        if (!rect?.width) continue
+
+        lastContentRect = rect
+        break
+      }
+      const prefix = serializeMarkdownLiveEditorNode(prefixRange.cloneContents()).replace(
+        /\u00A0/g,
+        ' ',
+      )
+      const trailingLineBreaks = prefix.match(/\n+$/)?.[0].length ?? 0
+      const anchorRect = lastContentRect ?? lastPrefixRect
+      const remainingLineBreaks = lastContentRect
+        ? trailingLineBreaks
+        : Math.min(trailingLineBreaks, 1)
+      return {
+        left: trailingLineBreaks > 0 ? 0 : Math.max(lastPrefixRect.right - rootRect.left, 0),
+        top: getLineBoxTop(anchorRect, rootRect, lineHeight) + remainingLineBreaks * lineHeight,
+      }
+    }
+
+    return
+  }
+
+  return {
+    left: Math.max(selectionRect.left - rootRect.left, 0),
+    top: getLineBoxTop(selectionRect, rootRect, lineHeight),
+  }
+}
+
+function getSelectionLineBlank(root: HTMLElement) {
+  const selection = root.ownerDocument.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+  if (!selection.isCollapsed) return false
+
+  const range = selection.getRangeAt(0)
+  if (!root.contains(range.startContainer)) return
+
+  let lineElement =
+    range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement
+  while (lineElement?.parentElement && lineElement.parentElement !== root)
+    lineElement = lineElement.parentElement
+
+  if (
+    lineElement?.parentElement === root &&
+    (lineElement.tagName === 'DIV' || lineElement.tagName === 'P')
+  ) {
+    return !serializeMarkdownLiveEditorNode(lineElement).trim()
+  }
+
+  const value = serializeMarkdownLiveEditorNode(root).replace(/\u00A0/g, ' ')
+  const offset = getMarkdownLiveEditorSelectionOffset(root)
+  if (offset == null) return
+
+  return getCurrentLine(value, offset).blank
 }
 
 function getMarkdownPreviewAnchorRect(root: HTMLElement, body: string, sourceOffset: number) {
@@ -622,7 +724,7 @@ export function MarkdownSourceEditor({
       {showPlaceholder && (
         <EditorPlaceholder
           text={placeholder}
-          className="absolute left-10"
+          className="absolute left-10 text-[14px]/[22px]"
           style={{ top: 6 + currentLine.lineIndex * 22 - scrollTop }}
         />
       )}
@@ -688,6 +790,11 @@ export function MarkdownLiveBodyEditor({
   } | null>(null)
   const previewRef = useRef<HTMLDivElement>(null)
   const [focused, setFocused] = useState(false)
+  const [selectionLineBlank, setSelectionLineBlank] = useState<boolean>()
+  const [placeholderPosition, setPlaceholderPosition] = useState<{
+    left: number
+    top: number
+  }>()
   const [selectionOffset, setSelectionOffset] = useState(0)
   const [referenceTooltip, setReferenceTooltip] = useState<{
     left: number
@@ -695,7 +802,8 @@ export function MarkdownLiveBodyEditor({
     top: number
   } | null>(null)
   const currentLine = getCurrentLine(body, selectionOffset)
-  const showPlaceholder = (!focused && !body.trim()) || (focused && currentLine.blank)
+  const showPlaceholder =
+    (!focused && !body.trim()) || (focused && (selectionLineBlank ?? currentLine.blank))
   const showRenderedPreview = !focused && Boolean(body.trim())
   const customComponents = useSkillMarkdownComponents(onOpenReference)
 
@@ -703,6 +811,8 @@ export function MarkdownLiveBodyEditor({
     const root = editorRef.current
     if (!root) return
     setSelectionOffset(getMarkdownLiveEditorSelectionOffset(root) ?? 0)
+    setSelectionLineBlank(getSelectionLineBlank(root))
+    setPlaceholderPosition(getSelectionLinePosition(root))
   }
 
   const getReferencePath = (target: EventTarget | null) => {
@@ -722,6 +832,8 @@ export function MarkdownLiveBodyEditor({
       editor.focus({ preventScroll: true })
       setMarkdownLiveEditorSelectionOffset(editor, selectionOffset)
       setSelectionOffset(selectionOffset)
+      setSelectionLineBlank(getSelectionLineBlank(editor))
+      setPlaceholderPosition(getSelectionLinePosition(editor))
 
       if (!scrollParent || previousScrollTop == null) return
       if (clientY == null) {
@@ -802,6 +914,30 @@ export function MarkdownLiveBodyEditor({
     renderedBodyRef.current = body
     renderedContentRevisionRef.current = contentRevision
   }, [body, contentRevision, editorRef, focused])
+
+  useLayoutEffect(() => {
+    if (!focused) return
+
+    const root = editorRef.current
+    if (!root) return
+
+    const syncSelectionState = () => {
+      setSelectionOffset(getMarkdownLiveEditorSelectionOffset(root) ?? 0)
+      setSelectionLineBlank(getSelectionLineBlank(root))
+      setPlaceholderPosition(getSelectionLinePosition(root))
+    }
+    const syncPlaceholderPosition = () => setPlaceholderPosition(getSelectionLinePosition(root))
+    root.ownerDocument.addEventListener('selectionchange', syncSelectionState)
+
+    const ResizeObserver = root.ownerDocument.defaultView?.ResizeObserver
+    const observer = ResizeObserver ? new ResizeObserver(syncPlaceholderPosition) : null
+    observer?.observe(root)
+
+    return () => {
+      root.ownerDocument.removeEventListener('selectionchange', syncSelectionState)
+      observer?.disconnect()
+    }
+  }, [editorRef, focused])
 
   return (
     <div className="relative min-h-[360px]">
@@ -931,8 +1067,11 @@ export function MarkdownLiveBodyEditor({
       {showPlaceholder && (
         <EditorPlaceholder
           text={placeholder}
-          className="absolute left-0"
-          style={{ top: currentLine.lineIndex * 28 }}
+          className="absolute text-[15px]/7"
+          style={{
+            left: placeholderPosition?.left ?? 0,
+            top: placeholderPosition?.top ?? currentLine.lineIndex * 28,
+          }}
         />
       )}
     </div>
