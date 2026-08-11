@@ -192,9 +192,13 @@ function SkillDetailDeleteDialog({
 }
 
 export function SkillDetailSidebarActions({
+  canDelete,
+  canEdit,
   detail,
   onRename,
 }: {
+  canDelete: boolean
+  canEdit: boolean
   detail: SkillDetailResponse
   onRename: () => void
 }) {
@@ -248,17 +252,21 @@ export function SkillDetailSidebarActions({
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-          <DropdownMenuItem className="gap-2" onClick={onRename}>
-            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span>{tCommon(($) => $['operation.rename'])}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
-            <span
-              aria-hidden
-              className="i-ri-file-copy-2-line size-4 shrink-0 text-text-tertiary"
-            />
-            <span>{tCommon(($) => $['operation.duplicate'])}</span>
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={onRename}>
+              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+              <span>{tCommon(($) => $['operation.rename'])}</span>
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+              <span
+                aria-hidden
+                className="i-ri-file-copy-2-line size-4 shrink-0 text-text-tertiary"
+              />
+              <span>{tCommon(($) => $['operation.duplicate'])}</span>
+            </DropdownMenuItem>
+          )}
           {detail.latest_published_version_id && (
             <DropdownMenuItem
               className="gap-2"
@@ -273,15 +281,19 @@ export function SkillDetailSidebarActions({
               <span>{tCommon(($) => $['operation.export'])}</span>
             </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            className="gap-2"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span>{tCommon(($) => $['operation.delete'])}</span>
-          </DropdownMenuItem>
+          {canDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                <span>{tCommon(($) => $['operation.delete'])}</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <SkillDetailDeleteDialog detail={detail} open={deleteOpen} onOpenChange={setDeleteOpen} />

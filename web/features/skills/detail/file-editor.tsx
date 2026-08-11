@@ -88,6 +88,7 @@ const SkillPdfPreview = dynamic(
 )
 
 export function FileEditor({
+  canPublish,
   detail,
   file,
   fileMutationCoordinator,
@@ -112,6 +113,7 @@ export function FileEditor({
   selectedVersionId,
   skillId,
 }: {
+  canPublish: boolean
   detail: SkillDetailResponse | undefined
   file: SkillFileResponse | undefined
   fileMutationCoordinator: SkillFileMutationCoordinator
@@ -1499,6 +1501,7 @@ export function FileEditor({
               hidden={publishConfirmOpen}
             >
               <SkillPublishBar
+                canPublish={canPublish}
                 metaLabel={publishMetaText}
                 onOpenVersions={onOpenVersions}
                 onPublish={handlePublish}
