@@ -173,7 +173,7 @@ class WorkflowRunPayload(BaseModel):
 
 
 class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=50)
+    marked_name: str | None = Field(default=None, max_length=20)
     marked_comment: str | None = Field(default=None, max_length=100)
 
 

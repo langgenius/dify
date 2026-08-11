@@ -23,8 +23,9 @@ def allocate_version_number(*, session: Session, app_id: str) -> int:
 
     The upsert acquires a row lock that is held until the caller's transaction
     commits, so concurrent publishes of the same app serialize and never receive
-    the same number. Callers must run inside a transaction; if it rolls back the
-    number is released but not reused, leaving a gap in the sequence.
+    the same number. Callers must run inside a transaction; if it rolls back,
+    both the counter update and workflow creation roll back, leaving the number
+    available for the next successful publish.
     """
     # Dialect-specific upsert, mirroring `workflow_draft_variable_service`: the
     # ORM cannot express "insert or increment" and a read-then-write would race.

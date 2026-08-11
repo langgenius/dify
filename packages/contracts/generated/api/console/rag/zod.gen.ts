@@ -217,7 +217,7 @@ export const zPublishedWorkflowRunPayload = z.object({
  */
 export const zWorkflowUpdatePayload = z.object({
   marked_comment: z.string().max(100).nullish(),
-  marked_name: z.string().max(50).nullish(),
+  marked_name: z.string().max(20).nullish(),
 })
 
 /**

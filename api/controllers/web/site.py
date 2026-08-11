@@ -20,16 +20,6 @@ from services.feature_service import FeatureService
 from services.file_service import FileService
 
 
-def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
-    if site.icon_type != IconType.IMAGE or not site.icon:
-        return None
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
-        StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
-    ):
-        return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
-    return build_icon_url(site.icon_type, site.icon)
-
-
 class WebSiteResponse(ResponseModel):
     title: str
     chat_color_theme: str | None = None
@@ -136,6 +126,17 @@ class WebAppSiteResponse(ResponseModel):
 register_response_schema_models(
     web_ns, WebSiteResponse, WebModelConfigResponse, WebAppCustomConfigResponse, WebAppSiteResponse
 )
+
+
+def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
+    """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
+    if site.icon_type != IconType.IMAGE or not site.icon:
+        return None
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+        StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+    ):
+        return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
+    return build_icon_url(site.icon_type, site.icon)
 
 
 @web_ns.route("/site")
