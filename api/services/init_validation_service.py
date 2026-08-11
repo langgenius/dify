@@ -24,7 +24,7 @@ class InitValidationService:
         *,
         state: InitValidationState,
         validation_required: bool,
-        expected_password: str | None,
+        expected_password: str,
     ) -> None:
         self._state = state
         self._validation_required = validation_required
@@ -41,8 +41,12 @@ class InitValidationService:
             raise AlreadyInitializedError
 
         expected_password = self._expected_password
-        if expected_password is None or not hmac.compare_digest(
-            password.encode("utf-8"),
-            expected_password.encode("utf-8"),
+        if (
+            not password
+            or not expected_password
+            or not hmac.compare_digest(
+                password.encode("utf-8"),
+                expected_password.encode("utf-8"),
+            )
         ):
             raise InvalidInitializationPasswordError

@@ -18,7 +18,7 @@ def state() -> Mock:
 
 
 def test_status_is_valid_when_validation_is_not_required(state: Mock) -> None:
-    service = InitValidationService(state=state, validation_required=False, expected_password=None)
+    service = InitValidationService(state=state, validation_required=False, expected_password="")
 
     assert service.is_validated(session_validated=False) is True
     state.is_setup.assert_not_called()
@@ -73,19 +73,25 @@ def test_password_validation_accepts_a_match(state: Mock) -> None:
     state.has_tenants.assert_called_once_with()
 
 
-def test_password_validation_rejects_an_empty_password_when_no_password_is_configured(state: Mock) -> None:
+@pytest.mark.parametrize("expected_password", ["", "expected"])
+def test_password_validation_rejects_an_empty_password(state: Mock, expected_password: str) -> None:
     state.has_tenants.return_value = False
-    service = InitValidationService(state=state, validation_required=False, expected_password=None)
+    service = InitValidationService(
+        state=state,
+        validation_required=bool(expected_password),
+        expected_password=expected_password,
+    )
 
     with pytest.raises(InvalidInitializationPasswordError):
         service.validate_password("")
 
 
-def test_password_validation_accepts_an_empty_configured_password(state: Mock) -> None:
+def test_password_validation_rejects_a_password_when_no_password_is_configured(state: Mock) -> None:
     state.has_tenants.return_value = False
     service = InitValidationService(state=state, validation_required=False, expected_password="")
 
-    service.validate_password("")
+    with pytest.raises(InvalidInitializationPasswordError):
+        service.validate_password("unexpected")
 
 
 def test_password_validation_accepts_a_unicode_password(state: Mock) -> None:

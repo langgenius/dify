@@ -98,16 +98,16 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
 @pytest.mark.parametrize(
     ("environment_value", "expected"),
     [
-        pytest.param(None, None, id="unset"),
+        pytest.param(None, "", id="unset"),
         pytest.param("", "", id="empty"),
         pytest.param("expected", "expected", id="ascii"),
         pytest.param("pässwörd-🔐", "pässwörd-🔐", id="unicode"),
     ],
 )
-def test_init_password_preserves_environment_value(
+def test_init_password_defaults_to_empty_and_preserves_environment_value(
     monkeypatch: pytest.MonkeyPatch,
     environment_value: str | None,
-    expected: str | None,
+    expected: str,
 ) -> None:
     _set_basic_config_env(monkeypatch)
     if environment_value is None:

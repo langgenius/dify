@@ -47,7 +47,7 @@ def build_application_services(
     *,
     database_client: sessionmaker[Session],
     deployment_edition: DeploymentEdition,
-    initialization_password: str | None,
+    initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)

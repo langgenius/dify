@@ -941,7 +941,7 @@ class TestSystemSetup:
 
         with (
             patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", None),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
         ):
             with pytest.raises(NotSetupError):
                 admin_view()
@@ -980,7 +980,7 @@ class TestSystemSetup:
         # Act & Assert
         with (
             patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"),
-            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", None),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
         ):
             with pytest.raises(NotSetupError):
                 admin_view()

@@ -30,9 +30,9 @@ class DeploymentConfig(BaseSettings):
         default="SELF_HOSTED",
     )
 
-    INIT_PASSWORD: str | None = Field(
+    INIT_PASSWORD: str = Field(
         description="Password required before initializing a self-hosted deployment",
-        default=None,
+        default="",
     )
 
     DEPLOY_ENV: str = Field(

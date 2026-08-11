@@ -17,8 +17,7 @@ from services.init_validation_service import InvalidInitializationPasswordError
     ("deployment_edition", "initialization_password", "session_validated", "setup_exists", "expected"),
     [
         pytest.param(DeploymentEdition.CLOUD, "expected", False, False, True, id="cloud"),
-        pytest.param(DeploymentEdition.COMMUNITY, None, False, False, True, id="no-password"),
-        pytest.param(DeploymentEdition.COMMUNITY, "", False, False, True, id="empty-password"),
+        pytest.param(DeploymentEdition.COMMUNITY, "", False, False, True, id="no-password"),
         pytest.param(DeploymentEdition.COMMUNITY, "expected", False, False, False, id="not-validated"),
         pytest.param(DeploymentEdition.ENTERPRISE, "expected", False, False, False, id="enterprise"),
         pytest.param(DeploymentEdition.COMMUNITY, "expected", True, False, True, id="browser-session"),
@@ -29,7 +28,7 @@ def test_build_application_services_configures_init_validation(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     deployment_edition: DeploymentEdition,
-    initialization_password: str | None,
+    initialization_password: str,
     session_validated: bool,
     setup_exists: bool,
     expected: bool,
@@ -97,7 +96,7 @@ def test_build_application_services_configures_setup_policy(
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=deployment_edition,
-        initialization_password=None,
+        initialization_password="",
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
@@ -110,7 +109,7 @@ def test_build_application_services_wires_builtin_schema_definitions(
     services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.COMMUNITY,
-        initialization_password=None,
+        initialization_password="",
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
@@ -127,7 +126,7 @@ def test_build_application_services_does_not_construct_schema_manager(
         ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
-            initialization_password=None,
+            initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
 
