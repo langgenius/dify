@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import LicenseNav from '@/app/components/header/license-env'
+import LicenseBadge from '@/app/components/header/license-badge'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -287,7 +287,7 @@ export function WorkspaceCard() {
   const renderWorkspaceStatus = () => {
     if (deploymentEdition === 'CLOUD')
       return enableBilling && workspacePlan ? <WorkspacePlanBadge plan={workspacePlan} /> : null
-    if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
+    if (deploymentEdition === 'ENTERPRISE') return <LicenseBadge />
     return null
   }
 

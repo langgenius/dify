@@ -1,3 +1,4 @@
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { LicenseStatus } from '@/features/system-features/constants'
@@ -7,9 +8,12 @@ import {
   renderWithConsoleQuery,
   seedSystemFeaturesLicense,
 } from '@/test/console/query-data'
-import LicenseNav from '../index'
+import LicenseBadge from '../index'
 
-const renderLicenseNav = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
+const renderLicenseBadge = (
+  license?: Parameters<typeof seedSystemFeaturesLicense>[1],
+  systemFeatures?: ConsoleQueryTestOptions['systemFeatures'],
+) => {
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
@@ -18,10 +22,10 @@ const renderLicenseNav = (license?: Parameters<typeof seedSystemFeaturesLicense>
       queryFn: () => new Promise(() => {}),
     })
   }
-  return renderWithConsoleQuery(<LicenseNav />, { queryClient })
+  return renderWithConsoleQuery(<LicenseBadge />, { queryClient, systemFeatures })
 }
 
-describe('LicenseNav', () => {
+describe('LicenseBadge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -34,38 +38,53 @@ describe('LicenseNav', () => {
   })
 
   it('should render nothing while license detail is loading', () => {
-    const { container } = renderLicenseNav()
+    const { container } = renderLicenseBadge()
     expect(container).toBeEmptyDOMElement()
   })
 
   it('should render nothing when license status is NONE', () => {
-    const { container } = renderLicenseNav({})
+    const { container } = renderLicenseBadge({})
     expect(container).toBeEmptyDOMElement()
   })
 
   it('should render Enterprise badge when license status is ACTIVE', () => {
-    renderLicenseNav({ status: LicenseStatus.ACTIVE })
+    renderLicenseBadge({ status: LicenseStatus.ACTIVE })
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 
   it('should render singular expiring message when license expires in 0 days', () => {
     const expiredAt = dayjs().add(2, 'hours').toISOString()
-    renderLicenseNav({ status: LicenseStatus.EXPIRING, expired_at: expiredAt })
+    renderLicenseBadge({ status: LicenseStatus.EXPIRING, expired_at: expiredAt })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":0/)).toBeInTheDocument()
   })
 
   it('should render singular expiring message when license expires in 1 day', () => {
     const tomorrow = dayjs().add(1, 'day').add(1, 'hour').toISOString()
-    renderLicenseNav({ status: LicenseStatus.EXPIRING, expired_at: tomorrow })
+    renderLicenseBadge({ status: LicenseStatus.EXPIRING, expired_at: tomorrow })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":1/)).toBeInTheDocument()
   })
 
   it('should render plural expiring message when license expires in 5 days', () => {
     const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
-    renderLicenseNav({ status: LicenseStatus.EXPIRING, expired_at: fiveDaysLater })
+    renderLicenseBadge({ status: LicenseStatus.EXPIRING, expired_at: fiveDaysLater })
     expect(screen.getByText(/license\.expiring_plural/)).toBeInTheDocument()
     expect(screen.getByText(/count":5/)).toBeInTheDocument()
+  })
+
+  it('should fall back to the Enterprise badge when the expiry notice is disabled', () => {
+    const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
+    renderLicenseBadge(
+      { status: LicenseStatus.EXPIRING, expired_at: fiveDaysLater },
+      { enable_license_expiry_notice: false },
+    )
+    expect(screen.queryByText(/license\.expiring/)).not.toBeInTheDocument()
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
+  })
+
+  it('should keep rendering the Enterprise badge for an active license when the expiry notice is disabled', () => {
+    renderLicenseBadge({ status: LicenseStatus.ACTIVE }, { enable_license_expiry_notice: false })
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 })
