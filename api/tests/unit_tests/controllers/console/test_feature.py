@@ -3,7 +3,7 @@ from unittest.mock import create_autospec
 
 from pytest_mock import MockerFixture
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService

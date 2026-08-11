@@ -13,6 +13,7 @@ from controllers.openapi.auth.verify import (
     check_workspace_role,
 )
 from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -70,12 +71,10 @@ def test_router_routes_contain_both_token_types():
     assert TokenType.OAUTH_EXTERNAL_SSO in auth_router._routes
 
 
-def test_external_sso_route_has_ee_required_edition():
+def test_external_sso_route_requires_enterprise_edition():
     route = auth_router._routes[TokenType.OAUTH_EXTERNAL_SSO]
     assert isinstance(route, PipelineRoute)
-    from controllers.openapi.auth.data import Edition
-
-    assert route.required_edition == frozenset({Edition.EE})
+    assert route.required_edition == frozenset({DeploymentEdition.ENTERPRISE})
 
 
 def test_account_route_has_no_required_edition():
@@ -147,7 +146,7 @@ def _selected_webapp_steps(*, scope, app_access_mode):
     """
     from unittest.mock import MagicMock, patch
 
-    from controllers.openapi.auth.data import AuthData, Edition
+    from controllers.openapi.auth.data import AuthData
 
     ctx = RequestContext(
         token_type=TokenType.OAUTH_ACCOUNT,
@@ -164,7 +163,10 @@ def _selected_webapp_steps(*, scope, app_access_mode):
     features.webapp_auth.enabled = True
     selected = []
     with (
-        patch("controllers.openapi.auth.conditions.current_edition", return_value=Edition.EE),
+        patch(
+            "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
+            DeploymentEdition.ENTERPRISE,
+        ),
         patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=features),
     ):
         for step in account_pipeline._auth:

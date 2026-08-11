@@ -9,7 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -452,7 +452,9 @@ const EnvPanel = () => {
   const committedEnvListRef = useRef(envList)
   const latestEnvListRef = useRef(envList)
   const pendingSaveEnvIdsRef = useRef(new Map<string, number>())
-  latestEnvListRef.current = envList
+  useLayoutEffect(() => {
+    latestEnvListRef.current = envList
+  }, [envList])
 
   useEffect(() => {
     if (pendingSaveEnvIdsRef.current.size === 0) committedEnvListRef.current = envList

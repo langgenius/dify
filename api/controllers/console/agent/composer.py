@@ -284,7 +284,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
 
 def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUID) -> str:
     snippet = SnippetService(session=session).get_snippet_by_id(
-        snippet_id=str(snippet_id),
+        snippet_id=str(snippet_id),  # pyrefly: ignore[unnecessary-type-conversion]
         tenant_id=tenant_id,
     )
     if snippet is None:

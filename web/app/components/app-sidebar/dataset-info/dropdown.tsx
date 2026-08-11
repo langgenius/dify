@@ -20,9 +20,9 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -69,7 +69,10 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled

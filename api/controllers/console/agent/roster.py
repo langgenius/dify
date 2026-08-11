@@ -1069,7 +1069,7 @@ class AgentLogMessagesApi(Resource):
             payload = _agent_observability_service(session).list_log_messages(
                 app=app_model,
                 agent_id=str(agent_id),
-                conversation_id=str(conversation_id),
+                conversation_id=str(conversation_id),  # pyrefly: ignore[unnecessary-type-conversion]
                 params=AgentLogQueryParams(
                     page=query.page,
                     limit=query.limit,

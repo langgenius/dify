@@ -1,13 +1,15 @@
 'use client'
+
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import {
@@ -44,7 +46,10 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })

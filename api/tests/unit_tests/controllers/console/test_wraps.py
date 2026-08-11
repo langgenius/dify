@@ -20,7 +20,6 @@ from controllers.console.wraps import (
     RBACResourceScope,
     _is_setup_completed,
     account_initialization_required,
-    cloud_edition_billing_enabled,
     cloud_edition_billing_paid_plan_required,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
@@ -37,6 +36,7 @@ from controllers.console.wraps import (
     with_current_user,
     with_current_user_id,
 )
+from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError, AdmissionConfigurationError
@@ -596,7 +596,7 @@ class TestEditionChecks:
             return "cloud_success"
 
         # Act
-        with patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
             result = cloud_view()
 
         # Assert
@@ -613,13 +613,13 @@ class TestEditionChecks:
 
         # Act & Assert
         with app.test_request_context():
-            with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
                 with pytest.raises(HTTPException) as exc_info:
                     cloud_view()
                 assert exc_info.value.code == 404
 
-    def test_only_edition_enterprise_allows_when_enabled(self):
-        """Test enterprise edition decorator allows when ENTERPRISE_ENABLED is True"""
+    def test_only_edition_enterprise_allows_enterprise_edition(self):
+        """Test enterprise edition decorator allows the ENTERPRISE edition."""
 
         # Arrange
         @only_edition_enterprise
@@ -627,14 +627,14 @@ class TestEditionChecks:
             return "enterprise_success"
 
         # Act
-        with patch("controllers.console.wraps.dify_config.ENTERPRISE_ENABLED", True):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE):
             result = enterprise_view()
 
         # Assert
         assert result == "enterprise_success"
 
     def test_only_edition_self_hosted_allows_self_hosted(self):
-        """Test self-hosted edition decorator allows SELF_HOSTED edition"""
+        """Test self-hosted edition decorator allows the COMMUNITY edition."""
 
         # Arrange
         @only_edition_self_hosted
@@ -642,47 +642,11 @@ class TestEditionChecks:
             return "self_hosted_success"
 
         # Act
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             result = self_hosted_view()
 
         # Assert
         assert result == "self_hosted_success"
-
-
-class TestBillingEnabled:
-    """Test billing enabled decorator."""
-
-    def test_should_allow_when_billing_config_enabled(self):
-        """Test billing decorator uses local config without loading tenant features."""
-
-        @cloud_edition_billing_enabled
-        def billing_view():
-            return "billing_success"
-
-        with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True):
-            with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
-                result = billing_view()
-
-        assert result == "billing_success"
-        get_features.assert_not_called()
-
-    def test_should_reject_when_billing_config_disabled(self):
-        """Test billing decorator rejects when local billing config is disabled."""
-        app = create_app_with_login()
-
-        @cloud_edition_billing_enabled
-        def billing_view():
-            return "billing_success"
-
-        with app.test_request_context():
-            with patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False):
-                with patch("controllers.console.wraps.FeatureService.get_features") as get_features:
-                    with pytest.raises(HTTPException) as exc_info:
-                        billing_view()
-
-        assert exc_info.value.code == 403
-        assert "Billing feature is not enabled" in str(exc_info.value.description)
-        get_features.assert_not_called()
 
 
 class TestBillingPaidPlanRequired:
@@ -776,7 +740,7 @@ class TestBillingResourceLimits:
             "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
         ):
             with (
-                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True),
+                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
                 patch(
                     "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
                 ) as get_vector_space,
@@ -939,8 +903,8 @@ class TestRateLimiting:
 class TestCloudUtmRecord:
     """Test cloud UTM recording decorator."""
 
-    def test_should_record_utm_when_billing_config_enabled_and_cookie_exists(self):
-        """Test UTM recording uses billing config without loading tenant features."""
+    def test_should_record_utm_for_cloud_edition_and_cookie(self):
+        """Test Cloud UTM recording without loading tenant features."""
         app = create_app_with_login()
 
         @cloud_utm_record
@@ -949,7 +913,7 @@ class TestCloudUtmRecord:
 
         with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
             with (
-                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", True),
+                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
                 patch("controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("u1"), "t1")),
                 patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
                 patch("controllers.console.wraps.FeatureService.get_features") as get_features,
@@ -960,8 +924,8 @@ class TestCloudUtmRecord:
         record_utm.assert_called_once_with("t1", {})
         get_features.assert_not_called()
 
-    def test_should_skip_utm_when_billing_config_disabled(self):
-        """Test UTM recording skips tenant feature loading when billing config is disabled."""
+    def test_should_skip_utm_outside_cloud_edition(self):
+        """Test UTM recording skips tenant feature loading outside the Cloud edition."""
         app = create_app_with_login()
 
         @cloud_utm_record
@@ -970,7 +934,7 @@ class TestCloudUtmRecord:
 
         with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
             with (
-                patch("controllers.console.wraps.dify_config.BILLING_ENABLED", False),
+                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("controllers.console.wraps.current_account_with_tenant") as current_account,
                 patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
                 patch("controllers.console.wraps.FeatureService.get_features") as get_features,
@@ -996,7 +960,7 @@ class TestSystemSetup:
             return "admin_success"
 
         # Act
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             result = admin_view()
 
         # Assert
@@ -1011,7 +975,7 @@ class TestSystemSetup:
         def admin_view():
             return "admin_success"
 
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             assert admin_view() == "admin_success"
             assert admin_view() == "admin_success"
 
@@ -1028,7 +992,7 @@ class TestSystemSetup:
         def admin_view():
             return "admin_success"
 
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             with pytest.raises(NotSetupError):
                 admin_view()
             assert admin_view() == "admin_success"
@@ -1048,7 +1012,7 @@ class TestSystemSetup:
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
@@ -1065,7 +1029,7 @@ class TestSystemSetup:
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
             with pytest.raises(NotSetupError):
                 admin_view()
 
