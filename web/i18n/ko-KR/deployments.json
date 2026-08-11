@@ -346,7 +346,6 @@
   "studio.configureValue": "설정 값",
   "studio.current": "현재",
   "studio.deployConfiguration": "배포 구성",
-  "studio.deployConfigurationDescription": "배포하기 전에 자격 증명을 선택하고 환경 변수 값을 입력하세요.",
   "studio.deployLatest": "최신 버전 배포",
   "studio.deployOtherVersion": "다른 버전 배포",
   "studio.deployToEnvironment": "환경에 배포",

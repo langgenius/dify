@@ -346,7 +346,6 @@
   "studio.configureValue": "Nilai konfigurasi",
   "studio.current": "Saat ini",
   "studio.deployConfiguration": "Konfigurasi penerapan",
-  "studio.deployConfigurationDescription": "Pilih kredensial dan lengkapi nilai variabel lingkungan sebelum penerapan.",
   "studio.deployLatest": "Deploy versi terbaru",
   "studio.deployOtherVersion": "Deploy versi lain",
   "studio.deployToEnvironment": "Deploy ke lingkungan",

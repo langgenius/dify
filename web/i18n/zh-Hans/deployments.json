@@ -346,7 +346,6 @@
   "studio.configureValue": "配置值",
   "studio.current": "当前",
   "studio.deployConfiguration": "部署配置",
-  "studio.deployConfigurationDescription": "部署前请选择凭据并填写完整的环境变量值。",
   "studio.deployLatest": "部署最新版本",
   "studio.deployOtherVersion": "部署其他版本",
   "studio.deployToEnvironment": "部署到环境",

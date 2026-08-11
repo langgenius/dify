@@ -346,7 +346,6 @@
   "studio.configureValue": "Valor configurado",
   "studio.current": "Atual",
   "studio.deployConfiguration": "Configuração da implantação",
-  "studio.deployConfigurationDescription": "Selecione as credenciais e preencha os valores das variáveis de ambiente antes da implantação.",
   "studio.deployLatest": "Implantar a versão mais recente",
   "studio.deployOtherVersion": "Implantar outra versão",
   "studio.deployToEnvironment": "Implantar em um ambiente",

@@ -346,7 +346,6 @@
   "studio.configureValue": "Konfigurirana vrednost",
   "studio.current": "Trenutna",
   "studio.deployConfiguration": "Konfiguracija uvedbe",
-  "studio.deployConfigurationDescription": "Pred uvedbo izberite poverilnice in izpolnite vrednosti spremenljivk okolja.",
   "studio.deployLatest": "Namesti najnovejšo različico",
   "studio.deployOtherVersion": "Namesti drugo različico",
   "studio.deployToEnvironment": "Namesti v okolje",

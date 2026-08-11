@@ -346,7 +346,6 @@
   "studio.configureValue": "Налаштоване значення",
   "studio.current": "Поточна",
   "studio.deployConfiguration": "Налаштування розгортання",
-  "studio.deployConfigurationDescription": "Виберіть облікові дані та заповніть значення змінних середовища перед розгортанням.",
   "studio.deployLatest": "Розгорнути останню версію",
   "studio.deployOtherVersion": "Розгорнути іншу версію",
   "studio.deployToEnvironment": "Розгорнути в середовищі",

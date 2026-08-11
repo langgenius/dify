@@ -346,7 +346,6 @@
   "studio.configureValue": "設定値",
   "studio.current": "現在",
   "studio.deployConfiguration": "デプロイ設定",
-  "studio.deployConfigurationDescription": "デプロイ前に認証情報を選択し、環境変数の値を入力してください。",
   "studio.deployLatest": "最新バージョンをデプロイ",
   "studio.deployOtherVersion": "別のバージョンをデプロイ",
   "studio.deployToEnvironment": "環境にデプロイ",

@@ -346,7 +346,6 @@
   "studio.configureValue": "ค่าที่กำหนดค่าไว้",
   "studio.current": "ปัจจุบัน",
   "studio.deployConfiguration": "การกำหนดค่าการปรับใช้",
-  "studio.deployConfigurationDescription": "เลือกข้อมูลประจำตัวและกรอกค่าตัวแปรสภาพแวดล้อมให้ครบก่อนปรับใช้",
   "studio.deployLatest": "ปรับใช้เวอร์ชันล่าสุด",
   "studio.deployOtherVersion": "ปรับใช้เวอร์ชันอื่น",
   "studio.deployToEnvironment": "ปรับใช้กับสภาพแวดล้อม",

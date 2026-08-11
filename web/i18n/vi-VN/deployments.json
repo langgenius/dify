@@ -346,7 +346,6 @@
   "studio.configureValue": "Giá trị cấu hình",
   "studio.current": "Hiện tại",
   "studio.deployConfiguration": "Cấu hình triển khai",
-  "studio.deployConfigurationDescription": "Chọn thông tin xác thực và hoàn tất các giá trị biến môi trường trước khi triển khai.",
   "studio.deployLatest": "Triển khai phiên bản mới nhất",
   "studio.deployOtherVersion": "Triển khai phiên bản khác",
   "studio.deployToEnvironment": "Triển khai tới một môi trường",

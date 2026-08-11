@@ -346,7 +346,6 @@
   "studio.configureValue": "Configure value",
   "studio.current": "Current",
   "studio.deployConfiguration": "Deploy configuration",
-  "studio.deployConfigurationDescription": "Select credentials and complete environment variable values before deployment.",
   "studio.deployLatest": "Deploy latest",
   "studio.deployOtherVersion": "Deploy other version",
   "studio.deployToEnvironment": "Deploy to an environment",

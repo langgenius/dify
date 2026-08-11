@@ -43,8 +43,6 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.chooseVersionToDeploy': 'Choose a version to deploy',
     'deployments.studio.current': 'Current',
     'deployments.studio.deployConfiguration': 'Deploy configuration',
-    'deployments.studio.deployConfigurationDescription':
-      'Select credentials and complete environment variable values before deployment.',
     'deployments.studio.deployLatest': 'Deploy latest',
     'deployments.studio.deployOtherVersion': 'Deploy other version',
     'deployments.studio.precheck.description': 'It contains node types that are not yet supported:',

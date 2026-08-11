@@ -4,7 +4,7 @@ import type { DeploymentVersion } from '../../version'
 import type { DeploymentDialogRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogCloseButton, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { useDeployWorkflow } from '../../use-deploy-workflow'
 import { DeploymentConfigurationContent } from './content'
@@ -97,23 +97,13 @@ export function DeploymentConfiguration({
           </Button>
         )}
         {embedded ? (
-          <>
-            <h2 className="mt-0.5 px-1 system-xl-semibold text-text-primary">
-              {t(($) => $['studio.deployConfiguration'])}
-            </h2>
-            <p className="mt-0.5 px-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['studio.deployConfigurationDescription'])}
-            </p>
-          </>
+          <h2 className="mt-0.5 px-1 system-xl-semibold text-text-primary">
+            {t(($) => $['studio.deployConfiguration'])}
+          </h2>
         ) : (
-          <>
-            <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
-              {t(($) => $['studio.deployConfiguration'])}
-            </DialogTitle>
-            <DialogDescription className="mt-1 px-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['studio.deployConfigurationDescription'])}
-            </DialogDescription>
-          </>
+          <DialogTitle className="mt-0.5 px-1 title-2xl-semi-bold text-text-primary">
+            {t(($) => $['studio.deployConfiguration'])}
+          </DialogTitle>
         )}
       </header>
 

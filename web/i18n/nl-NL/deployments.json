@@ -346,7 +346,6 @@
   "studio.configureValue": "Geconfigureerde waarde",
   "studio.current": "Huidig",
   "studio.deployConfiguration": "Implementatieconfiguratie",
-  "studio.deployConfigurationDescription": "Selecteer referenties en vul de waarden van omgevingsvariabelen in vóór de implementatie.",
   "studio.deployLatest": "Nieuwste versie implementeren",
   "studio.deployOtherVersion": "Andere versie implementeren",
   "studio.deployToEnvironment": "Implementeren in een omgeving",

@@ -346,7 +346,6 @@
   "studio.configureValue": "Konfigurationswert",
   "studio.current": "Aktuell",
   "studio.deployConfiguration": "Bereitstellung konfigurieren",
-  "studio.deployConfigurationDescription": "Wähle Anmeldedaten aus und vervollständige vor der Bereitstellung die Werte der Umgebungsvariablen.",
   "studio.deployLatest": "Neueste Version bereitstellen",
   "studio.deployOtherVersion": "Andere Version bereitstellen",
   "studio.deployToEnvironment": "In einer Umgebung bereitstellen",

@@ -346,7 +346,6 @@
   "studio.configureValue": "Valor de configuración",
   "studio.current": "Actual",
   "studio.deployConfiguration": "Configuración del despliegue",
-  "studio.deployConfigurationDescription": "Selecciona las credenciales y completa los valores de las variables de entorno antes del despliegue.",
   "studio.deployLatest": "Desplegar la última versión",
   "studio.deployOtherVersion": "Desplegar otra versión",
   "studio.deployToEnvironment": "Desplegar en un entorno",

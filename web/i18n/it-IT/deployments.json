@@ -346,7 +346,6 @@
   "studio.configureValue": "Valore configurato",
   "studio.current": "Corrente",
   "studio.deployConfiguration": "Configurazione distribuzione",
-  "studio.deployConfigurationDescription": "Seleziona le credenziali e completa i valori delle variabili d'ambiente prima della distribuzione.",
   "studio.deployLatest": "Distribuisci l’ultima versione",
   "studio.deployOtherVersion": "Distribuisci un’altra versione",
   "studio.deployToEnvironment": "Distribuisci in un ambiente",

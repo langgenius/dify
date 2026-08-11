@@ -346,7 +346,6 @@
   "studio.configureValue": "Valoare configurată",
   "studio.current": "Curent",
   "studio.deployConfiguration": "Configurarea implementării",
-  "studio.deployConfigurationDescription": "Selectează acreditările și completează valorile variabilelor de mediu înainte de implementare.",
   "studio.deployLatest": "Implementează cea mai recentă versiune",
   "studio.deployOtherVersion": "Implementează altă versiune",
   "studio.deployToEnvironment": "Implementează într-un mediu",

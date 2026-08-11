@@ -346,7 +346,6 @@
   "studio.configureValue": "कॉन्फ़िगर किया गया मान",
   "studio.current": "वर्तमान",
   "studio.deployConfiguration": "डिप्लॉयमेंट कॉन्फ़िगरेशन",
-  "studio.deployConfigurationDescription": "डिप्लॉयमेंट से पहले क्रेडेंशियल चुनें और एनवायरनमेंट वेरिएबल के मान पूरे करें।",
   "studio.deployLatest": "नवीनतम वर्शन डिप्लॉय करें",
   "studio.deployOtherVersion": "दूसरा वर्शन डिप्लॉय करें",
   "studio.deployToEnvironment": "किसी एनवायरनमेंट में डिप्लॉय करें",

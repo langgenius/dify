@@ -346,7 +346,6 @@
   "studio.configureValue": "Valeur configurée",
   "studio.current": "Actuelle",
   "studio.deployConfiguration": "Configuration du déploiement",
-  "studio.deployConfigurationDescription": "Sélectionnez les identifiants et complétez les valeurs des variables d’environnement avant le déploiement.",
   "studio.deployLatest": "Déployer la dernière version",
   "studio.deployOtherVersion": "Déployer une autre version",
   "studio.deployToEnvironment": "Déployer dans un environnement",
