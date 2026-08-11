@@ -2069,6 +2069,7 @@ export type ToolParameter = {
   llm_description?: string | null
   max?: number | number | null
   min?: number | number | null
+  multiple?: boolean
   name: string
   options?: Array<PluginParameterOption>
   placeholder?: I18nObject | null

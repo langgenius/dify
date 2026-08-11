@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from werkzeug.exceptions import Forbidden
 
+from controllers.console import apikey as apikey_module
 from controllers.console.app import app as app_module
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import agent_manage_required_for_agent_app
@@ -72,6 +73,9 @@ class TestAgentManageRequiredForAgentApp:
             app_module.AppIconApi.post,
             app_module.AppSiteStatus.post,
             app_module.AppApiStatus.post,
+            apikey_module.AppApiKeyListResource.get,
+            apikey_module.AppApiKeyListResource.post,
+            apikey_module.AppApiKeyResource.delete,
         ],
     )
     def test_generic_agent_app_routes_are_guarded(self, view):
