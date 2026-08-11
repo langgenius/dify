@@ -24,6 +24,7 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileGeneration, setTurnstileGeneration] = useState(0)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
@@ -31,6 +32,7 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
   const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
 
   const handleGetEMailVerificationCode = async () => {
+    let shouldResetTurnstile = false
     try {
       if (!email) {
         toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
@@ -42,6 +44,7 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
         return
       }
       setLoading(true)
+      shouldResetTurnstile = isTurnstileRequired
       const ret = await sendEMailLoginCode(
         email,
         locale,
@@ -53,11 +56,16 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)
+        shouldResetTurnstile = false
       }
     } catch (error) {
       console.error(error)
     } finally {
       setLoading(false)
+      if (shouldResetTurnstile) {
+        setTurnstileToken('')
+        setTurnstileGeneration((value) => value + 1)
+      }
     }
   }
 
@@ -82,6 +90,7 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
         />
         {shouldRenderTurnstile && (
           <Turnstile
+            key={turnstileGeneration}
             siteKey={turnstileSiteKey}
             onVerify={setTurnstileToken}
             onInvalidate={() => {

@@ -85,6 +85,10 @@ describe('MailAndCodeAuth', () => {
     })
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('enables SaaS email-code login only while Turnstile verification is valid', async () => {
     const user = userEvent.setup()
     render(<MailAndCodeAuth isInvite={false} isCloudEdition />)
@@ -142,6 +146,52 @@ describe('MailAndCodeAuth', () => {
         'user@example.com',
         'en-US',
         'turnstile-token',
+      )
+    })
+    expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
+  })
+
+  it('requires a fresh Turnstile token after an email-code request fails', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.sendEMailLoginCode
+      .mockRejectedValueOnce(new Error('email send failed'))
+      .mockResolvedValueOnce({ result: 'success', data: 'login-token' })
+    render(<MailAndCodeAuth isInvite={false} isCloudEdition />)
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+    await waitFor(() => {
+      expect(turnstileOptions).toBeDefined()
+    })
+    act(() => {
+      turnstileOptions?.callback('consumed-turnstile-token')
+    })
+    const continueButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        'en-US',
+        'consumed-turnstile-token',
+      )
+    })
+    await waitFor(() => {
+      expect(continueButton).toBeDisabled()
+      expect(mocks.render).toHaveBeenCalledTimes(2)
+    })
+
+    act(() => {
+      turnstileOptions?.callback('fresh-turnstile-token')
+    })
+    expect(continueButton).toBeEnabled()
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith(
+        'user@example.com',
+        'en-US',
+        'fresh-turnstile-token',
       )
     })
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
