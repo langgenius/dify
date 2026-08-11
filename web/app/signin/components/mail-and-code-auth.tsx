@@ -5,27 +5,35 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
-import { emailRegex } from '@/config'
+import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
+import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
+  isCloudEdition: boolean
 }
 
-export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
+export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCodeAuthProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
+  const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
+  const isTurnstileRequired = isCloudEdition
+  const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
 
   const handleGetEMailVerificationCode = async () => {
     try {
+      if (isTurnstileRequired && !turnstileToken) return
+
       if (!email) {
         toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
         return
@@ -70,11 +78,20 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
           placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
           onValueChange={setEmail}
         />
+        {shouldRenderTurnstile && (
+          <Turnstile
+            siteKey={turnstileSiteKey}
+            onVerify={setTurnstileToken}
+            onInvalidate={() => {
+              setTurnstileToken('')
+            }}
+          />
+        )}
         <div className="mt-3">
           <Button
             type="submit"
             loading={loading}
-            disabled={loading || !email}
+            disabled={loading || !email || (isTurnstileRequired && !turnstileToken)}
             variant="primary"
             className="w-full"
           >

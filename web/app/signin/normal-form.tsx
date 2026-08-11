@@ -235,7 +235,10 @@ function NormalForm() {
             <>
               {hasEmailCodeLogin && authType === 'code' && (
                 <>
-                  <MailAndCodeAuth isInvite={isInviteLink} />
+                  <MailAndCodeAuth
+                    isInvite={isInviteLink}
+                    isCloudEdition={systemFeatures.deployment_edition === 'CLOUD'}
+                  />
                   {hasEmailPasswordLogin && (
                     <button
                       type="button"

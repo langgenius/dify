@@ -147,6 +147,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_TOP_K_MAX_VALUE: coercedNumber.default(10),
   /**
+   * Cloudflare Turnstile site key for Dify Cloud sign-in verification.
+   */
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
+  /**
    * Disable Upload Image as WebApp icon default is false
    */
   NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
@@ -298,6 +302,9 @@ export const env = createEnv({
     NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer
       ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE
       : getRuntimeEnvFromBody('topKMaxValue'),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : getRuntimeEnvFromBody('turnstileSiteKey'),
     NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('uploadImageAsIcon'),

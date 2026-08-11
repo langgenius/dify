@@ -2,6 +2,7 @@ describe('env runtime transport', () => {
   const originalAgentV2Env = process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
   const originalMarkdownFormFieldNameExtraChars =
     process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+  const originalTurnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -10,8 +11,10 @@ describe('env runtime transport', () => {
     document.body.removeAttribute('data-enable-agent-v2')
     document.body.removeAttribute('data-enable-agent-v-2')
     document.body.removeAttribute('data-markdown-form-field-name-extra-chars')
+    document.body.removeAttribute('data-turnstile-site-key')
     delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
     delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   })
 
   afterAll(() => {
@@ -22,6 +25,8 @@ describe('env runtime transport', () => {
     else
       process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS =
         originalMarkdownFormFieldNameExtraChars
+    if (originalTurnstileSiteKey === undefined) delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    else process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = originalTurnstileSiteKey
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
@@ -67,5 +72,27 @@ describe('env runtime transport', () => {
     const datasetMap = getDatasetMap()
 
     expect(datasetMap['data-markdown-form-field-name-extra-chars']).toBe('()!*&（）！＊＆－')
+  })
+
+  it('should read the Turnstile site key from the browser runtime dataset', async () => {
+    document.body.setAttribute('data-turnstile-site-key', 'site-key-for-tests')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBe('site-key-for-tests')
+  })
+
+  it('should emit the Turnstile site key in the server runtime dataset', async () => {
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'site-key-for-tests'
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-turnstile-site-key']).toBe('site-key-for-tests')
   })
 })
