@@ -1,0 +1,75 @@
+app:
+  description: Knowledge Retrieval v2 live QA workflow using the existing ceshi KnowledgeFS space.
+  icon: 📗
+  icon_background: '#E4E7FF'
+  mode: workflow
+  name: KF-WF-V2-LIVE-CESHI-20260811
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features: {}
+  graph:
+    edges:
+      - data:
+          sourceType: start
+          targetType: knowledge-retrieval-v2
+        id: start-source-retrieval-target
+        source: start
+        sourceHandle: source
+        target: retrieval-v2
+        targetHandle: target
+        type: custom
+      - data:
+          sourceType: knowledge-retrieval-v2
+          targetType: end
+        id: retrieval-source-end-target
+        source: retrieval-v2
+        sourceHandle: source
+        target: end
+        targetHandle: target
+        type: custom
+    nodes:
+      - data:
+          desc: Synthetic query used only for Knowledge Retrieval v2 functional testing.
+          title: Start
+          type: start
+          variables:
+            - label: query
+              required: true
+              type: text-input
+              variable: query
+        id: start
+        type: custom
+      - data:
+          control_space_ids:
+            - 019fac9f-bfb0-75ee-9af5-252ebafbac1c
+          desc: Existing ceshi KnowledgeFS space; no destructive changes.
+          mode: fast
+          query_variable_selector:
+            - start
+            - query
+          title: KnowledgeFS Retrieval v2
+          top_n: 5
+          type: knowledge-retrieval-v2
+        id: retrieval-v2
+        type: custom
+      - data:
+          desc: ''
+          outputs:
+            - value_selector:
+                - retrieval-v2
+                - result
+              value_type: array[object]
+              variable: evidence
+          title: End
+          type: end
+        id: end
+        type: custom
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
