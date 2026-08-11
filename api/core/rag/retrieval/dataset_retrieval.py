@@ -1220,11 +1220,7 @@ class DatasetRetrieval:
                 document_ids_filter=document_ids_filter,
                 metadata_condition=metadata_condition,
                 attachment_ids=attachment_ids,
-                **(
-                    {"index_node_ids_filter": index_node_ids_filter}
-                    if index_node_ids_filter is not None
-                    else {}
-                ),
+                **({"index_node_ids_filter": index_node_ids_filter} if index_node_ids_filter is not None else {}),
             )
 
     def _run_retriever_thread_safely(
@@ -1254,11 +1250,7 @@ class DatasetRetrieval:
                 document_ids_filter=document_ids_filter,
                 metadata_condition=metadata_condition,
                 attachment_ids=attachment_ids,
-                **(
-                    {"index_node_ids_filter": index_node_ids_filter}
-                    if index_node_ids_filter is not None
-                    else {}
-                ),
+                **({"index_node_ids_filter": index_node_ids_filter} if index_node_ids_filter is not None else {}),
             )
         except Exception as exc:
             if skip_on_error:

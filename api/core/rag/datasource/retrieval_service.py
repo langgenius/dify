@@ -464,11 +464,7 @@ class RetrievalService:
                     cls.escape_query_for_search(query),
                     top_k=top_k,
                     document_ids_filter=document_ids_filter,
-                    **(
-                        {"index_node_ids_filter": index_node_ids_filter}
-                        if index_node_ids_filter is not None
-                        else {}
-                    ),
+                    **({"index_node_ids_filter": index_node_ids_filter} if index_node_ids_filter is not None else {}),
                 )
                 if documents:
                     if (
