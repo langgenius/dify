@@ -1270,6 +1270,7 @@ describe('CreateKnowledgePage', () => {
           name: 'Dify docs',
           pluginId: 'langgenius/firecrawl_datasource',
           provider: 'firecrawl',
+          providerDisplayName: 'Firecrawl',
           root_url: 'https://docs.dify.ai',
           selection: [
             {
@@ -1354,6 +1355,7 @@ describe('CreateKnowledgePage', () => {
           name: 'Notion handbook',
           pluginId: 'langgenius/notion_datasource',
           provider: 'notion',
+          providerDisplayName: 'Notion',
           selection: [
             {
               lastEditedTime: '2026-08-10T08:00:00Z',
@@ -1419,6 +1421,7 @@ describe('CreateKnowledgePage', () => {
           name: 'Drive runbook',
           pluginId: 'langgenius/google_drive',
           provider: 'google_drive',
+          providerDisplayName: 'Google Drive',
           selection: [
             {
               bucket: undefined,

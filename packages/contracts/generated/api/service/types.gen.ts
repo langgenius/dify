@@ -1341,6 +1341,9 @@ export type KnowledgeFsLogicalDocumentResponse = {
   active: KnowledgeFsDocumentRevisionResponse | null
   active_revision?: number | null
   created_at: string
+  disabled_at?: string | null
+  disabled_by_subject_id?: string | null
+  enabled?: boolean
   id: string
   knowledge_space_id: string
   provider_item_id?: string | null

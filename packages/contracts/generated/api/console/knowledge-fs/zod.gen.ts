@@ -284,6 +284,14 @@ export const zKnowledgeFsLogicalDocumentDeletePayload = z.object({
 })
 
 /**
+ * KnowledgeFSDocumentAvailabilityPayload
+ */
+export const zKnowledgeFsDocumentAvailabilityPayload = z.object({
+  enabled: z.boolean(),
+  expectedRowVersion: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSMetadataFieldCreatePayload
  */
 export const zKnowledgeFsMetadataFieldCreatePayload = z.object({
@@ -774,6 +782,7 @@ export const zKnowledgeFsInitialSourcePreviewPayload = z.object({
   parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
 })
 
 /**
@@ -1057,6 +1066,9 @@ export const zKnowledgeFsLogicalDocumentResponse = z.object({
   active: zKnowledgeFsDocumentRevisionResponse.nullable(),
   active_revision: z.int().gte(1).nullish(),
   created_at: z.iso.datetime(),
+  disabled_at: z.iso.datetime().nullish(),
+  disabled_by_subject_id: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
   id: z.string(),
   knowledge_space_id: z.string(),
   provider_item_id: z.string().nullish(),
@@ -1181,6 +1193,43 @@ export const zKnowledgeFsGoldenQuestionEvidenceMatchResponse = z.object({
   candidates: z.array(zKnowledgeFsGoldenQuestionEvidenceCandidateResponse),
   evidence: z.string(),
   matched: z.boolean(),
+})
+
+/**
+ * KnowledgeFSBulkDocumentAvailabilityItem
+ */
+export const zKnowledgeFsBulkDocumentAvailabilityItem = z.object({
+  documentId: z.string(),
+  expectedRowVersion: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSBulkDocumentAvailabilityPayload
+ */
+export const zKnowledgeFsBulkDocumentAvailabilityPayload = z.object({
+  documents: z.array(zKnowledgeFsBulkDocumentAvailabilityItem).min(1).max(100),
+  enabled: z.boolean(),
+})
+
+/**
+ * KnowledgeFSBulkDocumentAvailabilityFailureResponse
+ */
+export const zKnowledgeFsBulkDocumentAvailabilityFailureResponse = z.object({
+  document_id: z.string(),
+  status: z.enum(['conflict', 'not_found']),
+})
+
+/**
+ * KnowledgeFSBulkDocumentAvailabilityResponse
+ */
+export const zKnowledgeFsBulkDocumentAvailabilityResponse = z.object({
+  items: z.array(
+    z.union([
+      zKnowledgeFsLogicalDocumentResponse,
+      zKnowledgeFsBulkDocumentAvailabilityFailureResponse,
+    ]),
+  ),
+  total: z.int().gte(0),
 })
 
 /**
@@ -1654,6 +1703,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   name: z.string().min(1).max(200),
   pluginId: z.string().min(1).max(255).nullish(),
   provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
   root_url: z.string().min(1).max(4096),
   selection: z.array(zKnowledgeFsInitialWebsiteSelectionPayload).min(1).max(200),
   sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
@@ -1682,6 +1732,7 @@ export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
   name: z.string().min(1).max(200),
   pluginId: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
   sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
 })
@@ -1716,6 +1767,7 @@ export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   name: z.string().min(1).max(200),
   pluginId: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
   sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
 })
@@ -2780,6 +2832,19 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.obje
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsLogicalDocumentListResponse
 
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBody =
+  zKnowledgeFsBulkDocumentAvailabilityPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical document availability updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
+  zKnowledgeFsBulkDocumentAvailabilityResponse
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
   zKnowledgeFsLogicalDocumentDeletePayload
 
@@ -2809,6 +2874,20 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPa
  * KnowledgeFS logical document
  */
 export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsLogicalDocumentResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
+  zKnowledgeFsDocumentAvailabilityPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical document availability updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
 
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersBody = zKnowledgeFsMembersReplacePayload

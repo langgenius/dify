@@ -331,6 +331,7 @@ export function CreateSourceSetup({
       name: draft.sourceName.trim(),
       pluginId: installedProviderOption.plugin.plugin_id,
       provider: installedProviderOption.plugin.provider,
+      providerDisplayName: installedProviderOption.label,
       root_url: draft.rootUrl,
       selection: selectedPages.map((page) => ({
         source_url: page.sourceUrl,

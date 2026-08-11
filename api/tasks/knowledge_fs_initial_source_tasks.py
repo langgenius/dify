@@ -228,7 +228,7 @@ def _source_payload(
         "preview": True,
         "providerId": binding.provider_id,
         "providerKind": binding.provider_kind,
-        "providerName": payload.provider,
+        "providerName": payload.provider_display_name or payload.provider,
     }
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
         metadata["crawlOptions"] = {

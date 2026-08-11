@@ -27,6 +27,7 @@ export type KnowledgeFsInitialSourcePreviewPayload = {
   }
   pluginId: string
   provider: string
+  providerDisplayName?: string | null
 }
 
 export type KnowledgeFsInitialSourcePreviewResponse = {
@@ -256,6 +257,9 @@ export type KnowledgeFsLogicalDocumentResponse = {
   active: KnowledgeFsDocumentRevisionResponse | null
   active_revision?: number | null
   created_at: string
+  disabled_at?: string | null
+  disabled_by_subject_id?: string | null
+  enabled?: boolean
   id: string
   knowledge_space_id: string
   provider_item_id?: string | null
@@ -412,8 +416,25 @@ export type KnowledgeFsLogicalDocumentListResponse = {
   next_cursor?: string | null
 }
 
+export type KnowledgeFsBulkDocumentAvailabilityPayload = {
+  documents: Array<KnowledgeFsBulkDocumentAvailabilityItem>
+  enabled: boolean
+}
+
+export type KnowledgeFsBulkDocumentAvailabilityResponse = {
+  items: Array<
+    KnowledgeFsLogicalDocumentResponse | KnowledgeFsBulkDocumentAvailabilityFailureResponse
+  >
+  total: number
+}
+
 export type KnowledgeFsLogicalDocumentDeletePayload = {
   expectedRevision: number
+}
+
+export type KnowledgeFsDocumentAvailabilityPayload = {
+  enabled: boolean
+  expectedRowVersion: number
 }
 
 export type KnowledgeFsMembersReplacePayload = {
@@ -1037,6 +1058,7 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
   name: string
   pluginId?: string | null
   provider: string
+  providerDisplayName?: string | null
   root_url: string
   selection: Array<KnowledgeFsInitialWebsiteSelectionPayload>
   sync_policy?: 'daily' | 'manual' | 'provider'
@@ -1049,6 +1071,7 @@ export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
   name: string
   pluginId: string
   provider: string
+  providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
   sync_policy?: 'daily' | 'manual' | 'provider'
 }
@@ -1060,6 +1083,7 @@ export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   name: string
   pluginId: string
   provider: string
+  providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
   sync_policy?: 'daily' | 'manual' | 'provider'
 }
@@ -1231,6 +1255,16 @@ export type KnowledgeFsGoldenQuestionEvidenceCandidateResponse = {
   score: number
   section_path: Array<string>
   text: string
+}
+
+export type KnowledgeFsBulkDocumentAvailabilityItem = {
+  documentId: string
+  expectedRowVersion: number
+}
+
+export type KnowledgeFsBulkDocumentAvailabilityFailureResponse = {
+  document_id: string
+  status: 'conflict' | 'not_found'
 }
 
 export type KnowledgeFsMemberBindingPayload = {
@@ -2418,6 +2452,22 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
+  body: KnowledgeFsBulkDocumentAvailabilityPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
+  200: KnowledgeFsBulkDocumentAvailabilityResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body: KnowledgeFsLogicalDocumentDeletePayload
   headers: {
@@ -2454,6 +2504,23 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResp
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
+  body: KnowledgeFsDocumentAvailabilityPayload
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}'
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses = {
+  200: KnowledgeFsLogicalDocumentResponse
+}
+
+export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersData = {
   body: KnowledgeFsMembersReplacePayload

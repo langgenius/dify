@@ -120,6 +120,7 @@ export function CreateConnectedSourceSetup({
       datasource: providerOption.datasource.identity.name,
       pluginId: providerOption.plugin.plugin_id,
       provider: providerOption.plugin.provider,
+      providerDisplayName: providerOption.label,
     }
     if (!driveTransport) {
       onInitialSourceChange({
@@ -169,6 +170,7 @@ export function CreateConnectedSourceSetup({
     driveTransport,
     onInitialSourceChange,
     providerOption.datasource.identity.name,
+    providerOption.label,
     providerOption.plugin.plugin_id,
     providerOption.plugin.provider,
     selectableResources,

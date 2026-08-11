@@ -114,17 +114,31 @@ function metadataRecord(metadata: Source['metadata'], key: string) {
     : undefined
 }
 
-function sourceProviderName(source: Source) {
-  const explicitName = metadataString(source.metadata, 'providerName')
-  if (explicitName) return explicitName
+function knownSourceProviderName(value: string, providerKind?: string) {
+  const normalized = value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
+  if (normalized.includes('firecrawl')) return 'Firecrawl'
+  if (normalized.includes('jinareader') || normalized === 'jina') return 'Jina Reader'
+  if (normalized.includes('watercrawl')) return 'WaterCrawl'
+  if (normalized.includes('notion')) return 'Notion'
+  if (normalized.includes('googledocs')) return 'Google Docs'
+  if (normalized.includes('googledrive'))
+    return providerKind === 'online-document' ? 'Google Docs' : 'Google Drive'
+  if (normalized.includes('confluence')) return 'Confluence'
+  if (normalized.includes('amazons3') || normalized.includes('awss3')) return 'Amazon S3'
+  return undefined
+}
 
-  const providerId = metadataString(source.metadata, 'providerId')?.toLocaleLowerCase()
+function sourceProviderName(source: Source) {
+  const providerKind = metadataString(source.metadata, 'providerKind')
+  const explicitName = metadataString(source.metadata, 'providerName')
+  if (explicitName) return knownSourceProviderName(explicitName, providerKind) ?? explicitName
+
+  const providerId = metadataString(source.metadata, 'providerId')
   if (!providerId) return undefined
   if (providerId === 'plugin-daemon-website') return 'Firecrawl'
-  if (providerId.includes('firecrawl')) return 'Firecrawl'
-  if (providerId.includes('jina')) return 'Jina Reader'
-  if (providerId.includes('watercrawl')) return 'WaterCrawl'
-  if (providerId.includes('fakecrawler')) return 'FakeCrawler'
+  if (providerId.toLocaleLowerCase().includes('fakecrawler')) return 'FakeCrawler'
+  const knownName = knownSourceProviderName(providerId, providerKind)
+  if (knownName) return knownName
   return undefined
 }
 
@@ -391,6 +405,7 @@ function SourceRow({
   const syncWorkflow = source.syncWorkflow
 
   const providerName = sourceProviderName(source)
+  const providerKind = metadataString(source.metadata, 'providerKind')
   const sourceSyncPolicy = source.syncPolicy
   const syncPolicy = sourceSyncPolicy
     ? t(($) => $[sourceSyncPolicyTranslationKey(sourceSyncPolicy)])
@@ -402,9 +417,17 @@ function SourceRow({
     : formatTimeFromNow(lastSyncTimestamp)
   const typeLabel =
     source.type === 'connector' &&
-    (providerName === 'Notion' || providerName === 'Google Docs' || providerName === 'Confluence')
+    (providerKind === 'online-document' ||
+      providerName === 'Notion' ||
+      providerName === 'Google Docs' ||
+      providerName === 'Confluence')
       ? t(($) => $['newKnowledge.onlineDocuments'])
-      : t(($) => $[`newKnowledge.sourceType.${source.type}`])
+      : source.type === 'connector' &&
+          (providerKind === 'online-drive' ||
+            providerName === 'Google Drive' ||
+            providerName === 'Amazon S3')
+        ? t(($) => $['newKnowledge.onlineDrive'])
+        : t(($) => $[`newKnowledge.sourceType.${source.type}`])
   const sourceIcon =
     source.type === 'web'
       ? 'i-ri-global-line'
@@ -412,9 +435,13 @@ function SourceRow({
         ? 'i-custom-public-common-notion'
         : providerName === 'Amazon S3'
           ? 'i-ri-folder-line'
-          : providerName === 'Google Docs'
-            ? 'i-ri-file-text-fill text-[#4d8bf5]'
-            : 'i-ri-links-line'
+          : providerName === 'Google Drive'
+            ? 'i-custom-public-common-google-drive'
+            : providerName === 'Google Docs'
+              ? 'i-ri-file-text-fill text-[#4d8bf5]'
+              : providerName === 'Confluence'
+                ? 'i-custom-public-common-confluence'
+                : 'i-ri-links-line'
 
   const runAction = async <Result,>(
     action: SourceAction,

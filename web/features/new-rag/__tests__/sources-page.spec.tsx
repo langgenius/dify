@@ -1587,6 +1587,54 @@ describe('SourcesPage', () => {
     expect(within(row).queryByText('—')).not.toBeInTheDocument()
   })
 
+  it('restores a legacy Notion provider identifier as the designed provider details', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: { providerName: 'notion_datasource' },
+              name: 'Notion support SOP',
+              type: 'connector',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Notion support SOP/ })
+    expect(within(row).getByText('Notion')).toBeInTheDocument()
+    expect(within(row).getByText('dataset.newKnowledge.onlineDocuments')).toBeInTheDocument()
+    expect(within(row).queryByText('notion_datasource')).not.toBeInTheDocument()
+  })
+
+  it('uses provider kind to distinguish legacy Google Drive sources', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                providerKind: 'online-drive',
+                providerName: 'google_drive',
+              },
+              name: 'Escalation archive',
+              type: 'connector',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Escalation archive/ })
+    expect(within(row).getByText('Google Drive')).toBeInTheDocument()
+    expect(within(row).getByText('dataset.newKnowledge.onlineDrive')).toBeInTheDocument()
+  })
+
   it('does not report ordinary source updates as successful syncs', () => {
     const syncPolicy: SourceSyncPolicy = {
       createdAt: '2026-07-20T10:00:00Z',

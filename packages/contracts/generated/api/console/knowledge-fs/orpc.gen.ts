@@ -165,6 +165,12 @@ import {
   zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdBody,
   zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdPath,
   zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBody,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath,
+  zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse,
   zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdBody,
   zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdPath,
   zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse,
@@ -1039,9 +1045,26 @@ export const get16 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
 
+export const patch3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId',
+    path: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody,
+      params: zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+
 export const byDocumentId2 = {
   delete: delete7,
   get: get16,
+  patch: patch3,
 }
 
 export const get17 = oc
@@ -1060,8 +1083,25 @@ export const get17 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse)
 
+export const patch4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeFsSpacesByControlSpaceIdLogicalDocuments',
+    path: '/knowledge-fs/spaces/{control_space_id}/logical-documents',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBody,
+      params: zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath,
+    }),
+  )
+  .output(zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse)
+
 export const logicalDocuments = {
   get: get17,
+  patch: patch4,
   byDocumentId: byDocumentId2,
 }
 
@@ -1101,7 +1141,7 @@ export const delete8 = oc
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse)
 
-export const patch3 = oc
+export const patch5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -1119,7 +1159,7 @@ export const patch3 = oc
 
 export const byFieldId = {
   delete: delete8,
-  patch: patch3,
+  patch: patch5,
 }
 
 export const get18 = oc
@@ -1325,7 +1365,7 @@ export const get27 = oc
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse)
 
-export const patch4 = oc
+export const patch6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -1343,7 +1383,7 @@ export const patch4 = oc
 
 export const byBadCaseId = {
   get: get27,
-  patch: patch4,
+  patch: patch6,
   traceReference,
 }
 
@@ -1618,7 +1658,7 @@ export const get33 = oc
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSettingsPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSettingsResponse)
 
-export const patch5 = oc
+export const patch7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -1636,7 +1676,7 @@ export const patch5 = oc
 
 export const settings = {
   get: get33,
-  patch: patch5,
+  patch: patch7,
   migrations,
 }
 
@@ -2063,7 +2103,7 @@ export const get41 = oc
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
 
-export const patch6 = oc
+export const patch8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -2082,7 +2122,7 @@ export const patch6 = oc
 export const bySourceId = {
   delete: delete10,
   get: get41,
-  patch: patch6,
+  patch: patch8,
   crawlImport,
   crawlPreview,
   files,
@@ -2378,7 +2418,7 @@ export const get48 = oc
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResponse)
 
-export const patch7 = oc
+export const patch9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -2397,7 +2437,7 @@ export const patch7 = oc
 export const byControlSpaceId = {
   delete: delete11,
   get: get48,
-  patch: patch7,
+  patch: patch9,
   appBindings,
   backgroundTasks,
   bulkJobs,

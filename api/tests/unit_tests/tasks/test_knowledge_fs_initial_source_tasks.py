@@ -28,6 +28,7 @@ def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePaylo
             "kind": "website_crawl",
             "name": "Dify docs",
             "provider": "firecrawl",
+            "providerDisplayName": "Firecrawl",
             "root_url": "https://docs.dify.ai",
             "crawl_options": {"include_subpages": True, "limit": 25},
             "selection": [
@@ -46,6 +47,7 @@ def _document_payload() -> KnowledgeFSInitialOnlineDocumentSourcePayload:
             "name": "Product wiki",
             "pluginId": "langgenius/notion_datasource",
             "provider": "notion",
+            "providerDisplayName": "Notion",
             "datasource": "pages",
             "credentialId": "notion-credential-1",
             "selection": [
@@ -69,6 +71,7 @@ def _drive_payload() -> KnowledgeFSInitialOnlineDriveSourcePayload:
             "name": "Team drive",
             "pluginId": "langgenius/google_drive",
             "provider": "google_drive",
+            "providerDisplayName": "Google Drive",
             "datasource": "google_drive",
             "credentialId": "drive-credential-1",
             "selection": [
@@ -223,7 +226,14 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
 
 
 @pytest.mark.parametrize(
-    ("payload", "provider_id", "credential_id", "workflow_kind", "expected_source_name"),
+    (
+        "payload",
+        "provider_id",
+        "credential_id",
+        "workflow_kind",
+        "expected_source_name",
+        "expected_provider_name",
+    ),
     [
         (
             _document_payload(),
@@ -231,6 +241,7 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
             "notion-credential-1",
             "online-document-import",
             "Product wiki",
+            "Notion",
         ),
         (
             _drive_payload(),
@@ -238,6 +249,7 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
             "drive-credential-1",
             "online-drive-import",
             "Team drive",
+            "Google Drive",
         ),
     ],
 )
@@ -247,6 +259,7 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
     credential_id: str,
     workflow_kind: str,
     expected_source_name: str,
+    expected_provider_name: str,
 ) -> None:
     facade = _facade()
     facade.list_source_providers.return_value = SimpleNamespace(data=[SimpleNamespace(id=provider_id, available=True)])
@@ -294,6 +307,7 @@ def test_initial_connector_source_import_uses_exact_binding_and_selection(
     assert source_payload.type == "connector"
     assert source_payload.uri == "connector://connector-1"
     assert source_payload.metadata["providerId"] == provider_id
+    assert source_payload.metadata["providerName"] == expected_provider_name
     import_payload = facade.import_source_workflow.call_args.kwargs["payload"].root
     assert import_payload.kind == workflow_kind
     assert import_payload.items == payload.selection

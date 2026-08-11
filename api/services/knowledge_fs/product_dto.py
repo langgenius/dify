@@ -141,6 +141,7 @@ class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
     datasource: str = Field(min_length=1, max_length=255)
     plugin_id: str = Field(min_length=1, max_length=255, alias="pluginId")
     provider: str = Field(min_length=1, max_length=255)
+    provider_display_name: str | None = Field(default=None, min_length=1, max_length=255, alias="providerDisplayName")
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
@@ -152,6 +153,7 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
     plugin_id: str | None = Field(default=None, min_length=1, max_length=255, alias="pluginId")
     datasource: str = Field(default="crawl", min_length=1, max_length=255)
     credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
+    provider_display_name: str | None = Field(default=None, min_length=1, max_length=255, alias="providerDisplayName")
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
@@ -1261,9 +1263,7 @@ class KnowledgeFSLogicalDocumentResponse(ResponseModel):
         default=None, ge=1, validation_alias=AliasChoices("active_revision", "activeRevision")
     )
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
-    disabled_at: datetime | None = Field(
-        default=None, validation_alias=AliasChoices("disabled_at", "disabledAt")
-    )
+    disabled_at: datetime | None = Field(default=None, validation_alias=AliasChoices("disabled_at", "disabledAt"))
     disabled_by_subject_id: str | None = Field(
         default=None, validation_alias=AliasChoices("disabled_by_subject_id", "disabledBySubjectId")
     )
