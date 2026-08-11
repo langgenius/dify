@@ -13,7 +13,6 @@ import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/con
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
-import { userProfileAtom } from '../account-state'
 import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -199,7 +198,6 @@ vi.mock('@/app/components/header/maintenance-notice', () => ({
 }))
 
 function ConsoleBootstrapProbe() {
-  const userProfile = useAtomValue(userProfileAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -231,10 +229,6 @@ function ConsoleBootstrapProbe() {
       <span>
         workspace loading:
         {String(isLoadingCurrentWorkspace)}
-      </span>
-      <span>
-        user:
-        {userProfile.email}
       </span>
       <span>
         workspace:
@@ -377,7 +371,6 @@ describe('Console bootstrap', () => {
     it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
       expect(await screen.findByText('keys:app.create_and_management')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
@@ -394,8 +387,9 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      expect(await screen.findByText('user:user@example.com')).toBeInTheDocument()
-      expect(screen.getByText(`workspace:${initialWorkspaceSummary.name}`)).toBeInTheDocument()
+      expect(
+        await screen.findByText(`workspace:${initialWorkspaceSummary.name}`),
+      ).toBeInTheDocument()
       expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:')).toBeInTheDocument()
@@ -532,7 +526,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      await screen.findByText('user:user@example.com')
+      await screen.findByText('workspace:Workspace')
       expect(setZendeskConversationFields).not.toHaveBeenCalled()
     })
 
@@ -597,7 +591,7 @@ describe('Console bootstrap', () => {
 
       renderConsoleBootstrap()
 
-      await screen.findByText('user:')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
@@ -607,7 +601,7 @@ describe('Console bootstrap', () => {
       setAnalyticsConsent('denied')
       renderConsoleBootstrap()
 
-      await screen.findByText('user:user@example.com')
+      await screen.findByText('workspace:Workspace')
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
 

@@ -100,13 +100,6 @@ vi.mock('@/service/client', async (importOriginal) => {
     consoleQuery,
   }
 })
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    ...consoleStateRef.value,
-    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
