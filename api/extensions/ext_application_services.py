@@ -120,6 +120,7 @@ def build_application_services(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
             access_mode_for_app=_get_enterprise_webapp_access_mode,
+            is_user_allowed_for_app=EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp,
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
