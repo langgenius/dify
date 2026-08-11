@@ -1,12 +1,12 @@
 'use client'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
@@ -35,7 +35,10 @@ export const useMCPServiceCardState = (appInfo: AppInfo, triggerModeDisabled: bo
   const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
   const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const canManageMCP = useMemo(

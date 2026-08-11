@@ -4,7 +4,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -12,13 +12,13 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -47,7 +47,10 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector((state) => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()

@@ -19,15 +19,14 @@ def clean_messages():
     Clean expired messages based on clean policy.
 
     This task uses MessagesCleanService to efficiently clean messages in batches.
-    The behavior depends on BILLING_ENABLED configuration:
-    - BILLING_ENABLED=True: only delete messages from sandbox tenants (with whitelist/grace period)
-    - BILLING_ENABLED=False: delete all messages within the time range
+    Cloud only deletes messages from sandbox tenants (with whitelist/grace period).
+    Self-hosted editions delete all messages within the configured time range.
     """
     click.echo(click.style("clean_messages: start clean messages.", fg="green"))
     start_at = time.perf_counter()
 
     try:
-        # Create policy based on billing configuration
+        # Create policy based on deployment edition.
         policy = create_message_clean_policy(
             graceful_period_days=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD,
         )

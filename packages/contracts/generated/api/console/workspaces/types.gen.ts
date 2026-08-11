@@ -2332,6 +2332,8 @@ export type ToolParameterType =
   | 'array'
   | 'boolean'
   | 'checkbox'
+  | 'date'
+  | 'date-range'
   | 'dynamic-select'
   | 'file'
   | 'files'

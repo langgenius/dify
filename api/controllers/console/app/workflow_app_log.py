@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Any
 
 from dateutil.parser import isoparse
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
@@ -14,6 +13,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
 )
@@ -183,11 +183,11 @@ class WorkflowAppLogApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowAppLogQuery)
+    def get(self, req_data: WorkflowAppLogQuery, app_model: App):
         """
         Get workflow app logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
@@ -195,15 +195,15 @@ class WorkflowAppLogApi(Resource):
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,
-                keyword=args.keyword,
-                status=args.status,
-                created_at_before=args.created_at__before,
-                created_at_after=args.created_at__after,
-                page=args.page,
-                limit=args.limit,
-                detail=args.detail,
-                created_by_end_user_session_id=args.created_by_end_user_session_id,
-                created_by_account=args.created_by_account,
+                keyword=req_data.keyword,
+                status=req_data.status,
+                created_at_before=req_data.created_at__before,
+                created_at_after=req_data.created_at__after,
+                page=req_data.page,
+                limit=req_data.limit,
+                detail=req_data.detail,
+                created_by_end_user_session_id=req_data.created_by_end_user_session_id,
+                created_by_account=req_data.created_by_account,
             )
 
             return WorkflowAppLogPaginationResponse.model_validate(
@@ -227,19 +227,19 @@ class WorkflowArchivedLogApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_LOG_AND_ANNOTATION)
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowAppLogQuery)
+    def get(self, req_data: WorkflowAppLogQuery, app_model: App):
         """
         Get workflow archived logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))
 
         workflow_app_service = WorkflowAppService()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_archive_logs(
                 session=session,
                 app_model=app_model,
-                page=args.page,
-                limit=args.limit,
+                page=req_data.page,
+                limit=req_data.limit,
             )
 
             return WorkflowArchivedLogPaginationResponse.model_validate(

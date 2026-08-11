@@ -35,7 +35,7 @@ describe('CredentialSelector', () => {
       'aria-expanded',
       'false',
     )
-    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/first.png')
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('selects the first credential when the current id is invalid', async () => {

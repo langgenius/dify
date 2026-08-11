@@ -401,6 +401,17 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
+        timezone: {
+          post: {
+            mutationOptions: {
+              onSuccess: async (_data, _variables, _onMutateResult, context) => {
+                await context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.profile.get.key(),
+                })
+              },
+            },
+          },
+        },
       },
       apps: {
         post: {

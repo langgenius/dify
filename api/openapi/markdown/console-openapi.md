@@ -14933,6 +14933,13 @@ Reference to model credentials resolved only at runtime.
 
 #### AgentSoulModelSettings
 
+Model parameters for the Agent Soul model.
+
+Model plugins can declare arbitrary parameters via ``parameter_rules``
+(e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+fields typed below, so extra keys must round-trip through persistence
+rather than being dropped.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | frequency_penalty | number |  | No |
@@ -15935,7 +15942,7 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
+| enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
 #### BillingResponse
@@ -24702,7 +24709,7 @@ FastOpenAPI proof of concept for Dify API
 **Initialize system setup with admin account.
 
     NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
     and init-password validation rather than user session authentication.
     **
 
@@ -24788,19 +24795,9 @@ FastOpenAPI proof of concept for Dify API
 | setup_at | string | Setup completion time (ISO format) | No |
 | step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
 
-###### VersionFeatures
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| can_replace_logo | boolean | Whether logo replacement is supported | Yes |
-| model_load_balancing_enabled | boolean | Whether model load balancing is enabled | Yes |
-
 ###### VersionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| can_auto_update | boolean | Whether auto-update is supported | Yes |
-| features | [VersionFeatures](#versionfeatures) | Feature flags and capabilities | Yes |
-| release_date | string | Release date of latest version | Yes |
 | release_notes | string | Release notes for latest version | Yes |
 | version | string | Latest version number | Yes |

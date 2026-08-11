@@ -11,10 +11,8 @@ vi.mock('@/context/permission-state', async () => {
       current_env: '',
       current_version: '1.0.0',
       latest_version: '',
-      release_date: '',
       release_notes: '',
       version: '',
-      can_auto_update: false,
     },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
@@ -26,10 +24,8 @@ vi.mock('@/context/version-state', async () => {
       current_env: '',
       current_version: '1.0.0',
       latest_version: '',
-      release_date: '',
       release_notes: '',
       version: '',
-      can_auto_update: false,
     },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))

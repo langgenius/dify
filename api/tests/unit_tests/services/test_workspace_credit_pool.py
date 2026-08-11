@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
 
@@ -27,7 +27,7 @@ def test_get_effective_credit_pool_prefers_available_paid_pool(
         "subscription": {"plan": CloudPlan.TEAM},
         "next_credit_reset_date": 1775001600,
     }
-    config = SimpleNamespace(BILLING_ENABLED=True)
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with (
         patch("services.workspace_service.dify_config", config),
@@ -59,7 +59,7 @@ def test_get_effective_credit_pool_exposes_exhausted_trial_pool() -> None:
         "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
-    config = SimpleNamespace(BILLING_ENABLED=True)
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with (
         patch("services.workspace_service.dify_config", config),

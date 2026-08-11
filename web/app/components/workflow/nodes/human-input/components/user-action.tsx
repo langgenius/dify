@@ -101,7 +101,12 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
         readonly={readonly}
       />
       {!readonly && (
-        <Button className="px-2" variant="tertiary" onClick={() => onDelete(data.id)}>
+        <Button
+          aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+          className="px-2"
+          variant="tertiary"
+          onClick={() => onDelete(data.id)}
+        >
           <RiDeleteBinLine className="size-4" />
         </Button>
       )}

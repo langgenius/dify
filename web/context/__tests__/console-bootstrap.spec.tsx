@@ -13,7 +13,7 @@ import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/con
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
-import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
+import { userProfileAtom } from '../account-state'
 import { initialWorkspaceSummary } from '../app-context-defaults'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -84,23 +84,11 @@ const mockSystemFeaturesState = vi.hoisted(() => ({
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
     version: '1.0.1',
-    release_date: '',
     release_notes: '',
-    features: {
-      can_replace_logo: false,
-      model_load_balancing_enabled: false,
-    },
-    can_auto_update: false,
   } as
     | {
         version: string
-        release_date: string
         release_notes: string
-        features: {
-          can_replace_logo: boolean
-          model_load_balancing_enabled: boolean
-        }
-        can_auto_update: boolean
       }
     | undefined,
 }))
@@ -222,7 +210,6 @@ function ConsoleBootstrapProbe() {
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const refreshUserProfile = useSetAtom(refreshUserProfileAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -278,9 +265,6 @@ function ConsoleBootstrapProbe() {
         {langGeniusVersionInfo.current_version}/{langGeniusVersionInfo.latest_version}/
         {langGeniusVersionInfo.current_env}
       </span>
-      <button type="button" onClick={refreshUserProfile}>
-        refresh user
-      </button>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
       </button>
@@ -380,13 +364,7 @@ describe('Console bootstrap', () => {
     })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
-      release_date: '',
       release_notes: '',
-      features: {
-        can_replace_logo: false,
-        model_load_balancing_enabled: false,
-      },
-      can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
@@ -461,15 +439,6 @@ describe('Console bootstrap', () => {
   })
 
   describe('Refresh actions', () => {
-    it('should invalidate the user profile query when refresh is called', async () => {
-      const { queryClient } = renderConsoleBootstrap()
-      const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
-
-      fireEvent.click(await screen.findByRole('button', { name: /refresh user/i }))
-
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['user-profile'] })
-    })
-
     it('starts a fresh permission request without waiting for an older request', async () => {
       const { queryClient } = renderConsoleBootstrap()
       await screen.findByText('dataset keys:dataset.acl.edit')

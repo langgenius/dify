@@ -634,6 +634,32 @@ describe('consoleQuery education defaults', () => {
   })
 })
 
+describe('consoleQuery account profile mutation defaults', () => {
+  it('should invalidate the account profile after a timezone update', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await consoleQuery.account.timezone.post.mutationOptions().onSuccess?.(
+      {
+        id: 'user-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        avatar_url: null,
+        is_password_set: true,
+        timezone: 'Pacific/Midway',
+      },
+      { body: { timezone: 'Pacific/Midway' } },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.account.profile.get.key(),
+    })
+  })
+})
+
 describe('consoleQuery app mutation defaults', () => {
   it('should write an updated app into its exact detail cache', async () => {
     const consoleQuery = await loadConsoleQuery()

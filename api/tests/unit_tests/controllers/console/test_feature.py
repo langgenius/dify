@@ -3,7 +3,7 @@ from unittest.mock import create_autospec
 
 from pytest_mock import MockerFixture
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
 from services.entities.feature_entities import (
@@ -15,7 +15,10 @@ from services.entities.feature_entities import (
     SystemFeatureModel,
     VectorSpaceLimitationModel,
 )
+from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
+from services.schema_definition_service import SchemaDefinitionService
+from services.setup_service import SetupService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_query_service import WorkspaceQueryService
 
@@ -32,6 +35,9 @@ def _request_context() -> RequestContext:
 def _install_application_services(mocker: MockerFixture):
     feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
     services = ApplicationServices(
+        explore_banner_queries=create_autospec(ExploreBannerQueryService, instance=True, spec_set=True),
+        schema_definitions=create_autospec(SchemaDefinitionService, instance=True, spec_set=True),
+        setup=create_autospec(SetupService, instance=True, spec_set=True),
         feature_queries=feature_queries,
         workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
         workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),
