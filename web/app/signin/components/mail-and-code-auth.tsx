@@ -32,8 +32,6 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
 
   const handleGetEMailVerificationCode = async () => {
     try {
-      if (isTurnstileRequired && !turnstileToken) return
-
       if (!email) {
         toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
         return
