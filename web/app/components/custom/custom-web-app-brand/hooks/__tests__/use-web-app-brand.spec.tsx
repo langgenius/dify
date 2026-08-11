@@ -169,7 +169,6 @@ const createProviderContext = ({
 const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): ConsoleStateFixture => {
   return {
     userProfile: testUserProfile,
-    refreshUserProfile: vi.fn(),
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     isCurrentWorkspaceEditor: false,

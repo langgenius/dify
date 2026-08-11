@@ -326,7 +326,6 @@ const mockConsoleState = {
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceDatasetOperator: false,
-  refreshUserProfile: vi.fn(),
 }
 
 const { mockConsoleStateReader } = vi.hoisted(() => ({

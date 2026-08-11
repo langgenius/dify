@@ -4,13 +4,12 @@ import type { EducationStatusResponse } from '@dify/contracts/api/console/accoun
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
@@ -69,7 +68,10 @@ export function EducationVerifyFlow({
 }) {
   const { t } = useTranslation()
   const router = useRouter()
-  const userEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const docLink = useDocLink()
   const verificationStartedRef = useRef(false)
   const featuresQuery = useQuery(
