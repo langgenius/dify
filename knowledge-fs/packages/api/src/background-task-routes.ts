@@ -45,6 +45,19 @@ export const BackgroundTaskSchema = z.object({
   documentRevision: z.number().int().positive().optional(),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
+  failures: z
+    .array(
+      z
+        .object({
+          documentId: z.string().uuid(),
+          documentTitle: z.string().optional(),
+          errorCode: z.string(),
+          errorMessage: z.string(),
+          jobId: z.string().uuid().optional(),
+        })
+        .strict(),
+    )
+    .optional(),
   id: z.string().uuid(),
   knowledgeSpaceId: z.string().uuid(),
   operation: BackgroundTaskOperationSchema,

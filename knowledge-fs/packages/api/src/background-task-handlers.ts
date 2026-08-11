@@ -23,6 +23,11 @@ import type {
   RetryDocumentCompilationJobInput,
 } from "./document-compilation-job";
 import type { DocumentProcessingTaskRepository } from "./document-processing-task-repository";
+import type { DurableDeletionRepository } from "./durable-deletion-repository";
+import type {
+  DurableDeletionRequestPrincipal,
+  DurableDeletionService,
+} from "./durable-deletion-service";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { KnowledgeSpaceAccessService } from "./knowledge-space-access-control";
 import {
@@ -51,6 +56,8 @@ export interface RegisterBackgroundTaskHandlersOptions {
   readonly bulkOperations: BulkOperationRepository;
   readonly documentCompilationJobs?: DocumentCompilationJobStateMachine | undefined;
   readonly documentTasks?: DocumentProcessingTaskRepository | undefined;
+  readonly durableDeletionJobs?: Pick<DurableDeletionRepository, "getJob"> | undefined;
+  readonly durableDeletions?: DurableDeletionService | undefined;
   readonly sourceRepository?: SourceProductWorkflowRepository | undefined;
   readonly sourceWorkflows?: SourceProductWorkflowService | undefined;
   readonly spaces: KnowledgeSpaceRepository;
@@ -63,6 +70,8 @@ export function registerBackgroundTaskHandlers({
   bulkOperations,
   documentCompilationJobs,
   documentTasks,
+  durableDeletionJobs,
+  durableDeletions,
   sourceRepository,
   sourceWorkflows,
   spaces,
@@ -126,7 +135,11 @@ export function registerBackgroundTaskHandlers({
 
     const bulkCandidates = await Promise.all(
       bulkPage.items.map(async (operation): Promise<TaskCandidate> => {
-        const summary = await summarizeBulkOperation(operation, documentCompilationJobs);
+        const summary = await summarizeBulkOperation(
+          operation,
+          documentCompilationJobs,
+          durableDeletionJobs,
+        );
         return {
           cursor: { createdAt: operation.createdAt, id: operation.id },
           source: "bulk",
@@ -225,6 +238,8 @@ export function registerBackgroundTaskHandlers({
                 bulkOperations,
                 context,
                 documentCompilationJobs,
+                durableDeletionJobs,
+                durableDeletions,
                 grants,
                 knowledgeSpaceId: params.id,
                 taskId: params.taskId,
@@ -300,6 +315,26 @@ async function controlDocumentTask(input: {
   return updated ? documentBackgroundTask(updated) : null;
 }
 
+function durableDeletionPrincipal(context: {
+  get(name: "authenticatedApiKey"): DurableDeletionRequestPrincipal["apiKey"];
+  get(
+    name: "capabilityV2Grant",
+  ): { readonly contentScopeIds: readonly string[]; readonly grantId: string } | undefined;
+  get(name: "callerKind"): DurableDeletionRequestPrincipal["callerKind"] | undefined;
+  get(name: "subject"): DurableDeletionRequestPrincipal["subject"];
+}): DurableDeletionRequestPrincipal {
+  const apiKey = context.get("authenticatedApiKey");
+  const capability = context.get("capabilityV2Grant");
+  return {
+    ...(apiKey ? { apiKey } : {}),
+    ...(capability
+      ? { capability: { contentScopeIds: capability.contentScopeIds, grantId: capability.grantId } }
+      : {}),
+    callerKind: context.get("callerKind") ?? "interactive",
+    subject: context.get("subject"),
+  };
+}
+
 async function controlBulkTask(input: {
   readonly access: Pick<KnowledgeSpaceAccessService, "createPermissionSnapshot">;
   readonly action: "cancel" | "retry";
@@ -308,11 +343,15 @@ async function controlBulkTask(input: {
   // biome-ignore lint/suspicious/noExplicitAny: bounded OpenAPI handler context
   readonly context: any;
   readonly documentCompilationJobs?: DocumentCompilationJobStateMachine | undefined;
+  readonly durableDeletionJobs?: Pick<DurableDeletionRepository, "getJob"> | undefined;
+  readonly durableDeletions?: DurableDeletionService | undefined;
   readonly grants: readonly string[];
   readonly knowledgeSpaceId: string;
   readonly taskId: string;
 }): Promise<BackgroundTask | null> {
-  if (!input.documentCompilationJobs) throw new Error("Document background tasks are unavailable");
+  if (!input.documentCompilationJobs && (!input.durableDeletionJobs || !input.durableDeletions)) {
+    throw new Error("Document background tasks are unavailable");
+  }
   const subject = input.context.get("subject");
   const operation = await input.bulkOperations.get({
     id: input.taskId,
@@ -328,6 +367,36 @@ async function controlBulkTask(input: {
   ) {
     return null;
   }
+  if (operation.type === "document_delete") {
+    if (input.action === "cancel" || !input.durableDeletionJobs || !input.durableDeletions) {
+      throw new Error("Deletion bulk task action is unavailable");
+    }
+    let changed = 0;
+    for (const item of operation.items) {
+      if (!item.deletionJobId) continue;
+      const job = await input.durableDeletionJobs.getJob({
+        id: item.deletionJobId,
+        tenantId: subject.tenantId,
+      });
+      if (!job || job.runState !== "failed") continue;
+      await input.durableDeletions.retry({
+        ...durableDeletionPrincipal(input.context),
+        idempotencyKey: `background-task-retry:${operation.id}:${job.id}:${job.rowVersion}`,
+        jobId: job.id,
+      });
+      changed += 1;
+    }
+    if (changed === 0) throw new Error("Bulk task has no failed deletion items");
+    return bulkBackgroundTask(
+      operation,
+      await summarizeBulkOperation(
+        operation,
+        input.documentCompilationJobs,
+        input.durableDeletionJobs,
+      ),
+    );
+  }
+  if (!input.documentCompilationJobs) throw new Error("Document background tasks are unavailable");
   const permission = await controlPermission(
     input.context,
     input.access,

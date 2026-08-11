@@ -419,6 +419,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=512 * 1024,
             stream_kind="json",
         ),
+        "bulkDeleteLogicalDocuments": _operation(
+            "DELETE",
+            "requestBulkLogicalDocumentDeletion",
+            KnowledgeFSProductPermission.DOCUMENT_WRITE,
+            "/knowledge-spaces/{id}/logical-documents/bulk",
+            "json",
+            resource_resolver="knowledge_space",
+            max_request_bytes=256 * 1024,
+            max_response_bytes=4 * 1024 * 1024,
+            stream_kind="json",
+        ),
         "createDocument": _operation(
             "POST",
             "uploadDocument",

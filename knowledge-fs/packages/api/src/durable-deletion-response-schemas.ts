@@ -83,6 +83,7 @@ export const DurableBulkDeletionAcceptedResponseSchema = z
       z
         .object({
           documentId: z.string().uuid(),
+          documentTitle: z.string().min(1).optional(),
           job: DurableDeletionJobResponseSchema,
           statusUrl: z.string().min(1),
         })

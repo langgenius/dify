@@ -34,6 +34,7 @@ export interface BackgroundTask {
   readonly documentRevision?: number | undefined;
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
+  readonly failures?: BulkOperationSummary["failures"] | undefined;
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly operation: BackgroundTaskOperation;
@@ -89,13 +90,14 @@ export function bulkBackgroundTask(
 ): BackgroundTask {
   const state = summary.status;
   return {
-    canCancel: state === "running",
+    canCancel: operation.type !== "document_delete" && state === "running",
     canRetry: state === "failed" || state === "canceled",
     ...(state === "completed" || state === "failed" || state === "canceled"
       ? { completedAt: summary.updatedAt }
       : {}),
     createdAt: summary.createdAt,
     id: summary.id,
+    ...(summary.failures?.length ? { failures: summary.failures } : {}),
     knowledgeSpaceId: summary.knowledgeSpaceId,
     operation: operation.type,
     progressCompleted: summary.completedItems,

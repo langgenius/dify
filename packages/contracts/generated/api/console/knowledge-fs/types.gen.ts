@@ -127,6 +127,7 @@ export type KnowledgeFsBackgroundTaskResponse = {
   document_revision?: number | null
   error_code?: string | null
   error_message?: string | null
+  failures?: Array<KnowledgeFsBackgroundTaskFailureResponse> | null
   id: string
   knowledge_space_id: string
   operation:
@@ -426,6 +427,14 @@ export type KnowledgeFsBulkDocumentAvailabilityResponse = {
     KnowledgeFsLogicalDocumentResponse | KnowledgeFsBulkDocumentAvailabilityFailureResponse
   >
   total: number
+}
+
+export type KnowledgeFsBulkLogicalDocumentDeletePayload = {
+  documents: Array<KnowledgeFsBulkLogicalDocumentDeleteItemPayload>
+}
+
+export type KnowledgeFsDocumentBatchDownloadPayload = {
+  document_ids: Array<string>
 }
 
 export type KnowledgeFsLogicalDocumentDeletePayload = {
@@ -1134,6 +1143,14 @@ export type KnowledgeFsAppSpaceJoinType = 'agent' | 'workflow'
 
 export type KnowledgeFsAppSpaceJoinStatus = 'active' | 'revoked'
 
+export type KnowledgeFsBackgroundTaskFailureResponse = {
+  document_id: string
+  document_title?: string | null
+  error_code: string
+  error_message: string
+  job_id?: string | null
+}
+
 export type KnowledgeFsCredentialItemResponse = {
   allowed_actions: Array<string>
   credential_last4: string
@@ -1153,6 +1170,7 @@ export type KnowledgeFsBulkDocumentDeleteItemPayload = {
 
 export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
   document_id: string
+  document_title?: string | null
   job: KnowledgeFsDurableDeletionJobResponse
   status_url: string
 }
@@ -1265,6 +1283,11 @@ export type KnowledgeFsBulkDocumentAvailabilityItem = {
 export type KnowledgeFsBulkDocumentAvailabilityFailureResponse = {
   document_id: string
   status: 'conflict' | 'not_found'
+}
+
+export type KnowledgeFsBulkLogicalDocumentDeleteItemPayload = {
+  documentId: string
+  expectedRevision: number
 }
 
 export type KnowledgeFsMemberBindingPayload = {
@@ -2468,6 +2491,41 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses = {
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponses]
 
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkData = {
+  body: KnowledgeFsBulkLogicalDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/bulk'
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponses = {
+  202: KnowledgeFsBulkDeletionAcceptedResponse
+}
+
+export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponse =
+  DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponses[keyof DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipData = {
+  body: KnowledgeFsDocumentBatchDownloadPayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/download-zip'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses = {
+  200: Blob | File
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponses]
+
 export type DeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData = {
   body: KnowledgeFsLogicalDocumentDeletePayload
   headers: {
@@ -2521,6 +2579,23 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdRe
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/download'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses = {
+  200: Blob | File
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponses]
 
 export type PutKnowledgeFsSpacesByControlSpaceIdMembersData = {
   body: KnowledgeFsMembersReplacePayload

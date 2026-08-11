@@ -73,6 +73,21 @@ export const BulkDeleteDocumentsBodySchema = z
   })
   .strict();
 
+export const BulkDeleteLogicalDocumentsBodySchema = z
+  .object({
+    documents: z
+      .array(
+        z
+          .object({
+            documentId: z.string().uuid(),
+            expectedRevision: LogicalDocumentExpectedRevisionSchema,
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict();
+
 export type DeleteKnowledgeSpaceBody = z.infer<typeof DeleteKnowledgeSpaceBodySchema>;
 export type DeleteKnowledgeSpaceParams = z.infer<typeof DeleteKnowledgeSpaceParamsSchema>;
 export type DeleteSourceBody = z.infer<typeof DeleteSourceBodySchema>;
@@ -82,6 +97,7 @@ export type DeleteDocumentBody = z.infer<typeof DeleteDocumentBodySchema>;
 export type DeleteLogicalDocumentBody = z.infer<typeof DeleteLogicalDocumentBodySchema>;
 export type DeleteDocumentParams = z.infer<typeof DeleteDocumentParamsSchema>;
 export type BulkDeleteDocumentsBody = z.infer<typeof BulkDeleteDocumentsBodySchema>;
+export type BulkDeleteLogicalDocumentsBody = z.infer<typeof BulkDeleteLogicalDocumentsBodySchema>;
 export type DurableDeletionIdempotencyHeaders = z.infer<
   typeof DurableDeletionIdempotencyHeadersSchema
 >;

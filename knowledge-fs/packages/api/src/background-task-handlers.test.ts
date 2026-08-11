@@ -15,6 +15,7 @@ import type {
   DocumentProcessingTask,
   DocumentProcessingTaskRepository,
 } from "./document-processing-task-repository";
+import type { DurableDeletionJob } from "./durable-deletion-repository";
 import { createKnowledgeGatewayApp } from "./gateway-app";
 import {
   KnowledgeSpaceAuthorizationError,
@@ -489,6 +490,58 @@ describe("background task handlers", () => {
     expect(noEligibleResponse.status).toBe(409);
   });
 
+  it("retries only failed deletion jobs in a bulk task", async () => {
+    const failedJobId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const succeededJobId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
+    await bulkOperations.create({
+      id: BULK_ID,
+      items: [
+        { deletionJobId: failedJobId, documentId: DOCUMENT_ID, status: "queued" },
+        {
+          deletionJobId: succeededJobId,
+          documentId: UNRELATED_DOCUMENT_JOB_ID,
+          status: "queued",
+        },
+      ],
+      knowledgeSpaceId: SPACE_ID,
+      requestedBySubjectId: SUBJECT_ID,
+      tenantId: TENANT_ID,
+      type: "document_delete",
+    });
+    const jobs = new Map([
+      [failedJobId, deletionJob(failedJobId, "failed")],
+      [succeededJobId, deletionJob(succeededJobId, "succeeded")],
+    ]);
+    const retry = vi.fn(async ({ jobId }: { jobId: string }) => {
+      jobs.set(jobId, deletionJob(jobId, "dispatch_pending"));
+      return null;
+    });
+    const app = backgroundTaskApp({
+      bulkOperations,
+      durableDeletionJobs: { getJob: vi.fn(async ({ id }) => jobs.get(id) ?? null) },
+      durableDeletions: { retry } as never,
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/retry`,
+      { method: "POST" },
+    );
+
+    expect(response.status).toBe(200);
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(retry).toHaveBeenCalledWith(expect.objectContaining({ jobId: failedJobId }));
+    await expect(response.json()).resolves.toMatchObject({
+      canCancel: false,
+      canRetry: false,
+      operation: "document_delete",
+      state: "running",
+    });
+  });
+
   it("rejects invisible and ineligible bulk child jobs", async () => {
     const absentOperation = backgroundTaskApp({
       compilationJobs: {
@@ -673,6 +726,8 @@ function backgroundTaskApp(overrides: {
   readonly capability?: DifyCapabilityV2SanitizedGrant | null;
   readonly compilationJobs?: DocumentCompilationJobStateMachine;
   readonly documentTasks?: DocumentProcessingTaskRepository | object;
+  readonly durableDeletionJobs?: RegisterBackgroundTaskHandlersOptions["durableDeletionJobs"];
+  readonly durableDeletions?: RegisterBackgroundTaskHandlersOptions["durableDeletions"];
   readonly space?: { readonly id: string } | null;
   readonly sourceRepository?: object;
   readonly sourceWorkflows?: object;
@@ -701,6 +756,10 @@ function backgroundTaskApp(overrides: {
     ...(overrides.documentTasks
       ? { documentTasks: overrides.documentTasks as DocumentProcessingTaskRepository }
       : {}),
+    ...(overrides.durableDeletionJobs
+      ? { durableDeletionJobs: overrides.durableDeletionJobs }
+      : {}),
+    ...(overrides.durableDeletions ? { durableDeletions: overrides.durableDeletions } : {}),
     ...(overrides.sourceRepository
       ? { sourceRepository: overrides.sourceRepository as never }
       : {}),
@@ -713,6 +772,29 @@ function backgroundTaskApp(overrides: {
     } as never,
   });
   return app;
+}
+
+function deletionJob(id: string, runState: DurableDeletionJob["runState"]): DurableDeletionJob {
+  return {
+    capabilityGrantId: GRANT_ID,
+    checkpoint: "requested",
+    createdAt: "2026-07-23T12:00:00.000Z",
+    deleteMode: "cascade",
+    executionAttempts: 1,
+    id,
+    idempotencyKey: `delete:${id}`,
+    inventoryComplete: false,
+    knowledgeSpaceId: SPACE_ID,
+    maxExecutionAttempts: 10,
+    requestFingerprint: "a".repeat(64),
+    rowVersion: 1,
+    runState,
+    targetId: DOCUMENT_ID,
+    targetRevision: 1,
+    targetType: "logical_document",
+    tenantId: TENANT_ID,
+    updatedAt: "2026-07-23T12:01:00.000Z",
+  };
 }
 
 function subject(): AuthSubject {

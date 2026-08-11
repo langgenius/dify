@@ -7,7 +7,9 @@ export type BulkOperationItemStatus = "queued" | "completed" | "failed" | "cance
 
 export interface BulkOperationItem {
   readonly compilationJobId?: string | undefined;
+  readonly deletionJobId?: string | undefined;
   readonly documentId: string;
+  readonly documentTitle?: string | undefined;
   readonly error?: string | undefined;
   /** Internal authorization binding captured before a destructive operation removes the asset. */
   readonly requiredPermissionScope?: readonly string[] | undefined;

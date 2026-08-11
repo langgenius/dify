@@ -1,7 +1,9 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
+import type { BulkOperationRepository } from "./bulk-operation";
 import type {
   BulkDeleteDocumentsBody,
+  BulkDeleteLogicalDocumentsBody,
   DeleteDocumentBody,
   DeleteDocumentParams,
   DeleteKnowledgeSpaceBody,
@@ -16,6 +18,7 @@ import type {
 import {
   getDurableDeletionJobRoute,
   requestBulkDocumentDeletionRoute,
+  requestBulkLogicalDocumentDeletionRoute,
   requestDocumentDeletionRoute,
   requestKnowledgeSpaceDeletionRoute,
   requestLogicalDocumentDeletionRoute,
@@ -32,12 +35,14 @@ import { openApiHandler } from "./openapi-handler-utils";
 
 export interface RegisterDurableDeletionHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
+  readonly bulkOperations?: BulkOperationRepository | undefined;
   readonly maxBulkDeleteDocuments: number;
   readonly service?: DurableDeletionService | undefined;
 }
 
 export function registerDurableDeletionHandlers({
   app,
+  bulkOperations,
   maxBulkDeleteDocuments,
   service,
 }: RegisterDurableDeletionHandlersOptions): void {
@@ -146,6 +151,59 @@ export function registerDurableDeletionHandlers({
   );
 
   app.openapi(
+    requestBulkLogicalDocumentDeletionRoute,
+    openApiHandler(async (context) => {
+      if (!service?.requestBulkLogicalDocumentDeletion || !bulkOperations)
+        return unavailable(context);
+      const params = context.req.valid("param") as DeleteKnowledgeSpaceParams;
+      const body = context.req.valid("json") as BulkDeleteLogicalDocumentsBody;
+      const headers = context.req.valid("header") as DurableDeletionIdempotencyHeaders;
+      if (body.documents.length > maxBulkDeleteDocuments) {
+        return context.json(
+          {
+            error: `Bulk logical document delete maxBulkDeleteDocuments=${maxBulkDeleteDocuments} exceeded`,
+          },
+          400,
+        );
+      }
+      if (new Set(body.documents.map((item) => item.documentId)).size !== body.documents.length) {
+        return context.json(
+          { error: "Bulk logical document delete contains duplicate documentId" },
+          400,
+        );
+      }
+      try {
+        const principal = deletionPrincipal(context);
+        const accepted = await service.requestBulkLogicalDocumentDeletion({
+          ...principal,
+          documents: body.documents,
+          idempotencyKey: headers["idempotency-key"],
+          knowledgeSpaceId: params.id,
+        });
+        const first = accepted.items[0];
+        if (!first) return context.json({ error: "Bulk logical document delete was empty" }, 400);
+        const subject = context.get("subject");
+        await ensureLogicalDeletionBackgroundTask({
+          bulkOperations,
+          id: first.job.id,
+          items: accepted.items.map((item) => ({
+            deletionJobId: item.job.id,
+            documentId: item.documentId,
+            ...(item.documentTitle ? { documentTitle: item.documentTitle } : {}),
+          })),
+          knowledgeSpaceId: params.id,
+          requestedBySubjectId: subject.subjectId,
+          tenantId: subject.tenantId,
+        });
+        context.header("Location", `/knowledge-spaces/${params.id}/background-tasks`);
+        return context.json(accepted, 202);
+      } catch (error) {
+        return handleRequestError(context, error);
+      }
+    }),
+  );
+
+  app.openapi(
     requestDocumentDeletionRoute,
     openApiHandler(async (context) => {
       if (!service) {
@@ -173,7 +231,7 @@ export function registerDurableDeletionHandlers({
   app.openapi(
     requestLogicalDocumentDeletionRoute,
     openApiHandler(async (context) => {
-      if (!service) {
+      if (!service || !bulkOperations) {
         return unavailable(context);
       }
       const params = context.req.valid("param") as DeleteDocumentParams;
@@ -186,6 +244,15 @@ export function registerDurableDeletionHandlers({
           expectedRevision: body.expectedRevision,
           idempotencyKey: headers["idempotency-key"],
           knowledgeSpaceId: params.id,
+        });
+        const subject = context.get("subject");
+        await ensureLogicalDeletionBackgroundTask({
+          bulkOperations,
+          id: accepted.job.id,
+          items: [{ deletionJobId: accepted.job.id, documentId: params.documentId }],
+          knowledgeSpaceId: params.id,
+          requestedBySubjectId: subject.subjectId,
+          tenantId: subject.tenantId,
         });
         context.header("Location", accepted.statusUrl);
         return context.json(accepted, 202);
@@ -231,6 +298,30 @@ export function registerDurableDeletionHandlers({
       }
     }),
   );
+}
+
+async function ensureLogicalDeletionBackgroundTask(input: {
+  readonly bulkOperations: BulkOperationRepository;
+  readonly id: string;
+  readonly items: readonly {
+    readonly deletionJobId: string;
+    readonly documentId: string;
+    readonly documentTitle?: string | undefined;
+  }[];
+  readonly knowledgeSpaceId: string;
+  readonly requestedBySubjectId: string;
+  readonly tenantId: string;
+}): Promise<void> {
+  const existing = await input.bulkOperations.get({ id: input.id, tenantId: input.tenantId });
+  if (existing) return;
+  await input.bulkOperations.create({
+    id: input.id,
+    items: input.items.map((item) => ({ ...item, status: "queued" as const })),
+    knowledgeSpaceId: input.knowledgeSpaceId,
+    requestedBySubjectId: input.requestedBySubjectId,
+    tenantId: input.tenantId,
+    type: "document_delete",
+  });
 }
 
 function deletionPrincipal(context: {

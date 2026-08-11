@@ -3,50 +3,6 @@
 import * as z from 'zod'
 
 /**
- * KnowledgeFSBackgroundTaskResponse
- */
-export const zKnowledgeFsBackgroundTaskResponse = z.object({
-  can_cancel: z.boolean(),
-  can_retry: z.boolean(),
-  completed_at: z.iso.datetime().nullish(),
-  created_at: z.iso.datetime(),
-  document_id: z.string().nullish(),
-  document_revision: z.int().gte(1).nullish(),
-  error_code: z.string().nullish(),
-  error_message: z.string().nullish(),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  operation: z.enum([
-    'document_delete',
-    'document_processing',
-    'document_reindex',
-    'document_upload',
-    'source_bulk',
-    'source_crawl_import',
-    'source_crawl_preview',
-    'source_online_document_import',
-    'source_online_drive_import',
-    'source_sync',
-  ]),
-  progress_completed: z.int().gte(0),
-  progress_failed: z.int().gte(0),
-  progress_percent: z.int().gte(0).lte(100),
-  progress_total: z.int().gte(0),
-  source_id: z.string().nullish(),
-  state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),
-  task_kind: z.enum(['document', 'document_bulk', 'source']),
-  updated_at: z.iso.datetime(),
-})
-
-/**
- * KnowledgeFSBackgroundTaskListResponse
- */
-export const zKnowledgeFsBackgroundTaskListResponse = z.object({
-  data: z.array(zKnowledgeFsBackgroundTaskResponse),
-  next_cursor: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSBulkJobResponse
  */
 export const zKnowledgeFsBulkJobResponse = z.object({
@@ -274,6 +230,13 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
   ]),
   updated_at: z.number(),
   version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentBatchDownloadPayload
+ */
+export const zKnowledgeFsDocumentBatchDownloadPayload = z.object({
+  document_ids: z.array(z.string()).min(1).max(100),
 })
 
 /**
@@ -986,6 +949,62 @@ export const zKnowledgeFsAppBindingListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSBackgroundTaskFailureResponse
+ */
+export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  error_code: z.string(),
+  error_message: z.string(),
+  job_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskResponse
+ */
+export const zKnowledgeFsBackgroundTaskResponse = z.object({
+  can_cancel: z.boolean(),
+  can_retry: z.boolean(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  document_id: z.string().nullish(),
+  document_revision: z.int().gte(1).nullish(),
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  failures: z.array(zKnowledgeFsBackgroundTaskFailureResponse).nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  operation: z.enum([
+    'document_delete',
+    'document_processing',
+    'document_reindex',
+    'document_upload',
+    'source_bulk',
+    'source_crawl_import',
+    'source_crawl_preview',
+    'source_online_document_import',
+    'source_online_drive_import',
+    'source_sync',
+  ]),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_percent: z.int().gte(0).lte(100),
+  progress_total: z.int().gte(0),
+  source_id: z.string().nullish(),
+  state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),
+  task_kind: z.enum(['document', 'document_bulk', 'source']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskListResponse
+ */
+export const zKnowledgeFsBackgroundTaskListResponse = z.object({
+  data: z.array(zKnowledgeFsBackgroundTaskResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSCredentialItemResponse
  */
 export const zKnowledgeFsCredentialItemResponse = z.object({
@@ -1230,6 +1249,21 @@ export const zKnowledgeFsBulkDocumentAvailabilityResponse = z.object({
     ]),
   ),
   total: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSBulkLogicalDocumentDeleteItemPayload
+ */
+export const zKnowledgeFsBulkLogicalDocumentDeleteItemPayload = z.object({
+  documentId: z.string().min(1),
+  expectedRevision: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSBulkLogicalDocumentDeletePayload
+ */
+export const zKnowledgeFsBulkLogicalDocumentDeletePayload = z.object({
+  documents: z.array(zKnowledgeFsBulkLogicalDocumentDeleteItemPayload).min(1).max(100),
 })
 
 /**
@@ -1912,6 +1946,7 @@ export const zKnowledgeFsDurableDeletionAcceptedResponse = z.object({
  */
 export const zKnowledgeFsBulkDeletionAcceptedItemResponse = z.object({
   document_id: z.string(),
+  document_title: z.string().nullish(),
   job: zKnowledgeFsDurableDeletionJobResponse,
   status_url: z.string(),
 })
@@ -2845,6 +2880,37 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.obj
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
   zKnowledgeFsBulkDocumentAvailabilityResponse
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkBody =
+  zKnowledgeFsBulkLogicalDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS logical document deletions accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponse =
+  zKnowledgeFsBulkDeletionAcceptedResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipBody =
+  zKnowledgeFsDocumentBatchDownloadPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse = z.custom<
+  Blob | File
+>((value) => value instanceof Blob || value instanceof File)
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdBody =
   zKnowledgeFsLogicalDocumentDeletePayload
 
@@ -2889,6 +2955,18 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentId
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse =
+  z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)
 
 export const zPutKnowledgeFsSpacesByControlSpaceIdMembersBody = zKnowledgeFsMembersReplacePayload
 

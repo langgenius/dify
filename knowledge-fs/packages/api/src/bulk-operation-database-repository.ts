@@ -277,6 +277,8 @@ function parseItem(value: unknown): BulkOperationItem {
     typeof item.documentId !== "string" ||
     !item.documentId ||
     (item.compilationJobId !== undefined && typeof item.compilationJobId !== "string") ||
+    (item.deletionJobId !== undefined && typeof item.deletionJobId !== "string") ||
+    (item.documentTitle !== undefined && typeof item.documentTitle !== "string") ||
     (item.error !== undefined && typeof item.error !== "string") ||
     !["queued", "completed", "failed", "canceled", "not_found"].includes(String(item.status))
   ) {
@@ -292,7 +294,9 @@ function parseItem(value: unknown): BulkOperationItem {
   if (scope === null) throw new Error("Bulk operation permission scope is invalid");
   return {
     ...(item.compilationJobId ? { compilationJobId: item.compilationJobId as string } : {}),
+    ...(item.deletionJobId ? { deletionJobId: item.deletionJobId as string } : {}),
     documentId: item.documentId,
+    ...(item.documentTitle ? { documentTitle: item.documentTitle as string } : {}),
     ...(item.error ? { error: item.error as string } : {}),
     ...(scope ? { requiredPermissionScope: [...scope] } : {}),
     status: item.status as BulkOperationItem["status"],

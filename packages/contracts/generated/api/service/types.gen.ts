@@ -1065,6 +1065,7 @@ export type KnowledgeFsAnswerTraceStepResponse = {
 
 export type KnowledgeFsBulkDeletionAcceptedItemResponse = {
   document_id: string
+  document_title?: string | null
   job: KnowledgeFsDurableDeletionJobResponse
   status_url: string
 }

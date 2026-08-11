@@ -3,12 +3,23 @@ import type {
   DocumentCompilationJob,
   DocumentCompilationJobStateMachine,
 } from "./document-compilation-job";
+import type { DurableDeletionJob, DurableDeletionRepository } from "./durable-deletion-repository";
+import { toPublicDurableDeletionJob } from "./durable-deletion-service";
+
+export interface BulkOperationFailure {
+  readonly documentId: string;
+  readonly documentTitle?: string | undefined;
+  readonly errorCode: string;
+  readonly errorMessage: string;
+  readonly jobId?: string | undefined;
+}
 
 export interface BulkOperationSummary {
   readonly canceledItems: number;
   readonly completedItems: number;
   readonly createdAt: string;
   readonly failedItemIds: string[];
+  readonly failures?: BulkOperationFailure[] | undefined;
   readonly failedItems: number;
   readonly id: string;
   readonly knowledgeSpaceId: string;
@@ -21,11 +32,13 @@ export interface BulkOperationSummary {
 export async function summarizeBulkOperation(
   operation: BulkOperation,
   documentCompilationJobs: DocumentCompilationJobStateMachine | undefined,
+  durableDeletionJobs?: Pick<DurableDeletionRepository, "getJob"> | undefined,
 ): Promise<BulkOperationSummary> {
   const compilationJobIds = operation.items
     .map((item) => item.compilationJobId)
     .filter((id): id is string => Boolean(id));
   const compilationJobsById = new Map<string, DocumentCompilationJob>();
+  const deletionJobsById = new Map<string, DurableDeletionJob>();
 
   if (compilationJobIds.length > 0 && documentCompilationJobs) {
     const jobs = await documentCompilationJobs.getMany(compilationJobIds);
@@ -34,23 +47,50 @@ export async function summarizeBulkOperation(
       compilationJobsById.set(job.id, job);
     }
   }
+  if (durableDeletionJobs) {
+    await Promise.all(
+      operation.items.map(async (item) => {
+        if (!item.deletionJobId) return;
+        const job = await durableDeletionJobs.getJob({
+          id: item.deletionJobId,
+          tenantId: operation.tenantId,
+        });
+        if (job) deletionJobsById.set(job.id, job);
+      }),
+    );
+  }
 
   let completedItems = 0;
   let canceledItems = 0;
   let updatedAtMs = Date.parse(operation.updatedAt);
   const failedItemIds: string[] = [];
+  const failures: BulkOperationFailure[] = [];
 
   for (const item of operation.items) {
     const compilationJob = item.compilationJobId
       ? compilationJobsById.get(item.compilationJobId)
       : undefined;
+    const deletionJob = item.deletionJobId ? deletionJobsById.get(item.deletionJobId) : undefined;
     const status = item.compilationJobId
       ? summarizeCompilationItemStatus(compilationJob)
-      : item.status;
+      : item.deletionJobId
+        ? summarizeDeletionItemStatus(deletionJob)
+        : item.status;
     if (compilationJob) updatedAtMs = Math.max(updatedAtMs, compilationJob.updatedAt);
+    if (deletionJob) updatedAtMs = Math.max(updatedAtMs, Date.parse(deletionJob.updatedAt));
 
     if (status === "failed") {
       failedItemIds.push(item.documentId);
+      if (deletionJob) {
+        const error = toPublicDurableDeletionJob(deletionJob).error;
+        failures.push({
+          documentId: item.documentId,
+          ...(item.documentTitle ? { documentTitle: item.documentTitle } : {}),
+          errorCode: error?.code ?? "DURABLE_DELETION_FAILED",
+          errorMessage: error?.message ?? "Durable deletion failed",
+          jobId: deletionJob.id,
+        });
+      }
       continue;
     }
 
@@ -81,6 +121,7 @@ export async function summarizeBulkOperation(
     completedItems,
     createdAt: operation.createdAt,
     failedItemIds,
+    ...(failures.length > 0 ? { failures } : {}),
     failedItems,
     id: operation.id,
     knowledgeSpaceId: operation.knowledgeSpaceId,
@@ -89,6 +130,13 @@ export async function summarizeBulkOperation(
     type: operation.type,
     updatedAt: new Date(updatedAtMs).toISOString(),
   };
+}
+
+function summarizeDeletionItemStatus(job: DurableDeletionJob | undefined): BulkOperationItemStatus {
+  if (!job || job.runState === "failed") return "failed";
+  if (job.runState === "canceled") return "canceled";
+  if (job.runState === "succeeded") return "completed";
+  return "queued";
 }
 
 function summarizeCompilationItemStatus(

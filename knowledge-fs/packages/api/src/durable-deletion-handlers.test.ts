@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { createInMemoryBulkOperationRepository } from "./bulk-operation";
 import { registerDurableDeletionHandlers } from "./durable-deletion-handlers";
-import type { DurableDeletionService } from "./durable-deletion-service";
-import type { RequestBulkDocumentDeletionCommand } from "./durable-deletion-service";
+import type {
+  DurableDeletionService,
+  RequestBulkDocumentDeletionCommand,
+  RequestBulkLogicalDocumentDeletionCommand,
+} from "./durable-deletion-service";
 import { createKnowledgeGatewayApp } from "./gateway-app";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
@@ -81,7 +85,11 @@ describe("durable deletion handlers", () => {
 
   it("routes logical-document deletion through the durable logical aggregate path", async () => {
     const service = serviceStub();
-    const app = testApp(service);
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
+    const app = testApp(service, "interactive", bulkOperations);
     const response = await app.request(
       `/knowledge-spaces/${SPACE_ID}/logical-documents/${DOCUMENT_ID}`,
       {
@@ -107,6 +115,39 @@ describe("durable deletion handlers", () => {
       }),
     );
     expect(service.requestDocumentDeletion).not.toHaveBeenCalled();
+    await expect(bulkOperations.get({ id: JOB_ID, tenantId: "tenant-1" })).resolves.toMatchObject({
+      items: [expect.objectContaining({ deletionJobId: JOB_ID, documentId: DOCUMENT_ID })],
+      type: "document_delete",
+    });
+  });
+
+  it("creates one background task for a logical-document deletion batch", async () => {
+    const service = serviceStub();
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
+    const app = testApp(service, "interactive", bulkOperations);
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/logical-documents/bulk`, {
+      body: JSON.stringify({
+        documents: [{ documentId: DOCUMENT_ID, expectedRevision: 3 }],
+      }),
+      headers: requestHeaders(),
+      method: "DELETE",
+    });
+
+    expect(response.status, await response.clone().text()).toBe(202);
+    expect(response.headers.get("location")).toBe(`/knowledge-spaces/${SPACE_ID}/background-tasks`);
+    expect(service.requestBulkLogicalDocumentDeletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documents: [{ documentId: DOCUMENT_ID, expectedRevision: 3 }],
+        idempotencyKey: "delete-space-0001",
+      }),
+    );
+    await expect(bulkOperations.get({ id: JOB_ID, tenantId: "tenant-1" })).resolves.toMatchObject({
+      items: [expect.objectContaining({ deletionJobId: JOB_ID, documentId: DOCUMENT_ID })],
+      type: "document_delete",
+    });
   });
 
   it("keeps document-asset deletion versions strictly positive", async () => {
@@ -158,6 +199,7 @@ describe("durable deletion handlers", () => {
 function testApp(
   service?: DurableDeletionService,
   callerKind: "api_key" | "interactive" = "interactive",
+  bulkOperations = createInMemoryBulkOperationRepository({ maxItems: 10, maxOperations: 10 }),
 ) {
   const app = createKnowledgeGatewayApp();
   app.use("*", async (context, next) => {
@@ -169,7 +211,7 @@ function testApp(
     });
     await next();
   });
-  registerDurableDeletionHandlers({ app, maxBulkDeleteDocuments: 10, service });
+  registerDurableDeletionHandlers({ app, bulkOperations, maxBulkDeleteDocuments: 10, service });
   return app;
 }
 
@@ -202,6 +244,21 @@ function serviceStub(): DurableDeletionService {
       })),
       total: input.documents.length,
     })),
+    requestBulkLogicalDocumentDeletion: vi.fn(
+      async (input: RequestBulkLogicalDocumentDeletionCommand) => ({
+        items: input.documents.map((document) => ({
+          documentId: document.documentId,
+          documentTitle: "Document title",
+          job: {
+            ...accepted.job,
+            targetId: document.documentId,
+            targetType: "logical_document" as const,
+          },
+          statusUrl: accepted.statusUrl,
+        })),
+        total: input.documents.length,
+      }),
+    ),
     requestDocumentDeletion: vi.fn(async () => accepted),
     requestKnowledgeSpaceDeletion: vi.fn(async () => accepted),
     requestLogicalDocumentDeletion: vi.fn(async () => ({

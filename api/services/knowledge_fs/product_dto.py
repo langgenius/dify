@@ -1439,6 +1439,16 @@ class KnowledgeFSLogicalDocumentDeletePayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSBulkLogicalDocumentDeleteItemPayload(KnowledgeFSLogicalDocumentDeletePayload):
+    document_id: str = Field(min_length=1, alias="documentId")
+
+
+class KnowledgeFSBulkLogicalDocumentDeletePayload(BaseModel):
+    documents: list[KnowledgeFSBulkLogicalDocumentDeleteItemPayload] = Field(min_length=1, max_length=100)
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
 class KnowledgeFSBulkDocumentDeleteItemPayload(KnowledgeFSDocumentDeletePayload):
     document_id: str = Field(min_length=1, alias="documentId")
 
@@ -1505,6 +1515,7 @@ class KnowledgeFSDurableDeletionAcceptedResponse(ResponseModel):
 
 class KnowledgeFSBulkDeletionAcceptedItemResponse(ResponseModel):
     document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
     job: KnowledgeFSDurableDeletionJobResponse
     status_url: str = Field(validation_alias=AliasChoices("status_url", "statusUrl"))
 
@@ -1566,6 +1577,14 @@ class KnowledgeFSBulkJobResponse(ResponseModel):
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
+class KnowledgeFSBackgroundTaskFailureResponse(ResponseModel):
+    document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
+    document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
+    error_code: str = Field(validation_alias=AliasChoices("error_code", "errorCode"))
+    error_message: str = Field(validation_alias=AliasChoices("error_message", "errorMessage"))
+    job_id: str | None = Field(default=None, validation_alias=AliasChoices("job_id", "jobId"))
+
+
 class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     can_cancel: bool = Field(validation_alias=AliasChoices("can_cancel", "canCancel"))
     can_retry: bool = Field(validation_alias=AliasChoices("can_retry", "canRetry"))
@@ -1577,6 +1596,7 @@ class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     )
     error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
     error_message: str | None = Field(default=None, validation_alias=AliasChoices("error_message", "errorMessage"))
+    failures: list[KnowledgeFSBackgroundTaskFailureResponse] | None = None
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     operation: Literal[
@@ -2921,6 +2941,7 @@ __all__ = [
     "KnowledgeFSAppBindingListResponse",
     "KnowledgeFSAppBindingPayload",
     "KnowledgeFSAppBindingResponse",
+    "KnowledgeFSBackgroundTaskFailureResponse",
     "KnowledgeFSBackgroundTaskListQuery",
     "KnowledgeFSBackgroundTaskListResponse",
     "KnowledgeFSBackgroundTaskResponse",
@@ -2931,6 +2952,7 @@ __all__ = [
     "KnowledgeFSBulkDocumentAvailabilityResponse",
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
+    "KnowledgeFSBulkLogicalDocumentDeletePayload",
     "KnowledgeFSCrawlImportPayload",
     "KnowledgeFSCrawlPreviewPageListQuery",
     "KnowledgeFSCrawlPreviewPageListResponse",

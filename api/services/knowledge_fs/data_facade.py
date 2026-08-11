@@ -24,6 +24,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSBulkLogicalDocumentDeletePayload,
     KnowledgeFSCatQuery,
     KnowledgeFSCatResponse,
     KnowledgeFSCrawlImportPayload,
@@ -720,6 +721,25 @@ class KnowledgeFSDataFacade:
             headers=(("Idempotency-Key", idempotency_key),),
         )
         return KnowledgeFSDurableDeletionAcceptedResponse.model_validate(raw)
+
+    def bulk_delete_logical_documents(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        payload: KnowledgeFSBulkLogicalDocumentDeletePayload,
+        idempotency_key: str,
+    ) -> KnowledgeFSBulkDeletionAcceptedResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="bulkDeleteLogicalDocuments",
+            payload=payload,
+            headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSBulkDeletionAcceptedResponse.model_validate(raw)
 
     def create_document(
         self,

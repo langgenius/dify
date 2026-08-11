@@ -78,6 +78,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkDocumentAvailabilityResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
+    KnowledgeFSBulkLogicalDocumentDeletePayload,
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewPageListQuery,
     KnowledgeFSCrawlPreviewPageListResponse,
@@ -241,6 +242,7 @@ register_schema_models(
     KnowledgeFSCursorQuery,
     KnowledgeFSBulkDocumentAvailabilityPayload,
     KnowledgeFSBulkDocumentDeletePayload,
+    KnowledgeFSBulkLogicalDocumentDeletePayload,
     KnowledgeFSDocumentBatchDownloadPayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentDeletePayload,
@@ -1271,6 +1273,31 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
             payload=_payload(KnowledgeFSBulkDocumentAvailabilityPayload),
         )
         return dump_response(KnowledgeFSBulkDocumentAvailabilityResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/bulk")
+class KnowledgeFSSpaceBulkLogicalDocumentsApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSBulkLogicalDocumentDeletePayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS logical document deletions accepted",
+        console_ns.models[KnowledgeFSBulkDeletionAcceptedResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.bulk_delete_logical_documents(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            payload=_payload(KnowledgeFSBulkLogicalDocumentDeletePayload),
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSBulkDeletionAcceptedResponse, result), HTTPStatus.ACCEPTED
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/download-zip")

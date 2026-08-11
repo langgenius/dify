@@ -1655,6 +1655,7 @@ export function createKnowledgeGateway({
 
   registerDurableDeletionHandlers({
     app,
+    bulkOperations: bulkOperationRepository,
     maxBulkDeleteDocuments,
     ...(durableDeletionService ? { service: durableDeletionService } : {}),
   });
@@ -2114,6 +2115,8 @@ export function createKnowledgeGateway({
     bulkOperations: bulkOperationRepository,
     ...(documentCompilationJobs ? { documentCompilationJobs } : {}),
     ...(documentProcessingTasks ? { documentTasks: documentProcessingTasks } : {}),
+    ...(durableDeletionRepository ? { durableDeletionJobs: durableDeletionRepository } : {}),
+    ...(durableDeletionService ? { durableDeletions: durableDeletionService } : {}),
     ...(sourceProduct ? { sourceRepository: sourceProduct.repository } : {}),
     ...(sourceProductWorkflows ? { sourceWorkflows: sourceProductWorkflows } : {}),
     spaces,

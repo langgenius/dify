@@ -91,6 +91,8 @@ export interface RequestBulkDocumentDeletionCommand extends DurableDeletionReque
   readonly knowledgeSpaceId: string;
 }
 
+export type RequestBulkLogicalDocumentDeletionCommand = RequestBulkDocumentDeletionCommand;
+
 export interface GetDurableDeletionJobCommand extends DurableDeletionRequestPrincipal {
   readonly jobId: string;
 }
@@ -104,6 +106,9 @@ export interface DurableDeletionService {
   get(input: GetDurableDeletionJobCommand): Promise<DurableDeletionJobResponse | null>;
   requestBulkDocumentDeletion(
     input: RequestBulkDocumentDeletionCommand,
+  ): Promise<DurableBulkDeletionAcceptedResponse>;
+  requestBulkLogicalDocumentDeletion?(
+    input: RequestBulkLogicalDocumentDeletionCommand,
   ): Promise<DurableBulkDeletionAcceptedResponse>;
   requestDocumentDeletion(
     input: RequestDocumentDeletionCommand,
@@ -492,7 +497,9 @@ export function createDurableDeletionService({
   };
 
   const requestLogicalDocumentDeletion = async (
-    input: RequestLogicalDocumentDeletionCommand,
+    input: RequestLogicalDocumentDeletionCommand & {
+      readonly idempotencyContext?: string | undefined;
+    },
   ): Promise<DurableDeletionAcceptedResponse> => {
     const replay = await findAuthorizedReplay(input, input.idempotencyKey);
     if (replay) {
@@ -501,6 +508,9 @@ export function createDurableDeletionService({
           ...replayBase(replay),
           documentId: input.documentId,
           expectedDocumentRowVersion: input.expectedRevision,
+          ...(input.idempotencyContext === undefined
+            ? {}
+            : { idempotencyContext: input.idempotencyContext }),
           knowledgeSpaceId: input.knowledgeSpaceId,
         });
         return accepted(result.job);
@@ -554,6 +564,9 @@ export function createDurableDeletionService({
         ...requestBase(input, input.idempotencyKey, input.knowledgeSpaceId, permission),
         documentId: input.documentId,
         expectedDocumentRowVersion: input.expectedRevision,
+        ...(input.idempotencyContext === undefined
+          ? {}
+          : { idempotencyContext: input.idempotencyContext }),
       });
       return accepted(result.job);
     } catch (error) {
@@ -595,6 +608,39 @@ export function createDurableDeletionService({
           idempotencyKey: `${input.idempotencyKey}:${index}`,
         });
         items.push({ documentId: document.documentId, ...child });
+      }
+      return { items, total: items.length };
+    },
+    async requestBulkLogicalDocumentDeletion(input) {
+      const canonicalDocuments = [...input.documents].sort(
+        (left, right) =>
+          left.documentId.localeCompare(right.documentId) ||
+          left.expectedRevision - right.expectedRevision,
+      );
+      const idempotencyContext = createHash("sha256")
+        .update(JSON.stringify(canonicalDocuments))
+        .digest("hex");
+      const items = [];
+      for (const [index, document] of canonicalDocuments.entries()) {
+        const logical = logicalDocuments
+          ? await logicalDocuments.get({
+              documentId: document.documentId,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              tenantId: input.subject.tenantId,
+            })
+          : null;
+        const child = await requestLogicalDocumentDeletion({
+          ...input,
+          documentId: document.documentId,
+          expectedRevision: document.expectedRevision,
+          idempotencyContext,
+          idempotencyKey: `${input.idempotencyKey}:${index}`,
+        });
+        items.push({
+          documentId: document.documentId,
+          ...(logical?.title ? { documentTitle: logical.title } : {}),
+          ...child,
+        });
       }
       return { items, total: items.length };
     },

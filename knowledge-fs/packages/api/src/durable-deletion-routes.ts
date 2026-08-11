@@ -2,6 +2,7 @@ import { createRoute } from "@hono/zod-openapi";
 
 import {
   BulkDeleteDocumentsBodySchema,
+  BulkDeleteLogicalDocumentsBodySchema,
   DeleteDocumentBodySchema,
   DeleteDocumentParamsSchema,
   DeleteKnowledgeSpaceBodySchema,
@@ -181,6 +182,21 @@ export const requestBulkDocumentDeletionRoute = createRoute({
     401: UnauthorizedResponse,
     403: ForbiddenResponse,
   },
+});
+
+export const requestBulkLogicalDocumentDeletionRoute = createRoute({
+  method: "delete",
+  operationId: "requestBulkLogicalDocumentDeletion",
+  path: "/knowledge-spaces/{id}/logical-documents/bulk",
+  request: {
+    body: {
+      content: { "application/json": { schema: BulkDeleteLogicalDocumentsBodySchema } },
+      required: true,
+    },
+    headers: DurableDeletionIdempotencyHeadersSchema,
+    params: DeleteKnowledgeSpaceParamsSchema,
+  },
+  responses: requestBulkDocumentDeletionRoute.responses,
 });
 
 export const getDurableDeletionJobRoute = createRoute({
