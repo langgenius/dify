@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: IM card callbacks MUST converge at IMCardEvent
-The shared contract MUST define immutable `IMCardEvent` with exactly one `ProviderUserId`, non-empty action identifier, JSON-object inputs keyed by strings, and the `CorrelationToken` embedded by `send_card()`. The event MUST NOT contain Provider-specific callback objects, raw Provider payloads, transport credentials, message references, Contact or binding identities, HITL form/grant models, submission state or workflow state.
+The shared contract MUST define frozen `IMCardEvent` fields with exactly one `ProviderUserId`, non-empty action identifier, JSON-object inputs keyed by strings, and the `CorrelationToken` embedded by `send_card()`. The `inputs` root mapping MUST reject key replacement and deletion and MUST NOT alias the constructor's source mapping. Nested JSON objects and arrays MUST remain ordinary mutable containers; the contract MUST NOT recursively wrap them as immutable values. The event MUST NOT contain Provider-specific callback objects, raw Provider payloads, transport credentials, message references, Contact or binding identities, HITL form/grant models, submission state or workflow state.
 
 #### Scenario: Different Provider callbacks represent the same interaction
 - **WHEN** two supported Dynamic Card Providers deliver callbacks with the same normalized actor, action, inputs and correlation token through different Provider payload shapes
@@ -12,6 +12,12 @@ The shared contract MUST define immutable `IMCardEvent` with exactly one `Provid
 - **WHEN** a supported card callback contains submitted values accepted by the Provider JSON protocol
 - **THEN** `IMCardEvent.inputs` MUST contain only those normalized JSON values keyed by their card input identifiers
 - **AND** it MUST NOT contain action metadata or the raw callback envelope
+
+#### Scenario: Caller mutates card event inputs
+- **WHEN** a caller replaces or deletes a key on the `IMCardEvent.inputs` root mapping
+- **THEN** the operation MUST fail
+- **AND WHEN** a caller mutates a nested JSON object or array
+- **THEN** the nested mutation MUST remain observable through the event
 
 ### Requirement: IMCardEvent ProviderUserId MUST use the adapter identity namespace
 `IMCardEvent.provider_user_id` MUST identify the callback actor in the same `(provider, provider_tenant_id)` namespace and identifier representation used by the concrete adapter's Directory and Messaging capabilities. A decoder MUST NOT expose a second callback-only actor identifier as `ProviderUserId`.
@@ -97,30 +103,55 @@ Each concrete Dynamic Card Provider implementation MUST own both the encoding us
 - **AND** it MUST NOT silently replace input values or callback metadata
 
 ### Requirement: Slack card decoding MUST converge across Webhook and Socket Mode
-The Slack decoder MUST decode authenticated Block Actions delivered through either the Webhook direct payload or the complete Socket Mode SDK serialization. After safe JSON and transport-envelope decoding, it MUST recognize a Dify submission only when at least one invoked action uses the sender-owned `__dify.actions.` block namespace. Slack selection changes and other Block Actions without that marker MUST return `UnrecognizedIMEvent` before strict Dify callback validation. Once the marker is present, the decoder MUST read the callback actor as Slack `ProviderUserId`, require one unambiguous invoked Dify button action, recover the embedded `CorrelationToken`, and normalize every supported submitted card input. Equivalent Webhook and Socket Mode submission callbacks MUST produce equal `IMCardEvent` semantics.
+The Slack sender MUST use exact stable block IDs: `__dify.input.<ordinal>` for each input in render order and `__dify.actions` for the submission block. It MUST accept `static_select` controls with 1 through 100 options and reject larger option sets before Provider I/O. The Slack decoder MUST decode authenticated Block Actions delivered through either the Webhook direct payload or the complete Socket Mode SDK serialization. After safe JSON and transport-envelope decoding, it MUST recognize a Dify submission only when at least one invoked action uses the exact sender-owned `__dify.actions` block ID. Slack selection changes, legacy prefix-like IDs and other Block Actions without that exact marker MUST return `UnrecognizedIMEvent` before strict Dify callback validation. Once the marker is present, the decoder MUST read the callback actor as Slack `ProviderUserId`, require one unambiguous invoked Dify button action, recover the embedded `CorrelationToken`, validate the exact sender-owned message/state schema, and normalize every supported submitted card input. Equivalent Webhook and Socket Mode submission callbacks MUST produce equal `IMCardEvent` semantics.
+
+#### Scenario: Slack sender renders a stable callback layout
+- **WHEN** Slack renders a Dify card with ordered inputs and submission actions
+- **THEN** input block IDs MUST be `__dify.input.0`, `__dify.input.1` and so on in render order
+- **AND** the submission block ID MUST equal `__dify.actions`
+- **AND** repeated rendering of the same intent MUST NOT introduce a nonce into those IDs
+
+#### Scenario: Slack static select reaches its option boundary
+- **WHEN** a Slack card contains a `static_select` with exactly 100 options
+- **THEN** assessment and rendering MUST accept it
+- **AND WHEN** the control contains 101 options
+- **THEN** assessment and rendering MUST reject it before Provider I/O
 
 #### Scenario: Equivalent Slack callbacks use different transports
 - **WHEN** equivalent Slack Block Actions arrive through Webhook and Socket Mode with different authenticated payload envelopes
 - **THEN** the Slack decoder MUST produce equal `IMCardEvent` values
 
 #### Scenario: Slack callback contains multiple invoked actions
-- **WHEN** a Slack Block Actions payload contains a `__dify.actions.` marker but does not identify exactly one valid invoked Dify button action
+- **WHEN** a Slack Block Actions payload contains an exact `__dify.actions` marker but does not identify exactly one valid invoked Dify button action
 - **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
 
 #### Scenario: Slack selection change is not a Dify submission
-- **WHEN** Slack delivers a `static_select` or `radio_buttons` change through Block Actions under a `__dify.input.*` or foreign block namespace
+- **WHEN** Slack delivers a `static_select` or `radio_buttons` change through Block Actions under a `__dify.input.<ordinal>` or foreign block ID
 - **THEN** the Slack decoder MUST return `UnrecognizedIMEvent`
 - **AND** it MUST NOT decode the current state as a form submission
 
 #### Scenario: Slack Block Actions contain no Dify submission marker
-- **WHEN** Slack delivers missing, empty, non-object or non-Dify invoked action entries without any `__dify.actions.` block marker
+- **WHEN** Slack delivers missing, empty, non-object or non-Dify invoked action entries without an exact `__dify.actions` block marker
 - **THEN** the Slack decoder MUST return `UnrecognizedIMEvent`
 - **AND** non-Dify blocks MUST NOT be forced through the Dify callback schema
 
 #### Scenario: Marked Slack submission is malformed
-- **WHEN** any invoked action uses the `__dify.actions.` namespace but the action type, value, actor, metadata, state or complete callback schema is malformed or ambiguous
+- **WHEN** any invoked action uses the exact `__dify.actions` block ID but the action type, value, actor, metadata, state, reserved message-block ownership or complete callback schema is malformed or ambiguous
 - **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
 - **AND** it MUST NOT downgrade that recognized submission to `UnrecognizedIMEvent`
+
+#### Scenario: Foreign Slack message block claims a reserved identifier
+- **WHEN** a non-input message block uses a canonical `__dify.input.<ordinal>` ID or a non-actions message block uses exact `__dify.actions`
+- **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
+- **AND** prefix-like or non-canonical near IDs on otherwise foreign blocks MAY remain unrecognized foreign schema
+
+#### Scenario: Marked Slack submission lacks its sender-owned action
+- **WHEN** an exact-marked submission message omits the sender-owned `__dify.actions` block or that block does not contain the invoked button and metadata
+- **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
+
+#### Scenario: Prefix-like Slack action block is foreign
+- **WHEN** a Slack Block Actions payload uses `__dify.actions.legacy` or another prefix-like action block ID instead of exact `__dify.actions`
+- **THEN** the Slack decoder MUST return `UnrecognizedIMEvent`
 
 ### Requirement: Feishu and Lark card decoding MUST implement the shared callback protocol
 The Feishu and Lark adapters MUST each expose a card-event decoder implemented through their verified shared callback protocol path while retaining their distinct Provider discriminators. The decoders MUST support authenticated card actions delivered through Webhook and STREAM, normalize the callback actor as the `union_id`-based `ProviderUserId` used by Directory and Messaging, recover the invoked action and embedded `CorrelationToken`, and return only submitted JSON values as `IMCardEvent.inputs`. These behaviors MUST be backed by sanitized real callback evidence for both transport envelopes.

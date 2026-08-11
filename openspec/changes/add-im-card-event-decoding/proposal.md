@@ -4,11 +4,12 @@
 
 ## What Changes
 
-- 增加 Provider-neutral `IMCardEvent`，只包含 `ProviderUserId`、action identifier、JSON inputs 与原样返回的 `CorrelationToken`。
+- 增加 Provider-neutral `IMCardEvent`，只包含 `ProviderUserId`、action identifier、JSON inputs 与原样返回的 `CorrelationToken`；event fields 与 inputs root mapping 只读，nested JSON containers 保持普通可变容器。
 - 增加 `UnrecognizedIMEvent` 与 `IMCardEventDecodeResult`；非 card event 返回 `UnrecognizedIMEvent`，已识别为 card event 但 payload 无法解析或不符合预期 callback schema 时抛出 card-event decoding error。
 - 增加 credential-free、thread-safe `IMCardEventDecoder`，通过 `decode(AuthenticatedIMEvent)` 归一化 Provider-specific card callbacks。
 - 让 concrete `IMProviderAdapter` 以 class-level optional capability 暴露 decoder，并要求 Dynamic Card Messaging 与 card-event decoder 始终成对出现。
-- 将 callback metadata 的发送编码与回调解析集中在同一 concrete Provider implementation 中，保证 `ProviderUserId`、action identifier、inputs 与 `CorrelationToken` 的 round trip。
+- 将 callback metadata 的发送编码与回调解析集中在同一 concrete Provider implementation 中，保证 `ProviderUserId`、action identifier、inputs 与 `CorrelationToken` 的 round trip。Slack 的 sender、assessment、recognition、strict decoding 与 wire constants 统一由 `slack.py` 持有。
+- Slack 使用稳定的 `__dify.input.<ordinal>` input block IDs 与精确的 `__dify.actions` submission block ID，并按 Slack `static_select` contract 支持最多 100 个 options。
 - 为 Slack、Feishu/Lark 与 Microsoft Teams adapters 实现 card-event decoding，并要求三类 Dynamic Card implementations 同时提供对应 decoder。
 - 保持 inbox persistence、HITL authorization、submission commit、workflow resume 和 card replacement 接线不属于本 change。
 

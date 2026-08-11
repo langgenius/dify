@@ -10,7 +10,7 @@
 
 **Goals:**
 
-- 定义只使用现有 IM contract concepts 的 immutable `IMCardEvent`。
+- 定义只使用现有 IM contract concepts 的 frozen `IMCardEvent`，并明确 inputs 仅 root mapping 只读、nested JSON containers 可变。
 - 让非 card event 通过 `UnrecognizedIMEvent` 返回值表达，而不是依赖 method naming、`None` 或异常控制正常路由。
 - 让 card payload 的解析失败和 schema violation 通过明确的 `IMCardEventDecodingError` 失败。
 - 让每个 Dynamic Card Provider 在同一 implementation 中拥有发送编码与 callback decoding 知识。
@@ -50,6 +50,8 @@ type IMCardEventDecodeResult = IMCardEvent | UnrecognizedIMEvent
 ```
 
 `IMCardEvent` 是 Provider-neutral IM contract，而不是 channel-neutral HITL model。它可以包含 `ProviderUserId` 和 `CorrelationToken`，但不得包含 Slack user object、Teams activity value、Feishu operator object或其他 Provider-specific shape。
+
+`IMCardEvent` constructor 使用 strict JSON validation 建立独立的普通 JSON container tree，再以 read-only mapping wrapper 暴露 root。这样可以阻止 root key replacement/deletion 和 constructor source aliasing，同时不引入递归 immutable wrappers；nested `dict`/`list` 保持可变。这是 shallow immutability contract，不承诺 deep immutability。
 
 `provider_user_id` 必须使用 concrete adapter 已经为 Directory 和 Messaging 选择的 identity namespace。对 Feishu/Lark，这意味着 decoder 必须产出 contract 规定的 `union_id`；如果真实 callback evidence 不能支持该映射，则该 implementation 不能暴露完整的 paired Dynamic Card capability，而不能改用第二种 actor identifier 绕过约束。
 
@@ -104,7 +106,11 @@ Alternative considered: 全局 `card_event_decoder_for(provider)` registry。Rej
 - `inputs` 只包含 normalized submitted input values，不包含 callback metadata 或 raw Provider envelope。
 - callback metadata 与合法 input names 不得发生 silent collision。
 
-Slack 保持 action metadata 位于 button `value`，用稳定的 Provider-owned English `plain_text` placeholder 完成 `static_select` 元素。由于 Slack 对 submission button、`static_select` change、legacy/foreign `radio_buttons` change 和其他 interactions 都使用 `block_actions`，该 event type 只作为 transport discriminator；JSON/envelope 解包后，只有 actions 中至少一个 object entry 的 string `block_id` 使用 sender-owned `__dify.actions.` namespace 才识别为 Dify submission。不存在该 marker 时立即返回 `UnrecognizedIMEvent`；存在 marker 后再严格要求 exactly one valid Dify button action，并把当前支持的 text/static_select state values 归一化为 JSON inputs。该 decoder 同时支持 Webhook direct payload 与 Socket Mode SDK envelope。Microsoft Teams 必须将 action metadata 与 `Action.Submit` 合并返回的 inputs 隔离；具体 reserved member 是 implementation detail，card assessment 必须在必要时拒绝与其冲突的 input identifier。Feishu/Lark decoder 也属于本 change 的实现范围；其 actor path、Webhook/STREAM envelope 与 action/value schema 必须先以脱敏的真实 callback evidence 固定，再实现共享 protocol path 下的 Feishu 与 Lark variants。
+Slack 的 sender、assessment、rendering、recognition 和 strict decoder 由现有 `slack.py` 单一持有，不再维护 parallel card-event module。Sender 保持 action metadata 位于 button `value`，用稳定的 Provider-owned English `plain_text` placeholder 完成 `static_select` 元素，并接受 1–100 个 options。每个 input block 使用稳定的 `__dify.input.<ordinal>` ID；submission block 只使用精确的 `__dify.actions` ID，不使用 render nonce 或 prefix family。由于 Slack 对 submission button、`static_select` change、legacy/foreign `radio_buttons` change 和其他 interactions 都使用 `block_actions`，该 event type 只作为 transport discriminator。
+
+Decoder 先用 Python JSON parser gate 拒绝 non-finite numbers、overflow、oversized integers、excessive nesting 和 non-object roots，再进入 Pydantic boundary。Recognition model 采用 permissive `extra="allow"` shape，只读取 action entries 是否包含精确 `block_id == "__dify.actions"`；缺少该 exact marker 时立即返回 `UnrecognizedIMEvent`，包括 `__dify.actions.legacy`。命中 marker 后，strict Pydantic models、typed message-block union、`RootModel` containers 与 `model_validator` 共同验证 exactly one button、outer/embedded action identity、稳定 input ordinals、reserved message-block ID ownership、sender-owned actions block/button membership、duplicate action IDs、message/state block set equality、action/type agreement 与 zero-input semantics，并归一化 text/static_select JSON values。Foreign message blocks 可以保留 near IDs，但不得以其他 block type 占用 canonical `__dify.input.<ordinal>` 或精确 `__dify.actions`。Metadata JSON 经过同一个 JSON parser gate。Webhook direct payload 与 Socket Mode SDK envelope 共享该路径。
+
+Microsoft Teams 必须将 action metadata 与 `Action.Submit` 合并返回的 inputs 隔离；具体 reserved member 是 implementation detail，card assessment 必须在必要时拒绝与其冲突的 input identifier。Feishu/Lark decoder 也属于本 change 的实现范围；其 actor path、Webhook/STREAM envelope 与 action/value schema 必须先以脱敏的真实 callback evidence 固定，再实现共享 protocol path 下的 Feishu 与 Lark variants。
 
 Alternative considered: 由 inbox consumer 解析 correlation/action metadata。Rejected because这会复制发送端的 Provider wire knowledge，并使 consumer 依赖 Slack、Teams 与 Feishu/Lark schema。
 
@@ -120,7 +126,7 @@ Decoder 不把 authenticated Provider delivery 提升为 HITL authorization proo
 - [A malformed card callback now raises instead of being ignored] → 使用 operator-safe `IMCardEventDecodingError` 保留可观测失败，让后续 inbox consumer 决定 retry 或 terminal disposition。
 - [Microsoft Teams merges action data and inputs] → 发送端与 decoder 使用同一隔离规则，并增加 reserved-key collision tests。
 - [Slack Webhook and Socket Mode payload envelopes differ] → 同一个 Slack decoder 对两种 authenticated snapshot 运行 conformance tests，并要求产生相同 `IMCardEvent`。
-- [Slack `block_actions` conflates submission and selection/foreign interactions] → JSON/envelope 解包后先用私有 `__dify.actions.` marker 做浅层、无 I/O recognition；无 marker 返回 `UnrecognizedIMEvent`，命中 marker 后保留完整严格 schema failure。
+- [Slack `block_actions` conflates submission and selection/foreign interactions] → JSON/envelope 解包后先用精确的私有 `__dify.actions` marker 做浅层、无 I/O recognition；无 exact marker 返回 `UnrecognizedIMEvent`，命中 marker 后保留完整严格 schema failure。
 - [Class-level capability can drift from instance messaging availability] → 加入所有 concrete adapters 的 pairing conformance test，禁止单独出现 decoder 或 Dynamic Card Messaging。
 
 ## Migration Plan

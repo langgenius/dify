@@ -284,11 +284,72 @@ def test_decoder_rejects_state_missing_one_expected_input() -> None:
         SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
 
 
+def test_decoder_rejects_non_input_message_block_claiming_reserved_input_id() -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    input_block = _input_blocks(callback)[1]
+    input_block["type"] = "section"
+    _state_values(callback).pop("__dify.input.1")
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+def test_decoder_rejects_non_actions_message_block_claiming_reserved_actions_id() -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    actions_block = next(block for block in _message_blocks(callback) if block.get("type") == "actions")
+    actions_block["type"] = "section"
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+def test_decoder_rejects_message_without_sender_owned_actions_block() -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    message_blocks = _message_blocks(callback)
+    message_blocks[:] = [block for block in message_blocks if block.get("type") != "actions"]
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+def test_decoder_rejects_invoked_action_missing_from_sender_owned_actions_block() -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    actions_block = next(block for block in _message_blocks(callback) if block.get("type") == "actions")
+    elements = actions_block["elements"]
+    assert isinstance(elements, list)
+    button = elements[0]
+    assert isinstance(button, dict)
+    button["action_id"] = "other-action"
+    metadata = json.loads(button["value"])
+    assert isinstance(metadata, dict)
+    metadata["action_id"] = "other-action"
+    button["value"] = json.dumps(metadata)
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+@pytest.mark.parametrize(
+    "foreign_block_id",
+    [
+        pytest.param("__dify.input.legacy", id="input-near-id"),
+        pytest.param("__dify.input.01", id="input-noncanonical-ordinal"),
+        pytest.param("__dify.actions.legacy", id="actions-near-id"),
+    ],
+)
+def test_decoder_allows_near_reserved_id_on_foreign_message_block(foreign_block_id: str) -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    _message_blocks(callback).insert(0, {"type": "section", "block_id": foreign_block_id})
+
+    decoded = SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+    assert isinstance(decoded, IMCardEvent)
+    assert decoded.inputs == {"说明📝": "你好，世界 🌍", "选择🌐": "选项 β"}
+
+
 def test_decoder_rejects_extra_dify_input_state() -> None:
     callback = _fixture(_WEBHOOK_FIXTURE)
-    _state_values(callback)["__dify.input.2"] = {
-        "unexpected": {"type": "plain_text_input", "value": "unexpected"}
-    }
+    _state_values(callback)["__dify.input.2"] = {"unexpected": {"type": "plain_text_input", "value": "unexpected"}}
 
     with pytest.raises(IMCardEventDecodingError):
         SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))

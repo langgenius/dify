@@ -5,11 +5,15 @@ import os
 import sys
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
+from urllib.parse import urlencode
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
+from slack_sdk.signature import SignatureVerifier
+from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
 from core.human_input import ButtonStyle
@@ -19,17 +23,76 @@ from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAda
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CorrelationToken,
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    CredentialTestSuccess,
     Directory,
+    DynamicCardMessagingError,
+    EventAcceptance,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMStreamStartError,
     MessageAccepted,
+    MessageSendingError,
     ProviderUserId,
     SlackIMIntegrationCredentials,
+    StaticCardIntent,
+    UnrecognizedIMEvent,
+    WebhookRequest,
 )
 
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
 _RAW_JSON_EXTRA_PLACEHOLDER = "__raw_json_extra_placeholder__"
+_RECEIVED_AT = datetime(2026, 8, 11, 12, 0, 0)
+_FIXTURE_DIRECTORY = Path(__file__).resolve().parents[4] / "unit_tests/core/human_input_v2/im_provider/fixtures"
+
+
+class _RecordingConsumer:
+    def __init__(self, acceptance: EventAcceptance = EventAcceptance.ACCEPTED) -> None:
+        self._acceptance = acceptance
+        self.events: list[AuthenticatedIMEvent] = []
+
+    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+        self.events.append(event)
+        return self._acceptance
+
+
+class _FailingConsumer:
+    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+        del event
+        raise RuntimeError("sensitive consumer failure")
+
+
+def _fixture(fixture_name: str) -> dict[str, object]:
+    decoded = json.loads((_FIXTURE_DIRECTORY / fixture_name).read_text(encoding="utf-8"))
+    assert isinstance(decoded, dict)
+    return decoded
+
+
+def _signed_webhook_request(
+    signing_secret: str,
+    body: bytes,
+    *,
+    content_type: str = "application/json",
+    method: str = "POST",
+    valid_signature: bool = True,
+) -> WebhookRequest:
+    timestamp = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
+    signature = SignatureVerifier(signing_secret).generate_signature(timestamp=timestamp, body=body)
+    assert signature is not None
+    if not valid_signature:
+        signature = "v0=invalid"
+    return WebhookRequest(
+        method=method,
+        headers=(
+            ("X-Slack-Request-Timestamp", timestamp),
+            ("X-Slack-Signature", signature),
+            ("Content-Type", content_type),
+        ),
+        body=body,
+        received_at=_RECEIVED_AT,
+    )
 
 
 def _serialize_callback_with_raw_extra(callback: Mapping[str, object], raw_json_value: str) -> str:
@@ -212,6 +275,242 @@ def test_slack_directory_matches_real_paginated_directory(
     assert actual_entries == expected_entries
 
 
+def test_slack_adapter_composes_capabilities_and_decoder_survives_lifecycle(
+    slack_adapter: SlackIMProviderAdapter,
+) -> None:
+    consumer = _RecordingConsumer()
+    decoder = SlackIMProviderAdapter.card_event_decoder()
+    event_stream = slack_adapter.create_stream_handler(consumer)
+
+    assert slack_adapter.provider is IMProvider.SLACK
+    assert slack_adapter.directory is not None
+    assert slack_adapter.messaging is not None
+    assert slack_adapter.dynamic_card_messaging is not None
+    assert slack_adapter.create_webhook_handler(consumer) is not None
+
+    slack_adapter.close()
+    slack_adapter.close()
+    assert isinstance(
+        decoder.decode(
+            AuthenticatedIMEvent(
+                provider=IMProvider.SLACK,
+                provider_tenant_id="integration-workspace",
+                event_id=None,
+                event_type="message",
+                occurred_at=None,
+                received_at=_RECEIVED_AT,
+                payload="{}",
+            )
+        ),
+        UnrecognizedIMEvent,
+    )
+
+    event_stream.stop()
+    event_stream.stop()
+    with pytest.raises(IMStreamStartError):
+        event_stream.start()
+
+
+def test_slack_credentials_validate_real_web_and_socket_tokens(
+    slack_adapter: SlackIMProviderAdapter,
+) -> None:
+    result = slack_adapter.test_credentials()
+
+    assert isinstance(result, CredentialTestSuccess)
+    assert result.provider is IMProvider.SLACK
+    assert result.provider_tenant_id.strip()
+
+
+def test_slack_credential_test_translates_documented_provider_rejections(
+    slack_credentials: SlackIMIntegrationCredentials,
+) -> None:
+    invalid_bot_credentials = SlackIMIntegrationCredentials(
+        provider=IMProvider.SLACK,
+        client_id=slack_credentials.client_id,
+        client_secret=slack_credentials.client_secret,
+        signing_secret=slack_credentials.signing_secret,
+        bot_token="xoxb-invalid",
+        app_token=slack_credentials.app_token,
+    )
+    invalid_bot_adapter = SlackIMProviderAdapter(invalid_bot_credentials)
+    try:
+        invalid_bot_result = invalid_bot_adapter.test_credentials()
+    finally:
+        invalid_bot_adapter.close()
+
+    assert isinstance(invalid_bot_result, CredentialTestFailure)
+    assert invalid_bot_result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+
+    invalid_app_credentials = SlackIMIntegrationCredentials(
+        provider=IMProvider.SLACK,
+        client_id=slack_credentials.client_id,
+        client_secret=slack_credentials.client_secret,
+        signing_secret=slack_credentials.signing_secret,
+        bot_token=slack_credentials.bot_token,
+        app_token="xapp-invalid",
+    )
+    invalid_app_adapter = SlackIMProviderAdapter(invalid_app_credentials)
+    try:
+        invalid_app_result = invalid_app_adapter.test_credentials()
+        invalid_app_stream = invalid_app_adapter.create_stream_handler(_RecordingConsumer())
+        with pytest.raises(IMStreamStartError):
+            invalid_app_stream.start()
+        invalid_app_stream.stop()
+    finally:
+        invalid_app_adapter.close()
+
+    assert isinstance(invalid_app_result, CredentialTestFailure)
+    assert invalid_app_result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+
+
+def test_slack_webhook_hmac_reconstructs_json_and_form_callbacks(
+    slack_adapter: SlackIMProviderAdapter,
+    slack_credentials: SlackIMIntegrationCredentials,
+) -> None:
+    consumer = _RecordingConsumer()
+    handler = slack_adapter.create_webhook_handler(consumer)
+    event_callback = {
+        "type": "event_callback",
+        "team_id": "T012SANITIZED",
+        "event_id": "Ev012SANITIZED",
+        "event_time": 1786400000,
+        "event": {"type": "app_mention", "text": "sanitized"},
+    }
+    event_body = json.dumps(event_callback, separators=(",", ":")).encode()
+
+    event_response = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, event_body))
+
+    callback_fixture = _fixture("slack_block_actions_webhook.json")
+    form_body = urlencode({"payload": json.dumps(callback_fixture, ensure_ascii=False)}).encode()
+    form_response = handler.handle(
+        _signed_webhook_request(
+            slack_credentials.signing_secret,
+            form_body,
+            content_type="application/x-www-form-urlencoded",
+        )
+    )
+
+    assert event_response.status_code == 200
+    assert form_response.status_code == 200
+    assert len(consumer.events) == 2
+    event, callback = consumer.events
+    assert event.provider is IMProvider.SLACK
+    assert event.provider_tenant_id == "T012SANITIZED"
+    assert event.event_id == "Ev012SANITIZED"
+    assert event.event_type == "app_mention"
+    assert event.occurred_at == datetime.fromtimestamp(1786400000, tz=UTC).replace(tzinfo=None)
+    assert callback.provider_tenant_id == "T012SANITIZED"
+    assert callback.event_type == "block_actions"
+    assert SlackIMProviderAdapter.card_event_decoder().decode(callback) == IMCardEvent(
+        provider_user_id=ProviderUserId("U012SANITIZED"),
+        action_id="\u6279\u51c6\u2705",
+        inputs={
+            "\u8bf4\u660e\U0001f4dd": "\u4f60\u597d\uff0c\u4e16\u754c \U0001f30d",
+            "\u9009\u62e9\U0001f310": "\u9009\u9879 \u03b2",
+        },
+        correlation_token=CorrelationToken("\u5173\u8054\u4ee4\u724c-\U0001f30d"),
+    )
+
+
+def test_slack_webhook_rejects_unauthenticated_and_authenticated_malformed_requests(
+    slack_adapter: SlackIMProviderAdapter,
+    slack_credentials: SlackIMIntegrationCredentials,
+) -> None:
+    consumer = _RecordingConsumer(EventAcceptance.NOT_ACCEPTED)
+    handler = slack_adapter.create_webhook_handler(consumer)
+    valid_event = json.dumps(
+        {"type": "event_callback", "team_id": "T012SANITIZED", "event": {"type": "message"}},
+        separators=(",", ":"),
+    ).encode()
+
+    unauthenticated = handler.handle(
+        _signed_webhook_request(slack_credentials.signing_secret, valid_event, valid_signature=False)
+    )
+    wrong_method = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, valid_event, method="GET"))
+    invalid_json = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, b"{"))
+    missing_tenant = handler.handle(
+        _signed_webhook_request(slack_credentials.signing_secret, b'{"type":"event_callback"}')
+    )
+    not_accepted = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, valid_event))
+    consumer_failure = slack_adapter.create_webhook_handler(_FailingConsumer()).handle(
+        _signed_webhook_request(slack_credentials.signing_secret, valid_event)
+    )
+    invalid_challenge = handler.handle(
+        _signed_webhook_request(slack_credentials.signing_secret, b'{"type":"url_verification"}')
+    )
+    missing_form_payload = handler.handle(
+        _signed_webhook_request(
+            slack_credentials.signing_secret,
+            b"field=value",
+            content_type="application/x-www-form-urlencoded",
+        )
+    )
+    invalid_form_payload = handler.handle(
+        _signed_webhook_request(
+            slack_credentials.signing_secret,
+            b"payload=%7B",
+            content_type="application/x-www-form-urlencoded",
+        )
+    )
+    non_object_form_payload = handler.handle(
+        _signed_webhook_request(
+            slack_credentials.signing_secret,
+            b"payload=%5B%5D",
+            content_type="application/x-www-form-urlencoded",
+        )
+    )
+    unsupported_content_type = handler.handle(
+        _signed_webhook_request(slack_credentials.signing_secret, valid_event, content_type="text/plain")
+    )
+    overflow_event = json.dumps(
+        {
+            "type": "event_callback",
+            "team_id": "T012SANITIZED",
+            "event_time": 10**100,
+            "event": {"type": "message"},
+        },
+        separators=(",", ":"),
+    ).encode()
+    overflow_event_response = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, overflow_event))
+    one_content_type_request = _signed_webhook_request(slack_credentials.signing_secret, valid_event)
+    duplicate_content_type_response = handler.handle(
+        WebhookRequest(
+            method=one_content_type_request.method,
+            headers=(*one_content_type_request.headers, ("Content-Type", "application/json")),
+            body=one_content_type_request.body,
+            received_at=one_content_type_request.received_at,
+        )
+    )
+
+    assert unauthenticated.status_code == 401
+    assert wrong_method.status_code == 405
+    assert invalid_json.status_code == 400
+    assert missing_tenant.status_code == 400
+    assert not_accepted.status_code == 503
+    assert consumer_failure.status_code == 503
+    assert invalid_challenge.status_code == 400
+    assert missing_form_payload.status_code == 400
+    assert invalid_form_payload.status_code == 400
+    assert non_object_form_payload.status_code == 400
+    assert unsupported_content_type.status_code == 400
+    assert overflow_event_response.status_code == 503
+    assert duplicate_content_type_response.status_code == 400
+    assert len(consumer.events) == 2
+
+
+def test_slack_webhook_completes_signed_url_verification(
+    slack_adapter: SlackIMProviderAdapter,
+    slack_credentials: SlackIMIntegrationCredentials,
+) -> None:
+    handler = slack_adapter.create_webhook_handler(_RecordingConsumer())
+    body = b'{"type":"url_verification","challenge":"sanitized-challenge"}'
+
+    response = handler.handle(_signed_webhook_request(slack_credentials.signing_secret, body))
+
+    assert response.status_code == 200
+    assert json.loads(response.body) == {"challenge": "sanitized-challenge"}
+
+
 def test_slack_messaging_sends_and_reads_exact_text(
     slack_test_recipient_id: ProviderUserId,
     slack_adapter: SlackIMProviderAdapter,
@@ -240,6 +539,47 @@ def test_slack_messaging_sends_and_reads_exact_text(
     ]
     assert len(matching_messages) == 1
     assert matching_messages[0].get("text") == message_body
+
+    invalid_recipient_result = slack_adapter.messaging.send_text(
+        ProviderUserId("D000000000000000000"),
+        f"{message_body} invalid-recipient",
+    )
+    assert isinstance(invalid_recipient_result, MessageSendingError)
+
+    invalid_replacement = slack_adapter.dynamic_card_messaging.replace_with_static(
+        message_result.reference,
+        StaticCardIntent("This must not replace a text message."),
+    )
+    assert invalid_replacement is not None
+
+
+def test_slack_card_assessment_matches_static_select_provider_boundary(
+    slack_adapter: SlackIMProviderAdapter,
+    slack_test_recipient_id: ProviderUserId,
+) -> None:
+    supported_options = tuple(f"option-{ordinal}" for ordinal in range(100))
+    supported = ResolvedForm(
+        title="Supported Slack selector boundary",
+        blocks=(SelectInput("risk_level", supported_options, supported_options[0]),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="unused",
+    )
+    unsupported_options = (*supported_options, "option-100")
+    unsupported = ResolvedForm(
+        title="Unsupported Slack selector boundary",
+        blocks=(SelectInput("risk_level", unsupported_options, unsupported_options[0]),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="unused",
+    )
+
+    assert slack_adapter.dynamic_card_messaging.assess(supported).representable is True
+    assert slack_adapter.dynamic_card_messaging.assess(unsupported).representable is False
+    with pytest.raises(DynamicCardMessagingError):
+        slack_adapter.dynamic_card_messaging.send_card(
+            slack_test_recipient_id,
+            unsupported,
+            CorrelationToken("unsupported-selector"),
+        )
 
 
 def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
@@ -351,12 +691,12 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         },
         "actions": [callback_action],
     }
-    socket_envelope = {
-        "envelope_id": f"{marker}-envelope",
-        "payload": callback_payload,
-        "type": "interactive",
-        "accepts_response_payload": False,
-    }
+    socket_request = SocketModeRequest(
+        type="interactive",
+        envelope_id=f"{marker}-envelope",
+        payload=callback_payload,
+        accepts_response_payload=False,
+    )
     authenticated_event = AuthenticatedIMEvent(
         provider=IMProvider.SLACK,
         provider_tenant_id="integration-workspace",
@@ -364,7 +704,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         event_type="block_actions",
         occurred_at=None,
         received_at=datetime(2026, 8, 11, 12, 0, 0),
-        payload=json.dumps(socket_envelope, ensure_ascii=False),
+        payload=json.dumps(socket_request.to_dict(), ensure_ascii=False),
     )
 
     decoded = SlackIMProviderAdapter.card_event_decoder().decode(authenticated_event)
@@ -416,6 +756,30 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
                 occurred_at=None,
                 received_at=datetime(2026, 8, 11, 12, 0, 1),
                 payload=json.dumps(missing_input_payload, ensure_ascii=False),
+            )
+        )
+
+    reserved_input_block_payload = deepcopy(callback_payload)
+    reserved_message = reserved_input_block_payload["message"]
+    assert isinstance(reserved_message, dict)
+    reserved_message_blocks = reserved_message["blocks"]
+    assert isinstance(reserved_message_blocks, list)
+    reserved_input_block = next(
+        block
+        for block in reserved_message_blocks
+        if isinstance(block, dict) and block.get("block_id") == input_block_ids["risk_level"]
+    )
+    reserved_input_block["type"] = "section"
+    reserved_state = reserved_input_block_payload["state"]
+    assert isinstance(reserved_state, dict)
+    reserved_values = reserved_state["values"]
+    assert isinstance(reserved_values, dict)
+    reserved_values.pop(input_block_ids["risk_level"])
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(
+            _authenticated_slack_card_event(
+                json.dumps(reserved_input_block_payload, ensure_ascii=False),
+                received_second=10,
             )
         )
 
@@ -482,6 +846,89 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
     assert isinstance(null_decoded, IMCardEvent)
     assert null_decoded.inputs == {"review_comment": None, "risk_level": None}
 
+    selection_payload = deepcopy(callback_payload)
+    selection_payload["actions"] = [
+        {
+            "type": "static_select",
+            "block_id": input_block_ids["risk_level"],
+            "action_id": "risk_level",
+            "selected_option": {"value": "high"},
+        }
+    ]
+    selection_request = SocketModeRequest(
+        type="interactive",
+        envelope_id=f"{marker}-selection-envelope",
+        payload=selection_payload,
+    )
+    selection_event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=_RECEIVED_AT,
+        payload=json.dumps(selection_request.to_dict(), ensure_ascii=False),
+    )
+    assert isinstance(SlackIMProviderAdapter.card_event_decoder().decode(selection_event), UnrecognizedIMEvent)
+
+    malformed_socket_request = SocketModeRequest(
+        type="interactive",
+        envelope_id=f"{marker}-malformed-envelope",
+        payload="invalid",
+    )
+    malformed_socket_event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=_RECEIVED_AT,
+        payload=json.dumps(malformed_socket_request.to_dict(), ensure_ascii=False),
+    )
+    assert isinstance(
+        SlackIMProviderAdapter.card_event_decoder().decode(malformed_socket_event),
+        UnrecognizedIMEvent,
+    )
+
+    legacy_action_payload = deepcopy(callback_payload)
+    legacy_actions = legacy_action_payload["actions"]
+    assert isinstance(legacy_actions, list)
+    legacy_action = legacy_actions[0]
+    assert isinstance(legacy_action, dict)
+    legacy_action["block_id"] = "__dify.actions.legacy"
+    legacy_event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=_RECEIVED_AT,
+        payload=json.dumps(legacy_action_payload, ensure_ascii=False),
+    )
+    assert isinstance(SlackIMProviderAdapter.card_event_decoder().decode(legacy_event), UnrecognizedIMEvent)
+
+    invalid_recipient_result = slack_adapter.dynamic_card_messaging.send_card(
+        ProviderUserId("D000000000000000000"),
+        intent,
+        CorrelationToken(f"{marker}-invalid-recipient"),
+    )
+    assert isinstance(invalid_recipient_result, MessageSendingError)
+
+    replacement_body = f"Slack card integration completed [{marker}]"
+    replacement_error = slack_adapter.dynamic_card_messaging.replace_with_static(
+        message_reference,
+        StaticCardIntent(replacement_body),
+    )
+    assert replacement_error is None
+    replaced_message = _read_exact_message(slack_web_client, message_reference)
+    assert replaced_message.get("text") == replacement_body
+    replaced_blocks = replaced_message.get("blocks")
+    assert isinstance(replaced_blocks, Sequence)
+    assert not isinstance(replaced_blocks, str | bytes | bytearray)
+    assert not any(
+        isinstance(block, Mapping) and block.get("type") in {"input", "actions"} for block in replaced_blocks
+    )
+
 
 def test_slack_zero_input_card_round_trips_without_callback_state(
     slack_test_recipient_id: ProviderUserId,
@@ -491,8 +938,8 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
     marker = f"codex-implementer-slack-card-event-zero-input-5ab7-20260811-{uuid4()}"
     correlation_token = CorrelationToken(f"{marker}-correlation")
     intent = ResolvedForm(
-        title=f"Slack zero-input card integration [{marker}]",
-        blocks=(MarkdownText("Choose one action."),),
+        title=None,
+        blocks=(MarkdownText(f"Choose one action [{marker}]."),),
         user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )
@@ -506,6 +953,7 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
     assert isinstance(message_result, MessageAccepted)
     assert isinstance(message_result.reference, _SlackMessageLocator)
     persisted_message = _read_exact_message(slack_web_client, message_result.reference)
+    assert persisted_message.get("text") == f"Choose one action [{marker}]."
     blocks = persisted_message.get("blocks")
     assert isinstance(blocks, Sequence)
     assert not isinstance(blocks, str | bytes | bytearray)

@@ -668,6 +668,13 @@ def test_card_assessment_rejects_file_controls_without_side_effects(mocker, inpu
 
     assert assessment.representable is False
     assert client.post_calls == []
+    with pytest.raises(DynamicCardMessagingError):
+        adapter.dynamic_card_messaging.send_card(
+            ProviderUserId("user-1"),
+            _intent(input_type=input_type),
+            CorrelationToken("correlation-1"),
+        )
+    assert client.post_calls == []
 
 
 @pytest.mark.parametrize(
@@ -688,13 +695,6 @@ def test_card_assessment_uses_static_select_option_limit(
     assessment = adapter.dynamic_card_messaging.assess(_intent_with_select_option_count(option_count))
 
     assert assessment.representable is expected_representable
-    assert client.post_calls == []
-    with pytest.raises(DynamicCardMessagingError):
-        adapter.dynamic_card_messaging.send_card(
-            ProviderUserId("user-1"),
-            _intent(input_type=input_type),
-            CorrelationToken("correlation-1"),
-        )
     assert client.post_calls == []
 
 

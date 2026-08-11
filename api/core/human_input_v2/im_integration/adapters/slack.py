@@ -14,9 +14,21 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
-from typing import Literal, override
+from math import isfinite
+from typing import Annotated, Literal, Never, Self, override
 from urllib.parse import parse_qs
 
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    RootModel,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.models.blocks import MarkdownBlock
 from slack_sdk.signature import Clock, SignatureVerifier
@@ -30,12 +42,6 @@ from slack_sdk.web.slack_response import SlackResponse
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.slack_card_events import (
-    SlackCardEventDecoder,
-)
-from core.human_input_v2.im_integration.adapters.slack_card_events import (
-    render_card_blocks as _render_card_blocks,
-)
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CardAssessment,
@@ -48,7 +54,10 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMCardEvent,
     IMCardEventDecoder,
+    IMCardEventDecodeResult,
+    IMCardEventDecodingError,
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
@@ -66,6 +75,7 @@ from core.human_input_v2.im_provider import (
     ReplacementErrorKind,
     SlackIMIntegrationCredentials,
     StaticCardIntent,
+    UnrecognizedIMEvent,
     WebhookRequest,
     WebhookResponse,
 )
@@ -86,9 +96,15 @@ _MAX_ACTION_ID_LENGTH = 255
 _MAX_ACTION_TEXT_LENGTH = 75
 _MAX_INPUT_LABEL_LENGTH = 2000
 _MAX_INPUT_INITIAL_VALUE_LENGTH = 3000
-_MAX_RADIO_OPTION_COUNT = 10
-_MAX_RADIO_OPTION_TEXT_LENGTH = 75
-_MAX_RADIO_OPTION_VALUE_LENGTH = 150
+_MAX_STATIC_SELECT_OPTION_COUNT = 100
+_MAX_STATIC_SELECT_OPTION_TEXT_LENGTH = 75
+_MAX_STATIC_SELECT_OPTION_VALUE_LENGTH = 150
+_MAX_ACTION_VALUE_LENGTH = 2000
+_DIFY_ACTIONS_BLOCK_ID = "__dify.actions"
+_DIFY_INPUT_BLOCK_ID_TEMPLATE = "__dify.input.{}"
+_DIFY_INPUT_BLOCK_ID_PATTERN = re.compile(r"__dify\.input\.(?:0|[1-9][0-9]*)")
+_STATIC_SELECT_PLACEHOLDER_TEXT = "Select an option"
+_CALLBACK_SCHEMA_VERSION: Literal[1] = 1
 _SLACK_MESSAGE_TIMESTAMP = re.compile(r"^[0-9]+\.[0-9]+$")
 _JSON_CONTENT_TYPE = "application/json"
 _FORM_CONTENT_TYPE = "application/x-www-form-urlencoded"
@@ -111,6 +127,7 @@ _STALE_MESSAGE_ERROR_CODES = frozenset(
     )
 )
 _BUSINESS_SOCKET_REQUEST_TYPES = frozenset(("events_api", "interactive", "slash_commands"))
+_JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, JsonValue])
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
@@ -124,6 +141,330 @@ class _SlackMessageLocator(MessageReference):
     message_kind: Literal["text", "dynamic_card"]
     channel_id: str
     message_ts: str
+
+
+class _SlackCallbackModel(BaseModel):
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
+
+
+class _SlackRecognitionAction(_SlackCallbackModel):
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True)
+
+    block_id: str | None = None
+
+    @field_validator("block_id", mode="before")
+    @classmethod
+    def _ignore_non_string_block_id(cls, value: object) -> str | None:
+        return value if isinstance(value, str) else None
+
+
+type _SlackRecognitionActionEntry = _SlackRecognitionAction | None | str | int | float | bool | list[JsonValue]
+
+
+class _SlackRecognitionPayload(_SlackCallbackModel):
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True)
+
+    actions: list[_SlackRecognitionActionEntry] = Field(default_factory=list)
+
+    @field_validator("actions", mode="before")
+    @classmethod
+    def _normalize_non_list_actions(cls, value: object) -> object:
+        return value if isinstance(value, list) else []
+
+    @property
+    def has_dify_submission_action(self) -> bool:
+        return any(
+            isinstance(action, _SlackRecognitionAction) and action.block_id == _DIFY_ACTIONS_BLOCK_ID
+            for action in self.actions
+        )
+
+
+class _SlackSocketModeEnvelope(_SlackCallbackModel):
+    type: Literal["interactive"]
+    payload: dict[str, JsonValue]
+
+
+class _SlackCallbackUser(_SlackCallbackModel):
+    id: str = Field(min_length=1)
+
+
+class _SlackButtonMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    version: Literal[1]
+    action_id: str = Field(min_length=1)
+    correlation_token: str
+
+
+class _SlackEncodedButton(_SlackCallbackModel):
+    type: Literal["button"]
+    action_id: str = Field(min_length=1)
+    value: str = Field(exclude=True)
+    metadata: _SlackButtonMetadata = Field(exclude=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _decode_metadata(cls, value: object) -> object:
+        if not isinstance(value, dict):
+            return value
+        serialized_metadata = value.get("value")
+        if not isinstance(serialized_metadata, str):
+            return value
+        decoded_metadata = _decode_json_object(serialized_metadata)
+        if decoded_metadata is None:
+            raise ValueError("Slack card action metadata is invalid.")
+        value_with_metadata = dict(value)
+        value_with_metadata["metadata"] = decoded_metadata
+        return value_with_metadata
+
+    @model_validator(mode="after")
+    def _require_matching_action_identity(self) -> Self:
+        if self.action_id != self.metadata.action_id:
+            raise ValueError("Slack card action identity is inconsistent.")
+        return self
+
+
+class _SlackInvokedButton(_SlackEncodedButton):
+    block_id: str
+
+    @field_validator("block_id")
+    @classmethod
+    def _require_submission_block_id(cls, value: str) -> str:
+        if value != _DIFY_ACTIONS_BLOCK_ID:
+            raise ValueError("Slack card action block is invalid.")
+        return value
+
+
+class _SlackPlainTextInputElement(_SlackCallbackModel):
+    type: Literal["plain_text_input"]
+    action_id: str = Field(min_length=1)
+
+
+class _SlackStaticSelectElement(_SlackCallbackModel):
+    type: Literal["static_select"]
+    action_id: str = Field(min_length=1)
+
+
+type _SlackInputElement = Annotated[
+    _SlackPlainTextInputElement | _SlackStaticSelectElement,
+    Field(discriminator="type"),
+]
+
+
+class _SlackInputBlock(_SlackCallbackModel):
+    type: Literal["input"]
+    block_id: str = Field(min_length=1)
+    element: _SlackInputElement
+
+
+class _SlackActionsBlock(_SlackCallbackModel):
+    type: Literal["actions"]
+    block_id: str
+    elements: list[_SlackEncodedButton] = Field(min_length=1)
+
+    @field_validator("block_id")
+    @classmethod
+    def _require_submission_block_id(cls, value: str) -> str:
+        if value != _DIFY_ACTIONS_BLOCK_ID:
+            raise ValueError("Slack card actions block is invalid.")
+        return value
+
+    @model_validator(mode="after")
+    def _require_unique_action_ids(self) -> Self:
+        action_ids = {element.action_id for element in self.elements}
+        if len(action_ids) != len(self.elements):
+            raise ValueError("Slack card actions block is ambiguous.")
+        return self
+
+
+class _SlackOtherMessageBlock(_SlackCallbackModel):
+    type: str
+    block_id: str | None = None
+
+    @model_validator(mode="after")
+    def _reject_sender_owned_block_shape(self) -> Self:
+        if self.type in {"input", "actions"}:
+            raise ValueError("Slack card message block type is invalid.")
+        if self.block_id == _DIFY_ACTIONS_BLOCK_ID or (
+            self.block_id is not None and _DIFY_INPUT_BLOCK_ID_PATTERN.fullmatch(self.block_id)
+        ):
+            raise ValueError("Slack card message block identifier is reserved.")
+        return self
+
+
+type _SlackMessageBlock = Annotated[
+    _SlackInputBlock | _SlackActionsBlock | _SlackOtherMessageBlock,
+    Field(union_mode="left_to_right"),
+]
+
+
+class _SlackMessageBlocks(RootModel[list[_SlackMessageBlock]]):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    @model_validator(mode="after")
+    def _require_stable_message_schema(self) -> Self:
+        if len(self.actions_blocks) != 1:
+            raise ValueError("Slack card actions schema is invalid.")
+
+        action_ids: set[str] = set()
+        for input_ordinal, input_block in enumerate(self.inputs):
+            expected_block_id = _DIFY_INPUT_BLOCK_ID_TEMPLATE.format(input_ordinal)
+            if input_block.block_id != expected_block_id or input_block.element.action_id in action_ids:
+                raise ValueError("Slack card input schema is invalid.")
+            action_ids.add(input_block.element.action_id)
+        return self
+
+    @property
+    def inputs(self) -> tuple[_SlackInputBlock, ...]:
+        return tuple(block for block in self.root if isinstance(block, _SlackInputBlock))
+
+    @property
+    def actions_blocks(self) -> tuple[_SlackActionsBlock, ...]:
+        return tuple(block for block in self.root if isinstance(block, _SlackActionsBlock))
+
+    @property
+    def actions(self) -> tuple[_SlackEncodedButton, ...]:
+        return tuple(self.actions_blocks[0].elements)
+
+
+class _SlackCallbackMessage(_SlackCallbackModel):
+    blocks: _SlackMessageBlocks
+
+
+class _SlackSelectedOption(_SlackCallbackModel):
+    value: str
+
+
+class _SlackPlainTextInputState(_SlackCallbackModel):
+    type: Literal["plain_text_input"]
+    value: str | None
+
+
+class _SlackStaticSelectState(_SlackCallbackModel):
+    type: Literal["static_select"]
+    selected_option: _SlackSelectedOption | None
+
+
+type _SlackInputState = Annotated[
+    _SlackPlainTextInputState | _SlackStaticSelectState,
+    Field(discriminator="type"),
+]
+
+
+class _SlackInputBlockState(RootModel[dict[str, _SlackInputState]]):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    @model_validator(mode="after")
+    def _require_one_input_state(self) -> Self:
+        if len(self.root) != 1:
+            raise ValueError("Slack card input state is ambiguous.")
+        return self
+
+    @property
+    def action_id(self) -> str:
+        return next(iter(self.root))
+
+    @property
+    def input_state(self) -> _SlackInputState:
+        return self.root[self.action_id]
+
+    @property
+    def input_value(self) -> JsonValue:
+        state = self.input_state
+        if isinstance(state, _SlackPlainTextInputState):
+            return state.value
+        if state.selected_option is None:
+            return None
+        return state.selected_option.value
+
+
+class _SlackStateValues(RootModel[dict[str, _SlackInputBlockState]]):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+
+class _SlackCallbackState(_SlackCallbackModel):
+    values: _SlackStateValues = Field(default_factory=lambda: _SlackStateValues({}))
+
+
+class _SlackSubmissionPayload(_SlackCallbackModel):
+    type: Literal["block_actions"]
+    user: _SlackCallbackUser
+    actions: list[_SlackInvokedButton]
+    message: _SlackCallbackMessage
+    state: _SlackCallbackState | None = None
+
+    @model_validator(mode="after")
+    def _require_exact_submission_schema(self) -> Self:
+        if len(self.actions) != 1:
+            raise ValueError("Slack card invoked action is ambiguous.")
+
+        invoked_action = self.action
+        if not any(
+            message_action.action_id == invoked_action.action_id and message_action.metadata == invoked_action.metadata
+            for message_action in self.message.blocks.actions
+        ):
+            raise ValueError("Slack card invoked action does not match the message schema.")
+
+        expected_inputs = self.message.blocks.inputs
+        state_values = self.state.values.root if self.state is not None else {}
+        if set(state_values) != {input_block.block_id for input_block in expected_inputs}:
+            raise ValueError("Slack card input state does not match the message schema.")
+
+        for input_block in expected_inputs:
+            block_state = state_values[input_block.block_id]
+            if (
+                block_state.action_id != input_block.element.action_id
+                or block_state.input_state.type != input_block.element.type
+            ):
+                raise ValueError("Slack card input state is inconsistent.")
+        return self
+
+    @property
+    def action(self) -> _SlackInvokedButton:
+        return self.actions[0]
+
+    @property
+    def normalized_inputs(self) -> dict[str, JsonValue]:
+        if self.state is None:
+            return {}
+        state_values = self.state.values.root
+        return {
+            input_block.element.action_id: state_values[input_block.block_id].input_value
+            for input_block in self.message.blocks.inputs
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SlackCardEventDecoder(IMCardEventDecoder):
+    """Decode sender-owned Slack submissions without credentials or I/O."""
+
+    @override
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        if event.provider is not IMProvider.SLACK or event.event_type != "block_actions":
+            return UnrecognizedIMEvent()
+
+        callback = _decode_json_object(event.payload)
+        if callback is None:
+            raise IMCardEventDecodingError("Slack card event payload is invalid.")
+        callback_payload = _unwrap_callback_payload(callback)
+        if callback_payload is None:
+            raise IMCardEventDecodingError("Slack card event envelope is invalid.")
+
+        recognition = _recognize_slack_submission(callback_payload)
+        if recognition is None:
+            raise IMCardEventDecodingError("Slack card event recognition is invalid.")
+        if not recognition.has_dify_submission_action:
+            return UnrecognizedIMEvent()
+
+        submission = _validate_slack_submission(recognition)
+        if submission is None:
+            raise IMCardEventDecodingError("Slack card event schema is invalid.")
+        return IMCardEvent(
+            provider_user_id=ProviderUserId(submission.user.id),
+            action_id=submission.action.action_id,
+            inputs=submission.normalized_inputs,
+            correlation_token=CorrelationToken(submission.action.metadata.correlation_token),
+        )
 
 
 class _TrustedReceiveTimeClock(Clock):
@@ -625,6 +966,148 @@ def _first_non_empty_string(*values: object) -> str | None:
     return None
 
 
+class _InvalidJsonConstantError(ValueError):
+    """RFC-invalid non-finite JSON constant without retaining its source text."""
+
+
+class _InvalidJsonNumberError(ValueError):
+    """JSON number rejected without retaining its source text."""
+
+
+def _reject_invalid_json_constant(_serialized_constant: str) -> Never:
+    raise _InvalidJsonConstantError
+
+
+def _decode_json_integer(serialized_integer: str) -> int:
+    try:
+        return int(serialized_integer)
+    except ValueError:
+        raise _InvalidJsonNumberError from None
+
+
+def _decode_json_float(serialized_float: str) -> float:
+    decoded_float = float(serialized_float)
+    if not isfinite(decoded_float):
+        raise _InvalidJsonNumberError
+    return decoded_float
+
+
+def _decode_json_object(serialized_value: str) -> dict[str, JsonValue] | None:
+    try:
+        decoded_value: object = json.loads(
+            serialized_value,
+            parse_constant=_reject_invalid_json_constant,
+            parse_float=_decode_json_float,
+            parse_int=_decode_json_integer,
+        )
+    except (json.JSONDecodeError, _InvalidJsonConstantError, _InvalidJsonNumberError, RecursionError):
+        return None
+    try:
+        return _JSON_OBJECT_ADAPTER.validate_python(decoded_value, strict=True)
+    except ValidationError:
+        return None
+
+
+def _unwrap_callback_payload(callback: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+    if callback.get("type") != "interactive":
+        return callback
+    try:
+        return _SlackSocketModeEnvelope.model_validate(callback).payload
+    except ValidationError:
+        return None
+
+
+def _recognize_slack_submission(callback_payload: dict[str, JsonValue]) -> _SlackRecognitionPayload | None:
+    try:
+        return _SlackRecognitionPayload.model_validate(callback_payload)
+    except ValidationError:
+        return None
+
+
+def _validate_slack_submission(recognition: _SlackRecognitionPayload) -> _SlackSubmissionPayload | None:
+    try:
+        return _SlackSubmissionPayload.model_validate(recognition.model_dump(mode="python"))
+    except ValidationError:
+        return None
+
+
+def _encode_button_metadata(action_id: str, correlation_token: CorrelationToken) -> str:
+    metadata = _SlackButtonMetadata(
+        version=_CALLBACK_SCHEMA_VERSION,
+        action_id=action_id,
+        correlation_token=str(correlation_token),
+    )
+    return json.dumps(metadata.model_dump(mode="json"), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _render_card_blocks(intent: ResolvedForm, correlation_token: CorrelationToken) -> list[dict[str, object]]:
+    """Render one accepted form using the callback schema owned by this adapter."""
+
+    blocks: list[dict[str, object]] = []
+    if intent.title:
+        blocks.append({"type": "header", "text": {"type": "plain_text", "text": intent.title}})
+    input_ordinal = 0
+    for block in intent.blocks:
+        if isinstance(block, MarkdownText):
+            blocks.append({"type": "markdown", "text": block.text})
+            continue
+        input_name = block.output_variable_name
+        input_element: dict[str, object] = {"action_id": input_name}
+        if isinstance(block, ParagraphInput):
+            input_element.update({"type": "plain_text_input", "multiline": True})
+            if block.default_value is not None:
+                input_element["initial_value"] = block.default_value
+        elif isinstance(block, SelectInput):
+            options = [{"text": {"type": "plain_text", "text": option}, "value": option} for option in block.options]
+            input_element.update(
+                {
+                    "type": "static_select",
+                    "placeholder": {"type": "plain_text", "text": _STATIC_SELECT_PLACEHOLDER_TEXT},
+                    "options": options,
+                }
+            )
+            if block.default_value is not None:
+                input_element["initial_option"] = next(
+                    option for option in options if option["value"] == block.default_value
+                )
+        else:
+            raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
+        blocks.append(
+            {
+                "type": "input",
+                "block_id": _DIFY_INPUT_BLOCK_ID_TEMPLATE.format(input_ordinal),
+                "label": {"type": "plain_text", "text": input_name},
+                "element": input_element,
+            }
+        )
+        input_ordinal += 1
+    if intent.user_actions:
+        action_elements: list[dict[str, object]] = []
+        for action in intent.user_actions:
+            action_value = _encode_button_metadata(action.id, correlation_token)
+            if len(action_value) > _MAX_ACTION_VALUE_LENGTH:
+                raise DynamicCardMessagingError("Slack cannot preserve the correlation token.")
+            action_element: dict[str, object] = {
+                "type": "button",
+                "action_id": action.id,
+                "text": {"type": "plain_text", "text": action.title},
+                "value": action_value,
+            }
+            if action.button_style is ButtonStyle.PRIMARY:
+                action_element["style"] = "primary"
+            elif action.button_style is ButtonStyle.ACCENT:
+                action_element["style"] = "danger"
+            action_elements.append(action_element)
+        blocks.append(
+            {
+                "type": "actions",
+                "block_id": _DIFY_ACTIONS_BLOCK_ID,
+                "elements": action_elements,
+            }
+        )
+    return blocks
+
+
 def _optional_non_empty_string(value: object) -> str | None:
     if not isinstance(value, str) or not value.strip():
         return None
@@ -677,12 +1160,12 @@ def _card_unrepresentable_reason(intent: ResolvedForm) -> str | None:
             case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
                 if len(input_name) > _MAX_ACTION_ID_LENGTH or len(input_name) > _MAX_INPUT_LABEL_LENGTH:
                     return "Slack cannot preserve one card input identifier."
-                if not 1 <= len(options) <= _MAX_RADIO_OPTION_COUNT:
+                if not 1 <= len(options) <= _MAX_STATIC_SELECT_OPTION_COUNT:
                     return "Slack cannot preserve one select input's option count."
                 if any(
                     not option
-                    or len(option) > _MAX_RADIO_OPTION_TEXT_LENGTH
-                    or len(option) > _MAX_RADIO_OPTION_VALUE_LENGTH
+                    or len(option) > _MAX_STATIC_SELECT_OPTION_TEXT_LENGTH
+                    or len(option) > _MAX_STATIC_SELECT_OPTION_VALUE_LENGTH
                     for option in options
                 ):
                     return "Slack cannot preserve one select option."
