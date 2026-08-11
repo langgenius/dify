@@ -28,6 +28,22 @@ class KnowledgeFSAppAdmissionError(RuntimeError):
     """The app is not explicitly bound to an enabled KnowledgeFS channel."""
 
 
+class KnowledgeFSAppBindingNotEnabledError(KnowledgeFSAppAdmissionError):
+    """The requested app binding is missing, revoked, or outside the caller scope."""
+
+
+class KnowledgeFSAppChannelDisabledError(KnowledgeFSAppAdmissionError):
+    """The requested app caller channel is disabled for the control-space."""
+
+
+class KnowledgeFSAppSpaceUnavailableError(KnowledgeFSAppAdmissionError):
+    """The bound control-space is not active and provisioned for product traffic."""
+
+
+class KnowledgeFSAppAuthorizationNotReadyError(KnowledgeFSAppAdmissionError):
+    """Required local authorization policy or revision state is unavailable."""
+
+
 class KnowledgeFSAppPrincipalProfile(NamedTuple):
     tenant_id: str
     control_space_id: str
@@ -129,14 +145,14 @@ class KnowledgeFSAppAdmissionService:
                         KnowledgeFSControlSpace.id == AppKnowledgeFSSpaceJoin.control_space_id,
                     ),
                 )
-                .join(
+                .outerjoin(
                     KnowledgeFSExternalAccessPolicy,
                     sa.and_(
                         KnowledgeFSExternalAccessPolicy.tenant_id == AppKnowledgeFSSpaceJoin.tenant_id,
                         KnowledgeFSExternalAccessPolicy.control_space_id == AppKnowledgeFSSpaceJoin.control_space_id,
                     ),
                 )
-                .join(
+                .outerjoin(
                     KnowledgeFSAuthorizationRevision,
                     sa.and_(
                         KnowledgeFSAuthorizationRevision.tenant_id == AppKnowledgeFSSpaceJoin.tenant_id,
@@ -152,17 +168,20 @@ class KnowledgeFSAppAdmissionService:
                 )
             ).one_or_none()
             if row is None:
-                raise KnowledgeFSAppAdmissionError("KnowledgeFS app binding is not enabled")
+                raise KnowledgeFSAppBindingNotEnabledError("KnowledgeFS app binding is not enabled")
             join, control_space, policy, revision = row._t
+            if (
+                control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
+                or control_space.knowledge_space_id is None
+            ):
+                raise KnowledgeFSAppSpaceUnavailableError("KnowledgeFS control-space is not active or provisioned")
+            if policy is None or revision is None:
+                raise KnowledgeFSAppAuthorizationNotReadyError("KnowledgeFS authorization state is not ready")
             channel_enabled = (
                 policy.agent_enabled if caller_kind is KnowledgeFSAppSpaceJoinType.AGENT else policy.workflow_enabled
             )
-            if (
-                not channel_enabled
-                or control_space.state is not KnowledgeFSControlSpaceState.ACTIVE
-                or control_space.knowledge_space_id is None
-            ):
-                raise KnowledgeFSAppAdmissionError("KnowledgeFS app binding is not enabled")
+            if not channel_enabled:
+                raise KnowledgeFSAppChannelDisabledError(f"KnowledgeFS {caller_kind.value} channel is disabled")
             return KnowledgeFSAppPrincipalProfile(
                 tenant_id=tenant_id,
                 control_space_id=control_space_id,
@@ -182,5 +201,9 @@ class KnowledgeFSAppAdmissionService:
 __all__ = [
     "KnowledgeFSAppAdmissionError",
     "KnowledgeFSAppAdmissionService",
+    "KnowledgeFSAppAuthorizationNotReadyError",
+    "KnowledgeFSAppBindingNotEnabledError",
+    "KnowledgeFSAppChannelDisabledError",
     "KnowledgeFSAppPrincipalProfile",
+    "KnowledgeFSAppSpaceUnavailableError",
 ]

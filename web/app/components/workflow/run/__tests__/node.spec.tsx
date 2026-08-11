@@ -68,6 +68,25 @@ describe('Run NodePanel', () => {
     })
   })
 
+  it('localizes a KnowledgeFS Workflow access rejection instead of exposing its backend fallback', () => {
+    render(
+      <NodePanel
+        nodeInfo={createNodeInfo({
+          error:
+            '[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a',
+          expand: true,
+          node_type: BlockEnum.KnowledgeRetrievalV2,
+          status: NodeRunningStatus.Failed,
+        })}
+      />,
+    )
+
+    expect(
+      screen.getByText('workflow.nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/KnowledgeFS Space space-a/)).not.toBeInTheDocument()
+  })
+
   it('forwards iteration details through the real iteration trigger', async () => {
     const handleShowIterationDetail = vi.fn()
     const details = [

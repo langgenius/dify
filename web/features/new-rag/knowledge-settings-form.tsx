@@ -54,12 +54,18 @@ const SCORE_THRESHOLD_MAX = 1
 const NAME_ERROR_ID = 'knowledge-name-error'
 const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
+const WORKFLOW_ACCESS_DESCRIPTION_ID = 'knowledge-workflow-access-description'
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
 const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
 
 type BasicSaveSlice = 'members' | 'space'
 type SaveErrorSlice = 'basic' | 'externalAccess' | 'settings'
+
+type ExternalAccessDraft = {
+  apiEnabled: boolean
+  workflowEnabled: boolean
+}
 
 type SettingsDraft = {
   embeddingModel: DefaultModel | undefined
@@ -237,6 +243,7 @@ export function KnowledgeSettingsForm({
     )
     .map((permission) => permission.account_id)
   const initialApiEnabled = externalAccess.service_api_enabled && externalAccess.agent_enabled
+  const initialWorkflowEnabled = externalAccess.workflow_enabled
   const initialEmbeddingModel = toDefaultEmbeddingModel(settings.embedding)
   const initialReasoningModel = toDefaultReasoningModel(settings.retrieval)
   const initialRerankModel = toDefaultRerankModel(settings.retrieval)
@@ -256,6 +263,7 @@ export function KnowledgeSettingsForm({
   const [visibility, setVisibility] = useState(space.visibility)
   const [selectedMemberIds, setSelectedMemberIds] = useState(initialSelectedMemberIds)
   const [apiEnabled, setApiEnabled] = useState(initialApiEnabled)
+  const [workflowEnabled, setWorkflowEnabled] = useState(initialWorkflowEnabled)
   const [embeddingModel, setEmbeddingModel] = useState(initialEmbeddingModel)
   const [reasoningModel, setReasoningModel] = useState(initialReasoningModel)
   const [rerankModel, setRerankModel] = useState(initialRerankModel)
@@ -290,7 +298,10 @@ export function KnowledgeSettingsForm({
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const deleteCancelRef = useRef<HTMLButtonElement>(null)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
-  const pendingExternalAccessEnabledRef = useRef(initialApiEnabled)
+  const pendingExternalAccessRef = useRef<ExternalAccessDraft>({
+    apiEnabled: initialApiEnabled,
+    workflowEnabled: initialWorkflowEnabled,
+  })
   const completedBasicSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
   const handledMigrationIdRef = useRef<string | undefined>(undefined)
   const pendingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
@@ -522,25 +533,27 @@ export function KnowledgeSettingsForm({
     }
   }
 
-  const performExternalAccessSave = async (enabled: boolean) => {
+  const performExternalAccessSave = async (draft: ExternalAccessDraft) => {
     if (!canEdit || !canManageAccess || externalAccessMutation.isPending) return
 
-    pendingExternalAccessEnabledRef.current = enabled
+    pendingExternalAccessRef.current = draft
     setSaveErrorSlice(undefined)
     try {
       await externalAccessMutation.mutateAsync({
         body: {
-          agent_enabled: enabled,
+          agent_enabled: draft.apiEnabled,
           mcp_enabled: externalAccess.mcp_enabled,
-          service_api_enabled: enabled,
-          workflow_enabled: externalAccess.workflow_enabled,
+          service_api_enabled: draft.apiEnabled,
+          workflow_enabled: draft.workflowEnabled,
         },
         params: { control_space_id: space.control_space_id },
       })
-      setApiEnabled(enabled)
+      setApiEnabled(draft.apiEnabled)
+      setWorkflowEnabled(draft.workflowEnabled)
       await invalidateSettingsQueries()
     } catch {
       setApiEnabled(initialApiEnabled)
+      setWorkflowEnabled(initialWorkflowEnabled)
       setSaveErrorSlice('externalAccess')
     }
   }
@@ -642,7 +655,7 @@ export function KnowledgeSettingsForm({
 
   const retrySave = () => {
     if (saveErrorSlice === 'externalAccess') {
-      void performExternalAccessSave(pendingExternalAccessEnabledRef.current)
+      void performExternalAccessSave(pendingExternalAccessRef.current)
       return
     }
     if (saveErrorSlice === 'settings') {
@@ -932,7 +945,7 @@ export function KnowledgeSettingsForm({
               disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
               onCheckedChange={(checked) => {
                 setApiEnabled(checked)
-                void performExternalAccessSave(checked)
+                void performExternalAccessSave({ apiEnabled: checked, workflowEnabled })
               }}
             />
             <p
@@ -940,6 +953,27 @@ export function KnowledgeSettingsForm({
               className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
             >
               {t(($) => $['newKnowledge.settings.apiAccessDescription'])}
+            </p>
+          </div>
+        </SettingsRow>
+
+        <SettingsRow label={t(($) => $['newKnowledge.settings.workflowAccessLabel'])}>
+          <div className="flex min-h-7 items-center gap-2">
+            <Switch
+              aria-label={t(($) => $['newKnowledge.workflowAccess'])}
+              aria-describedby={WORKFLOW_ACCESS_DESCRIPTION_ID}
+              checked={workflowEnabled}
+              disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
+              onCheckedChange={(checked) => {
+                setWorkflowEnabled(checked)
+                void performExternalAccessSave({ apiEnabled, workflowEnabled: checked })
+              }}
+            />
+            <p
+              id={WORKFLOW_ACCESS_DESCRIPTION_ID}
+              className="min-w-0 flex-1 system-xs-regular text-text-tertiary"
+            >
+              {t(($) => $['newKnowledge.settings.workflowAccessDescription'])}
             </p>
           </div>
         </SettingsRow>

@@ -851,6 +851,7 @@ const WorkflowHistoryStoreInitializer = ({
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
   const workflowHistory = useStore((state) => state.workflowHistory)
+  const isInitializedRef = useRef(false)
   const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
     nodes,
     edges,
@@ -864,9 +865,10 @@ const WorkflowHistoryStoreInitializer = ({
     workflowStore.getState().setWorkflowHistory(initialWorkflowHistory)
     temporalStore.clear()
     temporalStore.resume()
+    isInitializedRef.current = true
   }, [initialWorkflowHistory, workflowStore])
 
-  if (workflowHistory !== initialWorkflowHistory) return null
+  if (!isInitializedRef.current && workflowHistory !== initialWorkflowHistory) return null
 
   return children
 }

@@ -19,7 +19,12 @@ from graphon.nodes.base.node import Node
 from graphon.variables import StringSegment
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
-from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
+from services.knowledge_fs.app_admission_service import (
+    KnowledgeFSAppAdmissionError,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
+)
 from services.knowledge_fs.app_binding_management import KnowledgeFSAppBindingManagementError
 from services.knowledge_fs.app_execution_capability import (
     KnowledgeResourceRef,
@@ -203,8 +208,27 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                     ),
                     payload=payload,
                 )
+            except KnowledgeFSAppChannelDisabledError as exc:
+                raise KnowledgeFSRetrievalBindingError(
+                    "[knowledge_fs_workflow_access_disabled] "
+                    f"Workflow access is disabled for KnowledgeFS Space {control_space_id}; "
+                    "ask a workspace owner to enable the Workflow channel"
+                ) from exc
+            except KnowledgeFSAppSpaceUnavailableError as exc:
+                raise KnowledgeFSRetrievalBindingError(
+                    "[knowledge_fs_space_unavailable] "
+                    f"KnowledgeFS Space {control_space_id} is not ready for workflow retrieval; "
+                    "select an active, provisioned Space"
+                ) from exc
+            except KnowledgeFSAppAuthorizationNotReadyError as exc:
+                raise KnowledgeFSRetrievalBindingError(
+                    "[knowledge_fs_authorization_not_ready] "
+                    f"KnowledgeFS Space {control_space_id} permissions are not ready; "
+                    "ask a workspace owner to finish KnowledgeFS permission setup"
+                ) from exc
             except KnowledgeFSAppAdmissionError as exc:
                 raise KnowledgeFSRetrievalBindingError(
+                    "[knowledge_fs_binding_not_enabled] "
                     f"KnowledgeFS Space {control_space_id} is not bound to this workflow"
                 ) from exc
             except ValidationError as exc:

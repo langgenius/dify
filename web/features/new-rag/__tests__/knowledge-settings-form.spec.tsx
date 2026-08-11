@@ -460,6 +460,76 @@ describe('KnowledgeSettingsForm', () => {
     expect(toastMock.success).not.toHaveBeenCalled()
   })
 
+  it('enables Workflow access independently and preserves API and MCP channels', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      externalAccess: {
+        ...externalAccess,
+        workflow_enabled: false,
+      },
+    })
+
+    const workflowAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.workflowAccess',
+    })
+    expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(workflowAccessSwitch).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.workflowAccessDescription',
+    )
+    await user.click(workflowAccessSwitch)
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
+        {
+          body: {
+            agent_enabled: true,
+            mcp_enabled: true,
+            service_api_enabled: true,
+            workflow_enabled: true,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+    await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+  })
+
+  it('restores the Workflow access switch after failure and retries the intended value', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
+    renderForm({
+      externalAccess: {
+        ...externalAccess,
+        workflow_enabled: false,
+      },
+    })
+
+    const workflowAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.workflowAccess',
+    })
+    await user.click(workflowAccessSwitch)
+
+    expect(await screen.findByText('dataset.newKnowledge.settings.saveFailed')).toBeInTheDocument()
+    expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
+      {
+        body: {
+          agent_enabled: true,
+          mcp_enabled: true,
+          service_api_enabled: true,
+          workflow_enabled: true,
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
+  })
+
   it('restores the API access switch after failure and retries the intended value', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
@@ -783,6 +853,9 @@ describe('KnowledgeSettingsForm', () => {
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
     ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
       screen.getByRole('button', {
@@ -1043,6 +1116,9 @@ describe('KnowledgeSettingsForm', () => {
     ).toBeDisabled()
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
     ).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.queryByRole('button', {

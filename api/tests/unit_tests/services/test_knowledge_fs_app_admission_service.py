@@ -19,22 +19,26 @@ from models.knowledge_fs import (
 from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppAdmissionError,
     KnowledgeFSAppAdmissionService,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppBindingNotEnabledError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
+)
+
+_SQLITE_TABLES = (
+    KnowledgeFSControlSpace,
+    KnowledgeFSExternalAccessPolicy,
+    KnowledgeFSAuthorizationRevision,
+    KnowledgeFSCapabilityIssuanceAudit,
+    KnowledgeFSCapabilityIssuanceReservation,
+    KnowledgeFSLifecycleOutbox,
+    AppKnowledgeFSSpaceJoin,
 )
 
 
 @pytest.mark.parametrize(
     "sqlite_session",
-    [
-        (
-            KnowledgeFSControlSpace,
-            KnowledgeFSExternalAccessPolicy,
-            KnowledgeFSAuthorizationRevision,
-            KnowledgeFSCapabilityIssuanceAudit,
-            KnowledgeFSCapabilityIssuanceReservation,
-            KnowledgeFSLifecycleOutbox,
-            AppKnowledgeFSSpaceJoin,
-        )
-    ],
+    [_SQLITE_TABLES],
     indirect=True,
 )
 def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_session: Session) -> None:
@@ -70,7 +74,7 @@ def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_sessi
     sqlite_session.commit()
     service = KnowledgeFSAppAdmissionService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
 
-    with pytest.raises(KnowledgeFSAppAdmissionError):
+    with pytest.raises(KnowledgeFSAppChannelDisabledError) as caught:
         service.admit(
             tenant_id="tenant-1",
             app_id="app-1",
@@ -78,6 +82,7 @@ def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_sessi
             caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
             operation_id="createResearchTask",
         )
+    assert isinstance(caught.value, KnowledgeFSAppAdmissionError)
 
     policy.agent_enabled = True
     sqlite_session.commit()
@@ -125,3 +130,108 @@ def test_agent_admission_requires_explicit_join_and_enabled_channel(sqlite_sessi
     assert revision is not None
     assert revision.external_access_epoch == 5
     assert revision.revoke_sequence == 1
+
+
+@pytest.mark.parametrize(
+    ("join_status", "space_state", "include_policy", "workflow_enabled", "include_revision", "expected_error"),
+    [
+        (None, KnowledgeFSControlSpaceState.ACTIVE, True, True, True, KnowledgeFSAppBindingNotEnabledError),
+        (
+            KnowledgeFSAppSpaceJoinStatus.REVOKED,
+            KnowledgeFSControlSpaceState.ACTIVE,
+            True,
+            True,
+            True,
+            KnowledgeFSAppBindingNotEnabledError,
+        ),
+        (
+            KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+            KnowledgeFSControlSpaceState.ACTIVE,
+            True,
+            False,
+            True,
+            KnowledgeFSAppChannelDisabledError,
+        ),
+        (
+            KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+            KnowledgeFSControlSpaceState.PROVISIONING,
+            True,
+            True,
+            True,
+            KnowledgeFSAppSpaceUnavailableError,
+        ),
+        (
+            KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+            KnowledgeFSControlSpaceState.ACTIVE,
+            False,
+            True,
+            True,
+            KnowledgeFSAppAuthorizationNotReadyError,
+        ),
+        (
+            KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+            KnowledgeFSControlSpaceState.ACTIVE,
+            True,
+            True,
+            False,
+            KnowledgeFSAppAuthorizationNotReadyError,
+        ),
+    ],
+)
+@pytest.mark.parametrize("sqlite_session", [_SQLITE_TABLES], indirect=True)
+def test_workflow_admission_reports_actionable_local_rejection_reason(
+    sqlite_session: Session,
+    join_status: KnowledgeFSAppSpaceJoinStatus | None,
+    space_state: KnowledgeFSControlSpaceState,
+    include_policy: bool,
+    workflow_enabled: bool,
+    include_revision: bool,
+    expected_error: type[KnowledgeFSAppAdmissionError],
+) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-1",
+        knowledge_space_id="space-1",
+        state=space_state,
+    )
+    records: list[object] = [space]
+    if include_policy:
+        records.append(
+            KnowledgeFSExternalAccessPolicy(
+                tenant_id="tenant-1",
+                control_space_id=space.id,
+                workflow_enabled=workflow_enabled,
+            )
+        )
+    if include_revision:
+        records.append(
+            KnowledgeFSAuthorizationRevision(
+                tenant_id="tenant-1",
+                control_space_id=space.id,
+            )
+        )
+    if join_status is not None:
+        records.append(
+            AppKnowledgeFSSpaceJoin(
+                tenant_id="tenant-1",
+                control_space_id=space.id,
+                app_id="app-1",
+                join_type=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                status=join_status,
+            )
+        )
+    sqlite_session.add_all(records)
+    sqlite_session.commit()
+    service = KnowledgeFSAppAdmissionService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
+
+    with pytest.raises(expected_error) as caught:
+        service.admit(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            control_space_id=space.id,
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            operation_id="retrieveEvidence",
+        )
+
+    assert isinstance(caught.value, KnowledgeFSAppAdmissionError)

@@ -1,5 +1,7 @@
 import type { Edge, Node } from '../types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { useStoreApi } from 'reactflow'
 import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
@@ -45,6 +47,9 @@ const ContextConsumer = () => {
       {`history:${store.getState().nodes.length}`}
       {` datasets:${datasetCount}`}
       {` reactflow:${String(!!reactFlowStore)}`}
+      <button type="button" onClick={() => store.setState({ ...store.getState() })}>
+        Save history
+      </button>
     </div>
   )
 }
@@ -58,6 +63,24 @@ describe('WorkflowWithDefaultContext', () => {
         </WorkflowWithDefaultContext>
       </WorkflowContextProvider>,
     )
+
+    expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
+  })
+
+  it('keeps children mounted after the workflow history changes', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <StrictMode>
+        <WorkflowContextProvider>
+          <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
+            <ContextConsumer />
+          </WorkflowWithDefaultContext>
+        </WorkflowContextProvider>
+      </StrictMode>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Save history' }))
 
     expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
   })

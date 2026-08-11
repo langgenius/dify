@@ -767,6 +767,51 @@ describe('createWorkflowStreamHandlers', () => {
     )
   })
 
+  it('should localize a KnowledgeFS workflow admission failure before notifying the user', () => {
+    const failureSetup = setupHandlers()
+    const failureHandlers = failureSetup.handlers as Required<
+      Pick<IOtherOptions, 'onWorkflowFinished'>
+    >
+
+    act(() => {
+      failureHandlers.onWorkflowFinished({
+        task_id: 'task-knowledge-fs',
+        workflow_run_id: 'run-knowledge-fs',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-knowledge-fs',
+          workflow_id: 'wf-1',
+          status: WorkflowRunningStatus.Failed,
+          outputs: null,
+          error:
+            '[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a',
+          elapsed_time: 0,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 0,
+        },
+      })
+    })
+
+    const localizedKey = 'nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled'
+    expect(failureSetup.notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: localizedKey,
+    })
+    expect(failureSetup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        status: WorkflowRunningStatus.Failed,
+        error: localizedKey,
+      }),
+    )
+  })
+
   it('should cover existing workflow starts, stopped runs, and non-string outputs', () => {
     const setup = setupHandlers()
     let existingProcess: WorkflowProcess = {

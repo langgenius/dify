@@ -17,7 +17,12 @@ from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import StringSegment
-from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
+from services.knowledge_fs.app_admission_service import (
+    KnowledgeFSAppAdmissionError,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
+)
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalTestResponse
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -286,10 +291,56 @@ def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> Non
 
     assert rejected.status == WorkflowNodeExecutionStatus.FAILED
     assert rejected.error_type == "KnowledgeFSRetrievalBindingError"
+    assert rejected.error is not None
+    assert rejected.error.startswith("[knowledge_fs_binding_not_enabled] ")
+    assert rejected.error == (
+        "[knowledge_fs_binding_not_enabled] KnowledgeFS Space space-a is not bound to this workflow"
+    )
     assert invalid_query.status == WorkflowNodeExecutionStatus.FAILED
     assert invalid_query.error_type == "KnowledgeFSRetrievalConfigurationError"
     assert oversized_query.status == WorkflowNodeExecutionStatus.FAILED
     assert oversized_query.error_type == "KnowledgeFSRetrievalConfigurationError"
+
+
+@pytest.mark.parametrize(
+    ("admission_error", "reason_marker", "expected_message"),
+    [
+        (
+            KnowledgeFSAppChannelDisabledError("KnowledgeFS workflow channel is disabled"),
+            "knowledge_fs_workflow_access_disabled",
+            "[knowledge_fs_workflow_access_disabled] Workflow access is disabled for KnowledgeFS Space space-a; "
+            "ask a workspace owner to enable the Workflow channel",
+        ),
+        (
+            KnowledgeFSAppSpaceUnavailableError("KnowledgeFS control-space is not active or provisioned"),
+            "knowledge_fs_space_unavailable",
+            "[knowledge_fs_space_unavailable] KnowledgeFS Space space-a is not ready for workflow retrieval; "
+            "select an active, provisioned Space",
+        ),
+        (
+            KnowledgeFSAppAuthorizationNotReadyError("KnowledgeFS authorization state is not ready"),
+            "knowledge_fs_authorization_not_ready",
+            "[knowledge_fs_authorization_not_ready] KnowledgeFS Space space-a permissions are not ready; "
+            "ask a workspace owner to finish KnowledgeFS permission setup",
+        ),
+    ],
+)
+def test_node_maps_typed_admission_rejections_to_actionable_binding_errors(
+    admission_error: KnowledgeFSAppAdmissionError,
+    reason_marker: str,
+    expected_message: str,
+) -> None:
+    result = _node(
+        service=RecordingCapabilityService({"space-a": admission_error}),
+        spaces=["space-a"],
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.outputs == {}
+    assert result.error_type == "KnowledgeFSRetrievalBindingError"
+    assert result.error is not None
+    assert result.error.startswith(f"[{reason_marker}] ")
+    assert result.error == expected_message
 
 
 def test_node_fails_closed_when_any_selected_space_is_unavailable() -> None:
