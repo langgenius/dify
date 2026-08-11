@@ -176,7 +176,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                                 [item.key]: e.target.value,
                               })
                             }}
-                            maxLength={item.max_length}
+                            maxLength={item.max_length || undefined}
                           />
                         )}
                         {item.type === 'paragraph' && (

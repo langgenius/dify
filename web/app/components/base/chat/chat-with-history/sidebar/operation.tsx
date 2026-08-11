@@ -51,6 +51,7 @@ const Operation: FC<Props> = ({
         render={(props, state) => (
           <ActionButton
             {...props}
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             className={cn(
               isItemHovering || state.open
                 ? 'pointer-events-auto opacity-100'

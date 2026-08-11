@@ -113,6 +113,12 @@ describe('InviteSettingsPage', () => {
     mockActivateMember.mockResolvedValue({ result: 'success' })
   })
 
+  it('exposes the page title as the main heading', () => {
+    render(<InviteSettingsPage />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Activation payload', () => {
     it('should default language to the current UI locale', async () => {
       render(<InviteSettingsPage />)

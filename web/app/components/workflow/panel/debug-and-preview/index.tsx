@@ -33,6 +33,9 @@ const DebugAndPreview = () => {
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
   const visibleVariables = variables
+  const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
+  const restartLabel = t(($) => $['operation.refresh'], { ns: 'common' })
+  const userInputFieldLabel = t(($) => $['panel.userInputField'], { ns: 'workflow' })
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
@@ -94,12 +97,12 @@ const DebugAndPreview = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 className="size-4" />
+                  <ActionButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
+                    <RefreshCcw01 aria-hidden="true" className="size-4" />
                   </ActionButton>
                 }
               />
-              <TooltipContent>{t(($) => $['operation.refresh'], { ns: 'common' })}</TooltipContent>
+              <TooltipContent>{restartLabel}</TooltipContent>
             </Tooltip>
             {visibleVariables.length > 0 && (
               <div className="relative">
@@ -107,16 +110,16 @@ const DebugAndPreview = () => {
                   <TooltipTrigger
                     render={
                       <ActionButton
+                        aria-label={userInputFieldLabel}
+                        aria-pressed={expanded}
                         state={expanded ? ActionButtonState.Active : undefined}
                         onClick={() => setExpanded(!expanded)}
                       >
-                        <RiEqualizer2Line className="size-4" />
+                        <RiEqualizer2Line aria-hidden="true" className="size-4" />
                       </ActionButton>
                     }
                   />
-                  <TooltipContent>
-                    {t(($) => $['panel.userInputField'], { ns: 'workflow' })}
-                  </TooltipContent>
+                  <TooltipContent>{userInputFieldLabel}</TooltipContent>
                 </Tooltip>
                 {expanded && (
                   <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
@@ -124,12 +127,14 @@ const DebugAndPreview = () => {
               </div>
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <div
-              className="flex size-6 cursor-pointer items-center justify-center"
+            <button
+              type="button"
+              aria-label={closeLabel}
+              className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={handleCancelDebugAndPreviewPanel}
             >
-              <RiCloseLine className="size-4 text-text-tertiary" />
-            </div>
+              <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+            </button>
           </div>
         </div>
         <div className="grow overflow-y-auto rounded-b-2xl">

@@ -4119,7 +4119,8 @@ Model class for i18n object.
 | activeEntityIds | [ string ] |  | No |
 | knowledgeSpaceId | string |  | Yes |
 | mode | string |  | No |
-| query | string |  | Yes |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | sessionId | string |  | No |
 
 #### KnowledgeFSAnswerTraceResponse
@@ -4226,9 +4227,11 @@ Model class for i18n object.
 | document_revision | integer |  | Yes |
 | enabled | boolean |  | Yes |
 | id | string |  | Yes |
+| kind | string, <br>**Available values:** "chunk", "image", "section", "summary", "table", <br>**Default:** chunk | *Enum:* `"chunk"`, `"image"`, `"section"`, `"summary"`, `"table"` | No |
 | knowledge_space_id | string |  | Yes |
 | ordinal | integer |  | Yes |
 | parent_chunk_id | string |  | No |
+| section_path | [ string ] |  | No |
 | text | string |  | Yes |
 | token_count | integer |  | Yes |
 | user_metadata | object |  | Yes |
@@ -4286,7 +4289,7 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | child_node_ids | [ string ] |  | No |
-| children | [ object ] |  | No |
+| children | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | No |
 | end_offset | integer |  | No |
 | end_page | integer |  | No |
 | id | string |  | Yes |
@@ -4503,8 +4506,15 @@ Model class for i18n object.
 | activeDocumentIds | [ string ] |  | No |
 | activeEntityIds | [ string ] |  | No |
 | mode | string |  | No |
-| query | string |  | Yes |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | sessionId | string |  | No |
+
+#### KnowledgeFSQueryImageReference
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| uploadFileId | string |  | Yes |
 
 #### KnowledgeFSQueryResponse
 
@@ -4523,7 +4533,8 @@ Model class for i18n object.
 | limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
 | metadata | object |  | No |
 | mode | string |  | No |
-| query | string |  | Yes |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | topK | integer |  | No |
 
 #### KnowledgeFSResearchTaskLimits
@@ -4580,7 +4591,8 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | budgetUsd | number |  | No |
 | mode | string |  | No |
-| query | string |  | Yes |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | topK | integer |  | No |
 
 #### KnowledgeFSResearchTaskPlanResponse
@@ -4591,6 +4603,7 @@ Model class for i18n object.
 | estimates | object |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | retrieval_plan | [KnowledgeFSResearchTaskRetrievalPlanResponse](#knowledgefsresearchtaskretrievalplanresponse) |  | Yes |
 | steps | [ object ] |  | Yes |
 | strategy_version | string |  | Yes |
@@ -4610,6 +4623,7 @@ Model class for i18n object.
 | metadata | object |  | Yes |
 | mode | string |  | No |
 | query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
 | stage | string, <br>**Available values:** "analyzing", "canceled", "completed", "failed", "generating", "paused", "planning", "queued", "retrieving" | *Enum:* `"analyzing"`, `"canceled"`, `"completed"`, `"failed"`, `"generating"`, `"paused"`, `"planning"`, `"queued"`, `"retrieving"` | Yes |
 | top_k | integer |  | No |
 | updated_at | number |  | Yes |
@@ -4829,14 +4843,33 @@ Model class for i18n object.
 | credential_configured | boolean |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
+| last_synced_at | string |  | No |
 | metadata | object |  | Yes |
 | name | string |  | Yes |
 | permission_scope | [ string ] |  | Yes |
 | status | string, <br>**Available values:** "active", "disabled", "error", "syncing" | *Enum:* `"active"`, `"disabled"`, `"error"`, `"syncing"` | Yes |
+| sync_policy | [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse) |  | No |
+| sync_workflow | [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) |  | No |
 | type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
 | updated_at | dateTime |  | Yes |
 | uri | string |  | Yes |
 | version | integer |  | Yes |
+
+#### KnowledgeFSSourceSyncPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| custom_interval_seconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expected_source_version | integer |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual", "provider" | *Enum:* `"custom"`, `"interval"`, `"manual"`, `"provider"` | Yes |
+| next_run_at | string |  | No |
+| revision | integer |  | Yes |
+| source_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
 
 #### KnowledgeFSSourceUpdatePayload
 
@@ -4846,6 +4879,30 @@ Model class for i18n object.
 | metadata | object |  | No |
 | name | string |  | No |
 | status | string |  | No |
+
+#### KnowledgeFSSourceWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_at | string |  | No |
+| checkpoint | string |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| cursor | string |  | No |
+| execution_attempts | integer |  | Yes |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_error_code | string |  | No |
+| last_error_message | string |  | No |
+| max_execution_attempts | integer |  | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_skipped | integer |  | Yes |
+| progress_total | integer |  | No |
+| source_id | string |  | No |
+| state | string |  | Yes |
+| updated_at | dateTime |  | Yes |
 
 #### KnowledgeFSSourceWorkspacePagesResponse
 
@@ -4911,6 +4968,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | completed | boolean |  | Yes |
 | created_at | dateTime |  | Yes |
+| duration_ms | integer |  | No |
 | evidence_bundle_id | string |  | No |
 | evidence_state | string |  | No |
 | final_score | number |  | No |
@@ -4918,6 +4976,7 @@ Model class for i18n object.
 | mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
 | profile | [KnowledgeFSTraceProfileResponse](#knowledgefstraceprofileresponse) |  | Yes |
 | query | string |  | Yes |
+| result_count | integer |  | Yes |
 | scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
 | stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
 

@@ -2478,6 +2478,8 @@ export const zToolParameterType = z.enum([
   'array',
   'boolean',
   'checkbox',
+  'date',
+  'date-range',
   'dynamic-select',
   'file',
   'files',
@@ -3154,7 +3156,7 @@ export const zPluginParameterAutoGenerate = z.object({
 /**
  * ToolParameter
  *
- * Overrides type
+ * Tool-specific parameter declaration and invocation-value normalization.
  */
 export const zToolParameter = z.object({
   auto_generate: zPluginParameterAutoGenerate.nullish(),
@@ -3175,6 +3177,7 @@ export const zToolParameter = z.object({
   llm_description: z.string().nullish(),
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),
+  multiple: z.boolean().optional().default(false),
   name: z.string(),
   options: z.array(zPluginParameterOption).optional(),
   placeholder: zI18nObject.nullish(),

@@ -75,11 +75,10 @@ async function renderModal(appId?: string) {
   return { ...result, onClose }
 }
 
-async function confirmFirstKeyDeletion() {
+async function confirmKeyDeletion(accessibleName: string) {
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const deleteButton = document.body.querySelectorAll('button.action-btn')[1]
-  expect(deleteButton).toBeInTheDocument()
-  await user.click(deleteButton!)
+  const deleteButton = screen.getByRole('button', { name: accessibleName })
+  await user.click(deleteButton)
   await act(async () => {
     vi.runAllTimers()
   })
@@ -166,6 +165,12 @@ describe('SecretKeyModal', () => {
     appApiKeys = {
       data: [
         {
+          id: 'app-key-0',
+          token: 'other-app-secret-token-987654321',
+          type: 'app',
+          created_at: 1,
+        },
+        {
           id: 'app-key-1',
           token: 'app-secret-token-123456789',
           type: 'app',
@@ -175,7 +180,7 @@ describe('SecretKeyModal', () => {
     }
     await renderModal('app-123')
 
-    await confirmFirstKeyDeletion()
+    await confirmKeyDeletion('common.operation.delete app...cret-token-123456789')
 
     await waitFor(() => {
       expect(deleteAppApiKey).toHaveBeenCalledWith({
@@ -188,6 +193,12 @@ describe('SecretKeyModal', () => {
     datasetApiKeys = {
       data: [
         {
+          id: 'dataset-key-0',
+          token: 'other-dataset-secret-token-987654321',
+          type: 'dataset',
+          created_at: 1,
+        },
+        {
           id: 'dataset-key-1',
           token: 'dataset-secret-token-123456789',
           type: 'dataset',
@@ -197,7 +208,7 @@ describe('SecretKeyModal', () => {
     }
     await renderModal()
 
-    await confirmFirstKeyDeletion()
+    await confirmKeyDeletion('common.operation.delete dat...cret-token-123456789')
 
     await waitFor(() => {
       expect(deleteDatasetApiKey).toHaveBeenCalledWith({

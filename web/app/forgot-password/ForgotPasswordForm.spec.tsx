@@ -40,6 +40,7 @@ describe('ForgotPasswordForm', () => {
     render(<ForgotPasswordForm />)
 
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
   })
 
   it('should show validation error when email is empty', async () => {

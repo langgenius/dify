@@ -12,6 +12,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.common.session import with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
@@ -197,12 +198,13 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "App ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
+    @agent_manage_required_for_agent_app
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for an app"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         )
 
     @console_ns.doc("create_app_api_key")
@@ -213,12 +215,13 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @with_current_tenant_id
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     def post(self, session: Session, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for an app"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         ), 201
 
     resource_type = ApiTokenType.APP
@@ -236,6 +239,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     def delete(
         self,
@@ -247,7 +251,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for an app"""
         self._delete_api_key(
-            str(resource_id),
+            str(resource_id),  # pyrefly: ignore[unnecessary-type-conversion]
             str(api_key_id),
             current_tenant_id,
             current_user,
@@ -272,7 +276,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Get all API keys for a dataset"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         )
 
     @console_ns.doc("create_dataset_api_key")
@@ -288,7 +292,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         ), 201
 
     resource_type = ApiTokenType.DATASET
@@ -317,7 +321,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for a dataset"""
         self._delete_api_key(
-            str(resource_id),
+            str(resource_id),  # pyrefly: ignore[unnecessary-type-conversion]
             str(api_key_id),
             current_tenant_id,
             current_user,
