@@ -14,5 +14,3 @@ const Icon = ({
 }) => <IconBase {...props} ref={ref} data={data as IconData} />
 
 Icon.displayName = 'SparklesSoftAccent'
-
-export default Icon
