@@ -228,8 +228,15 @@ export const uploadRemoteFileInfo = (
 export const sendEMailLoginCode = (
   email: string,
   language = 'en-US',
+  turnstileToken?: string,
 ): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+  post<CommonResponse & { data: string }>('/email-code-login', {
+    body: {
+      email,
+      language,
+      ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
+    },
+  })
 
 export const emailLoginWithCode = (data: {
   email: string

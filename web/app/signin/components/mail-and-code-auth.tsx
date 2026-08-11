@@ -44,7 +44,11 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
         return
       }
       setLoading(true)
-      const ret = await sendEMailLoginCode(email, locale)
+      const ret = await sendEMailLoginCode(
+        email,
+        locale,
+        isTurnstileRequired ? turnstileToken : undefined,
+      )
       if (ret.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)

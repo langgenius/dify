@@ -138,7 +138,11 @@ describe('MailAndCodeAuth', () => {
     await user.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith('user@example.com', 'en-US')
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        'en-US',
+        'turnstile-token',
+      )
     })
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
   })
