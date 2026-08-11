@@ -610,9 +610,11 @@ function render(
   {
     appEnvironments = APP_ENVIRONMENTS,
     environmentDeployments = APP_ENVIRONMENT_DEPLOYMENTS,
+    publishedWorkflowVersions = PUBLISHED_WORKFLOW_VERSIONS,
   }: {
     appEnvironments?: AppEnvironment[]
     environmentDeployments?: EnvironmentDeployment[]
+    publishedWorkflowVersions?: WorkflowResponse[]
   } = {},
 ) {
   const queryClient = createConsoleQueryClient()
@@ -637,7 +639,7 @@ function render(
     pages: [
       {
         has_more: false,
-        items: PUBLISHED_WORKFLOW_VERSIONS,
+        items: publishedWorkflowVersions,
         limit: 10,
         page: 1,
       },
@@ -664,8 +666,7 @@ vi.mock('react-i18next', async () => {
     'deployments.deployTab.confirmUndeploy': 'Undeploy',
     'deployments.studio.undeployConfirmDesc':
       "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
-    'deployments.studio.undeployConfirmTitle':
-      'Undeploy {{versionName}} from {{envName}}',
+    'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
     'deployments.deployTab.undeployConfirmWarning':
       'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
@@ -965,6 +966,26 @@ describe('AppDeploy', () => {
     expect(within(dialog).queryByText('deployments.studio.current')).not.toBeInTheDocument()
     expect(within(dialog).getByText('Latest production workflow')).toBeInTheDocument()
     expect(within(dialog).getByText('Published 17 days ago by Alice')).toBeInTheDocument()
+  })
+
+  it('links to the workflow publisher when the version picker has no published versions', async () => {
+    const user = userEvent.setup()
+    render(<AppDeploy />, { publishedWorkflowVersions: [] })
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(await screen.findByRole('menuitem', { name: /Dev/ }))
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    expect(
+      within(dialog).getByText('deployments.studio.accessPoint.noPublishedTitle'),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('link', {
+        name: 'deployments.studio.accessPoint.goToPublish',
+      }),
+    ).toHaveAttribute('href', '/app/app-1/workflow')
   })
 
   it('continues from version selection to deployment configuration', async () => {

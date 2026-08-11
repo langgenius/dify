@@ -38,7 +38,7 @@ function DeploymentDialogSession({
           onClose={onClose}
         />
       ) : (
-        <VersionSelection request={request} onSelect={setSelectedVersion} />
+        <VersionSelection appId={appId} request={request} onSelect={setSelectedVersion} />
       )}
     </DialogContent>
   )

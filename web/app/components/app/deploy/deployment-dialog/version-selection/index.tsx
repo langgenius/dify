@@ -9,6 +9,7 @@ import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/d
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { useInfiniteScroll } from '../../hooks/use-infinite-scroll'
 import {
   appWorkflowVersionsAtom,
@@ -95,11 +96,13 @@ function VersionList({
   className,
   currentVersionId,
   disabled = false,
+  publishHref,
   onSelect,
 }: {
   className?: string
   currentVersionId?: string
   disabled?: boolean
+  publishHref?: string
   onSelect: (version: DeploymentVersion) => void
 }) {
   const { t: tCommon } = useTranslation('common')
@@ -151,9 +154,21 @@ function VersionList({
         </p>
       )}
       {!isLoading && !versionsError && versions.length === 0 && (
-        <p className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-          {t(($) => $['studio.accessPoint.noPublishedTitle'])}
-        </p>
+        <div className="flex flex-col items-center gap-2 px-2 py-6">
+          <p className="text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['studio.accessPoint.noPublishedTitle'])}
+          </p>
+          {publishHref && (
+            <Button
+              size="medium"
+              render={<Link href={publishHref} />}
+              className="flex items-center gap-1"
+            >
+              {t(($) => $['studio.accessPoint.goToPublish'])}
+              <span aria-hidden className="i-ri-arrow-right-line size-4" />
+            </Button>
+          )}
+        </div>
       )}
       {isFetchingNextPage && versions.length > 0 && (
         <div
@@ -177,9 +192,11 @@ function versionSelectionTitle(request: DeploymentDialogRequest, deployTo: strin
 }
 
 export function VersionSelection({
+  appId,
   request,
   onSelect,
 }: {
+  appId: string
   request: DeploymentDialogRequest
   onSelect: (version: DeploymentVersion) => void
 }) {
@@ -207,6 +224,7 @@ export function VersionSelection({
       <VersionList
         className="px-4 pt-2 pb-4"
         currentVersionId={request.currentVersionId}
+        publishHref={`/app/${appId}/workflow`}
         onSelect={onSelect}
       />
     </>
