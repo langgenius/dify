@@ -20,7 +20,7 @@ const ControlledSearchInput = () => {
   return <SearchInput value={value} onChange={setValue} />
 }
 
-describe('education-apply/search-input', () => {
+describe('education/apply/search-input', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     educationMocks.schools = ['Alpha University', 'Beta College']
@@ -37,6 +37,7 @@ describe('education-apply/search-input', () => {
       /(?:^|\.)form\.schoolName\.placeholder(?=$|:)/,
     ) as HTMLInputElement
     expect(input.type).toBe('text')
+    expect(input).toHaveAccessibleName('education.form.schoolName.title')
 
     await user.type(input, 'Alpha')
 
@@ -60,9 +61,9 @@ describe('education-apply/search-input', () => {
 
     expect(screen.getByText('Alpha University')).toBeInTheDocument()
 
-    await user.click(screen.getByText('Beta College'))
+    await user.click(screen.getByRole('option', { name: 'Beta College' }))
 
-    expect(screen.getByDisplayValue('Beta College')).toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toHaveValue('Beta College')
     expect(screen.queryByText('Alpha University')).not.toBeInTheDocument()
   })
 
@@ -77,7 +78,7 @@ describe('education-apply/search-input', () => {
       'A',
     )
 
-    const scrollContainer = screen.getByText('Alpha University').parentElement as HTMLDivElement
+    const scrollContainer = screen.getByRole('listbox')
     Object.defineProperties(scrollContainer, {
       scrollTop: {
         value: 60,

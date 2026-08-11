@@ -3,3 +3,5 @@ export type SearchParams = {
   page?: number
   limit?: number
 }
+
+export type EducationRole = 'Student' | 'Teacher' | 'School-Administrator'

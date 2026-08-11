@@ -212,7 +212,7 @@ vi.mock('@/context/modal-context', () => ({
     }),
 }))
 
-vi.mock('@/app/education-apply/use-expire-notice', () => ({
+vi.mock('@/app/education/expire-notice/use-expire-notice', () => ({
   useEducationExpireNotice: () => [
     mockEducationExpireNotice.value
       ? { accountId: 'user-1', expireAt: 1, expired: false, phase: 'expiring' }

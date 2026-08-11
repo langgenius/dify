@@ -1,7 +1,6 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RiExternalLinkLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,9 +9,6 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
-import { useEducationVerify } from '@/service/use-education'
-import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
 type ExpireNoticeModalPayloadProps = {
   expireAt: number
@@ -34,16 +30,6 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   const eduDocLink = docLink('/use-dify/workspace/subscription-management#dify-for-education')
   const { formatTime } = useTimestamp()
   const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
-  const { mutateAsync } = useEducationVerify()
-  const router = useRouter()
-  const handleVerify = async () => {
-    const { token } = await mutateAsync()
-    if (token) router.push(`/education-apply?token=${token}`)
-  }
-  const handleConfirm = async () => {
-    await handleVerify()
-    onClose()
-  }
 
   return (
     <Dialog
@@ -104,8 +90,8 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <div>{t(($) => $.learn, { ns: 'education' })}</div>
-            <RiExternalLinkLine className="size-3" />
+            <span>{t(($) => $.learn, { ns: 'education' })}</span>
+            <span className="i-ri-external-link-line size-3" aria-hidden="true" />
           </Link>
           <div className="flex space-x-2">
             {expired && deploymentEdition === 'CLOUD' ? (
@@ -116,19 +102,26 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
                 }}
                 className="flex items-center"
               >
-                <SparklesSoftAccent className="size-4" />
-                <div className="text-components-button-secondary-accent-text">
+                <span
+                  className="i-custom-public-common-sparkles-soft-accent size-4"
+                  aria-hidden="true"
+                />
+                <span className="text-components-button-secondary-accent-text">
                   {t(($) => $[`${i18nPrefix}.action.upgrade`], { ns: 'education' })}
-                </div>
+                </span>
               </Button>
             ) : (
               <Button onClick={onClose}>
                 {t(($) => $[`${i18nPrefix}.action.dismiss`], { ns: 'education' })}
               </Button>
             )}
-            <Button variant="primary" onClick={handleConfirm}>
+            <Link
+              className={buttonVariants({ variant: 'primary' })}
+              href="/education/verify"
+              onClick={onClose}
+            >
               {t(($) => $[`${i18nPrefix}.action.reVerify`], { ns: 'education' })}
-            </Button>
+            </Link>
           </div>
         </div>
       </DialogContent>

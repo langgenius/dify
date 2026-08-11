@@ -50,7 +50,7 @@ const AppliedEducationContent = ({
       <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3">
         <div className="flex items-center gap-2">
           <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-state-success-solid text-text-primary-on-surface">
-            <span className="i-ri-check-line size-3.5" />
+            <span className="i-ri-check-line size-3.5" aria-hidden="true" />
           </div>
           <div>
             <div className="text-text-secondary">

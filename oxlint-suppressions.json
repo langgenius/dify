@@ -5393,25 +5393,6 @@
       "count": 1
     }
   },
-  "web/app/education-apply/role-selector.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/education-apply/search-input.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/forgot-password/ChangePasswordForm.tsx": {
     "no-restricted-imports": {
       "count": 1
