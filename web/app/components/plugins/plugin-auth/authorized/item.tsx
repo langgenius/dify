@@ -4,13 +4,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiInformationLine } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
@@ -50,7 +50,10 @@ const Item = ({
   const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
   // only_me credential, returned only because the current node still references it.
   // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
