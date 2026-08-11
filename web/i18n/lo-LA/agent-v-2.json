@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "home",
   "agentDetail.configure.workingDirectory.open": "ເປີດໂຟນເດີເຮັດວຽກ",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "ກັບຄືນໄປໂຟນເດີເຮັດວຽກ",
+  "agentDetail.configure.workingDirectory.savedFiles": "ໄຟລ໌ທີ່ບັນທຶກໄວ້",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "ໄຟລ໌ຊົ່ວຄາວ",
   "agentDetail.configure.workingDirectory.title": "ໂຟນເດີເຮັດວຽກ (Working directory)",
   "agentDetail.configure.workingDirectory.treeLabel": "ໄຟລ໌ໃນໂຟນເດີເຮັດວຽກ",
   "agentDetail.configure.workingDirectory.workingDirectory": "working directory",

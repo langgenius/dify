@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "home",
   "agentDetail.configure.workingDirectory.open": "開啟工作目錄",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "返回工作目錄",
+  "agentDetail.configure.workingDirectory.savedFiles": "已儲存檔案",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "暫存檔案",
   "agentDetail.configure.workingDirectory.title": "工作目錄",
   "agentDetail.configure.workingDirectory.treeLabel": "工作目錄檔案",
   "agentDetail.configure.workingDirectory.workingDirectory": "工作目錄",

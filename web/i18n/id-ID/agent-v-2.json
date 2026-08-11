@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "beranda",
   "agentDetail.configure.workingDirectory.open": "Buka direktori kerja",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "Kembali ke direktori kerja",
+  "agentDetail.configure.workingDirectory.savedFiles": "File tersimpan",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "File sementara",
   "agentDetail.configure.workingDirectory.title": "Direktori kerja",
   "agentDetail.configure.workingDirectory.treeLabel": "File direktori kerja",
   "agentDetail.configure.workingDirectory.workingDirectory": "direktori kerja",
