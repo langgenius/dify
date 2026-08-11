@@ -56,6 +56,13 @@ vi.mock('@/service/client', () => ({
     systemFeatures: vi.fn(),
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     tags: {
       list: {
         queryOptions: (options: unknown) => options,
@@ -242,6 +249,7 @@ const renderList = ({
   brandingEnabled?: boolean
 } = {}) => {
   const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 
