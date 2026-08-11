@@ -9,8 +9,11 @@ from core.mcp import types
 from core.mcp.server.streamable_http import (
     build_parameter_schema,
     convert_input_form_to_parameters,
+    extract_answer_and_citations,
     extract_answer_from_response,
+    extract_citations,
     extract_structured_output,
+    format_citation_sources,
     handle_call_tool,
     handle_initialize,
     handle_list_tools,
@@ -176,6 +179,57 @@ class TestHandleMCPRequest:
         assert result.result["structuredContent"] == {"answer": "test answer"}
 
     @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_includes_retrieval_citations(self, mock_app_generate):
+        mock_call_request = Mock(spec=types.CallToolRequest)
+        mock_call_request.params = Mock()
+        mock_call_request.params.arguments = {"query": "How do I turn on the reading light?"}
+        mock_call_request.id = 123
+        self.mock_request.root = mock_call_request
+
+        mock_app_generate.generate.return_value = {
+            "answer": "Move your hand below the rearview mirror.",
+            "metadata": {
+                "retriever_resources": [
+                    {
+                        "position": 1,
+                        "dataset_name": "vehicle-manuals",
+                        "document_name": "vehicle-manual.pdf",
+                        "title": "Reading lights",
+                        "page": 272,
+                        "score": 0.7,
+                        "content": "Move your hand below the rearview mirror.",
+                        "dataset_id": "internal-dataset-id",
+                        "segment_id": "internal-segment-id",
+                    }
+                ]
+            },
+        }
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert result.result["content"] == [
+            {"type": "text", "text": "Move your hand below the rearview mirror."},
+            {"type": "text", "text": "Sources:\n[1] vehicle-manual.pdf - Reading lights - page 272"},
+        ]
+        assert result.result["structuredContent"] == {
+            "answer": "Move your hand below the rearview mirror.",
+            "citations": [
+                {
+                    "position": 1,
+                    "dataset_name": "vehicle-manuals",
+                    "document_name": "vehicle-manual.pdf",
+                    "title": "Reading lights",
+                    "page": 272,
+                    "score": 0.7,
+                    "content": "Move your hand below the rearview mirror.",
+                }
+            ],
+        }
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_request_legacy_serialization_unchanged(self, mock_app_generate):
         """A 2024-11-05 tools/call response serializes without structuredContent."""
         mock_call_request = Mock(spec=types.CallToolRequest)
@@ -193,6 +247,30 @@ class TestHandleMCPRequest:
         assert isinstance(result, types.JSONRPCResponse)
         assert "structuredContent" not in result.result
         assert result.result["content"][0]["text"] == "test answer"
+
+    @patch("core.mcp.server.streamable_http.AppGenerateService")
+    def test_handle_call_tool_request_legacy_client_receives_text_sources(self, mock_app_generate):
+        mock_call_request = Mock(spec=types.CallToolRequest)
+        mock_call_request.params = Mock()
+        mock_call_request.params.arguments = {"query": "test question"}
+        mock_call_request.id = 123
+        self.mock_request.root = mock_call_request
+
+        mock_app_generate.generate.return_value = {
+            "answer": "test answer",
+            "metadata": {"retriever_resources": [{"document_name": "manual.pdf", "page": 10}]},
+        }
+
+        result = handle_mcp_request(
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+        )
+
+        assert isinstance(result, types.JSONRPCResponse)
+        assert "structuredContent" not in result.result
+        assert result.result["content"] == [
+            {"type": "text", "text": "test answer"},
+            {"type": "text", "text": "Sources:\n[1] manual.pdf - page 10"},
+        ]
 
     def test_handle_unknown_request_type(self):
         """Test handling unknown request type"""
@@ -540,6 +618,53 @@ class TestUtilityFunctions:
         result = extract_answer_from_response(app, mock_generator)
 
         assert result == "thinking...more thinking"
+
+    def test_extract_answer_and_citations_from_streaming_response(self):
+        app = App(mode=AppMode.AGENT_CHAT)
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "agent_thought", "thought": "answer"}',
+            'data: {"event": "message_end", "metadata": {"retriever_resources": '
+            '[{"document_name": "manual.pdf", "page": 10, "content": "source"}]}}',
+        ]
+
+        answer, citations = extract_answer_and_citations(app, mock_generator)
+
+        assert answer == "answer"
+        assert citations == [{"document_name": "manual.pdf", "page": 10, "content": "source"}]
+
+    def test_extract_citations_deduplicates_and_excludes_internal_ids(self):
+        resource = {
+            "position": 1,
+            "dataset_name": "manuals",
+            "document_name": "manual.pdf",
+            "page": 10,
+            "content": "source",
+            "dataset_id": "private-dataset-id",
+            "segment_id": "private-segment-id",
+        }
+        response = {"metadata": {"retriever_resources": [resource, resource]}}
+
+        assert extract_citations(response) == [
+            {
+                "position": 1,
+                "dataset_name": "manuals",
+                "document_name": "manual.pdf",
+                "page": 10,
+                "content": "source",
+            }
+        ]
+
+    def test_format_citation_sources_falls_back_to_dataset_name(self):
+        assert format_citation_sources([{"dataset_name": "manuals"}]) == "Sources:\n[1] manuals"
+
+    def test_format_citation_sources_deduplicates_segments_from_the_same_document(self):
+        citations = [
+            {"document_name": "manual.pdf", "content": "first segment"},
+            {"document_name": "manual.pdf", "content": "second segment"},
+        ]
+
+        assert format_citation_sources(citations) == "Sources:\n[1] manual.pdf"
 
     def test_extract_structured_output_workflow(self):
         """Workflow mode exposes the raw outputs mapping as structured content."""

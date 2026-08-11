@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, NotRequired, TypedDict, cast
 
 from sqlalchemy.orm import Session
@@ -55,6 +55,17 @@ class ToolParameterSchemaDict(TypedDict):
 class ToolArgumentsDict(TypedDict):
     query: NotRequired[str]
     inputs: dict[str, Any]
+
+
+class CitationDict(TypedDict, total=False):
+    position: int
+    dataset_name: str
+    document_name: str
+    title: str
+    page: int
+    score: float
+    content: str
+    summary: str
 
 
 def handle_mcp_request(
@@ -215,12 +226,15 @@ def handle_call_tool(
         streaming=app.mode == AppMode.AGENT_CHAT,
     )
 
-    answer = extract_answer_from_response(app, response)
+    answer, citations = extract_answer_and_citations(app, response)
     structured_content = None
     if _supports_structured_output(protocol_version):
-        structured_content = extract_structured_output(app, response, answer)
+        structured_content = extract_structured_output(app, response, answer, citations)
+    content: list[mcp_types.ContentBlock] = [mcp_types.TextContent(text=answer, type="text")]
+    if citations:
+        content.append(mcp_types.TextContent(text=format_citation_sources(citations), type="text"))
     return mcp_types.CallToolResult(
-        content=[mcp_types.TextContent(text=answer, type="text")],
+        content=content,
         structuredContent=structured_content,
     )
 
@@ -263,7 +277,9 @@ def prepare_tool_arguments(app: App, arguments: dict[str, Any]) -> ToolArguments
             return {"query": query, "inputs": args_copy}
 
 
-def extract_structured_output(app: App, response: Any, answer: str) -> dict[str, Any] | None:
+def extract_structured_output(
+    app: App, response: Any, answer: str, citations: Sequence[CitationDict] = ()
+) -> dict[str, Any] | None:
     """Build MCP structured tool output (2025-06-18) from the app response.
 
     WORKFLOW mode exposes the raw outputs mapping; chat/agent/completion modes expose the
@@ -281,29 +297,42 @@ def extract_structured_output(app: App, response: Any, answer: str) -> dict[str,
                         return dict(outputs)
             return None
         case AppMode.ADVANCED_CHAT | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
-            return {"answer": answer}
+            result: dict[str, Any] = {"answer": answer}
+            if citations:
+                result["citations"] = list(citations)
+            return result
         case _:
             return None
 
 
-def extract_answer_from_response(app: App, response: Any) -> str:
-    """Extract answer from app generate response"""
-    answer = ""
-
+def extract_answer_and_citations(app: App, response: Any) -> tuple[str, list[CitationDict]]:
+    """Extract the answer and retrieval citations without consuming a streaming response twice."""
     match response:
         case RateLimitGenerator():
-            answer = process_streaming_response(response)
+            return process_streaming_tool_response(response)
         case Mapping():
-            answer = process_mapping_response(app, response)
+            return process_mapping_response(app, response), extract_citations(response)
         case _:
             logger.warning("Unexpected response type: %s", type(response))
+            return "", []
 
+
+def extract_answer_from_response(app: App, response: Any) -> str:
+    """Extract answer from app generate response"""
+    answer, _ = extract_answer_and_citations(app, response)
     return answer
 
 
 def process_streaming_response(response: RateLimitGenerator) -> str:
     """Process streaming response for agent chat mode"""
+    answer, _ = process_streaming_tool_response(response)
+    return answer
+
+
+def process_streaming_tool_response(response: RateLimitGenerator) -> tuple[str, list[CitationDict]]:
+    """Process a streaming response once and collect both answer text and retrieval citations."""
     answer = ""
+    citations: list[CitationDict] = []
     for item in response.generator:
         if isinstance(item, str) and item.startswith("data: "):
             try:
@@ -311,9 +340,73 @@ def process_streaming_response(response: RateLimitGenerator) -> str:
                 parsed_data = json.loads(json_str)
                 if parsed_data.get("event") == "agent_thought":
                     answer += parsed_data.get("thought", "")
+                citations.extend(extract_citations(parsed_data))
             except json.JSONDecodeError:
                 continue
-    return answer
+    return answer, deduplicate_citations(citations)
+
+
+def extract_citations(response: Mapping[str, Any]) -> list[CitationDict]:
+    """Extract user-facing citation fields from retrieval metadata."""
+    metadata = response.get("metadata")
+    if not isinstance(metadata, Mapping):
+        return []
+    resources = metadata.get("retriever_resources")
+    if not isinstance(resources, Sequence) or isinstance(resources, str | bytes):
+        return []
+
+    citations: list[CitationDict] = []
+    for resource in resources:
+        if not isinstance(resource, Mapping):
+            continue
+        citation: CitationDict = {}
+        for field in ("position", "dataset_name", "document_name", "title", "page", "score", "content", "summary"):
+            value = resource.get(field)
+            if value is not None and value != "":
+                citation[field] = value
+        if citation:
+            citations.append(citation)
+    return deduplicate_citations(citations)
+
+
+def deduplicate_citations(citations: Sequence[CitationDict]) -> list[CitationDict]:
+    """Preserve citation order while removing duplicate retrieval segments."""
+    result: list[CitationDict] = []
+    seen: set[tuple[Any, ...]] = set()
+    for citation in citations:
+        key = (
+            citation.get("dataset_name"),
+            citation.get("document_name"),
+            citation.get("title"),
+            citation.get("page"),
+            citation.get("content"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(citation)
+    return result
+
+
+def format_citation_sources(citations: Sequence[CitationDict]) -> str:
+    """Format citations for MCP clients that only render text content blocks."""
+    lines = ["Sources:"]
+    seen: set[tuple[str, Any]] = set()
+    for citation in citations:
+        label = citation.get("document_name") or citation.get("title") or citation.get("dataset_name") or "Source"
+        source_key = (label, citation.get("page"))
+        if source_key in seen:
+            continue
+        seen.add(source_key)
+        details = [label]
+        title = citation.get("title")
+        if title and title != label:
+            details.append(title)
+        page = citation.get("page")
+        if page is not None:
+            details.append(f"page {page}")
+        lines.append(f"[{len(lines)}] " + " - ".join(details))
+    return "\n".join(lines)
 
 
 def process_mapping_response(app: App, response: Mapping) -> str:
