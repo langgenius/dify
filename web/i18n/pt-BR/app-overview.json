@@ -118,7 +118,7 @@
   "overview.status.running": "Em serviço",
   "overview.title": "Visão Geral",
   "overview.triggerInfo.explanation": "Gerenciamento de gatilho de fluxo de trabalho",
-  "overview.triggerInfo.learnAboutTriggers": "Saiba mais sobre Gatilhos",
+  "overview.triggerInfo.learnAboutTriggers": "Saiba mais sobre gatilhos",
   "overview.triggerInfo.noTriggerAdded": "Nenhum gatilho adicionado",
   "overview.triggerInfo.title": "Gatilhos",
   "overview.triggerInfo.triggerStatusDescription": "O status do nó de gatilho aparece aqui. (Pode já existir no rascunho, entra em vigor após a publicação)",

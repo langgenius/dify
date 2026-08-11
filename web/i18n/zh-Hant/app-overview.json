@@ -118,7 +118,7 @@
   "overview.status.running": "執行中",
   "overview.title": "概覽",
   "overview.triggerInfo.explanation": "工作流程觸發管理",
-  "overview.triggerInfo.learnAboutTriggers": "了解觸發因素",
+  "overview.triggerInfo.learnAboutTriggers": "進一步了解觸發器",
   "overview.triggerInfo.noTriggerAdded": "未添加觸發器",
   "overview.triggerInfo.title": "觸發因素",
   "overview.triggerInfo.triggerStatusDescription": "觸發節點狀態將顯示於此。（可能已存在於草稿中，發布後生效）",

@@ -117,7 +117,7 @@
   "overview.status.running": "ກຳລັງໃຫ້ບໍລິການ",
   "overview.title": "ພາບລວມ",
   "overview.triggerInfo.explanation": "ການຈັດການຕົວຈຸດຊະນວນ Workflow (Workflow Trigger)",
-  "overview.triggerInfo.learnAboutTriggers": "ຮຽນຮູ້ກ່ຽວກັບ Triggers",
+  "overview.triggerInfo.learnAboutTriggers": "ຮຽນຮູ້ເພີ່ມເຕີມກ່ຽວກັບຕົວກະຕຸ້ນ",
   "overview.triggerInfo.noTriggerAdded": "ຍັງບໍ່ມີການເພີ່ມ Trigger",
   "overview.triggerInfo.title": "Triggers",
   "overview.triggerInfo.triggerStatusDescription": "ສະຖານະຂອງ Trigger Node ຈະປາກົດຢູ່ທີ່ນີ້. (ອາດຈະມີຢູ່ໃນສະບັບຮ່າງແລ້ວ, ເຊິ່ງຈະມີຜົນຫຼັງຈາກການເຜີຍແຜ່)",

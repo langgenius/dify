@@ -118,7 +118,7 @@
   "overview.status.running": "W usłudze",
   "overview.title": "Przegląd",
   "overview.triggerInfo.explanation": "Zarządzanie wyzwalaczami przepływu pracy",
-  "overview.triggerInfo.learnAboutTriggers": "Dowiedz się o wyzwalaczach",
+  "overview.triggerInfo.learnAboutTriggers": "Dowiedz się więcej o wyzwalaczach",
   "overview.triggerInfo.noTriggerAdded": "Nie dodano wyzwalacza",
   "overview.triggerInfo.title": "Czynniki wywołujące",
   "overview.triggerInfo.triggerStatusDescription": "Status węzła wyzwalacza pojawia się tutaj. (Może już istnieć w wersji roboczej, obowiązuje po opublikowaniu)",

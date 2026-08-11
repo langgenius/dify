@@ -118,7 +118,7 @@
   "overview.status.running": "ให้บริการ",
   "overview.title": "ภาพรวม",
   "overview.triggerInfo.explanation": "การจัดการทริกเกอร์เวิร์กโฟลว์",
-  "overview.triggerInfo.learnAboutTriggers": "เรียนรู้เกี่ยวกับทริกเกอร์",
+  "overview.triggerInfo.learnAboutTriggers": "เรียนรู้เพิ่มเติมเกี่ยวกับทริกเกอร์",
   "overview.triggerInfo.noTriggerAdded": "ยังไม่ได้เพิ่มทริกเกอร์",
   "overview.triggerInfo.title": "สิ่งกระตุ้น",
   "overview.triggerInfo.triggerStatusDescription": "สถานะของโหนดตัวเรียกปรากฏที่นี่ (อาจมีอยู่แล้วในร่าง และจะมีผลหลังจากเผยแพร่)",

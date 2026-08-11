@@ -118,7 +118,7 @@
   "overview.status.running": "In Service",
   "overview.title": "Overview",
   "overview.triggerInfo.explanation": "Workflow trigger management",
-  "overview.triggerInfo.learnAboutTriggers": "Learn about Triggers",
+  "overview.triggerInfo.learnAboutTriggers": "Meer informatie over triggers",
   "overview.triggerInfo.noTriggerAdded": "No trigger added",
   "overview.triggerInfo.title": "Triggers",
   "overview.triggerInfo.triggerStatusDescription": "Trigger node status appears here. (May already exist in draft, takes effect after publishing)",

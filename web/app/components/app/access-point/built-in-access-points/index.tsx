@@ -144,7 +144,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
               ns: 'deployments',
             })}{' '}
             <Link
-              href={docLink('/use-dify/nodes/trigger/overview')}
+              href={docLink('/use-dify/nodes/start')}
               target="_blank"
               rel="noopener noreferrer"
               className="text-text-accent hover:underline"

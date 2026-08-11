@@ -118,7 +118,7 @@
   "overview.status.running": "Đang hoạt động",
   "overview.title": "Tổng quan",
   "overview.triggerInfo.explanation": "Quản lý kích hoạt quy trình làm việc",
-  "overview.triggerInfo.learnAboutTriggers": "Tìm hiểu về Các trình kích hoạt",
+  "overview.triggerInfo.learnAboutTriggers": "Tìm hiểu thêm về trình kích hoạt",
   "overview.triggerInfo.noTriggerAdded": "Chưa thêm trình kích hoạt",
   "overview.triggerInfo.title": "Nguyên nhân kích hoạt",
   "overview.triggerInfo.triggerStatusDescription": "Trạng thái nút kích hoạt sẽ hiển thị ở đây. (Có thể đã tồn tại trong bản nháp, có hiệu lực sau khi xuất bản)",

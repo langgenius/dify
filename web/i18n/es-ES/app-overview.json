@@ -118,7 +118,7 @@
   "overview.status.running": "En servicio",
   "overview.title": "Resumen",
   "overview.triggerInfo.explanation": "Gestión de activadores de flujo de trabajo",
-  "overview.triggerInfo.learnAboutTriggers": "Aprende sobre los desencadenantes",
+  "overview.triggerInfo.learnAboutTriggers": "Más información sobre los desencadenantes",
   "overview.triggerInfo.noTriggerAdded": "No se agregó ningún disparador",
   "overview.triggerInfo.title": "Desencadenantes",
   "overview.triggerInfo.triggerStatusDescription": "El estado del nodo de activación aparece aquí. (Puede que ya exista en el borrador, surte efecto después de publicar)",

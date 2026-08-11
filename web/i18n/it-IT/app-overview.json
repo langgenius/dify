@@ -118,7 +118,7 @@
   "overview.status.running": "In servizio",
   "overview.title": "Panoramica",
   "overview.triggerInfo.explanation": "Gestione dei trigger del flusso di lavoro",
-  "overview.triggerInfo.learnAboutTriggers": "Scopri i Trigger",
+  "overview.triggerInfo.learnAboutTriggers": "Scopri di più sui trigger",
   "overview.triggerInfo.noTriggerAdded": "Nessun trigger aggiunto",
   "overview.triggerInfo.title": "Inneschi",
   "overview.triggerInfo.triggerStatusDescription": "Lo stato del nodo trigger appare qui. (Può già esistere in bozza, prende effetto dopo la pubblicazione)",

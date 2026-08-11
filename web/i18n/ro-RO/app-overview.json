@@ -118,7 +118,7 @@
   "overview.status.running": "În service",
   "overview.title": "Prezentare generală",
   "overview.triggerInfo.explanation": "Gestionarea declanșatoarelor de flux de lucru",
-  "overview.triggerInfo.learnAboutTriggers": "Află despre Declanșatoare",
+  "overview.triggerInfo.learnAboutTriggers": "Află mai multe despre declanșatoare",
   "overview.triggerInfo.noTriggerAdded": "Niciun declanșator adăugat",
   "overview.triggerInfo.title": "Declanșatoare",
   "overview.triggerInfo.triggerStatusDescription": "Starea nodului declanșator apare aici. (Poate exista deja în draft, devine efectivă după publicare)",

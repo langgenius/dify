@@ -118,7 +118,7 @@
   "overview.status.running": "В работе",
   "overview.title": "Обзор",
   "overview.triggerInfo.explanation": "Управление триггерами рабочего процесса",
-  "overview.triggerInfo.learnAboutTriggers": "Узнайте о триггерах",
+  "overview.triggerInfo.learnAboutTriggers": "Узнайте больше о триггерах",
   "overview.triggerInfo.noTriggerAdded": "Триггер не добавлен",
   "overview.triggerInfo.title": "Триггеры",
   "overview.triggerInfo.triggerStatusDescription": "Статус узла триггера отображается здесь. (Может уже существовать в черновике, вступает в силу после публикации)",

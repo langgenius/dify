@@ -80,7 +80,6 @@ function AppDeployContent({ appId }: { appId: string }) {
               className="inline-flex items-center text-text-accent hover:underline focus-visible:ring-1 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               {tCommon(($) => $['operation.learnMore'])}
-              <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
             </a>
           </p>
         </header>

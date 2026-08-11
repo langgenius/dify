@@ -118,7 +118,7 @@
   "overview.status.running": "运行中",
   "overview.title": "概览",
   "overview.triggerInfo.explanation": "工作流触发器管理",
-  "overview.triggerInfo.learnAboutTriggers": "了解触发器",
+  "overview.triggerInfo.learnAboutTriggers": "进一步了解触发器",
   "overview.triggerInfo.noTriggerAdded": "未添加触发器",
   "overview.triggerInfo.title": "触发器",
   "overview.triggerInfo.triggerStatusDescription": "触发器节点状态显示在这里。（草稿中可能已存在，发布后生效）",

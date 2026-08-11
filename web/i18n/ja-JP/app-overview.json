@@ -118,7 +118,7 @@
   "overview.status.running": "稼働中",
   "overview.title": "概要",
   "overview.triggerInfo.explanation": "ワークフロートリガー管理",
-  "overview.triggerInfo.learnAboutTriggers": "トリガーについて学ぶ",
+  "overview.triggerInfo.learnAboutTriggers": "トリガーについて詳しく見る",
   "overview.triggerInfo.noTriggerAdded": "トリガーが追加されていません",
   "overview.triggerInfo.title": "トリガー",
   "overview.triggerInfo.triggerStatusDescription": "トリガーノードの状態がここに表示されます。（下書きに既に存在する可能性があり、公開後に有効になります）",

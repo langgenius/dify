@@ -313,6 +313,8 @@
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED": "ຍັງບໍ່ໄດ້ຕິດຕັ້ງ",
   "status.RUNTIME_INSTANCE_STATUS_UNDEPLOYING": "ກຳລັງຖອນການຕິດຕັ້ງ",
   "status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "ບໍ່ຮູ້ຈັກ",
+  "studio.accessPoint.triggerDescription": "ຕົວກະຕຸ້ນຈະປາກົດຢູ່ບ່ອນນີ້ຫຼັງຈາກທ່ານເຜີຍແຜ່ເວີຊັນທີ່ມີພວກມັນ.",
+  "studio.accessPoint.triggerExclusiveNotice": "Web app, API ແລະ MCP ຈະຖືກປິດໃນຂະນະທີ່ Workflow ໃຊ້ຕົວກະຕຸ້ນ.",
   "studio.description": "ຈັດການການຕິດຕັ້ງແອັບນີ້ໃນສະພາບແວດລ້ອມຕ່າງໆ. ສາມາດສ້າງສະພາບແວດລ້ອມເພີ່ມເຕີມໄດ້ໃນ Enterprise Dashboard.",
   "studio.noCredentialsYet": "ຍັງບໍ່ມີຂໍ້ມູນການເຂົ້າລະບົບ",
   "studio.noCredentialsYetDescription": "ເພີ່ມຂໍ້ມູນການເຂົ້າລະບົບໃນ Integrations ຫຼື ການຕັ້ງຄ່າໂນດ",
