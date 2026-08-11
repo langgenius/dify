@@ -4,7 +4,14 @@
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
-import { Button } from '@langgenius/dify-ui/button'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -44,7 +51,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [saveConflictConfirm, setSaveConflictConfirm] = useState<
     (() => void | Promise<void>) | null
   >(null)
-  const [saveConflictCancel, setSaveConflictCancel] = useState<(() => void) | null>(null)
+  const [saveConflictReloading, setSaveConflictReloading] = useState(false)
   const [publishedOverride, setPublishedOverride] = useState<{
     id: string
     publishedAt: number
@@ -386,9 +393,8 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
-          onSaveConflictConfirm={(onConfirm, onCancel) => {
+          onSaveConflictConfirm={(onConfirm) => {
             setSaveConflictConfirm(() => onConfirm)
-            setSaveConflictCancel(() => onCancel)
           }}
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
@@ -409,47 +415,35 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           selectedVersionId={activeVersionId}
           skillId={skillId}
         />
-        {saveConflictConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-            <div
-              aria-modal="true"
-              className="w-120 max-w-[calc(100vw-2rem)] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-lg"
-              role="alertdialog"
-            >
-              <h2 className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
-              </h2>
-              <p className="mt-2 system-md-regular text-text-tertiary">
-                {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
-              </p>
-              <div className="flex items-center justify-end gap-2 pt-6">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
+        <AlertDialog open={!!saveConflictConfirm}>
+          <AlertDialogContent className="p-6">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
+              {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
+            </AlertDialogDescription>
+            <AlertDialogActions className="p-0 pt-6">
+              <AlertDialogConfirmButton
+                loading={saveConflictReloading}
+                tone="default"
+                onClick={async () => {
+                  if (!saveConflictConfirm) return
+
+                  setSaveConflictReloading(true)
+                  try {
+                    await saveConflictConfirm()
                     setSaveConflictConfirm(null)
-                    saveConflictCancel?.()
-                    setSaveConflictCancel(null)
-                  }}
-                >
-                  {t(($) => $['skillManagement.detail.saveConflictCancel'])}
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={async () => {
-                    const onConfirm = saveConflictConfirm
-                    await onConfirm()
-                    setSaveConflictConfirm(null)
-                    setSaveConflictCancel(null)
-                  }}
-                >
-                  {t(($) => $['skillManagement.detail.saveConflictReload'])}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+                  } finally {
+                    setSaveConflictReloading(false)
+                  }
+                }}
+              >
+                {t(($) => $['skillManagement.detail.saveConflictReload'])}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
         {canEdit && rightPanelMode === 'builder' && (
           <SkillBuilderPanel
             detail={detail}
