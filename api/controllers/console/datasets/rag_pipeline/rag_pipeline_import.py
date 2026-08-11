@@ -1,4 +1,3 @@
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -17,6 +16,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -85,9 +85,9 @@ class RagPipelineImportApi(Resource):
         RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
     )
     @with_current_user
-    def post(self, current_user: Account) -> JsonResponseWithStatus:
+    @model_validate(RagPipelineImportPayload)
+    def post(self, req_data: RagPipelineImportPayload, current_user: Account) -> JsonResponseWithStatus:
         # Check user role first
-        payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
         # Use a plain Session so that caught exceptions inside the service
         # (which return FAILED status instead of re-raising) do not leave the
@@ -98,11 +98,11 @@ class RagPipelineImportApi(Resource):
             account = current_user
             result = import_service.import_rag_pipeline(
                 account=account,
-                import_mode=payload.mode,
-                yaml_content=payload.yaml_content,
-                yaml_url=payload.yaml_url,
-                pipeline_id=payload.pipeline_id,
-                dataset_name=payload.name,
+                import_mode=req_data.mode,
+                yaml_content=req_data.yaml_content,
+                yaml_url=req_data.yaml_url,
+                pipeline_id=req_data.pipeline_id,
+                dataset_name=req_data.name,
             )
             if result.status == ImportStatus.FAILED:
                 session.rollback()
@@ -179,14 +179,14 @@ class RagPipelineExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL)
-    def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
+    @model_validate(IncludeSecretQuery)
+    def get(self, req_data: IncludeSecretQuery, pipeline: Pipeline) -> JsonResponseWithStatus:
         # Add include_secret params
-        query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
         with Session(db.engine, expire_on_commit=False) as session:
             export_service = RagPipelineDslService(session)
             result = export_service.export_rag_pipeline_dsl(
-                pipeline=pipeline, include_secret=query.include_secret == "true"
+                pipeline=pipeline, include_secret=req_data.include_secret == "true"
             )
 
         return dump_response(SimpleDataResponse, {"data": result}), 200

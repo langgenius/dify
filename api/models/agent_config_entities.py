@@ -420,8 +420,19 @@ class AgentKnowledgeRetrievalConfig(BaseModel):
 
 
 class AgentKnowledgeMetadataCondition(BaseModel):
+    """One manual metadata filter clause.
+
+    ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+    every save (a stable row key and a reference to the selected metadata
+    field). They are persisted here for round-tripping the composer's draft
+    state but are stripped before building the Agent runtime request, whose
+    DTO only accepts ``name``/``comparison_operator``/``value``.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
+    id: str | None = None
+    metadata_id: str | None = None
     name: str = Field(min_length=1, max_length=255)
     comparison_operator: SupportedComparisonOperator
     value: ConditionValue = None
@@ -527,8 +538,14 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
     type: str | None = Field(default=None, max_length=64)
 
 
-class AgentSoulModelSettings(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+class AgentSoulModelSettings(AgentFlexibleConfig):
+    """Model parameters for the Agent Soul model.
+
+    Model plugins can declare arbitrary parameters via ``parameter_rules``
+    (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+    fields typed below, so extra keys must round-trip through persistence
+    rather than being dropped.
+    """
 
     temperature: float | None = None
     top_p: float | None = None

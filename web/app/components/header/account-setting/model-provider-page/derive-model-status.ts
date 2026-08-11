@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Model, ModelItem, ModelProvider } from './declarations'
 import type { CredentialPanelState } from './provider-added-card/use-credential-panel-state'
 import { ModelStatusEnum } from './declarations'
@@ -28,7 +29,7 @@ export const DERIVED_MODEL_STATUS_TOOLTIP_I18N = {
 export const deriveModelStatus = (
   modelId: string | undefined,
   providerName: string | undefined,
-  currentModelProvider: ModelProvider | Model | undefined,
+  currentModelProvider: ModelProvider | ModelProviderSummaryResponse | Model | undefined,
   currentModel: ModelItem | undefined,
   credentialState: CredentialPanelState,
 ): DerivedModelStatus => {

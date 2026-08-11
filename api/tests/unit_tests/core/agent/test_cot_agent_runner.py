@@ -344,9 +344,20 @@ class TestRun:
         message = MagicMock()
         message.id = "msg-id"
         events: list[str] = []
-        session = MagicMock()
-        session.commit.side_effect = lambda: events.append("commit")
-        session.close.side_effect = lambda: events.append("close")
+        session = runner.session
+        original_close = session.close
+        original_commit = session.commit
+
+        def close_session() -> None:
+            events.append("close")
+            original_close()
+
+        def commit_session() -> None:
+            events.append("commit")
+            original_commit()
+
+        mocker.patch.object(session, "close", side_effect=close_session)
+        mocker.patch.object(session, "commit", side_effect=commit_session)
 
         def provider_chunks():
             events.append("first-chunk")

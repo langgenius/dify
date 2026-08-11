@@ -4,7 +4,7 @@ from functools import wraps
 from typing import Any, Concatenate, NoReturn
 from uuid import UUID
 
-from flask import Response, request
+from flask import Response
 from flask_restx import Resource, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +24,7 @@ from controllers.console.app.workflow_draft_variable import (
     workflow_draft_variable_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import account_initialization_required, model_validate, setup_required, with_current_user
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
@@ -92,11 +92,11 @@ class RagPipelineVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    def get(self, current_user: Account, pipeline: Pipeline):
+    @model_validate(PaginationQuery)
+    def get(self, req_data: PaginationQuery, current_user: Account, pipeline: Pipeline):
         """
         Get draft workflow
         """
-        query = PaginationQuery.model_validate(request.args.to_dict())
 
         # fetch draft workflow by app_model
         rag_pipeline_service = RagPipelineService(db.session())
@@ -111,8 +111,8 @@ class RagPipelineVariableCollectionApi(Resource):
             )
         workflow_vars = draft_var_srv.list_variables_without_values(
             app_id=pipeline.id,
-            page=query.page,
-            limit=query.limit,
+            page=req_data.page,
+            limit=req_data.limit,
             user_id=current_user.id,
         )
 
@@ -196,7 +196,14 @@ class RagPipelineVariableApi(Resource):
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
     @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
-    def patch(self, _current_user: Account, pipeline: Pipeline, variable_id: UUID):
+    @model_validate(WorkflowDraftVariablePatchPayload)
+    def patch(
+        self,
+        req_data: WorkflowDraftVariablePatchPayload,
+        _current_user: Account,
+        pipeline: Pipeline,
+        variable_id: UUID,
+    ):
         # Request payload for file types:
         #
         # Local File:
@@ -221,8 +228,7 @@ class RagPipelineVariableApi(Resource):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        payload = WorkflowDraftVariablePatchPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         variable_id_str = str(variable_id)
         variable = draft_var_srv.get_variable(variable_id=variable_id_str)

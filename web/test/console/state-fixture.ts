@@ -1,6 +1,6 @@
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
-import type { ICurrentWorkspace } from '@/models/common'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -13,12 +13,7 @@ export type ConsoleStateFixture = {
     avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?:
-    | ({
-        id?: string
-        name?: string
-      } & Partial<ICurrentWorkspace>)
-    | null
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
   isCurrentWorkspaceEditor?: boolean
@@ -51,29 +46,17 @@ const defaultUserProfile = {
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
   name: 'Workspace',
-  plan: '',
-  status: '',
-  created_at: 0,
+  plan: null,
+  credits: null,
   role: 'owner',
-  providers: [],
-  trial_credits: 0,
-  trial_credits_used: 0,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
-} satisfies ICurrentWorkspace
+} satisfies GetWorkspacesCurrentSummaryResponse
 
 const defaultLangGeniusVersionInfo = {
   current_env: 'CLOUD',
   current_version: '',
   latest_version: '',
   version: '',
-  release_date: '',
   release_notes: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
 } satisfies LangGeniusVersionInfo
 
 const userProfileAtom = atom(defaultUserProfile)
@@ -83,7 +66,7 @@ const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
 const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
 const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
 
-const currentWorkspaceAtom = atom<ICurrentWorkspace>(defaultCurrentWorkspace)
+const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
 const isCurrentWorkspaceOwnerAtom = atom(false)

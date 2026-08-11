@@ -1,13 +1,12 @@
 'use client'
 
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -19,7 +18,6 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
 import { DifyLogo } from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -38,13 +36,20 @@ const EducationApplyAgeContent = () => {
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
+  const [personalUseChecked, setPersonalUseChecked] = useState(false)
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
-  const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
+  const { isPending, mutateAsync: educationAdd } = useMutation(
+    consoleQuery.account.education.post.mutationOptions(),
+  )
+  const { onPlanInfoChanged, plan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
@@ -62,13 +67,14 @@ const EducationApplyAgeContent = () => {
   })()
   const handleSubmit = () => {
     educationAdd({
-      token: token || '',
-      role,
-      institution: schoolName,
+      body: {
+        token: token || '',
+        role,
+        institution: schoolName,
+      },
     }).then((res) => {
       if (res.message === 'success') {
         onPlanInfoChanged()
-        updateEducationStatus()
         setHasSubmittedEducation(true)
       } else {
         toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -257,7 +263,7 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.age'], { ns: 'education' })}
                   </label>
-                  <label className="flex">
+                  <label className="mb-2 flex">
                     <Checkbox
                       className="mr-2 shrink-0"
                       checked={inSchoolChecked}
@@ -265,11 +271,26 @@ const EducationApplyAgeContent = () => {
                     />
                     {t(($) => $['form.terms.option.inSchool'], { ns: 'education' })}
                   </label>
+                  <label className="flex">
+                    <Checkbox
+                      className="mr-2 shrink-0"
+                      checked={personalUseChecked}
+                      onCheckedChange={setPersonalUseChecked}
+                    />
+                    {t(($) => $['form.terms.option.personalUse'], { ns: 'education' })}
+                  </label>
                 </div>
               </div>
               <Button
                 variant="primary"
-                disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
+                disabled={
+                  !ageChecked ||
+                  !inSchoolChecked ||
+                  !personalUseChecked ||
+                  !schoolName ||
+                  !role ||
+                  isPending
+                }
                 onClick={handleSubmit}
               >
                 {t(($) => $.submit, { ns: 'education' })}
@@ -292,7 +313,7 @@ const EducationApplyAgeContent = () => {
 }
 
 type AppliedEducationWorkspaceBlockProps = {
-  currentWorkspace: ICurrentWorkspace
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse
   plan: PlanType
   action: ReactNode
   isSwitchingWorkspace: boolean

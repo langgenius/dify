@@ -113,8 +113,9 @@ describe('HeadersSection', () => {
         <HeadersSection {...defaultProps} headers={headers} onHeadersChange={onHeadersChange} />,
       )
 
-      // Find and click the delete button
-      const deleteButton = screen.getByRole('button', { name: '' })
+      const deleteButton = screen.getByRole('button', {
+        name: 'common.operation.delete X-Header 1',
+      })
       fireEvent.click(deleteButton)
 
       expect(onHeadersChange).toHaveBeenCalledWith([])

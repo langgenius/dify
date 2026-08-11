@@ -15,6 +15,7 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     CreateEmptyRagPipelineDatasetApi,
     CreateRagPipelineDatasetApi,
+    RagPipelineDatasetImportPayload,
 )
 from services.entities.dsl_entities import ImportStatus
 
@@ -50,7 +51,7 @@ class TestCreateRagPipelineDatasetApi:
                 return_value=mock_service,
             ),
         ):
-            response, status = method(api, "tenant-1", user)
+            response, status = method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
         assert status == 201
         assert response == {
@@ -75,7 +76,7 @@ class TestCreateRagPipelineDatasetApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, "tenant-1", user)
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
     def test_post_dataset_name_duplicate(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -96,7 +97,7 @@ class TestCreateRagPipelineDatasetApi:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, "tenant-1", user)
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
     def test_post_invalid_payload(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -110,7 +111,7 @@ class TestCreateRagPipelineDatasetApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", user)
+                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
 
 class TestCreateEmptyRagPipelineDatasetApi:

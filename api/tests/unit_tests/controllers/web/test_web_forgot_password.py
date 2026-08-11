@@ -17,7 +17,7 @@ from controllers.web.forgot_password import (
 from enums.deployment_edition import DeploymentEdition
 from models.account import Account
 from models.engine import db
-from services.feature_service import SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
 
 
 @pytest.fixture

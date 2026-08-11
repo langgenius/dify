@@ -135,7 +135,9 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
 
   const invalidateDetailRef = useRef(invalidateDetail)
-  invalidateDetailRef.current = invalidateDetail
+  useEffect(() => {
+    invalidateDetailRef.current = invalidateDetail
+  }, [invalidateDetail])
 
   // Refetch when detailNeedUpdate becomes true
   useEffect(() => {

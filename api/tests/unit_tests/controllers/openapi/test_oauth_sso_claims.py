@@ -17,7 +17,7 @@ def app() -> Flask:
 
 
 def _ee_features():
-    from services.feature_service import LicenseStatus
+    from services.entities.feature_entities import LicenseStatus
 
     m = MagicMock()
     m.license.status = LicenseStatus.ACTIVE

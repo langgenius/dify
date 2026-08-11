@@ -8,7 +8,7 @@ from flask_restx import Resource
 
 from app_factory import create_flask_app_with_configs
 from libs.external_api import ExternalApi
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
 
 INVALID_STATUSES = [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]
 VALID_STATUSES = [LicenseStatus.ACTIVE, LicenseStatus.EXPIRING]

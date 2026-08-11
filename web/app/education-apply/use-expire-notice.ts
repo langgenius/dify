@@ -1,5 +1,6 @@
 'use client'
 
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DismissedEducationExpireNotice, EducationExpireNoticePhase } from './storage'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -7,10 +8,16 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/client'
 import { useDismissedEducationExpireNotice } from './storage'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
+
+const selectEducationExpireStatus = ({ allow_refresh, expire_at }: EducationStatusResponse) => ({
+  allowRefresh: allow_refresh ?? false,
+  expireAt: expire_at ?? null,
+})
 
 export type EducationExpireNotice = {
   accountId: string
@@ -67,15 +74,20 @@ export function useEducationExpireNotice() {
       timezone: profile.timezone ?? undefined,
     }),
   })
-  const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo } =
-    useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: educationStatus, isLoading: isLoadingEducationStatus } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: selectEducationExpireStatus,
+    }),
+  )
   const [dismissedNotice, setDismissedNotice] = useDismissedEducationExpireNotice()
   const notice = resolveEducationExpireNotice({
     accountId: profile?.accountId,
-    allowRefresh: allowRefreshEducationVerify,
+    allowRefresh: educationStatus?.allowRefresh ?? false,
     dismissedNotice,
-    expireAt: educationAccountExpireAt,
-    isLoading: isLoadingEducationAccountInfo,
+    expireAt: educationStatus?.expireAt ?? null,
+    isLoading: isLoadingEducationStatus,
     userTimezone: profile?.timezone,
   })
 

@@ -41,6 +41,8 @@ const setSearchParams = (params: Record<string, string>) => {
 const completePasswordChange = async () => {
   render(<ChangePasswordForm />)
 
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
+
   fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
     target: { value: 'ValidPass123!' },
   })
@@ -52,6 +54,7 @@ const completePasswordChange = async () => {
   await waitFor(() => {
     expect(screen.getByRole('button', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
+  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
 }
 
 describe('Reset Password Set Password Page', () => {

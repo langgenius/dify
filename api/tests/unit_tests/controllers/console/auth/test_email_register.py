@@ -12,7 +12,7 @@ from controllers.console.auth.email_register import (
     EmailRegisterSendEmailApi,
 )
 from enums.deployment_edition import DeploymentEdition
-from services.feature_service import SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
 
 
 class TestEmailRegisterSendEmailApi:
