@@ -1165,11 +1165,6 @@
       "count": 5
     }
   },
-  "web/app/components/base/icons/src/public/education/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
   "web/app/components/base/icons/src/public/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 10
