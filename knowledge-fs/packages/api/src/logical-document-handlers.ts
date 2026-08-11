@@ -43,8 +43,8 @@ import {
   type LogicalDocumentWithActiveRevision,
 } from "./logical-document-repository";
 import {
-  cancelDocumentProcessingTaskRoute,
   bulkPatchDocumentAvailabilityRoute,
+  cancelDocumentProcessingTaskRoute,
   changeDocumentChunkStateRoute,
   getDocumentChunkRoute,
   getDocumentProcessingTaskRoute,
@@ -55,8 +55,8 @@ import {
   listDocumentRevisionsRoute,
   listLogicalDocumentsRoute,
   listSpaceProcessingTasksRoute,
-  patchDocumentMetadataRoute,
   patchDocumentAvailabilityRoute,
+  patchDocumentMetadataRoute,
   patchDocumentSettingsRoute,
   retryDocumentProcessingTaskRoute,
   rollbackDocumentRevisionRoute,
@@ -1136,9 +1136,7 @@ function toPublicDocument(document: LogicalDocumentWithActiveRevision) {
     active: document.active ? toPublicRevision(document.active) : null,
     createdAt: document.createdAt,
     ...(document.disabledAt ? { disabledAt: document.disabledAt } : {}),
-    ...(document.disabledBySubjectId
-      ? { disabledBySubjectId: document.disabledBySubjectId }
-      : {}),
+    ...(document.disabledBySubjectId ? { disabledBySubjectId: document.disabledBySubjectId } : {}),
     enabled: document.enabled ?? true,
     id: document.id,
     knowledgeSpaceId: document.knowledgeSpaceId,

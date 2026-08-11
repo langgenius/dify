@@ -2277,7 +2277,10 @@ async function processOnlineDocumentSync(
   for (const [index, { page, providerItemId, workspaceId }] of entries.entries()) {
     if (index < cursor.offset) continue;
     const prior = inventory.get(providerItemId);
-    if (prior?.enabled !== false && (!prior || !page.lastEditedTime || prior.etag !== page.lastEditedTime)) {
+    if (
+      prior?.enabled !== false &&
+      (!prior || !page.lastEditedTime || prior.etag !== page.lastEditedTime)
+    ) {
       const run = execution.run();
       const content = await execution.external(
         (signal) =>

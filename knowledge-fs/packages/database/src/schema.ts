@@ -2811,8 +2811,7 @@ const tables = [
         expression: {
           postgres:
             '(("enabled" AND "disabled_at" IS NULL AND "disabled_by_subject_id" IS NULL) OR (NOT "enabled" AND "disabled_at" IS NOT NULL AND "disabled_by_subject_id" IS NOT NULL))',
-          tidb:
-            "((`enabled` AND `disabled_at` IS NULL AND `disabled_by_subject_id` IS NULL) OR (NOT `enabled` AND `disabled_at` IS NOT NULL AND `disabled_by_subject_id` IS NOT NULL))",
+          tidb: "((`enabled` AND `disabled_at` IS NULL AND `disabled_by_subject_id` IS NULL) OR (NOT `enabled` AND `disabled_at` IS NOT NULL AND `disabled_by_subject_id` IS NOT NULL))",
         },
         name: "logical_documents_availability_ck",
       },

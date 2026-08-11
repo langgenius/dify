@@ -21,8 +21,8 @@ import {
   LogicalDocumentParamsSchema,
   LogicalDocumentPublicSchema,
   LogicalDocumentRevisionParamsSchema,
-  PatchDocumentSettingsSchema,
   PatchDocumentAvailabilitySchema,
+  PatchDocumentSettingsSchema,
   PatchDocumentUserMetadataSchema,
   RollbackDocumentRevisionSchema,
 } from "./logical-document-schemas";
