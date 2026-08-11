@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
     AgentConfigVersionKind,
@@ -315,13 +315,14 @@ def test_retire_workspace_retires_all_active_bindings(sqlite_session: Session) -
     workspace = _workspace()
     bindings = [_binding(), _binding(binding_id="binding-2", agent_id="agent-2")]
     sqlite_session.add_all([workspace, *bindings])
-    sqlite_session.flush()
+    sqlite_session.commit()
 
     retired_id = AgentWorkspaceService.retire_workspace(
         session=sqlite_session,
         tenant_id="tenant-1",
         workspace_id=workspace.id,
     )
+    sqlite_session.flush()
 
     assert retired_id == workspace.id
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
@@ -365,16 +366,15 @@ def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_s
 
 
 def test_collect_binding_without_retired_workspace_destroys_binding_only(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     binding = _binding(status=AgentWorkingResourceStatus.RETIRED)
     workspace = _workspace()
     sqlite_session.add_all([workspace, binding])
     sqlite_session.commit()
     client = MagicMock()
-    monkeypatch.setattr(
-        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
-    )
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
 
     AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id=binding.id)
@@ -383,12 +383,14 @@ def test_collect_binding_without_retired_workspace_destroys_binding_only(
     assert request.binding_ref == binding.backend_binding_ref
     assert request.destroy_workspace is False
     assert request.workspace_ref is None
-    assert sqlite_session.get(AgentWorkspaceBinding, binding.id) is None
-    assert sqlite_session.get(AgentWorkspace, workspace.id) is not None
+    with sqlite_session_factory() as observer:
+        assert observer.get(AgentWorkspaceBinding, binding.id) is None
+        assert observer.get(AgentWorkspace, workspace.id) is not None
 
 
 def test_collect_workspace_destroys_workspace_then_remaining_bindings(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
     anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
