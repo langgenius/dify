@@ -9,7 +9,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +18,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
 
@@ -43,11 +44,11 @@ const isThemeOption = (value: string): value is ThemeOption => {
 
 export default function PreferencePage() {
   const locale = useLocale()
-  const queryClient = useQueryClient()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
+  const updateTimezone = useMutation(consoleQuery.account.timezone.post.mutationOptions())
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
@@ -82,13 +83,10 @@ export default function PreferencePage() {
     }
   }
   const handleSelectTimezone = async (item: TimezoneOption) => {
-    const url = '/account/timezone'
-    const bodyKey = 'timezone'
     setEditing(true)
     try {
-      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      await updateTimezone.mutateAsync({ body: { timezone: item.value } })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      await queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
     } catch (e) {
       toast.error((e as Error).message)
     } finally {

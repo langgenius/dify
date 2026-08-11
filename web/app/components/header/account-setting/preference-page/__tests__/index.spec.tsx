@@ -10,9 +10,17 @@ import { render } from '@/test/console/render'
 import { timezones } from '@/utils/timezone'
 import PreferencePage from '../index'
 
+const mockGet = vi.hoisted(() => vi.fn())
+const mockRequest = vi.hoisted(() => vi.fn())
 const mockRefresh = vi.fn()
 let mockLocale: string | undefined = 'en-US'
 let mockUserProfile: GetAccountProfileResponse
+
+vi.mock('@/service/base', () => ({
+  get: mockGet,
+  request: mockRequest,
+  sseGeneratorPost: vi.fn(),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
@@ -48,14 +56,12 @@ const createUserProfile = (
 
 const renderPage = () => {
   const queryClient = createAccountProfileQueryClient(mockUserProfile)
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
-  const rendered = render(
+  return render(
     <QueryClientProvider client={queryClient}>
       <PreferencePage />
       <ToastHost />
     </QueryClientProvider>,
   )
-  return { ...rendered, invalidateQueries }
 }
 
 const getSectionByLabel = (sectionLabel: string) => {
@@ -89,6 +95,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockLocale = 'en-US'
   mockUserProfile = createUserProfile()
+  const profileResponse = () =>
+    new Response(JSON.stringify(mockUserProfile), {
+      headers: { 'content-type': 'application/json' },
+    })
+  mockGet.mockImplementation(async () => profileResponse())
+  mockRequest.mockImplementation(async () => profileResponse())
 })
 
 // Rendering
@@ -165,27 +177,24 @@ describe('PreferencePage - Interactions', () => {
 
   it('should show success toast when timezone updates', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
-    updateUserProfileMock.mockResolvedValueOnce({ result: 'success' })
 
-    const { invalidateQueries } = renderPage()
+    renderPage()
 
     await selectOption('common.language.timezone', midwayTimezone.name)
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
     await waitFor(() => {
-      expect(updateUserProfileMock).toHaveBeenCalledWith({
-        url: '/account/timezone',
-        body: { timezone: midwayTimezone.value },
-      })
+      expect(mockRequest).toHaveBeenCalled()
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: [['console', 'account', 'profile', 'get'], { type: 'query' }],
-    })
+    expect(mockRequest.mock.calls[0]?.[0]).toEqual(expect.stringContaining('/account/timezone'))
+    const request = mockRequest.mock.calls[0]?.[2]?.request as Request
+    expect(request.method).toBe('POST')
+    await expect(request.json()).resolves.toEqual({ timezone: midwayTimezone.value })
   }, 15000)
 
   it('should show error toast when timezone update fails', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
-    updateUserProfileMock.mockRejectedValueOnce(new Error('Timezone failed'))
+    mockRequest.mockRejectedValueOnce(new Error('Timezone failed'))
 
     renderPage()
 
