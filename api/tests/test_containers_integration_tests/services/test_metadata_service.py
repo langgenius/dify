@@ -3,6 +3,7 @@ from typing import TypedDict
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import NotFound
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -422,13 +423,11 @@ class TestMetadataService:
         fake_metadata_id = str(uuid.uuid4())  # Use valid UUID format
         new_name = "new_name"
 
-        # Act: Execute the method under test
-        result = MetadataService.update_metadata_name(
-            dataset.id, fake_metadata_id, new_name, account, tenant.id, session=db_session_with_containers
-        )
-
-        # Assert: Verify the method returns None when metadata is not found
-        assert result is None
+        # Act & Assert: Verify NotFound is raised for nonexistent metadata
+        with pytest.raises(NotFound):
+            MetadataService.update_metadata_name(
+                dataset.id, fake_metadata_id, new_name, account, tenant.id, session=db_session_with_containers
+            )
 
     def test_delete_metadata_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
