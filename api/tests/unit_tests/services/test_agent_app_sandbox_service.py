@@ -1,5 +1,5 @@
 import json
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -8,7 +8,8 @@ from unittest.mock import MagicMock
 import pytest
 from dify_agent.client import Client
 from dify_agent.protocol import BindingFileDownloadResponse, BindingFileListResponse, BindingFileReadResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
@@ -30,7 +31,6 @@ from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services import agent_app_sandbox_service as sandbox_module
-from services.agent.workspace_service import AgentWorkspaceService
 from services.agent_app_sandbox_service import (
     AgentAppSandboxService,
     AgentSandboxDownload,
@@ -112,13 +112,6 @@ def _add_conversation_bindings(session: Session) -> tuple[AgentWorkspaceBinding,
     return expected, other
 
 
-def _use_session(monkeypatch: pytest.MonkeyPatch, session: Session) -> None:
-    monkeypatch.setattr(
-        "services.agent_app_sandbox_service.session_factory.create_session",
-        lambda: nullcontext(session),
-    )
-
-
 def _add_app(session: Session, *, app_id: str, tenant_id: str) -> None:
     session.add(
         App(
@@ -149,6 +142,7 @@ def _add_binding(
     owner_id: str,
     owner_scope_key: str = "root",
     status: AgentWorkingResourceStatus = AgentWorkingResourceStatus.ACTIVE,
+    config_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
 ) -> AgentWorkspaceBinding:
     active_guard = 1 if status is AgentWorkingResourceStatus.ACTIVE else None
     workspace = AgentWorkspace(
@@ -170,11 +164,54 @@ def _add_binding(
         agent_id=agent_id,
         base_home_snapshot_id=None,
         agent_config_version_id=f"{binding_id}-config",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        agent_config_version_kind=config_kind,
         backend_binding_ref=f"{binding_id}-ref",
         status=status,
     )
     session.add_all([workspace, binding])
+    return binding
+
+
+def _add_build_caller(
+    session: Session,
+    *,
+    parent_app_id: str = "app-1",
+    backing_app_id: str | None = None,
+) -> AgentWorkspaceBinding:
+    runtime_app_id = backing_app_id or parent_app_id
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Agent",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id=parent_app_id,
+        backing_app_id=backing_app_id,
+        status=AgentStatus.ACTIVE,
+    )
+    binding = _add_binding(
+        session,
+        binding_id="binding-build",
+        workspace_id="workspace-build",
+        app_id=runtime_app_id,
+        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+        owner_id="build-1",
+        config_kind=AgentConfigVersionKind.DRAFT,
+    )
+    binding.agent_config_version_id = "config-1"
+    draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        agent_workspace_binding_id=binding.id,
+        config_snapshot=AgentSoulConfig(),
+    )
+    session.add_all([agent, draft])
     return binding
 
 
@@ -198,12 +235,11 @@ def _stub_download_response(monkeypatch: pytest.MonkeyPatch) -> None:
     indirect=True,
 )
 def test_agent_app_file_browsing_uses_conversation_pointer(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     expected, _ = _add_conversation_bindings(sqlite_session)
     _add_normal_conversation(sqlite_session, binding_id=expected.id)
     sqlite_session.commit()
-    _use_session(monkeypatch, sqlite_session)
     client = MagicMock()
     response = BindingFileListResponse(path=".", entries=[], truncated=False)
     client.list_binding_files_sync.return_value = response
@@ -228,12 +264,11 @@ def test_agent_app_file_browsing_uses_conversation_pointer(
     indirect=True,
 )
 def test_agent_app_file_browsing_rejects_other_account(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    sqlite_session: Session,
 ) -> None:
     expected, _ = _add_conversation_bindings(sqlite_session)
     _add_normal_conversation(sqlite_session, binding_id=expected.id)
     sqlite_session.commit()
-    _use_session(monkeypatch, sqlite_session)
     client = MagicMock()
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
@@ -339,7 +374,6 @@ def test_agent_conversation_download_resolves_only_exact_active_owner_chain(
         conversation._inputs = {}
     sqlite_session.add_all(conversations)
     sqlite_session.commit()
-    _use_session(monkeypatch, sqlite_session)
     _stub_download_response(monkeypatch)
     client = _download_client()
     service = AgentAppSandboxService(client_factory=lambda: nullcontext(cast(Client, client)))
@@ -489,7 +523,6 @@ def test_agent_build_draft_download_resolves_only_exact_active_owner_chain(
     ]
     sqlite_session.add_all(drafts)
     sqlite_session.commit()
-    _use_session(monkeypatch, sqlite_session)
     _stub_download_response(monkeypatch)
     client = _download_client()
     service = AgentAppSandboxService(client_factory=lambda: nullcontext(cast(Client, client)))
@@ -545,8 +578,9 @@ def _workflow_execution(
     app_id: str = "app-1",
     workflow_run_id: str = "run-1",
     node_id: str = "node-1",
-    binding_id: str,
+    binding_id: str | None,
     created_by: str = "historical-account",
+    workflow_binding_id: str | None = "workflow-binding-1",
 ) -> WorkflowNodeExecutionModel:
     return WorkflowNodeExecutionModel(
         id=execution_id,
@@ -561,7 +595,9 @@ def _workflow_execution(
         title=node_id,
         agent_workspace_binding_id=binding_id,
         inputs=None,
-        process_data=json.dumps({"workflow_agent_binding_id": "workflow-binding-1"}),
+        process_data=json.dumps(
+            {"workflow_agent_binding_id": workflow_binding_id} if workflow_binding_id is not None else {}
+        ),
         outputs=None,
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         error=None,
@@ -627,7 +663,6 @@ def test_workflow_download_resolves_only_exact_active_owner_chain(
     persisted_execution = sqlite_session.get(WorkflowNodeExecutionModel, "execution-valid")
     assert persisted_execution is not None
     assert persisted_execution.created_by == "historical-account"
-    _use_session(monkeypatch, sqlite_session)
     client = _download_client()
     request_download = MagicMock(
         return_value=SimpleNamespace(download_uri="/files/tools/report.txt?timestamp=1&sign=2")
@@ -695,25 +730,17 @@ def test_workflow_download_resolves_only_exact_active_owner_chain(
     ],
 )
 def test_agent_app_file_browsing_uses_build_draft_caller(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     parent_app_id: str,
     backing_app_id: str | None,
     runtime_app_id: str,
 ) -> None:
-    session = MagicMock()
-    session.scalar.side_effect = [
-        SimpleNamespace(app_id=parent_app_id, backing_app_id=backing_app_id),
-        SimpleNamespace(agent_workspace_binding_id="binding-build"),
-    ]
-    _use_session(monkeypatch, session)
-    binding = SimpleNamespace(
-        agent_id="agent-1",
-        backend_binding_ref="binding-build-ref",
-        agent_config_version_id="config-1",
-        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+    binding = _add_build_caller(
+        sqlite_session,
+        parent_app_id=parent_app_id,
+        backing_app_id=backing_app_id,
     )
-    get_binding = MagicMock(return_value=binding)
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    sqlite_session.commit()
     client = MagicMock()
     response = BindingFileListResponse(path=".", entries=[], truncated=False)
     client.list_binding_files_sync.return_value = response
@@ -729,28 +756,27 @@ def test_agent_app_file_browsing_uses_build_draft_caller(
     )
 
     assert result is response
-    owner_scope = get_binding.call_args.kwargs["expected_owner_scope"]
-    assert owner_scope.app_id == runtime_app_id
-    assert owner_scope.owner_type is AgentWorkspaceOwnerType.BUILD_DRAFT
-    assert owner_scope.owner_id == "build-1"
-    client.list_binding_files_sync.assert_called_once_with("binding-build-ref", ".")
+    assert binding.app_id == runtime_app_id
+    client.list_binding_files_sync.assert_called_once_with(binding.backend_binding_ref, ".")
 
 
-def test_workflow_file_access_uses_node_execution_pointer(monkeypatch: pytest.MonkeyPatch) -> None:
-    execution = SimpleNamespace(
-        agent_workspace_binding_id="binding-workflow",
-        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+def test_workflow_file_access_uses_node_execution_pointer(sqlite_session: Session) -> None:
+    binding = _add_binding(
+        sqlite_session,
+        binding_id="binding-workflow",
+        workspace_id="workspace-workflow",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="run-1",
+        owner_scope_key="node-1:workflow-binding-1",
     )
-    session = MagicMock()
-    session.scalar.return_value = execution
-    binding = SimpleNamespace(
-        agent_id="agent-1",
-        backend_binding_ref="binding-workflow-ref",
-        agent_config_version_id="config-1",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    binding.agent_config_version_id = "config-1"
+    sqlite_session.add(
+        _workflow_execution(
+            execution_id="execution-1",
+            binding_id=binding.id,
+        )
     )
-    get_binding = MagicMock(return_value=binding)
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    sqlite_session.commit()
     client = MagicMock()
     response = BindingFileReadResponse(path="report.txt", size=2, truncated=False, binary=False, text="ok")
     client.read_binding_file_sync.return_value = response
@@ -762,41 +788,41 @@ def test_workflow_file_access_uses_node_execution_pointer(monkeypatch: pytest.Mo
         node_id="node-1",
         node_execution_id="execution-1",
         path="report.txt",
-        session=session,
+        session=sqlite_session,
     )
 
     assert result is response
-    assert get_binding.call_args.kwargs["binding_id"] == "binding-workflow"
     client.read_binding_file_sync.assert_called_once_with("binding-workflow-ref", "report.txt")
-    session.rollback.assert_called_once_with()
+    assert not sqlite_session.in_transaction()
 
 
 def test_workflow_download_uses_authenticated_account_and_trusted_file_request(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    execution = SimpleNamespace(
-        agent_workspace_binding_id="binding-workflow",
-        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+    binding = _add_binding(
+        sqlite_session,
+        binding_id="binding-workflow",
+        workspace_id="workspace-workflow",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="run-1",
+        owner_scope_key="node-1:workflow-binding-1",
     )
-    session = MagicMock()
-    session.scalar.return_value = execution
-    binding = SimpleNamespace(
-        agent_id="agent-1",
-        backend_binding_ref="binding-workflow-ref",
-        agent_config_version_id="config-1",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    binding.agent_config_version_id = "config-1"
+    sqlite_session.add(
+        _workflow_execution(
+            execution_id="execution-1",
+            binding_id=binding.id,
+        )
     )
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+    sqlite_session.commit()
     events: list[str] = []
 
-    @contextmanager
-    def session_scope():
-        try:
-            yield session
-        finally:
-            events.append("session-exit")
+    def transaction_ended(_session: Session, transaction: object) -> None:
+        if not getattr(transaction, "nested", False):
+            events.append("transaction-end")
 
-    monkeypatch.setattr(sandbox_module.session_factory, "create_session", session_scope)
     client = MagicMock()
     client.download_binding_file_sync.side_effect = lambda _request: (
         events.append("client-download") or BindingFileDownloadResponse(reference="dify-file-ref:canonical")
@@ -812,22 +838,26 @@ def test_workflow_download_uses_authenticated_account_and_trusted_file_request(
     )
     monkeypatch.setattr("services.agent_app_sandbox_service.dify_config.FILES_URL", "https://files.example")
 
-    result = WorkflowAgentSandboxService(client_factory=lambda: nullcontext(client)).download_file(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workflow_run_id="run-1",
-        node_id="node-1",
-        node_execution_id="execution-1",
-        account_id="account-1",
-        path="report.txt",
-    )
+    event.listen(sqlite_session_factory.class_, "after_transaction_end", transaction_ended)
+    try:
+        result = WorkflowAgentSandboxService(client_factory=lambda: nullcontext(client)).download_file(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id="execution-1",
+            account_id="account-1",
+            path="report.txt",
+        )
+    finally:
+        event.remove(sqlite_session_factory.class_, "after_transaction_end", transaction_ended)
 
     request = client.download_binding_file_sync.call_args.args[0]
     assert request.execution_context.user_id == "account-1"
     assert request.execution_context.user_from == "account"
     assert request.execution_context.node_execution_id == "execution-1"
-    session.rollback.assert_called_once_with()
-    assert events == ["session-exit", "client-download", "file-request"]
+    assert events[0] == "transaction-end"
+    assert events[-2:] == ["client-download", "file-request"]
     request_download.assert_called_once_with(
         tenant_id="tenant-1",
         user_id="account-1",
@@ -840,29 +870,17 @@ def test_workflow_download_uses_authenticated_account_and_trusted_file_request(
 
 def test_agent_app_download_uses_complete_account_context_after_session_exit(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     events: list[str] = []
-    session = MagicMock()
-    session.scalar.side_effect = [
-        SimpleNamespace(app_id="app-1", backing_app_id=None),
-        SimpleNamespace(agent_workspace_binding_id="binding-build"),
-    ]
+    _add_build_caller(sqlite_session)
+    sqlite_session.commit()
 
-    @contextmanager
-    def session_scope():
-        try:
-            yield session
-        finally:
-            events.append("session-exit")
+    def transaction_ended(_session: Session, transaction: object) -> None:
+        if not getattr(transaction, "nested", False):
+            events.append("transaction-end")
 
-    monkeypatch.setattr(sandbox_module.session_factory, "create_session", session_scope)
-    binding = SimpleNamespace(
-        agent_id="agent-1",
-        backend_binding_ref="binding-build-ref",
-        agent_config_version_id="config-1",
-        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
-    )
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
     client = MagicMock()
     client.download_binding_file_sync.side_effect = lambda _request: (
         events.append("client-download") or BindingFileDownloadResponse(reference="dify-file-ref:canonical")
@@ -879,15 +897,19 @@ def test_agent_app_download_uses_complete_account_context_after_session_exit(
     )
     monkeypatch.setattr(sandbox_module.dify_config, "FILES_URL", "https://files.example")
 
-    result = AgentAppSandboxService(client_factory=lambda: nullcontext(client)).download_file(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        agent_id="agent-1",
-        caller_type="build_draft",
-        caller_id="build-1",
-        account_id="account-1",
-        path="report.txt",
-    )
+    event.listen(sqlite_session_factory.class_, "after_transaction_end", transaction_ended)
+    try:
+        result = AgentAppSandboxService(client_factory=lambda: nullcontext(client)).download_file(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            agent_id="agent-1",
+            caller_type="build_draft",
+            caller_id="build-1",
+            account_id="account-1",
+            path="report.txt",
+        )
+    finally:
+        event.remove(sqlite_session_factory.class_, "after_transaction_end", transaction_ended)
 
     request = client.download_binding_file_sync.call_args.args[0]
     assert request.backend_binding_ref == "binding-build-ref"
@@ -903,7 +925,8 @@ def test_agent_app_download_uses_complete_account_context_after_session_exit(
         "agent_mode": "agent_app",
         "invoke_from": "debugger",
     }
-    assert events == ["session-exit", "client-download", "file-request"]
+    assert events[0] == "transaction-end"
+    assert events[-2:] == ["client-download", "file-request"]
     request_download.assert_called_once_with(
         tenant_id="tenant-1",
         user_id="account-1",
@@ -934,31 +957,33 @@ def test_file_request_rejection_maps_to_download_unavailable(monkeypatch: pytest
 
 
 @pytest.mark.parametrize(
-    "execution",
+    ("binding_id", "workflow_binding_id"),
     [
         pytest.param(
-            SimpleNamespace(
-                agent_workspace_binding_id=None,
-                process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
-            ),
+            None,
+            "workflow-binding-1",
             id="missing-binding-pointer",
         ),
         pytest.param(
-            SimpleNamespace(
-                agent_workspace_binding_id="binding-workflow",
-                process_data_dict={},
-            ),
+            "binding-workflow",
+            None,
             id="missing-process-data",
         ),
     ],
 )
 def test_workflow_download_rejects_missing_binding_metadata_before_network(
-    monkeypatch: pytest.MonkeyPatch,
-    execution: SimpleNamespace,
+    sqlite_session: Session,
+    binding_id: str | None,
+    workflow_binding_id: str | None,
 ) -> None:
-    session = MagicMock()
-    session.scalar.return_value = execution
-    _use_session(monkeypatch, session)
+    sqlite_session.add(
+        _workflow_execution(
+            execution_id="execution-1",
+            binding_id=binding_id,
+            workflow_binding_id=workflow_binding_id,
+        )
+    )
+    sqlite_session.commit()
     client = MagicMock()
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
@@ -977,16 +1002,18 @@ def test_workflow_download_rejects_missing_binding_metadata_before_network(
 
 
 def test_workflow_download_rejects_non_active_or_mismatched_binding_before_network(
-    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    execution = SimpleNamespace(
-        agent_workspace_binding_id="binding-workflow",
-        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+    binding = _add_binding(
+        sqlite_session,
+        binding_id="binding-workflow",
+        workspace_id="workspace-workflow",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="different-run",
+        owner_scope_key="node-1:workflow-binding-1",
     )
-    session = MagicMock()
-    session.scalar.return_value = execution
-    _use_session(monkeypatch, session)
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=None))
+    sqlite_session.add(_workflow_execution(execution_id="execution-1", binding_id=binding.id))
+    sqlite_session.commit()
     client = MagicMock()
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
