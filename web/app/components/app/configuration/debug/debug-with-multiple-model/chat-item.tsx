@@ -3,7 +3,7 @@ import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import Chat from '@/app/components/base/chat/chat'
@@ -11,10 +11,10 @@ import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -28,7 +28,10 @@ type ChatItemProps = {
   modelAndParameter: ModelAndParameter
 }
 const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const {
     modelConfig,
     appId,

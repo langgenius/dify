@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
@@ -707,7 +708,7 @@ def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch
         list_objects=Mock(return_value=["tenant-1/app_id=snippet-1/run.json"]),
         delete_object=Mock(),
     )
-    monkeypatch.setattr(dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "ARCHIVE_STORAGE_ENABLED", True)
     monkeypatch.setattr("libs.archive_storage.get_archive_storage", Mock(return_value=archive_storage))
 
