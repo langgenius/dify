@@ -22,6 +22,7 @@ const (
 	DefaultGCIntervalSeconds             = 60.0
 	DefaultGCFinishedJobRetentionSeconds = 300.0
 	DefaultPollInterval                  = 50 * time.Millisecond
+	DefaultOutputPollInterval            = 5 * time.Millisecond
 	DefaultPipeMonitorInterval           = 1 * time.Second
 	DefaultPipeReadyTimeout              = 10 * time.Second
 	DefaultSQLiteBusyTimeoutMs           = 5000
@@ -49,6 +50,7 @@ type Config struct {
 	MaxOutputLimitBytes          int
 	DefaultTerminateGraceSeconds float64
 	PollInterval                 time.Duration
+	OutputPollInterval           time.Duration
 	PipeMonitorInterval          time.Duration
 	PipeReadyTimeout             time.Duration
 	SQLiteBusyTimeoutMs          int
@@ -80,6 +82,7 @@ func DefaultConfig() *Config {
 		MaxOutputLimitBytes:          MaxOutputLimitBytes,
 		DefaultTerminateGraceSeconds: DefaultTerminateGraceSeconds,
 		PollInterval:                 DefaultPollInterval,
+		OutputPollInterval:           DefaultOutputPollInterval,
 		PipeMonitorInterval:          DefaultPipeMonitorInterval,
 		PipeReadyTimeout:             DefaultPipeReadyTimeout,
 		SQLiteBusyTimeoutMs:          DefaultSQLiteBusyTimeoutMs,

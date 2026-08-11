@@ -35,6 +35,50 @@ jobs:
       - name: Run unit tests
         run: go test -race -count=1 ./...
 
+      - name: Validate benchmark harness
+        working-directory: .
+        run: |
+          python3 -m compileall -q \
+            benchmarks/run_container_benchmarks.py \
+            benchmarks/test_container_benchmark.py
+          PYTHONPATH=benchmarks python3 -m unittest discover \
+            -s benchmarks -p 'test_container_benchmark.py' -v
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: dify-agent/uv.lock
+
+      - name: Install agent rollout test dependencies
+        working-directory: dify-agent
+        run: uv sync --extra server --dev
+
+      - name: Validate safe Go/Rust rollout routing
+        working-directory: dify-agent
+        env:
+          PYTHONPATH: src
+        run: |
+          uv run ruff check \
+            src/dify_agent/runtime_backend/local_rollout.py \
+            src/dify_agent/runtime_backend/profile.py \
+            src/dify_agent/server/settings.py \
+            tests/local/dify_agent/runtime_backend/test_local_rollout.py \
+            tests/local/dify_agent/runtime_backend/test_profile.py \
+            tests/local/dify_agent/server/test_settings.py
+          uv run pytest -q \
+            tests/local/dify_agent/runtime_backend/test_local_rollout.py \
+            tests/local/dify_agent/runtime_backend/test_profile.py \
+            tests/local/dify_agent/server/test_settings.py
+          uv run basedpyright --level error \
+            src/dify_agent/runtime_backend/local_rollout.py \
+            src/dify_agent/runtime_backend/profile.py \
+            src/dify_agent/server/settings.py \
+            tests/local/dify_agent/runtime_backend/test_local_rollout.py \
+            tests/local/dify_agent/runtime_backend/test_profile.py \
+            tests/local/dify_agent/server/test_settings.py
+
   sandbox-runtime-lint:
     name: Sandbox Runtime Lint
     runs-on: depot-ubuntu-24.04
@@ -62,6 +106,36 @@ jobs:
           working-directory: dify-agent-runtime
           version: latest
 
+  sandbox-runtime-rust:
+    name: Sandbox Runtime Rust Tests
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+        working-directory: dify-agent-runtime
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --locked --manifest-path rust/Cargo.toml --all-targets -- -D warnings
+
+      - name: Run unit tests
+        run: cargo test --locked --manifest-path rust/Cargo.toml
+
   sandbox-runtime-integration:
     name: Sandbox Runtime Integration Tests
     runs-on: depot-ubuntu-24.04
@@ -83,11 +157,25 @@ jobs:
           go-version-file: dify-agent-runtime/go.mod
           cache-dependency-path: dify-agent-runtime/go.sum
 
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: dify-agent/uv.lock
+
+      - name: Install agent rollout test dependencies
+        working-directory: dify-agent
+        run: uv sync --extra server --dev
+
       - name: Build and start runtime
         run: make integration-up
 
       - name: Run integration tests
         run: make integration-test
+
+      - name: Run real Go/Rust rollout integration tests
+        run: make integration-test-rollout
 
       - name: Dump container logs on failure
         if: failure()

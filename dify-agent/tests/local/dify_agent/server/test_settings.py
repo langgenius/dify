@@ -15,6 +15,7 @@ from dify_agent.server.settings import ServerSettings
 from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
+from dify_agent.runtime_backend.local_rollout import RoutedLocalExecutionBindingBackend
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -37,6 +38,20 @@ def test_server_settings_reads_shellctl_auth_token_from_env(monkeypatch: pytest.
     settings = ServerSettings()
 
     assert settings.local_sandbox_auth_token == "shell-secret"
+
+
+def test_server_settings_reads_rust_canary_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT", "http://shellctl-rust.example")
+    monkeypatch.setenv("DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN", "rust-secret")
+    monkeypatch.setenv("DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT", "17")
+    monkeypatch.setenv("DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS", "2.5")
+
+    settings = ServerSettings()
+
+    assert settings.local_sandbox_rust_endpoint == "http://shellctl-rust.example"
+    assert settings.local_sandbox_rust_auth_token == "rust-secret"
+    assert settings.local_sandbox_rust_canary_percent == 17
+    assert settings.local_sandbox_preflight_timeout_seconds == 2.5
 
 
 def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -277,6 +292,24 @@ def test_build_runtime_backend_profile_returns_local_drivers_when_configured() -
     assert profile.execution_bindings.workspace_root == "/tmp/dify/workspaces"
     assert profile.execution_bindings.snapshot_root == "/tmp/dify/snapshots"
     assert profile.home_snapshots.snapshot_root == "/tmp/dify/snapshots"
+
+
+def test_build_runtime_backend_profile_passes_rust_canary_settings() -> None:
+    settings = ServerSettings(
+        runtime_backend="local",
+        local_sandbox_endpoint="http://shellctl-go.example",
+        local_sandbox_auth_token="go-secret",
+        local_sandbox_rust_endpoint="http://shellctl-rust.example",
+        local_sandbox_rust_auth_token="rust-secret",
+        local_sandbox_rust_canary_percent=20,
+        local_sandbox_preflight_timeout_seconds=2,
+    )
+
+    profile = settings.build_runtime_backend_profile()
+
+    assert profile is not None
+    assert isinstance(profile.execution_bindings, RoutedLocalExecutionBindingBackend)
+    assert profile.execution_bindings.router.rust_canary_percent == 20
 
 
 def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected() -> None:

@@ -1,0 +1,39 @@
+[package]
+name = "dify-agent-runtime"
+version = "0.1.0"
+edition = "2024"
+description = "Rust implementation of Dify's sandbox shell runtime"
+license = "Apache-2.0"
+
+[dependencies]
+axum = "0.8.8"
+chrono = { version = "0.4.45", features = ["clock", "serde"] }
+rand = "0.9.5"
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4.4"
+
+[[bin]]
+name = "shellctl"
+path = "src/bin/shellctl.rs"
+
+[[bin]]
+name = "shellctl-runner"
+path = "src/bin/shellctl-runner.rs"
+
+[[bin]]
+name = "shellctl-runner-exit"
+path = "src/bin/shellctl-runner-exit.rs"
+
+[[bin]]
+name = "shellctl-sanitize-pty"
+path = "src/bin/shellctl-sanitize-pty.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"

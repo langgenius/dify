@@ -252,16 +252,10 @@ func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
 }
 
 func (s *Service) startJob(jobID, jobDir, cwd string, cols, rows int) error {
-	log.Printf("startJob [%s]: creating tmux session", jobID)
-	if err := s.tmux.CreateJobSession(jobID, jobDir, cwd, cols, rows); err != nil {
-		log.Printf("startJob [%s]: tmux session failed: %v", jobID, err)
-		return err
-	}
-
 	pipeReadyPath := filepath.Join(jobDir, ".pipe-ready")
-	log.Printf("startJob [%s]: enabling output pipe", jobID)
-	if err := s.tmux.EnableOutputPipe(jobID, jobDir, pipeReadyPath); err != nil {
-		log.Printf("startJob [%s]: pipe-pane failed: %v", jobID, err)
+	log.Printf("startJob [%s]: creating tmux session and output pipe", jobID)
+	if err := s.tmux.StartJob(jobID, jobDir, cwd, pipeReadyPath, cols, rows); err != nil {
+		log.Printf("startJob [%s]: tmux startup failed: %v", jobID, err)
 		return err
 	}
 
@@ -340,10 +334,35 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 		lastGrowthAt = &now
 	}
 
+	// Output files and completion artifacts are local and cheap to inspect.
+	// Probe them frequently for short jobs, while keeping tmux subprocess
+	// probes at the coarser lifecycle interval as a failure-detection fallback.
+	view, err := s.GetJobStatus(jobID)
+	if err != nil {
+		return nil, err
+	}
+	nextRuntimeProbe := time.Now().Add(s.config.PollInterval)
+	outputPollInterval := s.config.OutputPollInterval
+	if outputPollInterval <= 0 {
+		outputPollInterval = DefaultOutputPollInterval
+	}
+
 	for {
-		view, err := s.GetJobStatus(jobID)
-		if err != nil {
-			return nil, err
+		now := time.Now()
+		if !view.Done {
+			if exit := s.drainedNormalExitMetadata(jobID); exit != nil {
+				if err := s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt); err == nil {
+					if row, getErr := s.db.GetJob(jobID); getErr == nil {
+						view = s.statusViewFromRow(row)
+					}
+				}
+			} else if !now.Before(nextRuntimeProbe) {
+				view, err = s.GetJobStatus(jobID)
+				if err != nil {
+					return nil, err
+				}
+				nextRuntimeProbe = now.Add(s.config.PollInterval)
+			}
 		}
 
 		currentSize := fileSize(outputPath)
@@ -389,7 +408,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			}
 		}
 
-		if time.Now().After(deadline) {
+		if now.After(deadline) {
 			var window *OutputWindow
 			if currentSize > int64(req.Offset) {
 				window, err = ReadOutputWindow(outputPath, req.Offset, outputLimit)
@@ -402,7 +421,7 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 			return s.jobResultFromView(view, row, window), nil
 		}
 
-		time.Sleep(s.config.PollInterval)
+		time.Sleep(outputPollInterval)
 	}
 }
 

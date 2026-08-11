@@ -7,9 +7,11 @@ from typing import Mapping
 import pytest
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
+from dify_agent.adapters.shell.protocols import ShellProviderError
 from dify_agent.runtime_backend import (
     BindingCreateError,
     BindingDestroyError,
+    BindingLostError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
@@ -31,6 +33,7 @@ class _Client:
     exit_code: int = 0
     output: str = ""
     close_error: Exception | None = None
+    run_error: Exception | None = None
     exit_codes: list[int] = field(default_factory=list)
 
     async def run(
@@ -42,6 +45,8 @@ class _Client:
         timeout: float = 10.0,
     ) -> JobResult:
         del timeout
+        if self.run_error is not None:
+            raise self.run_error
         commands = tuple(
             tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
@@ -133,6 +138,20 @@ class _FailThenSucceedFactory:
     @property
     def commands(self) -> tuple[tuple[str, ...], ...]:
         return tuple(command for run in self.runs for command in run.commands)
+
+
+@dataclass(slots=True)
+class _InvalidCwdFactory:
+    clients: list[_Client] = field(default_factory=list)
+    runs: list[_RunCall] = field(default_factory=list)
+
+    def __call__(self) -> _Client:
+        client = _Client(
+            runs=self.runs,
+            run_error=ShellProviderError("cwd is not a directory", code="invalid_cwd", status_code=400),
+        )
+        self.clients.append(client)
+        return client
 
 
 @pytest.mark.anyio
@@ -248,6 +267,24 @@ async def test_local_binding_acquire_scopes_commands_to_materialized_home_and_wo
     with pytest.raises(ValueError, match="outside this RuntimeLease"):
         await lease.commands.run("cat secret", cwd="/homes/other", timeout=10.0)
     await backend.release(lease)
+
+
+@pytest.mark.anyio
+async def test_local_binding_acquire_reports_missing_state_as_binding_lost() -> None:
+    factory = _InvalidCwdFactory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    with pytest.raises(BindingLostError, match="no longer exists"):
+        await backend.acquire("binding-1:workspace-1")
+
+    assert factory.clients and all(client.closed for client in factory.clients)
 
 
 @pytest.mark.anyio

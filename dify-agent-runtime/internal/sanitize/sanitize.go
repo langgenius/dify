@@ -37,7 +37,13 @@ func New() *PtySanitizer {
 
 // Feed consumes one chunk of decoded text and returns newly stable output.
 func (s *PtySanitizer) Feed(text []byte) []byte {
-	var out []byte
+	return s.FeedInto(text, nil)
+}
+
+// FeedInto is the allocation-conscious variant of Feed. The caller may
+// provide a reusable output buffer when sanitizing a long PTY stream.
+func (s *PtySanitizer) FeedInto(text, out []byte) []byte {
+	out = out[:0]
 	for len(text) > 0 {
 		r, size := utf8.DecodeRune(text)
 		if r == utf8.RuneError && size <= 1 {
@@ -161,14 +167,15 @@ func Run(readyFile string, stdin io.Reader, stdout io.Writer) error {
 
 	sanitizer := New()
 	reader := bufio.NewReaderSize(stdin, 65536)
-	writer := bufio.NewWriter(stdout)
+	writer := bufio.NewWriterSize(stdout, 65536)
 	defer func() { _ = writer.Flush() }()
 
 	buf := make([]byte, 65536)
+	sanitized := make([]byte, 65536)
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
-			out := sanitizer.Feed(buf[:n])
+			out := sanitizer.FeedInto(buf[:n], sanitized)
 			if len(out) > 0 {
 				if _, werr := writer.Write(out); werr != nil {
 					return werr
