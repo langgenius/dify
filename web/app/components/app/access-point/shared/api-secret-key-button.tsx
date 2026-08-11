@@ -28,7 +28,7 @@ export function ApiSecretKeyButton({
   const isEnvironmentScope = Boolean(environmentId)
   const apiKeysQuery = useQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
-      input: isEnvironmentScope ? skipToken : { params: { resource_id: appId } },
+      input: isEnvironmentScope || !canManage ? skipToken : { params: { resource_id: appId } },
     }),
   )
   const apiKeyCount = isEnvironmentScope
