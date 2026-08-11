@@ -6,7 +6,7 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +18,8 @@ import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -43,7 +43,10 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const queryClient = useQueryClient()
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = useMemo(
     () =>

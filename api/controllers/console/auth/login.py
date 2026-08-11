@@ -45,7 +45,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -136,7 +136,9 @@ class LoginApi(Resource):
         request_email = req_data.email
         normalized_email = request_email.lower()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
+            normalized_email
+        ):
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
 
@@ -175,7 +177,6 @@ class LoginApi(Resource):
             AccountService.add_login_error_rate_limit(normalized_email)
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
-        # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
             if (

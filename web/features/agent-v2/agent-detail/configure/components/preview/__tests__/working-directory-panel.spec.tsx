@@ -59,8 +59,8 @@ const previewSourceCases = [
       ...agentSource,
       callerId: 'conversation-2',
     } satisfies AgentWorkingDirectorySource,
-    imagePaths: ['workspace/chart-a.png', 'workspace/chart-b.png'],
-    nonImagePath: 'workspace/model.bin',
+    imagePaths: ['chart-a.png', 'chart-b.png'],
+    nonImagePath: 'model.bin',
     previewClient: mocks.sandboxFileDownloadClientPost,
     urls: [
       'https://example.com/agent-chart-a.png',
@@ -249,7 +249,7 @@ function mockFileListEntries(
   queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
     queryKey: [`${source.type}-sandbox-files`, input, entries],
     queryFn: async () => ({
-      path: input.query?.path ?? (source.type === 'agent' ? '~/workspace' : '.'),
+      path: input.query?.path ?? '~',
       entries,
     }),
   }))
@@ -312,12 +312,12 @@ describe('AgentWorkingDirectoryPanel', () => {
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
       queryKey: ['sandbox-files', input],
       queryFn: async () => ({
-        path: input.query?.path ?? '~/workspace',
+        path: input.query?.path ?? '~',
         entries: [
-          { name: 'workspace/report.md', type: 'file' },
-          { name: 'workspace/notes.md', type: 'file' },
-          { name: 'workspace/chart.png', type: 'file' },
-          { name: 'workspace/model.bin', type: 'file' },
+          { name: 'report.md', type: 'file' },
+          { name: 'notes.md', type: 'file' },
+          { name: 'chart.png', type: 'file' },
+          { name: 'model.bin', type: 'file' },
         ],
       }),
     }))
@@ -348,6 +348,78 @@ describe('AgentWorkingDirectoryPanel', () => {
         }),
       }),
     )
+  })
+
+  it('should separate saved and temporary files by their sandbox path roots', async () => {
+    const user = userEvent.setup()
+    mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+      queryKey: ['sandbox-files-by-root', input],
+      queryFn: async () => ({
+        path: input.query?.path ?? '~',
+        entries:
+          input.query?.path === '.'
+            ? [{ name: 'scratch.txt', type: 'file' }]
+            : [{ name: 'saved.txt', type: 'file' }],
+      }),
+    }))
+    renderWorkingDirectoryPanel()
+
+    const savedFilesTab = await screen.findByRole('tab', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.savedFiles',
+    })
+    const temporaryFilesTab = screen.getByRole('tab', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+    })
+
+    expect(savedFilesTab).toHaveAttribute('aria-selected', 'true')
+    expect(
+      await screen.findByRole('tabpanel', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.savedFiles',
+      }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.sandboxFilesQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            query: expect.objectContaining({ path: '~' }),
+          }),
+        }),
+      )
+    })
+
+    await user.click(temporaryFilesTab)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('tab', {
+          name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+        }),
+      ).toHaveAttribute('aria-selected', 'true')
+    })
+    expect(
+      screen.getByRole('tabpanel', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.sandboxFilesQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            query: expect.objectContaining({ path: '.' }),
+          }),
+        }),
+      )
+    })
+    await waitFor(() => {
+      expect(mocks.sandboxFileReadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            query: expect.objectContaining({ path: './scratch.txt' }),
+          }),
+        }),
+      )
+    })
+    expect(mocks.sandboxInfoQueryOptions).not.toHaveBeenCalled()
   })
 
   it('should download the selected working directory file from the preview header download action', async () => {
@@ -381,7 +453,7 @@ describe('AgentWorkingDirectoryPanel', () => {
         body: {
           caller_type: 'conversation',
           caller_id: 'conversation-1',
-          path: '~/workspace/notes.md',
+          path: '~/notes.md',
         },
       })
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
@@ -425,7 +497,7 @@ describe('AgentWorkingDirectoryPanel', () => {
         body: {
           caller_type: 'conversation',
           caller_id: 'conversation-1',
-          path: '~/workspace/model.bin',
+          path: '~/model.bin',
         },
       })
       expect(mocks.downloadUrl).toHaveBeenCalledWith({
@@ -458,7 +530,7 @@ describe('AgentWorkingDirectoryPanel', () => {
       body: {
         caller_type: 'conversation',
         caller_id: 'conversation-1',
-        path: '~/workspace/chart.png',
+        path: '~/chart.png',
       },
     })
     expect(

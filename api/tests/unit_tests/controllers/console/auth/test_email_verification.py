@@ -36,6 +36,7 @@ from controllers.console.error import (
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
+from enums import DeploymentEdition
 from services.errors.account import AccountRegisterError
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 
@@ -185,7 +186,7 @@ class TestEmailCodeLoginSendEmailApi:
 
         # Act & Assert
         with (
-            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             with pytest.raises(EmailSendIpLimitError):
@@ -211,7 +212,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context(
                 "/email-code-login",
                 method="POST",
@@ -245,7 +246,7 @@ class TestEmailCodeLoginSendEmailApi:
         http_error: type[Exception],
     ):
         with (
-            patch("controllers.console.auth.login.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.auth.login.TurnstileService.verify", side_effect=service_error),
             app.test_request_context(
                 "/email-code-login",
@@ -276,7 +277,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.EDITION", "SELF_HOSTED"),
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             response = EmailCodeLoginSendEmailApi().post()
