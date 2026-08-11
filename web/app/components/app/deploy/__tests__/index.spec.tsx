@@ -653,7 +653,6 @@ function render(
 let appPermissionKeys: string[] = [AppACLPermission.Deploy]
 let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
 const mockDocLink = vi.hoisted(() => vi.fn((path: string) => `https://docs.example.com${path}`))
@@ -728,11 +727,6 @@ vi.mock('@/app/components/app/store', () => ({
     return selector({ appDetail })
   },
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
