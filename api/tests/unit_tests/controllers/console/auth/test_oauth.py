@@ -469,7 +469,7 @@ class TestAccountGeneration:
             mock_account_model.get_by_openid.return_value = mock_account
             result = _get_account_by_openid_or_email("github", user_info)
             assert result == mock_account
-            mock_account_model.get_by_openid.assert_called_once_with("github", "123")
+            mock_account_model.get_by_openid.assert_called_once_with("github", "123", session=ANY)
             mock_get_account.assert_not_called()
 
             # Test fallback to email lookup

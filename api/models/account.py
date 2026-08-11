@@ -182,7 +182,6 @@ class Account(UserMixin, TypeBase):
     def get_status(self) -> AccountStatus:
         return self.status
 
-
     @classmethod
     def get_by_openid(cls, provider: str, open_id: str, *, session: Session):
         account_integrate = session.execute(
@@ -191,7 +190,6 @@ class Account(UserMixin, TypeBase):
         if account_integrate:
             return session.scalar(select(Account).where(Account.id == account_integrate.account_id))
         return None
-
 
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
