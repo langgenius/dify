@@ -33,7 +33,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -717,6 +717,7 @@ export default function SkillsPage() {
   const queryClient = useQueryClient()
   const { canDelete, canEdit } = useSkillPermissions()
   const importInputRef = useRef<HTMLInputElement>(null)
+  const listViewportRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
@@ -741,6 +742,7 @@ export default function SkillsPage() {
     refetchOnMount: 'always',
   })
   const skills = skillsQuery.data?.pages.flatMap((page) => page.data ?? []) ?? []
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending } = skillsQuery
 
   useDocumentTitle(t(($) => $['skillManagement.title']))
 
@@ -792,9 +794,16 @@ export default function SkillsPage() {
   const handleListScroll = (event: UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
     const scrollBottom = target.scrollHeight - target.scrollTop - target.clientHeight
-    if (scrollBottom < 80 && skillsQuery.hasNextPage && !skillsQuery.isFetchingNextPage)
-      void skillsQuery.fetchNextPage()
+    if (scrollBottom < 80 && hasNextPage && !isFetchingNextPage) void fetchNextPage()
   }
+
+  useEffect(() => {
+    const viewport = listViewportRef.current
+    if (!viewport || viewport.clientHeight === 0 || isPending || isFetchingNextPage || !hasNextPage)
+      return
+
+    if (viewport.scrollHeight - viewport.clientHeight < 80) void fetchNextPage()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isPending, skills.length])
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
@@ -826,6 +835,7 @@ export default function SkillsPage() {
       <div className="min-h-0 flex-1">
         <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport
+            ref={listViewportRef}
             tabIndex={-1}
             className="overscroll-contain"
             onScroll={handleListScroll}
