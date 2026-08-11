@@ -68,4 +68,4 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}
+            ${{ vars.SSH_KNOWLEDGE_SCRIPT || secrets.SSH_KNOWLEDGE_SCRIPT }}
