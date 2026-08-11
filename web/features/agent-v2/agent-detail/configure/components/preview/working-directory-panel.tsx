@@ -12,7 +12,7 @@ import type {
 } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
-import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
@@ -560,25 +560,40 @@ export function AgentWorkingDirectoryPanel({
                   handleDirectoryPathChange(path as AgentWorkingDirectoryPath)
                 }
               >
-                <TabsList className="h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
+                <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
                   <TabsTab
                     value={AGENT_SAVED_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                   >
                     {t(($) => $['agentDetail.configure.workingDirectory.savedFiles'])}
                   </TabsTab>
                   <TabsTab
                     value={AGENT_TEMPORARY_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                   >
                     {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
                   </TabsTab>
+                  <TabsIndicator
+                    className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+                    style={{
+                      translate: 'var(--active-tab-left)',
+                      width: 'var(--active-tab-width)',
+                    }}
+                  />
                 </TabsList>
+                <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
+                  <AgentWorkingDirectoryBreadcrumb
+                    path={directoryPath}
+                    onPathChange={handleDirectoryPathChange}
+                  />
+                </TabsPanel>
+                <TabsPanel value={AGENT_TEMPORARY_FILES_ROOT_PATH} tabIndex={-1}>
+                  <AgentWorkingDirectoryBreadcrumb
+                    path={directoryPath}
+                    onPathChange={handleDirectoryPathChange}
+                  />
+                </TabsPanel>
               </Tabs>
-              <AgentWorkingDirectoryBreadcrumb
-                path={directoryPath}
-                onPathChange={handleDirectoryPathChange}
-              />
             </div>
           ),
           fileListPanelClassName: 'w-[360px]',

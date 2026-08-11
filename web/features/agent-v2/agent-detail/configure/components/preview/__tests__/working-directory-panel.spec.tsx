@@ -372,6 +372,11 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
 
     expect(savedFilesTab).toHaveAttribute('aria-selected', 'true')
+    expect(
+      await screen.findByRole('tabpanel', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.savedFiles',
+      }),
+    ).toBeInTheDocument()
     await waitFor(() => {
       expect(mocks.sandboxFilesQueryOptions).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -391,6 +396,11 @@ describe('AgentWorkingDirectoryPanel', () => {
         }),
       ).toHaveAttribute('aria-selected', 'true')
     })
+    expect(
+      screen.getByRole('tabpanel', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    ).toBeInTheDocument()
     await waitFor(() => {
       expect(mocks.sandboxFilesQueryOptions).toHaveBeenCalledWith(
         expect.objectContaining({
