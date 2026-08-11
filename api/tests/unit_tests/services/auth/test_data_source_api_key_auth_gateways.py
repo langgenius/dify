@@ -33,7 +33,12 @@ class TestProviderApiKeyAuthCredentialValidator:
             ),
         ],
     )
-    def test_validate_routes_to_provider(self, provider, auth_class_path, credentials):
+    def test_validate_routes_to_provider(
+        self,
+        provider: str,
+        auth_class_path: str,
+        credentials: DataSourceApiKeyAuthCredentials,
+    ) -> None:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.return_value = True
 
@@ -45,7 +50,7 @@ class TestProviderApiKeyAuthCredentialValidator:
         auth_instance.validate_credentials.assert_called_once_with()
 
     @pytest.mark.parametrize("invalid_provider", ["invalid_provider", "", "UNSUPPORTED"])
-    def test_validate_rejects_unknown_provider(self, invalid_provider):
+    def test_validate_rejects_unknown_provider(self, invalid_provider: str) -> None:
         credentials = DataSourceApiKeyAuthCredentials("bearer", "test_key", {})
 
         with pytest.raises(
@@ -55,7 +60,7 @@ class TestProviderApiKeyAuthCredentialValidator:
             ProviderApiKeyAuthCredentialValidator().validate(invalid_provider, credentials)
 
     @pytest.mark.parametrize("validation_result", [True, False])
-    def test_validate_returns_provider_result(self, validation_result):
+    def test_validate_returns_provider_result(self, validation_result: bool) -> None:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.return_value = validation_result
 
@@ -71,7 +76,7 @@ class TestProviderApiKeyAuthCredentialValidator:
 
         assert result is validation_result
 
-    def test_validate_propagates_credential_validation_error(self):
+    def test_validate_propagates_credential_validation_error(self) -> None:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.side_effect = DataSourceApiKeyAuthCredentialValidationError(
             "Authentication error"
@@ -88,7 +93,7 @@ class TestProviderApiKeyAuthCredentialValidator:
                     DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
                 )
 
-    def test_validate_maps_provider_network_error(self):
+    def test_validate_maps_provider_network_error(self) -> None:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.side_effect = httpx.ConnectError("Authentication endpoint unavailable")
 
@@ -106,7 +111,7 @@ class TestProviderApiKeyAuthCredentialValidator:
                     DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
                 )
 
-    def test_validate_does_not_map_non_transport_http_error(self):
+    def test_validate_does_not_map_non_transport_http_error(self) -> None:
         request = httpx.Request("POST", "https://api.firecrawl.dev/v1/crawl")
         response = httpx.Response(500, request=request)
         status_error = httpx.HTTPStatusError("Provider returned an error", request=request, response=response)

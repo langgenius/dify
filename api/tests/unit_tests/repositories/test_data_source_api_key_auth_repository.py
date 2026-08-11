@@ -61,6 +61,7 @@ def test_create_serializes_credentials(sqlite_session_factory: sessionmaker[Sess
         )
 
     assert binding is not None
+    assert binding.credentials is not None
     assert json.loads(binding.credentials) == {
         "auth_type": "bearer",
         "config": {"api_key": "encrypted", "base_url": "https://example.com"},
