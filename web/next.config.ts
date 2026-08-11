@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       {
         source: '/explore/apps',
         destination: '/',
-        permanent: false,
+        permanent: true,
       },
     ]
   },
