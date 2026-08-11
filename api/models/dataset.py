@@ -1744,7 +1744,9 @@ class Pipeline(TypeBase):
     )
 
     def retrieve_dataset(self, session: Session | scoped_session):
-        return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
+        return session.scalar(
+            select(Dataset).where(Dataset.pipeline_id == self.id, Dataset.tenant_id == self.tenant_id)
+        )
 
 
 class DocumentPipelineExecutionLog(TypeBase):

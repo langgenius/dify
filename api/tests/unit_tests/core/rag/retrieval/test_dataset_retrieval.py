@@ -4961,6 +4961,7 @@ class TestSingleAndMultipleRetrieveCoverage:
 
         assert len(result) == 1
         assert result[0].provider == "external"
+        session.scalar.assert_called_once()
         mock_end.assert_called_once()
         assert retrieval.llm_usage.total_tokens == 2
 
@@ -5036,6 +5037,44 @@ class TestSingleAndMultipleRetrieveCoverage:
                 planning_strategy=PlanningStrategy.REACT_ROUTER,
             )
         assert results == []
+
+    def test_single_retrieve_rejects_dataset_outside_available_datasets(self, retrieval: DatasetRetrieval) -> None:
+        available_dataset = _dataset(id="ds-1", name="Available DS", description=None)
+        session = MagicMock()
+        session.scalar.return_value = _dataset(
+            id="ds-2",
+            name="Foreign DS",
+            provider="external",
+            tenant_id="tenant-2",
+            retrieval_model={},
+        )
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+                return_value=[],
+            ) as mock_external_retrieve,
+            patch.object(retrieval, "_on_query") as mock_on_query,
+        ):
+            mock_router_cls.return_value.invoke.return_value = ("ds-2", LLMUsage.empty_usage())
+            results = retrieval.single_retrieve(
+                session,
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[available_dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+            )
+
+        assert results == []
+        session.scalar.assert_not_called()
+        mock_external_retrieve.assert_not_called()
+        mock_on_query.assert_not_called()
 
     def test_single_retrieve_respects_metadata_filter_shortcuts(self, retrieval: DatasetRetrieval) -> None:
         dataset = _dataset(

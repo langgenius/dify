@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -23,9 +22,10 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PublishCustomizedPipelineTemplateApi,
 )
 from models.account import Account
-from models.dataset import PipelineCustomizedTemplate
+from models.dataset import Pipeline, PipelineCustomizedTemplate
 from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 
 
 def _template_item() -> dict[str, object]:
@@ -63,6 +63,12 @@ def _account() -> Account:
     account = Account(name="Test User", email="test@example.com")
     account.id = "account-1"
     return account
+
+
+def _pipeline() -> Pipeline:
+    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline")
+    pipeline.id = "pipeline-1"
+    return pipeline
 
 
 @pytest.fixture
@@ -136,11 +142,13 @@ class TestPipelineTemplateDetailApi:
     def test_get_serializes_template_detail(self, app: Flask, sqlite_engine: Engine) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
-        service_calls: list[tuple[str, str]] = []
+        service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> dict[str, object]:
+        def get_pipeline_template_detail(
+            template_id: str, current_tenant_id: str, type: str, *, session
+        ) -> dict[str, object]:
             del session
-            service_calls.append((template_id, type))
+            service_calls.append((template_id, current_tenant_id, type))
             return _template_detail()
 
         with (
@@ -152,18 +160,20 @@ class TestPipelineTemplateDetailApi:
                 side_effect=get_pipeline_template_detail,
             ),
         ):
-            response, status = method(api, PipelineTemplateDetailQuery(type="customized"), session, "template-1")
+            response, status = method(
+                api, PipelineTemplateDetailQuery(type="customized"), session, "tenant-1", "template-1"
+            )
 
         assert status == 200
         assert response == {**_template_detail(), "created_by": None}
-        assert service_calls == [("template-1", "customized")]
+        assert service_calls == [("template-1", "tenant-1", "customized")]
 
     def test_get_raises_not_found_without_custom_response_body(self, app: Flask, sqlite_engine: Engine) -> None:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        def get_pipeline_template_detail(template_id: str, type: str, *, session) -> None:
-            del template_id, type, session
+        def get_pipeline_template_detail(template_id: str, current_tenant_id: str, type: str, *, session) -> None:
+            del template_id, current_tenant_id, type, session
 
         with (
             Session(sqlite_engine) as session,
@@ -175,7 +185,7 @@ class TestPipelineTemplateDetailApi:
             ),
             pytest.raises(NotFound),
         ):
-            method(api, PipelineTemplateDetailQuery(), session, "missing")
+            method(api, PipelineTemplateDetailQuery(), session, "tenant-1", "missing")
 
 
 class TestCustomizedPipelineTemplateApi:
@@ -286,9 +296,7 @@ class TestCustomizedPipelineTemplateApi:
         assert deleted_templates == [("template-1", tenant_id)]
 
     @pytest.mark.parametrize("sqlite_session", [(PipelineCustomizedTemplate,)], indirect=True)
-    def test_post_exports_yaml_from_orm_template(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-    ) -> None:
+    def test_post_exports_yaml_from_orm_template(self, app: Flask, sqlite_session: Session) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.post)
         template = PipelineCustomizedTemplate(
@@ -306,26 +314,48 @@ class TestCustomizedPipelineTemplateApi:
         template.id = "template-1"
         sqlite_session.add(template)
         sqlite_session.commit()
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
 
         with app.test_request_context("/rag/pipeline/customized/templates/template-1", method="POST"):
-            response, status = method(api, "template-1")
+            response, status = method(
+                api,
+                sqlite_session,
+                "00000000-0000-0000-0000-000000000001",
+                "template-1",
+            )
 
         assert status == 200
         assert response == {"data": "dsl: value"}
 
     @pytest.mark.parametrize("sqlite_session", [(PipelineCustomizedTemplate,)], indirect=True)
-    def test_post_raises_when_template_is_missing(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-    ) -> None:
+    def test_post_returns_not_found_for_other_tenant(self, app: Flask, sqlite_session: Session) -> None:
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.post)
-        assert sqlite_session.get(PipelineCustomizedTemplate, "missing") is None
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine))
+        template = PipelineCustomizedTemplate(
+            tenant_id="00000000-0000-0000-0000-000000000002",
+            name="Other tenant template",
+            description="Description",
+            chunk_structure="general",
+            icon={},
+            position=1,
+            yaml_content="secret: value",
+            install_count=0,
+            language="en-US",
+            created_by="00000000-0000-0000-0000-000000000003",
+        )
+        template.id = "template-1"
+        sqlite_session.add(template)
+        sqlite_session.commit()
 
-        with app.test_request_context("/rag/pipeline/customized/templates/missing", method="POST"):
-            with pytest.raises(ValueError, match="Customized pipeline template not found"):
-                method(api, "missing")
+        with (
+            app.test_request_context("/rag/pipeline/customized/templates/template-1", method="POST"),
+            pytest.raises(NotFound, match="Customized pipeline template not found"),
+        ):
+            method(
+                api,
+                sqlite_session,
+                "00000000-0000-0000-0000-000000000001",
+                "template-1",
+            )
 
 
 class TestPublishCustomizedPipelineTemplateApi:
@@ -334,87 +364,67 @@ class TestPublishCustomizedPipelineTemplateApi:
         method = unwrap(api.post)
         payload = _payload()
         account = _account()
-        tenant_id = "tenant-1"
-        service_calls: list[tuple[str, dict[str, object], Account, str]] = []
-
-        class Service:
-            def __init__(self, *args, **kwargs) -> None:
-                pass
-
-            def publish_customized_pipeline_template(
-                self,
-                pipeline_id: str,
-                data: dict[str, object],
-                current_user: Account,
-                current_tenant_id: str,
-                *,
-                session,
-            ) -> None:
-                del session
-                service_calls.append((pipeline_id, data, current_user, current_tenant_id))
+        pipeline = _pipeline()
 
         with (
             app.test_request_context("/rag/pipelines/pipeline-1/customized/publish", method="POST", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
-            response, status = method(
-                api, CustomizedPipelineTemplatePayload.model_validate(payload), tenant_id, account, "pipeline-1"
-            )
+            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
 
         assert (response, status) == ("", 204)
-        assert service_calls == [("pipeline-1", payload, account, tenant_id)]
+        publish.assert_called_once()
+        trusted_pipeline, template_args, current_user = publish.call_args.args
+        assert trusted_pipeline is pipeline
+        assert current_user is account
+        assert template_args == payload
 
-    def test_post_allows_missing_icon_info_for_publish_service_fallback(self, app: Flask) -> None:
+    @pytest.mark.parametrize(
+        ("payload", "expected_icon_info"),
+        [
+            (
+                {"name": "Published template", "description": "Description"},
+                {"icon": "", "icon_background": None, "icon_type": None, "icon_url": None},
+            ),
+            ({"name": "Published template", "description": "Description", "icon_info": {}}, {}),
+        ],
+    )
+    def test_post_preserves_valid_icon_info(
+        self,
+        app: Flask,
+        payload: dict[str, object],
+        expected_icon_info: dict[str, object | None],
+    ) -> None:
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
-        payload: dict[str, object] = {
-            "name": "Published template",
-            "description": "Description",
-        }
         account = _account()
-        tenant_id = "tenant-1"
-        service_calls: list[tuple[str, dict[str, object], Account, str]] = []
-
-        class Service:
-            def __init__(self, *args, **kwargs) -> None:
-                pass
-
-            def publish_customized_pipeline_template(
-                self,
-                pipeline_id: str,
-                data: dict[str, object],
-                current_user: Account,
-                current_tenant_id: str,
-                *,
-                session,
-            ) -> None:
-                del session
-                service_calls.append((pipeline_id, data, current_user, current_tenant_id))
+        pipeline = _pipeline()
 
         with (
             app.test_request_context("/rag/pipelines/pipeline-1/customized/publish", method="POST", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(module, "RagPipelineService", Service),
+            patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
-            response, status = method(
-                api, CustomizedPipelineTemplatePayload.model_validate(payload), tenant_id, account, "pipeline-1"
-            )
+            response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
 
         assert (response, status) == ("", 204)
-        assert service_calls == [
-            (
-                "pipeline-1",
-                {
-                    **payload,
-                    "icon_info": {
-                        "icon": "",
-                        "icon_background": None,
-                        "icon_type": None,
-                        "icon_url": None,
-                    },
-                },
-                account,
-                tenant_id,
-            )
-        ]
+        publish.assert_called_once()
+        trusted_pipeline, template_args, current_user = publish.call_args.args
+        assert trusted_pipeline is pipeline
+        assert current_user is account
+        assert template_args["icon_info"] == expected_icon_info
+
+    def test_post_translates_missing_owned_resource_to_not_found(self, app: Flask) -> None:
+        api = PublishCustomizedPipelineTemplateApi()
+        method = unwrap(api.post)
+        payload = _payload()
+
+        with (
+            app.test_request_context("/rag/pipelines/pipeline-1/customized/publish", method="POST", json=payload),
+            patch.object(
+                module.RagPipelineService,
+                "publish_customized_pipeline_template",
+                side_effect=RagPipelineResourceNotFoundError("Workflow not found"),
+            ),
+            pytest.raises(NotFound, match="Workflow not found"),
+        ):
+            method(api, CustomizedPipelineTemplatePayload.model_validate(payload), _account(), _pipeline())
