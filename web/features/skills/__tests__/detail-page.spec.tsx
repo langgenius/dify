@@ -261,6 +261,10 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('../permissions', () => ({
+  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
+}))
+
 vi.mock('../client', () => ({
   fetchSkillArchiveBlob: mocks.fetchSkillArchiveBlob,
   fetchSkillFileBlob: mocks.fetchSkillFileBlob,

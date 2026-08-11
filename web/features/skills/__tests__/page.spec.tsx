@@ -195,6 +195,10 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('../permissions', () => ({
+  useSkillPermissions: () => ({ canDelete: true, canEdit: true, canPublish: true }),
+}))
+
 function createSkill(overrides: Partial<SkillResponse> = {}): SkillResponse {
   return {
     id: 'skill-1',

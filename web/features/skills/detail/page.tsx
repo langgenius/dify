@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { useSkillPermissions } from '../permissions'
 import { SkillBuilderPanel } from './builder-panel'
 import { FileEditor } from './file-editor'
 import { FileTree } from './file-tree'
@@ -29,6 +30,7 @@ import { RestoreVersionDialog, VersionPanel } from './version-panel'
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation('skill')
   const queryClient = useQueryClient()
+  const { canEdit, canPublish, canDelete } = useSkillPermissions()
   const [selectedPath, setSelectedPath] = useState<string>()
   const [openFilePaths, setOpenFilePaths] = useState<string[]>([])
   const [previewFilePath, setPreviewFilePath] = useState<string>()
@@ -357,17 +359,20 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
       <div className="flex min-h-0 min-w-0 flex-1">
         <FileTree
+          canDelete={canDelete}
+          canEdit={canEdit}
           collapsed={sidebarCollapsed}
           detail={detail}
           fileMutationCoordinator={fileMutationCoordinator}
           files={activeFiles}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
-          readonly={!!activeVersionId}
+          readonly={!!activeVersionId || !canEdit}
           selectedPath={activeSelectedPath}
           skillId={skillId}
         />
         <FileEditor
+          canPublish={canPublish}
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
           file={selectedFile}
@@ -382,7 +387,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           onLocalUnpublishedChangesChange={setHasLocalUnpublishedChanges}
           onPromoteFile={handlePromoteFile}
           onOpenBuilder={
-            rightPanelMode === 'hidden' ? () => setRightPanelMode('builder') : undefined
+            canEdit && rightPanelMode === 'hidden' ? () => setRightPanelMode('builder') : undefined
           }
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
@@ -392,7 +397,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           openFiles={openFiles}
           previewFilePath={previewFilePath}
           publishing={activeVersionId ? restoreMutation.isPending : publishMutation.isPending}
-          readonly={!!activeVersionId}
+          readonly={!!activeVersionId || !canEdit}
           selectedPath={activeSelectedPath}
           selectedVersion={selectedVersion}
           selectedVersionId={activeVersionId}
@@ -439,7 +444,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
             </div>
           </div>
         )}
-        {rightPanelMode === 'builder' && (
+        {canEdit && rightPanelMode === 'builder' && (
           <SkillBuilderPanel
             detail={detail}
             selectedFile={selectedFile}

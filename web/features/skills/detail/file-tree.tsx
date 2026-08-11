@@ -238,6 +238,8 @@ function FileSearchDialog({
 }
 
 export function FileTree({
+  canEdit,
+  canDelete,
   collapsed,
   detail,
   fileMutationCoordinator,
@@ -248,6 +250,8 @@ export function FileTree({
   selectedPath,
   skillId,
 }: {
+  canEdit: boolean
+  canDelete: boolean
   collapsed: boolean
   detail: SkillDetailResponse | undefined
   fileMutationCoordinator: SkillFileMutationCoordinator
@@ -1355,12 +1359,16 @@ export function FileTree({
                   {detail?.name ?? skillId}
                 </p>
               </div>
-              {!readonly && detail && (
-                <SkillDetailSidebarActions
-                  detail={detail}
-                  onRename={() => setSkillRenameEditing(true)}
-                />
-              )}
+              {!readonly &&
+                detail &&
+                (canEdit || canDelete || !!detail.latest_published_version_id) && (
+                  <SkillDetailSidebarActions
+                    canDelete={canDelete}
+                    canEdit={canEdit}
+                    detail={detail}
+                    onRename={() => setSkillRenameEditing(true)}
+                  />
+                )}
             </div>
             <SkillTagsEditor
               detail={detail}

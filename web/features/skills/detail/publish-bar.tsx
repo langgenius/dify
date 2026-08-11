@@ -13,6 +13,7 @@ const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
 type SkillPublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
 type SkillPublishBarProps = {
+  canPublish?: boolean
   children?: ReactNode
   metaLabel: string
   onOpenVersions: () => void
@@ -45,6 +46,7 @@ export function SkillPublishShortcut() {
 }
 
 export function SkillPublishBar({
+  canPublish: hasPublishPermission = true,
   children,
   metaLabel,
   onOpenVersions,
@@ -52,7 +54,7 @@ export function SkillPublishBar({
   state,
 }: SkillPublishBarProps) {
   const { t } = useTranslation('skill')
-  const canPublish = state === 'draft' || state === 'unpublished'
+  const canPublish = hasPublishPermission && (state === 'draft' || state === 'unpublished')
 
   useHotkey(PUBLISH_SKILL_HOTKEY, onPublish, {
     enabled: canPublish,
@@ -121,21 +123,25 @@ export function SkillPublishBar({
       >
         <span aria-hidden className="i-ri-history-line size-4" />
       </button>
-      <Button
-        type="button"
-        variant="primary"
-        disabled={state === 'published'}
-        aria-disabled={state === 'publishing'}
-        className="h-8 gap-1 rounded-lg px-3"
-        onClick={canPublish ? onPublish : undefined}
-      >
-        {state === 'publishing' && (
-          <span aria-hidden className="i-ri-loader-2-line size-4 shrink-0 animate-spin" />
-        )}
-        {state === 'published' && <span aria-hidden className="i-ri-check-line size-4 shrink-0" />}
-        <span className="shrink-0">{currentState.actionLabel}</span>
-        {currentState.showShortcut && <SkillPublishShortcut />}
-      </Button>
+      {hasPublishPermission && (
+        <Button
+          type="button"
+          variant="primary"
+          disabled={state === 'published'}
+          aria-disabled={state === 'publishing'}
+          className="h-8 gap-1 rounded-lg px-3"
+          onClick={canPublish ? onPublish : undefined}
+        >
+          {state === 'publishing' && (
+            <span aria-hidden className="i-ri-loader-2-line size-4 shrink-0 animate-spin" />
+          )}
+          {state === 'published' && (
+            <span aria-hidden className="i-ri-check-line size-4 shrink-0" />
+          )}
+          <span className="shrink-0">{currentState.actionLabel}</span>
+          {currentState.showShortcut && <SkillPublishShortcut />}
+        </Button>
+      )}
     </div>
   )
 }
