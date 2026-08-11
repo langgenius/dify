@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "设置模型提供商",
   "apiKeyInfo.tryCloud": "或者尝试使用 Dify 的云版本并使用试用配额",
   "apiKeyInfo.usedToken": "使用 Tokens",
-  "overview.apiInfo.accessibleAddress": "API 访问凭据",
+  "overview.apiInfo.accessibleAddress": "API Endpoint",
   "overview.apiInfo.doc": "查阅 API 文档",
   "overview.apiInfo.explanation": "可集成至你的应用的后端即服务",
   "overview.apiInfo.title": "后端服务 API",

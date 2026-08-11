@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "모델 제공자 설정으로 이동",
   "apiKeyInfo.tryCloud": "또는 Dify 의 클라우드 버전을 무료로 체험해보세요",
   "apiKeyInfo.usedToken": "사용된 토큰",
-  "overview.apiInfo.accessibleAddress": "서비스 API 엔드포인트",
+  "overview.apiInfo.accessibleAddress": "API 엔드포인트",
   "overview.apiInfo.doc": "API 레퍼런스",
   "overview.apiInfo.explanation": "개발자의 애플리케이션에 쉽게 통합할 수 있습니다",
   "overview.apiInfo.title": "백엔드 서비스 API",

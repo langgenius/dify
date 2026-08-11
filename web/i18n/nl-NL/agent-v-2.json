@@ -13,7 +13,7 @@
   "agentDetail.access.status.outOfService": "Buiten gebruik",
   "agentDetail.access.title": "Toegangspunt",
   "agentDetail.access.toggleSurface": "Toegang van {{name}} schakelen",
-  "agentDetail.access.webApp.accessUrl": "Toegangs-URL",
+  "agentDetail.access.webApp.accessUrl": "Webapp-URL",
   "agentDetail.access.webApp.actions.accessControl": "Toegangsbeheer",
   "agentDetail.access.webApp.actions.customize": "Aangepaste frontend",
   "agentDetail.access.webApp.actions.embedded": "Ingesloten",

@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Перейти к настройке поставщика модели",
   "apiKeyInfo.tryCloud": "Или попробуйте облачную версию Dify с бесплатной квотой",
   "apiKeyInfo.usedToken": "Использованные токены",
-  "overview.apiInfo.accessibleAddress": "Конечная точка API сервиса",
+  "overview.apiInfo.accessibleAddress": "API Endpoint",
   "overview.apiInfo.doc": "Справочник по API",
   "overview.apiInfo.explanation": "Легко интегрируется в ваше приложение",
   "overview.apiInfo.title": "API серверной части",

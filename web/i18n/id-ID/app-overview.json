@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Buka penyedia model penyiapan",
   "apiKeyInfo.tryCloud": "Atau coba Dify versi cloud dengan penawaran gratis",
   "apiKeyInfo.usedToken": "Token bekas",
-  "overview.apiInfo.accessibleAddress": "Titik Akhir API Layanan",
+  "overview.apiInfo.accessibleAddress": "Titik Akhir API",
   "overview.apiInfo.doc": "Referensi API",
   "overview.apiInfo.explanation": "Mudah diintegrasikan ke dalam aplikasi Anda",
   "overview.apiInfo.title": "API Layanan Backend",

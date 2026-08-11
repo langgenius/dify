@@ -1039,9 +1039,7 @@ describe('AppDeploy', () => {
         name: 'deployments.deployDrawer.envVarSource.literal',
       }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('option', { name: 'Version value' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Version value' })).toBeInTheDocument()
     expect(
       screen.getByRole('option', {
         name: 'deployments.deployDrawer.envVarSource.lastDeployment',
@@ -1586,10 +1584,11 @@ describe('AppDeploy', () => {
     expect(screen.getByText('deployments.studio.emptyDescription')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
 
-    const deployButton = screen.getByRole('button', {
-      name: 'deployments.studio.deployToEnvironment',
+    const deployButtons = screen.getAllByRole('button', {
+      name: 'common.appMenus.deploy',
     })
-    await user.click(deployButton)
+    expect(deployButtons).toHaveLength(2)
+    await user.click(deployButtons[1]!)
 
     expect(screen.getByText('deployments.card.notDeployed')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Testing/ })).toBeInTheDocument()

@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "モデルプロバイダの設定へ",
   "apiKeyInfo.tryCloud": "または Dify のクラウドバージョンを無料見積もりでお試しください",
   "apiKeyInfo.usedToken": "使用済みトークン",
-  "overview.apiInfo.accessibleAddress": "サービス API エンドポイント",
+  "overview.apiInfo.accessibleAddress": "API エンドポイント",
   "overview.apiInfo.doc": "API リファレンス",
   "overview.apiInfo.explanation": "あなたのアプリケーションに簡単に統合できます",
   "overview.apiInfo.title": "バックエンドサービス API",

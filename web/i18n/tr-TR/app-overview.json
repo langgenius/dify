@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Model sağlayıcısını ayarlamaya git",
   "apiKeyInfo.tryCloud": "Veya Dify'nin bulut sürümünü ücretsiz kotayla deneyin",
   "apiKeyInfo.usedToken": "Kullanılan token",
-  "overview.apiInfo.accessibleAddress": "Servis API Uç Noktası",
+  "overview.apiInfo.accessibleAddress": "API Uç Noktası",
   "overview.apiInfo.doc": "API Referansı",
   "overview.apiInfo.explanation": "Kolayca uygulamanıza entegre edin",
   "overview.apiInfo.title": "Arka Uç Servis API'si",

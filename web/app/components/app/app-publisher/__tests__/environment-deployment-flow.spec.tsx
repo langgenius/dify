@@ -811,6 +811,8 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Deploy' }))
 
     await expectDeploymentRequest(requests, 'sprint-35')
-    expect(await screen.findByRole('button', { name: 'Deploy another version' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Deploy another version' }),
+    ).toBeInTheDocument()
   })
 })

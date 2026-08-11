@@ -27,9 +27,7 @@ export function EnvironmentDeployMenu({
   const { t: tCommon } = useTranslation('common')
   const undeployedEnvironments = useAtomValue(undeployedAppEnvironmentsAtom)
   const isEmptyState = appearance === 'empty'
-  const label = isEmptyState
-    ? t(($) => $['studio.deployToEnvironment'])
-    : tCommon(($) => $['appMenus.deploy'])
+  const label = tCommon(($) => $['appMenus.deploy'])
 
   return (
     <DropdownMenu modal={false}>

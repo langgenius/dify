@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "الذهاب لإعداد مزود النموذج",
   "apiKeyInfo.tryCloud": "أو جرب النسخة السحابية من Dify مع عرض مجاني",
   "apiKeyInfo.usedToken": "رمز مستخدم",
-  "overview.apiInfo.accessibleAddress": "نقطة نهاية واجهة برمجة تطبيقات الخدمة",
+  "overview.apiInfo.accessibleAddress": "نقطة نهاية API",
   "overview.apiInfo.doc": "مرجع API",
   "overview.apiInfo.explanation": "سهلة الدمج في تطبيقك",
   "overview.apiInfo.title": "واجهة برمجة تطبيقات خدمة الخلفية",

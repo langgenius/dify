@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "मॉडल प्रदाता सेटअप पर जाएं",
   "apiKeyInfo.tryCloud": "या मुफ्त कोटा के साथ Dify का क्लाउड संस्करण आज़माएं",
   "apiKeyInfo.usedToken": "उपयोग किया गया टोकन",
-  "overview.apiInfo.accessibleAddress": "सेवा एपीआई एंडपॉइंट",
+  "overview.apiInfo.accessibleAddress": "एपीआई एंडपॉइंट",
   "overview.apiInfo.doc": "एपीआई संदर्भ",
   "overview.apiInfo.explanation": "आसानी से अपने एप्लिकेशन में एकीकृत",
   "overview.apiInfo.title": "बैकएंड सेवा एपीआई",

@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "ໄປທີ່ການຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການໂມເດນ",
   "apiKeyInfo.tryCloud": "ຫຼື ລອງໃຊ້ເວີຊັນຄລາວຂອງ Dify ພ້ອມໂຄຕ້າຟຣີ",
   "apiKeyInfo.usedToken": "Token ທີ່ໃຊ້ໄປ",
-  "overview.apiInfo.accessibleAddress": "Endpoint ຂອງ Service API",
+  "overview.apiInfo.accessibleAddress": "API Endpoint",
   "overview.apiInfo.doc": "ເອກະສານອ້າງອີງ API",
   "overview.apiInfo.explanation": "ລວມເຂົ້າກັບແອັບພລິເຄຊັນຂອງທ່ານໄດ້ຢ່າງງ່າຍດາຍ",
   "overview.apiInfo.title": "Backend Service API",

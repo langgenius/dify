@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Pojdi na nastavitev ponudnika modela",
   "apiKeyInfo.tryCloud": "Ali preizkusite oblačno različico Dify s prosto kvoto",
   "apiKeyInfo.usedToken": "Porabljeni žetoni",
-  "overview.apiInfo.accessibleAddress": "API končna točka storitve",
+  "overview.apiInfo.accessibleAddress": "Končna točka API-ja",
   "overview.apiInfo.doc": "API referenca",
   "overview.apiInfo.explanation": "Enostavna integracija v vašo aplikacijo",
   "overview.apiInfo.title": "API storitev v ozadju",

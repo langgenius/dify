@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Mergeți la configurarea furnizorului de modele",
   "apiKeyInfo.tryCloud": "Sau încercați versiunea cloud a Dify cu cotă gratuită",
   "apiKeyInfo.usedToken": "Token utilizat",
-  "overview.apiInfo.accessibleAddress": "Punct final API serviciu",
+  "overview.apiInfo.accessibleAddress": "Endpoint API",
   "overview.apiInfo.doc": "Referință API",
   "overview.apiInfo.explanation": "Ușor de integrat în aplicația dvs.",
   "overview.apiInfo.title": "API serviciu backend",

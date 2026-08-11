@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Przejdź do konfiguracji dostawcy modelu",
   "apiKeyInfo.tryCloud": "Lub wypróbuj wersję chmurową Dify z darmowym limitem",
   "apiKeyInfo.usedToken": "Zużyty token",
-  "overview.apiInfo.accessibleAddress": "Punkt końcowy API usługi",
+  "overview.apiInfo.accessibleAddress": "Koniec API",
   "overview.apiInfo.doc": "Dokumentacja API",
   "overview.apiInfo.explanation": "Łatwe do zintegrowania z twoją aplikacją",
   "overview.apiInfo.title": "API usługi w tle",

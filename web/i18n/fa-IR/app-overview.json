@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "برو به تنظیمات ارائه‌دهنده مدل",
   "apiKeyInfo.tryCloud": "یا نسخه ابری Dify با سهمیه رایگان را امتحان کنید",
   "apiKeyInfo.usedToken": "توکن‌های مصرف‌شده",
-  "overview.apiInfo.accessibleAddress": "نقطه پایانی سرویس API",
+  "overview.apiInfo.accessibleAddress": "نقطه پایانی API",
   "overview.apiInfo.doc": "مرجع API",
   "overview.apiInfo.explanation": "به راحتی در برنامه خود یکپارچه می‌شود",
   "overview.apiInfo.title": "API سرویس بک‌اند",

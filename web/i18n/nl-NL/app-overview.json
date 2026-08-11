@@ -31,7 +31,7 @@
   "apiKeyInfo.setAPIBtn": "Go to setup model provider",
   "apiKeyInfo.tryCloud": "Or try the cloud version of Dify with free quote",
   "apiKeyInfo.usedToken": "Used token",
-  "overview.apiInfo.accessibleAddress": "Service API Endpoint",
+  "overview.apiInfo.accessibleAddress": "API Endpoint",
   "overview.apiInfo.doc": "API Reference",
   "overview.apiInfo.explanation": "Easily integrated into your application",
   "overview.apiInfo.title": "Backend Service API",

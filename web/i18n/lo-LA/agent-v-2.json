@@ -13,7 +13,7 @@
   "agentDetail.access.status.outOfService": "ຢຸດໃຫ້ບໍລິການ",
   "agentDetail.access.title": "ຈຸດເຂົ້າເຖິງ",
   "agentDetail.access.toggleSurface": "ເປີດ/ປິດ ການເຂົ້າເຖິງ {{name}}",
-  "agentDetail.access.webApp.accessUrl": "URL ການເຂົ້າເຖິງ",
+  "agentDetail.access.webApp.accessUrl": "URL ເວັບແອັບ",
   "agentDetail.access.webApp.actions.accessControl": "ການຄວບຄຸມການເຂົ້າເຖິງ",
   "agentDetail.access.webApp.actions.customize": "ປັບແຕ່ງສ່ວນໜ້າເວັບ",
   "agentDetail.access.webApp.actions.embedded": "ຝັງໄວ້ໃນເວັບໄຊ",
