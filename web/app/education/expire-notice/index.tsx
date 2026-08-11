@@ -4,7 +4,7 @@ import { usePricingModal } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
 import { useEducationExpireNotice } from './use-expire-notice'
 
-const ExpireNoticeModal = dynamic(() => import('./expire-notice-modal'), { ssr: false })
+const ExpireNoticeModal = dynamic(() => import('./modal'), { ssr: false })
 
 export function EducationExpireNotice() {
   const [isPricingModalOpen] = usePricingModal()

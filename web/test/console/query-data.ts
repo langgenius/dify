@@ -2,6 +2,7 @@ import type {
   EducationStatusResponse,
   GetAccountProfileResponse,
 } from '@dify/contracts/api/console/account/types.gen'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type {
   GetSystemFeaturesLicenseResponse,
   GetSystemFeaturesResponse,
@@ -16,6 +17,7 @@ import type {
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import type { DeepPartial } from '@/test/console/system-features'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { render, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
@@ -119,6 +121,15 @@ export const seedEducationStatus = (
     ...overrides,
   }
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, data)
+  return data
+}
+
+export const seedFeatures = (
+  queryClient: QueryClient,
+  overrides: DeepPartial<GetFeaturesResponse> = {},
+): GetFeaturesResponse => {
+  const data = zGetFeaturesResponse.parse(overrides)
+  queryClient.setQueryData(consoleQuery.features.get.queryKey(), data)
   return data
 }
 

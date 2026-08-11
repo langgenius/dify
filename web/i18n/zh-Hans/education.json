@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "教育优惠仅适用于 Professional 年付计划。保留当前计划将不包含该优惠。",
   "educationPricingConfirm.title": "你选择的计划不支持教育优惠",
   "emailLabel": "您当前的邮箱",
+  "form.schoolName.noResults": "未找到匹配的学校，你仍可输入学校的官方全称。",
   "form.schoolName.placeholder": "请输入您的学校的官方全称（不得缩写）",
   "form.schoolName.title": "您的学校名称",
   "form.schoolRole.option.administrator": "学校管理员",

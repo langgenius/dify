@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { EducationExpireNotice } from '../expire-notice'
+import { EducationExpireNotice } from '../index'
 import { resolveEducationExpireNotice } from '../use-expire-notice'
 
 const mockEducationStatus = vi.hoisted(() => ({

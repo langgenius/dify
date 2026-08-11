@@ -2,7 +2,6 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { Triangle } from '@/app/components/base/icons/src/public/education'
 import { userProfileAtom } from '@/context/account-state'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -15,9 +14,6 @@ const UserInfo = () => {
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
     await logout()
-
-    // Tokens are now stored in cookies and cleared by backend
-
     router.push('/signin')
   }
 
@@ -27,7 +23,10 @@ const UserInfo = () => {
         <div className="flex h-5.5 items-center bg-components-panel-on-panel-item-bg pt-1 pl-2 system-2xs-semibold-uppercase text-text-accent-light-mode-only">
           {t(($) => $.currentSigned, { ns: 'education' })}
         </div>
-        <Triangle className="h-5.5 w-4 text-components-panel-on-panel-item-bg" />
+        <span
+          className="i-custom-public-education-triangle h-5.5 w-4 text-components-panel-on-panel-item-bg"
+          aria-hidden="true"
+        />
       </div>
       <div className="flex items-center">
         <Avatar
