@@ -5975,6 +5975,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Documents metadata updated successfully |
+| 404 | Dataset, document, or metadata not found |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}/batch
 #### Parameters

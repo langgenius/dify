@@ -20,6 +20,7 @@ from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs, MetadataOperationData
 from services.errors.account import NoPermissionError
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 
@@ -281,3 +282,22 @@ class TestDocumentMetadataEditApi:
             )
         assert status == 204
         assert result == ""
+
+    def test_update_document_metadata_translates_missing_resource(self, app: Flask, current_user, dataset, dataset_id):
+        api = DocumentMetadataEditApi()
+        method = unwrap(api.post)
+        request = MetadataOperationData(operation_data=[])
+        with (
+            app.test_request_context("/"),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch.object(
+                MetadataService,
+                "update_documents_metadata",
+                side_effect=MetadataResourceNotFoundError("Metadata not found."),
+            ),
+            pytest.raises(NotFound) as exc_info,
+        ):
+            method(api, request, MagicMock(), dataset.tenant_id, current_user, dataset_id)
+
+        assert exc_info.value.description == "Metadata not found."

@@ -17,6 +17,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +275,7 @@ class MetadataService:
         ).all()
         metadata_by_id = {metadata.id: metadata for metadata in metadatas}
         if metadata_ids != set(metadata_by_id):
-            raise ValueError("Metadata not found.")
+            raise MetadataResourceNotFoundError("Metadata not found.")
 
         document_ids = {operation.document_id for operation in metadata_args.operation_data}
         owned_document_ids = set(
@@ -287,7 +288,7 @@ class MetadataService:
             ).all()
         )
         if document_ids != owned_document_ids:
-            raise ValueError("Document not found.")
+            raise MetadataResourceNotFoundError("Document not found.")
 
         for operation in metadata_args.operation_data:
             lock_key = f"document_metadata_lock_{operation.document_id}"
@@ -304,7 +305,7 @@ class MetadataService:
                     .execution_options(populate_existing=True)
                 )
                 if document is None:
-                    raise ValueError("Document not found.")
+                    raise MetadataResourceNotFoundError("Document not found.")
                 if operation.partial_update:
                     doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                 else:

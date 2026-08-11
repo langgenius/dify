@@ -31,6 +31,7 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 
 
 @pytest.fixture
@@ -581,3 +582,34 @@ class TestDocumentMetadataEditPost(_UsesSQLiteSession):
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                 )
+
+    @patch("controllers.service_api.dataset.metadata.MetadataService")
+    @patch("controllers.service_api.dataset.metadata.DatasetService")
+    @patch("controllers.service_api.dataset.metadata.current_user")
+    def test_update_documents_metadata_translates_missing_resource(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_meta_svc,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+    ):
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
+        mock_meta_svc.update_documents_metadata.side_effect = MetadataResourceNotFoundError("Document not found.")
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/metadata",
+            method="POST",
+            json={"operation_data": []},
+        ):
+            api = DocumentMetadataEditServiceApi()
+            with pytest.raises(NotFound) as exc_info:
+                self._call_post(
+                    api,
+                    MagicMock(),
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                )
+
+        assert exc_info.value.description == "Document not found."

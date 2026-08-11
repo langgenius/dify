@@ -17,6 +17,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 
@@ -951,7 +952,7 @@ class TestMetadataService:
             ],
         )
 
-        with pytest.raises(ValueError, match=f"{foreign_resource.capitalize()} not found"):
+        with pytest.raises(MetadataResourceNotFoundError, match=f"{foreign_resource.capitalize()} not found"):
             MetadataService.update_documents_metadata(
                 dataset,
                 MetadataOperationData(operation_data=[operation]),
@@ -1045,9 +1046,7 @@ class TestMetadataService:
 
         operation_data = MetadataOperationData(operation_data=[operation])
 
-        # Act & Assert: The method should raise ValueError("Document not found.")
-        # because the exception is now re-raised after rollback
-        with pytest.raises(ValueError, match="Document not found"):
+        with pytest.raises(MetadataResourceNotFoundError, match="Document not found"):
             MetadataService.update_documents_metadata(
                 dataset, operation_data, account, session=db_session_with_containers
             )

@@ -1539,7 +1539,7 @@ Update metadata values for multiple documents at once. Each document in the requ
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 404 | Dataset, document, or metadata not found |  |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**

@@ -25,6 +25,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 BUILT_IN_METADATA_ACTION_PARAM = {
@@ -300,7 +301,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         responses={
             200: "Documents metadata updated successfully",
             401: "Unauthorized - invalid API token",
-            404: "Dataset not found",
+            404: "Dataset, document, or metadata not found",
         }
     )
     @service_api_ns.response(
@@ -319,6 +320,11 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
-        MetadataService.update_documents_metadata(dataset, metadata_args, cast(Account, current_user), session=session)
+        try:
+            MetadataService.update_documents_metadata(
+                dataset, metadata_args, cast(Account, current_user), session=session
+            )
+        except MetadataResourceNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200

@@ -578,7 +578,12 @@ class TestDocumentServiceBatchMethods:
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         session = sqlite_session
-        session.add_all([make_serializable_document(id=document_id, dataset_id=dataset_id) for document_id in doc_ids])
+        session.add_all(
+            [
+                make_serializable_document(id=document_id, tenant_id="tenant-id", dataset_id=dataset_id)
+                for document_id in doc_ids
+            ]
+        )
         session.flush()
 
         documents = DocumentService.get_documents_by_ids(DatasetRef("tenant-id", dataset_id), doc_ids, session)

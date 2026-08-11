@@ -17,6 +17,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 DOCUMENT_ID = "11111111-1111-1111-1111-111111111111"
@@ -134,7 +135,7 @@ def test_update_documents_metadata_rejects_foreign_metadata_before_writes() -> N
     )
 
     with (
-        pytest.raises(ValueError, match="Metadata not found"),
+        pytest.raises(MetadataResourceNotFoundError, match="Metadata not found"),
         patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
     ):
         MetadataService.update_documents_metadata(dataset, metadata_args, _account(), session=session)
@@ -161,7 +162,7 @@ def test_update_documents_metadata_validates_all_documents_before_writes() -> No
     )
 
     with (
-        pytest.raises(ValueError, match="Document not found"),
+        pytest.raises(MetadataResourceNotFoundError, match="Document not found"),
         patch.object(MetadataService, "knowledge_base_metadata_lock_check") as lock_check,
         patch("services.metadata_service.redis_client.delete"),
     ):

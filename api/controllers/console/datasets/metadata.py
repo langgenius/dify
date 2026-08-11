@@ -37,6 +37,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.metadata import MetadataResourceNotFoundError
 from services.metadata_service import MetadataService
 
 register_schema_models(
@@ -223,6 +224,7 @@ class DocumentMetadataEditApi(Resource):
         204,
         "Documents metadata updated successfully",
     )
+    @console_ns.response(404, "Dataset, document, or metadata not found")
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
@@ -241,7 +243,10 @@ class DocumentMetadataEditApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        MetadataService.update_documents_metadata(dataset, req_data, current_user, session=session)
+        try:
+            MetadataService.update_documents_metadata(dataset, req_data, current_user, session=session)
+        except MetadataResourceNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
 
         # Frontend callers only await success and invalidate caches; no response body is consumed.
         return "", 204
