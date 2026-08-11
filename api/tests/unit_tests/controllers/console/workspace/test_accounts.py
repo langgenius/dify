@@ -38,6 +38,7 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
+    InvalidAccountPasswordRequestError,
 )
 from enums import DeploymentEdition
 from machinery.context import RequestContext
@@ -46,6 +47,7 @@ from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRol
 from services.account_errors import (
     AvatarFileNotFoundError,
     CurrentAccountPasswordIncorrectError,
+    InvalidAccountPasswordError,
 )
 from services.entities.account_entities import AccountIntegrationStatus, AccountProfileChanges
 
@@ -446,6 +448,41 @@ class TestAccountPasswordApi:
         ):
             with pytest.raises(CurrentPasswordIncorrectError):
                 method(api, request_context)
+
+    def test_password_policy_error_is_mapped(self, app: Flask):
+        api = AccountPasswordApi()
+        method = inspect.unwrap(api.post)
+        payload = {
+            "password": "old",
+            "new_password": "letters-only",
+            "repeat_new_password": "letters-only",
+        }
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        password = MagicMock()
+        password.change.side_effect = InvalidAccountPasswordError(
+            "Password must contain letters and numbers, and the length must be at least 8 characters."
+        )
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(password=password)),
+            ),
+        ):
+            with pytest.raises(InvalidAccountPasswordRequestError) as exc_info:
+                method(api, request_context)
+
+        assert exc_info.value.data == {
+            "code": "invalid_account_password",
+            "message": "Password must contain letters and numbers, and the length must be at least 8 characters.",
+            "status": 400,
+        }
 
 
 class TestAccountIntegrateApi:
