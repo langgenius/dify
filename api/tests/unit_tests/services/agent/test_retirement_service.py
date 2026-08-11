@@ -1,6 +1,4 @@
 from contextlib import nullcontext
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -23,7 +21,6 @@ from models.agent import (
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
 
