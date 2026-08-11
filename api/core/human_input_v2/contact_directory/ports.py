@@ -53,5 +53,5 @@ class ContactDirectoryRepository(Protocol):
         ...
 
     def hard_delete_external(self, workspace_id: WorkspaceId, contact_id: ContactId) -> None:
-        """Delete an External Contact without retaining an identity tombstone."""
+        """Delete an External Contact and its IM bindings without retaining an identity tombstone."""
         ...

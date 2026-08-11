@@ -45,6 +45,7 @@ from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
     HumanInputContact,
     HumanInputContactIdentitySource,
+    HumanInputIMBinding,
     HumanInputPlatformContactWorkspaceEntry,
 )
 from models.model import DifySetup
@@ -245,10 +246,10 @@ class SQLAlchemyContactDirectoryRepository:
             raise self._persistence_error() from error
 
     def hard_delete_external(self, workspace_id: WorkspaceId, contact_id: ContactId) -> None:
-        """Hard-delete an External Contact only within its owning workspace."""
+        """Hard-delete an External Contact and every referencing IM binding atomically."""
 
         try:
-            with self._session_maker() as session, session.begin():
+            with self._write_unit_of_work_factory(WorkspaceScope(workspace_id)) as session:
                 record = session.scalar(
                     select(HumanInputContact).where(
                         HumanInputContact.id == str(contact_id),
@@ -258,7 +259,9 @@ class SQLAlchemyContactDirectoryRepository:
                 )
                 if record is None:
                     raise self._domain_error(ContactRejectionCode.CONTACT_NOT_FOUND)
+                session.execute(sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.contact_id == str(contact_id)))
                 session.delete(record)
+                session.flush()
         except ContactDirectoryError:
             raise
         except SQLAlchemyError as error:

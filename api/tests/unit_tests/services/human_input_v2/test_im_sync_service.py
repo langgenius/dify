@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 import pytest
@@ -25,8 +26,11 @@ from core.human_input_v2.shared import (
     WorkspaceId,
     WorkspaceScope,
 )
+from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
+from services.human_input_v2.im_contact_sync.locking import OrganizationIMWriteLockUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
     IMIntegrationNotConfiguredError,
+    IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
     IMSyncService,
@@ -136,7 +140,7 @@ def test_created_run_is_dispatched_once_after_persistence() -> None:
     assert dispatched == [(created_run.id, _SCOPE)]
 
 
-def test_existing_active_run_is_not_dispatched_again() -> None:
+def test_existing_queued_run_is_dispatched_again() -> None:
     active_run = _run()
     repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, active_run))
     dispatched: list[tuple[IMSyncRunId, WorkspaceScope]] = []
@@ -150,7 +154,69 @@ def test_existing_active_run_is_not_dispatched_again() -> None:
     result = service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
 
     assert result == active_run
+    assert dispatched == [(active_run.id, _SCOPE)]
+
+
+def test_existing_running_run_is_not_dispatched_again() -> None:
+    active_run = _run().start(_NOW)
+    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.EXISTING_ACTIVE, active_run))
+    dispatched: list[tuple[IMSyncRunId, WorkspaceScope]] = []
+    service = IMSyncService(
+        repository,
+        lambda run_id, scope: dispatched.append((run_id, scope)),
+        clock=lambda: _NOW,
+        run_id_factory=lambda: IMSyncRunId("generated-run"),
+    )
+
+    result = service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+
+    assert result == active_run
     assert dispatched == []
+
+
+def test_dispatch_failure_is_logged_and_raised_as_retryable_application_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    created_run = _run()
+    repository = _Repository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, created_run))
+
+    def dispatch(_run_id: IMSyncRunId, _scope: WorkspaceScope) -> None:
+        raise ConnectionError("queue unavailable")
+
+    service = IMSyncService(
+        repository,
+        dispatch,
+        clock=lambda: _NOW,
+        run_id_factory=lambda: IMSyncRunId("generated-run"),
+    )
+
+    with caplog.at_level(logging.ERROR), pytest.raises(RuntimeError) as error_info:
+        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+
+    assert isinstance(error_info.value, IMSyncDispatchUnavailableError)
+    assert isinstance(error_info.value.__cause__, ConnectionError)
+    assert "run-1" in caplog.text
+    assert "integration-1" in caplog.text
+
+
+def test_run_creation_maps_lock_unavailable_to_retryable_application_error() -> None:
+    class LockUnavailableRepository(_Repository):
+        def create_or_get_active_run(self, *_args, **_kwargs) -> ActiveRunDecision:
+            raise OrganizationIMWriteLockUnavailableError("busy")
+
+    repository = LockUnavailableRepository(ActiveRunDecision(ActiveRunDecisionKind.CREATED, _run()))
+    service = IMSyncService(
+        repository,
+        lambda _run_id, _scope: None,
+        clock=lambda: _NOW,
+        run_id_factory=lambda: IMSyncRunId("generated-run"),
+    )
+
+    with pytest.raises(RuntimeError) as error_info:
+        service.create_or_get_active_run(_SCOPE, AccountId("account-1"))
+
+    assert isinstance(error_info.value, IMWriteUnavailableError)
+    assert isinstance(error_info.value.__cause__, OrganizationIMWriteLockUnavailableError)
 
 
 def test_run_creation_maps_missing_integration_and_stale_revision() -> None:

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from types import TracebackType
 from typing import Protocol
 
@@ -20,6 +21,9 @@ from core.human_input_v2.shared import (
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+
+from .errors import IMWriteUnavailableError
+from .locking import OrganizationIMWriteLockLostError, OrganizationIMWriteLockUnavailableError
 
 
 class _ProtectedIMBindingWriter(Protocol):
@@ -115,7 +119,7 @@ class ContactIMBindingService:
         identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
     ) -> ContactIMBindingView:
-        with self._write_unit_of_work_factory(organization_scope) as repository:
+        with self._protected_repository(organization_scope) as repository:
             integration = repository.require_current_integration(organization_scope)
             repository.create_organization_binding(
                 organization_scope=organization_scope,
@@ -139,7 +143,7 @@ class ContactIMBindingService:
         contact_id: ContactId,
         binding_id: IMBindingId,
     ) -> None:
-        with self._write_unit_of_work_factory(organization_scope) as repository:
+        with self._protected_repository(organization_scope) as repository:
             integration = repository.require_current_integration(organization_scope)
             repository.delete_organization_binding(
                 organization_scope=organization_scope,
@@ -157,7 +161,7 @@ class ContactIMBindingService:
         identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
     ) -> ContactIMBindingView:
-        with self._write_unit_of_work_factory(organization_scope) as repository:
+        with self._protected_repository(organization_scope) as repository:
             integration = repository.require_current_integration(organization_scope)
             repository.set_workspace_override(
                 organization_scope=organization_scope,
@@ -182,7 +186,7 @@ class ContactIMBindingService:
         workspace_id: WorkspaceId,
         contact_id: ContactId,
     ) -> ContactIMBindingView:
-        with self._write_unit_of_work_factory(organization_scope) as repository:
+        with self._protected_repository(organization_scope) as repository:
             integration = repository.require_current_integration(organization_scope)
             repository.reset_workspace_override(
                 organization_scope=organization_scope,
@@ -195,6 +199,14 @@ class ContactIMBindingService:
                 integration_id=integration.id,
                 contact_id=contact_id,
             )
+
+    @contextmanager
+    def _protected_repository(self, organization_scope: DirectoryScope) -> Generator[_ProtectedIMBindingWriter]:
+        try:
+            with self._write_unit_of_work_factory(organization_scope) as repository:
+                yield repository
+        except (OrganizationIMWriteLockUnavailableError, OrganizationIMWriteLockLostError) as error:
+            raise IMWriteUnavailableError("IM write is temporarily unavailable") from error
 
 
 __all__ = ["ContactIMBindingService"]

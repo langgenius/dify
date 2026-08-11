@@ -90,6 +90,27 @@ def test_active_delivery_reconciles_once_and_returns_terminal_state() -> None:
     assert coordinator.calls == [(IMSyncRunId("run-1"), _SCOPE)]
 
 
+def test_duplicate_delivery_returns_first_persisted_result_without_reconciliation() -> None:
+    terminal_run = _terminal_run()
+    repository = _Repository(_queued_run())
+
+    class PersistingCoordinator(_Coordinator):
+        def reconcile(self, sync_run_id: IMSyncRunId, scope: WorkspaceScope) -> IMSyncRun:
+            result = super().reconcile(sync_run_id, scope)
+            repository.run = result
+            return result
+
+    coordinator = PersistingCoordinator(terminal_run)
+    worker = IMContactSyncWorker(repository, coordinator)
+
+    first_result = worker.execute(IMSyncRunId("run-1"), _SCOPE)
+    duplicate_result = worker.execute(IMSyncRunId("run-1"), _SCOPE)
+
+    assert first_result is terminal_run
+    assert duplicate_result is terminal_run
+    assert coordinator.calls == [(IMSyncRunId("run-1"), _SCOPE)]
+
+
 def test_retryable_coordinator_failure_remains_retryable() -> None:
     repository = _Repository(_queued_run())
     coordinator = _Coordinator(_terminal_run())

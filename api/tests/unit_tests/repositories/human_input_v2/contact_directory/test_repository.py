@@ -24,6 +24,7 @@ from core.human_input_v2.contact_directory import (
     PlatformWorkspaceEntry,
     WorkspaceMemberOwner,
 )
+from core.human_input_v2.entities import IMBindingScope, IMProvider
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -34,7 +35,7 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
-from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
+from models.human_input_v2 import HumanInputContact, HumanInputIMBinding, HumanInputPlatformContactWorkspaceEntry
 from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.repository import SQLAlchemyContactDirectoryRepository
 from repositories.human_input_v2.organization_write_unit_of_work import SQLAlchemyOrganizationWriteUnitOfWork
@@ -83,6 +84,7 @@ def repository_context(
         Account.__table__,
         TenantAccountJoin.__table__,
         HumanInputContact.__table__,
+        HumanInputIMBinding.__table__,
         HumanInputPlatformContactWorkspaceEntry.__table__,
     ]
     DifySetup.metadata.create_all(sqlite_engine, tables=tables)
@@ -399,6 +401,98 @@ def test_external_hard_delete_allows_same_email_recreation_with_new_id(repositor
     assert recreated.id != original.id
 
 
+def test_external_hard_delete_removes_every_referencing_im_binding(repository_context) -> None:
+    repository, session_maker = repository_context
+    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    with session_maker.begin() as session:
+        session.add_all(
+            (
+                _im_binding(
+                    binding_id="binding-organization",
+                    contact_id=external.id,
+                    scope=IMBindingScope.ORGANIZATION,
+                    scope_id="integration-1",
+                    identity_id="identity-organization",
+                ),
+                _im_binding(
+                    binding_id="binding-workspace",
+                    contact_id=external.id,
+                    scope=IMBindingScope.WORKSPACE,
+                    scope_id=str(_WORKSPACE_ID),
+                    identity_id="identity-workspace",
+                ),
+            )
+        )
+
+    repository.hard_delete_external(_WORKSPACE_ID, external.id)
+
+    with session_maker() as session:
+        assert session.get(HumanInputContact, str(external.id)) is None
+        assert session.scalar(select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+def test_external_hard_delete_acquires_workspace_guard_before_related_sql(sqlite_engine: Engine) -> None:
+    repository, session_maker, write_unit_of_work_factory = _guarded_external_repository(sqlite_engine)
+    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    with session_maker.begin() as session:
+        session.add(
+            _im_binding(
+                binding_id="binding-workspace",
+                contact_id=external.id,
+                scope=IMBindingScope.WORKSPACE,
+                scope_id=str(_WORKSPACE_ID),
+                identity_id="identity-workspace",
+            )
+        )
+
+    def assert_guarded(_connection, _cursor, _statement, _parameters, _context, _executemany) -> None:
+        assert write_unit_of_work_factory.active is True
+
+    event.listen(sqlite_engine, "before_cursor_execute", assert_guarded)
+    try:
+        repository.hard_delete_external(_WORKSPACE_ID, external.id)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", assert_guarded)
+
+    assert write_unit_of_work_factory.scopes == [WorkspaceScope(_WORKSPACE_ID)]
+
+
+def test_external_hard_delete_rolls_back_binding_cleanup_when_contact_delete_fails(sqlite_engine: Engine) -> None:
+    repository, session_maker, _write_unit_of_work_factory = _guarded_external_repository(sqlite_engine)
+    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    with session_maker.begin() as session:
+        session.add(
+            _im_binding(
+                binding_id="binding-workspace",
+                contact_id=external.id,
+                scope=IMBindingScope.WORKSPACE,
+                scope_id=str(_WORKSPACE_ID),
+                identity_id="identity-workspace",
+            )
+        )
+    binding_delete_seen = False
+
+    def fail_contact_delete(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        nonlocal binding_delete_seen
+        normalized_statement = " ".join(statement.lower().split())
+        if normalized_statement.startswith("delete from human_input_im_bindings"):
+            binding_delete_seen = True
+        if normalized_statement.startswith("delete from human_input_contacts"):
+            raise RuntimeError("injected contact delete failure")
+
+    event.listen(sqlite_engine, "before_cursor_execute", fail_contact_delete)
+    try:
+        with pytest.raises(RuntimeError, match="injected contact delete failure"):
+            repository.hard_delete_external(_WORKSPACE_ID, external.id)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", fail_contact_delete)
+
+    assert binding_delete_seen is True
+    with session_maker() as session:
+        assert session.get(HumanInputContact, str(external.id)) is not None
+        assert session.scalar(select(sa.func.count(HumanInputIMBinding.id))) == 1
+
+
 def test_external_hard_delete_rejects_cross_workspace_owner(repository_context) -> None:
     repository, _ = repository_context
     contact = repository.admit_external(_OTHER_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
@@ -692,3 +786,48 @@ def test_postgresql_snapshot_configures_repeatable_read_transaction() -> None:
     SQLAlchemyContactDirectoryRepository._configure_snapshot_transaction(session)
 
     session.connection.assert_called_once_with(execution_options={"isolation_level": "REPEATABLE READ"})
+
+
+def _im_binding(
+    *,
+    binding_id: str,
+    contact_id: ContactId,
+    scope: IMBindingScope,
+    scope_id: str,
+    identity_id: str,
+) -> HumanInputIMBinding:
+    record = HumanInputIMBinding(
+        integration_id="integration-1",
+        scope=scope,
+        scope_id=scope_id,
+        contact_id=str(contact_id),
+        im_identity_id=identity_id,
+        provider=IMProvider.FEISHU,
+        bound_by_account_id=None,
+    )
+    record.id = binding_id
+    return record
+
+
+def _guarded_external_repository(
+    sqlite_engine: Engine,
+) -> tuple[
+    SQLAlchemyContactDirectoryRepository,
+    sessionmaker[Session],
+    _RecordingWriteUnitOfWorkFactory,
+]:
+    tables = [
+        DifySetup.__table__,
+        HumanInputContact.__table__,
+        HumanInputIMBinding.__table__,
+    ]
+    DifySetup.metadata.create_all(sqlite_engine, tables=tables)
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with session_maker.begin() as session:
+        session.add(DifySetup(version="test-version"))
+    write_unit_of_work_factory = _RecordingWriteUnitOfWorkFactory(session_maker)
+    return (
+        SQLAlchemyContactDirectoryRepository(session_maker, write_unit_of_work_factory),
+        session_maker,
+        write_unit_of_work_factory,
+    )

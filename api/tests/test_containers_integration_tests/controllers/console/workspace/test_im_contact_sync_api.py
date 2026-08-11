@@ -237,12 +237,11 @@ def test_sync_command_and_identity_queries_use_real_postgresql_and_redis(
     created_run = created.get_json()["run"]
     assert replayed.get_json()["run"]["id"] == created_run["id"]
     assert latest.get_json()["run"]["id"] == created_run["id"]
-    assert dispatched == [
-        (
-            (created_run["id"], "workspace", tenant.id),
-            "human_input_contact_sync",
-        )
-    ]
+    expected_dispatch = (
+        (created_run["id"], "workspace", tenant.id),
+        "human_input_contact_sync",
+    )
+    assert dispatched == [expected_dispatch, expected_dispatch]
     identity_page = identities.get_json()
     assert identity_page["total"] == 2
     assert len(identity_page["data"]) == 1

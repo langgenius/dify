@@ -71,7 +71,11 @@ from repositories.human_input_v2.contact_directory.mappers import contact_to_rec
 from repositories.human_input_v2.im_integration.mappers import identity_to_record, integration_to_record
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
-from services.human_input_v2.im_contact_sync.service import IMIntegrationNotConfiguredError
+from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
+from services.human_input_v2.im_contact_sync.service import (
+    IMIntegrationNotConfiguredError,
+    IMSyncDispatchUnavailableError,
+)
 
 _CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
 _NOW = datetime(2026, 8, 11, 8)
@@ -290,6 +294,87 @@ def test_sync_command_and_queries_map_transport_neutral_results(
         "page": 1,
         "limit": 20,
         "total": 1,
+    }
+
+
+def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    error = IMSyncDispatchUnavailableError("IM synchronization dispatch is temporarily unavailable")
+
+    class SyncService:
+        def create_or_get_active_run(self, _scope, _account_id):
+            raise error
+
+    monkeypatch.setattr(
+        _CONTROLLER_MODULE,
+        "build_im_contact_sync_application",
+        lambda: SimpleNamespace(sync_service=SyncService()),
+    )
+
+    with app.test_request_context(method="POST"):
+        response, status = unwrap(WorkspaceIMSyncRunsApi.post)(
+            WorkspaceIMSyncRunsApi(),
+            "workspace-1",
+            SimpleNamespace(id="account-1"),
+        )
+
+    assert status == 503
+    assert response == {
+        "code": "im_sync_dispatch_unavailable",
+        "message": str(error),
+        "status": 503,
+    }
+
+
+@pytest.mark.parametrize("command", ["sync_create", "organization_binding", "workspace_override"])
+def test_write_lock_unavailable_has_stable_retryable_http_mapping(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+) -> None:
+    error = IMWriteUnavailableError("IM write is temporarily unavailable")
+
+    class SyncService:
+        def create_or_get_active_run(self, _scope, _account_id):
+            raise error
+
+    class BindingService:
+        def create_organization_binding(self, **_kwargs):
+            raise error
+
+        def set_workspace_override(self, **_kwargs):
+            raise error
+
+    monkeypatch.setattr(
+        _CONTROLLER_MODULE,
+        "build_im_contact_sync_application",
+        lambda: SimpleNamespace(sync_service=SyncService(), binding_service=BindingService()),
+    )
+    account = SimpleNamespace(id="account-1")
+    contact_id = "00000000-0000-0000-0000-000000000001"
+    if command == "sync_create":
+        handler = unwrap(WorkspaceIMSyncRunsApi.post)
+        request_context = app.test_request_context(method="POST")
+        handler_args = (WorkspaceIMSyncRunsApi(), "workspace-1", account)
+    elif command == "organization_binding":
+        handler = unwrap(WorkspaceContactIMBindingsApi.put)
+        request_context = app.test_request_context(method="PUT", json={"identity_id": "identity-1"})
+        handler_args = (WorkspaceContactIMBindingsApi(), "workspace-1", account, contact_id)
+    else:
+        handler = unwrap(WorkspaceContactIMOverrideApi.put)
+        request_context = app.test_request_context(method="PUT", json={"identity_id": "identity-1"})
+        handler_args = (WorkspaceContactIMOverrideApi(), "workspace-1", account, contact_id)
+
+    with request_context:
+        response, status = handler(*handler_args)
+
+    assert status == 503
+    assert response == {
+        "code": "im_write_unavailable",
+        "message": str(error),
+        "status": 503,
     }
 
 

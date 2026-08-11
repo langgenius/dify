@@ -9,6 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.contact_directory import Contact, ContactDirectoryError, ContactRejectionCode
+from core.human_input_v2.entities import IMBindingScope, IMProvider
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -20,6 +21,7 @@ from core.human_input_v2.shared import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
+from models.human_input_v2 import HumanInputContact, HumanInputIMBinding
 from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.repository import SQLAlchemyContactDirectoryRepository
 from repositories.human_input_v2.organization_write_unit_of_work import SQLAlchemyOrganizationWriteUnitOfWork
@@ -239,6 +241,52 @@ def test_deployment_external_and_platform_contracts_use_postgresql(
     with pytest.raises(ContactDirectoryError) as invalid_owner:
         repository.save_organization_contact(recreated, organization_scope=DeploymentScope())
     assert invalid_owner.value.code is ContactRejectionCode.INVALID_OWNER
+
+
+def test_external_hard_delete_removes_all_im_bindings_in_same_postgresql_write(
+    db_session_with_containers: Session,
+) -> None:
+    _account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    workspace_id = WorkspaceId(tenant.id)
+    repository = _repository()
+    external = repository.admit_external(
+        workspace_id,
+        name="External Reviewer",
+        email="external-delete@example.com",
+    )
+    organization_binding = HumanInputIMBinding(
+        integration_id="00000000-0000-0000-0000-000000000201",
+        scope=IMBindingScope.ORGANIZATION,
+        scope_id="00000000-0000-0000-0000-000000000201",
+        contact_id=str(external.id),
+        im_identity_id="00000000-0000-0000-0000-000000000301",
+        provider=IMProvider.FEISHU,
+        bound_by_account_id=None,
+    )
+    organization_binding.id = "00000000-0000-0000-0000-000000000401"
+    workspace_binding = HumanInputIMBinding(
+        integration_id="00000000-0000-0000-0000-000000000201",
+        scope=IMBindingScope.WORKSPACE,
+        scope_id=str(workspace_id),
+        contact_id=str(external.id),
+        im_identity_id="00000000-0000-0000-0000-000000000302",
+        provider=IMProvider.FEISHU,
+        bound_by_account_id=None,
+    )
+    workspace_binding.id = "00000000-0000-0000-0000-000000000402"
+    db_session_with_containers.add_all((organization_binding, workspace_binding))
+    db_session_with_containers.commit()
+
+    repository.hard_delete_external(workspace_id, external.id)
+
+    db_session_with_containers.expire_all()
+    assert db_session_with_containers.get(HumanInputContact, str(external.id)) is None
+    assert (
+        db_session_with_containers.scalar(
+            sa.select(sa.func.count(HumanInputIMBinding.id)).where(HumanInputIMBinding.contact_id == str(external.id))
+        )
+        == 0
+    )
 
 
 def test_deployment_contact_write_fails_closed_without_setup_owner(

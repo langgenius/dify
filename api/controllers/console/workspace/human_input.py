@@ -126,8 +126,10 @@ from services.human_input_channel_management_composition import (
 )
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
+from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
     IMIntegrationNotConfiguredError,
+    IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
 )
@@ -237,7 +239,12 @@ def _workspace_scope(tenant_id: str) -> WorkspaceScope:
 
 
 type _IMApplicationError = (
-    IMBindingCommandError | IMIntegrationNotConfiguredError | IMSyncRevisionChangedError | IMSyncRunNotFoundError
+    IMBindingCommandError
+    | IMIntegrationNotConfiguredError
+    | IMSyncDispatchUnavailableError
+    | IMSyncRevisionChangedError
+    | IMSyncRunNotFoundError
+    | IMWriteUnavailableError
 )
 
 
@@ -251,6 +258,12 @@ def _im_application_error_response(error: _IMApplicationError) -> tuple[dict[str
     elif isinstance(error, IMSyncRunNotFoundError):
         status = HTTPStatus.NOT_FOUND
         code = "im_sync_run_not_found"
+    elif isinstance(error, IMSyncDispatchUnavailableError):
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        code = "im_sync_dispatch_unavailable"
+    elif isinstance(error, IMWriteUnavailableError):
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        code = "im_write_unavailable"
     else:
         status = HTTPStatus.CONFLICT
         code = "im_sync_revision_changed"
@@ -540,6 +553,11 @@ class WorkspaceIMSyncRunsApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[CreateIMSyncRunResponse.__name__])
     @console_ns.response(404, "IM Integration not configured", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(409, "IM Integration revision changed", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(
+        503,
+        "IM synchronization temporarily unavailable",
+        console_ns.models[IMContactSyncErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -552,7 +570,12 @@ class WorkspaceIMSyncRunsApi(Resource):
                 _workspace_scope(tenant_id),
                 AccountId(current_user.id),
             )
-        except (IMIntegrationNotConfiguredError, IMSyncRevisionChangedError) as error:
+        except (
+            IMIntegrationNotConfiguredError,
+            IMSyncDispatchUnavailableError,
+            IMSyncRevisionChangedError,
+            IMWriteUnavailableError,
+        ) as error:
             return _im_application_error_response(error)
         return dump_response(CreateIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
@@ -667,6 +690,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     )
     @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -684,7 +708,7 @@ class WorkspaceContactIMOverrideApi(Resource):
                 identity_id=IMIdentityId(request_body.identity_id),
                 bound_by_account_id=AccountId(current_user.id),
             )
-        except IMBindingCommandError as error:
+        except (IMBindingCommandError, IMWriteUnavailableError) as error:
             return _im_application_error_response(error)
         return dump_response(SetContactIMOverrideResponse, {"contact": _contact_binding_payload(contact)})
 
@@ -697,6 +721,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[ResetContactIMOverrideResponse.__name__])
     @console_ns.response(404, "Contact not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -710,7 +735,7 @@ class WorkspaceContactIMOverrideApi(Resource):
                 workspace_id=workspace_id,
                 contact_id=ContactId(contact_id),
             )
-        except IMBindingCommandError as error:
+        except (IMBindingCommandError, IMWriteUnavailableError) as error:
             return _im_application_error_response(error)
         return dump_response(ResetContactIMOverrideResponse, {"contact": _contact_binding_payload(contact)})
 
@@ -732,6 +757,7 @@ class WorkspaceContactIMBindingsApi(Resource):
         console_ns.models[IMContactSyncErrorResponse.__name__],
     )
     @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -749,12 +775,13 @@ class WorkspaceContactIMBindingsApi(Resource):
                 identity_id=IMIdentityId(request_body.identity_id),
                 bound_by_account_id=AccountId(current_user.id),
             )
-        except IMBindingCommandError as error:
+        except (IMBindingCommandError, IMWriteUnavailableError) as error:
             return _im_application_error_response(error)
         return dump_response(CreateIMBindingResponse, {"contact": _contact_binding_payload(contact)})
 
     @console_ns.response(200, "Success", console_ns.models[DeleteIMBindingResponse.__name__])
     @console_ns.response(404, "IM binding not found", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.doc(
         params=query_params_from_model(DeleteIMBindingQuery),
         description=(
@@ -776,7 +803,7 @@ class WorkspaceContactIMBindingsApi(Resource):
                 contact_id=ContactId(contact_id),
                 binding_id=IMBindingId(query.binding_id),
             )
-        except IMBindingCommandError as error:
+        except (IMBindingCommandError, IMWriteUnavailableError) as error:
             return _im_application_error_response(error)
         return dump_response(DeleteIMBindingResponse, {})
 

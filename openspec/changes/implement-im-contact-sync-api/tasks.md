@@ -64,4 +64,4 @@
 - [x] 7.4 Explicitly list every production module added or modified by this change as the project coverage scope, collect unit and integration coverage separately against that same scope, and prevent exclusions from silently shrinking the denominator.
 - [x] 7.5 Run the SQLite-backed unit suite through `uv run --project api` and enforce at least 90% coverage for the project coverage scope without starting PostgreSQL or accessing a shared external database.
 - [x] 7.6 Run the Testcontainers PostgreSQL integration suite in CI and enforce at least 80% coverage for the same project coverage scope; merged unit/integration coverage MAY be reported but MUST NOT replace either independent gate.
-- [ ] 7.7 Run backend formatting, lint and type checks, validate this OpenSpec change, and confirm no inconsistent run-reference name, Provider raw payload, ORM type or edition branch remains in the planner public surface.
+- [x] 7.7 Run backend formatting, lint and type checks, validate this OpenSpec change, and confirm no inconsistent run-reference name, Provider raw payload, ORM type or edition branch remains in the planner public surface.

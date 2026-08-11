@@ -114,6 +114,7 @@ jobs:
             --cov-branch \
             --cov-report=json:coverage-im-contact-sync-planner.json \
             api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation.py \
+            api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation_properties.py \
             api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation_contract.py
           uv run --project api python api/dev/check_coverage_gate.py \
             --coverage-json coverage-im-contact-sync-planner.json \
@@ -140,9 +141,11 @@ jobs:
             api/tests/unit_tests/core/human_input_v2/test_im_ports.py \
             api/tests/unit_tests/core/human_input_v2/test_im_reconciliation_change_log.py \
             api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation.py \
+            api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation_properties.py \
             api/tests/unit_tests/core/human_input_v2/test_im_sync_reconciliation_contract.py \
             api/tests/unit_tests/core/human_input_v2/test_shared_values.py \
             api/tests/unit_tests/migrations/test_human_input_v2_im_control_plane.py \
+            api/tests/unit_tests/migrations/test_im_identity_email_constraint.py \
             api/tests/unit_tests/migrations/test_im_reconciliation_change_log.py \
             api/tests/unit_tests/repositories/human_input_v2/contact_directory/test_repository.py \
             api/tests/unit_tests/repositories/human_input_v2/im_integration/test_im_sync_queries.py \
@@ -273,6 +276,7 @@ jobs:
             --cov-report= \
             api/tests/test_containers_integration_tests/controllers/console/workspace/test_im_contact_sync_api.py \
             api/tests/test_containers_integration_tests/controllers/console/workspace/test_im_contact_sync_live.py \
+            api/tests/test_containers_integration_tests/migrations/test_im_identity_email_constraint.py \
             api/tests/test_containers_integration_tests/migrations/test_im_reconciliation_change_log.py \
             api/tests/test_containers_integration_tests/repositories/human_input_v2/test_contact_directory_postgresql_contract.py \
             api/tests/test_containers_integration_tests/services/human_input_v2/test_im_contact_sync_e2e.py \

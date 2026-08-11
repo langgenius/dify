@@ -33,6 +33,8 @@ from repositories.human_input_v2.contact_directory.mappers import contact_to_rec
 from repositories.human_input_v2.im_integration.mappers import identity_to_record
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
+from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
+from services.human_input_v2.im_contact_sync.locking import OrganizationIMWriteLockUnavailableError
 
 _NOW = datetime(2026, 8, 11, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
@@ -173,6 +175,33 @@ def test_binding_service_resolves_current_integration_and_returns_contact_projec
     assert contact.email == "reviewer@example.com"
     assert contact.avatar_file_id is None
     assert [binding.id for binding in contact.im_bindings] == [IMBindingId("binding-organization")]
+
+
+@pytest.mark.parametrize("command", ["create_organization_binding", "set_workspace_override"])
+def test_binding_service_maps_lock_unavailable_to_retryable_application_error(command: str) -> None:
+    lock_error = OrganizationIMWriteLockUnavailableError("busy")
+
+    class UnavailableUnitOfWork:
+        def __enter__(self):
+            raise lock_error
+
+        def __exit__(self, *_unused: object) -> None:
+            pass
+
+    service = ContactIMBindingService(lambda _scope: UnavailableUnitOfWork())
+    method = getattr(service, command)
+
+    with pytest.raises(RuntimeError) as error_info:
+        method(
+            organization_scope=DeploymentScope(),
+            workspace_id=_WORKSPACE_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_IDENTITY_ID,
+            bound_by_account_id=AccountId("account-admin"),
+        )
+
+    assert isinstance(error_info.value, IMWriteUnavailableError)
+    assert error_info.value.__cause__ is lock_error
 
 
 def test_organization_binding_rejects_identity_provider_mismatch_without_writing(binding_context) -> None:

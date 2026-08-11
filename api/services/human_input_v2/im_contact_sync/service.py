@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.entities import IMSyncResultType
+from core.human_input_v2.entities import IMSyncResultType, IMSyncRunStatus
 from core.human_input_v2.im_integration import (
     ActiveRunDecisionKind,
     IMIntegration,
@@ -26,6 +27,11 @@ from core.human_input_v2.shared import (
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
+from .errors import IMWriteUnavailableError
+from .locking import OrganizationIMWriteLockLostError, OrganizationIMWriteLockUnavailableError
+
+logger = logging.getLogger(__name__)
+
 
 class IMIntegrationNotConfiguredError(RuntimeError):
     """No current Integration exists for the requested Organization."""
@@ -37,6 +43,10 @@ class IMSyncRevisionChangedError(RuntimeError):
 
 class IMSyncRunNotFoundError(RuntimeError):
     """The current Integration has no persisted synchronization run."""
+
+
+class IMSyncDispatchUnavailableError(RuntimeError):
+    """A persisted queued run could not be dispatched for asynchronous execution."""
 
 
 type IMSyncRunDispatcher = Callable[[IMSyncRunId, DirectoryScope], None]
@@ -64,19 +74,32 @@ class IMSyncService:
         started_by_account_id: AccountId | None,
     ) -> IMSyncRun:
         integration = self._require_current_integration(organization_scope)
-        decision = self._repository.create_or_get_active_run(
-            integration.revision,
-            organization_scope=organization_scope,
-            sync_run_id=self._run_id_factory(),
-            started_by_account_id=started_by_account_id,
-            now=self._clock(),
-        )
+        try:
+            decision = self._repository.create_or_get_active_run(
+                integration.revision,
+                organization_scope=organization_scope,
+                sync_run_id=self._run_id_factory(),
+                started_by_account_id=started_by_account_id,
+                now=self._clock(),
+            )
+        except (OrganizationIMWriteLockUnavailableError, OrganizationIMWriteLockLostError) as error:
+            raise IMWriteUnavailableError("IM write is temporarily unavailable") from error
         if decision.kind is ActiveRunDecisionKind.STALE_REVISION:
             raise IMSyncRevisionChangedError("IM Integration revision changed during sync run creation")
         if decision.run is None:
             raise RuntimeError("active run decision is missing its run")
-        if decision.kind is ActiveRunDecisionKind.CREATED:
-            self._dispatcher(decision.run.id, organization_scope)
+        if decision.run.status is IMSyncRunStatus.QUEUED:
+            try:
+                self._dispatcher(decision.run.id, organization_scope)
+            except Exception as error:
+                logger.exception(
+                    "Failed to dispatch IM Contact sync run, sync_run_id=%s, integration_id=%s",
+                    decision.run.id,
+                    decision.run.integration_revision.integration_id,
+                )
+                raise IMSyncDispatchUnavailableError(
+                    "IM synchronization dispatch is temporarily unavailable"
+                ) from error
         return decision.run
 
     def get_latest_run(self, organization_scope: DirectoryScope) -> IMSyncRun:
@@ -145,8 +168,10 @@ def _workspace_id(organization_scope: DirectoryScope) -> WorkspaceId | None:
 
 __all__ = [
     "IMIntegrationNotConfiguredError",
+    "IMSyncDispatchUnavailableError",
     "IMSyncRevisionChangedError",
     "IMSyncRunDispatcher",
     "IMSyncRunNotFoundError",
     "IMSyncService",
+    "IMWriteUnavailableError",
 ]

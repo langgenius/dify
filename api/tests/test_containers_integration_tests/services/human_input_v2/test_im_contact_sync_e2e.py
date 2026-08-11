@@ -381,6 +381,71 @@ def test_existing_state_remains_readable_and_new_run_starts_forward_only_history
     }
 
 
+def test_malformed_provider_email_persists_as_unmatched_without_rolling_back_valid_entries(
+    db_session_with_containers: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scope, actor_id = _seed_historical_state(db_session_with_containers)
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+
+    class DirectoryWithMalformedEmail:
+        def read_directory(self) -> Directory:
+            return Directory(
+                (
+                    DirectoryEntry(
+                        ProviderUserId("provider-user-existing"),
+                        "Existing Reviewer",
+                        "existing-reviewer@example.com",
+                    ),
+                    DirectoryEntry(
+                        ProviderUserId("provider-user-malformed"),
+                        "Malformed Reviewer",
+                        "not-an-email",
+                    ),
+                )
+            )
+
+    class AdapterWithMalformedEmail:
+        directory = DirectoryWithMalformedEmail()
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(reconcile_im_contacts_task, "apply_async", lambda **_kwargs: None)
+    application = build_im_contact_sync_application(
+        session_maker=sessions,
+        adapter_factory=lambda _integration: AdapterWithMalformedEmail(),
+    )
+
+    active_run = application.sync_service.create_or_get_active_run(scope, actor_id)
+    terminal_run = application.worker.execute(active_run.id, scope)
+
+    assert terminal_run.status is IMSyncRunStatus.SUCCEEDED
+    assert terminal_run.not_matched_count == 1
+    assert terminal_run.skipped_count == 1
+    db_session_with_containers.expire_all()
+    identities = db_session_with_containers.scalars(
+        select(HumanInputIMIdentity)
+        .where(HumanInputIMIdentity.integration_id == str(_INTEGRATION_ID))
+        .order_by(HumanInputIMIdentity.provider_user_id)
+    ).all()
+    assert [identity.provider_user_id for identity in identities] == [
+        "provider-user-existing",
+        "provider-user-malformed",
+    ]
+    assert identities[1].email == "not-an-email"
+    assert identities[1].normalized_email is None
+    assert (
+        db_session_with_containers.scalar(
+            select(func.count(HumanInputIMSyncResult.id)).where(
+                HumanInputIMSyncResult.sync_run_id == str(active_run.id),
+                HumanInputIMSyncResult.result_type == IMSyncResultType.NOT_MATCHED,
+            )
+        )
+        == 1
+    )
+
+
 @pytest.mark.parametrize("precondition_change", ["email", "account_status", "membership", "deleted"])
 def test_apply_rejects_a_changed_automatic_contact_target(
     db_session_with_containers: Session,

@@ -153,6 +153,51 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
         assert stored_result.directory_entry_payload == IMSyncDirectoryEntryPayload({"provider": "value"})
 
 
+def test_identity_model_email_constraint_allows_unusable_raw_email_but_rejects_orphan_normalization() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    HumanInputIMIdentity.__table__.create(engine)
+
+    with engine.begin() as connection:
+        _insert_identity_email_pair(
+            connection,
+            identity_id="identity-malformed",
+            email="not-an-email",
+            normalized_email=None,
+        )
+
+    with pytest.raises(sa.exc.IntegrityError):
+        with engine.begin() as connection:
+            _insert_identity_email_pair(
+                connection,
+                identity_id="identity-orphan-normalization",
+                email=None,
+                normalized_email="reviewer@example.com",
+            )
+
+
+def test_published_upgrade_email_constraint_requires_email_normalization_pairs() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    _run_migration_step(_load_migration_module(), engine, "upgrade")
+
+    with pytest.raises(sa.exc.IntegrityError):
+        with engine.begin() as connection:
+            _insert_identity_email_pair(
+                connection,
+                identity_id="identity-malformed",
+                email="not-an-email",
+                normalized_email=None,
+            )
+
+    with pytest.raises(sa.exc.IntegrityError):
+        with engine.begin() as connection:
+            _insert_identity_email_pair(
+                connection,
+                identity_id="identity-orphan-normalization",
+                email=None,
+                normalized_email="reviewer@example.com",
+            )
+
+
 def test_upgrade_enforces_positive_revision_and_scoped_binding_owner() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()
@@ -184,3 +229,25 @@ def test_downgrade_removes_only_im_control_plane_tables() -> None:
     assert set(inspector.get_table_names()) == {"human_input_contacts", "unrelated_state"}
     with engine.begin() as connection:
         assert connection.scalar(sa.text("SELECT id FROM unrelated_state")) == 1
+
+
+def _insert_identity_email_pair(
+    connection: sa.Connection,
+    *,
+    identity_id: str,
+    email: str | None,
+    normalized_email: str | None,
+) -> None:
+    connection.execute(
+        sa.text(
+            "INSERT INTO human_input_im_identities "
+            "(id, integration_id, provider, provider_user_id, email, normalized_email, raw_payload) "
+            "VALUES (:id, 'integration-1', 'feishu', :provider_user_id, :email, :normalized_email, '{}')"
+        ),
+        {
+            "id": identity_id,
+            "provider_user_id": f"provider-user-{identity_id}",
+            "email": email,
+            "normalized_email": normalized_email,
+        },
+    )

@@ -911,7 +911,7 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
             name="human_input_im_identities_integration_provider_user_uq",
         ),
         sa.CheckConstraint(
-            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
+            "email IS NOT NULL OR normalized_email IS NULL",
             name="email_normalization_pair",
         ),
         sa.Index("hiimi_integration_provider_email_idx", "integration_id", "provider", "normalized_email"),
