@@ -4,6 +4,11 @@ The valid generator constructs relationship graphs that satisfy the planner's
 input invariants. Small transforms then derive business ambiguity, conservative
 recovery, and exactly-one-structural-violation domains. The projector interprets
 only public typed mutations; it deliberately contains no matching policy.
+
+Human-readable decision-table regressions remain in
+``test_im_sync_reconciliation.py``. Canonical ``@example`` cases are repeated
+here so each law has a local, readable anchor before Hypothesis explores the
+larger relationship-graph domain.
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
-from hypothesis import given, settings
+from hypothesis import example, given, settings
 from hypothesis import strategies as st
 
 from core.human_input_v2.entities import IMProvider, IMSyncResultType
@@ -186,7 +191,176 @@ def _append_facts(
     )
 
 
+# These named examples make the laws reviewable without reverse-engineering the
+# generators. They complement, rather than replace, the decision-table tests.
+def _canonical_empty_case() -> _GeneratedCase:
+    return _GeneratedCase(
+        reconciliation_input=ReconciliationInput(
+            run=_RUN,
+            directory_entries=(),
+            current_identities=(),
+            current_bindings=(),
+            reconciled_binding_ids=frozenset(),
+            contacts_for_email_matching=(),
+        ),
+        domain=_DerivedDomain.VALID,
+    )
+
+
+def _canonical_unique_match_case() -> _GeneratedCase:
+    email = "canonical-unique@example.com"
+    return _GeneratedCase(
+        reconciliation_input=_append_facts(
+            _canonical_empty_case().reconciliation_input,
+            entries=(
+                _entry(
+                    ProviderUserId("canonical-unique-provider"),
+                    display_name="Canonical Unique",
+                    email=email,
+                ),
+            ),
+            contacts=(_contact(ContactId("canonical-unique-contact"), email),),
+        ),
+        domain=_DerivedDomain.VALID,
+    )
+
+
+def _canonical_missing_email_case() -> _GeneratedCase:
+    return _GeneratedCase(
+        reconciliation_input=_append_facts(
+            _canonical_empty_case().reconciliation_input,
+            entries=(
+                _entry(
+                    ProviderUserId("canonical-missing-email-provider"),
+                    display_name="Canonical Missing Email",
+                    email=None,
+                ),
+            ),
+        ),
+        domain=_DerivedDomain.MISSING_OR_NO_MATCH,
+    )
+
+
+def _canonical_replacement_case() -> _GeneratedCase:
+    email = "canonical-replacement@example.com"
+    previous_identity = _identity(
+        IMIdentityId("canonical-previous-identity"),
+        ProviderUserId("canonical-previous-provider"),
+        display_name="Previous Identity",
+        email=email,
+    )
+    contact = _contact(ContactId("canonical-replacement-contact"), email)
+    binding = CurrentIMBindingState(
+        binding_id=IMBindingId("canonical-replacement-binding"),
+        identity_id=previous_identity.identity_id,
+        contact_id=contact.contact_id,
+    )
+    return _GeneratedCase(
+        reconciliation_input=_append_facts(
+            _canonical_empty_case().reconciliation_input,
+            entries=(
+                _entry(
+                    ProviderUserId("canonical-replacement-provider"),
+                    display_name="Replacement Identity",
+                    email=email,
+                ),
+            ),
+            identities=(previous_identity,),
+            bindings=(binding,),
+            reconciled_binding_ids=frozenset({binding.binding_id}),
+            contacts=(contact,),
+        ),
+        domain=_DerivedDomain.VALID,
+    )
+
+
+def _canonical_existing_binding_case() -> _ExistingBindingCase:
+    email = "canonical-preserved@example.com"
+    provider_user_id = ProviderUserId("canonical-preserved-provider")
+    identity = _identity(
+        IMIdentityId("canonical-preserved-identity"),
+        provider_user_id,
+        display_name="Canonical Preserved",
+        email=email,
+    )
+    contact = _contact(ContactId("canonical-preserved-contact"), email)
+    binding = CurrentIMBindingState(
+        binding_id=IMBindingId("canonical-preserved-binding"),
+        identity_id=identity.identity_id,
+        contact_id=contact.contact_id,
+    )
+    override = CurrentIMBindingState(
+        binding_id=IMBindingId("canonical-preserved-override"),
+        identity_id=identity.identity_id,
+        contact_id=ContactId("canonical-override-contact"),
+    )
+    reconciliation_input = _append_facts(
+        _canonical_empty_case().reconciliation_input,
+        entries=(
+            _entry(
+                provider_user_id,
+                display_name="Canonical Preserved",
+                email=email,
+            ),
+        ),
+        identities=(identity,),
+        bindings=(binding, override),
+        reconciled_binding_ids=frozenset({binding.binding_id}),
+        contacts=(contact,),
+    )
+    return _ExistingBindingCase(
+        reconciliation_input=reconciliation_input,
+        provider_user_id=provider_user_id,
+        identity=identity,
+        binding=binding,
+        override=override,
+        contact=contact,
+    )
+
+
+def _canonical_duplicate_provider_case() -> _InvalidCase:
+    entry = _entry(
+        ProviderUserId("canonical-duplicate-provider"),
+        display_name=None,
+        email=None,
+    )
+    return _InvalidCase(
+        reconciliation_input=_append_facts(
+            _canonical_empty_case().reconciliation_input,
+            entries=(entry, entry),
+        ),
+        domain=_InvalidDomain.DUPLICATE_DIRECTORY_PROVIDER,
+        expected_code=ReconciliationBlockCode.DUPLICATE_PROVIDER_USER_ID,
+    )
+
+
+def _canonical_duplicate_contact_recovery_case() -> _GeneratedCase:
+    email = "canonical-collision@example.com"
+    return _GeneratedCase(
+        reconciliation_input=_append_facts(
+            _canonical_empty_case().reconciliation_input,
+            entries=(
+                _entry(
+                    ProviderUserId("canonical-collision-provider"),
+                    display_name="Canonical Collision",
+                    email=email,
+                ),
+            ),
+            contacts=(
+                _contact(ContactId("canonical-collision-contact-a"), email),
+                _contact(ContactId("canonical-collision-contact-b"), email.upper()),
+            ),
+        ),
+        domain=_DerivedDomain.DUPLICATE_CONTACT_RECOVERY,
+    )
+
+
 def _draw_topology(draw: st.DrawFn) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Choose bounded directory/current membership shapes with explicit structural boundaries.
+
+    Named topology families keep the generated domain intentional and make empty,
+    disjoint, and overlapping relationship graphs recurring test inputs.
+    """
     topology = draw(st.sampled_from(tuple(_Topology)))
     provider_indices = tuple(range(6))
     index_sets = st.sets(st.sampled_from(provider_indices), max_size=5)
@@ -210,6 +384,11 @@ def _draw_topology(draw: st.DrawFn) -> tuple[tuple[int, ...], tuple[int, ...]]:
 
 @st.composite
 def _valid_relationship_graphs(draw: st.DrawFn) -> _GeneratedCase:
+    """Generate varied relationship graphs that satisfy every planner input invariant.
+
+    Keeping this domain structurally valid ensures failures describe reconciliation
+    laws instead of accidental noise from impossible persisted state.
+    """
     directory_indices, current_indices = _draw_topology(draw)
     contact_count = draw(st.integers(min_value=0, max_value=4))
     contacts = tuple(
@@ -325,6 +504,11 @@ def _valid_relationship_graphs(draw: st.DrawFn) -> _GeneratedCase:
 
 @st.composite
 def _business_or_recovery_cases(draw: st.DrawFn) -> _GeneratedCase:
+    """Extend valid graphs with one business ambiguity or recoverable contact collision.
+
+    These cases exercise conservative outcomes without conflating them with the
+    structural corruption that must block an entire reconciliation run.
+    """
     base = draw(_valid_relationship_graphs()).reconciliation_input
     suffix = draw(st.integers(min_value=0, max_value=10_000))
     domain = draw(
@@ -456,6 +640,11 @@ def _plan_cases() -> st.SearchStrategy[_GeneratedCase]:
 
 @st.composite
 def _single_violation_cases(draw: st.DrawFn) -> _InvalidCase:
+    """Add exactly one structural violation to an otherwise valid relationship graph.
+
+    Isolating the broken invariant makes the expected blocker a trustworthy oracle
+    for both soundness and completeness.
+    """
     base = draw(_valid_relationship_graphs()).reconciliation_input
     suffix = draw(st.integers(min_value=0, max_value=10_000))
     domain = draw(st.sampled_from(tuple(_InvalidDomain)))
@@ -579,6 +768,11 @@ def _single_violation_cases(draw: st.DrawFn) -> _InvalidCase:
 
 @st.composite
 def _existing_binding_cases(draw: st.DrawFn) -> _ExistingBindingCase:
+    """Embed a known reconciled binding and manual override in a valid background graph.
+
+    This focused domain exposes non-interference regressions while unrelated facts
+    continue to vary around the preserved bindings.
+    """
     base = draw(_valid_relationship_graphs()).reconciliation_input
     suffix = draw(st.integers(min_value=0, max_value=10_000))
     prefix = f"preserved-{suffix}"
@@ -635,6 +829,11 @@ def _semantic_result(
     reconciliation_input: ReconciliationInput,
     result: ReconciliationPlan | BlockedReconciliation,
 ) -> _SemanticResult:
+    """Normalize a result to public semantics while discarding collection order.
+
+    Permutation laws need this observable because output ordering is not the contract,
+    while mutation, result, warning, and blocker meaning is.
+    """
     if isinstance(result, BlockedReconciliation):
         return _SemanticResult(
             plan=None,
@@ -746,6 +945,11 @@ def _resolve_identity_id(identity_ref: ExistingIMIdentityRef | NewIMIdentityRef)
 
 
 def _project_plan(reconciliation_input: ReconciliationInput, plan: ReconciliationPlan) -> _ProjectedState:
+    """Interpret typed plan mutations as the persisted state visible to the next run.
+
+    This policy-free projector enables closure and convergence laws without duplicating
+    the reconciler's matching decisions in the test oracle.
+    """
     identities = {identity.identity_id: identity for identity in reconciliation_input.current_identities}
     for upsert in plan.identity_upserts:
         identity_id = _resolve_identity_id(upsert.identity_ref)
@@ -853,7 +1057,17 @@ def _reversed_fact_inputs(reconciliation_input: ReconciliationInput) -> tuple[Re
 
 @settings(max_examples=100, deadline=None)
 @given(case=_plan_cases())
+@example(case=_canonical_empty_case())
+@example(case=_canonical_unique_match_case())
+@example(case=_canonical_duplicate_contact_recovery_case())
 def test_p01_valid_plan_closure_and_conservation(case: _GeneratedCase) -> None:
+    """Valid and recoverable graphs produce closed plans that conserve directory facts.
+
+    The law covers reference validity, complete removal of absent identities, and a
+    projected state with valid one-to-one reconciled bindings. It exists because those
+    relationships form a combinatorial state space that decision-table examples cannot
+    exhaust.
+    """
     reconciliation_input = case.reconciliation_input
     plan = _generate_plan(reconciliation_input)
     directory_provider_ids = {entry.provider_user_id for entry in reconciliation_input.directory_entries}
@@ -915,7 +1129,13 @@ def test_p01_valid_plan_closure_and_conservation(case: _GeneratedCase) -> None:
 
 @settings(max_examples=100, deadline=None)
 @given(case=_plan_cases())
+@example(case=_canonical_replacement_case())
 def test_p02_determinism_and_input_permutation_invariance(case: _GeneratedCase) -> None:
+    """Repeated planning and fact permutations preserve the same semantic plan.
+
+    The law prevents hidden collection-order dependencies, which are easy to miss with
+    fixed examples and would make equivalent persisted states reconcile differently.
+    """
     reconciliation_input = case.reconciliation_input
     first = SyncReconciler.generate_plan(reconciliation_input)
     assert SyncReconciler.generate_plan(reconciliation_input) == first
@@ -928,7 +1148,13 @@ def test_p02_determinism_and_input_permutation_invariance(case: _GeneratedCase) 
 
 @settings(max_examples=100, deadline=None)
 @given(case=_single_violation_cases())
+@example(case=_canonical_duplicate_provider_case())
 def test_p02_blocker_semantics_are_permutation_invariant(case: _InvalidCase) -> None:
+    """Permuting an invalid graph preserves its blocker semantics.
+
+    Structural corruption must be classified from relationships rather than input
+    order; generated violations guard that invariant beyond a canonical blocker case.
+    """
     reconciliation_input = case.reconciliation_input
     first = SyncReconciler.generate_plan(reconciliation_input)
     first_semantics = _semantic_result(reconciliation_input, first)
@@ -940,7 +1166,14 @@ def test_p02_blocker_semantics_are_permutation_invariant(case: _InvalidCase) -> 
 
 @settings(max_examples=100, deadline=None)
 @given(case=_plan_cases())
+@example(case=_canonical_replacement_case())
 def test_p03_projected_plan_converges_on_the_second_run(case: _GeneratedCase) -> None:
+    """Applying a plan reaches a fixed point for binding and deletion decisions.
+
+    A second run may refresh present identities but must not repeat structural writes or
+    change stable outcomes. This projection law protects recurring syncs from mutation
+    churn that isolated first-run examples cannot reveal.
+    """
     first_input = case.reconciliation_input
     first_plan = _generate_plan(first_input)
     second_input = _next_input(first_input, _project_plan(first_input, first_plan))
@@ -969,7 +1202,14 @@ def test_p03_projected_plan_converges_on_the_second_run(case: _GeneratedCase) ->
 
 @settings(max_examples=100, deadline=None)
 @given(case=_existing_binding_cases())
+@example(case=_canonical_existing_binding_case())
 def test_p04_existing_binding_and_override_non_interference(case: _ExistingBindingCase) -> None:
+    """Existing reconciled bindings and manual overrides change only when their owner disappears.
+
+    Profile changes, missing match candidates, and unrelated facts must not disturb
+    those bindings. This law generalizes preservation across background graphs where a
+    small set of examples could hide cross-record interference.
+    """
     baseline_plan = _generate_plan(case.reconciliation_input)
     target_mutation_ids = {
         binding_id
@@ -1084,7 +1324,15 @@ def test_p04_existing_binding_and_override_non_interference(case: _ExistingBindi
 
 @settings(max_examples=100, deadline=None)
 @given(case=_plan_cases())
+@example(case=_canonical_unique_match_case())
+@example(case=_canonical_replacement_case())
 def test_p05_binding_mutations_satisfy_independent_safety_conditions(case: _GeneratedCase) -> None:
+    """Every create or replacement independently proves all email-match safety conditions.
+
+    The target contact and provider must be uniquely admissible, email-equivalent, and
+    free of conflicting reconciled ownership. Checking every generated mutation avoids
+    an expected-output example masking an unsafe mutation elsewhere in the same plan.
+    """
     reconciliation_input = case.reconciliation_input
     plan = _generate_plan(reconciliation_input)
     contact_email_counts = Counter(
@@ -1164,7 +1412,14 @@ def _matching_results(
 
 @settings(max_examples=100, deadline=None)
 @given(case=_plan_cases())
+@example(case=_canonical_replacement_case())
 def test_p06_result_and_operation_key_consistency(case: _GeneratedCase) -> None:
+    """Plan results faithfully describe mutations and all operation keys remain unique and stable.
+
+    This correspondence is the observable contract for execution and audit records.
+    Generated mixed-operation plans protect it from drift that single-operation examples
+    would not expose.
+    """
     reconciliation_input = case.reconciliation_input
     plan = _generate_plan(reconciliation_input)
     current_identity_by_id = {identity.identity_id: identity for identity in reconciliation_input.current_identities}
@@ -1277,7 +1532,13 @@ def test_p06_result_and_operation_key_consistency(case: _GeneratedCase) -> None:
 
 @settings(max_examples=100, deadline=None)
 @given(case=_single_violation_cases())
+@example(case=_canonical_duplicate_provider_case())
 def test_p07_single_violation_blocker_soundness_and_completeness(case: _InvalidCase) -> None:
+    """Each isolated structural violation blocks with exactly its corresponding code.
+
+    The law establishes both blocker soundness and completeness across variants of each
+    invalid domain, rather than trusting one representative corruption example.
+    """
     result = SyncReconciler.generate_plan(case.reconciliation_input)
 
     assert isinstance(result, BlockedReconciliation)
@@ -1287,5 +1548,12 @@ def test_p07_single_violation_blocker_soundness_and_completeness(case: _InvalidC
 
 @settings(max_examples=100, deadline=None)
 @given(case=_business_or_recovery_cases())
+@example(case=_canonical_missing_email_case())
+@example(case=_canonical_duplicate_contact_recovery_case())
 def test_p07_business_ambiguity_and_contact_recovery_do_not_block(case: _GeneratedCase) -> None:
+    """Business ambiguity and recoverable contact collisions still produce a plan.
+
+    This negative-boundary law prevents conservative per-entry outcomes from being
+    promoted to run-level blockers as surrounding graph relationships vary.
+    """
     assert isinstance(SyncReconciler.generate_plan(case.reconciliation_input), ReconciliationPlan)
