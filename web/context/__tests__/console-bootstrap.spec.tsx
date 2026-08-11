@@ -525,6 +525,60 @@ describe('Console bootstrap', () => {
       })
     })
 
+    it('should not sync Zendesk fields outside cloud deployments', async () => {
+      mockSystemFeaturesState.data = createSystemFeaturesFixture({
+        deployment_edition: 'COMMUNITY',
+      })
+
+      renderConsoleBootstrap()
+
+      await screen.findByText('user:user@example.com')
+      expect(setZendeskConversationFields).not.toHaveBeenCalled()
+    })
+
+    it('should resync only changed Zendesk fields', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setZendeskConversationFields).toHaveBeenCalledTimes(4))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledTimes(4)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            email: 'updated@example.com',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledTimes(5)
+        expect(setZendeskConversationFields).toHaveBeenLastCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.EMAIL,
+              value: 'updated@example.com',
+            },
+          ],
+          'CLOUD',
+        )
+      })
+    })
+
     it('should not sync Amplitude identity when user id is missing', async () => {
       mockUserProfileResponseState.data = {
         profile: {
