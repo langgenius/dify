@@ -249,35 +249,35 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
+def check_knowledge_rate_limit() -> None:
+    _, current_tenant_id = current_account_with_tenant()
+    knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
+    if not knowledge_rate_limit.enabled:
+        return
+
+    current_time = int(time.time() * 1000)
+    key = f"rate_limit_{current_tenant_id}"
+    redis_client.zadd(key, {current_time: current_time})
+    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+    if redis_client.zcard(key) > knowledge_rate_limit.limit:
+        db.session.add(  # guard-ignore: no-new-controller-sqlalchemy -- existing decorator audit write
+            RateLimitLog(
+                tenant_id=current_tenant_id,
+                subscription_plan=knowledge_rate_limit.subscription_plan,
+                operation="knowledge",
+            )
+        )
+        db.session.commit()
+        abort(403, "Sorry, you have reached the knowledge base request rate limit of your subscription.")
+
+
 def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
-                _, current_tenant_id = current_account_with_tenant()
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{current_tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        # add ratelimit record
-                        rate_limit_log = RateLimitLog(
-                            tenant_id=current_tenant_id,
-                            subscription_plan=knowledge_rate_limit.subscription_plan,
-                            operation="knowledge",
-                        )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
-                        abort(
-                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
+                check_knowledge_rate_limit()
             return view(*args, **kwargs)
 
         return decorated
