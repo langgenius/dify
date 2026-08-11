@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       {
         source: '/explore/apps',
         destination: '/',
-        permanent: false,
+        permanent: true,
       },
       {
         // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
