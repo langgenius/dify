@@ -1,3 +1,4 @@
+import copy
 import logging
 import tempfile
 import time
@@ -89,6 +90,7 @@ def batch_create_segment_to_index_task(
                 "id": dataset_document.id,
                 "doc_form": dataset_document.doc_form,
                 "word_count": dataset_document.word_count or 0,
+                "doc_metadata": copy.deepcopy(dataset_document.doc_metadata) if dataset_document.doc_metadata else {},
             }
 
             upload_file_key = upload_file.key
@@ -138,6 +140,8 @@ def batch_create_segment_to_index_task(
         tokens_list = [0] * len(content)
 
     with session_factory.create_session() as session, session.begin():
+        effective_metadata = document_config["doc_metadata"]
+        security_level = effective_metadata.get("security_level")
         for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
@@ -159,6 +163,8 @@ def batch_create_segment_to_index_task(
                 indexing_at=naive_utc_now(),
                 status=SegmentStatus.COMPLETED,
                 completed_at=naive_utc_now(),
+                effective_metadata=copy.deepcopy(effective_metadata),
+                effective_security_level=security_level if isinstance(security_level, str) else None,
             )
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:
                 segment_document.answer = segment["answer"]

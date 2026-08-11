@@ -50,6 +50,7 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
     SegmentAttachmentBinding,
+    SegmentMetadataBinding,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -3368,6 +3369,20 @@ class DocumentService:
 
 
 class SegmentService:
+    @staticmethod
+    def _refresh_metadata_override_summary(session: Session, document: Document) -> None:
+        override_segment_count = (
+            session.scalar(
+                select(func.count(func.distinct(SegmentMetadataBinding.segment_id))).where(
+                    SegmentMetadataBinding.document_id == document.id
+                )
+            )
+            or 0
+        )
+        document.segment_metadata_override_count = int(override_segment_count)
+        document.has_segment_metadata_override = override_segment_count > 0
+        session.add(document)
+
     @classmethod
     def segment_create_args_validate(cls, args: dict[str, Any], document: Document):
         if document.doc_form == IndexStructureType.QA_INDEX:
@@ -3424,6 +3439,10 @@ class SegmentService:
                     indexing_at=naive_utc_now(),
                     completed_at=naive_utc_now(),
                     created_by=current_user.id,
+                    effective_metadata=copy.deepcopy(document.doc_metadata) if document.doc_metadata else {},
+                    effective_security_level=(document.doc_metadata or {}).get("security_level")
+                    if isinstance((document.doc_metadata or {}).get("security_level"), str)
+                    else None,
                 )
                 if document.doc_form == IndexStructureType.QA_INDEX:
                     segment_document.word_count += len(args["answer"])
@@ -3521,6 +3540,10 @@ class SegmentService:
                         indexing_at=naive_utc_now(),
                         completed_at=naive_utc_now(),
                         created_by=current_user.id,
+                        effective_metadata=copy.deepcopy(document.doc_metadata) if document.doc_metadata else {},
+                        effective_security_level=(document.doc_metadata or {}).get("security_level")
+                        if isinstance((document.doc_metadata or {}).get("security_level"), str)
+                        else None,
                     )
                     if document.doc_form == IndexStructureType.QA_INDEX:
                         segment_document.answer = segment_item["answer"]
@@ -3871,7 +3894,10 @@ class SegmentService:
                 [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
             )
 
+        session.execute(delete(SegmentMetadataBinding).where(SegmentMetadataBinding.segment_id == segment.id))
         session.delete(segment)
+        session.flush()
+        cls._refresh_metadata_override_summary(session, document)
         # update document word count
         assert document.word_count is not None
         document.word_count -= segment.word_count
@@ -3927,7 +3953,9 @@ class SegmentService:
 
         session.add(document)
 
-        # Delete database records
+        # Delete metadata overrides first so the summary is correct even on databases
+        # where foreign-key cascades are disabled in tests.
+        session.execute(delete(SegmentMetadataBinding).where(SegmentMetadataBinding.segment_id.in_(segment_db_ids)))
         session.execute(
             delete(DocumentSegment).where(
                 DocumentSegment.id.in_(segment_db_ids),
@@ -3936,6 +3964,7 @@ class SegmentService:
                 DocumentSegment.tenant_id == current_user.current_tenant_id,
             )
         )
+        cls._refresh_metadata_override_summary(session, document)
         session.commit()
 
     @classmethod

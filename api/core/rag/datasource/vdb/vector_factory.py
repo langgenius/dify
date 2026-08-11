@@ -255,7 +255,7 @@ class Vector:
 
     @trace_span()
     def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
-        return self._vector_processor.search_by_vector(query_vector, **kwargs)
+        return self._search_with_metadata_filters(self._vector_processor.search_by_vector, query_vector, kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
         upload_file: UploadFile | None = self._session.get(UploadFile, file_id)
@@ -274,7 +274,53 @@ class Vector:
         return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._vector_processor.search_by_full_text(query, **kwargs)
+        return self._search_with_metadata_filters(self._vector_processor.search_by_full_text, query, kwargs)
+
+    def _search_with_metadata_filters(self, search, query: Any, kwargs: dict[str, Any]) -> list[Document]:
+        """Apply chunk allowlists safely, including for vector stores without native support."""
+        index_node_ids = {str(node_id) for node_id in (kwargs.get("index_node_ids_filter") or [])}
+        if not index_node_ids:
+            return search(query, **kwargs)
+
+        document_ids = {str(document_id) for document_id in (kwargs.get("document_ids_filter") or [])}
+        top_k = int(kwargs.get("top_k", 4))
+        candidates: list[Document] = []
+
+        if self._vector_processor.supports_index_node_ids_filter:
+            candidates = search(query, **kwargs)
+        else:
+            # Keep the inherited-document branch server-side filtered. The override
+            # branch is over-recalled and then filtered locally so unsupported
+            # adapters cannot silently ignore the chunk allowlist and leak results.
+            if document_ids:
+                document_kwargs = dict(kwargs)
+                document_kwargs.pop("index_node_ids_filter", None)
+                candidates.extend(search(query, **document_kwargs))
+
+            node_kwargs = dict(kwargs)
+            node_kwargs.pop("document_ids_filter", None)
+            node_kwargs.pop("index_node_ids_filter", None)
+            node_kwargs["top_k"] = max(top_k * 20, min(len(index_node_ids), 1000))
+            candidates.extend(search(query, **node_kwargs))
+
+        filtered: dict[str, Document] = {}
+        for document in candidates:
+            metadata = document.metadata or {}
+            node_id = str(metadata.get("doc_id") or "")
+            document_id = str(metadata.get("document_id") or "")
+            if node_id not in index_node_ids and document_id not in document_ids:
+                continue
+
+            dedupe_key = node_id or f"{document_id}:{document.page_content}"
+            previous = filtered.get(dedupe_key)
+            if previous is None or float(metadata.get("score") or 0) > float(
+                (previous.metadata or {}).get("score") or 0
+            ):
+                filtered[dedupe_key] = document
+
+        return sorted(
+            filtered.values(), key=lambda document: float((document.metadata or {}).get("score") or 0), reverse=True
+        )[:top_k]
 
     def delete(self):
         self._vector_processor.delete()

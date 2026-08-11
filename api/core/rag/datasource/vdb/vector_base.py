@@ -16,6 +16,8 @@ class VectorIndexStructDict(TypedDict):
 
 
 class BaseVector(ABC):
+    supports_index_node_ids_filter = False
+
     def __init__(self, collection_name: str):
         self._collection_name = collection_name
 

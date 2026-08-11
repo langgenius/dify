@@ -266,6 +266,7 @@ class TestHitTestingServiceRetrieve:
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = (
             {dataset.id: ["doc-1", "doc-2"]},
             None,
+            None,
         )
 
         documents = [HitTestingTestDataFactory.create_document_mock()]
@@ -318,7 +319,7 @@ class TestHitTestingServiceRetrieve:
         external_retrieval_model = {}
 
         mock_dataset_retrieval = MagicMock()
-        mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, True)
+        mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, {}, True)
 
         with (
             patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,

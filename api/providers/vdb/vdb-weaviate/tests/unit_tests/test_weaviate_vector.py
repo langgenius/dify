@@ -478,6 +478,49 @@ class TestWeaviateVector(unittest.TestCase):
         assert mock_col.query.near_vector.call_args.kwargs["filters"] is not None
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_vector_combines_document_and_node_filters_with_or(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.near_vector.return_value.objects = []
+
+        node_filter = MagicMock()
+        document_filter = MagicMock()
+        combined_filter = MagicMock()
+        node_filter.__or__.return_value = combined_filter
+
+        node_property = MagicMock()
+        node_property.contains_any.return_value = node_filter
+        document_property = MagicMock()
+        document_property.contains_any.return_value = document_filter
+
+        with patch.object(
+            weaviate_vector_module.Filter,
+            "by_property",
+            side_effect=[node_property, document_property],
+        ) as mock_by_property:
+            wv = WeaviateVector(
+                collection_name=self.collection_name,
+                config=self.config,
+                attributes=self.attributes,
+            )
+            wv.search_by_vector(
+                query_vector=[0.2] * 3,
+                document_ids_filter=["doc-1"],
+                index_node_ids_filter=["segment-1"],
+                score_threshold=-1,
+            )
+
+        assert [call.args[0] for call in mock_by_property.call_args_list] == ["doc_id", "document_id"]
+        node_property.contains_any.assert_called_once_with(["segment-1"])
+        document_property.contains_any.assert_called_once_with(["doc-1"])
+        node_filter.__or__.assert_called_once_with(document_filter)
+        assert mock_col.query.near_vector.call_args.kwargs["filters"] is combined_filter
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_returns_empty_when_collection_is_missing(self, mock_weaviate_module):
         mock_client = MagicMock()
         mock_client.is_ready.return_value = True
@@ -611,6 +654,48 @@ class TestWeaviateVector(unittest.TestCase):
         assert len(docs) == 1
         assert docs[0].vector == [0.3, 0.4]
         assert mock_col.query.bm25.call_args.kwargs["filters"] is not None
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_combines_document_and_node_filters_with_or(self, mock_weaviate_module):
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+        mock_col.query.bm25.return_value.objects = []
+
+        node_filter = MagicMock()
+        document_filter = MagicMock()
+        combined_filter = MagicMock()
+        node_filter.__or__.return_value = combined_filter
+
+        node_property = MagicMock()
+        node_property.contains_any.return_value = node_filter
+        document_property = MagicMock()
+        document_property.contains_any.return_value = document_filter
+
+        with patch.object(
+            weaviate_vector_module.Filter,
+            "by_property",
+            side_effect=[node_property, document_property],
+        ) as mock_by_property:
+            wv = WeaviateVector(
+                collection_name=self.collection_name,
+                config=self.config,
+                attributes=self.attributes,
+            )
+            wv.search_by_full_text(
+                query="bm25",
+                document_ids_filter=["doc-1"],
+                index_node_ids_filter=["segment-1"],
+            )
+
+        assert [call.args[0] for call in mock_by_property.call_args_list] == ["doc_id", "document_id"]
+        node_property.contains_any.assert_called_once_with(["segment-1"])
+        document_property.contains_any.assert_called_once_with(["doc-1"])
+        node_filter.__or__.assert_called_once_with(document_filter)
+        assert mock_col.query.bm25.call_args.kwargs["filters"] is combined_filter
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_returns_empty_when_collection_is_missing(self, mock_weaviate_module):

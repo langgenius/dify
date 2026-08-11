@@ -97,6 +97,8 @@ class WeaviateVector(BaseVector):
     in a Weaviate collection.
     """
 
+    supports_index_node_ids_filter = True
+
     _DOCUMENT_ID_PROPERTY = "document_id"
 
     def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
@@ -409,8 +411,13 @@ class WeaviateVector(BaseVector):
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
-        if doc_ids:
-            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
+        index_node_ids = kwargs.get("index_node_ids_filter") or []
+        node_filter = Filter.by_property("doc_id").contains_any(index_node_ids) if index_node_ids else None
+        document_filter = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids) if doc_ids else None
+        if node_filter is not None and document_filter is not None:
+            where = node_filter | document_filter
+        else:
+            where = node_filter or document_filter
 
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
@@ -469,8 +476,13 @@ class WeaviateVector(BaseVector):
 
         where = None
         doc_ids = kwargs.get("document_ids_filter") or []
-        if doc_ids:
-            where = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids)
+        index_node_ids = kwargs.get("index_node_ids_filter") or []
+        node_filter = Filter.by_property("doc_id").contains_any(index_node_ids) if index_node_ids else None
+        document_filter = Filter.by_property(self._DOCUMENT_ID_PROPERTY).contains_any(doc_ids) if doc_ids else None
+        if node_filter is not None and document_filter is not None:
+            where = node_filter | document_filter
+        else:
+            where = node_filter or document_filter
 
         top_k = int(kwargs.get("top_k", 4))
 

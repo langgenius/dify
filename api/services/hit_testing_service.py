@@ -121,6 +121,7 @@ class HitTestingService:
             retrieval_model or dataset.retrieval_model or default_retrieval_model,
         )
         document_ids_filter = None
+        index_node_ids_filter = None
         metadata_filtering_conditions_raw = resolved_retrieval_model.get("metadata_filtering_conditions", {})
         if metadata_filtering_conditions_raw and query:
             dataset_retrieval = DatasetRetrieval()
@@ -129,20 +130,24 @@ class HitTestingService:
 
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions_raw)
 
-            metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-                session=session,
-                dataset_ids=[dataset.id],
-                query=query,
-                metadata_filtering_mode="manual",
-                metadata_filtering_conditions=metadata_filtering_conditions,
-                inputs={},
-                tenant_id="",
-                user_id="",
-                metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
+            metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition = (
+                dataset_retrieval.get_metadata_filter_condition(
+                    session=session,
+                    dataset_ids=[dataset.id],
+                    query=query,
+                    metadata_filtering_mode="manual",
+                    metadata_filtering_conditions=metadata_filtering_conditions,
+                    inputs={},
+                    tenant_id="",
+                    user_id="",
+                    metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
+                )
             )
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
-            if metadata_condition and not document_ids_filter:
+            if metadata_filter_index_node_ids:
+                index_node_ids_filter = metadata_filter_index_node_ids.get(dataset.id, [])
+            if metadata_condition and not document_ids_filter and not index_node_ids_filter:
                 return cls.compact_retrieve_response(query, [], session=session)
         all_documents = RetrievalService.retrieve(
             retrieval_method=RetrievalMethod(
@@ -161,6 +166,7 @@ class HitTestingService:
             reranking_mode=resolved_retrieval_model.get("reranking_mode") or "reranking_model",
             weights=resolved_retrieval_model.get("weights", None),
             document_ids_filter=document_ids_filter,
+            index_node_ids_filter=index_node_ids_filter,
         )
 
         end = time.perf_counter()

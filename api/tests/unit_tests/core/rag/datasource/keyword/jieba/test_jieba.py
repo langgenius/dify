@@ -204,12 +204,19 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: 
     patched_runtime.session.flush()
     monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["node-1", "node-2"]))
 
-    documents = keyword.search("query", session=patched_runtime.session, top_k=2, document_ids_filter=["doc-2"])
+    documents = keyword.search(
+        "query",
+        session=patched_runtime.session,
+        top_k=1,
+        document_ids_filter=["doc-2"],
+        index_node_ids_filter=["node-2"],
+    )
 
     assert len(documents) == 1
     assert documents[0].page_content == "segment-content"
     assert documents[0].metadata["doc_id"] == "node-2"
     assert documents[0].metadata["doc_hash"] == "hash-2"
+    keyword._retrieve_ids_by_query.assert_called_once_with({}, "query", None)
 
 
 def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
@@ -324,6 +331,14 @@ def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch: pytest.Mo
     )
 
     assert ranked_ids == ["node-2"]
+
+    all_ranked_ids = keyword._retrieve_ids_by_query(
+        {"kw-a": {"node-1", "node-2"}, "kw-b": {"node-2"}, "kw-c": {"node-3"}},
+        "query",
+        k=None,
+    )
+
+    assert all_ranked_ids == ["node-2", "node-1"]
 
 
 def test_update_segment_keywords_updates_when_segment_exists(patched_runtime):

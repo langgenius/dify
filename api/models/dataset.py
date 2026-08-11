@@ -536,6 +536,7 @@ class Document(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_pkey"),
         sa.Index("document_dataset_id_idx", "dataset_id"),
+        sa.Index("document_dataset_override_flag_idx", "dataset_id", "has_segment_metadata_override"),
         sa.Index("document_is_paused_idx", "is_paused"),
         sa.Index("document_tenant_idx", "tenant_id"),
         adjusted_json_index("document_metadata_idx", "doc_metadata"),
@@ -600,6 +601,12 @@ class Document(Base):
     )
     doc_type = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
+    has_segment_metadata_override: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    segment_metadata_override_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default=sa.text("0"), default=0
+    )
     doc_form: Mapped[IndexStructureType] = mapped_column(
         EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
     )
@@ -906,6 +913,9 @@ class DocumentSegment(TypeBase):
     __tablename__ = "document_segments"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_pkey"),
+        sa.Index("document_segment_document_position_idx", "document_id", "position"),
+        sa.Index("document_segment_dataset_security_level_idx", "dataset_id", "effective_security_level"),
+        adjusted_json_index("document_segment_effective_metadata_idx", "effective_metadata"),
         sa.Index("document_segment_dataset_id_idx", "dataset_id"),
         sa.Index("document_segment_document_id_idx", "document_id"),
         sa.Index("document_segment_tenant_dataset_idx", "dataset_id", "tenant_id"),
@@ -949,6 +959,13 @@ class DocumentSegment(TypeBase):
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    effective_metadata: Mapped[dict[str, Any]] = mapped_column(
+        AdjustedJSON, nullable=False, default_factory=dict, server_default=sa.text("'{}'")
+    )
+    metadata_override_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    effective_security_level: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
 
     @property
     def dataset(self) -> Dataset | None:
@@ -1640,6 +1657,46 @@ class DatasetMetadataBinding(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+
+class SegmentMetadataBinding(TypeBase):
+    __tablename__ = "segment_metadata_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="segment_metadata_binding_pkey"),
+        sa.Index("segment_metadata_binding_tenant_idx", "tenant_id"),
+        sa.Index("segment_metadata_binding_dataset_idx", "dataset_id"),
+        sa.Index("segment_metadata_binding_document_idx", "document_id"),
+        sa.Index("segment_metadata_binding_metadata_idx", "metadata_id"),
+        sa.Index("segment_metadata_binding_segment_metadata_idx", "segment_id", "metadata_id", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
+    )
+    segment_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("document_segments.id", ondelete="CASCADE"), nullable=False
+    )
+    metadata_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("dataset_metadatas.id", ondelete="CASCADE"), nullable=False
+    )
+    value_json: Mapped[Any] = mapped_column(AdjustedJSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
 
 class PipelineBuiltInTemplate(TypeBase):

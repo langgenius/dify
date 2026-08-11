@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Sequence
 from typing import Any
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import Document as DatasetDocument
 from models.enums import SegmentType
 
 
@@ -99,6 +101,13 @@ class DatasetDocumentStore:
             if not segment_document:
                 max_position += 1
                 assert self._document_id
+                parent_document = session.get(DatasetDocument, self._document_id)
+                effective_metadata = (
+                    copy.deepcopy(parent_document.doc_metadata)
+                    if parent_document and parent_document.doc_metadata
+                    else {}
+                )
+                security_level = effective_metadata.get("security_level")
                 segment_document = DocumentSegment(
                     tenant_id=self._dataset.tenant_id,
                     dataset_id=self._dataset.id,
@@ -111,6 +120,8 @@ class DatasetDocumentStore:
                     tokens=tokens,
                     enabled=False,
                     created_by=self._user_id,
+                    effective_metadata=effective_metadata,
+                    effective_security_level=security_level if isinstance(security_level, str) else None,
                 )
                 if doc.metadata.get("answer"):
                     segment_document.answer = doc.metadata.pop("answer", "")

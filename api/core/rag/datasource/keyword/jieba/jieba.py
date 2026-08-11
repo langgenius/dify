@@ -3,7 +3,7 @@ from typing import Any, TypedDict, override
 
 import orjson
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -109,35 +109,53 @@ class Jieba(BaseKeyword):
             data: Any = keyword_table_dict["__data__"]
             keyword_table = dict(data["table"])
 
-        k = kwargs.get("top_k", 4)
-        document_ids_filter = kwargs.get("document_ids_filter")
-        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
-
-        documents = []
-
-        segment_query_stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
+        k = int(kwargs.get("top_k", 4))
+        document_ids_filter = kwargs.get("document_ids_filter") or []
+        index_node_ids_filter = kwargs.get("index_node_ids_filter") or []
+        has_metadata_filter = bool(document_ids_filter or index_node_ids_filter)
+        sorted_chunk_indices = self._retrieve_ids_by_query(
+            keyword_table or {}, query, None if has_metadata_filter else k
         )
-        if document_ids_filter:
-            segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
 
-        segments = session.scalars(segment_query_stmt).all()
-        segment_map = {segment.index_node_id: segment for segment in segments}
-        for chunk_index in sorted_chunk_indices:
-            segment = segment_map.get(chunk_index)
+        documents: list[Document] = []
+        candidate_batch_size = max(k * 10, 100)
+        candidate_batches = (
+            sorted_chunk_indices[offset : offset + candidate_batch_size]
+            for offset in range(0, len(sorted_chunk_indices), candidate_batch_size)
+        )
 
-            if segment:
-                documents.append(
-                    Document(
-                        page_content=segment.content,
-                        metadata={
-                            "doc_id": chunk_index,
-                            "doc_hash": segment.index_node_hash,
-                            "document_id": segment.document_id,
-                            "dataset_id": segment.dataset_id,
-                        },
+        for candidate_batch in candidate_batches:
+            segment_query_stmt = select(DocumentSegment).where(
+                DocumentSegment.dataset_id == self.dataset.id,
+                DocumentSegment.index_node_id.in_(candidate_batch),
+            )
+            if has_metadata_filter:
+                allowlist_conditions = []
+                if document_ids_filter:
+                    allowlist_conditions.append(DocumentSegment.document_id.in_(document_ids_filter))
+                if index_node_ids_filter:
+                    allowlist_conditions.append(DocumentSegment.index_node_id.in_(index_node_ids_filter))
+                segment_query_stmt = segment_query_stmt.where(or_(*allowlist_conditions))
+
+            segments = session.scalars(segment_query_stmt).all()
+            segment_map = {segment.index_node_id: segment for segment in segments}
+            for chunk_index in candidate_batch:
+                segment = segment_map.get(chunk_index)
+
+                if segment:
+                    documents.append(
+                        Document(
+                            page_content=segment.content,
+                            metadata={
+                                "doc_id": chunk_index,
+                                "doc_hash": segment.index_node_hash,
+                                "document_id": segment.document_id,
+                                "dataset_id": segment.dataset_id,
+                            },
+                        )
                     )
-                )
+                    if len(documents) >= k:
+                        return documents
 
         return documents
 
@@ -227,7 +245,7 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int | None = 4) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
@@ -244,7 +262,7 @@ class Jieba(BaseKeyword):
             reverse=True,
         )
 
-        return sorted_chunk_indices[:k]
+        return sorted_chunk_indices if k is None else sorted_chunk_indices[:k]
 
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str], session: Session):
         stmt = select(DocumentSegment).where(

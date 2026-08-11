@@ -206,6 +206,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
     callback = _TestHitCallback()
     metadata_filter_result = (
         {dataset.id: ["doc-a"]},
+        None,
         {"logical_operator": "and"},
     )
     external_documents = [
@@ -262,7 +263,7 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     with patch.object(
         single_retriever_module.DatasetRetrieval,
         "get_metadata_filter_condition",
-        return_value=({dataset.id: []}, {"logical_operator": "and"}),
+        return_value=({dataset.id: []}, {dataset.id: []}, {"logical_operator": "and"}),
     ):
         with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
             result = tool.run(session=sqlite_session, query="hello")
@@ -354,7 +355,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
         patch.object(
             single_retriever_module.DatasetRetrieval,
             "get_metadata_filter_condition",
-            return_value=(None, None),
+            return_value=(None, None, None),
         ),
         patch.object(single_retriever_module.RetrievalService, "retrieve", return_value=documents),
         patch.object(

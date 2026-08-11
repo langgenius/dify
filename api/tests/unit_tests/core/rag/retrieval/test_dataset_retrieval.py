@@ -2594,7 +2594,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                 dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset1, mock_dataset2]
             ):
                 # Mock get_metadata_filter_condition
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None, None)):
                     # Mock multiple_retrieve to return documents
                     doc1 = create_mock_document_methods("Python is great", "doc1", score=0.9)
                     doc2 = create_mock_document_methods("Python is awesome", "doc2", score=0.8)
@@ -2691,7 +2691,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                 with patch.object(
                     dataset_retrieval,
                     "get_metadata_filter_condition",
-                    return_value=(None, None),
+                    return_value=(None, None, None),
                 ) as mock_get_metadata:
                     with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                         # Act
@@ -2737,7 +2737,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id, provider="external")
             with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None, None)):
                     # Create external document
                     external_doc = create_mock_document_methods(
                         "External knowledge",
@@ -2792,7 +2792,7 @@ class TestDatasetRetrievalKnowledgeRetrieval:
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             mock_dataset = create_mock_dataset_methods(dataset_id=dataset_id, tenant_id=tenant_id)
             with patch.object(dataset_retrieval, "_get_available_datasets", return_value=[mock_dataset]):
-                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
+                with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None, None)):
                     # Mock multiple_retrieve to return empty list
                     with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                         # Act
@@ -4366,12 +4366,15 @@ class TestDatasetRetrievalAdditionalHelpers:
                 )
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
-        scalars_result = Mock()
-        scalars_result.all.return_value = [SimpleNamespace(dataset_id="d1", id="doc-1")]
         session = MagicMock()
-        session.scalars.return_value = scalars_result
 
-        mapping, condition = retrieval.get_metadata_filter_condition(
+        def configure_plain_document_result() -> None:
+            session.execute.side_effect = [
+                SimpleNamespace(all=lambda: [SimpleNamespace(dataset_id="d1", id="doc-1")]),
+                SimpleNamespace(all=lambda: []),
+            ]
+
+        mapping, node_mapping, condition = retrieval.get_metadata_filter_condition(
             session,
             dataset_ids=["d1"],
             query="python",
@@ -4383,13 +4386,15 @@ class TestDatasetRetrievalAdditionalHelpers:
             inputs={},
         )
         assert mapping is None
+        assert node_mapping is None
         assert condition is None
 
         automatic_filters = [{"condition": "contains", "metadata_name": "author", "value": "Alice"}]
+        configure_plain_document_result()
         with (
             patch.object(retrieval, "_automatic_metadata_filter_func", return_value=automatic_filters),
         ):
-            mapping, condition = retrieval.get_metadata_filter_condition(
+            mapping, node_mapping, condition = retrieval.get_metadata_filter_condition(
                 session,
                 dataset_ids=["d1"],
                 query="python",
@@ -4401,6 +4406,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 inputs={},
             )
         assert mapping == {"d1": ["doc-1"]}
+        assert node_mapping is None
         assert condition is not None
         assert condition.logical_operator == "or"
 
@@ -4408,7 +4414,8 @@ class TestDatasetRetrievalAdditionalHelpers:
             logical_operator="and",
             conditions=[AppCondition(name="author", comparison_operator="contains", value="{{name}}")],
         )
-        mapping, condition = retrieval.get_metadata_filter_condition(
+        configure_plain_document_result()
+        mapping, node_mapping, condition = retrieval.get_metadata_filter_condition(
             session,
             dataset_ids=["d1"],
             query="python",
@@ -4420,6 +4427,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             inputs={"name": "Alice"},
         )
         assert mapping == {"d1": ["doc-1"]}
+        assert node_mapping is None
         assert condition is not None
         assert condition.conditions
         first_condition = condition.conditions[0]
@@ -4437,6 +4445,79 @@ class TestDatasetRetrievalAdditionalHelpers:
                 metadata_filtering_conditions=None,
                 inputs={},
             )
+
+    def test_get_metadata_filter_condition_returns_mixed_document_and_chunk_allowlists(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        session = MagicMock()
+
+        def result(items):
+            return SimpleNamespace(all=lambda: items)
+
+        session.execute.side_effect = [
+            result([SimpleNamespace(dataset_id="d1", id="doc-public")]),
+            result(
+                [
+                    SimpleNamespace(
+                        id="segment-allowed",
+                        dataset_id="d1",
+                        document_id="doc-mixed",
+                        index_node_id="node-allowed",
+                    )
+                ]
+            ),
+            result(
+                [
+                    SimpleNamespace(
+                        segment_id="segment-allowed",
+                        index_node_id="child-node-allowed",
+                    )
+                ]
+            ),
+            result(
+                [
+                    SimpleNamespace(
+                        chunk_id="segment-allowed",
+                        summary_index_node_id="summary-node-allowed",
+                    )
+                ]
+            ),
+            result(
+                [
+                    SimpleNamespace(
+                        segment_id="segment-allowed",
+                        attachment_id="attachment-node-allowed",
+                    )
+                ]
+            ),
+        ]
+        conditions = AppMetadataFilteringCondition(
+            logical_operator="and",
+            conditions=[AppCondition(name="security_level", comparison_operator="=", value="public")],
+        )
+
+        document_mapping, node_mapping, condition = retrieval.get_metadata_filter_condition(
+            session,
+            dataset_ids=["d1"],
+            query="public question",
+            tenant_id="tenant-1",
+            user_id="u1",
+            metadata_filtering_mode="manual",
+            metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
+            metadata_filtering_conditions=conditions,
+            inputs={},
+        )
+
+        assert document_mapping == {"d1": ["doc-public"]}
+        assert node_mapping == {
+            "d1": [
+                "node-allowed",
+                "child-node-allowed",
+                "summary-node-allowed",
+                "attachment-node-allowed",
+            ]
+        }
+        assert condition == conditions
 
     def test_get_available_datasets(self, retrieval: DatasetRetrieval) -> None:
         session = Mock()
@@ -4732,7 +4813,7 @@ class TestRetrieveCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
-            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None, None)),
             patch.object(retrieval, "single_retrieve", return_value=[]) as mock_single_retrieve,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
@@ -4777,7 +4858,7 @@ class TestRetrieveCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
-            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None, None)),
             patch.object(retrieval, "single_retrieve", return_value=[external_doc]),
         ):
             bound_model_instance = Mock()
@@ -4875,7 +4956,7 @@ class TestRetrieveCoverage:
         with (
             patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager,
             patch.object(retrieval, "_get_available_datasets", return_value=[SimpleNamespace(id="d1")]),
-            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(retrieval, "get_metadata_filter_condition", return_value=(None, None, None)),
             patch.object(retrieval, "multiple_retrieve", return_value=[external_doc, dify_doc]),
             patch(
                 "core.rag.retrieval.dataset_retrieval.RetrievalService.format_retrieval_documents",

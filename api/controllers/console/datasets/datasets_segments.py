@@ -65,9 +65,14 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_ref_service import DatasetRefService, SegmentRef
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import (
+    ChildChunkUpdateArgs,
+    MetadataUpdateArgs,
+    SegmentUpdateArgs,
+)
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.metadata_service import MetadataService
 from services.summary_index_service import SummaryIndexService
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
@@ -116,6 +121,30 @@ class SegmentBatchImportStatusResponse(ResponseModel):
     job_status: str
 
 
+class SegmentMetadataItemResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+    value: str | int | float | None = None
+    source: Literal["built_in", "inherited", "override"]
+
+
+class SegmentMetadataResponse(ResponseModel):
+    data: list[SegmentMetadataItemResponse]
+
+
+class SegmentMetadataUpdatePayload(BaseModel):
+    metadata: list[MetadataUpdateArgs] = Field(min_length=1)
+
+
+class SegmentMetadataBatchUpdatePayload(SegmentMetadataUpdatePayload):
+    segment_ids: list[str] = Field(min_length=1)
+
+
+class SegmentMetadataResetPayload(BaseModel):
+    field_names: list[str] = Field(min_length=1)
+
+
 class ConsoleSegmentListResponse(ResponseModel):
     data: list[SegmentResponse]
     limit: int
@@ -152,6 +181,10 @@ register_schema_models(
     ChildChunkUpdatePayload,
     ChildChunkBatchUpdatePayload,
     ChildChunkUpdateArgs,
+    MetadataUpdateArgs,
+    SegmentMetadataUpdatePayload,
+    SegmentMetadataBatchUpdatePayload,
+    SegmentMetadataResetPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -162,6 +195,8 @@ register_response_schema_models(
     ChildChunkListResponse,
     ChildChunkBatchUpdateResponse,
     SegmentBatchImportStatusResponse,
+    SegmentMetadataItemResponse,
+    SegmentMetadataResponse,
     SimpleResultResponse,
 )
 
@@ -471,6 +506,172 @@ class DatasetDocumentSegmentAddApi(Resource):
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentDetailResponse, response), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/metadata")
+class DatasetDocumentSegmentMetadataApi(Resource):
+    @console_ns.response(200, "Chunk metadata retrieved", console_ns.models[SegmentMetadataResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_session(write=False)
+    def get(
+        self,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+    ):
+        dataset = DatasetService.get_dataset(str(dataset_id), session)
+        if not dataset or dataset.tenant_id != current_tenant_id:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+    @console_ns.expect(console_ns.models[SegmentMetadataUpdatePayload.__name__])
+    @console_ns.response(200, "Chunk metadata updated", console_ns.models[SegmentMetadataResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
+    @model_validate(SegmentMetadataUpdatePayload)
+    def patch(
+        self,
+        req_data: SegmentMetadataUpdatePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+    ):
+        dataset = DatasetService.get_dataset(str(dataset_id), session)
+        if not dataset or dataset.tenant_id != current_tenant_id:
+            raise NotFound("Dataset not found.")
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.apply_segment_metadata_override(
+                session, dataset, document, segment, req_data.metadata, current_user, current_tenant_id
+            )
+            session.commit()
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/metadata/reset")
+class DatasetDocumentSegmentMetadataResetApi(Resource):
+    @console_ns.expect(console_ns.models[SegmentMetadataResetPayload.__name__])
+    @console_ns.response(200, "Chunk metadata reset", console_ns.models[SegmentMetadataResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
+    @model_validate(SegmentMetadataResetPayload)
+    def post(
+        self,
+        req_data: SegmentMetadataResetPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+    ):
+        dataset = DatasetService.get_dataset(str(dataset_id), session)
+        if not dataset or dataset.tenant_id != current_tenant_id:
+            raise NotFound("Dataset not found.")
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.reset_segment_metadata_fields_to_document(
+                session, dataset, document, segment, req_data.field_names
+            )
+            session.commit()
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/metadata/batch")
+class DatasetDocumentSegmentMetadataBatchApi(Resource):
+    @console_ns.expect(console_ns.models[SegmentMetadataBatchUpdatePayload.__name__])
+    @console_ns.response(200, "Chunk metadata updated", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_session
+    @model_validate(SegmentMetadataBatchUpdatePayload)
+    def post(
+        self,
+        req_data: SegmentMetadataBatchUpdatePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
+        dataset = DatasetService.get_dataset(str(dataset_id), session)
+        if not dataset or dataset.tenant_id != current_tenant_id:
+            raise NotFound("Dataset not found.")
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, session)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.batch_update_segments_metadata(
+                session,
+                dataset,
+                document,
+                req_data.segment_ids,
+                req_data.metadata,
+                current_user,
+                current_tenant_id,
+            )
+            session.commit()
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")

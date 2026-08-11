@@ -10,7 +10,8 @@ from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
-from sqlalchemy import and_, func, literal, or_, select, update
+from sqlalchemy import Float, and_, func, literal, or_, select, update
+from sqlalchemy import cast as sa_cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
@@ -81,6 +82,7 @@ from models.dataset import (
     DatasetMetadata,
     DatasetQuery,
     DocumentSegment,
+    DocumentSegmentSummary,
     RateLimitLog,
     SegmentAttachmentBinding,
 )
@@ -129,7 +131,7 @@ class DatasetRetrieval:
         if not request.query and not request.attachment_ids:
             return []
 
-        metadata_filter_document_ids, metadata_condition = None, None
+        metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition = None, None, None
 
         if request.metadata_filtering_mode != "disabled":
             app_metadata_model_config = ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={})
@@ -147,16 +149,18 @@ class DatasetRetrieval:
 
             query = request.query if request.query is not None else ""
 
-            metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
-                session=session,
-                dataset_ids=available_datasets_ids,
-                query=query,
-                tenant_id=request.tenant_id,
-                user_id=request.user_id,
-                metadata_filtering_mode=request.metadata_filtering_mode,
-                metadata_model_config=app_metadata_model_config,
-                metadata_filtering_conditions=app_metadata_filtering_conditions,
-                inputs={},
+            metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition = (
+                self.get_metadata_filter_condition(
+                    session=session,
+                    dataset_ids=available_datasets_ids,
+                    query=query,
+                    tenant_id=request.tenant_id,
+                    user_id=request.user_id,
+                    metadata_filtering_mode=request.metadata_filtering_mode,
+                    metadata_model_config=app_metadata_model_config,
+                    metadata_filtering_conditions=app_metadata_filtering_conditions,
+                    inputs={},
+                )
             )
 
         if request.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
@@ -230,6 +234,7 @@ class DatasetRetrieval:
                 planning_strategy,
                 None,  # message_id
                 metadata_filter_document_ids,
+                metadata_filter_index_node_ids,
                 metadata_condition,
             )
         else:
@@ -247,6 +252,7 @@ class DatasetRetrieval:
                 weights=request.weights,
                 reranking_enable=request.reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
+                metadata_filter_index_node_ids=metadata_filter_index_node_ids,
                 metadata_condition=metadata_condition,
                 attachment_ids=request.attachment_ids,
             )
@@ -425,16 +431,18 @@ class DatasetRetrieval:
         else:
             inputs = {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
-        metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
-            session,
-            available_datasets_ids,
-            query,
-            tenant_id,
-            user_id,
-            retrieve_config.metadata_filtering_mode,  # type: ignore
-            retrieve_config.metadata_model_config,  # type: ignore
-            retrieve_config.metadata_filtering_conditions,
-            inputs,
+        metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition = (
+            self.get_metadata_filter_condition(
+                session,
+                available_datasets_ids,
+                query,
+                tenant_id,
+                user_id,
+                retrieve_config.metadata_filtering_mode,  # type: ignore
+                retrieve_config.metadata_model_config,  # type: ignore
+                retrieve_config.metadata_filtering_conditions,
+                inputs,
+            )
         )
 
         all_documents = []
@@ -453,6 +461,7 @@ class DatasetRetrieval:
                 planning_strategy,
                 message_id,
                 metadata_filter_document_ids,
+                metadata_filter_index_node_ids,
                 metadata_condition,
             )
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
@@ -471,6 +480,7 @@ class DatasetRetrieval:
                 True if retrieve_config.reranking_enabled is None else retrieve_config.reranking_enabled,
                 message_id,
                 metadata_filter_document_ids,
+                metadata_filter_index_node_ids,
                 metadata_condition,
             )
 
@@ -617,6 +627,7 @@ class DatasetRetrieval:
         planning_strategy: PlanningStrategy,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_filter_index_node_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
         tools: list[PromptMessageTool] = []
@@ -678,14 +689,21 @@ class DatasetRetrieval:
                             document.metadata["dataset_name"] = selected_dataset.name
                         results.append(document)
                 else:
-                    if metadata_condition and not metadata_filter_document_ids:
+                    if metadata_condition and not metadata_filter_document_ids and not metadata_filter_index_node_ids:
                         return []
                     document_ids_filter = None
+                    index_node_ids_filter = None
                     if metadata_filter_document_ids:
                         document_ids = metadata_filter_document_ids.get(selected_dataset.id, [])
                         if document_ids:
                             document_ids_filter = document_ids
-                        else:
+                        elif not metadata_filter_index_node_ids:
+                            return []
+                    if metadata_filter_index_node_ids:
+                        index_node_ids = metadata_filter_index_node_ids.get(selected_dataset.id, [])
+                        if index_node_ids:
+                            index_node_ids_filter = index_node_ids
+                        elif not document_ids_filter:
                             return []
                     retrieval_model_config: DefaultRetrievalModelDict = (
                         cast(DefaultRetrievalModelDict, selected_dataset.retrieval_model)
@@ -723,6 +741,11 @@ class DatasetRetrieval:
                             reranking_mode=retrieval_model_config.get("reranking_mode", "reranking_model"),
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
+                            **(
+                                {"index_node_ids_filter": index_node_ids_filter}
+                                if index_node_ids_filter is not None
+                                else {}
+                            ),
                         )
                 self._on_query(query, None, [dataset_id], app_id, user_from, user_id)
 
@@ -758,6 +781,7 @@ class DatasetRetrieval:
         reranking_enable: bool = True,
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
+        metadata_filter_index_node_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
@@ -809,6 +833,7 @@ class DatasetRetrieval:
                         "available_datasets": available_datasets,
                         "metadata_condition": metadata_condition,
                         "metadata_filter_document_ids": metadata_filter_document_ids,
+                        "metadata_filter_index_node_ids": metadata_filter_index_node_ids,
                         "all_documents": all_documents,
                         "tenant_id": tenant_id,
                         "reranking_enable": reranking_enable,
@@ -835,6 +860,7 @@ class DatasetRetrieval:
                             "available_datasets": available_datasets,
                             "metadata_condition": metadata_condition,
                             "metadata_filter_document_ids": metadata_filter_document_ids,
+                            "metadata_filter_index_node_ids": metadata_filter_index_node_ids,
                             "all_documents": all_documents,
                             "tenant_id": tenant_id,
                             "reranking_enable": reranking_enable,
@@ -1094,6 +1120,7 @@ class DatasetRetrieval:
         top_k: int,
         all_documents: list[Document],
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
     ):
@@ -1141,6 +1168,7 @@ class DatasetRetrieval:
                         query=query,
                         top_k=top_k,
                         document_ids_filter=document_ids_filter,
+                        index_node_ids_filter=index_node_ids_filter,
                     )
                     if documents:
                         all_documents.extend(documents)
@@ -1161,6 +1189,7 @@ class DatasetRetrieval:
                             reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                             weights=retrieval_model.get("weights", None),
                             document_ids_filter=document_ids_filter,
+                            index_node_ids_filter=index_node_ids_filter,
                             attachment_ids=attachment_ids,
                         )
 
@@ -1178,6 +1207,7 @@ class DatasetRetrieval:
         document_ids_filter: list[str] | None,
         metadata_condition: MetadataFilteringCondition | None,
         attachment_ids: list[str] | None,
+        index_node_ids_filter: list[str] | None = None,
     ) -> None:
         with session_factory.create_session() as session:
             self._retriever(
@@ -1190,6 +1220,11 @@ class DatasetRetrieval:
                 document_ids_filter=document_ids_filter,
                 metadata_condition=metadata_condition,
                 attachment_ids=attachment_ids,
+                **(
+                    {"index_node_ids_filter": index_node_ids_filter}
+                    if index_node_ids_filter is not None
+                    else {}
+                ),
             )
 
     def _run_retriever_thread_safely(
@@ -1206,6 +1241,7 @@ class DatasetRetrieval:
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
         skip_on_error: bool = False,
+        index_node_ids_filter: list[str] | None = None,
     ) -> None:
         """Collect errors after tracing, or skip dataset-level failures when requested."""
         try:
@@ -1218,6 +1254,11 @@ class DatasetRetrieval:
                 document_ids_filter=document_ids_filter,
                 metadata_condition=metadata_condition,
                 attachment_ids=attachment_ids,
+                **(
+                    {"index_node_ids_filter": index_node_ids_filter}
+                    if index_node_ids_filter is not None
+                    else {}
+                ),
             )
         except Exception as exc:
             if skip_on_error:
@@ -1455,17 +1496,35 @@ class DatasetRetrieval:
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
         inputs: dict[str, Any],
-    ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
-        document_query = select(DatasetDocument).where(
+    ) -> tuple[
+        dict[str, list[str]] | None,
+        dict[str, list[str]] | None,
+        MetadataFilteringCondition | None,
+    ]:
+        document_query = select(DatasetDocument.id, DatasetDocument.dataset_id).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
             DatasetDocument.indexing_status == "completed",
             DatasetDocument.enabled == True,
             DatasetDocument.archived == False,
         )
-        filters = []  # type: ignore
+        segment_query = (
+            select(DocumentSegment.id, DocumentSegment.dataset_id, DocumentSegment.index_node_id)
+            .join(DatasetDocument, DatasetDocument.id == DocumentSegment.document_id)
+            .where(
+                DocumentSegment.dataset_id.in_(dataset_ids),
+                DatasetDocument.indexing_status == "completed",
+                DatasetDocument.enabled == True,
+                DatasetDocument.archived == False,
+                DatasetDocument.has_segment_metadata_override == True,
+                DocumentSegment.enabled == True,
+                DocumentSegment.status == "completed",
+            )
+        )
+        document_filters: list[Any] = []
+        segment_filters: list[Any] = []
         metadata_condition = None
         if metadata_filtering_mode == "disabled":
-            return None, None
+            return None, None, None
         elif metadata_filtering_mode == "automatic":
             automatic_metadata_filters = self._automatic_metadata_filter_func(
                 session, dataset_ids, query, tenant_id, user_id, metadata_model_config
@@ -1478,7 +1537,21 @@ class DatasetRetrieval:
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
                         filter.get("value"),
-                        filters,  # type: ignore
+                        document_filters,
+                        json_source=DatasetDocument.doc_metadata,
+                    )
+                    self.process_metadata_filter_func(
+                        sequence,
+                        filter.get("condition"),  # type: ignore
+                        filter.get("metadata_name"),  # type: ignore
+                        filter.get("value"),
+                        segment_filters,
+                        json_source=DocumentSegment.effective_metadata,
+                        text_source=(
+                            DocumentSegment.effective_security_level
+                            if filter.get("metadata_name") == "security_level"
+                            else None
+                        ),
                     )
                     conditions.append(
                         Condition(
@@ -1509,12 +1582,24 @@ class DatasetRetrieval:
                             value=expected_value,
                         )
                     )
-                    filters = self.process_metadata_filter_func(
+                    document_filters = self.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
                         expected_value,
-                        filters,
+                        document_filters,
+                        json_source=DatasetDocument.doc_metadata,
+                    )
+                    segment_filters = self.process_metadata_filter_func(
+                        sequence,
+                        condition.comparison_operator,
+                        metadata_name,
+                        expected_value,
+                        segment_filters,
+                        json_source=DocumentSegment.effective_metadata,
+                        text_source=(
+                            DocumentSegment.effective_security_level if metadata_name == "security_level" else None
+                        ),
                     )
                 metadata_condition = MetadataFilteringCondition(
                     logical_operator=metadata_filtering_conditions.logical_operator,
@@ -1522,17 +1607,85 @@ class DatasetRetrieval:
                 )
         else:
             raise ValueError("Invalid metadata filtering mode")
-        if filters:
-            if metadata_filtering_conditions and metadata_filtering_conditions.logical_operator == "and":  # type: ignore
-                document_query = document_query.where(and_(*filters))
+
+        if not document_filters and not segment_filters:
+            return None, None, None
+
+        logical_operator = metadata_condition.logical_operator if metadata_condition else "or"
+        if document_filters:
+            if logical_operator == "and":
+                document_query = document_query.where(
+                    DatasetDocument.has_segment_metadata_override == False, and_(*document_filters)
+                )
             else:
-                document_query = document_query.where(or_(*filters))
-        documents = session.scalars(document_query).all()
-        # group by dataset_id
-        metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
-        for document in documents:
-            metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
-        return metadata_filter_document_ids, metadata_condition
+                document_query = document_query.where(
+                    DatasetDocument.has_segment_metadata_override == False, or_(*document_filters)
+                )
+        else:
+            document_query = document_query.where(DatasetDocument.has_segment_metadata_override == False)
+
+        if segment_filters:
+            segment_query = segment_query.where(
+                and_(*segment_filters) if logical_operator == "and" else or_(*segment_filters)
+            )
+
+        plain_documents = session.execute(document_query).all()
+        segments = session.execute(segment_query).all()
+        metadata_filter_document_ids: defaultdict[str, list[str]] | None = (
+            defaultdict(list) if plain_documents else None
+        )
+        metadata_filter_index_node_ids: defaultdict[str, list[str]] | None = defaultdict(list) if segments else None
+
+        for document in plain_documents:
+            assert metadata_filter_document_ids is not None
+            metadata_filter_document_ids[document.dataset_id].append(document.id)
+
+        if segments:
+            assert metadata_filter_index_node_ids is not None
+            segment_by_id = {segment.id: segment for segment in segments}
+            seen_ids: dict[str, set[str]] = defaultdict(set)
+
+            def append_index_node(dataset_id: str, index_node_id: str | None) -> None:
+                if not index_node_id or index_node_id in seen_ids[dataset_id]:
+                    return
+                metadata_filter_index_node_ids[dataset_id].append(index_node_id)
+                seen_ids[dataset_id].add(index_node_id)
+
+            for segment in segments:
+                append_index_node(segment.dataset_id, segment.index_node_id)
+
+            segment_ids = list(segment_by_id)
+            child_chunk_rows = session.execute(
+                select(ChildChunk.segment_id, ChildChunk.index_node_id).where(ChildChunk.segment_id.in_(segment_ids))
+            ).all()
+            for child_chunk in child_chunk_rows:
+                parent = segment_by_id.get(child_chunk.segment_id)
+                if parent:
+                    append_index_node(parent.dataset_id, child_chunk.index_node_id)
+
+            summary_rows = session.execute(
+                select(DocumentSegmentSummary.chunk_id, DocumentSegmentSummary.summary_index_node_id).where(
+                    DocumentSegmentSummary.chunk_id.in_(segment_ids),
+                    DocumentSegmentSummary.enabled == True,
+                    DocumentSegmentSummary.status == "completed",
+                )
+            ).all()
+            for summary in summary_rows:
+                parent = segment_by_id.get(summary.chunk_id)
+                if parent:
+                    append_index_node(parent.dataset_id, summary.summary_index_node_id)
+
+            attachment_rows = session.execute(
+                select(SegmentAttachmentBinding.segment_id, SegmentAttachmentBinding.attachment_id).where(
+                    SegmentAttachmentBinding.segment_id.in_(segment_ids)
+                )
+            ).all()
+            for attachment in attachment_rows:
+                parent = segment_by_id.get(attachment.segment_id)
+                if parent:
+                    append_index_node(parent.dataset_id, attachment.attachment_id)
+
+        return metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict[str, Any]) -> str:
         if not inputs:
@@ -1612,63 +1765,79 @@ class DatasetRetrieval:
 
     @classmethod
     def process_metadata_filter_func(
-        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+        cls,
+        sequence: int,
+        condition: str,
+        metadata_name: str,
+        value: Any | None,
+        filters: list,
+        *,
+        json_source=DatasetDocument.doc_metadata,
+        text_source=None,
     ):
+        del sequence
         if value is None and condition not in ("empty", "not empty"):
             return filters
 
-        json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
+        if text_source is None:
+            text_field = json_source[metadata_name].as_string()
+            numeric_field = json_source[metadata_name].as_float()
+            nullable_field = json_source[metadata_name]
+        else:
+            text_field = text_source
+            numeric_field = sa_cast(text_source, Float)
+            nullable_field = text_source
 
         from libs.helper import escape_like_pattern
 
         match condition:
             case "contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"%{escaped_value}%", escape="\\"))
+                filters.append(text_field.like(f"%{escaped_value}%", escape="\\"))
 
             case "not contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+                filters.append(text_field.notlike(f"%{escaped_value}%", escape="\\"))
 
             case "start with":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"{escaped_value}%", escape="\\"))
+                filters.append(text_field.like(f"{escaped_value}%", escape="\\"))
 
             case "end with":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
+                filters.append(text_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
                 match value:
                     case str():
-                        filters.append(json_field == value)
+                        filters.append(text_field == value)
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                        filters.append(numeric_field == value)
 
             case "is not" | "≠":
                 match value:
                     case str():
-                        filters.append(json_field != value)
+                        filters.append(text_field != value)
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        filters.append(numeric_field != value)
 
             case "empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
+                filters.append(nullable_field.is_(None))
 
             case "not empty":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
+                filters.append(nullable_field.isnot(None))
 
             case "before" | "<":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() < value)
+                filters.append(numeric_field < value)
 
             case "after" | ">":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() > value)
+                filters.append(numeric_field > value)
 
             case "≤" | "<=":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() <= value)
+                filters.append(numeric_field <= value)
 
             case "≥" | ">=":
-                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
+                filters.append(numeric_field >= value)
             case "in" | "not in":
                 match value:
                     case str():
@@ -1682,7 +1851,7 @@ class DatasetRetrieval:
                     # `field in []` is False, `field not in []` is True
                     filters.append(literal(condition == "not in"))
                 else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    op = text_field.in_ if condition == "in" else text_field.notin_
                     filters.append(op(value_list))
             case _:
                 pass
@@ -1863,6 +2032,7 @@ class DatasetRetrieval:
         query: str | None,
         attachment_id: str | None,
         dataset_count: int,
+        metadata_filter_index_node_ids: dict[str, list[str]] | None = None,
         cancel_event: threading.Event | None = None,
     ) -> None:
         try:
@@ -1877,14 +2047,25 @@ class DatasetRetrieval:
                         break
                     index_type = dataset.indexing_technique
                     document_ids_filter = None
+                    index_node_ids_filter = None
                     if dataset.provider != "external":
-                        if metadata_condition and not metadata_filter_document_ids:
+                        if (
+                            metadata_condition
+                            and not metadata_filter_document_ids
+                            and not metadata_filter_index_node_ids
+                        ):
                             continue
                         if metadata_filter_document_ids:
                             document_ids = metadata_filter_document_ids.get(dataset.id, [])
                             if document_ids:
                                 document_ids_filter = document_ids
-                            else:
+                            elif not metadata_filter_index_node_ids:
+                                continue
+                        if metadata_filter_index_node_ids:
+                            index_node_ids = metadata_filter_index_node_ids.get(dataset.id, [])
+                            if index_node_ids:
+                                index_node_ids_filter = index_node_ids
+                            elif not document_ids_filter:
                                 continue
                     retrieval_thread = threading.Thread(
                         target=propagate_context(self._run_retriever_thread_safely),
@@ -1895,6 +2076,7 @@ class DatasetRetrieval:
                             "top_k": top_k,
                             "all_documents": all_documents_item,
                             "document_ids_filter": document_ids_filter,
+                            "index_node_ids_filter": index_node_ids_filter,
                             "metadata_condition": metadata_condition,
                             "attachment_ids": [attachment_id] if attachment_id else None,
                             "cancel_event": cancel_event,
@@ -1978,6 +2160,7 @@ class DatasetRetrieval:
         query: str | None,
         attachment_id: str | None,
         dataset_count: int,
+        metadata_filter_index_node_ids: dict[str, list[str]] | None = None,
         cancel_event: threading.Event | None = None,
         thread_exceptions: list[Exception] | None = None,
     ) -> None:
@@ -2000,6 +2183,11 @@ class DatasetRetrieval:
                 attachment_id=attachment_id,
                 dataset_count=dataset_count,
                 cancel_event=cancel_event,
+                **(
+                    {"metadata_filter_index_node_ids": metadata_filter_index_node_ids}
+                    if metadata_filter_index_node_ids is not None
+                    else {}
+                ),
             )
         except Exception as exc:
             if cancel_event:

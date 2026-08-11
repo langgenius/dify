@@ -105,6 +105,7 @@ class RetrievalService:
         reranking_mode: str = "reranking_model",
         weights: WeightsDict | None = None,
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
         attachment_ids: list[str] | None = None,
     ):
         if not query and not attachment_ids:
@@ -137,6 +138,11 @@ class RetrievalService:
                         attachment_id=None,
                         all_documents=all_documents,
                         exceptions=exceptions,
+                        **(
+                            {"index_node_ids_filter": index_node_ids_filter}
+                            if index_node_ids_filter is not None
+                            else {}
+                        ),
                     )
                 )
             if attachment_ids:
@@ -157,6 +163,11 @@ class RetrievalService:
                             attachment_id=attachment_id,
                             all_documents=all_documents,
                             exceptions=exceptions,
+                            **(
+                                {"index_node_ids_filter": index_node_ids_filter}
+                                if index_node_ids_filter is not None
+                                else {}
+                            ),
                         )
                     )
 
@@ -277,6 +288,7 @@ class RetrievalService:
         all_documents: list[Document],
         exceptions: list[str],
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -292,6 +304,11 @@ class RetrievalService:
                         session=session,
                         top_k=top_k,
                         document_ids_filter=document_ids_filter,
+                        **(
+                            {"index_node_ids_filter": index_node_ids_filter}
+                            if index_node_ids_filter is not None
+                            else {}
+                        ),
                     )
                 all_documents.extend(documents)
             except Exception as e:
@@ -312,6 +329,7 @@ class RetrievalService:
         retrieval_method: RetrievalMethod,
         exceptions: list[str],
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ):
         with flask_app.app_context():
@@ -339,6 +357,11 @@ class RetrievalService:
                                 score_threshold=embedding_score_threshold,
                                 filter={"group_id": [dataset.id]},
                                 document_ids_filter=document_ids_filter,
+                                **(
+                                    {"index_node_ids_filter": index_node_ids_filter}
+                                    if index_node_ids_filter is not None
+                                    else {}
+                                ),
                             )
                         )
                     if query_type == QueryType.IMAGE_QUERY:
@@ -351,6 +374,11 @@ class RetrievalService:
                                 score_threshold=embedding_score_threshold,
                                 filter={"group_id": [dataset.id]},
                                 document_ids_filter=document_ids_filter,
+                                **(
+                                    {"index_node_ids_filter": index_node_ids_filter}
+                                    if index_node_ids_filter is not None
+                                    else {}
+                                ),
                             )
                         )
 
@@ -421,6 +449,7 @@ class RetrievalService:
         retrieval_method: str,
         exceptions: list[str],
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
     ):
         with flask_app.app_context():
             try:
@@ -432,7 +461,14 @@ class RetrievalService:
                     vector_processor = Vector(dataset=dataset, session=session)
 
                 documents = vector_processor.search_by_full_text(
-                    cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
+                    cls.escape_query_for_search(query),
+                    top_k=top_k,
+                    document_ids_filter=document_ids_filter,
+                    **(
+                        {"index_node_ids_filter": index_node_ids_filter}
+                        if index_node_ids_filter is not None
+                        else {}
+                    ),
                 )
                 if documents:
                     if (
@@ -792,6 +828,7 @@ class RetrievalService:
         reranking_mode: str = "reranking_model",
         weights: WeightsDict | None = None,
         document_ids_filter: list[str] | None = None,
+        index_node_ids_filter: list[str] | None = None,
         attachment_id: str | None = None,
     ):
         if not query and not attachment_id:
@@ -812,6 +849,11 @@ class RetrievalService:
                             all_documents=all_documents_item,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
+                            **(
+                                {"index_node_ids_filter": index_node_ids_filter}
+                                if index_node_ids_filter is not None
+                                else {}
+                            ),
                         )
                     )
                 if RetrievalMethod.is_support_semantic_search(retrieval_method):
@@ -830,6 +872,11 @@ class RetrievalService:
                                 exceptions=exceptions,
                                 document_ids_filter=document_ids_filter,
                                 query_type=QueryType.TEXT_QUERY,
+                                **(
+                                    {"index_node_ids_filter": index_node_ids_filter}
+                                    if index_node_ids_filter is not None
+                                    else {}
+                                ),
                             )
                         )
                     if attachment_id:
@@ -847,6 +894,11 @@ class RetrievalService:
                                 exceptions=exceptions,
                                 document_ids_filter=document_ids_filter,
                                 query_type=QueryType.IMAGE_QUERY,
+                                **(
+                                    {"index_node_ids_filter": index_node_ids_filter}
+                                    if index_node_ids_filter is not None
+                                    else {}
+                                ),
                             )
                         )
                 if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
@@ -863,6 +915,11 @@ class RetrievalService:
                             retrieval_method=retrieval_method,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
+                            **(
+                                {"index_node_ids_filter": index_node_ids_filter}
+                                if index_node_ids_filter is not None
+                                else {}
+                            ),
                         )
                     )
                 # Use as_completed for early error propagation - cancel remaining futures on first error

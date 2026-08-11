@@ -640,9 +640,16 @@ class TestDocumentMetadataApi:
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"invoice": schema},
             ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=make_dataset(),
+            ),
+            patch("controllers.console.datasets.datasets_document.MetadataService.metadata_lock"),
+            patch("controllers.console.datasets.datasets_document.MetadataService.apply_document_metadata_to_segments"),
         ):
             method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
         assert doc.doc_metadata == {"amount": 10}
+        session.commit.assert_called_once()
 
     def test_put_success(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
@@ -659,9 +666,16 @@ class TestDocumentMetadataApi:
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"others": {}},
             ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=make_dataset(),
+            ),
+            patch("controllers.console.datasets.datasets_document.MetadataService.metadata_lock"),
+            patch("controllers.console.datasets.datasets_document.MetadataService.apply_document_metadata_to_segments"),
         ):
             response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
         assert status == 200
+        session.commit.assert_called_once()
 
     def test_put_invalid_payload(self, app: Flask, patch_tenant):
         api = DocumentMetadataApi()
@@ -1234,6 +1248,8 @@ class TestDocumentRenameApi:
                 "controllers.console.datasets.datasets_document.DocumentService.rename_document",
                 return_value=renamed_document,
             ),
+            patch("controllers.console.datasets.datasets_document.MetadataService.metadata_lock"),
+            patch("controllers.console.datasets.datasets_document.MetadataService.apply_document_metadata_to_segments"),
         ):
             response = method(api, session, user, "ds-1", "doc-1")
         assert response["id"] == "doc-renamed"
@@ -1241,6 +1257,7 @@ class TestDocumentRenameApi:
         assert response["data_source_info"] == {}
         assert response["doc_metadata"] == []
         assert "data_source_info_dict" not in response
+        session.commit.assert_called_once()
 
 
 class TestDocumentApiMetadata:
@@ -1442,10 +1459,17 @@ class TestDocumentListAdvancedCases:
                 "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
                 {"contract": schema},
             ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=make_dataset(),
+            ),
+            patch("controllers.console.datasets.datasets_document.MetadataService.metadata_lock"),
+            patch("controllers.console.datasets.datasets_document.MetadataService.apply_document_metadata_to_segments"),
         ):
             response, status = method(api, req_data, session, tenant_id, user, "ds-1", "doc-1")
             assert status == 200
             assert doc.doc_metadata == {"amount": 5000, "currency": "USD"}
+            session.commit.assert_called_once()
 
 
 class TestDocumentIndexingEdgeCases:

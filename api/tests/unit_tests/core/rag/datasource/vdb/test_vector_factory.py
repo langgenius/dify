@@ -493,6 +493,72 @@ def test_vector_delegation_methods(vector_factory_module):
     vector._vector_processor.delete_by_metadata_field.assert_called_once_with("doc_id", "doc-1")
 
 
+def test_chunk_filter_fallback_is_fail_closed_for_unsupported_backends(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._vector_processor = MagicMock(supports_index_node_ids_filter=False)
+    search = MagicMock(
+        side_effect=[
+            [
+                Document(
+                    page_content="inherited",
+                    metadata={"doc_id": "node-public", "document_id": "doc-public", "score": 0.8},
+                )
+            ],
+            [
+                Document(
+                    page_content="override",
+                    metadata={"doc_id": "node-override", "document_id": "doc-mixed", "score": 0.9},
+                ),
+                Document(
+                    page_content="denied",
+                    metadata={"doc_id": "node-denied", "document_id": "doc-mixed", "score": 1.0},
+                ),
+            ],
+        ]
+    )
+
+    result = vector._search_with_metadata_filters(
+        search,
+        [0.1, 0.2],
+        {
+            "top_k": 5,
+            "document_ids_filter": ["doc-public"],
+            "index_node_ids_filter": ["node-override"],
+        },
+    )
+
+    assert [document.metadata["doc_id"] for document in result] == ["node-override", "node-public"]
+    assert search.call_count == 2
+    assert "index_node_ids_filter" not in search.call_args_list[0].kwargs
+    assert "document_ids_filter" not in search.call_args_list[1].kwargs
+
+
+def test_native_chunk_filter_is_still_post_filtered(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._vector_processor = MagicMock(supports_index_node_ids_filter=True)
+    search = MagicMock(
+        return_value=[
+            Document(
+                page_content="allowed",
+                metadata={"doc_id": "node-allowed", "document_id": "doc-mixed", "score": 0.8},
+            ),
+            Document(
+                page_content="unexpected",
+                metadata={"doc_id": "node-denied", "document_id": "doc-mixed", "score": 0.9},
+            ),
+        ]
+    )
+
+    result = vector._search_with_metadata_filters(
+        search,
+        "query",
+        {"top_k": 4, "index_node_ids_filter": ["node-allowed"]},
+    )
+
+    assert [document.metadata["doc_id"] for document in result] == ["node-allowed"]
+    search.assert_called_once_with("query", top_k=4, index_node_ids_filter=["node-allowed"])
+
+
 def test_search_by_file_handles_missing_and_existing_upload(
     vector_factory_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):

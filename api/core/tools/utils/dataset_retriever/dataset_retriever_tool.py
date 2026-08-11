@@ -66,21 +66,27 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         for hit_callback in self.hit_callbacks:
             hit_callback.on_query(query, dataset.id, session)
         dataset_retrieval = DatasetRetrieval()
-        metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
-            session,
-            [dataset.id],
-            query,
-            self.tenant_id,
-            self.user_id or "unknown",
-            cast(str, self.retrieve_config.metadata_filtering_mode),
-            cast(ModelConfig, self.retrieve_config.metadata_model_config),
-            self.retrieve_config.metadata_filtering_conditions,
-            self.inputs,
+        metadata_filter_document_ids, metadata_filter_index_node_ids, metadata_condition = (
+            dataset_retrieval.get_metadata_filter_condition(
+                session,
+                [dataset.id],
+                query,
+                self.tenant_id,
+                self.user_id or "unknown",
+                cast(str, self.retrieve_config.metadata_filtering_mode),
+                cast(ModelConfig, self.retrieve_config.metadata_model_config),
+                self.retrieve_config.metadata_filtering_conditions,
+                self.inputs,
+            )
         )
         if metadata_filter_document_ids:
             document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
         else:
             document_ids_filter = None
+        if metadata_filter_index_node_ids:
+            index_node_ids_filter = metadata_filter_index_node_ids.get(dataset.id, [])
+        else:
+            index_node_ids_filter = None
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
@@ -125,7 +131,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
             return "\n".join([item.page_content for item in results])
         else:
-            if metadata_condition and not document_ids_filter:
+            if metadata_condition and not document_ids_filter and not index_node_ids_filter:
                 return ""
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
@@ -138,6 +144,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     query=query,
                     top_k=self.top_k,
                     document_ids_filter=document_ids_filter,
+                    index_node_ids_filter=index_node_ids_filter,
                 )
                 return "\n".join([document.page_content for document in documents])
             else:
@@ -157,6 +164,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                         weights=retrieval_model.get("weights"),
                         document_ids_filter=document_ids_filter,
+                        index_node_ids_filter=index_node_ids_filter,
                     )
                 else:
                     documents = []

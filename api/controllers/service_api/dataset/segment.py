@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -41,10 +42,11 @@ from libs.login import current_account_with_tenant
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_ref_service import DatasetRefService, SegmentRef
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import MetadataUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.metadata_service import MetadataService
 from services.summary_index_service import SummaryIndexService
 
 
@@ -78,6 +80,30 @@ class SegmentListQuery(BaseModel):
 
 class SegmentUpdatePayload(BaseModel):
     segment: SegmentUpdateArgs = Field(description="Chunk update payload.")
+
+
+class SegmentMetadataItemResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+    value: str | int | float | None = None
+    source: Literal["built_in", "inherited", "override"]
+
+
+class SegmentMetadataResponse(ResponseModel):
+    data: list[SegmentMetadataItemResponse]
+
+
+class SegmentMetadataUpdatePayload(BaseModel):
+    metadata: list[MetadataUpdateArgs] = Field(min_length=1)
+
+
+class SegmentMetadataBatchUpdatePayload(SegmentMetadataUpdatePayload):
+    segment_ids: list[str] = Field(min_length=1)
+
+
+class SegmentMetadataResetPayload(BaseModel):
+    field_names: list[str] = Field(min_length=1)
 
 
 class ChildChunkListQuery(BaseModel):
@@ -114,6 +140,10 @@ register_schema_models(
     SegmentListQuery,
     SegmentUpdateArgs,
     SegmentUpdatePayload,
+    MetadataUpdateArgs,
+    SegmentMetadataUpdatePayload,
+    SegmentMetadataBatchUpdatePayload,
+    SegmentMetadataResetPayload,
     ChildChunkCreatePayload,
     ChildChunkListQuery,
     ChildChunkUpdatePayload,
@@ -124,6 +154,9 @@ register_response_schema_models(
     SegmentCreateListResponse,
     SegmentListResponse,
     SegmentDetailResponse,
+    SegmentMetadataItemResponse,
+    SegmentMetadataResponse,
+    SimpleResultResponse,
     ChildChunkDetailResponse,
     ChildChunkListResponse,
 )
@@ -335,6 +368,106 @@ class SegmentApi(DatasetApiResource):
         }
 
         return dump_response(SegmentListResponse, response), 200
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/metadata")
+class DatasetSegmentMetadataApi(DatasetApiResource):
+    @service_api_ns.response(200, "Chunk metadata retrieved", service_api_ns.models[SegmentMetadataResponse.__name__])
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+        current_account_with_tenant()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+    @service_api_ns.expect(service_api_ns.models[SegmentMetadataUpdatePayload.__name__])
+    @service_api_ns.response(200, "Chunk metadata updated", service_api_ns.models[SegmentMetadataResponse.__name__])
+    @with_session
+    def patch(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        payload = SegmentMetadataUpdatePayload.model_validate(service_api_ns.payload or {})
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.apply_segment_metadata_override(
+                session, dataset, document, segment, payload.metadata, current_user, current_tenant_id
+            )
+            session.commit()
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+
+@service_api_ns.route(
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/metadata/reset"
+)
+class DatasetSegmentMetadataResetApi(DatasetApiResource):
+    @service_api_ns.expect(service_api_ns.models[SegmentMetadataResetPayload.__name__])
+    @service_api_ns.response(200, "Chunk metadata reset", service_api_ns.models[SegmentMetadataResponse.__name__])
+    @with_session
+    def post(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
+        current_account_with_tenant()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        _, segment = _get_segment_for_document(session, dataset, document, str(segment_id))
+        payload = SegmentMetadataResetPayload.model_validate(service_api_ns.payload or {})
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.reset_segment_metadata_fields_to_document(
+                session, dataset, document, segment, payload.field_names
+            )
+            session.commit()
+        details = MetadataService.get_segment_metadata_details(session, dataset, document, segment)
+        return dump_response(SegmentMetadataResponse, {"data": details}), 200
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/metadata/batch")
+class DatasetSegmentMetadataBatchApi(DatasetApiResource):
+    @service_api_ns.expect(service_api_ns.models[SegmentMetadataBatchUpdatePayload.__name__])
+    @service_api_ns.response(200, "Chunk metadata updated", service_api_ns.models[SimpleResultResponse.__name__])
+    @with_session
+    def post(self, session: Session, tenant_id: str, dataset_id: UUID, document_id: UUID):
+        current_user, current_tenant_id = current_account_with_tenant()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+        )
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, str(document_id), session=session)
+        if not document:
+            raise NotFound("Document not found.")
+        payload = SegmentMetadataBatchUpdatePayload.model_validate(service_api_ns.payload or {})
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            MetadataService.batch_update_segments_metadata(
+                session,
+                dataset,
+                document,
+                payload.segment_ids,
+                payload.metadata,
+                current_user,
+                current_tenant_id,
+            )
+            session.commit()
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")

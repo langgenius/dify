@@ -60,6 +60,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
+from services.metadata_service import MetadataService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
@@ -1297,18 +1298,24 @@ class DocumentMetadataApi(DocumentResource):
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
         metadata_schema: dict[str, Any] = cast(dict[str, Any], DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
+        dataset = DatasetService.get_dataset(dataset_id_str, session)
+        if not dataset:
+            raise NotFound("Dataset not found.")
 
-        document.doc_metadata = {}
-        if doc_type == "others":
-            document.doc_metadata = doc_metadata
-        else:
-            for key, value_type in metadata_schema.items():
-                value = doc_metadata.get(key)
-                if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
+        with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=document.id):
+            document.doc_metadata = {}
+            if doc_type == "others":
+                document.doc_metadata = doc_metadata
+            else:
+                for key, value_type in metadata_schema.items():
+                    value = doc_metadata.get(key)
+                    if value is not None and isinstance(value, value_type):
+                        document.doc_metadata[key] = value
 
-        document.doc_type = doc_type
-        document.updated_at = naive_utc_now()
+            document.doc_type = doc_type
+            document.updated_at = naive_utc_now()
+            MetadataService.apply_document_metadata_to_segments(session, dataset, document)
+            session.commit()
 
         return SimpleResultMessageResponse(result="success", message="Document metadata updated.").model_dump(
             mode="json"
@@ -1499,7 +1506,10 @@ class DocumentRenameApi(DocumentResource):
         payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
-            document = DocumentService.rename_document(str(dataset_id), str(document_id), payload.name, session)
+            with MetadataService.metadata_lock(dataset_id=dataset.id, document_id=str(document_id)):
+                document = DocumentService.rename_document(str(dataset_id), str(document_id), payload.name, session)
+                MetadataService.apply_document_metadata_to_segments(session, dataset, document)
+                session.commit()
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 

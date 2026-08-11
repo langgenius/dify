@@ -941,7 +941,6 @@ class TestMetadataService:
         Test metadata lock check for dataset operations.
         """
         # Arrange: Setup mocks
-        mock_external_service_dependencies["redis_client"].get.return_value = None
         mock_external_service_dependencies["redis_client"].set.return_value = True
 
         dataset_id = "test-dataset-id"
@@ -956,6 +955,7 @@ class TestMetadataService:
         # Verify lock key format
         call_args = mock_external_service_dependencies["redis_client"].set.call_args
         assert call_args[0][0] == f"dataset_metadata_lock_{dataset_id}"
+        assert call_args.kwargs == {"nx": True, "ex": MetadataService._LOCK_TTL_SECONDS}
 
     def test_knowledge_base_metadata_lock_check_document_id(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
@@ -964,7 +964,6 @@ class TestMetadataService:
         Test metadata lock check for document operations.
         """
         # Arrange: Setup mocks
-        mock_external_service_dependencies["redis_client"].get.return_value = None
         mock_external_service_dependencies["redis_client"].set.return_value = True
 
         document_id = "test-document-id"
@@ -979,6 +978,7 @@ class TestMetadataService:
         # Verify lock key format
         call_args = mock_external_service_dependencies["redis_client"].set.call_args
         assert call_args[0][0] == f"document_metadata_lock_{document_id}"
+        assert call_args.kwargs == {"nx": True, "ex": MetadataService._LOCK_TTL_SECONDS}
 
     def test_knowledge_base_metadata_lock_check_lock_exists(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
@@ -987,7 +987,7 @@ class TestMetadataService:
         Test metadata lock check when lock already exists.
         """
         # Arrange: Setup mocks to simulate existing lock
-        mock_external_service_dependencies["redis_client"].get.return_value = "1"  # Lock exists
+        mock_external_service_dependencies["redis_client"].set.return_value = False
 
         dataset_id = "test-dataset-id"
 
@@ -1004,7 +1004,7 @@ class TestMetadataService:
         Test metadata lock check when document lock already exists.
         """
         # Arrange: Setup mocks to simulate existing lock
-        mock_external_service_dependencies["redis_client"].get.return_value = "1"  # Lock exists
+        mock_external_service_dependencies["redis_client"].set.return_value = False
 
         document_id = "test-document-id"
 
