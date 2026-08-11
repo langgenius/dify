@@ -9,6 +9,7 @@ from werkzeug.exceptions import BadRequest, UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
 from controllers.console.billing.billing import PartnerTenants
+from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import DifySetup
 
@@ -65,7 +66,7 @@ class TestPartnerTenants:
         console_wraps._is_setup_completed.reset_success()
         monkeypatch.setattr(console_wraps.db, "session", sqlite_session)
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
             patch("libs.login.check_csrf_token") as mock_csrf,
         ):

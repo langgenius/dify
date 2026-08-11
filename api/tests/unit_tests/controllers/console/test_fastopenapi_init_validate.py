@@ -7,6 +7,7 @@ import pytest
 
 from controllers.console import init_validate
 from dify_app import DifyApp
+from enums import DeploymentEdition
 from extensions import ext_fastopenapi
 from services.init_validation_service import (
     AlreadyInitializedError,
@@ -58,7 +59,10 @@ def test_validate_init_password_success(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(
+        "controllers.console.wraps.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
     client = app.test_client()
 
     response = client.post("/console/api/init", json={"password": "expected"})
@@ -75,7 +79,10 @@ def test_validate_init_password_rejects_a_mismatch(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(
+        "controllers.console.wraps.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
     init_validation.validate_password.side_effect = InvalidInitializationPasswordError
     client = app.test_client()
 
@@ -91,7 +98,10 @@ def test_validate_init_password_rejects_an_initialized_installation(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(
+        "controllers.console.wraps.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
     init_validation.validate_password.side_effect = AlreadyInitializedError
 
     response = app.test_client().post("/console/api/init", json={"password": "expected"})
@@ -112,7 +122,10 @@ def test_validate_init_password_rejects_an_invalid_payload(
     monkeypatch: pytest.MonkeyPatch,
     payload: dict[str, str],
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(
+        "controllers.console.wraps.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
 
     response = app.test_client().post("/console/api/init", json=payload)
 
@@ -125,7 +138,10 @@ def test_validate_init_password_is_not_available_in_cloud(
     init_validation: Mock,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
+    monkeypatch.setattr(
+        "controllers.console.wraps.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.CLOUD,
+    )
 
     response = app.test_client().post("/console/api/init", json={"password": "expected"})
 

@@ -6,7 +6,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
@@ -68,8 +68,11 @@ def test_init_app_registers_services_for_the_current_app(
 ) -> None:
     app = Flask(__name__)
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
-    monkeypatch.setattr(ext_application_services.dify_config, "EDITION", "SELF_HOSTED")
-    monkeypatch.setattr(ext_application_services.dify_config, "ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(
+        ext_application_services.dify_config,
+        "DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
     monkeypatch.setattr(ext_application_services.dify_config, "INIT_PASSWORD", "expected")
 
     ext_application_services.init_app(app)

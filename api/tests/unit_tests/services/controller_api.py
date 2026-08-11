@@ -97,6 +97,7 @@ from controllers.console.datasets.external import (
     ExternalApiTemplateListApi,
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
+from enums import DeploymentEdition
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum
 
@@ -829,7 +830,7 @@ class TestExternalDatasetApi:
 
         with (
             patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("libs.login.check_csrf_token", return_value=None),
         ):
             mock_tenant_id = "tenant-123"

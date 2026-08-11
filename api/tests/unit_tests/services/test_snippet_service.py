@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from enums import DeploymentEdition
 from models.snippet import SnippetType
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
@@ -668,7 +669,7 @@ def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch
         list_objects=Mock(return_value=["tenant-1/app_id=snippet-1/run.json"]),
         delete_object=Mock(),
     )
-    monkeypatch.setattr(dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "ARCHIVE_STORAGE_ENABLED", True)
     monkeypatch.setattr("libs.archive_storage.get_archive_storage", Mock(return_value=archive_storage))
 

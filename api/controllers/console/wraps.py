@@ -18,8 +18,7 @@ from controllers.common.wraps import (
 )
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
@@ -141,7 +140,7 @@ def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             abort(404)
 
         return view(*args, **kwargs)
@@ -155,16 +154,6 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             abort(404)
 
-        return view(*args, **kwargs)
-
-    return decorated
-
-
-def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.BILLING_ENABLED:
-            abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
 
     return decorated
@@ -191,7 +180,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
             if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
+                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(current_tenant_id)
@@ -300,7 +289,7 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
             utm_info = request.cookies.get("utm_info")
-            if dify_config.BILLING_ENABLED and utm_info:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and utm_info:
                 _, current_tenant_id = current_account_with_tenant()
                 utm_info_dict: UtmInfo = json.loads(utm_info)
                 OperationService.record_utm(current_tenant_id, utm_info_dict)
