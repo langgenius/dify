@@ -85,5 +85,5 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
     """The target email already belongs to an account."""
 
 
-class EducationDiscountPausedError(Exception):
+class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
