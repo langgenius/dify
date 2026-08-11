@@ -11,6 +11,7 @@ lookup results.
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
+from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -344,20 +345,21 @@ def test_parameters_reject_missing_persisted_configuration(
             AppParameterApi().get()
 
 
-def test_get_meta_passes_real_session_and_app(
+def test_get_meta_queries_authenticated_app(
     flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    service = Mock()
-    service.get_app_meta.return_value = {"tool_icons": {}}
-    monkeypatch.setattr(app_controller, "AppService", Mock(return_value=service))
+    app_definitions = Mock()
+    app_definitions.get_tool_icons.return_value = {}
+    monkeypatch.setattr(
+        app_controller,
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
+    )
 
     with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
         response = AppMetaApi().get()
 
-    service.get_app_meta.assert_called_once()
-    (app_model,) = service.get_app_meta.call_args.args
-    assert app_model.id == authenticated_controller.app_id
-    assert service.get_app_meta.call_args.kwargs["session"] is authenticated_controller.registry()
+    app_definitions.get_tool_icons.assert_called_once_with(authenticated_controller.app_id)
     assert response == {"tool_icons": {}}
 
 

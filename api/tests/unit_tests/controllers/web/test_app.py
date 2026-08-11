@@ -115,15 +115,18 @@ class TestAppParameterApi:
 # AppMeta
 # ---------------------------------------------------------------------------
 class TestAppMeta:
-    @patch("controllers.web.app.AppService")
-    def test_get_returns_meta(self, mock_service_cls: MagicMock, app: Flask) -> None:
-        mock_service_cls.return_value.get_app_meta.return_value = {"tool_icons": {}}
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_meta(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.return_value = {}
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
         app_model = SimpleNamespace(id="app-1")
 
         with app.test_request_context("/meta"):
             result = AppMeta().get(app_model, SimpleNamespace())
 
         assert result == {"tool_icons": {}}
+        app_definitions.get_tool_icons.assert_called_once_with("app-1")
 
 
 # ---------------------------------------------------------------------------

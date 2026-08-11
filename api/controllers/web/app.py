@@ -12,7 +12,9 @@ from controllers.common.agent_app_parameters import get_published_agent_app_feat
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser, load_annotation_reply_config
@@ -131,7 +133,10 @@ class AppMeta(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
-        return AppService().get_app_meta(app_model, session=db.session())
+        return dump_response(
+            AppMetaResponse,
+            {"tool_icons": application_services().app_definitions.get_tool_icons(app_model.id)},
+        )
 
 
 @web_ns.route("/webapp/access-mode")
