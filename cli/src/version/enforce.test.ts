@@ -19,7 +19,7 @@ function fakeStore(fresh = false): CompatStore & { readonly marked: string[] } {
   }
 }
 
-const server = (version: string): ServerVersionResponse => ({ version, edition: 'SELF_HOSTED' })
+const server = (version: string): ServerVersionResponse => ({ version, edition: 'COMMUNITY' })
 
 describe('enforceDifyVersion', () => {
   it('throws version_skew (exit 6) when the server is too old, and never caches it', async () => {

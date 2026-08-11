@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services import feature_service as feature_service_module
 from services.entities.feature_entities import FeatureModel
 from services.feature_service import FeatureService
@@ -11,8 +11,7 @@ from services.feature_service import FeatureService
 @dataclass(frozen=True)
 class HumanInputEmailDeliveryCase:
     name: str
-    enterprise_enabled: bool
-    billing_enabled: bool
+    deployment_edition: DeploymentEdition
     tenant_id: str | None
     billing_feature_enabled: bool
     plan: str
@@ -21,27 +20,24 @@ class HumanInputEmailDeliveryCase:
 
 CASES = [
     HumanInputEmailDeliveryCase(
-        name="enterprise_enabled",
-        enterprise_enabled=True,
-        billing_enabled=True,
+        name="enterprise_edition",
+        deployment_edition=DeploymentEdition.ENTERPRISE,
         tenant_id=None,
         billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
     HumanInputEmailDeliveryCase(
-        name="billing_disabled",
-        enterprise_enabled=False,
-        billing_enabled=False,
+        name="community_edition",
+        deployment_edition=DeploymentEdition.COMMUNITY,
         tenant_id=None,
         billing_feature_enabled=False,
         plan=CloudPlan.SANDBOX,
         expected=True,
     ),
     HumanInputEmailDeliveryCase(
-        name="billing_enabled_requires_tenant",
-        enterprise_enabled=False,
-        billing_enabled=True,
+        name="cloud_edition_requires_tenant",
+        deployment_edition=DeploymentEdition.CLOUD,
         tenant_id=None,
         billing_feature_enabled=True,
         plan=CloudPlan.PROFESSIONAL,
@@ -49,8 +45,7 @@ CASES = [
     ),
     HumanInputEmailDeliveryCase(
         name="billing_feature_off",
-        enterprise_enabled=False,
-        billing_enabled=True,
+        deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
         billing_feature_enabled=False,
         plan=CloudPlan.PROFESSIONAL,
@@ -58,8 +53,7 @@ CASES = [
     ),
     HumanInputEmailDeliveryCase(
         name="professional_plan",
-        enterprise_enabled=False,
-        billing_enabled=True,
+        deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
         billing_feature_enabled=True,
         plan=CloudPlan.PROFESSIONAL,
@@ -67,8 +61,7 @@ CASES = [
     ),
     HumanInputEmailDeliveryCase(
         name="team_plan",
-        enterprise_enabled=False,
-        billing_enabled=True,
+        deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
         billing_feature_enabled=True,
         plan=CloudPlan.TEAM,
@@ -76,8 +69,7 @@ CASES = [
     ),
     HumanInputEmailDeliveryCase(
         name="sandbox_plan",
-        enterprise_enabled=False,
-        billing_enabled=True,
+        deployment_edition=DeploymentEdition.CLOUD,
         tenant_id="tenant-1",
         billing_feature_enabled=True,
         plan=CloudPlan.SANDBOX,
@@ -91,8 +83,7 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
     monkeypatch: pytest.MonkeyPatch,
     case: HumanInputEmailDeliveryCase,
 ):
-    monkeypatch.setattr(feature_service_module.dify_config, "ENTERPRISE_ENABLED", case.enterprise_enabled)
-    monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", case.billing_enabled)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", case.deployment_edition)
     features = FeatureModel()
     features.billing.enabled = case.billing_feature_enabled
     features.billing.subscription.plan = case.plan
@@ -106,7 +97,7 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
 
 
 def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
@@ -121,7 +112,7 @@ def test_get_vector_space_converts_billing_float_size(monkeypatch: pytest.Monkey
 
 
 def test_get_vector_space_preserves_unknown_usage(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(feature_service_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",

@@ -259,7 +259,7 @@ class MCPToolManageService:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
 
             # Update user-identity forwarding mode. The controller has already
-            # resolved "leave unchanged" and applied the ENTERPRISE_ENABLED gate,
+            # resolved "leave unchanged" and applied the Enterprise-edition gate,
             # so this is always a concrete, vetted value.
             mcp_provider.identity_mode = identity_mode
 

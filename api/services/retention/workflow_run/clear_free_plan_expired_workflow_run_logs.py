@@ -16,7 +16,7 @@ import click
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from repositories.api_workflow_run_repository import (
     APIWorkflowRunRepository,
@@ -478,7 +478,7 @@ class WorkflowRunCleanup:
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
         tenant_id_list = sorted(set(tenant_ids))
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return set(tenant_id_list)
 
         if not tenant_id_list:
@@ -538,7 +538,7 @@ class WorkflowRunCleanup:
         if self._cleanup_whitelist is not None:
             return self._cleanup_whitelist
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             self._cleanup_whitelist = set()
             return self._cleanup_whitelist
 

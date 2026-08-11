@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from configs import dify_config
 from controllers.web import site as site_module
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.model import AppMode, IconType, Site
 from services.entities.feature_entities import FeatureModel
@@ -48,7 +49,7 @@ def test_build_site_icon_url_uses_s3_presigned_url() -> None:
     )
 
     with (
-        patch.object(dify_config, "EDITION", "CLOUD"),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
         patch.object(site_module, "db") as mock_db,
         patch.object(site_module, "FileService") as mock_file_service,
@@ -76,7 +77,7 @@ def test_build_site_icon_url_keeps_preview_url_for_self_hosted_s3() -> None:
     )
 
     with (
-        patch.object(dify_config, "EDITION", "SELF_HOSTED"),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
         patch.object(site_module, "FileService") as mock_file_service,
         patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),
@@ -94,7 +95,7 @@ def test_build_site_icon_url_keeps_preview_url_for_non_s3_storage() -> None:
     )
 
     with (
-        patch.object(dify_config, "EDITION", "CLOUD"),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch.object(dify_config, "STORAGE_TYPE", StorageType.LOCAL),
         patch.object(site_module, "FileService") as mock_file_service,
         patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),

@@ -42,7 +42,7 @@ from controllers.service_api.app.workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -585,7 +585,7 @@ class TestWorkflowRunApi:
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
@@ -613,7 +613,7 @@ class TestWorkflowRunByIdApi:
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
@@ -648,24 +648,25 @@ class TestWorkflowRunByIdApi:
         }
 
     @pytest.mark.parametrize(
-        ("billing_config_enabled", "billing_enabled", "plan"),
+        ("deployment_edition", "billing_enabled", "plan"),
         [
-            (False, True, CloudPlan.SANDBOX),
-            (True, False, CloudPlan.SANDBOX),
-            (True, True, CloudPlan.PROFESSIONAL),
+            (DeploymentEdition.COMMUNITY, True, CloudPlan.SANDBOX),
+            (DeploymentEdition.ENTERPRISE, True, CloudPlan.SANDBOX),
+            (DeploymentEdition.CLOUD, False, CloudPlan.SANDBOX),
+            (DeploymentEdition.CLOUD, True, CloudPlan.PROFESSIONAL),
         ],
     )
     def test_allows_execution_outside_enabled_sandbox_plan(
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
-        billing_config_enabled: bool,
+        deployment_edition: DeploymentEdition,
         billing_enabled: bool,
         plan: CloudPlan,
         sqlite_session: Session,
     ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
+        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
 
         billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
@@ -687,7 +688,7 @@ class TestWorkflowRunByIdApi:
 
         assert response.get_json() == {"result": "ok"}
         generate.assert_called_once()
-        if billing_config_enabled:
+        if deployment_edition == DeploymentEdition.CLOUD:
             billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         else:
             billing_get_info.assert_not_called()
@@ -695,7 +696,7 @@ class TestWorkflowRunByIdApi:
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -714,7 +715,7 @@ class TestWorkflowRunByIdApi:
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
-        monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(workflow_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(
             AppGenerateService,
             "generate",

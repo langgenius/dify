@@ -8,12 +8,6 @@ class EnterpriseFeatureConfig(BaseSettings):
     **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     """
 
-    ENTERPRISE_ENABLED: bool = Field(
-        description="Enable or disable enterprise-level features."
-        "Before using, please contact business@dify.ai by email to inquire about licensing matters.",
-        default=False,
-    )
-
     WEBAPP_PUBLIC_ACCESS_ENABLED: bool = Field(
         description="Whether admins are allowed to set a webapp's access mode to public (anyone with the link, "
         "no auth). Disable in security-sensitive on-prem deployments.",
@@ -59,7 +53,7 @@ class EnterpriseTelemetryConfig(BaseSettings):
     """
 
     ENTERPRISE_TELEMETRY_ENABLED: bool = Field(
-        description="Enable enterprise telemetry collection (also requires ENTERPRISE_ENABLED=true).",
+        description="Enable enterprise telemetry collection for enterprise deployments.",
         default=False,
     )
 

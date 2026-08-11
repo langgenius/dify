@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
@@ -22,7 +22,7 @@ def test_get_current_workspace_summary_sandbox_uses_trial_only() -> None:
         "enabled": True,
         "subscription": {"plan": CloudPlan.SANDBOX},
     }
-    config = SimpleNamespace(BILLING_ENABLED=True)
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with (
         patch("services.workspace_service.dify_config", config),
@@ -64,7 +64,7 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
         "enabled": True,
         "subscription": {"plan": CloudPlan.TEAM},
     }
-    config = SimpleNamespace(BILLING_ENABLED=True)
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
     with (
         patch("services.workspace_service.dify_config", config),
@@ -84,11 +84,11 @@ def test_get_current_workspace_summary_falls_back_from_exhausted_paid_pool() -> 
     ]
 
 
-def test_get_current_workspace_summary_billing_disabled_skips_billing_and_credits() -> None:
+def test_get_current_workspace_summary_non_cloud_skips_billing_and_credits() -> None:
     tenant = Tenant(name="Workspace")
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(role="editor")
-    config = SimpleNamespace(BILLING_ENABLED=False)
+    config = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     with (
         patch("services.workspace_service.dify_config", config),

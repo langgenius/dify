@@ -14,7 +14,7 @@ from controllers.web.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.account import Account
 from models.engine import db
 from services.entities.feature_entities import SystemFeatureModel
@@ -39,8 +39,7 @@ def _patch_wraps():
     )
     with (
         patch("controllers.console.wraps.db") as mock_db,
-        patch("controllers.console.wraps.dify_config.ENTERPRISE_ENABLED", True),
-        patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+        patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
     ):
         yield

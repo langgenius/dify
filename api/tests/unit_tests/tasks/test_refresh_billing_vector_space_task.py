@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from enums import DeploymentEdition
 from tasks.refresh_billing_vector_space_task import (
     refresh_billing_vector_space_task,
     schedule_billing_vector_space_refresh,
@@ -10,7 +11,7 @@ from tasks.refresh_billing_vector_space_task import (
 
 def test_refresh_invalidates_vector_space_cache():
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.BILLING_ENABLED", True),
+        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch(
             "tasks.refresh_billing_vector_space_task.BillingService.invalidate_vector_space_cache"
         ) as invalidate_cache,
@@ -24,7 +25,7 @@ def test_refresh_failure_schedules_retry():
     error = RuntimeError("billing unavailable")
 
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.BILLING_ENABLED", True),
+        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch(
             "tasks.refresh_billing_vector_space_task.BillingService.invalidate_vector_space_cache",
             side_effect=error,
@@ -39,7 +40,7 @@ def test_refresh_failure_schedules_retry():
 
 def test_dispatch_failure_does_not_propagate():
     with (
-        patch("tasks.refresh_billing_vector_space_task.dify_config.BILLING_ENABLED", True),
+        patch("tasks.refresh_billing_vector_space_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch.object(refresh_billing_vector_space_task, "delay", side_effect=RuntimeError("broker unavailable")),
     ):
         schedule_billing_vector_space_refresh("tenant-1")

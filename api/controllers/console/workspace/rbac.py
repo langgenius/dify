@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -316,14 +317,16 @@ class RBACRolesApi(Resource):
         options = req_data.to_inner_options()
         if not dify_config.RBAC_ENABLED:
             result = _legacy_workspace_roles(
-                options, include_owner=req_data.include_owner, billing_enabled=dify_config.BILLING_ENABLED
+                options,
+                include_owner=req_data.include_owner,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
             )
         else:
             result = svc.RBACService.Roles.list(
                 tenant_id,
                 account_id,
                 include_owner=req_data.include_owner,
-                biiling_enabled=dify_config.BILLING_ENABLED,
+                biiling_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
                 options=options,
             )
 
@@ -351,7 +354,12 @@ class RBACRoleItemApi(Resource):
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(
-            svc.RBACService.Roles.get(tenant_id, account_id, role_id, billing_enabled=dify_config.BILLING_ENABLED)
+            svc.RBACService.Roles.get(
+                tenant_id,
+                account_id,
+                role_id,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+            )
         )
 
     @login_required

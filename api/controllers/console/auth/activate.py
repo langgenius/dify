@@ -10,6 +10,7 @@ from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from controllers.console.wraps import model_validate
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
@@ -161,7 +162,9 @@ class ActivateApi(Resource):
             if current_account.id != account.id:
                 raise InvitationAccountMismatchError()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(account.email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
+            account.email
+        ):
             raise AccountInFreezeError()
 
         tenant = invitation["tenant"]

@@ -126,12 +126,6 @@ class UsageCountResponse(ResponseModel):
     count: int
 
 
-class IndexInfoResponse(ResponseModel):
-    welcome: str
-    api_version: str
-    server_version: str
-
-
 class AvatarUrlResponse(ResponseModel):
     avatar_url: str
 

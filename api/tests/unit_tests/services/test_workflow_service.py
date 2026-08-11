@@ -22,6 +22,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from enums import DeploymentEdition
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -1039,7 +1040,7 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
+            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, retirement_candidates = workflow_service.publish_workflow(
                 session=sqlite_session,
@@ -1142,7 +1143,7 @@ class TestWorkflowService:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_service.dify_config.BILLING_ENABLED", True),
+            patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("services.workflow_service.BillingService") as MockBillingService,
         ):
             MockBillingService.get_info.return_value = {"subscription": {"plan": "sandbox"}}

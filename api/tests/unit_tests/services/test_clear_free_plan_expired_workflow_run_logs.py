@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+from enums import DeploymentEdition
 from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
@@ -126,10 +127,10 @@ def create_cleanup(
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
 
-def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_filter_free_tenants_outside_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
         raise RuntimeError("should not call")
@@ -145,7 +146,7 @@ def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -
 def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -165,7 +166,7 @@ def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None
 def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, grace_period_days=45)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     now = datetime.datetime.now(datetime.UTC)
     within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
     outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
@@ -192,7 +193,7 @@ def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyP
         whitelist={"tenant_whitelist"},
     )
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -213,7 +214,7 @@ def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyP
 def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -237,7 +238,7 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -267,7 +268,7 @@ def test_run_filters_candidate_tenants_before_target_query(monkeypatch: pytest.M
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     billing_calls: list[list[str]] = []
 
     def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlan]:
@@ -291,7 +292,7 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -309,7 +310,7 @@ def test_run_paid_only_records_skipped_metrics(monkeypatch: pytest.MonkeyPatch) 
     repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_plan_bulk_with_cache",
@@ -341,7 +342,7 @@ def test_run_target_query_is_bounded_by_candidate_high_water(monkeypatch: pytest
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=2)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     cleanup.run()
 
@@ -371,7 +372,7 @@ def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None
         },
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     batch_calls: list[dict[str, object]] = []
     completion_calls: list[dict[str, object]] = []
@@ -399,7 +400,7 @@ def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     cutoff = datetime.datetime.now()
     repo = FailingRepo(batches=[[make_ref("run-free", "t_free", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     completion_calls: list[dict[str, object]] = []
     monkeypatch.setattr(cleanup._metrics, "record_completion", lambda **kwargs: completion_calls.append(kwargs))
@@ -427,7 +428,7 @@ def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: py
     )
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
 
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+    monkeypatch.setattr(cleanup_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     cleanup.run()
 

@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
@@ -49,24 +49,22 @@ class AppDetailKwargs(TypedDict, total=False):
 
 
 @pytest.mark.parametrize(
-    ("edition", "enterprise_enabled", "feature_enabled", "expected"),
+    ("edition", "feature_enabled", "expected"),
     [
-        ("CLOUD", False, True, True),
-        ("CLOUD", False, False, False),
-        ("SELF_HOSTED", False, True, False),
-        ("SELF_HOSTED", True, True, False),
+        (DeploymentEdition.CLOUD, True, True),
+        (DeploymentEdition.CLOUD, False, False),
+        (DeploymentEdition.COMMUNITY, True, False),
+        (DeploymentEdition.ENTERPRISE, True, False),
     ],
 )
 def test_trial_app_policy_is_cloud_only(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-    edition: str,
-    enterprise_enabled: bool,
+    edition: DeploymentEdition,
     feature_enabled: bool,
     expected: bool,
 ) -> None:
-    monkeypatch.setattr(service_module.dify_config, "EDITION", edition)
-    monkeypatch.setattr(service_module.dify_config, "ENTERPRISE_ENABLED", enterprise_enabled)
+    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", edition)
     monkeypatch.setattr(service_module.dify_config, "ENABLE_TRIAL_APP", feature_enabled)
 
     assert RecommendedAppService.is_trial_app_enabled() is expected
