@@ -958,22 +958,6 @@ describe('MainNav', () => {
     expect(homeLink).toHaveClass(activeStackingClassName)
   })
 
-  it('keeps Home active on the legacy explore apps route only', () => {
-    mockPathname = '/explore/apps'
-
-    const { rerender } = renderMainNav()
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink).toHaveAttribute('aria-current', 'page')
-
-    mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
-
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
-      'aria-current',
-    )
-  })
-
   it('opens goto anything from the search button', async () => {
     renderMainNav(undefined, {
       extra: (

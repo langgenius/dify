@@ -15942,7 +15942,7 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
+| enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
 #### BillingResponse
@@ -24711,7 +24711,7 @@ FastOpenAPI proof of concept for Dify API
 **Initialize system setup with admin account.
 
     NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
     and init-password validation rather than user session authentication.
     **
 

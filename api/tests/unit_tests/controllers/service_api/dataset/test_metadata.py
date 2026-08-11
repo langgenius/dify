@@ -17,10 +17,11 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.dataset.metadata import (
@@ -56,7 +57,15 @@ def mock_dataset():
 # ---------------------------------------------------------------------------
 
 
-class TestDatasetMetadataCreatePost:
+class _UsesSQLiteSession:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _inject_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
+
+class TestDatasetMetadataCreatePost(_UsesSQLiteSession):
     """Tests for DatasetMetadataCreateServiceApi.post().
 
     ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``
@@ -64,7 +73,7 @@ class TestDatasetMetadataCreatePost:
     """
 
     @staticmethod
-    def _call_post(api, session: MagicMock, **kwargs):
+    def _call_post(api, session: Session, **kwargs):
         return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -91,7 +100,7 @@ class TestDatasetMetadataCreatePost:
             json={"type": "string", "name": "Author"},
         ):
             api = DatasetMetadataCreateServiceApi()
-            session = MagicMock()
+            session = self.session
             response, status = self._call_post(
                 api,
                 session,
@@ -120,7 +129,7 @@ class TestDatasetMetadataCreatePost:
             json={"type": "string", "name": "Author"},
         ):
             api = DatasetMetadataCreateServiceApi()
-            session = MagicMock()
+            session = self.session
             with pytest.raises(NotFound):
                 self._call_post(
                     api,
@@ -130,7 +139,7 @@ class TestDatasetMetadataCreatePost:
                 )
 
 
-class TestDatasetMetadataCreateGet:
+class TestDatasetMetadataCreateGet(_UsesSQLiteSession):
     """Tests for DatasetMetadataCreateServiceApi.get()."""
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -191,14 +200,14 @@ class TestDatasetMetadataCreateGet:
 # ---------------------------------------------------------------------------
 
 
-class TestDatasetMetadataServiceApiPatch:
+class TestDatasetMetadataServiceApiPatch(_UsesSQLiteSession):
     """Tests for DatasetMetadataServiceApi.patch().
 
     ``patch`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
     """
 
     @staticmethod
-    def _call_patch(api, session: MagicMock, **kwargs):
+    def _call_patch(api, session: Session, **kwargs):
         return unwrap(api.patch)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -225,7 +234,7 @@ class TestDatasetMetadataServiceApiPatch:
             json={"name": "New Name"},
         ):
             api = DatasetMetadataServiceApi()
-            session = MagicMock()
+            session = self.session
             response, status = self._call_patch(
                 api,
                 session,
@@ -256,7 +265,7 @@ class TestDatasetMetadataServiceApiPatch:
             json={"name": "x"},
         ):
             api = DatasetMetadataServiceApi()
-            session = MagicMock()
+            session = self.session
             with pytest.raises(NotFound):
                 self._call_patch(
                     api,
@@ -267,14 +276,14 @@ class TestDatasetMetadataServiceApiPatch:
                 )
 
 
-class TestDatasetMetadataServiceApiDelete:
+class TestDatasetMetadataServiceApiDelete(_UsesSQLiteSession):
     """Tests for DatasetMetadataServiceApi.delete().
 
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
     """
 
     @staticmethod
-    def _call_delete(api, session: MagicMock, **kwargs):
+    def _call_delete(api, session: Session, **kwargs):
         return unwrap(api.delete)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -300,7 +309,7 @@ class TestDatasetMetadataServiceApiDelete:
             method="DELETE",
         ):
             api = DatasetMetadataServiceApi()
-            session = MagicMock()
+            session = self.session
             response = self._call_delete(
                 api,
                 session,
@@ -329,7 +338,7 @@ class TestDatasetMetadataServiceApiDelete:
             method="DELETE",
         ):
             api = DatasetMetadataServiceApi()
-            session = MagicMock()
+            session = self.session
             with pytest.raises(NotFound):
                 self._call_delete(
                     api,
@@ -345,7 +354,7 @@ class TestDatasetMetadataServiceApiDelete:
 # ---------------------------------------------------------------------------
 
 
-class TestDatasetMetadataBuiltInFieldGet:
+class TestDatasetMetadataBuiltInFieldGet(_UsesSQLiteSession):
     """Tests for DatasetMetadataBuiltInFieldServiceApi.get()."""
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -380,14 +389,14 @@ class TestDatasetMetadataBuiltInFieldGet:
 # ---------------------------------------------------------------------------
 
 
-class TestDatasetMetadataBuiltInFieldAction:
+class TestDatasetMetadataBuiltInFieldAction(_UsesSQLiteSession):
     """Tests for DatasetMetadataBuiltInFieldActionServiceApi.post().
 
     ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
     """
 
     @staticmethod
-    def _call_post(api, session: MagicMock, **kwargs):
+    def _call_post(api, session: Session, **kwargs):
         return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -411,7 +420,7 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = MagicMock()
+            session = self.session
             response, status = self._call_post(
                 api,
                 session,
@@ -445,7 +454,7 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = MagicMock()
+            session = self.session
             response, status = self._call_post(
                 api,
                 session,
@@ -473,7 +482,7 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
-            session = MagicMock()
+            session = self.session
             with pytest.raises(NotFound):
                 self._call_post(
                     api,
@@ -489,14 +498,14 @@ class TestDatasetMetadataBuiltInFieldAction:
 # ---------------------------------------------------------------------------
 
 
-class TestDocumentMetadataEditPost:
+class TestDocumentMetadataEditPost(_UsesSQLiteSession):
     """Tests for DocumentMetadataEditServiceApi.post().
 
     ``post`` is wrapped by ``@cloud_edition_billing_rate_limit_check``.
     """
 
     @staticmethod
-    def _call_post(api, session: MagicMock, **kwargs):
+    def _call_post(api, session: Session, **kwargs):
         return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
@@ -522,7 +531,7 @@ class TestDocumentMetadataEditPost:
             json={"operation_data": []},
         ):
             api = DocumentMetadataEditServiceApi()
-            session = MagicMock()
+            session = self.session
             response, status = self._call_post(
                 api,
                 session,
@@ -550,7 +559,7 @@ class TestDocumentMetadataEditPost:
             json={"operation_data": []},
         ):
             api = DocumentMetadataEditServiceApi()
-            session = MagicMock()
+            session = self.session
             with pytest.raises(NotFound):
                 self._call_post(
                     api,

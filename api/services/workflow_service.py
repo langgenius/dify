@@ -50,7 +50,7 @@ from core.workflow.system_variables import build_bootstrap_variables, build_syst
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -710,7 +710,7 @@ class WorkflowService:
         )
 
         # billing check
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan

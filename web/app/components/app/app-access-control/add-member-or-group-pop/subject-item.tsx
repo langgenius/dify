@@ -12,9 +12,9 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxItem, ComboboxItemText } from '@langgenius/dify-ui/combobox'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { SubjectType } from '@/models/access-control'
 
 type SubjectItemProps = {
@@ -87,7 +87,10 @@ function GroupItem({ group, subject, selectedGroups, onExpand }: GroupItemProps)
 }
 
 function MemberItem({ member, subject }: { member: AccessControlAccount; subject: Subject }) {
-  const currentUser = useAtomValue(userProfileAtom)
+  const { data: currentUser } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { t } = useTranslation()
 
   return (

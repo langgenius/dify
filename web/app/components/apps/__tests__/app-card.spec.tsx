@@ -103,15 +103,6 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportWorkflowAppDsl: () => mockWorkflowAppDslExport,
 }))
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      branding: { enabled: false },
-      rbac_enabled: mockRbacEnabled,
-    },
-  })
-
 const getOperationsTrigger = () =>
   screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })
 
@@ -173,12 +164,18 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
 
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfile: mockConsoleState.userProfile,
+    systemFeatures: {
+      webapp_auth: { enabled: mockWebappAuthEnabled },
+      branding: { enabled: false },
+      rbac_enabled: mockRbacEnabled,
+    },
+  })
+
 // Mock app context
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)

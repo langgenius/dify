@@ -27,6 +27,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
+from enums import DeploymentEdition
 
 
 @pytest.fixture
@@ -37,7 +38,8 @@ def app():
 
 
 def _enabled(enabled: bool):
-    return patch("controllers.console.workspace.rbac.dify_config.ENTERPRISE_ENABLED", enabled)
+    deployment_edition = DeploymentEdition.ENTERPRISE if enabled else DeploymentEdition.COMMUNITY
+    return patch("controllers.console.workspace.rbac.dify_config.DEPLOYMENT_EDITION", deployment_edition)
 
 
 class TestCurrentIds:
@@ -205,14 +207,14 @@ class TestPaginationMapping:
         owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
         valid_owner_permission_keys = []
         for permission_key in owner_permission_keys:
-            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
                 continue
             valid_owner_permission_keys.append(permission_key)
 
         admin_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]
         valid_admin_permission_keys = []
         for permission_key in admin_permission_keys:
-            if not dify_config.BILLING_ENABLED and "billing" in permission_key:
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
                 continue
             valid_admin_permission_keys.append(permission_key)
 

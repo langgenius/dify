@@ -3,6 +3,7 @@ import type { AgentPreviewChatController } from '../chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -34,6 +35,14 @@ const stopPostMock = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
+const mockToastError = vi.mocked(toast.error)
 
 vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
@@ -394,6 +403,7 @@ describe('AgentPreviewChat', () => {
     suggestedQuestionsGetMock.mockResolvedValue({ data: [] })
     stopPostMock.mockClear()
     stopPostMock.mockResolvedValue({ result: 'success' })
+    mockToastError.mockClear()
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
   })
@@ -794,6 +804,51 @@ describe('AgentPreviewChat', () => {
         message: 'Ignored',
       }),
     ).toBeUndefined()
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
+  it('should show a dedicated error toast when an agent run reaches the time limit', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        code: 'agent_run_limit_exceeded',
+        status: 400,
+        message: 'Server-provided message',
+      }),
+    ).toEqual({
+      conversationId: undefined,
+      messageId: undefined,
+      errorCode: 'agent_run_limit_exceeded',
+      errorMessage: 'Server-provided message',
+    })
+
+    expect(mockToastError).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.preview.errors.agentRunLimitExceeded',
+      expect.objectContaining({
+        description: expect.anything(),
+        timeout: 0,
+      }),
+    )
+    const toastDescription = mockToastError.mock.calls.at(0)?.[1]?.description
+    render(<>{toastDescription}</>)
+
+    const learnMoreLink = screen.getByRole('link', {
+      name: 'agentV2.agentDetail.configure.rightPanel.learnMore',
+    })
+    expect(learnMoreLink).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/self-host/use-dify/build/new-agent/build#publish',
+    )
+    expect(learnMoreLink).toHaveAttribute('target', '_blank')
+    expect(learnMoreLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('should show the send button loading state while preparing a build run', async () => {

@@ -12,15 +12,18 @@ import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { userProfileAtom } from '@/context/account-state'
+import { useDocLink } from '@/context/i18n'
 import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -118,6 +121,8 @@ export function AgentPreviewChatConversation({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const queryClient = useQueryClient()
   const userProfile = useAtomValue(userProfileAtom)
   const sendInterruptedRef = useRef(false)
@@ -222,12 +227,32 @@ export function AgentPreviewChatConversation({
             onUnhandledEvent: (event) => {
               if (event.event !== 'error' || typeof event.message !== 'string') return
 
+              const errorCode = typeof event.code === 'string' ? event.code : undefined
+              if (errorCode === 'agent_run_limit_exceeded') {
+                toast.error(
+                  t(($) => $['agentDetail.configure.preview.errors.agentRunLimitExceeded']),
+                  {
+                    description: (
+                      <a
+                        href={docLink('/use-dify/build/new-agent/build#publish')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-accent hover:underline"
+                      >
+                        {t(($) => $['agentDetail.configure.rightPanel.learnMore'])}
+                      </a>
+                    ),
+                    timeout: 0,
+                  },
+                )
+              }
+
               return {
                 conversationId:
                   typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
                 messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
                 errorMessage: event.message,
-                errorCode: typeof event.code === 'string' ? event.code : undefined,
+                errorCode,
               }
             },
             onConversationComplete: (completedConversationId, workflowRunId) => {
@@ -256,6 +281,7 @@ export function AgentPreviewChatConversation({
       config,
       conversationId,
       draftType,
+      docLink,
       handleSend,
       inputs,
       inputsForm,
@@ -266,6 +292,7 @@ export function AgentPreviewChatConversation({
       onSaveDraftBeforeRun,
       queryClient,
       sendMessage,
+      t,
       textGenerationModelList,
     ],
   )

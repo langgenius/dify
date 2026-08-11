@@ -6,6 +6,7 @@ import { useStoreApi } from 'reactflow'
 import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import WorkflowWithDefaultContext from '../index'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
@@ -39,39 +40,32 @@ const edges: Edge[] = [
 
 const ContextConsumer = () => {
   const { store } = useWorkflowHistoryStore()
+  const historyNodeCount = useStore((state) => state.workflowHistory.nodes.length)
   const datasetCount = useDatasetsDetailStore((state) => Object.keys(state.datasetsDetail).length)
   const reactFlowStore = useStoreApi()
+  const advanceWorkflowHistory = () => {
+    const currentHistory = store.getState()
+    store.setState({
+      ...currentHistory,
+      nodes: [
+        ...currentHistory.nodes,
+        {
+          ...nodes[0]!,
+          id: 'node-next',
+        },
+      ],
+    })
+  }
 
   return (
-    <div>
-      {`history:${store.getState().nodes.length}`}
-      {` datasets:${datasetCount}`}
-      {` reactflow:${String(!!reactFlowStore)}`}
-    </div>
-  )
-}
-
-const HistoryUpdatingConsumer = () => {
-  const { store } = useWorkflowHistoryStore()
-
-  return (
-    <button
-      onClick={() => {
-        const currentHistory = store.getState()
-        store.setState({
-          ...currentHistory,
-          nodes: [
-            ...currentHistory.nodes,
-            {
-              ...nodes[0]!,
-              id: 'node-added-after-mount',
-            },
-          ],
-        })
-      }}
-    >
-      Update workflow history
-    </button>
+    <>
+      <div>
+        {`history:${historyNodeCount}`}
+        {` datasets:${datasetCount}`}
+        {` reactflow:${String(!!reactFlowStore)}`}
+      </div>
+      <button onClick={advanceWorkflowHistory}>Advance workflow history</button>
+    </>
   )
 }
 
@@ -125,20 +119,20 @@ describe('WorkflowWithDefaultContext', () => {
     expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
   })
 
-  it('keeps the canvas children mounted when workflow history changes', async () => {
+  it('keeps its children mounted when workflow history advances after initialization', async () => {
     const user = userEvent.setup()
 
     render(
       <WorkflowContextProvider>
         <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
-          <HistoryUpdatingConsumer />
+          <ContextConsumer />
         </WorkflowWithDefaultContext>
       </WorkflowContextProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Update workflow history' }))
+    await user.click(screen.getByRole('button', { name: 'Advance workflow history' }))
 
-    expect(screen.getByRole('button', { name: 'Update workflow history' })).toBeInTheDocument()
+    expect(screen.getByText('history:2 datasets:0 reactflow:true')).toBeInTheDocument()
   })
 
   it('initializes new history before mounting children again in the same workflow store', async () => {

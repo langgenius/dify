@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
@@ -81,7 +81,10 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore((state) => state.appDetail)

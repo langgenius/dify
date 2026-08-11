@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 import controllers.console.explore.completion as completion_module
@@ -392,7 +393,9 @@ class TestChatApi:
                     api, completion_module.ChatMessagePayload.model_validate(payload_data), MagicMock(), user, chat_app
                 )
 
-    def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, chat_app, user) -> None:
+    def test_invalid_conversation_id_fails_fast_as_not_found(
+        self, app: Flask, chat_app, user, unbound_session: Session
+    ) -> None:
         # A nonexistent conversation_id must fail fast as 404, before the streaming
         # generator is created. Previously the lookup only ran inside the generator,
         # so an invalid id surfaced as a hang instead of a clean error.
@@ -407,7 +410,7 @@ class TestChatApi:
         get_conversation_mock = MagicMock(
             side_effect=completion_module.services.errors.conversation.ConversationNotExistsError()
         )
-        session = MagicMock()
+        session = unbound_session
 
         api = completion_module.ChatApi()
         method = unwrap(api.post)

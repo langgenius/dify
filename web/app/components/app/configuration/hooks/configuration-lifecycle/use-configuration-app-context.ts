@@ -1,11 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
@@ -14,7 +14,10 @@ import { getAppACLCapabilities } from '@/utils/permission'
 export function useConfigurationAppContext() {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } =
     useAppStore(

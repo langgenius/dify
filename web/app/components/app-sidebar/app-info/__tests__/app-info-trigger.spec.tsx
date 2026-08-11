@@ -2,7 +2,8 @@ import type { App, AppSSO } from '@/types/app'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
@@ -19,10 +20,11 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
+
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
