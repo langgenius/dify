@@ -174,8 +174,6 @@ export default function CheckCode() {
           <Turnstile
             siteKey={turnstileSiteKey}
             onVerify={(turnstileToken) => {
-              // oxlint-disable-next-line no-console -- Temporary Turnstile token debugging.
-              console.log(turnstileToken)
               void resendCode(turnstileToken)
             }}
             onInvalidate={() => {

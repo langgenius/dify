@@ -24,8 +24,6 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
-  // oxlint-disable-next-line no-console -- Temporary Turnstile token debugging.
-  console.log(turnstileToken)
   const locale = useLocale()
   const setCountdownLeftTime = useSetCountdownLeftTime()
   const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
