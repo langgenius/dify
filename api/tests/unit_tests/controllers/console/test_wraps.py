@@ -129,6 +129,19 @@ class TestAccountInitialization:
 class TestCurrentContextInjection:
     """Test request context injection decorators."""
 
+    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
+        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+
+        with Flask(__name__).app_context():
+            body, status = handler(ActiveWorkspaceRequiredError())
+
+        assert status == 500
+        assert body == {
+            "code": "active_workspace_required",
+            "message": "Internal Server Error",
+            "status": 500,
+        }
+
     def test_console_account_admission_injects_request_context(self):
         current_user = make_account()
 
@@ -265,19 +278,6 @@ class TestCurrentContextInjection:
     def test_console_account_admission_rejects_incomplete_rbac_requirement(self):
         with pytest.raises(AdmissionConfigurationError, match="configured together"):
             flask_admission.console_account_admission(rbac_resource_scope=RBACResourceScope.WORKSPACE)
-
-    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
-        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
-
-        with Flask(__name__).app_context():
-            body, status = handler(ActiveWorkspaceRequiredError())
-
-        assert status == 500
-        assert body == {
-            "code": "active_workspace_required",
-            "message": "Internal Server Error",
-            "status": 500,
-        }
 
     def test_console_account_admission_can_admit_uninitialized_accounts(self):
         current_user = make_account()

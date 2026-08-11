@@ -41,6 +41,7 @@ from controllers.console.workspace.error import (
     InvalidAccountDeletionCodeError,
     InvalidAccountPasswordRequestError,
     InvalidInvitationCodeError,
+    MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
 from controllers.console.wraps import (
@@ -312,12 +313,14 @@ class AccountInitApi(Resource):
                 timezone=args.timezone,
                 invitation_code=args.invitation_code,
             )
-        except account_errors.AccountAlreadyInitializedError:
-            raise AccountAlreadyInitedError() from None
-        except account_errors.InvalidInvitationCodeError:
-            raise InvalidInvitationCodeError() from None
-        except account_errors.AccountNotFoundError:
-            raise AccountNotFound() from None
+        except account_errors.AccountAlreadyInitializedError as error:
+            raise AccountAlreadyInitedError() from error
+        except account_errors.MissingInvitationCodeError as error:
+            raise MissingInvitationCodeRequestError() from error
+        except account_errors.InvalidInvitationCodeError as error:
+            raise InvalidInvitationCodeError() from error
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 

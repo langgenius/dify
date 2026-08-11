@@ -84,7 +84,7 @@ def test_sync_account_deletion_memberships_queues_preloaded_workspace_ids() -> N
         patch("services.enterprise.account_deletion_sync.dify_config") as mock_config,
         patch("services.enterprise.account_deletion_sync._queue_task", return_value=True) as queue_task,
     ):
-        mock_config.ENTERPRISE_ENABLED = True
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
         result = sync_account_deletion_memberships(
             account_id="account-1",

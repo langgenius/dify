@@ -186,11 +186,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert accounts._session_factory is sqlite_session_factory
     assert services.accounts.password._accounts is accounts
     assert services.accounts.initialization._accounts is accounts
-    assert services.accounts.initialization._invitation_required is False
-    assert services.accounts.deletion._accounts is accounts
-    assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
-    assert services.accounts.initialization._accounts is accounts
-    assert services.accounts.initialization._invitation_required is False
+    assert not services.accounts.initialization._invitation_required
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
@@ -211,7 +207,7 @@ def test_build_application_services_requires_invitation_for_cloud_initialization
         redis=MagicMock(spec=RedisClientWrapper),
     )
 
-    assert services.accounts.initialization._invitation_required is True
+    assert services.accounts.initialization._invitation_required
 
 
 @pytest.mark.parametrize(

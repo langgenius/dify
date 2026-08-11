@@ -21,23 +21,23 @@ class AvatarFileNotFoundError(AccountApplicationError):
     """The requested avatar file does not exist or is not owned by the account."""
 
 
-class AccountAlreadyInitializedError(Exception):
+class AccountAlreadyInitializedError(AccountApplicationError):
     """The account is already active and cannot be initialized again."""
 
 
-class MissingInvitationCodeError(ValueError):
+class MissingInvitationCodeError(AccountApplicationError):
     """Cloud account initialization requires an invitation code."""
 
 
-class InvalidInvitationCodeError(Exception):
+class InvalidInvitationCodeError(AccountApplicationError):
     """The invitation code is missing, used, or otherwise invalid."""
 
 
-class InvalidAccountDeletionVerificationError(Exception):
+class InvalidAccountDeletionVerificationError(AccountApplicationError):
     """The account deletion token or verification code is invalid."""
 
 
-class AccountDeletionRateLimitError(Exception):
+class AccountDeletionRateLimitError(AccountApplicationError):
     """Too many account deletion verification emails were requested."""
 
     def __init__(self, retry_after_minutes: int) -> None:

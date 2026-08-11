@@ -40,6 +40,7 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
     InvalidAccountPasswordRequestError,
+    MissingInvitationCodeRequestError,
 )
 from machinery.context import RequestContext
 from models import Account, Tenant, TenantAccountJoin
@@ -51,6 +52,7 @@ from services.account_errors import (
     CurrentAccountPasswordIncorrectError,
     InvalidAccountDeletionVerificationError,
     InvalidAccountPasswordError,
+    MissingInvitationCodeError,
 )
 from services.entities.account_entities import AccountIntegrationStatus, AccountProfileChanges
 
@@ -146,6 +148,35 @@ class TestAccountInitApi:
         ):
             with pytest.raises(AccountAlreadyInitedError):
                 method(api, request_context)
+
+    def test_init_missing_invitation_code_is_mapped(self, app: Flask):
+        api = AccountInitApi()
+        method = inspect.unwrap(api.post)
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        initialization = MagicMock()
+        initialization.initialize.side_effect = MissingInvitationCodeError("invitation_code is required")
+        payload = {"interface_language": "en-US", "timezone": "UTC"}
+
+        with (
+            app.test_request_context("/account/init", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
+            ),
+        ):
+            with pytest.raises(MissingInvitationCodeRequestError) as exc_info:
+                method(api, request_context)
+
+        assert exc_info.value.data == {
+            "code": "missing_invitation_code",
+            "message": "Invitation code is required.",
+            "status": 400,
+        }
 
 
 class TestAccountProfileApi:

@@ -6,6 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError
 from services.account_errors import (
     AccountAlreadyInitializedError,
     InvalidInvitationCodeError,
@@ -100,6 +101,26 @@ def test_cloud_initialization_rejects_missing_or_invalid_invitation() -> None:
         service.initialize(_context(), interface_language="en-US", timezone="UTC", invitation_code="used")
 
     accounts.initialize.assert_called_once()
+
+
+def test_cloud_initialization_requires_admitted_workspace() -> None:
+    accounts = Mock(spec=AccountRepository)
+    service = AccountInitializationService(
+        accounts=accounts,
+        invitation_required=True,
+        now=lambda: datetime(2026, 8, 10),
+    )
+    context = RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=None,
+    )
+
+    with pytest.raises(ActiveWorkspaceRequiredError):
+        service.initialize(context, interface_language="en-US", timezone="UTC", invitation_code="invite")
+
+    accounts.initialize.assert_not_called()
 
 
 def test_initialization_rejects_an_active_account_before_consuming_invitation() -> None:

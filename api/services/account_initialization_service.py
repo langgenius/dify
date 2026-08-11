@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError
 from services.account_errors import (
     AccountAlreadyInitializedError,
     AccountNotFoundError,
@@ -40,7 +41,7 @@ class AccountInitializationService:
                 raise MissingInvitationCodeError("invitation_code is required")
             workspace_id = context.active_workspace_id
             if workspace_id is None:
-                raise RuntimeError("Console account admission did not resolve an active workspace")
+                raise ActiveWorkspaceRequiredError
 
         result = self._accounts.initialize(
             context.account_id,

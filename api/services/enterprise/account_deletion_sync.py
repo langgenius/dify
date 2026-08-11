@@ -119,7 +119,7 @@ def sync_account_deletion(account_id: str, *, source: str, session: Session) -> 
 
 def sync_account_deletion_memberships(account_id: str, workspace_ids: Sequence[str], *, source: str) -> bool:
     """Queue deletion synchronization after membership persistence has been read and closed."""
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
     success = True
