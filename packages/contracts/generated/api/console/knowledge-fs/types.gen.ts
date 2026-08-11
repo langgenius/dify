@@ -1163,7 +1163,7 @@ export type KnowledgeFsDocumentReindexItemResponse = {
     [key: string]: unknown
   } | null
   document_id?: string | null
-  status: 'not_found' | 'queued'
+  status: 'disabled' | 'not_found' | 'queued'
   status_url?: string | null
 }
 
