@@ -35,8 +35,8 @@ describe('New RAG routes', () => {
     ).toBe('/datasets/new/space-1/sources/new?type=websiteCrawl&provider=Jina+Reader')
   })
 
-  it('falls back when a provider does not belong to the selected source type', () => {
-    expect(createNewKnowledgeSourceDraft('onlineDrive', 'Confluence').provider).toBe('Google Drive')
+  it('keeps a dynamically discovered provider supplied by the add-source entry point', () => {
+    expect(createNewKnowledgeSourceDraft('onlineDrive', 'Acme Drive').provider).toBe('Acme Drive')
   })
 
   it('defaults website crawls to a daily sync policy', () => {

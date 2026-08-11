@@ -1,5 +1,7 @@
 export interface DeletionObjectWriteScope {
   readonly knowledgeSpaceId: string;
+  /** Limits active Source-deletion fences to the Source that owns the external object. */
+  readonly sourceId?: string | undefined;
   readonly tenantId: string;
 }
 

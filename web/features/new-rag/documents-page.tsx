@@ -56,7 +56,11 @@ import {
 } from './document-models'
 import { DocumentUploadForm } from './document-upload-form'
 import { documentUploadIssue } from './document-upload-policy'
-import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
+} from './knowledge-fs-upload'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { createRequestId } from './request-id'
 import { newKnowledgeDocumentDetailPath } from './routes'
@@ -243,8 +247,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
   const uploadPendingRef = useRef(false)
+  const uploadActivityCountRef = useRef(0)
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const uploadRequestIdsRef = useRef(new Map<string, string>())
+  const stagedUploadIdsRef = useRef(new Map<File, string>())
+  const stagingPromisesRef = useRef(new Map<File, Promise<string>>())
+  const discardAfterStagingRef = useRef(new Set<File>())
   const reindexPendingRef = useRef(false)
   const documentActionPendingRef = useRef(false)
   const [filter, setFilter] = useQueryState('status', documentFilterParser)
@@ -391,6 +399,62 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canWrite = hasWorkspaceWritePermission && !permissionDenied && !writePermissionRevoked
   const canUpload = canWrite && uploadAvailable
   const uploadFormOpen = canUpload && uploadRequest === '1'
+  const beginUploadActivity = useCallback(() => {
+    uploadActivityCountRef.current += 1
+    setUploading(true)
+  }, [])
+  const endUploadActivity = useCallback(() => {
+    uploadActivityCountRef.current = Math.max(0, uploadActivityCountRef.current - 1)
+    if (!uploadActivityCountRef.current) setUploading(false)
+  }, [])
+  const stageFiles = useCallback(async (files: File[]) => {
+    const tasks = files.map((file) => {
+      const stagedUploadId = stagedUploadIdsRef.current.get(file)
+      if (stagedUploadId) return Promise.resolve(stagedUploadId)
+      const active = stagingPromisesRef.current.get(file)
+      if (active) return active
+
+      discardAfterStagingRef.current.delete(file)
+      const promise = stageKnowledgeFsDocument(file)
+        .then((uploadId) => {
+          if (discardAfterStagingRef.current.delete(file)) {
+            void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+            return uploadId
+          }
+          stagedUploadIdsRef.current.set(file, uploadId)
+          return uploadId
+        })
+        .finally(() => stagingPromisesRef.current.delete(file))
+      stagingPromisesRef.current.set(file, promise)
+      return promise
+    })
+    if (!tasks.length) return
+
+    const results = await Promise.allSettled(tasks)
+    const failed = results.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected',
+    )
+    if (failed) throw failed.reason
+  }, [])
+  const discardStagedFile = useCallback((file: File) => {
+    if (stagingPromisesRef.current.has(file)) discardAfterStagingRef.current.add(file)
+    const uploadId = stagedUploadIdsRef.current.get(file)
+    stagedUploadIdsRef.current.delete(file)
+    if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+  }, [])
+  const discardStagedUploadObjects = useCallback(() => {
+    const uploadIds = [...stagedUploadIdsRef.current.values()]
+    for (const file of stagingPromisesRef.current.keys()) discardAfterStagingRef.current.add(file)
+    stagedUploadIdsRef.current.clear()
+    uploadProgressRef.current.clear()
+    uploadRequestIdsRef.current.clear()
+    for (const uploadId of uploadIds)
+      void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+  }, [])
+  const discardAllStagedFiles = useCallback(() => {
+    discardStagedUploadObjects()
+    setStagedUploadProgress(new Map())
+  }, [discardStagedUploadObjects])
   const openUploadForm = useCallback(
     (files: File[] = []) => {
       writePermissionFocusRecoveryRequestedRef.current = true
@@ -408,11 +472,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setUploadFormInitialFiles([])
     void setUploadRequest(null)
   }, [setUploadRequest])
+  const cancelUploadForm = useCallback(() => {
+    discardAllStagedFiles()
+    closeUploadForm()
+  }, [closeUploadForm, discardAllStagedFiles])
   useEffect(() => {
     if (uploadRequest !== '1' || permissionPending || canUpload) return
+    discardStagedUploadObjects()
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the route-owned one-shot signal after authorization resolves.
     void setUploadRequest(null)
-  }, [canUpload, permissionPending, setUploadRequest, uploadRequest])
+  }, [canUpload, discardStagedUploadObjects, permissionPending, setUploadRequest, uploadRequest])
   const documentWriteRestrictionReasonId = permissionPending
     ? 'documents-permission-pending'
     : permissionQueryError
@@ -1547,16 +1616,22 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
       let writePermissionDenied = false
       uploadPendingRef.current = true
-      setUploading(true)
+      beginUploadActivity()
       try {
         if (!(await ensureModelSetupReady())) return false
         let acceptedCount = 0
         const exclusions = [...localExclusions]
+        const unstagedFiles = uploadableFiles.filter(
+          (file) => !stagedUploadIdsRef.current.has(file),
+        )
+        if (unstagedFiles.length) await stageFiles(unstagedFiles)
         const uploads = uploadableFiles.map((file) => {
           const fingerprint = `${knowledgeSpaceId}:${file.name}:${file.size}:${file.lastModified}`
           const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
           uploadRequestIdsRef.current.set(fingerprint, id)
-          return { file, id }
+          const uploadId = stagedUploadIdsRef.current.get(file)
+          if (!uploadId) throw new Error('KnowledgeFS file was not staged')
+          return { file, id, uploadId }
         })
         await uploadKnowledgeFsDocuments(
           knowledgeSpaceId,
@@ -1572,6 +1647,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )
         uploadProgressRef.current.clear()
         uploadRequestIdsRef.current.clear()
+        stagedUploadIdsRef.current.clear()
         acceptedCount = uploadableFiles.length
         const exclusionDetails = formatExclusionDetails(exclusions)
         if (!acceptedCount) {
@@ -1596,7 +1672,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       } catch (error) {
         if (responseStatus(error) === 403) {
           writePermissionDenied = true
-          closeUploadForm()
+          cancelUploadForm()
           handleWritePermissionDenied()
         } else toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
         return false
@@ -1606,17 +1682,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           writePermissionFocusOriginRef.current = null
         }
         uploadPendingRef.current = false
-        setUploading(false)
+        endUploadActivity()
         setStagedUploadProgress(new Map())
       }
     },
     [
       canUpload,
-      closeUploadForm,
+      beginUploadActivity,
+      cancelUploadForm,
+      endUploadActivity,
       ensureModelSetupReady,
       handleWritePermissionDenied,
       knowledgeSpaceId,
       refreshDocumentsAndTasks,
+      stageFiles,
       t,
     ],
   )
@@ -2510,7 +2589,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             initialFiles={uploadFormInitialFiles}
             uploadProgress={stagedUploadProgress}
             uploading={uploading}
-            onCancel={closeUploadForm}
+            onCancel={cancelUploadForm}
+            onFilesAdded={async (files) => {
+              try {
+                await stageFiles(files)
+              } catch (error) {
+                toast.error(t(($) => $['newKnowledge.documentUploadFailed']))
+                throw error
+              }
+            }}
+            onFileRemoved={discardStagedFile}
             onSubmit={async (files) => {
               writePermissionFocusRecoveryRequestedRef.current = true
               writePermissionFocusOriginRef.current = document.activeElement as HTMLElement | null

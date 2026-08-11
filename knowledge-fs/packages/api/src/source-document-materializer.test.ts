@@ -42,7 +42,11 @@ describe("createSourceDocumentMaterializer", () => {
       maxManifests: 10,
     });
     const projectionLifecycle: string[] = [];
-    const admittedScopes: { knowledgeSpaceId: string; tenantId: string }[] = [];
+    const admittedScopes: {
+      knowledgeSpaceId: string;
+      sourceId?: string | undefined;
+      tenantId: string;
+    }[] = [];
     const reindexInputs: Array<{
       readonly permissionScope?: readonly string[] | undefined;
       readonly projectionStatus?: string | undefined;
@@ -158,7 +162,13 @@ describe("createSourceDocumentMaterializer", () => {
     expect(reindexInputs[0]?.permissionScope).toEqual(["team:security", "role:auditor"]);
     expect(reindexInputs[0]?.projectionStatus).toBe("building");
     expect(projectionLifecycle).toEqual(["reindex", "manifest", "segments", "publish"]);
-    expect(admittedScopes).toEqual([{ knowledgeSpaceId: KS, tenantId: "tenant-1" }]);
+    expect(admittedScopes).toEqual([
+      {
+        knowledgeSpaceId: KS,
+        sourceId: "20000000-0000-4000-8000-000000000001",
+        tenantId: "tenant-1",
+      },
+    ]);
     const [asset] = (await assets.list({ knowledgeSpaceId: KS, limit: 10 })).items;
     expect(asset?.metadata.permissionScope).toEqual(["team:security", "role:auditor"]);
     expect(asset?.parserStatus).toBe("parsed");

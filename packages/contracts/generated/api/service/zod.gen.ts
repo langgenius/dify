@@ -1199,18 +1199,6 @@ export const zHumanInputFormSubmitPayloadWithUser = z.object({
 })
 
 /**
- * KnowledgeFSAdmittedQueryRequest
- */
-export const zKnowledgeFsAdmittedQueryRequest = z.object({
-  activeDocumentIds: z.array(z.string()).max(100).optional(),
-  activeEntityIds: z.array(z.string()).max(100).optional(),
-  knowledgeSpaceId: z.string().min(1),
-  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
-  sessionId: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSAnswerTraceStepResponse
  */
 export const zKnowledgeFsAnswerTraceStepResponse = z.object({
@@ -1637,6 +1625,26 @@ export const zKnowledgeFsProductRetrievalProfile = z.object({
 })
 
 /**
+ * KnowledgeFSQueryImageReference
+ */
+export const zKnowledgeFsQueryImageReference = z.object({
+  uploadFileId: z.string().min(1),
+})
+
+/**
+ * KnowledgeFSAdmittedQueryRequest
+ */
+export const zKnowledgeFsAdmittedQueryRequest = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  knowledgeSpaceId: z.string().min(1),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  sessionId: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSQueryAdmissionResponse
  */
 export const zKnowledgeFsQueryAdmissionResponse = z.object({
@@ -1654,7 +1662,8 @@ export const zKnowledgeFsQueryCreatePayload = z.object({
   activeDocumentIds: z.array(z.string()).max(100).optional(),
   activeEntityIds: z.array(z.string()).max(100).optional(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
   sessionId: z.string().nullish(),
 })
 
@@ -1686,7 +1695,8 @@ export const zKnowledgeFsResearchTaskCreatePayload = z.object({
   limits: zKnowledgeFsResearchTaskLimits.nullish(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
   topK: z.int().gte(1).lte(50).nullish(),
 })
 
@@ -1732,7 +1742,8 @@ export const zKnowledgeFsResearchTaskPlanBudgetResponse = z.object({
 export const zKnowledgeFsResearchTaskPlanPayload = z.object({
   budgetUsd: z.number().gte(0).nullish(),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
-  query: z.string().min(1).max(16000),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
   topK: z.int().gte(1).lte(50).nullish(),
 })
 
@@ -1751,6 +1762,7 @@ export const zKnowledgeFsResearchTaskResponse = z.object({
   metadata: z.record(z.string(), z.unknown()),
   mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
   stage: z.enum([
     'analyzing',
     'canceled',
@@ -1797,6 +1809,7 @@ export const zKnowledgeFsResearchTaskPlanResponse = z.object({
   estimates: z.record(z.string(), z.unknown()),
   knowledge_space_id: z.string(),
   query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
   retrieval_plan: zKnowledgeFsResearchTaskRetrievalPlanResponse,
   steps: z.array(z.record(z.string(), z.unknown())),
   strategy_version: z.literal('research-dry-run-planner-v1'),
@@ -2047,6 +2060,7 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
   kind: z.string(),
   knowledge_space_id: z.string(),
   last_error_code: z.string().nullish(),
+  last_error_message: z.string().nullish(),
   max_execution_attempts: z.int().gte(1),
   progress_completed: z.int().gte(0),
   progress_failed: z.int().gte(0),

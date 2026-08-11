@@ -20,6 +20,7 @@ export function createDatabaseDeletionObjectWriteAdmission(
     withSpaceWriteAdmission: async (rawScope, write) => {
       const scope = {
         knowledgeSpaceId: UuidSchema.parse(rawScope.knowledgeSpaceId),
+        ...(rawScope.sourceId ? { sourceId: UuidSchema.parse(rawScope.sourceId) } : {}),
         tenantId: TenantIdSchema.parse(rawScope.tenantId),
       };
       return database.transaction(async (transaction) => {
@@ -40,13 +41,19 @@ export function createDatabaseDeletionObjectWriteAdmission(
         if (!row || row.lifecycle_state !== "active" || row.deletion_job_id != null) {
           throw new DeletionObjectWriteAdmissionError();
         }
+        const activeDeletionParams = scope.sourceId
+          ? [scope.tenantId, scope.knowledgeSpaceId, scope.sourceId]
+          : [scope.tenantId, scope.knowledgeSpaceId];
+        const sourceScope = scope.sourceId
+          ? ` AND (${q("target_type")} <> 'source' OR ${q("target_id")} = ${p(3)})`
+          : "";
         const activeDeletion = await transaction.execute({
           maxRows: 1,
           operation: "select",
-          params: [scope.tenantId, scope.knowledgeSpaceId],
+          params: activeDeletionParams,
           // Keep this a current locking read too: a TiDB repeatable-read snapshot may predate the
           // deletion transaction that the space-row lock just waited for.
-          sql: `SELECT ${q("id")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1 LIMIT 1 ${admissionLock};`,
+          sql: `SELECT ${q("id")} FROM ${q("deletion_jobs")} WHERE ${q("tenant_id")} = ${p(1)} AND ${q("knowledge_space_id")} = ${p(2)} AND ${q("active_slot")} = 1${sourceScope} LIMIT 1 ${admissionLock};`,
           tableName: "deletion_jobs",
         });
         if (activeDeletion.rows.length > 0) throw new DeletionObjectWriteAdmissionError();

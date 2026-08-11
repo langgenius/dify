@@ -87,6 +87,8 @@ from .knowledge_fs import (
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
     KnowledgeFSLifecycleOutboxStatus,
+    KnowledgeFSStagedUpload,
+    KnowledgeFSStagedUploadStatus,
 )
 from .knowledge_fs_cleanup import (
     KnowledgeFSCleanupAuthorization,
@@ -300,6 +302,8 @@ __all__ = [
     "KnowledgeFSShadowAuthorizationDecision",
     "KnowledgeFSShadowAuthorizationDiff",
     "KnowledgeFSShadowAuthorizationObservation",
+    "KnowledgeFSStagedUpload",
+    "KnowledgeFSStagedUploadStatus",
     "KnowledgeFSWorkspaceCutoverLedger",
     "KnowledgeFSWorkspaceCutoverPhase",
     "LoadBalancingModelConfig",

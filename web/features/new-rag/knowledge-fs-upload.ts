@@ -1,8 +1,9 @@
 import { consoleClient } from '@/service/client'
 
-type KnowledgeFsUploadItem = {
+export type KnowledgeFsUploadItem = {
   file: File
   id: string
+  uploadId: string
 }
 
 type UploadProgressEntry = {
@@ -11,6 +12,19 @@ type UploadProgressEntry = {
 
 export type KnowledgeFsUploadPhase = 'completed' | 'pending'
 export type KnowledgeFsUploadProgress = Map<string, UploadProgressEntry>
+
+export async function stageKnowledgeFsDocument(file: File) {
+  const staged = await consoleClient.knowledgeFs.uploads.post({
+    body: { file },
+  })
+  return staged.id
+}
+
+export async function discardKnowledgeFsStagedUpload(uploadId: string) {
+  await consoleClient.knowledgeFs.uploads.byUploadId.delete({
+    params: { upload_id: uploadId },
+  })
+}
 
 export async function uploadKnowledgeFsDocuments(
   controlSpaceId: string,
@@ -23,7 +37,7 @@ export async function uploadKnowledgeFsDocuments(
     progress.set(upload.id, { phase: 'pending' })
     onProgress?.(upload.file, 'pending')
     await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post({
-      body: { file: upload.file },
+      body: { upload_id: upload.uploadId },
       params: { control_space_id: controlSpaceId },
     })
     progress.set(upload.id, { phase: 'completed' })

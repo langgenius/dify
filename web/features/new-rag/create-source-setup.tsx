@@ -1,13 +1,12 @@
 'use client'
 
-import type {
-  NewKnowledgeOnlineDocumentsProvider,
-  NewKnowledgeOnlineDriveProvider,
-  NewKnowledgeSourceDraft,
-  NewKnowledgeWebsiteProvider,
-  NewKnowledgeWebsiteSourceDraft,
-} from './routes'
+import type { KnowledgeFsSpaceCreatePayload } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { NewKnowledgeSourceDraft } from './routes'
 import type { CrawlPreviewPage } from './source-models'
+import type {
+  DataSourceAuth,
+  DataSourceCredential,
+} from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlResultItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -25,13 +24,29 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import {
+  checkFirecrawlTaskStatus,
+  checkJinaReaderTaskStatus,
+  checkWatercrawlTaskStatus,
+  createFirecrawlTask,
+  createJinaReaderTask,
+  createWatercrawlTask,
+} from '@/service/datasets'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
+import { useDataSourceList } from '@/service/use-pipeline'
 import { CrawlPreviewPageSelection } from './crawl-selection-form'
+import { CreateConnectedSourceSetup } from './create-connected-source-setup'
 import { isValidWebsiteSourceDraft, NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH } from './routes'
+import {
+  discoverSourceProviderOptions,
+  normalizeSourceProviderName,
+  sourceProviderOptionForDraft,
+} from './source-provider-options'
 import {
   SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderNotInstalledCard,
   SourceProviderRadioGroup,
   SourceSyncPolicyField,
   SourceTypeSelector,
@@ -48,16 +63,15 @@ const CRAWL_PREVIEW_SKELETONS = [
 ] as const
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
-
-export type WebsiteCrawlPreviewSelection = {
-  draft: NewKnowledgeWebsiteSourceDraft
-  pages: CrawlPreviewPage[]
-  selectedPageIds: string[]
-}
+type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
 
 function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
-  if (!Array.isArray(response.data)) return []
-  return response.data.flatMap((item) => {
+  const items = Array.isArray(response.data)
+    ? response.data
+    : response.data && typeof response.data === 'object'
+      ? [response.data]
+      : []
+  return items.flatMap((item) => {
     if (!item || typeof item !== 'object') return []
     const page = item as Record<string, unknown>
     const sourceUrl =
@@ -92,129 +106,56 @@ function crawlPreviewPages(pages: CrawlResultItem[]): CrawlPreviewPage[] {
   }))
 }
 
-const providers = {
-  onlineDocuments: [
-    { available: false, icon: 'i-custom-public-common-notion', label: 'Notion' },
-    {
-      available: false,
-      icon: 'i-ri-file-text-fill text-[#4d8bf5]',
-      label: 'Google Docs',
-    },
-    { available: false, icon: 'i-custom-public-common-confluence', label: 'Confluence' },
-  ],
-  onlineDrive: [
-    { available: false, icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },
-    { available: false, icon: 'i-ri-cloud-line', label: 'OneDrive' },
-    { available: false, icon: 'i-ri-box-3-line', label: 'Amazon S3' },
-  ],
-  websiteCrawl: [
-    { icon: 'i-custom-public-common-firecrawl', label: 'Firecrawl', available: true },
-    { available: false, icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
-    {
-      available: false,
-      icon: 'i-custom-public-knowledge-watercrawl',
-      label: 'WaterCrawl',
-    },
-    {
-      available: false,
-      icon: 'i-ri-global-line text-text-accent',
-      label: 'FakeCrawler',
-    },
-  ],
-} as const
-
-function ConnectedSourceConfiguration({
-  disabled,
-  draft,
-  onDraftChange,
-}: {
-  disabled: boolean
-  draft: NewKnowledgeSourceDraft
-  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <SourceNameField
-        disabled={disabled}
-        draft={draft}
-        preventSubmitOnEnter
-        size="medium"
-        onDraftChange={onDraftChange}
-      />
-      <SourceSyncPolicyField
-        disabled={disabled}
-        draft={draft}
-        size="medium"
-        onDraftChange={onDraftChange}
-      />
-    </div>
+function datasourceAuthForProvider(
+  authProviders: DataSourceAuth[],
+  pluginId: string,
+  provider: string,
+) {
+  return authProviders.find(
+    (candidate) => candidate.plugin_id === pluginId && candidate.provider === provider,
   )
 }
 
-function NotionSourceConfiguration({
-  disabled,
-  draft,
-  onConnect,
-  onDraftChange,
-}: {
-  disabled: boolean
-  draft: NewKnowledgeSourceDraft
-  onConnect: () => void
-  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-}) {
-  const { t } = useTranslation('dataset')
-  const datasourceAuthQuery = useGetDataSourceListAuth()
-  const notionConnected = Boolean(
-    datasourceAuthQuery.data?.result.some(
-      (auth) =>
-        auth.credentials_list.length > 0 &&
-        [auth.name, auth.plugin_id, auth.provider].some((identity) =>
-          identity
-            .toLocaleLowerCase()
-            .replaceAll(/[^a-z0-9]/g, '')
-            .includes('notion'),
-        ),
-    ),
-  )
-
-  if (notionConnected) {
-    return (
-      <ConnectedSourceConfiguration
-        disabled={disabled}
-        draft={draft}
-        onDraftChange={onDraftChange}
-      />
-    )
-  }
-
+function preferredCredential(auth?: DataSourceAuth): DataSourceCredential | undefined {
   return (
-    <SourceConnectionRequiredCard
-      actionLabel={t(($) => $['newKnowledge.connectNotion'])}
-      description={t(($) => $['newKnowledge.notionNotConnectedDescription'])}
-      disabled={disabled}
-      icon={<span aria-hidden className="i-custom-public-common-notion size-4.5" />}
-      title={t(($) => $['newKnowledge.notionNotConnected'])}
-      onConnect={onConnect}
-    />
+    auth?.credentials_list.find((credential) => credential.is_default) ?? auth?.credentials_list[0]
   )
+}
+
+function providerIntegrationPath(packageId?: string) {
+  const base = buildIntegrationPath('data-source')
+  if (!packageId) return base
+  const query = new URLSearchParams({ 'package-ids': JSON.stringify([packageId]) })
+  return `${base}?${query.toString()}`
+}
+
+function websiteProviderTransport(provider: string) {
+  const normalized = normalizeSourceProviderName(provider)
+  if (normalized.includes('firecrawl'))
+    return { check: checkFirecrawlTaskStatus, create: createFirecrawlTask }
+  if (normalized.includes('jinareader') || normalized === 'jina')
+    return { check: checkJinaReaderTaskStatus, create: createJinaReaderTask }
+  if (normalized.includes('watercrawl'))
+    return { check: checkWatercrawlTaskStatus, create: createWatercrawlTask }
 }
 
 export function CreateSourceSetup({
   disabled,
   draft,
   onDraftChange,
-  onWebsitePreviewSelectionChange,
+  onInitialSourceChange,
   onSourceTypeChange,
 }: {
   disabled: boolean
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  onWebsitePreviewSelectionChange?: (selection?: WebsiteCrawlPreviewSelection) => void
+  onInitialSourceChange: (source?: InitialSource) => void
   onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
   const { t } = useTranslation('dataset')
+  const datasourcePluginsQuery = useDataSourceList(true)
+  const datasourceAuthQuery = useGetDataSourceListAuth()
   const [optionsExpanded, setOptionsExpanded] = useState(false)
-  const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
   const [previewPages, setPreviewPages] = useState<CrawlResultItem[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
@@ -222,19 +163,35 @@ export function CreateSourceSetup({
   const pollResolveRef = useRef<(() => void) | undefined>(undefined)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const sourceType = draft.sourceType
-  const availableProviders = providers[sourceType]
-  const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
-    ? draft.provider
-    : availableProviders[0].label
-  const websiteProviderAvailable =
-    draft.sourceType === 'websiteCrawl' && draft.provider === 'Firecrawl'
-  const previewReady = websiteProviderAvailable && isValidWebsiteSourceDraft(draft)
+  const providerOptions = useMemo(
+    () => discoverSourceProviderOptions(sourceType, datasourcePluginsQuery.data ?? []),
+    [datasourcePluginsQuery.data, sourceType],
+  )
+  const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
+  const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const datasourceAuth = installedProviderOption
+    ? datasourceAuthForProvider(
+        datasourceAuthQuery.data?.result ?? [],
+        installedProviderOption.plugin.plugin_id,
+        installedProviderOption.plugin.provider,
+      )
+    : undefined
+  const credential = preferredCredential(datasourceAuth)
+  const websiteTransport =
+    draft.sourceType === 'websiteCrawl' && installedProviderOption
+      ? websiteProviderTransport(installedProviderOption.plugin.provider)
+      : undefined
+  const previewReady = Boolean(
+    websiteTransport &&
+    credential &&
+    draft.sourceType === 'websiteCrawl' &&
+    isValidWebsiteSourceDraft(draft),
+  )
   const previewRootUrl = draft.sourceType === 'websiteCrawl' ? draft.rootUrl : ''
   const selectionPages = useMemo(() => crawlPreviewPages(previewPages), [previewPages])
   const crawlOptionsAreDefault =
     draft.sourceType !== 'websiteCrawl' ||
     (draft.includeSubpages === DEFAULT_INCLUDE_SUBPAGES && draft.maxPages === DEFAULT_MAX_PAGES)
-  const showBackendBoundary = () => setBackendBoundaryVisible(true)
   const stopPreview = (state: LocalCrawlState = 'stopped') => {
     crawlAttemptRef.current += 1
     globalThis.clearTimeout(pollTimerRef.current)
@@ -247,23 +204,29 @@ export function CreateSourceSetup({
     stopPreview('idle')
     setPreviewPages([])
     setSelectedPageIds(new Set())
-    onWebsitePreviewSelectionChange?.(undefined)
+    onInitialSourceChange(undefined)
   }
   const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
-    setBackendBoundaryVisible(false)
     resetPreview()
   }
   const updateDraftWithoutReset = (nextDraft: NewKnowledgeSourceDraft) => {
     onDraftChange(nextDraft)
-    setBackendBoundaryVisible(false)
   }
-  const selectProvider = (provider: string) => {
-    if (draft.sourceType === 'onlineDocuments')
-      updateDraft({ ...draft, provider: provider as NewKnowledgeOnlineDocumentsProvider })
-    else if (draft.sourceType === 'onlineDrive')
-      updateDraft({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
-    else updateDraft({ ...draft, provider: provider as NewKnowledgeWebsiteProvider })
+  const selectProvider = (providerKey: string) => {
+    const nextProvider = providerOptions.find((option) => option.key === providerKey)
+    if (!nextProvider) return
+    updateDraft({
+      ...draft,
+      provider: nextProvider.label,
+      providerKey: nextProvider.key,
+      sourceName: '',
+      ...(draft.sourceType === 'onlineDrive' &&
+      nextProvider.label === 'Amazon S3' &&
+      draft.syncPolicy === 'provider'
+        ? { syncPolicy: 'daily' as const }
+        : {}),
+    })
   }
 
   useEffect(
@@ -276,7 +239,14 @@ export function CreateSourceSetup({
   )
 
   const startPreview = async () => {
-    if (draft.sourceType !== 'websiteCrawl' || !isValidWebsiteSourceDraft(draft)) return
+    if (
+      draft.sourceType !== 'websiteCrawl' ||
+      !isValidWebsiteSourceDraft(draft) ||
+      !websiteTransport ||
+      !credential ||
+      !installedProviderOption
+    )
+      return
     const attempt = crawlAttemptRef.current + 1
     crawlAttemptRef.current = attempt
     globalThis.clearTimeout(pollTimerRef.current)
@@ -284,7 +254,7 @@ export function CreateSourceSetup({
     setSelectedPageIds(new Set())
     setCrawlState('running')
     try {
-      const created = (await createFirecrawlTask({
+      const created = (await websiteTransport.create({
         options: {
           crawl_sub_pages: draft.includeSubpages,
           excludes: '',
@@ -296,11 +266,17 @@ export function CreateSourceSetup({
         },
         url: draft.rootUrl,
       })) as Record<string, unknown>
+      const synchronousPages = crawlPages(created)
+      if (synchronousPages.length) {
+        setPreviewPages(synchronousPages)
+        setCrawlState('success')
+        return
+      }
       const jobId = typeof created.job_id === 'string' ? created.job_id : undefined
       if (!jobId) throw new Error('Website crawl did not return a job id')
 
       while (crawlAttemptRef.current === attempt) {
-        const response = (await checkFirecrawlTaskStatus(jobId)) as Record<string, unknown>
+        const response = (await websiteTransport.check(jobId)) as Record<string, unknown>
         if (crawlAttemptRef.current !== attempt) return
         setPreviewPages(crawlPages(response))
         if (response.status === 'completed') {
@@ -326,38 +302,59 @@ export function CreateSourceSetup({
 
   const updateSelectedPageIds = (pageIds: Set<string>) => {
     setSelectedPageIds(pageIds)
-    if (draft.sourceType !== 'websiteCrawl' || crawlState !== 'success' || !selectionPages.length) {
-      onWebsitePreviewSelectionChange?.(undefined)
-      return
-    }
-    onWebsitePreviewSelectionChange?.({
-      draft,
-      pages: selectionPages,
-      selectedPageIds: [...pageIds],
-    })
   }
 
   useEffect(() => {
-    if (draft.sourceType !== 'websiteCrawl' || crawlState !== 'success' || !selectionPages.length) {
-      onWebsitePreviewSelectionChange?.(undefined)
+    if (
+      draft.sourceType !== 'websiteCrawl' ||
+      crawlState !== 'success' ||
+      !selectionPages.length ||
+      !installedProviderOption ||
+      !credential
+    ) {
+      onInitialSourceChange(undefined)
       return
     }
-    onWebsitePreviewSelectionChange?.({
-      draft,
-      pages: selectionPages,
-      selectedPageIds: [...selectedPageIds],
+    const selectedPages = selectionPages.filter((page) => selectedPageIds.has(page.pageId))
+    if (!selectedPages.length) {
+      onInitialSourceChange(undefined)
+      return
+    }
+    onInitialSourceChange({
+      crawl_options: {
+        include_subpages: draft.includeSubpages,
+        limit: draft.maxPages,
+      },
+      credentialId: credential.id,
+      datasource: installedProviderOption.datasource.identity.name,
+      kind: 'website_crawl',
+      name: draft.sourceName.trim(),
+      pluginId: installedProviderOption.plugin.plugin_id,
+      provider: installedProviderOption.plugin.provider,
+      root_url: draft.rootUrl,
+      selection: selectedPages.map((page) => ({
+        source_url: page.sourceUrl,
+        ...(page.title ? { title: page.title } : {}),
+      })),
+      sync_policy: draft.syncPolicy,
     })
-  }, [crawlState, draft, onWebsitePreviewSelectionChange, selectedPageIds, selectionPages])
+  }, [
+    crawlState,
+    credential,
+    draft,
+    installedProviderOption,
+    onInitialSourceChange,
+    selectedPageIds,
+    selectionPages,
+  ])
 
   return (
     <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
       <SourceTypeSelector
         appearance="embedded"
         disabled={disabled}
-        disabledValues={['onlineDocuments', 'onlineDrive']}
         value={sourceType}
         onChange={(value) => {
-          setBackendBoundaryVisible(false)
           onSourceTypeChange(value)
         }}
       />
@@ -374,29 +371,92 @@ export function CreateSourceSetup({
             type="button"
             variant="ghost-accent"
             size="small"
-            disabled
+            disabled={disabled}
             className="gap-0.5 px-2.75"
-            onClick={showBackendBoundary}
+            onClick={() =>
+              globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
+            }
           >
             {t(($) => $['newKnowledge.moreProviders'])}
             <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
           </Button>
         </div>
         <SourceProviderRadioGroup
-          value={activeProvider}
+          value={providerOption?.key ?? ''}
           disabled={disabled}
           layout={sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
-          options={providers[sourceType].map((provider) => ({
-            disabled: !provider.available,
-            icon: <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />,
-            value: provider.label,
+          options={providerOptions.map((option) => ({
+            icon: <span aria-hidden className={`${option.fallbackIcon} size-4 shrink-0`} />,
+            label: option.label,
+            value: option.key,
           }))}
           surface="default"
           onChange={selectProvider}
         />
       </Fieldset>
 
-      {draft.sourceType === 'websiteCrawl' && (
+      {datasourcePluginsQuery.isPending || datasourceAuthQuery.isPending ? (
+        <div className="flex min-h-44 items-center justify-center">
+          <span aria-hidden className="i-ri-loader-4-line size-5 animate-spin text-text-tertiary" />
+        </div>
+      ) : datasourcePluginsQuery.error || datasourceAuthQuery.error ? (
+        <div className="rounded-xl bg-background-section p-4">
+          <p className="system-sm-semibold text-text-primary">
+            {t(($) => $['newKnowledge.providerLoadFailed'])}
+          </p>
+          <Button
+            className="mt-3"
+            onClick={() =>
+              void Promise.all([datasourcePluginsQuery.refetch(), datasourceAuthQuery.refetch()])
+            }
+          >
+            {t(($) => $['newKnowledge.retryProviderLoad'])}
+          </Button>
+        </div>
+      ) : providerOption && !providerOption.installed ? (
+        <SourceProviderNotInstalledCard
+          icon={<span aria-hidden className={`${providerOption.fallbackIcon} size-4.5`} />}
+          provider={providerOption.label}
+          onInstall={() =>
+            globalThis.open(
+              providerIntegrationPath(providerOption.packageId),
+              '_blank',
+              'noopener,noreferrer',
+            )
+          }
+        />
+      ) : installedProviderOption && !credential ? (
+        <SourceConnectionRequiredCard
+          actionLabel={t(($) => $['newKnowledge.connectProvider'], {
+            provider: installedProviderOption.label,
+          })}
+          description={t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
+            provider: installedProviderOption.label,
+          })}
+          disabled={disabled}
+          icon={<span aria-hidden className={`${installedProviderOption.fallbackIcon} size-4.5`} />}
+          title={t(($) => $['newKnowledge.providerNotConfigured'], {
+            provider: installedProviderOption.label,
+          })}
+          onConnect={() =>
+            globalThis.open(
+              providerIntegrationPath(installedProviderOption.packageId),
+              '_blank',
+              'noopener,noreferrer',
+            )
+          }
+        />
+      ) : draft.sourceType === 'websiteCrawl' &&
+        installedProviderOption &&
+        credential &&
+        !websiteTransport ? (
+        <div className="rounded-xl bg-background-section p-4">
+          <p className="system-sm-semibold text-text-primary">{installedProviderOption.label}</p>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.providerUnavailable'])}
+          </p>
+        </div>
+      ) : draft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field name="rootUrl" className="gap-1.5">
@@ -618,35 +678,17 @@ export function CreateSourceSetup({
             />
           )}
         </div>
-      )}
-
-      {draft.sourceType !== 'websiteCrawl' && (
-        <>
-          {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
-            <NotionSourceConfiguration
-              disabled={disabled || !websiteProviderAvailable}
-              draft={draft}
-              onConnect={showBackendBoundary}
-              onDraftChange={updateDraft}
-            />
-          ) : (
-            <ConnectedSourceConfiguration
-              disabled={disabled || !websiteProviderAvailable}
-              draft={draft}
-              onDraftChange={updateDraft}
-            />
-          )}
-        </>
-      )}
-
-      {backendBoundaryVisible && (
-        <p
-          role="alert"
-          className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
-        >
-          {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
-        </p>
-      )}
+      ) : draft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
+        <CreateConnectedSourceSetup
+          key={`${draft.sourceType}:${installedProviderOption.key}:${credential.id}`}
+          credential={credential}
+          disabled={disabled}
+          draft={draft}
+          providerOption={installedProviderOption}
+          onDraftChange={updateDraftWithoutReset}
+          onInitialSourceChange={onInitialSourceChange}
+        />
+      ) : null}
     </div>
   )
 }

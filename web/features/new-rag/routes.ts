@@ -1,9 +1,9 @@
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
-export type NewKnowledgeWebsiteProvider = 'FakeCrawler' | 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
-export type NewKnowledgeOnlineDocumentsProvider = 'Confluence' | 'Google Docs' | 'Notion'
-export type NewKnowledgeOnlineDriveProvider = 'Amazon S3' | 'Google Drive' | 'OneDrive'
+export type NewKnowledgeWebsiteProvider = string
+export type NewKnowledgeOnlineDocumentsProvider = string
+export type NewKnowledgeOnlineDriveProvider = string
 export type NewKnowledgeSourceProvider =
   | NewKnowledgeOnlineDocumentsProvider
   | NewKnowledgeOnlineDriveProvider
@@ -12,6 +12,7 @@ export type NewKnowledgeSourceProvider =
 type NewKnowledgeSourceDraftBase = {
   sourceName: string
   syncPolicy: NewKnowledgeSyncPolicy
+  providerKey?: string
 }
 
 export type NewKnowledgeWebsiteSourceDraft = NewKnowledgeSourceDraftBase & {
@@ -39,6 +40,8 @@ export type NewKnowledgeSourceDraft =
 
 export const NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH = 200
 export const NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH = 2048
+const NEW_KNOWLEDGE_PROVIDER_NAME_MAX_LENGTH = 200
+const NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH = 1024
 const NEW_KNOWLEDGE_SOURCE_DRAFT_STORAGE_PREFIX = 'new-knowledge-source-draft:'
 
 export function createNewKnowledgeSourceDraft(
@@ -47,18 +50,14 @@ export function createNewKnowledgeSourceDraft(
 ): NewKnowledgeSourceDraft {
   if (sourceType === 'onlineDocuments')
     return {
-      provider: ['Confluence', 'Google Docs', 'Notion'].includes(initialProvider ?? '')
-        ? (initialProvider as NewKnowledgeOnlineDocumentsProvider)
-        : 'Notion',
+      provider: initialProvider?.trim() || 'Notion',
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
     }
   if (sourceType === 'onlineDrive')
     return {
-      provider: ['Amazon S3', 'Google Drive', 'OneDrive'].includes(initialProvider ?? '')
-        ? (initialProvider as NewKnowledgeOnlineDriveProvider)
-        : 'Google Drive',
+      provider: initialProvider?.trim() || 'Google Drive',
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
@@ -66,11 +65,7 @@ export function createNewKnowledgeSourceDraft(
   return {
     includeSubpages: true,
     maxPages: 100,
-    provider: ['FakeCrawler', 'Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(
-      initialProvider ?? '',
-    )
-      ? (initialProvider as NewKnowledgeWebsiteProvider)
-      : 'Firecrawl',
+    provider: initialProvider?.trim() || 'Firecrawl',
     rootUrl: '',
     sourceName: '',
     sourceType,
@@ -135,24 +130,29 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     if (
       typeof candidate.sourceName !== 'string' ||
       candidate.sourceName.length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH ||
+      typeof candidate.provider !== 'string' ||
+      !candidate.provider.trim() ||
+      candidate.provider.length > NEW_KNOWLEDGE_PROVIDER_NAME_MAX_LENGTH ||
+      (candidate.providerKey !== undefined &&
+        (typeof candidate.providerKey !== 'string' ||
+          !candidate.providerKey ||
+          candidate.providerKey.length > NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH)) ||
       !syncPolicy
     )
       return undefined
     if (candidate.sourceType === 'onlineDocuments') {
-      if (!['Confluence', 'Google Docs', 'Notion'].includes(String(candidate.provider)))
-        return undefined
       return {
-        provider: candidate.provider as NewKnowledgeOnlineDocumentsProvider,
+        provider: candidate.provider,
+        ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
         sourceName: candidate.sourceName,
         sourceType: candidate.sourceType,
         syncPolicy,
       }
     }
     if (candidate.sourceType === 'onlineDrive') {
-      if (!['Amazon S3', 'Google Drive', 'OneDrive'].includes(String(candidate.provider)))
-        return undefined
       return {
-        provider: candidate.provider as NewKnowledgeOnlineDriveProvider,
+        provider: candidate.provider,
+        ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
         sourceName: candidate.sourceName,
         sourceType: candidate.sourceType,
         syncPolicy,
@@ -160,9 +160,6 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     }
     if (
       (candidate.sourceType !== undefined && candidate.sourceType !== 'websiteCrawl') ||
-      !['FakeCrawler', 'Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(
-        String(candidate.provider),
-      ) ||
       typeof candidate.includeSubpages !== 'boolean' ||
       typeof candidate.maxPages !== 'number' ||
       !Number.isInteger(candidate.maxPages) ||
@@ -175,7 +172,8 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     return {
       includeSubpages: candidate.includeSubpages,
       maxPages: candidate.maxPages,
-      provider: candidate.provider as NewKnowledgeWebsiteProvider,
+      provider: candidate.provider,
+      ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
       rootUrl: candidate.rootUrl,
       sourceName: candidate.sourceName,
       sourceType: 'websiteCrawl',

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
+import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
@@ -95,7 +96,7 @@ export function SourceProviderRadioGroup<T extends string>({
 }: {
   disabled?: boolean
   layout: 'grid-four' | 'grid-three' | 'wrap'
-  options: Array<{ disabled?: boolean; icon: ReactNode; value: T }>
+  options: Array<{ disabled?: boolean; icon: ReactNode; label?: ReactNode; value: T }>
   size?: 'medium' | 'small'
   surface?: 'default' | 'transparent'
   value: T
@@ -127,10 +128,103 @@ export function SourceProviderRadioGroup<T extends string>({
           )}
         >
           {option.icon}
-          <span className="truncate">{option.value}</span>
+          <span className="truncate">{option.label ?? option.value}</span>
         </RadioItem>
       ))}
     </RadioGroup>
+  )
+}
+
+type SourceProviderIconValue =
+  | InstalledSourceProviderOption['datasource']['identity']['icon']
+  | InstalledSourceProviderOption['plugin']['declaration']['identity']['icon']
+
+export function SourceProviderIcon({
+  fallbackIcon,
+  icon,
+}: {
+  fallbackIcon: string
+  icon?: SourceProviderIconValue
+}) {
+  if (typeof icon === 'string' && icon)
+    return <img aria-hidden alt="" className="size-4 shrink-0 object-contain" src={icon} />
+
+  if (icon && typeof icon !== 'string')
+    return (
+      <span
+        aria-hidden
+        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs"
+        style={{ backgroundColor: icon.background }}
+      >
+        {icon.content}
+      </span>
+    )
+
+  return <span aria-hidden className={`${fallbackIcon} size-4 shrink-0`} />
+}
+
+export function SourceProviderSelector({
+  appearance = 'page',
+  disabled = false,
+  onMoreProviders,
+  options,
+  providerKey,
+  onChange,
+}: {
+  appearance?: 'embedded' | 'page'
+  disabled?: boolean
+  onMoreProviders: () => void
+  options: SourceProviderOption[]
+  providerKey: string
+  onChange: (providerKey: string) => void
+}) {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <Fieldset disabled={disabled}>
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3',
+          appearance === 'embedded' ? 'mb-2' : 'mb-1.5',
+        )}
+      >
+        <FieldsetLegend className="py-0 system-xs-medium">
+          {t(($) => $['newKnowledge.providerLabel'])}
+        </FieldsetLegend>
+        <Button
+          type="button"
+          variant="ghost-accent"
+          size="small"
+          className={cn('gap-0.5', appearance === 'embedded' ? 'h-6 px-0' : 'px-2.75')}
+          disabled={disabled}
+          onClick={onMoreProviders}
+        >
+          {t(($) => $['newKnowledge.moreProviders'])}
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        </Button>
+      </div>
+      <SourceProviderRadioGroup
+        value={providerKey}
+        disabled={disabled}
+        layout="wrap"
+        options={options.map((option) => ({
+          icon: (
+            <SourceProviderIcon
+              fallbackIcon={option.fallbackIcon}
+              icon={
+                option.installed
+                  ? (option.datasource.identity.icon ?? option.plugin.declaration.identity.icon)
+                  : undefined
+              }
+            />
+          ),
+          label: option.label,
+          value: option.key,
+        }))}
+        size="small"
+        onChange={onChange}
+      />
+    </Fieldset>
   )
 }
 
@@ -270,6 +364,34 @@ export function SourceConnectionRequiredCard({
         onClick={onConnect}
       >
         {actionLabel}
+      </Button>
+    </section>
+  )
+}
+
+export function SourceProviderNotInstalledCard({
+  icon,
+  provider,
+  onInstall,
+}: {
+  icon: ReactNode
+  provider: string
+  onInstall: () => void
+}) {
+  const { t: tPlugin } = useTranslation('plugin')
+  const { t: tWorkflow } = useTranslation('workflow')
+
+  return (
+    <section className="flex min-h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
+      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
+        {icon}
+      </span>
+      <h3 className="system-sm-semibold text-text-primary">{provider}</h3>
+      <p className="system-xs-regular text-text-tertiary">
+        {tWorkflow(($) => $['nodes.common.pluginNotInstalled'])}
+      </p>
+      <Button type="button" variant="primary" className="mt-auto" onClick={onInstall}>
+        {tPlugin(($) => $.installPlugin)}
       </Button>
     </section>
   )

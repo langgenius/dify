@@ -80,6 +80,63 @@ def test_round_trips_metadata_streams_lists_and_deletes_objects() -> None:
     assert service.load_stream(key=stored.key) is None
 
 
+def test_adopts_workspace_upload_without_copying_bytes_and_transfers_deletion() -> None:
+    backend = FakeStorage()
+    service = KnowledgeFSObjectStorageService(backend=backend)
+    body = b"already-uploaded"
+    source_path = "upload_files/tenant-1/upload-1.pdf"
+    backend.save(source_path, body)
+    checksum = b64encode(sha256(body).digest()).decode()
+
+    adopted = service.adopt_upload_file(
+        key="namespaces/tenant-1/spaces/space-1/uploads/session-1/source",
+        source_path=source_path,
+        tenant_id="tenant-1",
+        size_bytes=len(body),
+        checksum_sha256_base64=checksum,
+        content_type="application/pdf",
+        metadata={"tenant_id": "tenant-1", "upload_session_id": "session-1"},
+    )
+
+    assert backend.objects[source_path] == body
+    assert b"".join(service.load_stream(key=adopted.key) or ()) == body
+    assert service.head_object(key=adopted.key) == adopted
+    assert (
+        service.adopt_upload_file(
+            key=adopted.key,
+            source_path=source_path,
+            tenant_id="tenant-1",
+            size_bytes=len(body),
+            checksum_sha256_base64=checksum,
+            content_type="application/pdf",
+            metadata={"tenant_id": "tenant-1", "upload_session_id": "session-1"},
+        )
+        == adopted
+    )
+
+    service.delete_object(key=adopted.key)
+
+    assert source_path not in backend.objects
+    assert service.head_object(key=adopted.key) is None
+
+
+def test_rejects_adopted_upload_paths_outside_the_workspace() -> None:
+    backend = FakeStorage()
+    backend.save("upload_files/tenant-2/upload-1.pdf", b"body")
+    service = KnowledgeFSObjectStorageService(backend=backend)
+
+    with pytest.raises(KnowledgeFSObjectStorageInvalidInputError):
+        service.adopt_upload_file(
+            key="namespaces/tenant-1/spaces/space-1/uploads/session-1/source",
+            source_path="upload_files/tenant-2/upload-1.pdf",
+            tenant_id="tenant-1",
+            size_bytes=4,
+            checksum_sha256_base64=b64encode(sha256(b"body").digest()).decode(),
+            content_type="application/pdf",
+            metadata={"tenant_id": "tenant-1"},
+        )
+
+
 def test_list_uses_lexical_cursor_without_exposing_physical_storage_paths() -> None:
     service = KnowledgeFSObjectStorageService(backend=FakeStorage())
     for name in ("a.txt", "b.txt", "c.txt"):

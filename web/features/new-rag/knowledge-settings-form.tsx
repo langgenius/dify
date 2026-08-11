@@ -24,7 +24,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -40,6 +39,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
+import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
 import { isKnowledgeModelSetupReady, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 import { newKnowledgeListPath } from './routes'
 
@@ -1024,30 +1024,22 @@ export function KnowledgeSettingsForm({
               >
                 {t(($) => $['newKnowledge.settings.retrievalDepth'])}
               </label>
-              <SegmentedControl
+              <RetrievalModeSegmentedControl
                 aria-labelledby="knowledge-retrieval-depth-label"
-                value={[retrievalMode]}
-                onValueChange={(values) => {
-                  const mode = values[0]
-                  if (mode === 'fast' || mode === 'deep' || mode === 'research') {
-                    const nextScoreThresholdEnabled =
-                      mode !== 'research' && !rerankEnabled ? false : scoreThresholdEnabled
-                    setRetrievalMode(mode)
-                    setScoreThresholdEnabled(nextScoreThresholdEnabled)
-                    void performSettingsSave({
-                      ...currentSettingsDraft,
-                      retrievalMode: mode,
-                      scoreThresholdEnabled: nextScoreThresholdEnabled,
-                    })
-                  }
+                disabled={retrievalFieldsDisabled}
+                value={retrievalMode}
+                onChange={(mode) => {
+                  const nextScoreThresholdEnabled =
+                    mode !== 'research' && !rerankEnabled ? false : scoreThresholdEnabled
+                  setRetrievalMode(mode)
+                  setScoreThresholdEnabled(nextScoreThresholdEnabled)
+                  void performSettingsSave({
+                    ...currentSettingsDraft,
+                    retrievalMode: mode,
+                    scoreThresholdEnabled: nextScoreThresholdEnabled,
+                  })
                 }}
-              >
-                {(['fast', 'deep', 'research'] as const).map((mode) => (
-                  <SegmentedControlItem key={mode} value={mode} disabled={retrievalFieldsDisabled}>
-                    {t(($) => $[`newKnowledge.settings.retrievalMode.${mode}`])}
-                  </SegmentedControlItem>
-                ))}
-              </SegmentedControl>
+              />
             </div>
 
             <div className="flex flex-col gap-4 sm:flex-row">

@@ -245,7 +245,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "services.knowledge_fs.product_application_service.uuid.uuid5",
             return_value="operation-1",
         ),
-        patch("tasks.knowledge_fs_initial_source_tasks.import_initial_website_source.delay") as schedule_import,
+        patch("tasks.knowledge_fs_initial_source_tasks.import_initial_source.delay") as schedule_import,
     ):
         application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
 
@@ -258,6 +258,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "kind": "website_crawl",
             "name": "Dify docs",
             "provider": "firecrawl",
+            "datasource": "crawl",
             "root_url": "https://docs.dify.ai",
             "crawl_options": {"include_subpages": True, "limit": 25},
             "selection": [
@@ -269,6 +270,58 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "sync_policy": "provider",
         },
     )
+
+
+def test_product_application_create_schedules_selected_connector_import() -> None:
+    application, _product, _control_plane, _commands, _facade, _rbac = _application()
+    payload = _create_payload(
+        initial_source={
+            "kind": "online_document",
+            "name": "Product wiki",
+            "pluginId": "langgenius/notion_datasource",
+            "provider": "notion",
+            "datasource": "pages",
+            "credentialId": "credential-1",
+            "selection": [
+                {
+                    "name": "Roadmap",
+                    "pageId": "page-1",
+                    "providerItemId": "notion:page-1",
+                    "type": "page",
+                    "workspaceId": "workspace-1",
+                }
+            ],
+        }
+    )
+
+    with (
+        patch(
+            "services.knowledge_fs.product_application_service.uuid.uuid5",
+            return_value="operation-1",
+        ),
+        patch("tasks.knowledge_fs_initial_source_tasks.import_initial_source.delay") as schedule_import,
+    ):
+        application.create_space(tenant_id="tenant-1", account_id="account-1", payload=payload)
+
+    scheduled_payload = schedule_import.call_args.kwargs["payload"]
+    assert scheduled_payload == {
+        "credential_id": "credential-1",
+        "datasource": "pages",
+        "kind": "online_document",
+        "name": "Product wiki",
+        "plugin_id": "langgenius/notion_datasource",
+        "provider": "notion",
+        "selection": [
+            {
+                "name": "Roadmap",
+                "page_id": "page-1",
+                "provider_item_id": "notion:page-1",
+                "type": "page",
+                "workspace_id": "workspace-1",
+            }
+        ],
+        "sync_policy": "provider",
+    }
 
 
 def test_product_application_create_generates_idempotency_and_skips_default_visibility_update() -> None:

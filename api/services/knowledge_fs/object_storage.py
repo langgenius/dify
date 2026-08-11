@@ -19,7 +19,7 @@ from base64 import b64decode, b64encode
 from collections.abc import Generator, Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Protocol, TypedDict
+from typing import NotRequired, Protocol, TypedDict
 
 from extensions.ext_storage import storage
 
@@ -79,6 +79,13 @@ class _StoredMetadataPayload(TypedDict):
     metadata: dict[str, str]
     size_bytes: int
     version: int
+    source_path: NotRequired[str]
+
+
+@dataclass(frozen=True, slots=True)
+class _DecodedStoredMetadata:
+    metadata: KnowledgeFSObjectMetadata
+    source_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,33 +153,104 @@ class KnowledgeFSObjectStorageService:
             raise
         return object_metadata
 
+    def adopt_upload_file(
+        self,
+        *,
+        key: str,
+        source_path: str,
+        tenant_id: str,
+        size_bytes: int,
+        checksum_sha256_base64: str,
+        metadata: Mapping[str, str],
+        content_type: str | None = None,
+    ) -> KnowledgeFSObjectMetadata:
+        """Transfer one trusted Dify UploadFile into the KnowledgeFS logical namespace.
+
+        The document bytes stay at their existing unified-storage path. A small logical
+        marker and a v2 sidecar make the object visible to KnowledgeFS scans while reads
+        stream the original object. Deletion follows the reference and removes both the
+        logical marker and the transferred source object.
+        """
+        normalized_key = _normalize_key(key)
+        normalized_source_path = _normalize_adopted_source_path(source_path, tenant_id=tenant_id)
+        normalized_metadata = _normalize_metadata(metadata)
+        normalized_content_type = _normalize_content_type(content_type)
+        normalized_checksum = _normalize_checksum(checksum_sha256_base64)
+        if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes <= 0:
+            raise KnowledgeFSObjectStorageInvalidInputError("adopted object size is invalid")
+        if size_bytes > KNOWLEDGE_FS_OBJECT_MAX_BYTES:
+            raise KnowledgeFSObjectStorageTooLargeError(f"object exceeds max bytes {KNOWLEDGE_FS_OBJECT_MAX_BYTES}")
+        if not self._backend.exists(normalized_source_path):
+            raise KnowledgeFSObjectStorageInvalidInputError("adopted upload file is missing")
+
+        object_metadata = KnowledgeFSObjectMetadata(
+            checksum_sha256_base64=normalized_checksum,
+            content_type=normalized_content_type,
+            key=normalized_key,
+            metadata=normalized_metadata,
+            size_bytes=size_bytes,
+        )
+        existing = self._read_stored_metadata(normalized_key)
+        if existing is not None:
+            if existing != _DecodedStoredMetadata(metadata=object_metadata, source_path=normalized_source_path):
+                raise KnowledgeFSObjectStorageInvalidInputError("logical object already references different bytes")
+            return object_metadata
+
+        data_path = _data_path(normalized_key)
+        self._backend.save(data_path, b"")
+        try:
+            self._backend.save(
+                _metadata_path(normalized_key),
+                _encode_metadata(object_metadata, source_path=normalized_source_path),
+            )
+        except Exception:
+            self._backend.delete(data_path)
+            raise
+        return object_metadata
+
     def head_object(self, *, key: str) -> KnowledgeFSObjectMetadata | None:
         """Return portable metadata without loading the object body."""
         normalized_key = _normalize_key(key)
+        if not self._backend.exists(_data_path(normalized_key)):
+            return None
+        stored = self._read_stored_metadata(normalized_key)
+        if stored is None:
+            return None
+        if stored.source_path is not None and not self._backend.exists(stored.source_path):
+            raise KnowledgeFSObjectStorageCorruptError("adopted object source is missing")
+        return stored.metadata
+
+    def load_stream(self, *, key: str) -> Generator[bytes, None, None] | None:
+        """Return the configured backend's stream for one logical object."""
+        normalized_key = _normalize_key(key)
+        stored = self._read_stored_metadata(normalized_key)
+        if stored is None:
+            return None
+        source_path = stored.source_path or _data_path(normalized_key)
+        if not self._backend.exists(source_path):
+            raise KnowledgeFSObjectStorageCorruptError("object body is missing")
+        return self._backend.load_stream(source_path)
+
+    def delete_object(self, *, key: str) -> None:
+        """Idempotently delete an object and its portable metadata sidecar."""
+        normalized_key = _normalize_key(key)
+        stored = self._read_stored_metadata(normalized_key)
+        if stored is not None and stored.source_path is not None:
+            self._backend.delete(stored.source_path)
+        self._backend.delete(_data_path(normalized_key))
+        self._backend.delete(_metadata_path(normalized_key))
+
+    def _read_stored_metadata(self, normalized_key: str) -> _DecodedStoredMetadata | None:
         if not self._backend.exists(_data_path(normalized_key)):
             return None
         try:
             encoded = self._backend.load_once(_metadata_path(normalized_key))
         except FileNotFoundError as exc:
             raise KnowledgeFSObjectStorageCorruptError("object metadata sidecar is missing") from exc
-        metadata = _decode_metadata(encoded)
-        if metadata.key != normalized_key:
+        stored = _decode_metadata(encoded)
+        if stored.metadata.key != normalized_key:
             raise KnowledgeFSObjectStorageCorruptError("object metadata key does not match")
-        return metadata
-
-    def load_stream(self, *, key: str) -> Generator[bytes, None, None] | None:
-        """Return the configured backend's stream for one logical object."""
-        normalized_key = _normalize_key(key)
-        data_path = _data_path(normalized_key)
-        if not self._backend.exists(data_path):
-            return None
-        return self._backend.load_stream(data_path)
-
-    def delete_object(self, *, key: str) -> None:
-        """Idempotently delete an object and its portable metadata sidecar."""
-        normalized_key = _normalize_key(key)
-        self._backend.delete(_data_path(normalized_key))
-        self._backend.delete(_metadata_path(normalized_key))
+        return stored
 
     def list_objects(
         self,
@@ -297,6 +375,26 @@ def _normalize_checksum(value: str) -> str:
     return value
 
 
+def _normalize_adopted_source_path(value: str, *, tenant_id: str) -> str:
+    if not isinstance(value, str) or not isinstance(tenant_id, str):
+        raise KnowledgeFSObjectStorageInvalidInputError("adopted upload path is invalid")
+    normalized_tenant_id = tenant_id.strip()
+    normalized = value.strip()
+    expected_prefix = f"upload_files/{normalized_tenant_id}/"
+    relative = normalized.removeprefix(expected_prefix)
+    if (
+        not normalized_tenant_id
+        or not normalized.startswith(expected_prefix)
+        or not relative
+        or "/" in relative
+        or "\\" in normalized
+        or "\x00" in normalized
+        or relative in {".", ".."}
+    ):
+        raise KnowledgeFSObjectStorageInvalidInputError("adopted upload path is invalid")
+    return normalized
+
+
 def _data_path(key: str) -> str:
     return f"{_DATA_ROOT}/{key}"
 
@@ -311,22 +409,24 @@ def _physical_scan_prefix(prefix: str) -> str:
     return f"{_DATA_ROOT}/{parent}" if parent else _DATA_ROOT
 
 
-def _encode_metadata(metadata: KnowledgeFSObjectMetadata) -> bytes:
+def _encode_metadata(metadata: KnowledgeFSObjectMetadata, *, source_path: str | None = None) -> bytes:
     payload: _StoredMetadataPayload = {
         "checksum_sha256_base64": metadata.checksum_sha256_base64,
         "content_type": metadata.content_type,
         "key": metadata.key,
         "metadata": dict(metadata.metadata),
         "size_bytes": metadata.size_bytes,
-        "version": 1,
+        "version": 2 if source_path is not None else 1,
     }
+    if source_path is not None:
+        payload["source_path"] = source_path
     return json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
 
 
-def _decode_metadata(encoded: bytes) -> KnowledgeFSObjectMetadata:
+def _decode_metadata(encoded: bytes) -> _DecodedStoredMetadata:
     try:
         payload = json.loads(encoded)
-        if not isinstance(payload, dict) or payload.get("version") != 1:
+        if not isinstance(payload, dict) or payload.get("version") not in {1, 2}:
             raise ValueError
         key = _normalize_key(payload["key"])
         checksum = _normalize_checksum(payload["checksum_sha256_base64"])
@@ -335,12 +435,24 @@ def _decode_metadata(encoded: bytes) -> KnowledgeFSObjectMetadata:
         size_bytes = payload["size_bytes"]
         if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes < 0:
             raise ValueError
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        source_path = payload.get("source_path")
+        if payload["version"] == 1:
+            if source_path is not None:
+                raise ValueError
+        else:
+            tenant_id = metadata.get("tenant_id")
+            if not isinstance(source_path, str) or not isinstance(tenant_id, str):
+                raise ValueError
+            source_path = _normalize_adopted_source_path(source_path, tenant_id=tenant_id)
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, KnowledgeFSObjectStorageInvalidInputError) as exc:
         raise KnowledgeFSObjectStorageCorruptError("object metadata sidecar is invalid") from exc
-    return KnowledgeFSObjectMetadata(
-        checksum_sha256_base64=checksum,
-        content_type=content_type,
-        key=key,
-        metadata=metadata,
-        size_bytes=size_bytes,
+    return _DecodedStoredMetadata(
+        metadata=KnowledgeFSObjectMetadata(
+            checksum_sha256_base64=checksum,
+            content_type=content_type,
+            key=key,
+            metadata=metadata,
+            size_bytes=size_bytes,
+        ),
+        source_path=source_path,
     )

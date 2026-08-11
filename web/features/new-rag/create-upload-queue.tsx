@@ -16,6 +16,8 @@ export type QueuedUpload = {
   file: File
   id: string
   issue?: 'fileSize' | 'fileType'
+  stagedUploadId?: string
+  stagingFailed?: boolean
 }
 
 function createQueuedUpload(file: File): QueuedUpload {

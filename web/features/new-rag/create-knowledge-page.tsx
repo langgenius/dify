@@ -1,12 +1,11 @@
 'use client'
 
 import type {
-  KnowledgeFsInitialWebsiteSourcePayload,
+  KnowledgeFsSpaceCreatePayload,
   KnowledgeFsSpaceCreateResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
-import type { WebsiteCrawlPreviewSelection } from './create-source-setup'
 import type { QueuedUpload } from './create-upload-queue'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
@@ -56,63 +55,29 @@ import {
   isDefinitiveCreationRejection,
   KnowledgeCreationError,
   NAME_MAX_LENGTH,
+  waitForKnowledgeSpaceReady,
 } from './create-knowledge-workflow'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
-import { uploadKnowledgeFsDocuments } from './knowledge-fs-upload'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
+} from './knowledge-fs-upload'
 import { createRequestId } from './request-id'
 import {
   createNewKnowledgeSourceDraft,
-  isValidWebsiteSourceDraft,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
   newKnowledgeListPath,
   newKnowledgeSettingsPath,
 } from './routes'
 
+type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
+
 function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   if (value === 'source' || value === 'upload') return value
   return 'empty'
-}
-
-function initialWebsiteSourceFromSelection(
-  draft: NewKnowledgeSourceDraft,
-  selection?: WebsiteCrawlPreviewSelection,
-): KnowledgeFsInitialWebsiteSourcePayload | undefined {
-  if (
-    draft.sourceType !== 'websiteCrawl' ||
-    draft.provider !== 'Firecrawl' ||
-    !selection ||
-    selection.draft.sourceType !== 'websiteCrawl' ||
-    selection.draft.provider !== draft.provider ||
-    selection.draft.rootUrl !== draft.rootUrl ||
-    selection.draft.sourceName !== draft.sourceName ||
-    selection.draft.includeSubpages !== draft.includeSubpages ||
-    selection.draft.maxPages !== draft.maxPages ||
-    selection.draft.syncPolicy !== draft.syncPolicy
-  )
-    return undefined
-
-  const selectedPages = selection.pages.filter((page) =>
-    selection.selectedPageIds.includes(page.pageId),
-  )
-  if (!selectedPages.length) return undefined
-
-  return {
-    crawl_options: {
-      include_subpages: draft.includeSubpages,
-      limit: draft.maxPages,
-    },
-    kind: 'website_crawl',
-    name: draft.sourceName.trim(),
-    provider: 'firecrawl',
-    root_url: draft.rootUrl,
-    selection: selectedPages.map((page) => ({
-      source_url: page.sourceUrl,
-      ...(page.title ? { title: page.title } : {}),
-    })),
-    sync_policy: draft.syncPolicy,
-  }
 }
 
 export function CreateKnowledgePage() {
@@ -140,13 +105,13 @@ export function CreateKnowledgePage() {
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
     createNewKnowledgeSourceDraft('websiteCrawl'),
   )
-  const [websitePreviewSelection, setWebsitePreviewSelection] =
-    useState<WebsiteCrawlPreviewSelection>()
-  const websitePreviewSelectionRef = useRef<WebsiteCrawlPreviewSelection | undefined>(undefined)
+  const [initialSource, setInitialSource] = useState<InitialSource>()
+  const initialSourceRef = useRef<InitialSource | undefined>(undefined)
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
   const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
   const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [stagingCount, setStagingCount] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
     () => new Map(),
@@ -154,27 +119,22 @@ export function CreateKnowledgePage() {
   const [uploadError, setUploadError] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const uploadsRef = useRef<QueuedUpload[]>([])
   const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
-  const submissionPending = createMutation.isPending || uploading
+  const submissionPending = createMutation.isPending || uploading || stagingCount > 0
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
   const nameSubmissionBlocked = !name.trim()
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
-    (!uploadAvailable || !uploads.length || uploads.some((upload) => upload.issue))
-  const initialWebsiteSource = initialWebsiteSourceFromSelection(
-    sourceDraft,
-    websitePreviewSelection,
-  )
-  const sourceSubmissionBlocked =
-    startMode === 'source' &&
-    (sourceDraft.sourceType === 'websiteCrawl'
-      ? !isValidWebsiteSourceDraft(sourceDraft) || !initialWebsiteSource
-      : !sourceDraft.sourceName.trim())
+    (!uploadAvailable ||
+      !uploads.length ||
+      uploads.some((upload) => upload.issue || upload.stagingFailed || !upload.stagedUploadId))
+  const sourceSubmissionBlocked = startMode === 'source' && !initialSource
   const sourceDraftChanged =
     JSON.stringify(sourceDraft) !==
     JSON.stringify(createNewKnowledgeSourceDraft(sourceDraft.sourceType))
@@ -188,9 +148,9 @@ export function CreateKnowledgePage() {
     createdKnowledge,
   )
 
-  const updateWebsitePreviewSelection = useCallback((selection?: WebsiteCrawlPreviewSelection) => {
-    websitePreviewSelectionRef.current = selection
-    setWebsitePreviewSelection(selection)
+  const updateInitialSource = useCallback((source?: InitialSource) => {
+    initialSourceRef.current = source
+    setInitialSource(source)
   }, [])
 
   const armHistoryGuard = useCallback(() => {
@@ -280,6 +240,62 @@ export function CreateKnowledgePage() {
     setUploadError(false)
   }
 
+  const updateUploads = (update: (current: QueuedUpload[]) => QueuedUpload[]) => {
+    const next = update(uploadsRef.current)
+    uploadsRef.current = next
+    setUploads(next)
+  }
+
+  const handleUploadsChange = (nextUploads: QueuedUpload[]) => {
+    const previousUploads = uploadsRef.current
+    const nextIds = new Set(nextUploads.map(({ id }) => id))
+    const previousIds = new Set(previousUploads.map(({ id }) => id))
+    const removedUploads = previousUploads.filter(({ id }) => !nextIds.has(id))
+    const addedUploads = nextUploads.filter(({ id }) => !previousIds.has(id))
+    uploadsRef.current = nextUploads
+    setUploads(nextUploads)
+    resetUnsubmittedError()
+
+    for (const removed of removedUploads) {
+      if (removed.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(removed.stagedUploadId).catch(() => undefined)
+    }
+
+    for (const added of addedUploads) {
+      if (added.issue) continue
+      setStagingCount((count) => count + 1)
+      setUploadPhases((current) => new Map(current).set(added.file, 'pending'))
+      void stageKnowledgeFsDocument(added.file)
+        .then((stagedUploadId) => {
+          const stillQueued = uploadsRef.current.some(({ id }) => id === added.id)
+          if (!stillQueued) {
+            void discardKnowledgeFsStagedUpload(stagedUploadId).catch(() => undefined)
+            return
+          }
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagedUploadId, stagingFailed: false } : upload,
+            ),
+          )
+          setUploadPhases((current) => new Map(current).set(added.file, 'completed'))
+        })
+        .catch(() => {
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagingFailed: true } : upload,
+            ),
+          )
+          setUploadPhases((current) => {
+            const next = new Map(current)
+            next.delete(added.file)
+            return next
+          })
+          setUploadError(true)
+        })
+        .finally(() => setStagingCount((count) => Math.max(0, count - 1)))
+    }
+  }
+
   const requestClose = () => {
     if (submissionPending) return
     if (createdKnowledge) {
@@ -296,6 +312,10 @@ export function CreateKnowledgePage() {
   const confirmExit = () => {
     const confirmedReason = exitReason
     setExitReason(null)
+    for (const upload of uploadsRef.current) {
+      if (upload.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(upload.stagedUploadId).catch(() => undefined)
+    }
     if (confirmedReason === 'partial' && createdKnowledge) {
       browserBackExitRef.current = false
       replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.control_space_id))
@@ -320,14 +340,8 @@ export function CreateKnowledgePage() {
     const normalizedDescription = description.trim()
     if (!normalizedName) return
 
-    const latestWebsitePreviewSelection =
-      websitePreviewSelectionRef.current ?? websitePreviewSelection
-    const initialSource = initialWebsiteSourceFromSelection(
-      sourceDraft,
-      latestWebsitePreviewSelection,
-    )
-    if (startMode === 'source' && sourceDraft.sourceType === 'websiteCrawl' && !initialSource)
-      return
+    const latestInitialSource = initialSourceRef.current ?? initialSource
+    if (startMode === 'source' && !latestInitialSource) return
 
     idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
@@ -336,7 +350,7 @@ export function CreateKnowledgePage() {
         existingKnowledge: createdKnowledge,
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
-        initialSource,
+        initialSource: startMode === 'source' ? latestInitialSource : undefined,
         name: normalizedName,
         onCreated: (knowledgeSpace) => {
           setCreatedKnowledge(knowledgeSpace)
@@ -355,9 +369,14 @@ export function CreateKnowledgePage() {
         setUploading(true)
         setUploadError(false)
         try {
+          await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
             created.control_space_id,
-            uploads.map(({ file, id }) => ({ file, id })),
+            uploads.map(({ file, id, stagedUploadId }) => ({
+              file,
+              id,
+              uploadId: stagedUploadId!,
+            })),
             uploadProgressRef.current,
             (file, phase) => {
               setUploadPhases((current) => {
@@ -571,14 +590,12 @@ export function CreateKnowledgePage() {
                         draft={sourceDraft}
                         onDraftChange={(value) => {
                           setSourceDraft(value)
-                          updateWebsitePreviewSelection(undefined)
                           resetUnsubmittedError()
                         }}
-                        onWebsitePreviewSelectionChange={updateWebsitePreviewSelection}
+                        onInitialSourceChange={updateInitialSource}
                         onSourceTypeChange={(value) => {
-                          if (value !== 'websiteCrawl') return
                           setSourceDraft(createNewKnowledgeSourceDraft(value))
-                          updateWebsitePreviewSelection(undefined)
+                          updateInitialSource(undefined)
                           resetUnsubmittedError()
                         }}
                       />
@@ -595,11 +612,8 @@ export function CreateKnowledgePage() {
                         disabled={submissionPending}
                         uploads={uploads}
                         uploadPhases={uploadPhases}
-                        uploading={uploading}
-                        onChange={(value) => {
-                          setUploads(value)
-                          resetUnsubmittedError()
-                        }}
+                        uploading={uploading || stagingCount > 0}
+                        onChange={handleUploadsChange}
                       />
                     </StartMode>
                   </RadioGroup>

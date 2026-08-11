@@ -18,10 +18,12 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSSmallFileUploadResponse,
     KnowledgeFSSpaceCreatePayload,
+    KnowledgeFSStagedUploadResponse,
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
@@ -38,6 +40,8 @@ def test_console_and_service_api_routes_are_registered() -> None:
 
     assert {
         "/knowledge-fs/spaces",
+        "/knowledge-fs/uploads",
+        "/knowledge-fs/uploads/<string:upload_id>",
         "/knowledge-fs/spaces/<string:control_space_id>",
         "/knowledge-fs/spaces/<string:control_space_id>/permissions",
         "/knowledge-fs/spaces/<string:control_space_id>/members",
@@ -135,6 +139,8 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSSpaceListResponse",
         "KnowledgeFSSpaceDetailResponse",
         "KnowledgeFSCredentialCreateResponse",
+        "KnowledgeFSDocumentStagedUploadPayload",
+        "KnowledgeFSDocumentStagedUploadAcceptedResponse",
         "KnowledgeFSStreamCapabilityResponse",
         "KnowledgeFSJWKSResponse",
         "KnowledgeFSSmallFileUploadResponse",
@@ -314,6 +320,74 @@ def test_document_upload_console_bff_reads_only_through_facade_and_returns_accep
     ]
 
 
+def test_staged_document_claim_passes_only_upload_id_to_the_admission_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    staged_uploads = MagicMock()
+    staged_uploads.claim.return_value = KnowledgeFSDocumentStagedUploadAcceptedResponse(
+        upload_id="staged-1",
+        document_asset_id="asset-1",
+        compilation_job_id="job-1",
+    )
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
+    app = Flask(__name__)
+
+    with app.test_request_context(method="POST", json={"upload_id": "staged-1"}):
+        post = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentsApi.post)
+        response, status = post(console_resources.KnowledgeFSSpaceDocumentsApi(), "control-1")
+
+    assert status == 202
+    assert response == {
+        "status": "accepted",
+        "upload_id": "staged-1",
+        "document_asset_id": "asset-1",
+        "compilation_job_id": "job-1",
+    }
+    staged_uploads.claim.assert_called_once()
+    assert staged_uploads.claim.call_args.kwargs["payload"].upload_id == "staged-1"
+
+
+def test_workspace_staging_upload_persists_before_space_creation(monkeypatch: pytest.MonkeyPatch) -> None:
+    staged_uploads = MagicMock()
+    staged_uploads.stage.return_value = KnowledgeFSStagedUploadResponse(
+        id="staged-1",
+        file_name="notes.md",
+        content_type="text/markdown",
+        size_bytes=7,
+        status="uploaded",
+        expires_at=datetime(2030, 1, 1, tzinfo=UTC),
+    )
+    account = SimpleNamespace(id="account-1")
+    monkeypatch.setattr(console_resources, "current_account_with_tenant", lambda: (account, "tenant-1"))
+    monkeypatch.setattr(console_resources, "_staged_uploads", lambda: staged_uploads)
+    monkeypatch.setattr(
+        console_resources.FeatureService,
+        "get_knowledge_file_size_limit",
+        lambda _tenant_id: 15,
+    )
+    app = Flask(__name__)
+
+    with app.test_request_context(
+        method="POST",
+        data={"file": (BytesIO(b"# Notes"), "notes.md", "text/markdown")},
+        content_type="multipart/form-data",
+    ):
+        post = inspect.unwrap(console_resources.KnowledgeFSStagedUploadsApi.post)
+        response, status = post(console_resources.KnowledgeFSStagedUploadsApi())
+
+    assert status == 201
+    assert response["id"] == "staged-1"
+    staged_uploads.stage.assert_called_once_with(
+        tenant_id="tenant-1",
+        account=account,
+        file_name="notes.md",
+        content_type="text/markdown",
+        body=b"# Notes",
+        file_size_limit_mb=15,
+    )
+
+
 def test_logical_document_delete_accepts_initial_row_version(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -419,6 +493,7 @@ def test_console_knowledge_rate_limit_is_scoped_to_upload_and_query_entrypoints(
         ("KnowledgeFSSpaceUploadSessionCompleteApi", "post"),
         ("KnowledgeFSSpaceUploadSessionPartPresignApi", "post"),
         ("KnowledgeFSSpaceUploadSessionsApi", "post"),
+        ("KnowledgeFSStagedUploadsApi", "post"),
     }
 
 

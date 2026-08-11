@@ -86,8 +86,13 @@ describe("upload session service", () => {
 
     const first = await fixture.service.create(input);
     const replay = await fixture.service.create(input);
+    const replayWithFreshGrant = await fixture.service.create({
+      ...input,
+      grantId: RECOVERY_GRANT_ID,
+    });
 
     expect(replay.session.id).toBe(first.session.id);
+    expect(replayWithFreshGrant.session).toMatchObject({ grantId: GRANT_ID, id: first.session.id });
     await expect(fixture.service.create({ ...input, expectedSizeBytes: 513 })).rejects.toThrow(
       UploadSessionConflictError,
     );

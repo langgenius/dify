@@ -2,7 +2,7 @@
 
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentUploadFileList } from './document-upload-file-list'
 import {
@@ -15,12 +15,16 @@ import {
 export function DocumentUploadForm({
   initialFiles = [],
   onCancel,
+  onFilesAdded,
+  onFileRemoved,
   onSubmit,
   uploadProgress = new Map(),
   uploading,
 }: {
   initialFiles?: File[]
   onCancel: () => void
+  onFilesAdded: (files: File[]) => Promise<void>
+  onFileRemoved: (file: File) => void
   onSubmit: (files: File[]) => Promise<boolean>
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
   uploading: boolean
@@ -28,13 +32,58 @@ export function DocumentUploadForm({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const inputRef = useRef<HTMLInputElement>(null)
+  const initialFilesAnnouncedRef = useRef(false)
+  const filesRef = useRef(initialFiles)
   const [files, setFiles] = useState(initialFiles)
+  const [stagingFiles, setStagingFiles] = useState<ReadonlySet<File>>(
+    () => new Set(initialFiles.filter((file) => !documentUploadIssue(file))),
+  )
   const validFiles = useMemo(() => files.filter((file) => !documentUploadIssue(file)), [files])
+  const effectiveUploadProgress = useMemo(() => {
+    const progress = new Map(uploadProgress)
+    for (const file of stagingFiles) progress.set(file, 'pending')
+    return progress
+  }, [stagingFiles, uploadProgress])
+
+  const stageAddedFiles = useCallback(
+    (addedFiles: File[]) => {
+      if (!addedFiles.length) return
+      setStagingFiles((current) => new Set([...current, ...addedFiles]))
+      void onFilesAdded(addedFiles)
+        .catch(() => undefined)
+        .finally(() => {
+          setStagingFiles((current) => {
+            const next = new Set(current)
+            for (const file of addedFiles) next.delete(file)
+            return next
+          })
+        })
+    },
+    [onFilesAdded],
+  )
+
+  useEffect(() => {
+    if (initialFilesAnnouncedRef.current) return
+    initialFilesAnnouncedRef.current = true
+    const validInitialFiles = initialFiles.filter((file) => !documentUploadIssue(file))
+    if (!validInitialFiles.length) return
+    void onFilesAdded(validInitialFiles)
+      .catch(() => undefined)
+      .finally(() => {
+        setStagingFiles((current) => {
+          const next = new Set(current)
+          for (const file of validInitialFiles) next.delete(file)
+          return next
+        })
+      })
+  }, [initialFiles, onFilesAdded])
 
   const addFiles = (nextFiles: File[]) => {
-    setFiles((current) => {
-      return [...current, ...uniqueDocumentUploadFiles(current, nextFiles)]
-    })
+    const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
+    const validUniqueFiles = uniqueFiles.filter((file) => !documentUploadIssue(file))
+    filesRef.current = [...filesRef.current, ...uniqueFiles]
+    setFiles(filesRef.current)
+    stageAddedFiles(validUniqueFiles)
   }
 
   return (
@@ -100,8 +149,17 @@ export function DocumentUploadForm({
               file,
               id: documentUploadFingerprint(file),
             }))}
-            uploadProgress={uploadProgress}
-            onRemove={(item) => setFiles((current) => current.filter((file) => file !== item.file))}
+            uploadProgress={effectiveUploadProgress}
+            onRemove={(item) => {
+              filesRef.current = filesRef.current.filter((file) => file !== item.file)
+              setFiles(filesRef.current)
+              setStagingFiles((current) => {
+                const next = new Set(current)
+                next.delete(item.file)
+                return next
+              })
+              if (!documentUploadIssue(item.file)) onFileRemoved(item.file)
+            }}
           />
         </section>
       )}

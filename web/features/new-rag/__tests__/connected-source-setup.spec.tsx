@@ -552,9 +552,27 @@ describe('ConnectedSourceSetup', () => {
     )
   })
 
-  it('activates the connector preview, imports selected Notion pages, and completes the source', async () => {
+  it('distinguishes an uninstalled provider from an installed provider without credentials', async () => {
     const user = userEvent.setup()
-    const workflowRequest = deferred<KnowledgeFsSourceWorkflowResponse>()
+    renderSetup({
+      ...defaultDraft,
+      provider: 'Confluence',
+    })
+
+    expect(await screen.findByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.notionNotConnected')).not.toBeInTheDocument()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'plugin.installPlugin' }))
+    expect(openMock).toHaveBeenCalledWith(
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fconfluence_datasource%22%5D',
+      '_blank',
+      'noopener,noreferrer',
+    )
+  })
+
+  it('starts the selected Notion import and completes setup without waiting for indexing', async () => {
+    const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({
       result: [notionDatasourceAuth([notionCredential])],
     })
@@ -571,12 +589,8 @@ describe('ConnectedSourceSetup', () => {
         version: 4,
       }),
     )
-    clientMock.createWorkflowImport.mockReturnValue(workflowRequest.promise)
-    clientMock.getWorkflow.mockResolvedValue(
-      workflowResponse('completed', {
-        progress_completed: 1,
-      }),
-    )
+    clientMock.createWorkflowImport.mockResolvedValue(workflowResponse('queued'))
+    clientMock.getWorkflow.mockReturnValue(new Promise(() => undefined))
     clientMock.getPages.mockResolvedValue({
       next_cursor: null,
       workspaces: [
@@ -636,11 +650,6 @@ describe('ConnectedSourceSetup', () => {
     const currentAddSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     await user.click(currentAddSource)
 
-    await waitFor(() => expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce())
-    vi.useFakeTimers()
-    await act(async () => workflowRequest.resolve(workflowResponse('queued')))
-    await act(async () => vi.advanceTimersByTimeAsync(1500))
-    vi.useRealTimers()
     await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
     expect(clientMock.createSource).toHaveBeenCalledOnce()
     expect(clientMock.patchSource).toHaveBeenCalledWith({
@@ -676,9 +685,8 @@ describe('ConnectedSourceSetup', () => {
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
     })
-    expect(clientMock.getWorkflow).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', run_id: 'import-run-1' },
-    })
+    expect(clientMock.getWorkflow).not.toHaveBeenCalled()
+    expect(clientMock.getSource).not.toHaveBeenCalled()
     expect(clientMock.getSyncPolicy).toHaveBeenCalledWith(
       {
         params: { control_space_id: 'space-1', source_id: 'preview-source' },
@@ -689,19 +697,16 @@ describe('ConnectedSourceSetup', () => {
       body: {
         enabled: true,
         expectedRevision: 0,
-        expectedSourceVersion: 5,
+        expectedSourceVersion: 4,
         mode: 'provider',
       },
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
     })
+    expect(clientMock.updateSyncPolicy.mock.invocationCallOrder[0]).toBeLessThan(
+      clientMock.createWorkflowImport.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    )
     expect(clientMock.createWorkflowImport.mock.invocationCallOrder[0]).toBeLessThan(
-      clientMock.getWorkflow.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-    )
-    expect(clientMock.getWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
-      clientMock.getSource.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-    )
-    expect(clientMock.getSource.mock.invocationCallOrder[0]).toBeLessThan(
-      clientMock.updateSyncPolicy.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+      view.onCompleted.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
     )
 
     view.unmount()
@@ -1012,7 +1017,7 @@ describe('ConnectedSourceSetup', () => {
       body: {
         enabled: true,
         expectedRevision: 0,
-        expectedSourceVersion: 5,
+        expectedSourceVersion: 4,
         mode: 'provider',
       },
       params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
@@ -1338,7 +1343,7 @@ describe('ConnectedSourceSetup', () => {
       body: {
         enabled: true,
         expectedRevision: 0,
-        expectedSourceVersion: 5,
+        expectedSourceVersion: 4,
         mode: 'interval',
       },
       params: { control_space_id: 'space-1', source_id: 's3-preview' },

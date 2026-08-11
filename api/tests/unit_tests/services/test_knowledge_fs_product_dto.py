@@ -45,6 +45,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceListQuery,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
+    KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListItemResponse,
     KnowledgeFSStatResponse,
     KnowledgeFSTraceResponse,
@@ -53,6 +54,75 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_space_create_initial_source_is_a_backward_compatible_discriminated_union() -> None:
+    website = KnowledgeFSSpaceCreatePayload.model_validate(
+        {
+            "name": "Docs",
+            "slug": "docs",
+            "initial_source": {
+                "kind": "website_crawl",
+                "name": "Website",
+                "provider": "firecrawl",
+                "root_url": "https://docs.example.com",
+                "crawl_options": {},
+                "selection": [{"source_url": "https://docs.example.com/start"}],
+            },
+        }
+    )
+    assert website.initial_source is not None
+    assert website.initial_source.kind == "website_crawl"
+
+    document = KnowledgeFSSpaceCreatePayload.model_validate(
+        {
+            "name": "Docs",
+            "slug": "docs",
+            "initial_source": {
+                "kind": "online_document",
+                "name": "Wiki",
+                "pluginId": "langgenius/notion_datasource",
+                "provider": "notion",
+                "datasource": "pages",
+                "credentialId": "credential-1",
+                "selection": [
+                    {
+                        "pageId": "page-1",
+                        "providerItemId": "notion:page-1",
+                        "type": "page",
+                        "workspaceId": "workspace-1",
+                    }
+                ],
+            },
+        }
+    )
+    assert document.initial_source is not None
+    assert document.initial_source.kind == "online_document"
+    assert document.initial_source.credential_id == "credential-1"
+
+
+def test_connector_initial_source_requires_an_exact_credential_binding() -> None:
+    with pytest.raises(ValidationError):
+        KnowledgeFSSpaceCreatePayload.model_validate(
+            {
+                "name": "Docs",
+                "slug": "docs",
+                "initial_source": {
+                    "kind": "online_drive",
+                    "name": "Drive",
+                    "pluginId": "langgenius/google_drive",
+                    "provider": "google_drive",
+                    "datasource": "google_drive",
+                    "selection": [
+                        {
+                            "id": "file-1",
+                            "name": "Plan.pdf",
+                            "providerItemId": "google-drive:file-1",
+                        }
+                    ],
+                },
+            }
+        )
 
 
 def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() -> None:

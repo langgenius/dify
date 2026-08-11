@@ -11,6 +11,8 @@ import { DeletionObjectWriteAdmissionError } from "./deletion-object-write-admis
 
 const tenantId = "tenant-a";
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+const sourceId = "20000000-0000-4000-8000-000000000001";
+const deletingSourceId = "20000000-0000-4000-8000-000000000002";
 
 describe("database deletion object-write admission", () => {
   for (const dialect of ["postgres", "tidb"] as const) {
@@ -44,6 +46,53 @@ describe("database deletion object-write admission", () => {
       expect(calls[1]?.tableName).toBe("deletion_jobs");
       expect(calls[1]?.sql).toContain("active_slot");
       expect(calls[1]?.sql).toContain(dialect === "postgres" ? "FOR SHARE" : "FOR UPDATE");
+    });
+
+    it(`allows an object put while a different Source is being deleted (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: knowledgeSpaceId, lifecycle_state: "active" }],
+            rowsAffected: 0,
+          };
+        }
+        const admittedSourceId = input.params[2];
+        return admittedSourceId === deletingSourceId || admittedSourceId === undefined
+          ? { rows: [{ id: "active-source-deletion" }], rowsAffected: 1 }
+          : { rows: [], rowsAffected: 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const admission = createDatabaseDeletionObjectWriteAdmission(database);
+
+      await expect(
+        admission.withSpaceWriteAdmission(
+          { knowledgeSpaceId, sourceId, tenantId },
+          async () => "stored",
+        ),
+      ).resolves.toBe("stored");
+      const scopedDeletionRead = calls.find((call) => call.tableName === "deletion_jobs");
+      expect(scopedDeletionRead?.params).toEqual([tenantId, knowledgeSpaceId, sourceId]);
+      expect(scopedDeletionRead?.sql).toContain(
+        dialect === "postgres"
+          ? `"target_type" <> 'source' OR "target_id" = $3`
+          : "`target_type` <> 'source' OR `target_id` = ?",
+      );
+
+      await expect(
+        admission.withSpaceWriteAdmission(
+          { knowledgeSpaceId, sourceId: deletingSourceId, tenantId },
+          async () => "blocked",
+        ),
+      ).rejects.toBeInstanceOf(DeletionObjectWriteAdmissionError);
+      await expect(
+        admission.withSpaceWriteAdmission({ knowledgeSpaceId, tenantId }, async () => "blocked"),
+      ).rejects.toBeInstanceOf(DeletionObjectWriteAdmissionError);
     });
 
     it(`makes deletion wait for an admitted put and rejects puts admitted after deletion (${dialect})`, async () => {
