@@ -6,6 +6,7 @@ import {
   DeploymentOperationType,
   DeploymentStatus,
   EnvironmentStatus,
+  EnvVarValueType,
   OperatorType,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -38,6 +39,7 @@ vi.mock('react-i18next', async () => {
     'deployments.overview.chip.latest': 'Latest',
     'deployments.deployDrawer.deploying': 'Deploying...',
     'deployments.deployDrawer.envVars': 'Environment Variables',
+    'deployments.deployDrawer.runtimeCredentials': 'Credentials',
     'deployments.studio.accessPoint.goToPublish': 'Go to publish',
     'deployments.studio.allVersions': 'All versions',
     'deployments.studio.chooseVersionToDeploy': 'Choose a version to deploy',
@@ -652,6 +654,42 @@ describe('PublisherEnvironmentFlow', () => {
 
     expect(screen.getByRole('button', { name: 'Deploy' })).toBeEnabled()
     expect(screen.queryByRole('heading', { name: 'Environment Variables' })).not.toBeInTheDocument()
+  })
+
+  it('hides the credentials section when deployment options only have environment variables', async () => {
+    const user = userEvent.setup()
+    const view = renderFlow()
+    const deploymentOptionsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.queryOptions(
+        {
+          input: {
+            params: {
+              app_id: 'app-1',
+              environment_id: 'staging',
+              workflow_id: latestVersion.id,
+            },
+          },
+          retry: false,
+        },
+      )
+    view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
+      credential_slots: [],
+      environment_variable_slots: [
+        {
+          configured_value: 'production',
+          description: '',
+          has_configured_value: true,
+          has_last_deployed_value: false,
+          key: 'ENVIRONMENT',
+          value_type: EnvVarValueType.ENV_VAR_VALUE_TYPE_STRING,
+        },
+      ],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Deploy latest' }))
+
+    expect(screen.queryByRole('heading', { name: 'Credentials' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Environment Variables' })).toBeInTheDocument()
   })
 
   it('shows unsupported node titles when the latest version fails precheck', async () => {

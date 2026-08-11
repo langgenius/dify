@@ -672,7 +672,10 @@ vi.mock('react-i18next', async () => {
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
+    'deployments.studio.versionValue': 'Version value',
     'deployments.studio.environmentsInUse': '{{used}} of {{total}} environments in use',
+    'deployments.studio.environmentVariablesDescription':
+      "Use the value from the version you're deploying, keep the last deployed value, or enter a custom one.",
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
@@ -1010,9 +1013,14 @@ describe('AppDeploy', () => {
     expect(
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     ).toBeEnabled()
+    expect(
+      within(configurationDialog).getByText(
+        "Use the value from the version you're deploying, keep the last deployed value, or enter a custom one.",
+      ),
+    ).toBeInTheDocument()
 
     const portSource = within(configurationDialog).getByRole('combobox', { name: /PORT/ })
-    expect(portSource).toHaveTextContent('deployments.studio.configureValue')
+    expect(portSource).toHaveTextContent('Version value')
     const portInput = within(configurationDialog).getByRole('textbox', { name: 'PORT' })
     expect(portInput).toBeDisabled()
     expect(portInput).toHaveAttribute('placeholder', '2')
@@ -1032,7 +1040,7 @@ describe('AppDeploy', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('option', { name: 'deployments.studio.configureValue' }),
+      screen.getByRole('option', { name: 'Version value' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('option', {

@@ -34,7 +34,7 @@ export function EnvironmentVariableField({
 }) {
   const { t } = useTranslation('deployments')
   const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {
-    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: t(($) => $['studio.configureValue']),
+    [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED]: t(($) => $['studio.versionValue']),
     [EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM]: t(
       ($) => $['deployDrawer.envVarSource.literal'],
     ),

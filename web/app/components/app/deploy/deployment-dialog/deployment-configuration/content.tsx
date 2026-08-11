@@ -101,6 +101,8 @@ export function DeploymentConfigurationContent({
   const unsupportedNodes = precheck?.unsupported_nodes ?? []
   const showPrecheckAlert = !isPrechecking && !precheckError && isPrecheckBlocked
   const showConfiguration = Boolean(deploymentOptions)
+  const credentialSlots = deploymentOptions?.credential_slots ?? []
+  const hasCredentialSlots = credentialSlots.length > 0
   const environmentVariableSlots = deploymentOptions?.environment_variable_slots ?? []
 
   return (
@@ -171,37 +173,40 @@ export function DeploymentConfigurationContent({
         )}
         {showConfiguration && (
           <>
-            <section className={cn('flex flex-col gap-4 py-4', horizontalPaddingClassName)}>
-              <SectionHeading
-                title={t(($) => $['deployDrawer.runtimeCredentials'])}
-                description={t(($) => $['deployDrawer.bindingSelectionHint'])}
-              />
-              {deploymentOptions?.credential_slots.map((slot) => {
-                const slotKey = credentialSlotKey(slot)
+            {hasCredentialSlots && (
+              <section className={cn('flex flex-col gap-4 py-4', horizontalPaddingClassName)}>
+                <SectionHeading
+                  title={t(($) => $['deployDrawer.runtimeCredentials'])}
+                  description={t(($) => $['deployDrawer.bindingSelectionHint'])}
+                />
+                {credentialSlots.map((slot) => {
+                  const slotKey = credentialSlotKey(slot)
 
-                return (
-                  <CredentialField
-                    key={slotKey}
-                    slot={slot}
-                    value={values.credentials[slotKey] ?? defaultCredentialId(slot)}
-                    onChange={(value) =>
-                      onValuesChange((current) => ({
-                        ...current,
-                        credentials: {
-                          ...current.credentials,
-                          [slotKey]: value,
-                        },
-                      }))
-                    }
-                  />
-                )
-              })}
-            </section>
+                  return (
+                    <CredentialField
+                      key={slotKey}
+                      slot={slot}
+                      value={values.credentials[slotKey] ?? defaultCredentialId(slot)}
+                      onChange={(value) =>
+                        onValuesChange((current) => ({
+                          ...current,
+                          credentials: {
+                            ...current.credentials,
+                            [slotKey]: value,
+                          },
+                        }))
+                      }
+                    />
+                  )
+                })}
+              </section>
+            )}
 
             {environmentVariableSlots.length > 0 ? (
               <section
                 className={cn(
-                  'flex flex-col gap-4 border-t border-divider-regular py-4',
+                  'flex flex-col gap-4 py-4',
+                  hasCredentialSlots && 'border-t border-divider-regular',
                   horizontalPaddingClassName,
                 )}
               >
