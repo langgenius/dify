@@ -131,6 +131,7 @@ def _persist_snippet(
 
 
 class TestWorkflowAppGeneratorValidation:
+    @pytest.mark.usefixtures("sqlite_generator_scoped_session")
     def test_generate_stream_joins_worker_after_response_exhaustion(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator()
         worker_thread = Mock()
@@ -168,10 +169,6 @@ class TestWorkflowAppGeneratorValidation:
         )
         monkeypatch.setattr("core.app.apps.workflow.app_generator.contextvars.copy_context", lambda: "ctx")
         monkeypatch.setattr("core.app.apps.workflow.app_generator.threading.Thread", lambda **kwargs: worker_thread)
-        monkeypatch.setattr(
-            "core.app.apps.workflow.app_generator.db",
-            SimpleNamespace(session=SimpleNamespace(close=Mock())),
-        )
         monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
         monkeypatch.setattr(generator, "_handle_response", lambda **kwargs: response_stream())
         monkeypatch.setattr(
@@ -197,17 +194,16 @@ class TestWorkflowAppGeneratorValidation:
 
     def test_ensure_snippet_start_node_returns_original_for_non_snippet_workflow(
         self,
+        unbound_session: Session,
     ):
         workflow = SimpleNamespace(kind_or_standard="workflow")
-        session = Mock(spec=Session)
 
         result = WorkflowAppGenerator._ensure_snippet_start_node_in_worker(
-            session=session,
+            session=unbound_session,
             workflow=workflow,
         )
 
         assert result is workflow
-        session.scalar.assert_not_called()
 
     def test_ensure_snippet_start_node_returns_original_when_snippet_is_from_another_tenant(
         self,
@@ -251,7 +247,7 @@ class TestWorkflowAppGeneratorValidation:
         assert generator._should_prepare_user_inputs({}) is True
         assert generator._should_prepare_user_inputs({SKIP_PREPARE_USER_INPUTS_KEY: True}) is False
 
-    def test_single_iteration_generate_validates_args(self):
+    def test_single_iteration_generate_validates_args(self, sqlite_session: Session):
         generator = WorkflowAppGenerator()
 
         with pytest.raises(ValueError, match="node_id is required"):
@@ -262,7 +258,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={"inputs": {}},
                 streaming=False,
-                session=Mock(),
+                session=sqlite_session,
             )
 
         with pytest.raises(ValueError, match="inputs is required"):
@@ -273,10 +269,10 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args={},
                 streaming=False,
-                session=Mock(),
+                session=sqlite_session,
             )
 
-    def test_single_loop_generate_validates_args(self):
+    def test_single_loop_generate_validates_args(self, sqlite_session: Session):
         generator = WorkflowAppGenerator()
 
         with pytest.raises(ValueError, match="node_id is required"):
@@ -287,7 +283,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs={}),
                 streaming=False,
-                session=Mock(),
+                session=sqlite_session,
             )
 
     @pytest.mark.usefixtures("sqlite_generator_scoped_session")
@@ -418,7 +414,7 @@ class TestWorkflowAppGeneratorValidation:
                 user=SimpleNamespace(),
                 args=SimpleNamespace(inputs=None),
                 streaming=False,
-                session=Mock(),
+                session=sqlite_session,
             )
 
 

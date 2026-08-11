@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "accueil",
   "agentDetail.configure.workingDirectory.open": "Ouvrir le répertoire de travail",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "Retour au répertoire de travail",
+  "agentDetail.configure.workingDirectory.savedFiles": "Fichiers enregistrés",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "Fichiers temporaires",
   "agentDetail.configure.workingDirectory.title": "Répertoire de travail",
   "agentDetail.configure.workingDirectory.treeLabel": "Fichiers du répertoire de travail",
   "agentDetail.configure.workingDirectory.workingDirectory": "répertoire de travail",

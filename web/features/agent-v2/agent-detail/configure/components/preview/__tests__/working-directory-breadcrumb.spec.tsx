@@ -19,29 +19,16 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
       expect(screen.getByRole('button', { name: '.' })).toHaveAttribute('aria-current', 'page')
     })
 
-    it('should render home as the current path when path is home', () => {
+    it('should render the saved-files root path', () => {
       render(<AgentWorkingDirectoryBreadcrumb path="~" onPathChange={vi.fn()} />)
 
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.home',
-        }),
-      ).toHaveAttribute('aria-current', 'page')
-      expect(
-        screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
-        }),
-      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '~' })).toHaveAttribute('aria-current', 'page')
     })
 
-    it('should render the workspace cwd directly and show tilde as home', () => {
+    it('should render the saved-files prefix before its path segments', () => {
       render(<AgentWorkingDirectoryBreadcrumb path="~/web-game" onPathChange={vi.fn()} />)
 
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.home',
-        }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '~' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
           name: 'web-game',
@@ -52,17 +39,8 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
     it('should collapse middle breadcrumb layers when path is deeper than three layers', () => {
       render(<AgentWorkingDirectoryBreadcrumb path="~/web-game/src/app" onPathChange={vi.fn()} />)
 
-      expect(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.home',
-        }),
-      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '~' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: '...' })).toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
-        }),
-      ).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'web-game' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'src' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'app' })).toHaveAttribute('aria-current', 'page')
@@ -70,16 +48,12 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
   })
 
   describe('User Interactions', () => {
-    it('should request home path when home is clicked', async () => {
+    it('should request the saved-files root when its prefix is clicked', async () => {
       const user = userEvent.setup()
       const handlePathChange = vi.fn()
       render(<AgentWorkingDirectoryBreadcrumb path="~/web-game" onPathChange={handlePathChange} />)
 
-      await user.click(
-        screen.getByRole('button', {
-          name: 'agentV2.agentDetail.configure.workingDirectory.home',
-        }),
-      )
+      await user.click(screen.getByRole('button', { name: '~' }))
 
       expect(handlePathChange).toHaveBeenCalledWith('~')
     })
@@ -88,12 +62,12 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
       const user = userEvent.setup()
       const handlePathChange = vi.fn()
       render(
-        <AgentWorkingDirectoryBreadcrumb path="~/web-game/src" onPathChange={handlePathChange} />,
+        <AgentWorkingDirectoryBreadcrumb path="./web-game/src" onPathChange={handlePathChange} />,
       )
 
       await user.click(screen.getByRole('button', { name: 'web-game' }))
 
-      expect(handlePathChange).toHaveBeenCalledWith('~/web-game')
+      expect(handlePathChange).toHaveBeenCalledWith('./web-game')
     })
 
     it('should request a hidden breadcrumb path from the ellipsis menu', async () => {

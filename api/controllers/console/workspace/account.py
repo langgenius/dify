@@ -28,7 +28,12 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EducationDiscountTemporarilyPausedError,
+    EmailSendIpLimitError,
+)
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -554,11 +559,7 @@ class EducationApi(Resource):
     @only_edition_cloud
     @with_current_user
     def post(self, account: Account):
-        payload = console_ns.payload or {}
-        args = EducationActivatePayload.model_validate(payload)
-
-        result = BillingService.EducationIdentity.activate(account, args.token, args.institution, args.role)
-        return result
+        raise EducationDiscountTemporarilyPausedError()
 
     @setup_required
     @login_required
