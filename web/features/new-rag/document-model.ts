@@ -48,7 +48,7 @@ export function documentTitle(document: LogicalDocument) {
 }
 
 function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
-  return document.status === 'deleting' || sourceDisabled
+  return !document.enabled || document.status === 'deleting' || sourceDisabled
 }
 
 export function newestTaskByDocument(tasks: DocumentProcessingTask[]) {

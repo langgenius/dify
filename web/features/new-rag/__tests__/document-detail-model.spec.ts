@@ -46,6 +46,7 @@ const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => 
   },
   activeRevision: 3,
   createdAt: '2026-07-21T09:00:00Z',
+  enabled: true,
   id: 'document-1',
   knowledgeSpaceId: 'space-1',
   rowVersion: 2,

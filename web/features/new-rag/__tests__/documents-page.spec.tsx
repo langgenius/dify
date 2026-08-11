@@ -64,6 +64,8 @@ const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
+const updateLogicalDocumentMutation = vi.hoisted(() => vi.fn())
+const bulkUpdateLogicalDocumentsMutation = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
 const createMetadataField = vi.hoisted(() => vi.fn())
 const renameMetadataField = vi.hoisted(() => vi.fn())
@@ -159,6 +161,9 @@ const documentApiResponse = vi.hoisted(() => (item: LogicalDocument) => ({
   active: item.active ? revisionApiResponse(item.active) : null,
   active_revision: item.activeRevision ?? null,
   created_at: item.createdAt,
+  disabled_at: item.enabled ? null : item.updatedAt,
+  disabled_by_subject_id: item.enabled ? null : 'account-1',
+  enabled: item.enabled,
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   provider_item_id: item.providerItemId ?? null,
@@ -426,8 +431,10 @@ vi.mock('@/service/client', () => ({
           },
           logicalDocuments: {
             get: listLogicalDocuments,
+            patch: bulkUpdateLogicalDocumentsMutation,
             byDocumentId: {
               delete: removeDocumentMutation,
+              patch: updateLogicalDocumentMutation,
             },
           },
           metadata: {
@@ -542,6 +549,7 @@ const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => 
   },
   activeRevision: 2,
   createdAt: '2026-07-20T10:00:00Z',
+  enabled: true,
   id: 'document-1',
   knowledgeSpaceId: 'space-1',
   rowVersion: 1,
@@ -785,6 +793,22 @@ describe('DocumentsPage', () => {
         return documentApiResponse(document({ rowVersion: 2, userMetadata }))
       },
     )
+    updateLogicalDocumentMutation.mockImplementation(
+      async ({ body }: { body: { enabled: boolean } }) =>
+        documentApiResponse(document({ enabled: body.enabled, rowVersion: 2 })),
+    )
+    bulkUpdateLogicalDocumentsMutation.mockImplementation(
+      async ({
+        body,
+      }: {
+        body: { documents: Array<{ documentId: string }>; enabled: boolean }
+      }) => ({
+        items: body.documents.map(({ documentId }) =>
+          documentApiResponse(document({ enabled: body.enabled, id: documentId, rowVersion: 2 })),
+        ),
+        total: body.documents.length,
+      }),
+    )
     updateSourceMutation.mockImplementation(
       async ({ body }: { body: { status: Source['status'] } }) =>
         sourceApiResponse(source({ status: body.status, version: 2 })),
@@ -906,15 +930,15 @@ describe('DocumentsPage', () => {
     expect(rowActions).toBeEnabled()
     await user.click(rowActions)
     const rowMenuItems = await screen.findAllByRole('menuitem')
-    expect(rowMenuItems).toHaveLength(6)
+    expect(rowMenuItems).toHaveLength(5)
     expect(rowMenuItems.map((item) => item.textContent)).toEqual([
       'common.operation.rename',
       'dataset.newKnowledge.retryTask',
-      'dataset.newKnowledge.disableSource',
-      'dataset.batchAction.archive',
       'dataset.newKnowledge.downloadDocuments',
-      'common.operation.delete',
+      'dataset.newKnowledge.disableSource',
+      'dataset.newKnowledge.removeSource',
     ])
+    expect(rowMenuItems[2]).toHaveAttribute('aria-disabled', 'true')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -1268,7 +1292,7 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('disables the document source from the row action', async () => {
+  it('disables the document from the row action', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
@@ -1278,9 +1302,24 @@ describe('DocumentsPage', () => {
       await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
     )
 
-    expect(updateSourceMutation).toHaveBeenCalledWith({
-      body: { expectedVersion: 1, status: 'disabled' },
-      params: { control_space_id: 'space-1', source_id: 'source-1' },
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
+      body: { enabled: false, expectedRowVersion: 1 },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
+  })
+
+  it('re-enables a disabled document from the same row action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ enabled: false })] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    expect(screen.getByText('dataset.newKnowledge.documentStatus.disabled')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
+
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
+      body: { enabled: true, expectedRowVersion: 1 },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
     })
   })
 
@@ -1290,9 +1329,11 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
-    await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
 
     expect(removeDocumentMutation).toHaveBeenCalledWith({
       body: { expectedRevision: 1 },
@@ -2782,9 +2823,11 @@ describe('DocumentsPage', () => {
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
     expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
     expect(orderedActions[1]).toBeDisabled()
-    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.deleteDocuments')
-    expect(orderedActions[2]).toBeDisabled()
-    expect(orderedActions[3]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
+    expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
+    expect(orderedActions[2]).toBeEnabled()
+    expect(orderedActions[3]).toHaveAccessibleName('common.operation.remove')
+    expect(orderedActions[3]).toBeEnabled()
+    expect(orderedActions[4]).toHaveAccessibleName('dataset.newKnowledge.clearDocumentSelection')
     expect(actions.firstElementChild).toHaveTextContent(
       'dataset.newKnowledge.documentsSelected:{"count":1}',
     )
@@ -2799,7 +2842,7 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('keeps unsupported bulk document actions disabled', async () => {
+  it('disables selected documents through the bulk availability API', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
@@ -2822,16 +2865,58 @@ describe('DocumentsPage', () => {
     expect(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
     ).toBeDisabled()
-    expect(
-      within(actions).getByRole('button', { name: 'dataset.newKnowledge.deleteDocuments' }),
-    ).toBeDisabled()
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    await user.click(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+    )
+
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRowVersion: 2 },
+          { documentId: 'two', expectedRowVersion: 4 },
+        ],
+        enabled: false,
+      },
+      params: { control_space_id: 'space-1' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
+      ).not.toBeInTheDocument(),
+    )
+  })
+
+  it('confirms removal of selected documents from the designed bulk action', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', rowVersion: 2, title: 'One.pdf' }),
+            document({ id: 'two', rowVersion: 4, title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
     expect(removeDocumentMutation).not.toHaveBeenCalled()
-    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Two.pdf' })).toBeChecked()
-    expect(
-      screen.getByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
-    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    expect(removeDocumentMutation).toHaveBeenCalledTimes(2)
+    expect(removeDocumentMutation).toHaveBeenNthCalledWith(1, {
+      body: { expectedRevision: 2 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', document_id: 'one' },
+    })
+    expect(removeDocumentMutation).toHaveBeenNthCalledWith(2, {
+      body: { expectedRevision: 4 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', document_id: 'two' },
+    })
   })
 
   it('prompts for model setup before re-indexing selected documents', async () => {

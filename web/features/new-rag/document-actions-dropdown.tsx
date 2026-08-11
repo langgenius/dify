@@ -23,41 +23,41 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type DocumentAction = 'remove' | 'rename' | 'retry' | 'toggle-source'
+export type DocumentAction = 'remove' | 'rename' | 'retry' | 'toggle-availability'
 
 export function DocumentActionsDropdown({
   canEdit,
   className,
+  documentEnabled,
   documentTitle,
   onRemove,
   onRename,
   onReindex,
   onRetry,
-  onToggleSource,
+  onToggleAvailability,
   pendingAction,
   removeDisabled,
   reindexDisabled,
   retryDisabled,
   showRetry,
-  sourceDisabled,
-  toggleSourceDisabled,
+  toggleAvailabilityDisabled,
   unavailableReasonId,
 }: {
   canEdit: boolean
   className?: string
+  documentEnabled: boolean
   documentTitle: string
   onRemove: () => Promise<boolean>
   onRename: (title: string) => Promise<boolean>
   onReindex: () => void
   onRetry: () => Promise<boolean>
-  onToggleSource: () => Promise<boolean>
+  onToggleAvailability: () => Promise<boolean>
   pendingAction?: DocumentAction
   removeDisabled: boolean
   reindexDisabled: boolean
   retryDisabled: boolean
   showRetry: boolean
-  sourceDisabled: boolean
-  toggleSourceDisabled: boolean
+  toggleAvailabilityDisabled: boolean
   unavailableReasonId: string
 }) {
   const { t } = useTranslation('dataset')
@@ -129,30 +129,6 @@ export function DocumentActionsDropdown({
             )}
           </DropdownMenuItem>
           <DropdownMenuItem
-            aria-describedby={toggleSourceDisabled ? unavailableReasonId : undefined}
-            className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            disabled={!canEdit || busy || toggleSourceDisabled}
-            onClick={() => void onToggleSource()}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'size-4',
-                sourceDisabled ? 'i-ri-checkbox-circle-line' : 'i-ri-indeterminate-circle-line',
-              )}
-            />
-            {sourceDisabled ? t(($) => $.enable) : t(($) => $['newKnowledge.disableSource'])}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            aria-describedby={unavailableReasonId}
-            className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            disabled
-          >
-            <span aria-hidden className="i-ri-archive-2-line size-4" />
-            {t(($) => $['batchAction.archive'])}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-px" />
-          <DropdownMenuItem
             aria-describedby={unavailableReasonId}
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
             disabled
@@ -161,6 +137,22 @@ export function DocumentActionsDropdown({
             {t(($) => $['newKnowledge.downloadDocuments'])}
           </DropdownMenuItem>
           <DropdownMenuItem
+            aria-describedby={toggleAvailabilityDisabled ? unavailableReasonId : undefined}
+            className="mb-px h-7 gap-2 px-2 system-sm-medium"
+            disabled={!canEdit || busy || toggleAvailabilityDisabled}
+            onClick={() => void onToggleAvailability()}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-4',
+                documentEnabled ? 'i-ri-indeterminate-circle-line' : 'i-ri-checkbox-circle-line',
+              )}
+            />
+            {documentEnabled ? t(($) => $['newKnowledge.disableSource']) : t(($) => $.enable)}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="my-px" />
+          <DropdownMenuItem
             aria-describedby={removeDisabled ? unavailableReasonId : undefined}
             className="h-7 gap-2 px-2 system-sm-medium"
             disabled={!canEdit || busy || removeDisabled}
@@ -168,7 +160,7 @@ export function DocumentActionsDropdown({
             onClick={() => setRemoveDialogOpen(true)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            {tCommon(($) => $['operation.delete'])}
+            {t(($) => $['newKnowledge.removeSource'])}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -253,7 +245,7 @@ export function DocumentActionsDropdown({
                 })
               }
             >
-              {tCommon(($) => $['operation.delete'])}
+              {t(($) => $['newKnowledge.removeSource'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -4,7 +4,15 @@ import type { FocusEventHandler } from 'react'
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentDisplayStatus } from './document-model'
 import type { LogicalDocument } from './document-models'
-import type { Source } from './source-models'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -111,14 +119,13 @@ const DocumentRow = memo(
     onSelectedChange,
     onReindex,
     onRetry,
-    onToggleSource,
+    onToggleAvailability,
     pendingAction,
     readOnlyReasonId,
     retryable,
     selected,
     selectionDisabled,
     source,
-    sourceRecord,
     sourcePending,
     status,
     statusPending,
@@ -131,14 +138,13 @@ const DocumentRow = memo(
     onSelectedChange: (documentId: string) => void
     onReindex: (documentId: string) => void
     onRetry: (documentId: string) => Promise<boolean>
-    onToggleSource: (documentId: string) => Promise<boolean>
+    onToggleAvailability: (documentId: string) => Promise<boolean>
     pendingAction?: DocumentAction
     readOnlyReasonId?: string
     retryable: boolean
     selected: boolean
     selectionDisabled: boolean
     source?: string
-    sourceRecord?: Source
     sourcePending: boolean
     status: DocumentDisplayStatus
     statusPending: boolean
@@ -153,6 +159,7 @@ const DocumentRow = memo(
       <tr className="h-12 border-t border-divider-subtle">
         <td className="w-10 align-middle">
           <Checkbox
+            className="flex"
             checked={selected}
             disabled={selectionDisabled || status === 'disabled'}
             aria-describedby={selectionDisabled ? readOnlyReasonId : undefined}
@@ -228,19 +235,19 @@ const DocumentRow = memo(
         <td className="w-10 align-middle">
           <DocumentActionsDropdown
             canEdit={!selectionDisabled}
+            documentEnabled={document.enabled}
             documentTitle={document.title}
             onRemove={() => onRemove(document.id)}
             onRename={(title) => onRename(document.id, title)}
             onReindex={() => onReindex(document.id)}
             onRetry={() => onRetry(document.id)}
-            onToggleSource={() => onToggleSource(document.id)}
+            onToggleAvailability={() => onToggleAvailability(document.id)}
             pendingAction={pendingAction}
             removeDisabled={document.status === 'deleting'}
             reindexDisabled={selectionDisabled || status === 'disabled'}
             retryDisabled={selectionDisabled || !retryable}
             showRetry={status === 'failed'}
-            sourceDisabled={sourceRecord?.status === 'disabled'}
-            toggleSourceDisabled={!sourceRecord || sourceRecord.version === undefined}
+            toggleAvailabilityDisabled={selectionDisabled || document.status === 'deleting'}
             unavailableReasonId={`${titleId}-actions-unavailable`}
           />
         </td>
@@ -330,7 +337,7 @@ export function DocumentsList({
   onSearchChange,
   onSelectAll,
   onSelectDocument,
-  onToggleDocumentSource,
+  onToggleDocumentAvailability,
   pendingDocumentAction,
   readOnlyReasonId,
   resultsIncomplete,
@@ -342,7 +349,6 @@ export function DocumentsList({
   someSelected,
   sourcesPending,
   sourceNames,
-  sources,
   statusPending,
   statuses,
   tasksPending,
@@ -378,7 +384,7 @@ export function DocumentsList({
   onSearchChange: (search: string) => void
   onSelectAll: () => void
   onSelectDocument: (documentId: string) => void
-  onToggleDocumentSource: (documentId: string) => Promise<boolean>
+  onToggleDocumentAvailability: (documentId: string) => Promise<boolean>
   pendingDocumentAction?: { action: DocumentAction; documentId: string }
   readOnlyReasonId?: string
   resultsIncomplete: boolean
@@ -390,7 +396,6 @@ export function DocumentsList({
   someSelected: boolean
   sourcesPending: boolean
   sourceNames: Map<string, string>
-  sources: Map<string, Source>
   statusPending: boolean
   statuses: Map<string, DocumentDisplayStatus>
   tasksPending: boolean
@@ -506,6 +511,7 @@ export function DocumentsList({
             <tr>
               <th className="py-2 font-normal">
                 <Checkbox
+                  className="flex"
                   checked={allSelected}
                   indeterminate={someSelected && !allSelected}
                   disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
@@ -550,7 +556,7 @@ export function DocumentsList({
                 onSelectedChange={onSelectDocument}
                 onReindex={onReindexDocument}
                 onRetry={onRetryDocument}
-                onToggleSource={onToggleDocumentSource}
+                onToggleAvailability={onToggleDocumentAvailability}
                 pendingAction={
                   pendingDocumentAction?.documentId === document.id
                     ? pendingDocumentAction.action
@@ -569,7 +575,6 @@ export function DocumentsList({
                 source={
                   (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
                 }
-                sourceRecord={document.sourceId ? sources.get(document.sourceId) : undefined}
                 sourcePending={Boolean(
                   sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
                 )}
@@ -677,25 +682,33 @@ export function DocumentsList({
 }
 
 export function DocumentBulkActions({
+  actionPending,
   disabled,
   disabledReason,
-  onClear,
   onBlurCapture,
+  onClear,
+  onDisable,
   onFocusCapture,
+  onRemove,
   onReindex,
-  reindexing,
   selectedCount,
 }: {
+  actionPending?: 'disable' | 'reindex' | 'remove'
   disabled: boolean
   disabledReason?: string
-  onClear: () => void
   onBlurCapture: FocusEventHandler<HTMLDivElement>
+  onClear: () => void
+  onDisable: () => void
   onFocusCapture: FocusEventHandler<HTMLDivElement>
+  onRemove: () => Promise<boolean>
   onReindex: () => void
-  reindexing: boolean
   selectedCount: number
 }) {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const busy = Boolean(actionPending)
+
   return (
     <>
       <div className="pointer-events-none fixed right-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] left-0 z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))] sm:left-(--new-rag-sidebar-width,0px)">
@@ -706,16 +719,16 @@ export function DocumentBulkActions({
           onBlurCapture={onBlurCapture}
           onFocusCapture={onFocusCapture}
         >
-          <span className="shrink-0 system-sm-medium text-text-primary">
+          <span className="shrink-0 text-[13px] leading-4.5 font-medium text-text-primary">
             {t(($) => $['newKnowledge.documentsSelected'], { count: selectedCount })}
           </span>
           <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
           <Button
             aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
-            aria-busy={reindexing}
+            aria-busy={actionPending === 'reindex'}
             className="shrink-0"
-            disabled={disabled}
-            loading={reindexing}
+            disabled={disabled || busy}
+            loading={actionPending === 'reindex'}
             size="small"
             onClick={onReindex}
           >
@@ -741,21 +754,31 @@ export function DocumentBulkActions({
             {t(($) => $['newKnowledge.downloadDocuments'])}
           </Button>
           <Button
-            aria-describedby="document-delete-unavailable"
             className="shrink-0"
-            disabled
+            disabled={disabled || busy}
+            size="small"
+            loading={actionPending === 'disable'}
+            onClick={onDisable}
+          >
+            {t(($) => $['newKnowledge.disableSource'])}
+          </Button>
+          <Button
+            className="shrink-0"
+            disabled={disabled || busy}
+            loading={actionPending === 'remove'}
             size="small"
             tone="destructive"
             variant="secondary"
+            onClick={() => setRemoveDialogOpen(true)}
           >
-            {t(($) => $['newKnowledge.deleteDocuments'])}
+            {tCommon(($) => $['operation.remove'])}
           </Button>
           <Button
             variant="ghost"
             size="small"
             aria-label={t(($) => $['newKnowledge.clearDocumentSelection'])}
             className="size-6.5 shrink-0 px-0"
-            disabled={reindexing}
+            disabled={busy}
             onClick={onClear}
           >
             <span aria-hidden className="i-ri-close-line size-3.5" />
@@ -765,9 +788,36 @@ export function DocumentBulkActions({
       <span id="document-download-unavailable" className="sr-only">
         {t(($) => $['newKnowledge.documentActionsUnavailable'])}
       </span>
-      <span id="document-delete-unavailable" className="sr-only">
-        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
-      </span>
+
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="title-xl-semi-bold text-text-primary">
+              {tCommon(($) => $['operation.deleteConfirmTitle'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+              {tCommon(($) => $['operation.confirmAction'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton disabled={actionPending === 'remove'}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={actionPending === 'remove'}
+              loading={actionPending === 'remove'}
+              tone="destructive"
+              onClick={() =>
+                void onRemove().then((removed) => {
+                  if (removed) setRemoveDialogOpen(false)
+                })
+              }
+            >
+              {tCommon(($) => $['operation.remove'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -24,6 +24,7 @@ const document = (overrides: Partial<LogicalDocument> = {}): LogicalDocument => 
   },
   activeRevision: 2,
   createdAt: '2026-07-20T10:00:00Z',
+  enabled: true,
   id: 'document-1',
   knowledgeSpaceId: 'space-1',
   rowVersion: 1,
@@ -102,7 +103,8 @@ describe('new Knowledge document model', () => {
     )
   })
 
-  it('maps a disabled source and deleting lifecycle to the designed disabled state', () => {
+  it('maps document availability, source availability, and deletion to the disabled state', () => {
+    expect(documentDisplayStatus(document({ enabled: false }))).toBe('disabled')
     expect(documentDisplayStatus(document(), undefined, true)).toBe('disabled')
     expect(documentDisplayStatus(document({ status: 'deleting' }))).toBe('disabled')
   })

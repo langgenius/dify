@@ -27,6 +27,7 @@ export type LogicalDocument = {
   active: LogicalDocumentRevision
   activeRevision?: number
   createdAt: string
+  enabled: boolean
   id: string
   knowledgeSpaceId: string
   providerItemId?: string
@@ -162,6 +163,7 @@ export function logicalDocumentFromApi(
     active: document.active ? revisionFromApi(document.active) : null,
     activeRevision: document.active_revision ?? undefined,
     createdAt: document.created_at,
+    enabled: document.enabled ?? true,
     id: document.id,
     knowledgeSpaceId: document.knowledge_space_id,
     providerItemId: document.provider_item_id ?? undefined,
