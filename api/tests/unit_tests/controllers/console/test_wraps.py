@@ -40,7 +40,7 @@ from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from machinery.errors import ActiveWorkspaceRequiredError, AdmissionConfigurationError
-from models import Account
+from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
@@ -980,86 +980,91 @@ class TestCloudUtmRecord:
 class TestSystemSetup:
     """Test system setup decorator"""
 
-    @patch("controllers.console.wraps.db")
-    def test_should_allow_when_setup_complete(self, mock_db: MagicMock):
+    @staticmethod
+    def _complete_setup(session: Session) -> DifySetup:
+        setup = DifySetup(version="1.0")
+        session.add(setup)
+        session.commit()
+        return setup
+
+    def test_should_allow_when_setup_complete(self, sqlite_session: Session):
         """Test that requests are allowed when setup is complete"""
-        # Arrange
+        self._complete_setup(sqlite_session)
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.db.session", sqlite_session),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+        ):
             result = admin_view()
 
         # Assert
         assert result == "admin_success"
 
-    @patch("controllers.console.wraps.db")
-    def test_should_cache_completed_setup(self, mock_db):
+    def test_should_cache_completed_setup(self, sqlite_session: Session):
         """Test that completed setup skips repeated DB reads in this process"""
-        mock_db.session.scalar.return_value = MagicMock()
-
-        @setup_required
-        def admin_view():
-            return "admin_success"
-
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
-            assert admin_view() == "admin_success"
-            assert admin_view() == "admin_success"
-
-        assert mock_db.session.scalar.call_count == 1
-
-    @patch("controllers.console.wraps.db")
-    def test_should_not_cache_missing_setup(self, mock_db):
-        """Test that first-time bootstrap completion can be observed later in the same process"""
-        mock_db.session.scalar.side_effect = [None, MagicMock()]
+        setup = self._complete_setup(sqlite_session)
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         with (
+            patch("controllers.console.wraps.db.session", sqlite_session),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+        ):
+            assert admin_view() == "admin_success"
+            sqlite_session.delete(setup)
+            sqlite_session.commit()
+            assert admin_view() == "admin_success"
+
+        assert sqlite_session.get(DifySetup, "1.0") is None
+
+    def test_should_not_cache_missing_setup(self, sqlite_session: Session):
+        """Test that first-time bootstrap completion can be observed later in the same process"""
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with (
+            patch("controllers.console.wraps.db.session", sqlite_session),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
         ):
             with pytest.raises(NotSetupError):
                 admin_view()
+            self._complete_setup(sqlite_session)
             assert admin_view() == "admin_success"
 
-        assert mock_db.session.scalar.call_count == 2
-
-    @patch("controllers.console.wraps.db")
-    def test_should_raise_not_init_validate_error_with_init_password(self, mock_db: MagicMock):
+    def test_should_raise_not_init_validate_error_with_init_password(self, sqlite_session: Session):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
-        # Arrange
-        mock_db.session.scalar.return_value = None  # No setup
-
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
         with (
+            patch("controllers.console.wraps.db.session", sqlite_session),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch("controllers.console.wraps.dify_config.INIT_PASSWORD", "some_password"),
         ):
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
-    @patch("controllers.console.wraps.db")
-    def test_should_raise_not_setup_error_without_init_password(self, mock_db: MagicMock):
+    def test_should_raise_not_setup_error_without_init_password(self, sqlite_session: Session):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
-        # Arrange
-        mock_db.session.scalar.return_value = None  # No setup
-
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
         with (
+            patch("controllers.console.wraps.db.session", sqlite_session),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
         ):
