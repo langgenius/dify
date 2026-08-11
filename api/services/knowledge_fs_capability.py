@@ -514,6 +514,20 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/logical-documents/{documentId}",
             "document",
         ),
+        "patchLogicalDocumentAvailability": KnowledgeFSCapabilityOperation(
+            "logical_documents.availability.update",
+            _STANDARD_CALLERS,
+            "PATCH",
+            "/knowledge-spaces/{id}/logical-documents/{documentId}/availability",
+            "document",
+        ),
+        "bulkPatchLogicalDocumentAvailability": KnowledgeFSCapabilityOperation(
+            "logical_documents.availability.update",
+            _STANDARD_CALLERS,
+            "PATCH",
+            "/knowledge-spaces/{id}/logical-documents/bulk/availability",
+            "knowledge_space",
+        ),
         "requestLogicalDocumentDeletion": KnowledgeFSCapabilityOperation(
             "logical_documents.delete",
             _STANDARD_CALLERS,

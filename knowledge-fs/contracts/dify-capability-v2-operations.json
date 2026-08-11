@@ -67,6 +67,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "logical_documents.availability.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "bulkPatchLogicalDocumentAvailability",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/logical-documents/bulk/availability",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "documents.bulk.reindex",
       "allowedCallerKinds": [
         "interactive",
@@ -1427,6 +1444,25 @@
         "pathParameter": "id"
       },
       "path": "/knowledge-spaces/{id}/documents/{documentId}/metadata",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
+      "action": "logical_documents.availability.update",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "PATCH",
+      "operationId": "patchLogicalDocumentAvailability",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/logical-documents/{documentId}/availability",
       "resourceBinding": {
         "pathParameter": "documentId"
       },

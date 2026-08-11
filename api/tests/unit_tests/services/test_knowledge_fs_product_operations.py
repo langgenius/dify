@@ -28,6 +28,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
     assert ready_ids == {
         "abortUploadSession",
         "batchSpaceSummaries",
+        "bulkUpdateLogicalDocumentAvailability",
         "bulkImportGoldenQuestions",
         "bulkDeleteDocuments",
         "cancelBackgroundTask",
@@ -121,6 +122,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "updateDocumentMetadata",
         "updateEmbeddingProfile",
         "updateGoldenQuestion",
+        "updateLogicalDocumentAvailability",
         "updateMetadataField",
         "updateQualityBadCase",
         "updateRetrievalProfile",
