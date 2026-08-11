@@ -69,6 +69,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentStatus
 from models.model import Account
 from services.vector_space_admission_service import VectorSpaceAdmissionError
 
@@ -618,7 +619,7 @@ class TestIndexingRunnerLoad:
     - Keyword index creation
     - Multi-threaded processing
     - Document segment status updates
-    - Token counting
+    - Precomputed token totals
     - Error handling during loading
     """
 
@@ -685,16 +686,10 @@ class TestIndexingRunnerLoad:
         """Test loading with high quality indexing (vector embeddings)."""
         # Arrange
         runner = IndexingRunner()
-        mock_embedding_instance = MagicMock()
-        mock_embedding_instance.get_text_embedding_num_tokens.return_value = 100
-        model_manager = mock_dependencies["model_manager"].return_value
-        model_manager.get_model_instance.return_value = mock_embedding_instance
-
-        mock_processor = MagicMock()
 
         # Mock ThreadPoolExecutor
         mock_future = MagicMock()
-        mock_future.result.return_value = 300  # Total tokens
+        mock_future.result.return_value = None
         mock_executor_instance = MagicMock()
         mock_executor_instance.__enter__.return_value = mock_executor_instance
         mock_executor_instance.__exit__.return_value = None
@@ -702,20 +697,51 @@ class TestIndexingRunnerLoad:
         mock_dependencies["executor"].return_value = mock_executor_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, "_update_document_index_status"):
+        with patch.object(runner, "_update_document_index_status") as mock_update_status:
             # Act
             runner._load(
-                mock_processor,
-                sample_dataset,
-                sample_dataset_document,
-                sample_documents,
-                mock_dependencies["session"],
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=300,
             )
 
         # Assert
-        model_manager.get_model_instance.assert_called_once()
+        mock_dependencies["model_manager"].assert_not_called()
         # Verify executor was used for parallel processing
         assert mock_executor_instance.submit.called
+        for submit_call in mock_executor_instance.submit.call_args_list:
+            assert submit_call.args[0] == runner._process_chunk
+            assert len(submit_call.args) == 6
+        mock_future.result.assert_called()
+        assert mock_update_status.call_args.kwargs["extra_update_params"][DatasetDocument.tokens] == 300
+
+    def test_load_propagates_worker_errors(
+        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
+    ):
+        runner = IndexingRunner()
+        mock_future = MagicMock()
+        mock_future.result.side_effect = RuntimeError("index failed")
+        mock_executor_instance = MagicMock()
+        mock_executor_instance.__enter__.return_value = mock_executor_instance
+        mock_executor_instance.__exit__.return_value = None
+        mock_executor_instance.submit.return_value = mock_future
+        mock_dependencies["executor"].return_value = mock_executor_instance
+
+        with (
+            patch.object(runner, "_update_document_index_status") as mock_update_status,
+            pytest.raises(RuntimeError, match="index failed"),
+        ):
+            runner._load(
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=300,
+            )
+
+        mock_update_status.assert_not_called()
 
     def test_load_with_economy_indexing(
         self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
@@ -724,8 +750,6 @@ class TestIndexingRunnerLoad:
         # Arrange
         runner = IndexingRunner()
         sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-
-        mock_processor = MagicMock()
 
         # Mock thread for keyword indexing
         mock_thread_instance = MagicMock()
@@ -736,11 +760,11 @@ class TestIndexingRunnerLoad:
         with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(
-                mock_processor,
-                sample_dataset,
-                sample_dataset_document,
-                sample_documents,
-                mock_dependencies["session"],
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=0,
             )
 
         # Assert
@@ -767,16 +791,9 @@ class TestIndexingRunnerLoad:
                 )
             ]
 
-        mock_embedding_instance = MagicMock()
-        mock_embedding_instance.get_text_embedding_num_tokens.return_value = 50
-        model_manager = mock_dependencies["model_manager"].return_value
-        model_manager.get_model_instance.return_value = mock_embedding_instance
-
-        mock_processor = MagicMock()
-
         # Mock ThreadPoolExecutor
         mock_future = MagicMock()
-        mock_future.result.return_value = 150
+        mock_future.result.return_value = None
         mock_executor_instance = MagicMock()
         mock_executor_instance.__enter__.return_value = mock_executor_instance
         mock_executor_instance.__exit__.return_value = None
@@ -787,14 +804,15 @@ class TestIndexingRunnerLoad:
         with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(
-                mock_processor,
-                sample_dataset,
-                sample_dataset_document,
-                sample_documents,
-                mock_dependencies["session"],
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=150,
             )
 
         # Assert
+        mock_dependencies["model_manager"].assert_not_called()
         # Verify no keyword thread for parent-child index
         mock_dependencies["thread"].assert_not_called()
 
@@ -852,26 +870,72 @@ class TestIndexingRunnerRun:
         runner = IndexingRunner()
         dataset_document = sample_dataset_documents[0]
         dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
-        dataset = Mock(spec=Dataset)
-        segment = Mock(spec=DocumentSegment)
-        segment.status = "waiting"
-        segment.content = "parent"
-        segment.index_node_id = "parent-node"
-        segment.index_node_hash = "parent-hash"
-        segment.document_id = dataset_document.id
-        segment.dataset_id = dataset_document.dataset_id
-        segment.get_child_chunks.return_value = [
-            SimpleNamespace(content="child", index_node_id="child-node", index_node_hash="child-hash")
-        ]
+        dataset = Dataset()
+        segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            position=1,
+            content="parent",
+            word_count=0,
+            tokens=12,
+            created_by="account-id",
+            status="waiting",
+            index_node_id="parent-node",
+            index_node_hash="parent-hash",
+        )
+        child_chunks = [SimpleNamespace(content="child", index_node_id="child-node", index_node_hash="child-hash")]
         session = mock_dependencies["session"]
         session.get.side_effect = lambda model, _: dataset_document if model is DatasetDocument else dataset
         session.scalars.return_value.all.return_value = [segment]
 
+        with (
+            patch.object(DocumentSegment, "get_child_chunks", return_value=child_chunks) as get_child_chunks,
+            patch.object(runner, "_load") as load,
+        ):
+            runner.run_in_indexing_status(dataset_document, session)
+
+        get_child_chunks.assert_called_once_with(session=session)
+        assert load.call_args.kwargs["documents"][0].children[0].page_content == "child"
+        assert load.call_args.kwargs["total_tokens"] == 12
+
+    def test_run_in_indexing_status_uses_tokens_from_all_segments(self, mock_dependencies, sample_dataset_documents):
+        runner = IndexingRunner()
+        dataset_document = sample_dataset_documents[0]
+        dataset = Dataset()
+        completed_segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            position=1,
+            content="",
+            word_count=0,
+            tokens=10,
+            created_by="account-id",
+            status=SegmentStatus.COMPLETED,
+        )
+        incomplete_segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            position=1,
+            content="pending",
+            word_count=0,
+            tokens=20,
+            created_by="account-id",
+            status=SegmentStatus.WAITING,
+            index_node_id="pending-node",
+            index_node_hash="pending-hash",
+        )
+        session = mock_dependencies["session"]
+        session.get.side_effect = lambda model, _: dataset_document if model is DatasetDocument else dataset
+        session.scalars.return_value.all.return_value = [completed_segment, incomplete_segment]
+
         with patch.object(runner, "_load") as load:
             runner.run_in_indexing_status(dataset_document, session)
 
-        segment.get_child_chunks.assert_called_once_with(session=session)
-        assert load.call_args.kwargs["documents"][0].children[0].page_content == "child"
+        assert load.call_args.kwargs["documents"][0].page_content == "pending"
+        assert load.call_args.kwargs["total_tokens"] == 30
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_success_single_document(self, set_tenant_id, mock_dependencies, sample_dataset_documents):
@@ -968,6 +1032,60 @@ class TestIndexingRunnerRun:
                 runner.run([doc], mock_dependencies["session"])
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_counts_each_transformed_document_once(
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
+    ):
+        runner = IndexingRunner()
+        dataset_document = sample_dataset_documents[0]
+        dataset = Dataset(
+            id=dataset_document.dataset_id,
+            tenant_id=dataset_document.tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        )
+        current_user = Account(name="Test Account", email="test@example.com")
+        transformed_documents = [
+            Document(page_content="first", metadata={"doc_id": "first", "doc_hash": "hash-first"}),
+            Document(page_content="second", metadata={"doc_id": "second", "doc_hash": "hash-second"}),
+        ]
+        model_dispatch = {
+            DatasetDocument: dataset_document,
+            Dataset: dataset,
+            Account: current_user,
+        }
+        mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-id", mode="automatic", rules="{}", created_by="account-id"
+        )
+        mock_dependencies["session"].scalar.return_value = process_rule
+
+        with (
+            patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
+            patch.object(runner, "_transform", return_value=transformed_documents),
+            patch.object(runner, "_load_segments") as load_segments,
+            patch.object(runner, "_load") as load,
+            patch(
+                "core.indexing_runner.calculate_segment_token_counts",
+                return_value=[11, 22],
+            ) as calculate_token_counts,
+        ):
+            runner.run([dataset_document], mock_dependencies["session"])
+
+        calculate_token_counts.assert_called_once_with(dataset=dataset, documents=transformed_documents)
+        load_segments.assert_called_once_with(
+            session=mock_dependencies["session"],
+            dataset=dataset,
+            dataset_document=dataset_document,
+            documents=transformed_documents,
+            token_counts=[11, 22],
+        )
+        assert load.call_args.kwargs["total_tokens"] == 33
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
+
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_rejects_before_segment_or_vector_writes(
         self, set_tenant_id, mock_dependencies, sample_dataset_documents
     ):
@@ -1020,6 +1138,62 @@ class TestIndexingRunnerRun:
             session=mock_dependencies["session"],
         )
         handle_error.assert_called_once_with(dataset_document.id, admission_error, mock_dependencies["session"])
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
+
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_in_splitting_status_counts_each_transformed_document_once(
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
+    ):
+        runner = IndexingRunner()
+        dataset_document = sample_dataset_documents[0]
+        dataset_document.created_by = "user-1"
+        dataset = Dataset(
+            id=dataset_document.dataset_id,
+            tenant_id=dataset_document.tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+        )
+        current_user = Account(name="Test Account", email="test@example.com")
+        transformed_documents = [
+            Document(page_content="first", metadata={"doc_id": "first", "doc_hash": "hash-first"}),
+            Document(page_content="second", metadata={"doc_id": "second", "doc_hash": "hash-second"}),
+        ]
+        model_dispatch = {
+            DatasetDocument: dataset_document,
+            Dataset: dataset,
+            Account: current_user,
+        }
+        mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
+        mock_dependencies["session"].scalars.return_value.all.return_value = []
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-id", mode="automatic", rules="{}", created_by="account-id"
+        )
+        mock_dependencies["session"].scalar.return_value = process_rule
+
+        with (
+            patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
+            patch.object(runner, "_transform", return_value=transformed_documents),
+            patch.object(runner, "_load_segments") as load_segments,
+            patch.object(runner, "_load") as load,
+            patch(
+                "core.indexing_runner.calculate_segment_token_counts",
+                return_value=[11, 22],
+            ) as calculate_token_counts,
+        ):
+            runner.run_in_splitting_status(dataset_document, mock_dependencies["session"])
+
+        calculate_token_counts.assert_called_once_with(dataset=dataset, documents=transformed_documents)
+        load_segments.assert_called_once_with(
+            session=mock_dependencies["session"],
+            dataset=dataset,
+            dataset_document=dataset_document,
+            documents=transformed_documents,
+            token_counts=[11, 22],
+        )
+        assert load.call_args.kwargs["total_tokens"] == 33
         set_tenant_id.assert_called_once_with(
             current_user,
             dataset.tenant_id,
@@ -1494,7 +1668,11 @@ class TestIndexingRunnerLoadSegments:
         ):
             # Act
             runner._load_segments(
-                sample_dataset, sample_dataset_document, sample_documents, mock_dependencies["session"]
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                token_counts=[10, 20],
             )
 
         # Assert
@@ -1504,7 +1682,10 @@ class TestIndexingRunnerLoadSegments:
             document_id=sample_dataset_document.id,
         )
         mock_docstore_instance.add_documents.assert_called_once_with(
-            docs=sample_documents, save_child=False, session=mock_dependencies["session"]
+            session=mock_dependencies["session"],
+            docs=sample_documents,
+            save_child=False,
+            token_counts=[10, 20],
         )
 
     def test_load_segments_parent_child_index(
@@ -1534,12 +1715,19 @@ class TestIndexingRunnerLoadSegments:
         ):
             # Act
             runner._load_segments(
-                sample_dataset, sample_dataset_document, sample_documents, mock_dependencies["session"]
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                token_counts=[10, 20],
             )
 
         # Assert
         mock_docstore_instance.add_documents.assert_called_once_with(
-            docs=sample_documents, save_child=True, session=mock_dependencies["session"]
+            session=mock_dependencies["session"],
+            docs=sample_documents,
+            save_child=True,
+            token_counts=[10, 20],
         )
 
     def test_load_segments_updates_word_count(
@@ -1561,7 +1749,11 @@ class TestIndexingRunnerLoadSegments:
         ):
             # Act
             runner._load_segments(
-                sample_dataset, sample_dataset_document, sample_documents, mock_dependencies["session"]
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                token_counts=[10, 20],
             )
 
         # Assert
@@ -1664,7 +1856,6 @@ class TestIndexingRunnerProcessChunk:
     """Unit tests for chunk processing in parallel.
 
     Tests cover:
-    - Token counting
     - Vector index creation
     - Segment status updates
     - Pause detection during processing
@@ -1689,16 +1880,12 @@ class TestIndexingRunnerProcessChunk:
         app.app_context.return_value.__exit__ = MagicMock()
         return app
 
-    def test_process_chunk_counts_tokens(self, mock_dependencies, mock_flask_app):
-        """Test process chunk correctly counts tokens."""
+    def test_process_chunk_loads_index_and_completes_segments(self, mock_dependencies, mock_flask_app):
+        """Test process chunk loads the index and completes segments without counting tokens."""
         # Arrange
         from core.indexing_runner import IndexingRunner
 
         runner = IndexingRunner()
-        mock_embedding_instance = MagicMock()
-        # Mock to return an iterable that sums to 150 tokens
-        mock_embedding_instance.get_text_embedding_num_tokens.return_value = [75, 75]
-
         mock_processor = MagicMock()
         chunk_documents = [
             Document(page_content="Chunk 1", metadata={"doc_id": "c1"}),
@@ -1737,18 +1924,19 @@ class TestIndexingRunnerProcessChunk:
             mock_factory.return_value.init_index_processor.return_value = mock_processor
 
             # Act - the method creates its own app_context and session
-            tokens = runner._process_chunk(
+            result = runner._process_chunk(
                 mock_flask_app,
                 IndexStructureType.PARAGRAPH_INDEX,
                 chunk_documents,
                 mock_dataset.id,
                 mock_dataset_document.id,
-                mock_embedding_instance,
             )
 
         # Assert
-        assert tokens == 150
+        assert result is None
         mock_processor.load.assert_called_once()
+        mock_dependencies["session"].execute.assert_called_once()
+        mock_dependencies["session"].commit.assert_called_once()
 
     def test_process_chunk_detects_pause(self, mock_dependencies, mock_flask_app):
         """Test process chunk detects document pause."""
@@ -1756,8 +1944,6 @@ class TestIndexingRunnerProcessChunk:
         from core.indexing_runner import IndexingRunner
 
         runner = IndexingRunner()
-        mock_embedding_instance = MagicMock()
-        mock_processor = MagicMock()
         chunk_documents = [Document(page_content="Chunk", metadata={"doc_id": "c1"})]
 
         mock_dataset = Dataset()
@@ -1789,5 +1975,4 @@ class TestIndexingRunnerProcessChunk:
                     chunk_documents,
                     mock_dataset.id,
                     mock_dataset_document.id,
-                    mock_embedding_instance,
                 )
