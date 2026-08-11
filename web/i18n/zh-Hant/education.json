@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "你選擇的方案不支援教育優惠",
   "emailLabel": "您當前的電子郵件",
   "form.schoolName.placeholder": "請輸入您學校的正式全名",
+  "form.schoolName.noResults": "找不到符合的學校，你仍可輸入學校的正式全名。",
   "form.schoolName.title": "你的學校名稱",
   "form.schoolRole.option.administrator": "校園行政人員",
   "form.schoolRole.option.student": "學生",

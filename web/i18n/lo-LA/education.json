@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "ແພັກເກດທີ່ທ່ານເລືອກບໍ່ຮອງຮັບສ່ວນຫຼຸດເພື່ອການສຶກສາ",
   "emailLabel": "ອີເມວປັດຈຸບັນຂອງທ່ານ",
   "form.schoolName.placeholder": "ປ້ອນຊື່ທາງການຂອງໂຮງຮຽນຂອງທ່ານ (ບໍ່ໃຊ້ຊື່ຫຍໍ້)",
+  "form.schoolName.noResults": "ບໍ່ພົບໂຮງຮຽນທີ່ກົງກັນ. ທ່ານຍັງສາມາດປ້ອນຊື່ທາງການຂອງໂຮງຮຽນໄດ້.",
   "form.schoolName.title": "ຊື່ໂຮງຮຽນຂອງທ່ານ",
   "form.schoolRole.option.administrator": "ຜູ້ບໍລິຫານໂຮງຮຽນ",
   "form.schoolRole.option.student": "ນັກຮຽນ/ນັກສຶກສາ",

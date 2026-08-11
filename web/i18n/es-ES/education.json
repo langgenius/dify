@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "El plan seleccionado no admite el descuento educativo",
   "emailLabel": "Tu correo electrónico actual",
   "form.schoolName.placeholder": "Ingrese el nombre oficial y completo de su escuela",
+  "form.schoolName.noResults": "No se encontraron escuelas coincidentes. Aun así, puede ingresar el nombre oficial.",
   "form.schoolName.title": "El nombre de tu escuela",
   "form.schoolRole.option.administrator": "Administrador escolar",
   "form.schoolRole.option.student": "Estudiante",

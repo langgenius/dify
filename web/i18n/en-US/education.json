@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "Your selected plan doesn't support the education discount",
   "emailLabel": "Your current email",
   "form.schoolName.placeholder": "Enter the official, unabbreviated name of your school",
+  "form.schoolName.noResults": "No matching schools found. You can still enter the official school name.",
   "form.schoolName.title": "Your School Name",
   "form.schoolRole.option.administrator": "School Administrator",
   "form.schoolRole.option.student": "Student",

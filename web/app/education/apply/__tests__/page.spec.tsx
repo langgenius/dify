@@ -56,14 +56,6 @@ vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: vi.fn() }),
 }))
 
-vi.mock('@/service/use-education', () => ({
-  useEducationAutocomplete: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ data: [], has_next: false }),
-    isPending: false,
-    data: undefined,
-  }),
-}))
-
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
@@ -79,6 +71,15 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     account: {
       education: {
+        autocomplete: {
+          get: {
+            infiniteOptions: (options: Record<string, unknown>) => ({
+              queryKey: ['account', 'education', 'autocomplete'],
+              queryFn: async () => ({ data: [], has_next: false }),
+              ...options,
+            }),
+          },
+        },
         get: {
           key: () => ['account', 'education'],
           queryOptions: (options: Record<string, unknown> = {}) => ({

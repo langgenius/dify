@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "你选择的计划不支持教育优惠",
   "emailLabel": "您当前的邮箱",
   "form.schoolName.placeholder": "请输入您的学校的官方全称（不得缩写）",
+  "form.schoolName.noResults": "未找到匹配的学校，你仍可输入学校的官方全称。",
   "form.schoolName.title": "您的学校名称",
   "form.schoolRole.option.administrator": "学校管理员",
   "form.schoolRole.option.student": "学生",

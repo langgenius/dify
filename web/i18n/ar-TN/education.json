@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "الخطة التي اخترتها لا تدعم الخصم التعليمي",
   "emailLabel": "بريدك الإلكتروني الحالي",
   "form.schoolName.placeholder": "أدخل الاسم الرسمي الكامل لمدرستك",
+  "form.schoolName.noResults": "لم يتم العثور على مدارس مطابقة. لا يزال بإمكانك إدخال الاسم الرسمي للمدرسة.",
   "form.schoolName.title": "اسم مدرستك",
   "form.schoolRole.option.administrator": "مسؤول المدرسة",
   "form.schoolRole.option.student": "طالب",

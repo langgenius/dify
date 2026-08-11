@@ -1,19 +1,49 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import InstitutionField from '../institution-field'
 
-const institutionSuggestionMocks = vi.hoisted(() => ({
-  suggestions: ['Alpha University', 'Beta College'],
-  clearSuggestions: vi.fn(),
-  requestSuggestions: vi.fn(),
-  requestSuggestionsDebounced: vi.fn(),
+const educationAutocompleteQueryMock = vi.hoisted(() => ({
+  options: vi.fn(),
+  fetchNextPage: vi.fn(),
   hasNextPage: false,
+  isFetchingNextPage: false,
   isPending: false,
+  isSuccess: true,
+  data: {
+    pages: [
+      {
+        curr_page: 0,
+        data: ['Alpha University', 'Beta College'],
+        has_next: false,
+      },
+    ],
+  },
 }))
 
-vi.mock('../use-institution-suggestions', () => ({
-  useInstitutionSuggestions: () => institutionSuggestionMocks,
+vi.mock('@tanstack/react-query', () => ({
+  useInfiniteQuery: (options: unknown) => {
+    educationAutocompleteQueryMock.options(options)
+    return educationAutocompleteQueryMock
+  },
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    account: {
+      education: {
+        autocomplete: {
+          get: {
+            infiniteOptions: (options: unknown) => options,
+          },
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('foxact/use-debounced-value', () => ({
+  useDebouncedValue: <T,>(value: T) => value,
 }))
 
 const ControlledInstitutionField = () => {
@@ -24,15 +54,15 @@ const ControlledInstitutionField = () => {
 describe('InstitutionField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    institutionSuggestionMocks.suggestions = ['Alpha University', 'Beta College']
-    institutionSuggestionMocks.hasNextPage = false
-    institutionSuggestionMocks.isPending = false
+    educationAutocompleteQueryMock.hasNextPage = false
+    educationAutocompleteQueryMock.isFetchingNextPage = false
+    educationAutocompleteQueryMock.isPending = false
+    educationAutocompleteQueryMock.isSuccess = true
+    educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpha University', 'Beta College']
   })
 
-  it('accepts free-form institution names and requests suggestions', async () => {
+  it('uses a free-form institution name as the suggestions query', async () => {
     const user = userEvent.setup()
-    institutionSuggestionMocks.suggestions = []
-
     render(<ControlledInstitutionField />)
 
     const input = screen.getByPlaceholderText(
@@ -44,10 +74,15 @@ describe('InstitutionField', () => {
     await user.type(input, 'Alpha')
 
     expect(input).toHaveValue('Alpha')
-    expect(institutionSuggestionMocks.clearSuggestions).toHaveBeenCalled()
-    expect(institutionSuggestionMocks.requestSuggestionsDebounced).toHaveBeenLastCalledWith({
-      query: 'Alpha',
-      page: 0,
+    await waitFor(() => {
+      const options = educationAutocompleteQueryMock.options.mock.lastCall?.[0] as {
+        enabled: boolean
+        input: (page: number) => unknown
+      }
+      expect(options.enabled).toBe(true)
+      expect(options.input(0)).toEqual({
+        query: { keywords: 'Alpha', limit: 40, page: 0 },
+      })
     })
   })
 
@@ -61,17 +96,30 @@ describe('InstitutionField', () => {
       'A',
     )
 
-    expect(screen.getByText('Alpha University')).toBeInTheDocument()
+    expect(await screen.findByText('Alpha University')).toBeInTheDocument()
 
     await user.click(screen.getByRole('option', { name: 'Beta College' }))
 
     expect(screen.getByRole('combobox')).toHaveValue('Beta College')
-    expect(screen.queryByText('Alpha University')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Alpha University' })).not.toBeInTheDocument()
+  })
+
+  it('keeps an unmatched institution name as free-form input', async () => {
+    const user = userEvent.setup()
+    educationAutocompleteQueryMock.data.pages[0]!.data = []
+
+    render(<ControlledInstitutionField />)
+
+    const input = screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/)
+    await user.type(input, 'Dify Academy')
+
+    expect(await screen.findByText('education.form.schoolName.noResults')).toBeInTheDocument()
+    expect(input).toHaveValue('Dify Academy')
   })
 
   it('requests the next page when the suggestions reach the scroll boundary', async () => {
     const user = userEvent.setup()
-    institutionSuggestionMocks.hasNextPage = true
+    educationAutocompleteQueryMock.hasNextPage = true
 
     render(<ControlledInstitutionField />)
 
@@ -80,7 +128,7 @@ describe('InstitutionField', () => {
       'A',
     )
 
-    const scrollContainer = screen.getByRole('listbox')
+    const scrollContainer = await screen.findByRole('listbox')
     Object.defineProperties(scrollContainer, {
       scrollTop: { value: 60, configurable: true },
       scrollHeight: { value: 100, configurable: true },
@@ -89,9 +137,6 @@ describe('InstitutionField', () => {
 
     fireEvent.scroll(scrollContainer)
 
-    expect(institutionSuggestionMocks.requestSuggestions).toHaveBeenCalledWith({
-      query: 'A',
-      page: 1,
-    })
+    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledTimes(1)
   })
 })

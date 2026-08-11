@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "طرح انتخاب‌شده شما از تخفیف آموزشی پشتیبانی نمی‌کند",
   "emailLabel": "ایمیل فعلی شما",
   "form.schoolName.placeholder": "نام رسمی و کامل مدرسه خود را وارد کنید",
+  "form.schoolName.noResults": "مدرسه منطبقی یافت نشد. همچنان می‌توانید نام رسمی مدرسه را وارد کنید.",
   "form.schoolName.title": "نام مدرسه شما",
   "form.schoolRole.option.administrator": "مدیر مدرسه",
   "form.schoolRole.option.student": "دانش آموز",

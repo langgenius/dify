@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "Paket yang Anda pilih tidak mendukung diskon pendidikan",
   "emailLabel": "Email Anda saat ini",
   "form.schoolName.placeholder": "Masukkan nama resmi sekolah Anda yang tidak disingkat",
+  "form.schoolName.noResults": "Tidak ada sekolah yang cocok. Anda tetap dapat memasukkan nama resmi sekolah.",
   "form.schoolName.title": "Nama Sekolah Anda",
   "form.schoolRole.option.administrator": "Administrator Sekolah",
   "form.schoolRole.option.student": "Pelajar",

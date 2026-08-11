@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "Uw geselecteerde abonnement ondersteunt de onderwijskorting niet",
   "emailLabel": "Your current email",
   "form.schoolName.placeholder": "Enter the official, unabbreviated name of your school",
+  "form.schoolName.noResults": "Geen overeenkomende school gevonden. U kunt de officiële schoolnaam nog steeds invoeren.",
   "form.schoolName.title": "Your School Name",
   "form.schoolRole.option.administrator": "School Administrator",
   "form.schoolRole.option.student": "Student",

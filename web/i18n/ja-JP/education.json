@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "選択したプランは教育割引に対応していません",
   "emailLabel": "現在のメールアドレス",
   "form.schoolName.placeholder": "学校の正式名称（省略不可）を入力してください。",
+  "form.schoolName.noResults": "一致する学校が見つかりませんでした。正式な学校名をそのまま入力できます。",
   "form.schoolName.title": "学校名",
   "form.schoolRole.option.administrator": "学校管理者",
   "form.schoolRole.option.student": "学生",

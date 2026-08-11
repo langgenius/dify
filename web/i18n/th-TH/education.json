@@ -15,6 +15,7 @@
   "educationPricingConfirm.title": "แผนที่คุณเลือกไม่รองรับส่วนลดการศึกษา",
   "emailLabel": "อีเมลปัจจุบันของคุณ",
   "form.schoolName.placeholder": "กรุณาใส่ชื่อของโรงเรียนอย่างเป็นทางการที่ไม่มีการย่อ",
+  "form.schoolName.noResults": "ไม่พบโรงเรียนที่ตรงกัน คุณยังสามารถกรอกชื่อโรงเรียนอย่างเป็นทางการได้",
   "form.schoolName.title": "ชื่อโรงเรียนของคุณ",
   "form.schoolRole.option.administrator": "ผู้ดูแลโรงเรียน",
   "form.schoolRole.option.student": "นักเรียน",
