@@ -13,7 +13,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.account import Account
 from models.base import TypeBase
 from models.engine import db

@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Zniżka edukacyjna dotyczy tylko rocznego planu Professional. Pozostanie przy obecnym planie nie obejmie zniżki.",
   "educationPricingConfirm.title": "Wybrany plan nie obsługuje zniżki edukacyjnej",
   "emailLabel": "Twój aktualny email",
+  "form.schoolName.noResults": "Nie znaleziono pasującej szkoły. Nadal możesz wpisać jej oficjalną nazwę.",
   "form.schoolName.placeholder": "Wpisz oficjalną, pełną nazwę swojej szkoły",
   "form.schoolName.title": "Nazwa Twojej Szkoły",
   "form.schoolRole.option.administrator": "Administrator szkoły",

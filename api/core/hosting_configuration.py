@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 
 

@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "La remise éducation s'applique uniquement au plan Professional annuel. En conservant votre plan actuel, la remise ne sera pas incluse.",
   "educationPricingConfirm.title": "Le plan sélectionné ne prend pas en charge la remise éducation",
   "emailLabel": "Votre email actuel",
+  "form.schoolName.noResults": "Aucun établissement correspondant trouvé. Vous pouvez tout de même saisir son nom officiel.",
   "form.schoolName.placeholder": "Entrez le nom officiel et complet de votre école",
   "form.schoolName.title": "Le nom de votre école",
   "form.schoolRole.option.administrator": "Administrateur scolaire",
