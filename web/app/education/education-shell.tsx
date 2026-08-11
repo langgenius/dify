@@ -5,17 +5,17 @@ import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import useDocumentTitle from '@/hooks/use-document-title'
 
-type EducationLayoutProps = {
+type EducationShellProps = {
   children: ReactNode
 }
 
-export default function EducationLayout({ children }: EducationLayoutProps) {
+export default function EducationShell({ children }: EducationShellProps) {
   const { t } = useTranslation()
   const pageTitle = t(($) => $.toVerified, { ns: 'education' })
   useDocumentTitle(pageTitle)
 
   return (
-    <div className="fixed inset-0 z-31 overflow-y-auto bg-background-body p-6">
+    <main className="h-full overflow-y-auto bg-background-body p-6">
       <div className="mx-auto w-full max-w-352 rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
           className="h-87.25 w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"
@@ -43,6 +43,6 @@ export default function EducationLayout({ children }: EducationLayoutProps) {
           {children}
         </section>
       </div>
-    </div>
+    </main>
   )
 }

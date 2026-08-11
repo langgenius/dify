@@ -1,9 +1,9 @@
 'use client'
 
+import type { SubscriptionModel } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { EducationRole } from './types'
-import type { Plan as PlanType } from '@/app/components/billing/type'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
@@ -11,14 +11,13 @@ import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
 import { useDocLink } from '@/context/i18n'
-import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
@@ -37,11 +36,13 @@ const AppliedEducationCase = {
 } as const
 
 type EducationApplyPageProps = {
+  plan: SubscriptionModel['plan']
   token: string
 }
 
-const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
+const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
   const [agreements, setAgreements] = useState<string[]>([])
@@ -50,7 +51,6 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
   const { isPending, mutate: educationAdd } = useMutation(
     consoleQuery.account.education.post.mutationOptions(),
   )
-  const { onPlanInfoChanged, plan } = useProviderContext()
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
       select: ({ is_student }) => is_student ?? false,
@@ -66,7 +66,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
-    if (plan.type === Plan.sandbox) return AppliedEducationCase.eligible
+    if (plan === Plan.sandbox) return AppliedEducationCase.eligible
 
     return AppliedEducationCase.activeSubscription
   })()
@@ -82,7 +82,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
       {
         onSuccess: (res) => {
           if (res.message === 'success') {
-            onPlanInfoChanged()
+            void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
             setHasSubmittedEducation(true)
           } else {
             toast.error(t(($) => $.submitError, { ns: 'education' }))
@@ -194,7 +194,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
         <div className="flex">
           <AppliedEducationWorkspaceContent
             currentWorkspace={currentWorkspace}
-            plan={plan.type}
+            plan={plan}
             action={renderAppliedEducationAction()}
             isSwitchingWorkspace={switchWorkspaceMutation.isPending}
             onSwitchWorkspace={(value) => {
@@ -291,7 +291,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
 
 type AppliedEducationWorkspaceBlockProps = {
   currentWorkspace: GetWorkspacesCurrentSummaryResponse
-  plan: PlanType
+  plan: SubscriptionModel['plan']
   action: ReactNode
   isSwitchingWorkspace: boolean
   onSwitchWorkspace: (tenantId: string) => void

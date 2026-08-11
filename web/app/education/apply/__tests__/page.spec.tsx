@@ -6,7 +6,6 @@ import EducationApplyPage from '@/app/education/apply/application-form'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
-let mockProviderContext: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 const mockEducationAdd = vi.hoisted(() => vi.fn())
@@ -25,10 +24,6 @@ const mockWorkspaces = vi.hoisted(() => [
     plan: 'sandbox',
   },
 ])
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
-}))
 
 vi.mock('@/context/account-state', async () => {
   const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
@@ -69,6 +64,11 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    features: {
+      get: {
+        queryKey: () => ['features'],
+      },
+    },
     account: {
       education: {
         autocomplete: {
@@ -118,10 +118,6 @@ vi.mock('@/service/client', () => ({
 }))
 
 const setupContext = (isCurrentWorkspaceManager: boolean) => {
-  mockProviderContext = {
-    plan: { type: Plan.sandbox },
-    onPlanInfoChanged: vi.fn(),
-  }
   mockConsoleState = {
     currentWorkspace: { id: 'workspace-1', name: 'Workspace One' },
     isCurrentWorkspaceManager,
@@ -138,7 +134,7 @@ const renderPage = (isEducationAccount = true) => {
     educationStatus: { is_student: isEducationAccount },
     workspacePermissionKeys: null,
   })
-  return render(<EducationApplyPage token="education-token" />, {
+  return render(<EducationApplyPage token="education-token" plan={Plan.sandbox} />, {
     wrapper,
   })
 }

@@ -1,23 +1,12 @@
-import { screen, waitFor } from '@testing-library/react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { screen } from '@testing-library/react'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import EducationApplyRoute from '../application-entry'
 
-const mockReplace = vi.hoisted(() => vi.fn())
-const mockProviderContext = vi.hoisted(() => ({
-  enableEducationPlan: true,
-  isFetchedPlanInfo: true,
-}))
-const mockSearchParams = vi.hoisted(() => ({ value: new URLSearchParams() }))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: typeof mockProviderContext) => unknown) =>
-    selector(mockProviderContext),
-}))
+const mockRedirect = vi.hoisted(() => vi.fn(() => null as never))
 
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: mockReplace }),
-  useSearchParams: () => mockSearchParams.value,
+  redirect: mockRedirect,
 }))
 
 vi.mock('@/app/education/paused-content', () => ({
@@ -31,28 +20,27 @@ vi.mock('../application-form', () => ({
 describe('EducationApplyRoute', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderContext.enableEducationPlan = true
-    mockProviderContext.isFetchedPlanInfo = true
-    mockSearchParams.value = new URLSearchParams()
   })
 
-  it('returns a tokenless URL to the verification entry', async () => {
-    const { wrapper } = createConsoleQueryWrapper()
+  it('returns to home when the education plan is unavailable', () => {
+    const { queryClient, wrapper } = createConsoleQueryWrapper()
+    seedFeatures(queryClient, { education: { enabled: false } })
 
-    render(<EducationApplyRoute />, { wrapper })
+    render(<EducationApplyRoute token="education-token" />, { wrapper })
 
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/education/verify')
-    })
+    expect(mockRedirect).toHaveBeenCalledWith('/')
   })
 
   it('renders the pause state for a direct token URL', () => {
-    mockSearchParams.value = new URLSearchParams('token=education-token')
-    const { wrapper } = createConsoleQueryWrapper({
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
       educationStatus: { is_student: false },
     })
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'sandbox' } },
+      education: { enabled: true },
+    })
 
-    render(<EducationApplyRoute />, { wrapper })
+    render(<EducationApplyRoute token="education-token" />, { wrapper })
 
     expect(screen.getByText('Education paused')).toBeInTheDocument()
     expect(screen.queryByText(/Application form/)).not.toBeInTheDocument()

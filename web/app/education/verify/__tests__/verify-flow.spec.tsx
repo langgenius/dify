@@ -1,20 +1,12 @@
 import { screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { EducationVerifyFlow } from '../verify-flow'
 
 const mockReplace = vi.hoisted(() => vi.fn())
+const mockRedirect = vi.hoisted(() => vi.fn(() => null as never))
 const mockRequestVerification = vi.hoisted(() => vi.fn())
-const mockProviderContext = vi.hoisted(() => ({
-  enableEducationPlan: true,
-  isFetchedPlanInfo: true,
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (selector: (state: typeof mockProviderContext) => unknown) =>
-    selector(mockProviderContext),
-}))
 
 vi.mock('@/context/account-state', async () => {
   const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
@@ -28,6 +20,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
+  redirect: mockRedirect,
   useRouter: () => ({ replace: mockReplace }),
 }))
 
@@ -44,12 +37,13 @@ function renderFlow({
   allowRefresh?: boolean
   isEducationAccount?: boolean
 }) {
-  const { wrapper } = createConsoleQueryWrapper({
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
     educationStatus: {
       allow_refresh: allowRefresh,
       is_student: isEducationAccount,
     },
   })
+  seedFeatures(queryClient, { education: { enabled: true } })
 
   return render(
     <EducationVerifyFlow
@@ -89,9 +83,10 @@ describe('EducationVerifyFlow', () => {
 
   it('requests one token on entry and replaces the route with the application form', async () => {
     mockRequestVerification.mockResolvedValue({ token: 'education token' })
-    const { wrapper } = createConsoleQueryWrapper({
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
       educationStatus: { allow_refresh: false, is_student: false },
     })
+    seedFeatures(queryClient, { education: { enabled: true } })
 
     render(
       <StrictMode>

@@ -1,6 +1,7 @@
 'use client'
 
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -10,9 +11,8 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { userProfileEmailAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import Link from '@/next/link'
-import { useRouter } from '@/next/navigation'
+import { redirect, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { EDUCATION_APPLICATIONS_PAUSED } from '../constants'
 import { EducationPausedContent } from '../paused-content'
@@ -28,6 +28,8 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
   allowRefresh: allow_refresh ?? false,
   isEducationAccount: is_student ?? false,
 })
+
+const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
 const requestEducationVerification: EducationVerificationRequest = () =>
   consoleClient.account.education.verify.get({}, { context: { silent: true } })
@@ -67,14 +69,16 @@ export function EducationVerifyFlow({
 }) {
   const { t } = useTranslation()
   const router = useRouter()
-  const enableEducationPlan = useProviderContextSelector((state) => state.enableEducationPlan)
-  const isFetchedPlanInfo = useProviderContextSelector((state) => state.isFetchedPlanInfo)
   const userEmail = useAtomValue(userProfileEmailAtom)
   const docLink = useDocLink()
   const verificationStartedRef = useRef(false)
+  const featuresQuery = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEducationPlanEnabled }),
+  )
+  const enableEducationPlan = featuresQuery.data === true
   const educationStatusQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      enabled: isFetchedPlanInfo && enableEducationPlan,
+      enabled: featuresQuery.isSuccess && enableEducationPlan,
       select: selectEducationStatus,
     }),
   )
@@ -87,10 +91,6 @@ export function EducationVerifyFlow({
     mutationKey: ['education', 'verification-token'],
     mutationFn: () => requestEducationVerificationToken(requestVerification),
   })
-
-  useEffect(() => {
-    if (isFetchedPlanInfo && !enableEducationPlan) router.replace('/')
-  }, [enableEducationPlan, isFetchedPlanInfo, router])
 
   const startVerification = useCallback(() => {
     if (verificationStartedRef.current) return
@@ -115,8 +115,11 @@ export function EducationVerifyFlow({
     if (!applicationsPaused && canVerify) startVerification()
   }, [applicationsPaused, canVerify, startVerification])
 
-  if (!isFetchedPlanInfo || !enableEducationPlan || educationStatusQuery.isPending)
-    return <EducationVerifyLoading />
+  if (featuresQuery.isPending) return <EducationVerifyLoading />
+
+  if (!enableEducationPlan) return redirect('/')
+
+  if (educationStatusQuery.isPending) return <EducationVerifyLoading />
 
   if (educationStatusQuery.isError)
     return (
