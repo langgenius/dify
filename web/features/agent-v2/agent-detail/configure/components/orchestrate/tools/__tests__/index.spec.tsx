@@ -15,6 +15,7 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentTools } from '../index'
 
@@ -47,13 +48,6 @@ const pluginInstallState = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   ToolPickerContent: () => <div>Mock tool picker</div>,
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  return {
-    userProfileIdAtom: atom('user-1'),
-  }
-})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
@@ -392,6 +386,7 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -410,6 +405,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
   store.set(agentComposerSavedDraftAtom, initialDraft)
@@ -436,6 +432,7 @@ function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agent
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
