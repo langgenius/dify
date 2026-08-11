@@ -45,11 +45,11 @@ class AccountDeletionRateLimitError(AccountApplicationError):
         self.retry_after_minutes = retry_after_minutes
 
 
-class ChangeEmailSendIPLimitedError(Exception):
+class ChangeEmailSendIPLimitedError(AccountApplicationError):
     """The caller IP exceeded the email-send policy."""
 
 
-class ChangeEmailSendRateLimitError(Exception):
+class ChangeEmailSendRateLimitError(AccountApplicationError):
     """Too many change-email messages were requested for the address."""
 
     def __init__(self, retry_after_minutes: int) -> None:
@@ -57,23 +57,23 @@ class ChangeEmailSendRateLimitError(Exception):
         self.retry_after_minutes = retry_after_minutes
 
 
-class InvalidChangeEmailTokenError(Exception):
+class InvalidChangeEmailTokenError(AccountApplicationError):
     """The token is absent, malformed, in the wrong phase, or bound elsewhere."""
 
 
-class InvalidChangeEmailAddressError(Exception):
+class InvalidChangeEmailAddressError(AccountApplicationError):
     """The request address does not match the account or token state."""
 
 
-class ChangeEmailVerificationLimitError(Exception):
+class ChangeEmailVerificationLimitError(AccountApplicationError):
     """Too many invalid verification-code attempts were made."""
 
 
-class InvalidChangeEmailCodeError(Exception):
+class InvalidChangeEmailCodeError(AccountApplicationError):
     """The verification code does not match the current token."""
 
 
-class AccountEmailFrozenError(Exception):
+class AccountEmailFrozenError(AccountApplicationError):
     """The target email is temporarily frozen by account policy."""
 
 
@@ -81,5 +81,5 @@ class AccountEmailDomainSuspendedError(AccountEmailFrozenError):
     """The target email belongs to a suspended domain."""
 
 
-class AccountEmailAlreadyInUseError(Exception):
+class AccountEmailAlreadyInUseError(AccountApplicationError):
     """The target email already belongs to an account."""
