@@ -33,6 +33,7 @@ import {
   getSkillVersionTitle,
   isDirectory,
   renderMarkdownLiveEditorContent,
+  setMarkdownLiveEditorSelectionOffset,
 } from './shared'
 
 type SkillMarkdownLinkProps = ComponentPropsWithoutRef<'a'> & { node?: unknown }
@@ -71,6 +72,111 @@ function encodeSkillMarkdownReferenceLinks() {
 }
 
 const SKILL_REFERENCE_REMARK_PLUGINS = [encodeSkillMarkdownReferenceLinks]
+
+const markdownPreviewBlockSelector = 'h1, h2, h3, h4, h5, h6, p, li, pre, blockquote, td, th'
+
+function findClosestTextOffset(content: string, text: string, preferredOffset: number) {
+  let closestOffset = -1
+  let searchOffset = content.indexOf(text)
+
+  while (searchOffset !== -1) {
+    if (
+      closestOffset === -1 ||
+      Math.abs(searchOffset - preferredOffset) < Math.abs(closestOffset - preferredOffset)
+    ) {
+      closestOffset = searchOffset
+    }
+    searchOffset = content.indexOf(text, searchOffset + 1)
+  }
+
+  return closestOffset
+}
+
+function getMarkdownPreviewSelectionOffset(
+  root: HTMLElement,
+  target: EventTarget | null,
+  body: string,
+  clientX?: number,
+  clientY?: number,
+) {
+  const rootRect = root.getBoundingClientRect()
+  const clickRatio =
+    clientY == null || rootRect.height === 0
+      ? 0
+      : Math.min(Math.max((clientY - rootRect.top) / rootRect.height, 0), 1)
+  const preferredOffset = Math.round(body.length * clickRatio)
+  const targetElement = target instanceof HTMLElement ? target : null
+  const blockElement = targetElement?.closest<HTMLElement>(markdownPreviewBlockSelector)
+  const blockText = blockElement?.textContent?.trim()
+
+  if (clientX != null && clientY != null) {
+    const documentWithCaretPosition = root.ownerDocument as Document & {
+      caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null
+    }
+    const caretPosition = documentWithCaretPosition.caretPositionFromPoint?.(clientX, clientY)
+    const caretText = caretPosition?.offsetNode.textContent
+    if (caretPosition && caretText?.trim()) {
+      const caretTextOffset = findClosestTextOffset(body, caretText, preferredOffset)
+      if (caretTextOffset !== -1) return caretTextOffset + caretPosition.offset
+    }
+  }
+
+  if (blockText) {
+    const blockOffset = findClosestTextOffset(body, blockText, preferredOffset)
+    if (blockOffset !== -1) return blockOffset
+  }
+
+  const approximateOffset = Math.round(body.length * clickRatio)
+  return body.lastIndexOf('\n', approximateOffset) + 1
+}
+
+function getScrollParent(element: HTMLElement) {
+  let parent = element.parentElement
+
+  while (parent) {
+    const overflowY = parent.ownerDocument.defaultView?.getComputedStyle(parent).overflowY
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight
+    )
+      return parent
+    parent = parent.parentElement
+  }
+}
+
+function getSelectionRect(root: HTMLElement) {
+  const selection = root.ownerDocument.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0).cloneRange()
+  if (!root.contains(range.startContainer)) return
+  range.collapse(true)
+  return range.getBoundingClientRect()
+}
+
+function getMarkdownPreviewAnchorRect(root: HTMLElement, body: string, sourceOffset: number) {
+  let closestElement: HTMLElement | undefined
+  let closestDistance = Number.POSITIVE_INFINITY
+
+  for (const element of root.querySelectorAll<HTMLElement>(markdownPreviewBlockSelector)) {
+    const text = element.textContent?.trim()
+    if (!text) continue
+
+    const textOffset = findClosestTextOffset(body, text, sourceOffset)
+    if (textOffset === -1) continue
+
+    const distance =
+      sourceOffset < textOffset
+        ? textOffset - sourceOffset
+        : Math.max(sourceOffset - (textOffset + text.length), 0)
+    if (distance >= closestDistance) continue
+
+    closestDistance = distance
+    closestElement = element
+  }
+
+  return closestElement?.getBoundingClientRect()
+}
 
 function useSkillMarkdownComponents(onOpenReference?: (path: string) => void) {
   return useMemo<NonNullable<MarkdownProps['customComponents']>>(
@@ -574,6 +680,13 @@ export function MarkdownLiveBodyEditor({
 }) {
   const renderedBodyRef = useRef<string | null>(null)
   const renderedContentRevisionRef = useRef(contentRevision)
+  const pendingPreviewAnchorRef = useRef<{
+    previousScrollTop: number
+    scrollParent: HTMLElement
+    selectionTop?: number
+    sourceOffset: number
+  } | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const [focused, setFocused] = useState(false)
   const [selectionOffset, setSelectionOffset] = useState(0)
   const [referenceTooltip, setReferenceTooltip] = useState<{
@@ -597,6 +710,87 @@ export function MarkdownLiveBodyEditor({
     return target.closest<HTMLElement>('[data-reference-path]')?.dataset.referencePath
   }
 
+  const enterEditMode = (root: HTMLElement, selectionOffset: number, clientY?: number) => {
+    const scrollParent = getScrollParent(root)
+    const previousScrollTop = scrollParent?.scrollTop
+
+    setFocused(true)
+    window.requestAnimationFrame(() => {
+      const editor = editorRef.current
+      if (!editor) return
+
+      editor.focus({ preventScroll: true })
+      setMarkdownLiveEditorSelectionOffset(editor, selectionOffset)
+      setSelectionOffset(selectionOffset)
+
+      if (!scrollParent || previousScrollTop == null) return
+      if (clientY == null) {
+        scrollParent.scrollTop = previousScrollTop
+        return
+      }
+
+      const selectionRect = getSelectionRect(editor)
+      if (selectionRect) scrollParent.scrollTop += selectionRect.top - clientY
+      else scrollParent.scrollTop = previousScrollTop
+    })
+  }
+
+  const exitEditMode = (root: HTMLElement) => {
+    const scrollParent = getScrollParent(root)
+    if (scrollParent) {
+      pendingPreviewAnchorRef.current = {
+        previousScrollTop: scrollParent.scrollTop,
+        scrollParent,
+        selectionTop: getSelectionRect(root)?.top,
+        sourceOffset: getMarkdownLiveEditorSelectionOffset(root) ?? selectionOffset,
+      }
+    }
+
+    setFocused(false)
+  }
+
+  useLayoutEffect(() => {
+    if (focused) return
+
+    const anchor = pendingPreviewAnchorRef.current
+    const preview = previewRef.current
+    if (!anchor || !preview) return
+
+    const restoreAnchor = () => {
+      const anchorRect = getMarkdownPreviewAnchorRect(preview, body, anchor.sourceOffset)
+      if (!anchorRect || anchor.selectionTop == null) return false
+
+      anchor.scrollParent.scrollTop += anchorRect.top - anchor.selectionTop
+      pendingPreviewAnchorRef.current = null
+      return true
+    }
+
+    if (restoreAnchor()) return
+
+    const MutationObserver = preview.ownerDocument.defaultView?.MutationObserver
+    if (!MutationObserver) {
+      anchor.scrollParent.scrollTop = anchor.previousScrollTop
+      pendingPreviewAnchorRef.current = null
+      return
+    }
+
+    const observer = new MutationObserver(() => {
+      if (restoreAnchor()) {
+        observer.disconnect()
+        return
+      }
+
+      if (preview.textContent?.trim()) {
+        anchor.scrollParent.scrollTop = anchor.previousScrollTop
+        pendingPreviewAnchorRef.current = null
+        observer.disconnect()
+      }
+    })
+    observer.observe(preview, { childList: true, subtree: true })
+
+    return () => observer.disconnect()
+  }, [body, focused])
+
   useLayoutEffect(() => {
     const root = editorRef.current
     if (!root) return
@@ -613,6 +807,7 @@ export function MarkdownLiveBodyEditor({
     <div className="relative min-h-[360px]">
       {showRenderedPreview && (
         <div
+          ref={previewRef}
           role="textbox"
           aria-label={placeholder}
           aria-multiline="true"
@@ -635,13 +830,21 @@ export function MarkdownLiveBodyEditor({
               return
 
             event.preventDefault()
-            setFocused(true)
-            window.requestAnimationFrame(() => editorRef.current?.focus())
+            enterEditMode(
+              event.currentTarget,
+              getMarkdownPreviewSelectionOffset(
+                event.currentTarget,
+                event.target,
+                body,
+                event.clientX,
+                event.clientY,
+              ),
+              event.clientY,
+            )
           }}
           onFocus={(event) => {
             if (event.currentTarget !== event.target) return
-            setFocused(true)
-            window.requestAnimationFrame(() => editorRef.current?.focus())
+            enterEditMode(event.currentTarget, 0)
           }}
         >
           <Markdown
@@ -661,7 +864,7 @@ export function MarkdownLiveBodyEditor({
           tabIndex={0}
           suppressContentEditableWarning
           className="relative z-[1] min-h-[360px] w-full bg-transparent text-[15px]/7 break-words whitespace-pre-wrap text-text-secondary caret-text-secondary outline-none"
-          onBlur={() => setFocused(false)}
+          onBlur={(event) => exitEditMode(event.currentTarget)}
           onClick={(event: MouseEvent<HTMLDivElement>) => {
             const referencePath = getReferencePath(event.target)
             if (referencePath) {

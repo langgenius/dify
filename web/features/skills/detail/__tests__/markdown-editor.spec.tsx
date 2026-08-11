@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -75,7 +75,12 @@ describe('Skill markdown editor', () => {
     expect(document.querySelector('[contenteditable="true"]')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('heading', { name: 'Usage' }))
-    expect(document.querySelector('[contenteditable="true"]')).toBeInTheDocument()
+    const editor = document.querySelector<HTMLElement>('[contenteditable="true"]')
+    expect(editor).toBeInTheDocument()
+    await waitFor(() => {
+      expect(editor).toHaveFocus()
+      expect(document.getSelection()?.anchorOffset).toBe(markdownBody.indexOf('Usage'))
+    })
   })
 
   it('renders read-only Markdown and opens a referenced file', async () => {
