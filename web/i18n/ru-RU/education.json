@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Образовательная скидка применяется только к годовому плану Professional. Если оставить текущий план, скидка не будет включена.",
   "educationPricingConfirm.title": "Выбранный план не поддерживает образовательную скидку",
   "emailLabel": "Ваш текущий адрес электронной почты",
+  "form.schoolName.noResults": "Подходящая школа не найдена. Вы всё равно можете ввести её официальное название.",
   "form.schoolName.placeholder": "Введите официальное, полное название вашей школы",
   "form.schoolName.title": "Название вашей школы",
   "form.schoolRole.option.administrator": "Школьный администратор",

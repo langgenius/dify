@@ -1,16 +1,7 @@
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
-/**
- * Integration test: Education Verification Flow
- *
- * Tests the education plan verification flow in PlanComp:
- *   PlanComp → handleVerify → show temporary pause notice
- *
- * Also covers education button visibility based on context flags.
- */
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { cleanup, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { cleanup, screen } from '@testing-library/react'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
@@ -49,8 +40,6 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 const mockSetShowPricingModal = vi.fn()
-const mockRouterPush = vi.fn()
-const mockMutateAsync = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -72,46 +61,10 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({
-    isShow,
-    title,
-    content,
-    email,
-    showLink,
-  }: {
-    isShow: boolean
-    title?: string
-    content?: React.ReactNode
-    email?: string
-    showLink?: boolean
-  }) =>
-    isShow ? (
-      <div data-testid="verify-state-modal">
-        {title && <span data-testid="modal-title">{title}</span>}
-        {content !== undefined && content !== null ? (
-          <span data-testid="modal-content">{content}</span>
-        ) : null}
-        {email && <span data-testid="modal-email">{email}</span>}
-        {showLink && <span data-testid="modal-show-link">link</span>}
-      </div>
-    ) : null,
 }))
 
 // ─── Test data factories ────────────────────────────────────────────────────
@@ -181,7 +134,10 @@ describe('Education Verification Flow', () => {
 
       render(<PlanComp loc="test" />)
 
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /toVerified/i })).toHaveAttribute(
+        'href',
+        '/education/verify',
+      )
     })
 
     it('should not show verify button when already verified and not about to expire', () => {
@@ -206,32 +162,7 @@ describe('Education Verification Flow', () => {
     })
   })
 
-  // ─── 2. Temporarily Paused Verification Flow ────────────────────────────
-  describe('Temporarily paused verification flow', () => {
-    it('should show the pause notice without starting verification', async () => {
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('verify-state-modal')).toBeInTheDocument()
-      })
-
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(/educationDiscountPaused.title/i)
-      expect(screen.getByTestId('modal-content')).toHaveTextContent(
-        /educationDiscountPaused.description/i,
-      )
-      expect(screen.queryByTestId('modal-email')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('modal-show-link')).not.toBeInTheDocument()
-      expect(mockMutateAsync).not.toHaveBeenCalled()
-      expect(mockRouterPush).not.toHaveBeenCalled()
-    })
-  })
-
-  // ─── 3. Education + Upgrade Coexistence ─────────────────────────────────
+  // ─── 2. Education + Upgrade Coexistence ─────────────────────────────────
   describe('Education and upgrade button coexistence', () => {
     it('should show both education verify and upgrade buttons for sandbox user', () => {
       setupContexts({ type: Plan.sandbox }, { enableEducationPlan: true })

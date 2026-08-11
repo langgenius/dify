@@ -3,11 +3,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
-import EducationApplyPage from '@/app/education-apply/education-apply-page'
+import EducationApplyPage from '@/app/education/apply/application-form'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
-let mockProviderContext: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 const mockEducationAdd = vi.hoisted(() => vi.fn())
@@ -27,10 +26,6 @@ const mockWorkspaces = vi.hoisted(() => [
   },
 ])
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
-}))
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -42,7 +37,6 @@ vi.mock('@/context/i18n', () => ({
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams('token=education-token'),
 }))
 
 vi.mock('@/service/billing', () => ({
@@ -51,14 +45,6 @@ vi.mock('@/service/billing', () => ({
 
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: vi.fn() }),
-}))
-
-vi.mock('@/service/use-education', () => ({
-  useEducationAutocomplete: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ data: [], has_next: false }),
-    isPending: false,
-    data: undefined,
-  }),
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -74,6 +60,11 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    features: {
+      get: {
+        queryKey: () => ['features'],
+      },
+    },
     account: {
       profile: {
         get: {
@@ -81,6 +72,15 @@ vi.mock('@/service/client', () => ({
         },
       },
       education: {
+        autocomplete: {
+          get: {
+            infiniteOptions: (options: Record<string, unknown>) => ({
+              queryKey: ['account', 'education', 'autocomplete'],
+              queryFn: async () => ({ data: [], has_next: false }),
+              ...options,
+            }),
+          },
+        },
         get: {
           key: () => ['account', 'education'],
           queryOptions: (options: Record<string, unknown> = {}) => ({
@@ -119,10 +119,6 @@ vi.mock('@/service/client', () => ({
 }))
 
 const setupContext = (isCurrentWorkspaceManager: boolean) => {
-  mockProviderContext = {
-    plan: { type: Plan.sandbox },
-    onPlanInfoChanged: vi.fn(),
-  }
   mockConsoleState = {
     currentWorkspace: { id: 'workspace-1', name: 'Workspace One' },
     isCurrentWorkspaceManager,
@@ -140,7 +136,7 @@ const renderPage = (isEducationAccount = true) => {
     educationStatus: { is_student: isEducationAccount },
     workspacePermissionKeys: null,
   })
-  return render(<EducationApplyPage />, {
+  return render(<EducationApplyPage token="education-token" plan={Plan.sandbox} />, {
     wrapper,
   })
 }
@@ -153,7 +149,7 @@ describe('EducationApplyPage billing boundary', () => {
     mockFetchSubscriptionUrls.mockResolvedValue({ url: window.location.href })
     mockSwitchWorkspace.mockResolvedValue(undefined)
     vi.stubGlobal('location', {
-      href: 'https://console.example.com/education-apply?token=education-token',
+      href: 'https://console.example.com/education/apply?token=education-token',
       reload: vi.fn(),
     } as unknown as Location)
   })
@@ -240,9 +236,15 @@ describe('EducationApplyPage billing boundary', () => {
 
     const submitButton = screen.getByRole('button', { name: 'education.submit' })
     await user.type(
-      screen.getByPlaceholderText('education.form.schoolName.placeholder'),
+      screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
       'DifyUniversity',
     )
+    expect(
+      screen.getByRole('radiogroup', { name: 'education.form.schoolRole.title' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: 'education.form.schoolRole.option.student' }),
+    ).toBeChecked()
     await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.age' }))
     await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.inSchool' }))
 

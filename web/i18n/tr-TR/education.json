@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Eğitim indirimi yalnızca yıllık Professional planı için geçerlidir. Mevcut planınızı korursanız indirim dahil edilmez.",
   "educationPricingConfirm.title": "Seçtiğiniz plan eğitim indirimini desteklemiyor",
   "emailLabel": "Şu anki e-posta adresin",
+  "form.schoolName.noResults": "Eşleşen bir okul bulunamadı. Okulun resmi adını yine de girebilirsiniz.",
   "form.schoolName.placeholder": "Okulunuzun resmi, kısaltılmamış adını girin",
   "form.schoolName.title": "Okulunuzun Adı",
   "form.schoolRole.option.administrator": "Okul Yöneticisi",

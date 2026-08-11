@@ -350,7 +350,7 @@ describe('AgentWorkingDirectoryPanel', () => {
     )
   })
 
-  it('should separate saved and temporary files by their sandbox path roots', async () => {
+  it('should separate persistent and temporary files by their sandbox path roots', async () => {
     const user = userEvent.setup()
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
       queryKey: ['sandbox-files-by-root', input],
@@ -364,17 +364,17 @@ describe('AgentWorkingDirectoryPanel', () => {
     }))
     renderWorkingDirectoryPanel()
 
-    const savedFilesTab = await screen.findByRole('tab', {
-      name: 'agentV2.agentDetail.configure.workingDirectory.savedFiles',
+    const persistentFilesTab = await screen.findByRole('tab', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
     })
     const temporaryFilesTab = screen.getByRole('tab', {
       name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
     })
 
-    expect(savedFilesTab).toHaveAttribute('aria-selected', 'true')
+    expect(persistentFilesTab).toHaveAttribute('aria-selected', 'true')
     expect(
       await screen.findByRole('tabpanel', {
-        name: 'agentV2.agentDetail.configure.workingDirectory.savedFiles',
+        name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
       }),
     ).toBeInTheDocument()
     await waitFor(() => {
@@ -462,6 +462,30 @@ describe('AgentWorkingDirectoryPanel', () => {
       })
       expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
     })
+  })
+
+  it('should explain the lifetime of persistent and temporary files', async () => {
+    const user = userEvent.setup()
+    renderWorkingDirectoryPanel()
+
+    const persistentFilesTooltip =
+      'agentV2.agentDetail.configure.workingDirectory.persistentFilesTooltip'
+    const temporaryFilesTooltip =
+      'agentV2.agentDetail.configure.workingDirectory.temporaryFilesTooltip'
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: persistentFilesTooltip,
+      }),
+    )
+    expect(await screen.findByText(persistentFilesTooltip)).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', {
+        name: temporaryFilesTooltip,
+      }),
+    )
+    expect(await screen.findByText(temporaryFilesTooltip)).toBeInTheDocument()
   })
 
   it('should download binary working directory files from the unsupported preview download link', async () => {
