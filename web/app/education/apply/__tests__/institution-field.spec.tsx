@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import InstitutionField from '../institution-field'
@@ -7,7 +7,9 @@ const educationAutocompleteQueryMock = vi.hoisted(() => ({
   options: vi.fn(),
   fetchNextPage: vi.fn(),
   hasNextPage: false,
+  isError: false,
   isFetchingNextPage: false,
+  isFetchNextPageError: false,
   isPending: false,
   isSuccess: true,
   data: {
@@ -51,14 +53,49 @@ const ControlledInstitutionField = () => {
   return <InstitutionField value={value} onValueChange={setValue} />
 }
 
+function stubIntersectionObserver() {
+  let callback: IntersectionObserverCallback | undefined
+
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(nextCallback: IntersectionObserverCallback) {
+        callback = nextCallback
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+
+  return async () => {
+    await waitFor(() => {
+      expect(callback).toBeDefined()
+    })
+    act(() => {
+      callback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+  }
+}
+
 describe('InstitutionField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     educationAutocompleteQueryMock.hasNextPage = false
+    educationAutocompleteQueryMock.isError = false
     educationAutocompleteQueryMock.isFetchingNextPage = false
+    educationAutocompleteQueryMock.isFetchNextPageError = false
     educationAutocompleteQueryMock.isPending = false
     educationAutocompleteQueryMock.isSuccess = true
     educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpha University', 'Beta College']
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('uses a free-form institution name as the suggestions query', async () => {
@@ -115,8 +152,9 @@ describe('InstitutionField', () => {
     expect(input).toHaveValue('Dify Academy')
   })
 
-  it('requests the next page when the suggestions reach the scroll boundary', async () => {
+  it('requests the next page when the suggestions sentinel enters the preload area', async () => {
     const user = userEvent.setup()
+    const triggerIntersection = stubIntersectionObserver()
     educationAutocompleteQueryMock.hasNextPage = true
 
     render(<ControlledInstitutionField />)
@@ -126,15 +164,30 @@ describe('InstitutionField', () => {
       'A',
     )
 
-    const scrollContainer = await screen.findByRole('listbox')
-    Object.defineProperties(scrollContainer, {
-      scrollTop: { value: 60, configurable: true },
-      scrollHeight: { value: 100, configurable: true },
-      clientHeight: { value: 40, configurable: true },
+    await screen.findByRole('listbox')
+    await triggerIntersection()
+
+    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledOnce()
+    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledWith({
+      cancelRefetch: false,
     })
+  })
 
-    fireEvent.scroll(scrollContainer)
+  it('keeps loaded suggestions visible when the next page fails', async () => {
+    const user = userEvent.setup()
+    educationAutocompleteQueryMock.hasNextPage = true
+    educationAutocompleteQueryMock.isError = true
+    educationAutocompleteQueryMock.isFetchNextPageError = true
+    educationAutocompleteQueryMock.isSuccess = false
 
-    expect(educationAutocompleteQueryMock.fetchNextPage).toHaveBeenCalledTimes(1)
+    render(<ControlledInstitutionField />)
+
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
+
+    expect(await screen.findByText('Alpha University')).toBeInTheDocument()
+    expect(screen.getByText('common.dynamicSelect.error').closest('[role="status"]')).not.toBeNull()
   })
 })

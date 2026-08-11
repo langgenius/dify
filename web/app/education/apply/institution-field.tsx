@@ -1,7 +1,7 @@
 import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
-import type { UIEventHandler } from 'react'
 import {
   Autocomplete,
+  AutocompleteCollection,
   AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteInput,
@@ -14,8 +14,9 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import Loading from '@/app/components/base/loading'
 import { consoleQuery } from '@/service/client'
 
@@ -29,31 +30,41 @@ type InstitutionFieldProps = {
 const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const { t } = useTranslation()
   const inputId = useId()
+  const listRef = useRef<HTMLDivElement>(null)
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const isSearchReady = !!searchQuery && searchQuery === debouncedSearchQuery
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, isSuccess } =
-    useInfiniteQuery({
-      ...consoleQuery.account.education.autocomplete.get.infiniteOptions({
-        input: (pageParam) => ({
-          query: {
-            keywords: debouncedSearchQuery,
-            limit: EDUCATION_AUTOCOMPLETE_PAGE_SIZE,
-            page: Number(pageParam),
-          },
-        }),
-        initialPageParam: 0,
-        getNextPageParam: (lastPage, pages) =>
-          lastPage.has_next ? (lastPage.curr_page ?? pages.length - 1) + 1 : undefined,
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    isPending,
+    isSuccess,
+  } = useInfiniteQuery({
+    ...consoleQuery.account.education.autocomplete.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          keywords: debouncedSearchQuery,
+          limit: EDUCATION_AUTOCOMPLETE_PAGE_SIZE,
+          page: Number(pageParam),
+        },
       }),
-      enabled: isSearchReady,
-    })
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, pages) =>
+        lastPage.has_next ? (lastPage.curr_page ?? pages.length - 1) + 1 : undefined,
+    }),
+    enabled: isSearchReady,
+  })
   const suggestions = isSearchReady ? (data?.pages.flatMap((page) => page.data ?? []) ?? []) : []
   const isLoading = isPending || isFetchingNextPage
-  const shouldOpenPopup = isPopupOpen && isSearchReady && (isLoading || isSuccess)
+  const shouldOpenPopup = isPopupOpen && isSearchReady
   const shouldShowEmpty = shouldOpenPopup && isSuccess && !isLoading && suggestions.length === 0
   const shouldShowLoading = shouldOpenPopup && isLoading
+  const shouldShowError = shouldOpenPopup && isError && !isLoading
 
   const handleValueChange = (inputValue: string, eventDetails: AutocompleteChangeEventDetails) => {
     onValueChange(inputValue)
@@ -65,14 +76,6 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
 
     setSearchQuery(inputValue)
     setIsPopupOpen(!!inputValue)
-  }
-
-  const handleScroll: UIEventHandler<HTMLDivElement> = (event) => {
-    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0
-    if (!isAtBottom || !hasNextPage || isFetchingNextPage) return
-
-    void fetchNextPage()
   }
 
   return (
@@ -104,12 +107,24 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
           portalProps={{ keepMounted: true }}
           popupProps={{ 'aria-busy': isLoading || undefined }}
         >
-          <AutocompleteList<string> onScroll={handleScroll}>
-            {(institution) => (
-              <AutocompleteItem key={institution} value={institution} title={institution}>
-                <AutocompleteItemText>{institution}</AutocompleteItemText>
-              </AutocompleteItem>
-            )}
+          <AutocompleteList ref={listRef}>
+            <AutocompleteCollection<string>>
+              {(institution) => (
+                <AutocompleteItem key={institution} value={institution} title={institution}>
+                  <AutocompleteItemText>{institution}</AutocompleteItemText>
+                </AutocompleteItem>
+              )}
+            </AutocompleteCollection>
+            {hasNextPage ? (
+              <InfiniteScrollSentinel
+                canLoadMore={shouldOpenPopup && !isFetchingNextPage && !isFetchNextPageError}
+                onLoadMore={() => {
+                  void fetchNextPage({ cancelRefetch: false })
+                }}
+                preloadDistance={5}
+                scrollContainerRef={listRef}
+              />
+            ) : null}
           </AutocompleteList>
           <AutocompleteEmpty>
             {shouldShowEmpty ? t(($) => $['form.schoolName.noResults'], { ns: 'education' }) : null}
@@ -117,11 +132,15 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
           <AutocompleteStatus className="p-0">
             {shouldShowLoading ? (
               <>
-                <span className="sr-only">{t(($) => $.loading, { ns: 'appApi' })}</span>
+                <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
                 <div aria-hidden="true">
                   <Loading className="h-10" />
                 </div>
               </>
+            ) : shouldShowError ? (
+              <div className="px-3 py-2 text-text-destructive">
+                {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+              </div>
             ) : null}
           </AutocompleteStatus>
         </AutocompleteContent>
