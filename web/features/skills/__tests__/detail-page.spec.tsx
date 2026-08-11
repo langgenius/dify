@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   fetchSkillFileBlob: vi.fn(),
   checkDraftFilesMutationFn: vi.fn(),
   publishSkillMutationFn: vi.fn(),
+  publishSkillMutationOptions: vi.fn(),
   routerPush: vi.fn(),
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
@@ -214,7 +215,10 @@ vi.mock('@/service/client', () => ({
             },
             publish: {
               post: {
-                mutationOptions: () => ({ mutationFn: mocks.publishSkillMutationFn }),
+                mutationOptions: (options?: unknown) => {
+                  mocks.publishSkillMutationOptions(options)
+                  return { mutationFn: mocks.publishSkillMutationFn }
+                },
               },
             },
             references: {
@@ -2784,6 +2788,29 @@ describe('SkillDetailPage', () => {
       'text-text-destructive',
     )
     expect(screen.queryByText('已创建用于客户问题分级处理的 skill 草案')).not.toBeInTheDocument()
+  })
+
+  it('shows only the detailed backend error when publishing fails', async () => {
+    const user = userEvent.setup()
+    mocks.publishSkillMutationFn.mockRejectedValueOnce(
+      new Error('SKILL.md frontmatter name is required'),
+    )
+
+    renderSkillDetailPage()
+
+    expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
+      context: { silent: true },
+    })
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'skill.skillManagement.detail.publishUpdate',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('SKILL.md frontmatter name is required')
+    })
+    expect(toast.error).toHaveBeenCalledTimes(1)
   })
 
   it('shows a publish confirmation for referenced skills before publishing updates', async () => {
