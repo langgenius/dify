@@ -46,6 +46,9 @@ class SkillVersionManifest(BaseModel):
     """Published Skill snapshot file index."""
 
     files: list[SkillVersionManifestFile]
+    name: str | None = None
+    display_name: str | None = None
+    description: str | None = None
 
     model_config = ConfigDict(extra="forbid")
 

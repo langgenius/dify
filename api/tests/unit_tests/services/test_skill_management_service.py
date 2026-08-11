@@ -8,7 +8,7 @@ import zipfile
 from collections.abc import Generator
 from types import SimpleNamespace
 from typing import cast, override
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -39,7 +39,7 @@ from models.agent_config_entities import (
 )
 from models.enums import TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
-from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion
+from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion, SkillVersionManifest
 from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
@@ -2880,3 +2880,41 @@ def test_assistant_error_message_exposes_provider_description_without_prefix() -
         SkillManagementService._assistant_error_message(error, fallback="fallback")
         == "Bad Request Error, You have no credits remaining."
     )
+
+
+def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed() -> None:
+    skill = SimpleNamespace(
+        id="skill-1",
+        tenant_id=TENANT,
+        name="jietouanhao-peidui2",
+        description="draft description",
+    )
+    version = SimpleNamespace(
+        archive_tool_file_id="archive-1",
+        archive_size=10,
+        hash_code="hash-1",
+        manifest=SkillVersionManifest(
+            files=[],
+            name="jietouanhao-peidui",
+            display_name="Jietouanhao Peidui",
+            description="published description",
+        ),
+    )
+    session = MagicMock()
+    session.execute.return_value = [(SimpleNamespace(), skill, version)]
+
+    with patch("services.skill_management_service.session_factory.create_session") as create_session:
+        create_session.return_value.__enter__.return_value = session
+        result = SkillManagementService().list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)
+
+    assert result == [
+        {
+            "id": "skill-1",
+            "name": "jietouanhao-peidui",
+            "file_id": "archive-1",
+            "description": "published description",
+            "size": 10,
+            "hash": "hash-1",
+            "mime_type": "application/zip",
+        }
+    ]
