@@ -3,8 +3,7 @@ import logging
 from typing import Any, override
 from uuid import uuid4
 
-from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
-from opensearchpy.exceptions import NotFoundError
+from opensearchpy import NotFoundError, OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from typing_extensions import TypedDict

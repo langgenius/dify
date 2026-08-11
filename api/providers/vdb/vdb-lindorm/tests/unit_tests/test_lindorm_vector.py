@@ -43,6 +43,7 @@ def _build_fake_opensearch_modules():
     opensearch_exceptions.NotFoundError = NotFoundError
 
     opensearchpy.OpenSearch = OpenSearch
+    opensearchpy.NotFoundError = NotFoundError
     opensearchpy.helpers = opensearch_helpers
 
     return {
@@ -227,6 +228,9 @@ def test_delete_and_text_exists(lindorm_module):
     assert vector.text_exists("id-1") is True
     vector._client.get.side_effect = lindorm_module.NotFoundError("missing")
     assert vector.text_exists("id-1") is False
+    vector._client.get.side_effect = ConnectionError("connection failed")
+    with pytest.raises(ConnectionError, match="connection failed"):
+        vector.text_exists("id-1")
 
 
 def test_search_by_vector_validation_and_success(lindorm_module):

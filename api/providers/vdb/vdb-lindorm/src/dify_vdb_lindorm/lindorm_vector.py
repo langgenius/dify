@@ -3,8 +3,7 @@ import logging
 import time
 from typing import Any, override
 
-from opensearchpy import OpenSearch, helpers
-from opensearchpy.exceptions import NotFoundError
+from opensearchpy import NotFoundError, OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
