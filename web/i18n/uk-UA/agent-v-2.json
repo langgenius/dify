@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "головна",
   "agentDetail.configure.workingDirectory.open": "Відкрити робочий каталог",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "Повернутися до робочого каталогу",
+  "agentDetail.configure.workingDirectory.savedFiles": "Збережені файли",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "Тимчасові файли",
   "agentDetail.configure.workingDirectory.title": "Робочий каталог",
   "agentDetail.configure.workingDirectory.treeLabel": "Файли робочого каталогу",
   "agentDetail.configure.workingDirectory.workingDirectory": "робочий каталог",

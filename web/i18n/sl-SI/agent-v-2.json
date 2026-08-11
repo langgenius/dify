@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "domov",
   "agentDetail.configure.workingDirectory.open": "Odpri delovni imenik",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "Nazaj v delovni imenik",
+  "agentDetail.configure.workingDirectory.savedFiles": "Shranjene datoteke",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "Začasne datoteke",
   "agentDetail.configure.workingDirectory.title": "Delovni imenik",
   "agentDetail.configure.workingDirectory.treeLabel": "Datoteke delovnega imenika",
   "agentDetail.configure.workingDirectory.workingDirectory": "delovni imenik",

@@ -720,6 +720,7 @@ def test_start_buffering_should_set_done_event_when_subscription_raises() -> Non
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
@@ -764,7 +765,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         "_build_snapshot_events",
         MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
     )
-    session_maker = MagicMock()
+    session_maker = unbound_session_factory
 
     # Act
     events = list(
@@ -817,6 +818,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
 )
 def test_build_advanced_chat_snapshot_requires_conversation_context(
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
     resumption_context: WorkflowResumptionContext | None,
     expected_error: str,
 ) -> None:
@@ -848,7 +850,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=unbound_session_factory,
         )
     conversation_lookup.assert_not_called()
     app_lookup.assert_not_called()
@@ -856,6 +858,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
 
 def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
@@ -877,7 +880,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         conversation_lookup,
     )
     monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
-    session_maker = MagicMock()
+    session_maker = unbound_session_factory
 
     # Act
     event_stream = build_workflow_event_stream(

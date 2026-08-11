@@ -273,6 +273,8 @@
   "agentDetail.configure.workingDirectory.home": "홈",
   "agentDetail.configure.workingDirectory.open": "작업 디렉터리 열기",
   "agentDetail.configure.workingDirectory.returnToWorkspace": "작업 디렉터리로 돌아가기",
+  "agentDetail.configure.workingDirectory.savedFiles": "저장된 파일",
+  "agentDetail.configure.workingDirectory.temporaryFiles": "임시 파일",
   "agentDetail.configure.workingDirectory.title": "작업 디렉터리",
   "agentDetail.configure.workingDirectory.treeLabel": "작업 디렉터리 파일",
   "agentDetail.configure.workingDirectory.workingDirectory": "작업 디렉터리",
