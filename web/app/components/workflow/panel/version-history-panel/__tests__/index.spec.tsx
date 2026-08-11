@@ -19,12 +19,6 @@ const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'test-user-id',
-    name: 'Test User',
-  },
-}))
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
@@ -68,11 +62,6 @@ type MockVersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({

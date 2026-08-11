@@ -641,9 +641,8 @@ class TestWorkspaceInfoApi:
                 ),
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            session.commit.side_effect = lambda: events.append("commit")
+            session = workspace_session()
+            event.listen(session, "after_commit", lambda _session: events.append("commit"))
             result = method(api, session, "t1")
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]
