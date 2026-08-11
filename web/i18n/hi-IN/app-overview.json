@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "एप्लिकेशन शेयर स्कैन करें",
   "overview.appInfo.qrcode.title": "शेयर करने के लिए क्यूआर कोड",
   "overview.appInfo.regenerate": "पुनः उत्पन्न करें",
-  "overview.appInfo.regenerateNotice": "क्या आप सार्वजनिक URL को पुनः उत्पन्न करना चाहते हैं?",
+  "overview.appInfo.regenerateNotice": "क्या आप सार्वजनिक URL को पुनः उत्पन्न करना चाहते हैं? वर्तमान URL तुरंत काम करना बंद कर देगा।",
   "overview.appInfo.settings.chatColorTheme": "चैटबॉट का रंग थीम",
   "overview.appInfo.settings.chatColorThemeDesc": "चैटबॉट का रंग थीम निर्धारित करें",
   "overview.appInfo.settings.chatColorThemeInverted": "उल्टा",

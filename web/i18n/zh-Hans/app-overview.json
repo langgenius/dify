@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "扫码分享应用",
   "overview.appInfo.qrcode.title": "二维码分享",
   "overview.appInfo.regenerate": "重新生成",
-  "overview.appInfo.regenerateNotice": "您是否要重新生成公开访问 URL？",
+  "overview.appInfo.regenerateNotice": "您是否要重新生成公开访问 URL？当前 URL 将立即失效。",
   "overview.appInfo.settings.chatColorTheme": "聊天颜色主题",
   "overview.appInfo.settings.chatColorThemeDesc": "设置聊天机器人的颜色主题",
   "overview.appInfo.settings.chatColorThemeInverted": "反转",

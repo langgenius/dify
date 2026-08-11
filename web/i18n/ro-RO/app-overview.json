@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Scanați pentru a partaja aplicația",
   "overview.appInfo.qrcode.title": "Cod QR pentru partajare",
   "overview.appInfo.regenerate": "Regenerare",
-  "overview.appInfo.regenerateNotice": "Doriți să regenerați URL-ul public?",
+  "overview.appInfo.regenerateNotice": "Doriți să regenerați URL-ul public? URL-ul actual va înceta să funcționeze imediat.",
   "overview.appInfo.settings.chatColorTheme": "Tema de culoare a chatului",
   "overview.appInfo.settings.chatColorThemeDesc": "Setați tema de culoare a chatbotului",
   "overview.appInfo.settings.chatColorThemeInverted": "Inversat",

@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "アプリケーションの共有をスキャン",
   "overview.appInfo.qrcode.title": "共有用 QR コード",
   "overview.appInfo.regenerate": "再生成",
-  "overview.appInfo.regenerateNotice": "公開 URL を再生成しますか？",
+  "overview.appInfo.regenerateNotice": "公開 URL を再生成しますか？現在の URL は直ちに使用できなくなります。",
   "overview.appInfo.settings.chatColorTheme": "チャットボットのカラーテーマ",
   "overview.appInfo.settings.chatColorThemeDesc": "チャットボットのカラーテーマを設定します",
   "overview.appInfo.settings.chatColorThemeInverted": "反転",

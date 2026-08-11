@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Pindai Untuk Berbagi",
   "overview.appInfo.qrcode.title": "Tautan Kode QR",
   "overview.appInfo.regenerate": "Regenerasi",
-  "overview.appInfo.regenerateNotice": "Apakah Anda ingin membuat ulang URL publik?",
+  "overview.appInfo.regenerateNotice": "Apakah Anda ingin membuat ulang URL publik? URL saat ini akan segera berhenti berfungsi.",
   "overview.appInfo.settings.chatColorTheme": "Tema warna obrolan",
   "overview.appInfo.settings.chatColorThemeDesc": "Atur tema warna chatbot",
   "overview.appInfo.settings.chatColorThemeInverted": "Terbalik",

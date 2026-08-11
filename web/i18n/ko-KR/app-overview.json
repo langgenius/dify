@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "앱 공유를 스캔하세요",
   "overview.appInfo.qrcode.title": "공유용 QR 코드",
   "overview.appInfo.regenerate": "재생성",
-  "overview.appInfo.regenerateNotice": "공개 URL 을 재생성하시겠습니까?",
+  "overview.appInfo.regenerateNotice": "공개 URL을 재생성하시겠습니까? 현재 URL은 즉시 작동이 중지됩니다.",
   "overview.appInfo.settings.chatColorTheme": "챗봇 색상 테마",
   "overview.appInfo.settings.chatColorThemeDesc": "챗봇의 색상 테마를 설정하세요",
   "overview.appInfo.settings.chatColorThemeInverted": "반전",

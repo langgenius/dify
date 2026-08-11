@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "اسکن برای اشتراک‌گذاری",
   "overview.appInfo.qrcode.title": "کد QR لینک",
   "overview.appInfo.regenerate": "تولید مجدد",
-  "overview.appInfo.regenerateNotice": "آیا می‌خواهید آدرس عمومی را دوباره تولید کنید؟",
+  "overview.appInfo.regenerateNotice": "آیا می‌خواهید آدرس عمومی را دوباره تولید کنید؟ آدرس فعلی بلافاصله از کار خواهد افتاد.",
   "overview.appInfo.settings.chatColorTheme": "تم رنگی چت",
   "overview.appInfo.settings.chatColorThemeDesc": "تم رنگی چت‌بات را تنظیم کنید",
   "overview.appInfo.settings.chatColorThemeInverted": "معکوس",

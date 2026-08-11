@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Quét và chia sẻ ứng dụng",
   "overview.appInfo.qrcode.title": "Mã QR để chia sẻ",
   "overview.appInfo.regenerate": "Tạo lại",
-  "overview.appInfo.regenerateNotice": "Bạn có muốn tạo lại địa chỉ công khai không?",
+  "overview.appInfo.regenerateNotice": "Bạn có muốn tạo lại địa chỉ công khai không? URL hiện tại sẽ ngừng hoạt động ngay lập tức.",
   "overview.appInfo.settings.chatColorTheme": "Giao diện màu trò chuyện",
   "overview.appInfo.settings.chatColorThemeDesc": "Thiết lập giao diện màu của chatbot",
   "overview.appInfo.settings.chatColorThemeInverted": "Đảo ngược",

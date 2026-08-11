@@ -188,7 +188,7 @@ export function PublisherEnvironmentSummarySection({
             disabled={deploymentActionsDisabled}
             onClick={onDeployOtherVersion}
           >
-            {t(($) => $['studio.deployOtherVersion'], { ns: 'deployments' })}
+            {t(($) => $['studio.deployAnotherVersion'], { ns: 'deployments' })}
             <span aria-hidden className="i-ri-arrow-right-line size-4" />
           </Button>
         )}

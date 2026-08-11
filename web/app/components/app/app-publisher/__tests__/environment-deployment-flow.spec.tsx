@@ -44,9 +44,9 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.allVersions': 'All versions',
     'deployments.studio.chooseVersionToDeploy': 'Choose a version to deploy',
     'deployments.studio.current': 'Current',
+    'deployments.studio.deployAnotherVersion': 'Deploy another version',
     'deployments.studio.deployConfiguration': 'Deploy configuration',
     'deployments.studio.deployLatest': 'Deploy latest',
-    'deployments.studio.deployOtherVersion': 'Deploy other version',
     'deployments.studio.precheck.description': 'It contains node types that are not yet supported:',
     'deployments.studio.precheck.supportMessage':
       'Support for these node types is coming in a future release.',
@@ -606,7 +606,7 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Deploy latest' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Deploy other version' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Deploy another version' })).not.toBeInTheDocument()
   })
 
   it('keeps current and latest version information when a status refresh fails outside deployment', () => {
@@ -802,7 +802,7 @@ describe('PublisherEnvironmentFlow', () => {
     expect(screen.getByText('Latest')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'All versions' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Deploy other version' }))
+    await user.click(screen.getByRole('button', { name: 'Deploy another version' }))
     await user.click(screen.getByRole('button', { name: /Sprint-35/ }))
 
     expect(screen.getByRole('heading', { name: 'Deploy configuration' })).toBeInTheDocument()
@@ -811,6 +811,6 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'Deploy' }))
 
     await expectDeploymentRequest(requests, 'sprint-35')
-    expect(await screen.findByRole('button', { name: 'Deploy other version' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Deploy another version' })).toBeInTheDocument()
   })
 })

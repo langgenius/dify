@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Scansiona Condividi Applicazione",
   "overview.appInfo.qrcode.title": "Codice QR per condividere",
   "overview.appInfo.regenerate": "Rigenera",
-  "overview.appInfo.regenerateNotice": "Vuoi rigenerare l'URL pubblico?",
+  "overview.appInfo.regenerateNotice": "Vuoi rigenerare l'URL pubblico? L'URL attuale smetterà immediatamente di funzionare.",
   "overview.appInfo.settings.chatColorTheme": "Tema colore chat",
   "overview.appInfo.settings.chatColorThemeDesc": "Imposta il tema colore del chatbot",
   "overview.appInfo.settings.chatColorThemeInverted": "Inverso",

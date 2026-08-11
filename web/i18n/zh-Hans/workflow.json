@@ -147,7 +147,7 @@
   "comments.reply": "回复",
   "common.ImageUploadLegacyTip": "现在可以在 start 表单中创建文件类型变量。未来我们将不继续支持图片上传功能。",
   "common.accessAPIReference": "访问 API",
-  "common.accessPointDescription": "配置 Web App、API、MCP 和 Trigger",
+  "common.accessPointDescription": "配置 Web 应用、API、MCP 和触发器",
   "common.addBlock": "添加节点",
   "common.addDescription": "添加描述...",
   "common.addFailureBranch": "添加异常分支",

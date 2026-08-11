@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Сканувати та обмінюватися додатком",
   "overview.appInfo.qrcode.title": "QR-код для обміну",
   "overview.appInfo.regenerate": "Відновити",
-  "overview.appInfo.regenerateNotice": "Бажаєте згенерувати новий публічний URL?",
+  "overview.appInfo.regenerateNotice": "Бажаєте згенерувати новий публічний URL? Поточний URL негайно припинить працювати.",
   "overview.appInfo.settings.chatColorTheme": "Тема кольору чату",
   "overview.appInfo.settings.chatColorThemeDesc": "Встановіть тему кольору чат-бота",
   "overview.appInfo.settings.chatColorThemeInverted": "Інвертовано",

@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "مسح للمشاركة",
   "overview.appInfo.qrcode.title": "رمز الاستجابة السريعة للرابط",
   "overview.appInfo.regenerate": "إعادة إنشاء",
-  "overview.appInfo.regenerateNotice": "هل تريد إعادة إنشاء عنوان URL العام؟",
+  "overview.appInfo.regenerateNotice": "هل تريد إعادة إنشاء عنوان URL العام؟ سيتوقف عنوان URL الحالي عن العمل فورًا.",
   "overview.appInfo.settings.chatColorTheme": "سمة لون الدردشة",
   "overview.appInfo.settings.chatColorThemeDesc": "تعيين سمة لون روبوت الدردشة",
   "overview.appInfo.settings.chatColorThemeInverted": "معكوس",

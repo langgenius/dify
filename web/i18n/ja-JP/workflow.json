@@ -147,7 +147,7 @@
   "comments.reply": "返信",
   "common.ImageUploadLegacyTip": "開始フォームでファイル型変数が作成可能になりました。画像アップロード機能は今後サポート終了となります。",
   "common.accessAPIReference": "API リファレンス",
-  "common.accessPointDescription": "Web App・API・MCP・Trigger を設定",
+  "common.accessPointDescription": "Web アプリ、API、MCP、トリガーを設定",
   "common.addBlock": "ブロックを追加",
   "common.addDescription": "説明を追加...",
   "common.addFailureBranch": "失敗ブランチを追加",

@@ -147,7 +147,7 @@
   "comments.reply": "Reply",
   "common.ImageUploadLegacyTip": "You can now create file type variables in the start form. We will no longer support the image upload feature in the future. ",
   "common.accessAPIReference": "Access API Reference",
-  "common.accessPointDescription": "Configure web app, API, MCP & Trigger",
+  "common.accessPointDescription": "Configure web app, API, MCP, and triggers",
   "common.addBlock": "Add Node",
   "common.addDescription": "Add description...",
   "common.addFailureBranch": "Add Fail Branch",

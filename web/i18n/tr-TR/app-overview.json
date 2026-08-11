@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Paylaşmak İçin Tara",
   "overview.appInfo.qrcode.title": "Bağlantı QR Kodu",
   "overview.appInfo.regenerate": "Yeniden Oluştur",
-  "overview.appInfo.regenerateNotice": "Genel URL'yi yeniden oluşturmak istiyor musunuz?",
+  "overview.appInfo.regenerateNotice": "Genel URL'yi yeniden oluşturmak istiyor musunuz? Mevcut URL hemen çalışmayı durduracaktır.",
   "overview.appInfo.settings.chatColorTheme": "Sohbet renk teması",
   "overview.appInfo.settings.chatColorThemeDesc": "Sohbet botunun renk temasını ayarlayın",
   "overview.appInfo.settings.chatColorThemeInverted": "Tersine çevrilmiş",

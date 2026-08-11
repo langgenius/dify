@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "สแกนเพื่อแบ่งปัน",
   "overview.appInfo.qrcode.title": "เชื่อมโยงรหัส QR",
   "overview.appInfo.regenerate": "สร้างใหม่",
-  "overview.appInfo.regenerateNotice": "คุณต้องการสร้าง URL สาธารณะใหม่หรือไม่",
+  "overview.appInfo.regenerateNotice": "คุณต้องการสร้าง URL สาธารณะใหม่หรือไม่ URL ปัจจุบันจะหยุดทำงานทันที",
   "overview.appInfo.settings.chatColorTheme": "ธีมสีแชท",
   "overview.appInfo.settings.chatColorThemeDesc": "กําหนดธีมสีของแชทบอท",
   "overview.appInfo.settings.chatColorThemeInverted": "คว่ำ",

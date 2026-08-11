@@ -147,6 +147,7 @@
   "comments.reply": "ຕອບກັບ",
   "common.ImageUploadLegacyTip": "ດຽວນີ້ທ່ານສາມາດສ້າງຕົວປ່ຽນປະເພດໄຟລ໌ໃນຟອມເລີ່ມຕົ້ນໄດ້. ພວກເຮົາຈະບໍ່ຮອງຮັບຟີເຈີອັບໂຫຼດຮູບພາບແບບເກົ່າໃນອະນາຄົດ.",
   "common.accessAPIReference": "ເບິ່ງເອກະສານອ້າງອີງ API",
+  "common.accessPointDescription": "ຕັ້ງຄ່າເວັບແອັບ, API, MCP ແລະ ຕົວກະຕຸ້ນ",
   "common.addBlock": "ເພີ່ມໂນດ",
   "common.addDescription": "ເພີ່ມຄຳອະທິບາຍ...",
   "common.addFailureBranch": "ເພີ່ມສາຂາທີ່ລົ້ມເຫຼວ",

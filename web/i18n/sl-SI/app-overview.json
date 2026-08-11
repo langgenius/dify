@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "Skeniraj za deljenje",
   "overview.appInfo.qrcode.title": "Povezava QR koda",
   "overview.appInfo.regenerate": "Ustvari ponovno",
-  "overview.appInfo.regenerateNotice": "Ali želite ponovno ustvariti javni URL?",
+  "overview.appInfo.regenerateNotice": "Ali želite ponovno ustvariti javni URL? Trenutni URL bo takoj prenehal delovati.",
   "overview.appInfo.settings.chatColorTheme": "Barvna tema klepeta",
   "overview.appInfo.settings.chatColorThemeDesc": "Nastavite barvno temo klepetalnega bota",
   "overview.appInfo.settings.chatColorThemeInverted": "Inverzna",

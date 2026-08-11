@@ -71,7 +71,7 @@
   "overview.appInfo.qrcode.scan": "ສະແກນເພື່ອແຊຣ໌",
   "overview.appInfo.qrcode.title": "ລິ້ງ QR Code",
   "overview.appInfo.regenerate": "ສ້າງໃໝ່",
-  "overview.appInfo.regenerateNotice": "ທ່ານຕ້ອງການສ້າງ URL ສາທາລະນະໃໝ່ຫຼືບໍ່?",
+  "overview.appInfo.regenerateNotice": "ທ່ານຕ້ອງການສ້າງ URL ສາທາລະນະໃໝ່ຫຼືບໍ່? URL ປັດຈຸບັນຈະຢຸດໃຊ້ງານທັນທີ.",
   "overview.appInfo.settings.chatColorTheme": "ທີມສີການສົນທະນາ",
   "overview.appInfo.settings.chatColorThemeDesc": "ຕັ້ງຄ່າທີມສີຂອງ Chatbot",
   "overview.appInfo.settings.chatColorThemeInverted": "ສີແບບປີ້ນກັບ (Inverted)",
