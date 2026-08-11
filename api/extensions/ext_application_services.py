@@ -12,7 +12,7 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from repositories.account_unit_of_work import SQLAlchemyAccountUnitOfWorkFactory
+from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
@@ -59,10 +59,9 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
-    account_unit_of_work = SQLAlchemyAccountUnitOfWorkFactory(database_client)
     return ApplicationServices(
         accounts=AccountServices(
-            profile=AccountProfileService(unit_of_work=account_unit_of_work),
+            profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),

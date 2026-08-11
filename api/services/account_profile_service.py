@@ -2,17 +2,16 @@
 
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError, EmptyAccountProfileChangesError
-from services.account_ports import AccountUnitOfWorkFactory
+from services.account_ports import AccountRepository
 from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
 
 
 class AccountProfileService:
-    def __init__(self, *, unit_of_work: AccountUnitOfWorkFactory) -> None:
-        self._unit_of_work = unit_of_work
+    def __init__(self, *, accounts: AccountRepository) -> None:
+        self._accounts = accounts
 
     def get(self, context: RequestContext) -> AccountSnapshot:
-        with self._unit_of_work() as unit_of_work:
-            account = unit_of_work.accounts.get(context.account_id)
+        account = self._accounts.get(context.account_id)
         if account is None:
             raise AccountNotFoundError
         return account
@@ -21,9 +20,7 @@ class AccountProfileService:
         if not changes.has_changes():
             raise EmptyAccountProfileChangesError
 
-        with self._unit_of_work() as unit_of_work:
-            account = unit_of_work.accounts.update_profile(context.account_id, changes)
-            if account is None:
-                raise AccountNotFoundError
-            unit_of_work.commit()
+        account = self._accounts.update_profile(context.account_id, changes)
+        if account is None:
+            raise AccountNotFoundError
         return account

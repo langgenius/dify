@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account
-from repositories.account_unit_of_work import SQLAlchemyAccountUnitOfWorkFactory
+from repositories.account_repository import SQLAlchemyAccountRepository
 from services.entities.account_entities import AccountProfileChanges
 
 
@@ -17,25 +17,23 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
-def test_unit_of_work_updates_multiple_profile_fields_atomically(
+def test_update_profile_persists_multiple_fields(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_account(sqlite_session)
-    factory = SQLAlchemyAccountUnitOfWorkFactory(sqlite_session_factory)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
 
-    with factory() as unit_of_work:
-        result = unit_of_work.accounts.update_profile(
-            "account-1",
-            AccountProfileChanges(
-                name="Updated",
-                avatar="avatar-file",
-                interface_language="zh-Hans",
-                interface_theme="dark",
-                timezone="Asia/Shanghai",
-            ),
-        )
-        unit_of_work.commit()
+    result = repository.update_profile(
+        "account-1",
+        AccountProfileChanges(
+            name="Updated",
+            avatar="avatar-file",
+            interface_language="zh-Hans",
+            interface_theme="dark",
+            timezone="Asia/Shanghai",
+        ),
+    )
 
     assert result is not None
     assert result.name == "Updated"
@@ -49,23 +47,24 @@ def test_unit_of_work_updates_multiple_profile_fields_atomically(
     assert persisted.timezone == "Asia/Shanghai"
 
 
-def test_unit_of_work_rolls_back_uncommitted_profile_changes(
+def test_update_profile_rolls_back_on_error(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _persist_account(sqlite_session)
-    factory = SQLAlchemyAccountUnitOfWorkFactory(sqlite_session_factory)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
 
-    def update_then_abort() -> None:
-        with factory() as unit_of_work:
-            unit_of_work.accounts.update_profile(
-                "account-1",
-                AccountProfileChanges(name="Should Roll Back"),
-            )
-            raise RuntimeError("abort update")
+    def fail_to_create_snapshot(_account: Account) -> None:
+        raise RuntimeError("abort update")
+
+    monkeypatch.setattr(SQLAlchemyAccountRepository, "_to_snapshot", staticmethod(fail_to_create_snapshot))
 
     with pytest.raises(RuntimeError, match="abort update"):
-        update_then_abort()
+        repository.update_profile(
+            "account-1",
+            AccountProfileChanges(name="Should Roll Back"),
+        )
 
     sqlite_session.expire_all()
     persisted = sqlite_session.get(Account, "account-1")

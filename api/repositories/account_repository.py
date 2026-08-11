@@ -2,7 +2,7 @@
 
 from typing import override
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account
 from services.account_ports import AccountRepository
@@ -10,33 +10,35 @@ from services.entities.account_entities import AccountProfileChanges, AccountSna
 
 
 class SQLAlchemyAccountRepository(AccountRepository):
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
 
     @override
     def get(self, account_id: str) -> AccountSnapshot | None:
-        account = self._session.get(Account, account_id)
-        return self._to_snapshot(account) if account is not None else None
+        with self._session_factory() as session:
+            account = session.get(Account, account_id)
+            return self._to_snapshot(account) if account is not None else None
 
     @override
     def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None:
-        account = self._session.get(Account, account_id)
-        if account is None:
-            return None
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return None
 
-        if changes.name is not None:
-            account.name = changes.name
-        if changes.avatar is not None:
-            account.avatar = changes.avatar
-        if changes.interface_language is not None:
-            account.interface_language = changes.interface_language
-        if changes.interface_theme is not None:
-            account.interface_theme = changes.interface_theme
-        if changes.timezone is not None:
-            account.timezone = changes.timezone
+            if changes.name is not None:
+                account.name = changes.name
+            if changes.avatar is not None:
+                account.avatar = changes.avatar
+            if changes.interface_language is not None:
+                account.interface_language = changes.interface_language
+            if changes.interface_theme is not None:
+                account.interface_theme = changes.interface_theme
+            if changes.timezone is not None:
+                account.timezone = changes.timezone
 
-        self._session.flush()
-        return self._to_snapshot(account)
+            session.flush()
+            return self._to_snapshot(account)
 
     @staticmethod
     def _to_snapshot(account: Account) -> AccountSnapshot:
