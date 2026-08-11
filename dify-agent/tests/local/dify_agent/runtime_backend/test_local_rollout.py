@@ -8,7 +8,7 @@ import pytest
 from shellctl.shared import HealthResponse
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend import (
     BindingCreateError,
     BindingDestroyError,
@@ -26,7 +26,7 @@ from dify_agent.runtime_backend.local_rollout import (
     RoutedLocalHomeSnapshotBackend,
     RoutedLocalRuntimeLease,
     ShellctlHealthProbe,
-    _is_rust_canary,
+    _is_rust_canary,  # pyright: ignore[reportPrivateUsage]
 )
 
 
@@ -100,7 +100,7 @@ class _HealthClient:
 
     async def health(self) -> HealthResponse:
         if self.wait_forever:
-            await asyncio.Event().wait()
+            _ = await asyncio.Event().wait()
         if self.error is not None:
             raise self.error
         return HealthResponse(status=self.status)
@@ -167,7 +167,9 @@ def _spec(
 
 
 def _health_probe(client: _HealthClient, *, timeout_seconds: float = 1.0) -> ShellctlHealthProbe:
-    factory = cast(ShellctlClientFactory, lambda: cast(ShellctlClientProtocol, cast(object, client)))
+    def factory() -> ShellctlClientProtocol:
+        return cast(ShellctlClientProtocol, cast(object, client))
+
     return ShellctlHealthProbe(client_factory=factory, timeout_seconds=timeout_seconds)
 
 
@@ -305,7 +307,7 @@ async def test_mutating_rust_failure_is_never_replayed_to_go() -> None:
     bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
 
     with pytest.raises(BindingCreateError, match="already have mutated"):
-        await bindings.create_binding(_spec())
+        _ = await bindings.create_binding(_spec())
 
     assert len(fixture.rust_bindings.creates) == 1
     assert fixture.go_bindings.creates == []
@@ -317,7 +319,7 @@ async def test_existing_rust_resource_never_falls_back_to_go() -> None:
     bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
 
     with pytest.raises(BindingCreateError, match="refusing unsafe Go replay"):
-        await bindings.create_binding(_spec(existing_workspace_ref="rust+workspace-1"))
+        _ = await bindings.create_binding(_spec(existing_workspace_ref="rust+workspace-1"))
 
     assert fixture.go_bindings.creates == []
     assert fixture.rust_bindings.creates == []
@@ -329,7 +331,7 @@ async def test_cross_runtime_snapshot_and_workspace_are_rejected_before_mutation
     bindings = RoutedLocalExecutionBindingBackend(router=fixture.router)
 
     with pytest.raises(BindingCreateError, match="different runtime implementations"):
-        await bindings.create_binding(
+        _ = await bindings.create_binding(
             _spec(
                 existing_workspace_ref="go+workspace-1",
                 home_snapshot_ref="rust+home-snapshot-1",
