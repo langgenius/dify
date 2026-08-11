@@ -7,7 +7,3 @@ class AccountApplicationError(Exception):
 
 class AccountNotFoundError(AccountApplicationError):
     """The admitted account no longer exists."""
-
-
-class EmptyAccountProfileChangesError(AccountApplicationError):
-    """A profile update did not contain a supported field."""

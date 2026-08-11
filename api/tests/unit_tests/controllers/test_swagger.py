@@ -593,17 +593,10 @@ def test_console_account_profile_patch_and_deprecated_aliases(monkeypatch: pytes
     profile_patch = paths["/account/profile"]["patch"]
     assert profile_patch.get("deprecated") is not True
     profile_patch_schema = _json_body_schema(payload, profile_patch)
-    branches = profile_patch_schema["anyOf"]
-    assert {tuple(branch["required"]) for branch in branches} == {
-        ("name",),
-        ("avatar",),
-        ("interface_language",),
-        ("interface_theme",),
-        ("timezone",),
-    }
-    for branch in branches:
-        assert branch["additionalProperties"] is False
-        assert branch["properties"]["name"]["type"] == "string"
+    assert profile_patch_schema["type"] == "object"
+    assert profile_patch_schema["additionalProperties"] is False
+    assert "required" not in profile_patch_schema
+    assert profile_patch_schema["properties"]["name"]["type"] == "string"
 
     for path in (
         "/account/name",

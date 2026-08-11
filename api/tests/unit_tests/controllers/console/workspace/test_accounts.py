@@ -38,7 +38,6 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountProfileChangesError,
 )
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
@@ -47,7 +46,6 @@ from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAcco
 from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
-from services.account_errors import EmptyAccountProfileChangesError
 from services.entities.account_entities import AccountProfileChanges
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
@@ -232,17 +230,25 @@ class TestAccountProfilePatchApi:
         schema = AccountProfilePatchPayload.model_json_schema()
         validator = Draft202012Validator(schema)
 
-        assert len(schema["anyOf"]) == 5
+        assert schema["type"] == "object"
+        assert schema["additionalProperties"] is False
+        assert "required" not in schema
+        assert set(schema["properties"]) == {
+            "name",
+            "avatar",
+            "interface_language",
+            "interface_theme",
+            "timezone",
+        }
+        validator.validate({})
+        validator.validate({"name": "Jane"})
+        validator.validate({"name": "Jane", "interface_language": "en-US", "timezone": "UTC"})
         for payload in (
-            {},
             {"name": None},
             {"unexpected": "value"},
             {"name": "Jane", "unexpected": "value"},
         ):
             assert list(validator.iter_errors(payload))
-
-        validator.validate({"name": "Jane"})
-        validator.validate({"name": "Jane", "interface_language": "en-US", "timezone": "UTC"})
 
     def test_updates_multiple_profile_fields(self, app: Flask):
         api = AccountProfileApi()
@@ -273,30 +279,33 @@ class TestAccountProfilePatchApi:
             AccountProfileChanges(name="Jane", interface_language="en-US", timezone="UTC"),
         )
 
-    def test_maps_empty_profile_changes_error(self, app: Flask):
+    def test_empty_patch_is_a_noop(self, app: Flask):
         api = AccountProfileApi()
         method = inspect.unwrap(api.patch)
+        user = make_account()
         request_context = RequestContext(
             request_id="request-1",
             trace_id="trace-1",
-            account_id="account-1",
+            account_id=user.id,
             active_workspace_id="workspace-1",
         )
         profile = MagicMock()
-        profile.update.side_effect = EmptyAccountProfileChangesError
+        profile.update.return_value = user
 
         with (
-            app.test_request_context("/account/profile", method="PATCH", json={"name": "Jane"}),
+            app.test_request_context("/account/profile", method="PATCH", json={}),
             patch(
                 "controllers.console.workspace.account.application_services",
                 return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
             ),
         ):
-            with pytest.raises(InvalidAccountProfileChangesError):
-                method(api, request_context)
+            result = method(api, request_context)
 
-    @pytest.mark.parametrize("payload", [{}, {"name": None}, {"unexpected": "value"}])
-    def test_rejects_empty_null_or_unknown_changes(self, payload: dict[str, object]):
+        assert result["id"] == user.id
+        profile.update.assert_called_once_with(request_context, AccountProfileChanges())
+
+    @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
+    def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]):
         with pytest.raises(ValueError):
             AccountProfilePatchPayload.model_validate(payload)
 

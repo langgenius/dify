@@ -6,7 +6,7 @@ from unittest.mock import Mock
 import pytest
 
 from machinery.context import RequestContext
-from services.account_errors import AccountNotFoundError, EmptyAccountProfileChangesError
+from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountRepository
 from services.account_profile_service import AccountProfileService
 from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
@@ -62,13 +62,15 @@ def test_update_applies_profile_changes() -> None:
     accounts.update_profile.assert_called_once_with("account-1", changes)
 
 
-def test_update_rejects_empty_changes_before_calling_repository() -> None:
+def test_update_treats_empty_changes_as_noop() -> None:
     accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = _account()
     service = AccountProfileService(accounts=accounts)
 
-    with pytest.raises(EmptyAccountProfileChangesError):
-        service.update(_context(), AccountProfileChanges())
+    result = service.update(_context(), AccountProfileChanges())
 
+    assert result == _account()
+    accounts.get.assert_called_once_with("account-1")
     accounts.update_profile.assert_not_called()
 
 

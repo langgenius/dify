@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated, Any, Literal, override
+from typing import Annotated, Literal
 
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
@@ -41,7 +40,6 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountProfileChangesError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
@@ -140,34 +138,12 @@ class AccountProfilePatchPayload(BaseModel):
     interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
     timezone: str | SkipJsonSchema[None] = None
 
+    @field_validator("*", mode="before")
     @classmethod
-    @override
-    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
-        schema = handler.resolve_ref_schema(handler(core_schema))
-        properties = schema.get("properties")
-        if not isinstance(properties, dict):
-            return schema
-
-        contract_properties = deepcopy(properties)
-        for property_schema in contract_properties.values():
-            if isinstance(property_schema, dict):
-                property_schema.pop("default", None)
-
-        # The TypeScript/Zod generator does not enforce minProperties. Full
-        # anyOf branches keep omission distinct from null while making at
-        # least one profile field statically and dynamically required.
-        return {
-            "anyOf": [
-                {
-                    "additionalProperties": False,
-                    "properties": deepcopy(contract_properties),
-                    "required": [field_name],
-                    "type": "object",
-                }
-                for field_name in contract_properties
-            ],
-            "title": schema.get("title", cls.__name__),
-        }
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Account profile fields cannot be null")
+        return value
 
     @field_validator("interface_language")
     @classmethod
@@ -178,15 +154,6 @@ class AccountProfilePatchPayload(BaseModel):
     @classmethod
     def validate_timezone(cls, value: str | None) -> str | None:
         return timezone(value) if value is not None else None
-
-    @model_validator(mode="after")
-    def require_changes(self) -> AccountProfilePatchPayload:
-        provided_changes = self.model_dump(exclude_unset=True)
-        if not provided_changes:
-            raise ValueError("At least one account profile field is required")
-        if any(value is None for value in provided_changes.values()):
-            raise ValueError("Account profile fields cannot be null")
-        return self
 
     def to_changes(self) -> AccountProfileChanges:
         return AccountProfileChanges(
@@ -334,8 +301,6 @@ def _update_account_profile(request_context: RequestContext, changes: AccountPro
         account = application_services().accounts.profile.update(request_context, changes)
     except account_errors.AccountNotFoundError as error:
         raise AccountNotFound() from error
-    except account_errors.EmptyAccountProfileChangesError as error:
-        raise InvalidAccountProfileChangesError() from error
     return dump_response(AccountResponse, account)
 
 
