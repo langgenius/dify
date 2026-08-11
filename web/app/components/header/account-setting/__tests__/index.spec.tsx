@@ -147,7 +147,6 @@ const baseConsoleState: ConsoleStateFixture = {
     avatar_url: '',
     is_password_set: false,
   },
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
