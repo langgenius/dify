@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "さらにタスク履歴があります。このドキュメントの状態を確認し続けてください。",
   "newKnowledge.documentUploadExclusion.batchLimit": "バッチサイズの上限を超えています",
   "newKnowledge.documentUploadExclusion.countLimit": "ファイル数の上限を超えています",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "ファイルが空です",
   "newKnowledge.documentUploadExclusion.fileSize": "15 MB の上限を超えています",
   "newKnowledge.documentUploadExclusion.fileType": "サポートされていないか無効なファイル形式です",
   "newKnowledge.documentUploadExclusion.more": "ほか {{count}} 件",

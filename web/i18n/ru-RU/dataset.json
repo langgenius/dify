@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Доступна дополнительная история задач. Продолжите проверку, чтобы найти статус документа.",
   "newKnowledge.documentUploadExclusion.batchLimit": "превышен предел размера пакета",
   "newKnowledge.documentUploadExclusion.countLimit": "превышен предел количества файлов",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Файл пуст",
   "newKnowledge.documentUploadExclusion.fileSize": "Превышает ограничение в 15 МБ",
   "newKnowledge.documentUploadExclusion.fileType": "неподдерживаемый или недопустимый тип файла",
   "newKnowledge.documentUploadExclusion.more": "и ещё {{count}}",

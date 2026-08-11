@@ -2,6 +2,7 @@
 
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
+import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
   ProcessingTaskEvent,
@@ -146,7 +147,8 @@ async function findBackgroundTasks(
 }
 
 type UploadExclusionReasonKey =
-  (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
+  | DocumentUploadIssue
+  | (typeof uploadExclusionReasonKey)[keyof typeof uploadExclusionReasonKey]
 
 type TerminalTaskPin = {
   observedAt: string

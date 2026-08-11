@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "È disponibile altra cronologia delle attività. Continua a controllare per trovare lo stato del documento.",
   "newKnowledge.documentUploadExclusion.batchLimit": "limite delle dimensioni del batch superato",
   "newKnowledge.documentUploadExclusion.countLimit": "limite del numero di file superato",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Il file è vuoto",
   "newKnowledge.documentUploadExclusion.fileSize": "Supera il limite di 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "tipo di file non supportato o non valido",
   "newKnowledge.documentUploadExclusion.more": "e altri {{count}}",

@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Este disponibil mai mult istoric al activităților. Continuă verificarea pentru a găsi starea documentului.",
   "newKnowledge.documentUploadExclusion.batchLimit": "limita dimensiunii lotului a fost depășită",
   "newKnowledge.documentUploadExclusion.countLimit": "limita numărului de fișiere a fost depășită",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Fișierul este gol",
   "newKnowledge.documentUploadExclusion.fileSize": "Depășește limita de 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "tip de fișier neacceptat sau nevalid",
   "newKnowledge.documentUploadExclusion.more": "și încă {{count}}",

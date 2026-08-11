@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Riwayat tugas lainnya tersedia. Lanjutkan pemeriksaan untuk menemukan status dokumen ini.",
   "newKnowledge.documentUploadExclusion.batchLimit": "batas ukuran batch terlampaui",
   "newKnowledge.documentUploadExclusion.countLimit": "batas jumlah file terlampaui",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "File kosong",
   "newKnowledge.documentUploadExclusion.fileSize": "Melebihi batas 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "jenis file tidak didukung atau tidak valid",
   "newKnowledge.documentUploadExclusion.more": "dan {{count}} lainnya",

@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "अधिक कार्य इतिहास उपलब्ध है। इस दस्तावेज़ की स्थिति खोजने के लिए जाँच जारी रखें।",
   "newKnowledge.documentUploadExclusion.batchLimit": "बैच आकार सीमा पार हो गई",
   "newKnowledge.documentUploadExclusion.countLimit": "फ़ाइल संख्या सीमा पार हो गई",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "फ़ाइल खाली है",
   "newKnowledge.documentUploadExclusion.fileSize": "15 MB की सीमा से अधिक है",
   "newKnowledge.documentUploadExclusion.fileType": "फ़ाइल प्रकार असमर्थित या अमान्य है",
   "newKnowledge.documentUploadExclusion.more": "और {{count}} अन्य",

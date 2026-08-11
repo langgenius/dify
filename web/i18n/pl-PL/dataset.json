@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Dostępna jest dalsza historia zadań. Kontynuuj sprawdzanie, aby znaleźć stan tego dokumentu.",
   "newKnowledge.documentUploadExclusion.batchLimit": "przekroczono limit rozmiaru partii",
   "newKnowledge.documentUploadExclusion.countLimit": "przekroczono limit liczby plików",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Plik jest pusty",
   "newKnowledge.documentUploadExclusion.fileSize": "Przekracza limit 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "nieobsługiwany lub nieprawidłowy typ pliku",
   "newKnowledge.documentUploadExclusion.more": "i jeszcze {{count}}",

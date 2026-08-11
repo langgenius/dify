@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "還有更多任務歷史記錄。繼續檢查以尋找此文件的狀態。",
   "newKnowledge.documentUploadExclusion.batchLimit": "超出批次大小限制",
   "newKnowledge.documentUploadExclusion.countLimit": "超出檔案數量限制",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "檔案為空",
   "newKnowledge.documentUploadExclusion.fileSize": "超過 15 MB 限制",
   "newKnowledge.documentUploadExclusion.fileType": "不支援或無效的檔案類型",
   "newKnowledge.documentUploadExclusion.more": "以及另外 {{count}} 個",

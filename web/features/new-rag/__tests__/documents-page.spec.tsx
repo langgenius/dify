@@ -1999,6 +1999,31 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('rejects empty files locally while staging a one-byte file from a mixed selection', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
+    const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+      emptyFile,
+      oneByteFile,
+    ])
+
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.selectedFiles:.*"total":2.*"valid":1/),
+    ).toBeVisible()
+    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    await waitFor(() =>
+      expect(stageUploadMutation).toHaveBeenCalledWith({
+        body: { file: expect.objectContaining({ name: 'one-byte.txt', size: 1 }) },
+      }),
+    )
+    expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+  })
+
   it('rejects oversized files before invoking an upload contract', async () => {
     const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)

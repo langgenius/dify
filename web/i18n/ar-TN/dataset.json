@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "يتوفر المزيد من سجل المهام. تابع التحقق للعثور على حالة هذا المستند.",
   "newKnowledge.documentUploadExclusion.batchLimit": "تم تجاوز الحد الأقصى لحجم الدفعة",
   "newKnowledge.documentUploadExclusion.countLimit": "تم تجاوز الحد الأقصى لعدد الملفات",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "الملف فارغ",
   "newKnowledge.documentUploadExclusion.fileSize": "يتجاوز الحد الأقصى البالغ 15 ميغابايت",
   "newKnowledge.documentUploadExclusion.fileType": "نوع الملف غير مدعوم أو غير صالح",
   "newKnowledge.documentUploadExclusion.more": "و{{count}} أخرى",

@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "More task history is available. Continue checking to find this document's status.",
   "newKnowledge.documentUploadExclusion.batchLimit": "batch size limit exceeded",
   "newKnowledge.documentUploadExclusion.countLimit": "file count limit exceeded",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "File is empty",
   "newKnowledge.documentUploadExclusion.fileSize": "Exceeds 15 MB limit",
   "newKnowledge.documentUploadExclusion.fileType": "unsupported or invalid file type",
   "newKnowledge.documentUploadExclusion.more": "and {{count}} more",

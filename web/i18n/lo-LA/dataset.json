@@ -243,6 +243,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "ມີປະຫວັດໜ້າວຽກເພີ່ມເຕີມ. ສືບຕໍ່ກວດສອບເພື່ອຊອກຫາສະຖານະຂອງເອກະສານນີ້.",
   "newKnowledge.documentUploadExclusion.batchLimit": "ເກີນຂີດຈຳກັດຂະໜາດຊຸດແລ້ວ",
   "newKnowledge.documentUploadExclusion.countLimit": "ເກີນຂີດຈຳກັດຈຳນວນໄຟລ໌ແລ້ວ",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "ໄຟລ໌ຫວ່າງເປົ່າ",
   "newKnowledge.documentUploadExclusion.fileSize": "ໄຟລ໌ໃຫຍ່ເກີນໄປ",
   "newKnowledge.documentUploadExclusion.fileType": "ປະເພດໄຟລ໌ທີ່ບໍ່ຮອງຮັບ ຫຼືບໍ່ຖືກຕ້ອງ",
   "newKnowledge.documentUploadExclusion.more": "ແລະອີກ {{count}} ອັນ",

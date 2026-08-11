@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "还有更多任务记录，请继续检查以确认此文档的状态。",
   "newKnowledge.documentUploadExclusion.batchLimit": "超出批次大小限制",
   "newKnowledge.documentUploadExclusion.countLimit": "超出文件数量限制",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "文件为空",
   "newKnowledge.documentUploadExclusion.fileSize": "超过 15 MB 限制",
   "newKnowledge.documentUploadExclusion.fileType": "不支持或无效的文件类型",
   "newKnowledge.documentUploadExclusion.more": "另有 {{count}} 个",

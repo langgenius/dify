@@ -26,7 +26,7 @@ export const DOCUMENT_UPLOAD_ACCEPT = DOCUMENT_UPLOAD_EXTENSIONS.map(
   (extension) => `.${extension}`,
 ).join(',')
 
-export type DocumentUploadIssue = 'fileSize' | 'fileType'
+export type DocumentUploadIssue = 'fileEmpty' | 'fileSize' | 'fileType'
 
 export function documentUploadFingerprint(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}`
@@ -51,6 +51,7 @@ export function documentUploadFileExtension(name: string) {
 }
 
 export function documentUploadIssue(file: File): DocumentUploadIssue | undefined {
+  if (file.size === 0) return 'fileEmpty'
   if (file.size > DOCUMENT_UPLOAD_MAX_BYTES) return 'fileSize'
   if (!documentUploadExtensionSet.has(documentUploadFileExtension(file.name))) return 'fileType'
 }

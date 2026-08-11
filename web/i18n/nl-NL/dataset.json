@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Er is meer taakgeschiedenis beschikbaar. Blijf controleren om de status van dit document te vinden.",
   "newKnowledge.documentUploadExclusion.batchLimit": "limiet voor batchgrootte overschreden",
   "newKnowledge.documentUploadExclusion.countLimit": "limiet voor aantal bestanden overschreden",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Bestand is leeg",
   "newKnowledge.documentUploadExclusion.fileSize": "Overschrijdt de limiet van 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "niet-ondersteund of ongeldig bestandstype",
   "newKnowledge.documentUploadExclusion.more": "en nog {{count}}",

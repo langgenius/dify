@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "더 많은 작업 기록이 있습니다. 이 문서의 상태를 찾으려면 계속 확인하세요.",
   "newKnowledge.documentUploadExclusion.batchLimit": "배치 크기 제한을 초과했습니다",
   "newKnowledge.documentUploadExclusion.countLimit": "파일 수 제한을 초과했습니다",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "파일이 비어 있습니다",
   "newKnowledge.documentUploadExclusion.fileSize": "15MB 제한을 초과했습니다",
   "newKnowledge.documentUploadExclusion.fileType": "지원되지 않거나 잘못된 파일 형식입니다",
   "newKnowledge.documentUploadExclusion.more": "외 {{count}}개",

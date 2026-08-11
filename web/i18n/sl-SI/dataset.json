@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Na voljo je več zgodovine opravil. Nadaljujte preverjanje, da najdete stanje dokumenta.",
   "newKnowledge.documentUploadExclusion.batchLimit": "omejitev velikosti paketa je presežena",
   "newKnowledge.documentUploadExclusion.countLimit": "omejitev števila datotek je presežena",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Datoteka je prazna",
   "newKnowledge.documentUploadExclusion.fileSize": "Presega omejitev 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "nepodprta ali neveljavna vrsta datoteke",
   "newKnowledge.documentUploadExclusion.more": "in še {{count}}",

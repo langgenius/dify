@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Daha fazla görev geçmişi var. Bu belgenin durumunu bulmak için kontrol etmeye devam edin.",
   "newKnowledge.documentUploadExclusion.batchLimit": "toplu iş boyutu sınırı aşıldı",
   "newKnowledge.documentUploadExclusion.countLimit": "dosya sayısı sınırı aşıldı",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Dosya boş",
   "newKnowledge.documentUploadExclusion.fileSize": "15 MB sınırını aşıyor",
   "newKnowledge.documentUploadExclusion.fileType": "desteklenmeyen veya geçersiz dosya türü",
   "newKnowledge.documentUploadExclusion.more": "ve {{count}} tane daha",

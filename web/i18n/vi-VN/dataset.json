@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Còn thêm lịch sử tác vụ. Hãy tiếp tục kiểm tra để tìm trạng thái của tài liệu này.",
   "newKnowledge.documentUploadExclusion.batchLimit": "đã vượt quá giới hạn kích thước lô",
   "newKnowledge.documentUploadExclusion.countLimit": "đã vượt quá giới hạn số lượng tệp",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "Tệp trống",
   "newKnowledge.documentUploadExclusion.fileSize": "Vượt quá giới hạn 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "loại tệp không được hỗ trợ hoặc không hợp lệ",
   "newKnowledge.documentUploadExclusion.more": "và {{count}} mục khác",

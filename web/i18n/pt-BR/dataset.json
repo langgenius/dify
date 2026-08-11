@@ -250,6 +250,7 @@
   "newKnowledge.documentTaskLookupIncomplete": "Há mais histórico de tarefas disponível. Continue verificando para encontrar o status deste documento.",
   "newKnowledge.documentUploadExclusion.batchLimit": "limite de tamanho do lote excedido",
   "newKnowledge.documentUploadExclusion.countLimit": "limite de quantidade de arquivos excedido",
+  "newKnowledge.documentUploadExclusion.fileEmpty": "O arquivo está vazio",
   "newKnowledge.documentUploadExclusion.fileSize": "Excede o limite de 15 MB",
   "newKnowledge.documentUploadExclusion.fileType": "tipo de arquivo não suportado ou inválido",
   "newKnowledge.documentUploadExclusion.more": "e mais {{count}}",
