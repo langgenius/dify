@@ -36,15 +36,6 @@ def extract_output_variable_names(form_content: str) -> tuple[str, ...]:
     return tuple(match.group("field_name") for match in OUTPUT_VARIABLE_PATTERN.finditer(form_content))
 
 
-def validate_unique_output_variable_slots(form_content: str) -> None:
-    output_names = extract_output_variable_names(form_content)
-    seen_names: set[str] = set()
-    for output_name in output_names:
-        if output_name in seen_names:
-            raise ValueError(f"duplicated output slot '{output_name}'")
-        seen_names.add(output_name)
-
-
 class StringSource(BaseModel):
     """Default configuration for form inputs."""
 

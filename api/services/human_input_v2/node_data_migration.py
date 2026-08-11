@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import Protocol
 
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
@@ -14,6 +13,7 @@ from core.workflow.nodes.human_input_v2.migration import (
     LegacyHumanInputNodeData,
     LegacyMemberRecipient,
     LegacyNodeDataPreflight,
+    MemberEmailSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
     convert_legacy_human_input_node_data,
@@ -23,11 +23,11 @@ from core.workflow.nodes.human_input_v2.migration import (
 class WorkspaceMemberEmailLookup(Protocol):
     """Read the currently usable Account Emails for one workspace scope."""
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> Mapping[str, str]: ...
+    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot: ...
 
 
 type NodeDataConverter = Callable[
-    [LegacyHumanInputNodeData, Mapping[str, str]],
+    [LegacyHumanInputNodeData, MemberEmailSnapshot],
     NodeMigrationConversion,
 ]
 
@@ -37,6 +37,7 @@ class MigrationNode:
     node_id: str
     node_data: LegacyHumanInputNodeData
     method_positions: tuple[int, ...] = ()
+    recipient_positions: tuple[tuple[int, ...], ...] = ()
     preflight_issues: tuple[LegacyDeliveryParseIssue, ...] = ()
 
     @classmethod
@@ -45,6 +46,7 @@ class MigrationNode:
             node_id=node_id,
             node_data=preflight.node_data,
             method_positions=preflight.method_positions,
+            recipient_positions=preflight.recipient_positions,
             preflight_issues=preflight.issues,
         )
 
@@ -82,6 +84,7 @@ class _PositionedMigrationBlocker:
     blocker: NodeDataMigrationBlocker
     postflight: bool
     method_position: int
+    recipient_position: int
     ordinal: int
 
 
@@ -99,8 +102,7 @@ class HumanInputNodeDataMigrationService:
 
     def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationOutcome:
         member_ids = self._collect_member_ids(nodes)
-        loaded_member_emails = self._member_email_lookup.find_member_emails(workspace_id, member_ids)
-        member_email_snapshot = MappingProxyType(dict(loaded_member_emails))
+        member_email_snapshot = self._member_email_lookup.find_member_emails(workspace_id, member_ids)
 
         migrated_nodes: list[MigratedNode] = []
         blockers: list[NodeDataMigrationBlocker] = []
@@ -120,10 +122,10 @@ class HumanInputNodeDataMigrationService:
         conversion: NodeMigrationConversion,
     ) -> tuple[NodeDataMigrationBlocker, ...]:
         method_positions = node.method_positions or tuple(range(len(node.node_data.delivery_methods)))
-        positions_by_method_id = {
-            str(method.id): position
-            for method, position in zip(node.node_data.delivery_methods, method_positions, strict=True)
-        }
+        recipient_positions = node.recipient_positions or tuple(
+            tuple(range(len(method.config.recipients.items))) if isinstance(method, LegacyEmailDeliveryMethod) else ()
+            for method in node.node_data.delivery_methods
+        )
         positioned_blockers: list[_PositionedMigrationBlocker] = []
         ordinal = 0
         for issue in node.preflight_issues:
@@ -137,7 +139,8 @@ class HumanInputNodeDataMigrationService:
                         value=issue.value,
                     ),
                     postflight=False,
-                    method_position=issue.method_position,
+                    method_position=issue.method_position if issue.method_position is not None else -1,
+                    recipient_position=issue.recipient_position if issue.recipient_position is not None else -1,
                     ordinal=ordinal,
                 )
             )
@@ -147,7 +150,12 @@ class HumanInputNodeDataMigrationService:
                 MigrationBlockerCode.CONFLICTING_EMAIL_TEMPLATES,
                 MigrationBlockerCode.MISSING_RECIPIENTS,
             }
-            method_position = positions_by_method_id.get(blocker.method_id or "", len(method_positions))
+            method_position = len(method_positions)
+            recipient_position = -1
+            if blocker.method_index is not None:
+                method_position = method_positions[blocker.method_index]
+                if blocker.recipient_index is not None:
+                    recipient_position = recipient_positions[blocker.method_index][blocker.recipient_index]
             positioned_blockers.append(
                 _PositionedMigrationBlocker(
                     blocker=NodeDataMigrationBlocker(
@@ -159,12 +167,18 @@ class HumanInputNodeDataMigrationService:
                     ),
                     postflight=postflight,
                     method_position=method_position,
+                    recipient_position=recipient_position,
                     ordinal=ordinal,
                 )
             )
             ordinal += 1
         positioned_blockers.sort(
-            key=lambda positioned: (positioned.postflight, positioned.method_position, positioned.ordinal)
+            key=lambda positioned: (
+                positioned.postflight,
+                positioned.method_position,
+                positioned.recipient_position,
+                positioned.ordinal,
+            )
         )
         return tuple(positioned.blocker for positioned in positioned_blockers)
 

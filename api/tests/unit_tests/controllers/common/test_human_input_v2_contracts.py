@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
@@ -22,6 +24,11 @@ from controllers.common.human_input_v2_contracts import (
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
+
+
+def _as_mapping(value: object) -> Mapping[str, object]:
+    assert isinstance(value, Mapping)
+    return value
 
 
 def test_request_dto_coerces_enum_values_and_forbids_extra_fields() -> None:
@@ -125,6 +132,7 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "version": "1",
                         "future_legacy_field": "ignored",
                     },
@@ -164,7 +172,7 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
                 "nodes": [
                     {
                         "node_id": "node-1",
-                        "node_data": {"version": "2"},
+                        "node_data": {"title": "Approval", "version": "2"},
                     }
                 ]
             }
@@ -174,8 +182,8 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
         NodeDataMigrationPayload.model_validate(
             {
                 "nodes": [
-                    {"node_id": "node-1", "node_data": {"version": "1"}},
-                    {"node_id": "node-1", "node_data": {"version": "1"}},
+                    {"node_id": "node-1", "node_data": {"title": "Approval", "version": "1"}},
+                    {"node_id": "node-1", "node_data": {"title": "Approval", "version": "1"}},
                 ]
             }
         )
@@ -188,6 +196,7 @@ def test_node_data_migration_transport_defers_raw_delivery_semantics_to_prefligh
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "delivery_methods": [
                             {"id": "sms-1", "type": "sms", "config": {}},
                             {
@@ -199,7 +208,7 @@ def test_node_data_migration_transport_defers_raw_delivery_semantics_to_prefligh
                                     "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                                 },
                             },
-                        ]
+                        ],
                     },
                 }
             ]
@@ -207,8 +216,11 @@ def test_node_data_migration_transport_defers_raw_delivery_semantics_to_prefligh
     )
 
     methods = request_body.nodes[0].node_data.delivery_methods
-    assert [method["type"] for method in methods] == ["sms", "email"]
-    assert methods[1]["config"]["body"] == 7
+    first_method = _as_mapping(methods[0])
+    second_method = _as_mapping(methods[1])
+    second_config = _as_mapping(second_method["config"])
+    assert [first_method["type"], second_method["type"]] == ["sms", "email"]
+    assert second_config["body"] == 7
 
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert [(issue.code, issue.value) for issue in preflight.issues] == [
@@ -241,7 +253,7 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
                                     },
                                 },
                             }
-                        ]
+                        ],
                     },
                 }
             ]
@@ -262,6 +274,7 @@ def test_node_data_migration_transport_preserves_real_im_configuration_for_prefl
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "delivery_methods": [
                             {
                                 "id": "im-1",
@@ -284,7 +297,7 @@ def test_node_data_migration_transport_preserves_real_im_configuration_for_prefl
                                 "enabled": False,
                                 "config": {"message": "Configured"},
                             },
-                        ]
+                        ],
                     },
                 }
             ]
@@ -292,30 +305,38 @@ def test_node_data_migration_transport_preserves_real_im_configuration_for_prefl
     )
 
     methods = request_body.nodes[0].node_data.delivery_methods
-    assert methods[0]["config"]["recipients"] == {
+    first_method = _as_mapping(methods[0])
+    first_config = _as_mapping(first_method["config"])
+    second_method = _as_mapping(methods[1])
+    second_config = _as_mapping(second_method["config"])
+    assert first_config["recipients"] == {
         "items": [
             {"type": "channel", "channel_id": "channel-1"},
             {"type": "user", "user_id": "user-1"},
         ]
     }
-    assert methods[0]["config"]["message"] == "Please review"
-    assert methods[1]["config"]["message"] == "Configured"
+    assert first_config["message"] == "Please review"
+    assert second_config["message"] == "Configured"
 
     preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
     assert [(issue.code, issue.value) for issue in preflight.issues] == [
         ("unsupported-delivery-method", "im"),
-        ("configured-disabled-method", "future-channel"),
+        ("unsupported-delivery-method", "future-channel"),
     ]
 
 
 @pytest.mark.parametrize("version", ["2", "v1", 1, None])
 def test_node_data_migration_rejects_every_explicit_non_v1_version(version: object) -> None:
     with pytest.raises(ValidationError):
-        NodeDataMigrationPayload.model_validate({"nodes": [{"node_id": "node-1", "node_data": {"version": version}}]})
+        NodeDataMigrationPayload.model_validate(
+            {"nodes": [{"node_id": "node-1", "node_data": {"title": "Approval", "version": version}}]}
+        )
 
 
 def test_node_data_migration_defaults_missing_version_and_requires_non_empty_batch() -> None:
-    request_body = NodeDataMigrationPayload.model_validate({"nodes": [{"node_id": "node-1", "node_data": {}}]})
+    request_body = NodeDataMigrationPayload.model_validate(
+        {"nodes": [{"node_id": "node-1", "node_data": {"title": "Approval"}}]}
+    )
 
     assert request_body.nodes[0].node_data.version == "1"
     with pytest.raises(ValidationError):
@@ -341,6 +362,25 @@ def test_node_data_migration_failure_envelope_never_serializes_partial_data() ->
     assert set(failure.model_dump(mode="json")) == {"code", "message", "status", "blockers"}
 
 
+def test_node_data_migration_failure_contract_exposes_invalid_default_value_blocker() -> None:
+    failure = NodeDataMigrationFailureResponse.model_validate(
+        {
+            "message": "Migration failed",
+            "status": 400,
+            "blockers": [
+                {
+                    "node_id": "node-1",
+                    "node_title": "Approval",
+                    "code": "invalid-default-value",
+                    "value": "default_value",
+                }
+            ],
+        }
+    )
+
+    assert failure.blockers[0].code == "invalid-default-value"
+
+
 def test_node_data_migration_marker_has_exact_typed_wire_shape() -> None:
     recipient_adapter = TypeAdapter(RecipientConfig)
 
@@ -363,6 +403,7 @@ def test_node_data_migration_success_schema_forces_human_input_node_type() -> No
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "type": "code",
                         "delivery_methods": [
                             {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}
@@ -408,7 +449,7 @@ def test_v1_and_v2_submit_payloads_are_independent() -> None:
 
 
 def test_service_v2_submit_payload_does_not_accept_public_otp_fields() -> None:
-    payload = {
+    payload: dict[str, object] = {
         "user": "end-user",
         "inputs": {},
         "action": "approve",
@@ -423,7 +464,7 @@ def test_service_v2_submit_payload_does_not_accept_public_otp_fields() -> None:
 
 def test_public_v2_submit_requires_complete_email_proof() -> None:
     submit_model = contracts.HumanInputV2FormSubmitRequest
-    base_payload = {"inputs": {}, "action": "approve"}
+    base_payload: dict[str, object] = {"inputs": {}, "action": "approve"}
 
     submit_model.model_validate(base_payload)
     submit_model.model_validate(

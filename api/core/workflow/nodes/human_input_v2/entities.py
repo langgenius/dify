@@ -13,7 +13,6 @@ from core.workflow.nodes.human_input.entities import (
     extract_output_variable_names,
     validate_unique_action_ids,
     validate_unique_input_names,
-    validate_unique_output_variable_slots,
 )
 from graphon.entities.base_node_data import BaseNodeData
 
@@ -117,12 +116,6 @@ class HumanInputNodeData(BaseNodeData):
     user_actions: list[UserActionConfig] = Field(default_factory=list[UserActionConfig])
     timeout: int = 36
     timeout_unit: TimeoutUnit = TimeoutUnit.HOUR
-
-    @field_validator("form_content")
-    @classmethod
-    def _validate_form_content(cls, form_content: str) -> str:
-        validate_unique_output_variable_slots(form_content)
-        return form_content
 
     @field_validator("inputs")
     @classmethod

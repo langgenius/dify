@@ -195,12 +195,20 @@ def test_compiler_freezes_file_constraints_and_effective_file_list_number_limits
     )
 
 
-def test_node_data_owns_duplicate_output_slot_validation() -> None:
-    with pytest.raises(ValidationError, match="duplicated output slot 'reason'"):
-        _node_data(
-            form_content="{{#$output.reason#}} then {{#$output.reason#}}",
-            inputs=[ParagraphInputConfig(output_variable_name="reason")],
-        )
+def test_node_data_and_compiler_preserve_repeated_output_slots_in_source_order() -> None:
+    node_data = _node_data(
+        form_content="{{#$output.reason#}} then {{#$output.reason#}}",
+        inputs=[ParagraphInputConfig(output_variable_name="reason")],
+    )
+
+    resolved = compile_resolved_form(node_data, VariablePool.empty())
+
+    assert node_data.output_variable_names() == ("reason", "reason")
+    assert resolved.blocks == (
+        ParagraphInput("reason", None),
+        MarkdownText(" then "),
+        ParagraphInput("reason", None),
+    )
 
 
 def test_node_data_reuses_input_and_action_identifier_validation() -> None:

@@ -1,16 +1,19 @@
 import inspect
 import json
+import re
 from collections.abc import Sequence
-from types import MappingProxyType
 from typing import get_type_hints
 from uuid import UUID
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
 
+from core.human_input_v2.shared.values import NormalizedEmail
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyHumanInputNodeData,
+    MemberEmailSnapshot,
+    ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from graphon.enums import BuiltinNodeTypes
@@ -18,6 +21,35 @@ from graphon.enums import BuiltinNodeTypes
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
 _SECOND_EMAIL_METHOD_ID = "33333333-3333-4333-8333-333333333333"
+_HISTORICAL_USER_ACTION_ID_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+class _HistoricalUserActionIdOracle(BaseModel):
+    id: str = Field(max_length=20)
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        if not _HISTORICAL_USER_ACTION_ID_PATTERN.match(value):
+            raise ValueError("invalid historical user action identifier")
+        return value
+
+
+def _accepts_user_action_id(model: type[BaseModel], action_id: str) -> bool:
+    try:
+        model.model_validate({"id": action_id, "title": "Approve"})
+    except ValidationError:
+        return False
+    return True
+
+
+def _member_email_snapshot(entries: dict[str, str] | None = None) -> MemberEmailSnapshot:
+    return MemberEmailSnapshot(
+        tuple(
+            ResolvedMemberEmail(member_id=member_id, email=NormalizedEmail(email))
+            for member_id, email in (entries or {}).items()
+        )
+    )
 
 
 def test_canonical_v1_models_are_exposed() -> None:
@@ -92,6 +124,30 @@ def test_canonical_v1_form_default_preserves_historical_selector_annotation() ->
     assert annotations["selector"] == Sequence[str]
 
 
+@pytest.mark.parametrize(
+    "action_id",
+    [
+        "approve",
+        "_approve1",
+        "approve\n",
+        f"{'a' * 19}\n",
+        "a" * 20,
+        "",
+        "1approve",
+        "approve-action",
+        "approve\nnext",
+        "a" * 20 + "\n",
+        "\n",
+        "approve\r\n",
+    ],
+)
+def test_canonical_user_action_id_acceptance_matches_historical_field_validator(action_id: str) -> None:
+    assert _accepts_user_action_id(migration_module.LegacyUserAction, action_id) is _accepts_user_action_id(
+        _HistoricalUserActionIdOracle,
+        action_id,
+    )
+
+
 def test_canonical_v1_delivery_and_recipient_discriminators_are_exact() -> None:
     email_method = TypeAdapter(migration_module.LegacyDeliveryChannelConfig).validate_python(
         {
@@ -141,11 +197,97 @@ def test_canonical_v1_and_pure_converter_have_no_raw_json_annotations_or_schema(
     canonical_schema = json.dumps(LegacyHumanInputNodeData.model_json_schema(), sort_keys=True)
     converter_annotations = repr(get_type_hints(convert_legacy_human_input_node_data))
     converter_signature = str(inspect.signature(convert_legacy_human_input_node_data))
+    default_value_annotation = repr(LegacyHumanInputNodeData.model_fields["default_value"].annotation)
 
-    for forbidden_name in ("JsonValue", "reference_id", "include_bound_group"):
+    assert "LegacyDefaultValue" in default_value_annotation
+    assert "MemberEmailSnapshot" in converter_annotations
+    for forbidden_name in ("Any", "JsonValue", "Mapping", "reference_id", "include_bound_group"):
         assert forbidden_name not in canonical_schema
         assert forbidden_name not in converter_annotations
         assert forbidden_name not in converter_signature
+
+
+@pytest.mark.parametrize(
+    ("default_type", "value", "normalized_value"),
+    [
+        ("string", "fallback", "fallback"),
+        ("number", 7, 7),
+        ("number", 1.5, 1.5),
+        ("number", True, True),
+        ("number", "7", 7.0),
+        ("object", {"nested": [None, True, 7, 1.5, "value"]}, {"nested": [None, True, 7, 1.5, "value"]}),
+        ("object", '{"nested": [null, true, 7, 1.5, "value"]}', {"nested": [None, True, 7, 1.5, "value"]}),
+        ("array[number]", [1, 2.5, True], [1, 2.5, True]),
+        ("array[number]", "[1, 2.5, true]", [1, 2.5, True]),
+        ("array[string]", ["first", "second"], ["first", "second"]),
+        ("array[string]", '["first", "second"]', ["first", "second"]),
+        ("array[object]", [{"first": 1}, {"second": False}], [{"first": 1}, {"second": False}]),
+        ("array[object]", '[{"first": 1}, {"second": false}]', [{"first": 1}, {"second": False}]),
+        (
+            "array[file]",
+            {
+                "nested": [None, True, 7, 1.5, "value", {"deep": [False]}],
+            },
+            {
+                "nested": [None, True, 7, 1.5, "value", {"deep": [False]}],
+            },
+        ),
+        ("array[file]", False, False),
+    ],
+)
+def test_canonical_default_value_matches_historical_normalization_and_converts_totally(
+    default_type: str,
+    value: object,
+    normalized_value: object,
+) -> None:
+    raw_default = {"key": "fallback", "type": default_type, "value": value}
+    normalized_default = {"key": "fallback", "type": default_type, "value": normalized_value}
+
+    default_value = migration_module.LegacyDefaultValue.model_validate(raw_default)
+    node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "default_value": [raw_default],
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+        }
+    )
+    conversion = convert_legacy_human_input_node_data(node_data, _member_email_snapshot())
+
+    assert default_value.model_dump(mode="json") == normalized_default
+    assert node_data.model_dump(mode="json")["default_value"] == [normalized_default]
+    assert conversion.blockers == ()
+    assert conversion.node_data is not None
+    assert conversion.node_data.model_dump(mode="json")["default_value"] == [normalized_default]
+    schema_text = json.dumps(migration_module.LegacyDefaultValue.model_json_schema(), sort_keys=True)
+    assert '"root"' not in schema_text
+
+
+@pytest.mark.parametrize(
+    ("default_type", "value"),
+    [
+        ("string", None),
+        ("string", 7),
+        ("number", None),
+        ("number", "not-a-number"),
+        ("object", False),
+        ("object", []),
+        ("object", "false"),
+        ("object", "not-json"),
+        ("array[number]", 7),
+        ("array[number]", [1, "2"]),
+        ("array[number]", "7"),
+        ("array[string]", 1.5),
+        ("array[string]", ["first", 2]),
+        ("array[object]", "fallback"),
+        ("array[object]", [{"valid": True}, False]),
+    ],
+)
+def test_canonical_default_value_rejects_historically_invalid_type_value_pairs(
+    default_type: str,
+    value: object,
+) -> None:
+    with pytest.raises(ValidationError):
+        migration_module.LegacyDefaultValue.model_validate({"key": "fallback", "type": default_type, "value": value})
 
 
 def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
@@ -172,7 +314,7 @@ def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -201,6 +343,63 @@ def test_complete_canonical_v1_shared_fields_convert_to_typed_v2() -> None:
     }
 
 
+def test_converter_preserves_historically_accepted_action_id_with_trailing_line_feed() -> None:
+    historical_action_id = f"{'a' * 19}\n"
+    legacy_node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Manager approval",
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+            "user_actions": [{"id": historical_action_id, "title": "Approve"}],
+        }
+    )
+
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+
+    assert conversion.blockers == ()
+    assert conversion.node_data is not None
+    assert conversion.node_data.user_actions[0].id == historical_action_id
+
+
+def test_historical_text_inputs_explicitly_map_to_the_only_v2_string_input_representation() -> None:
+    assert "TEXT_INPUT" not in migration_module.FormInputType.__members__
+    legacy_node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+            "inputs": [
+                {"type": "text_input", "output_variable_name": "short_text"},
+                {"type": "paragraph", "output_variable_name": "long_text"},
+            ],
+        }
+    )
+
+    conversion = convert_legacy_human_input_node_data(
+        legacy_node_data,
+        migration_module.MemberEmailSnapshot(),
+    )
+
+    assert conversion.node_data is not None
+    assert [form_input.type for form_input in conversion.node_data.inputs] == ["paragraph", "paragraph"]
+
+
+def test_converter_preserves_repeated_historical_output_slots() -> None:
+    legacy_node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+            "form_content": "{{#$output.reason#}} / {{#$output.reason#}}",
+            "inputs": [{"type": "paragraph", "output_variable_name": "reason"}],
+        }
+    )
+
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+
+    assert conversion.blockers == ()
+    assert conversion.node_data is not None
+    assert conversion.node_data.form_content == "{{#$output.reason#}} / {{#$output.reason#}}"
+    assert conversion.node_data.output_variable_names() == ("reason", "reason")
+
+
 def test_external_and_member_email_sources_become_normalized_onetime_email() -> None:
     legacy_node_data = LegacyHumanInputNodeData.model_validate(
         {
@@ -227,7 +426,7 @@ def test_external_and_member_email_sources_become_normalized_onetime_email() -> 
 
     conversion = convert_legacy_human_input_node_data(
         legacy_node_data,
-        MappingProxyType({"member-1": "  MEMBER@Example.COM "}),
+        _member_email_snapshot({"member-1": "  MEMBER@Example.COM "}),
     )
 
     assert conversion.blockers == ()
@@ -254,15 +453,15 @@ def test_member_user_id_has_safe_resolution_blocker_value() -> None:
                         },
                     },
                 }
-            ]
+            ],
         }
     )
 
     resolved = convert_legacy_human_input_node_data(
         legacy_node_data,
-        MappingProxyType({"member-1": "member@example.com"}),
+        _member_email_snapshot({"member-1": "member@example.com"}),
     )
-    unresolved = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    unresolved = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert resolved.blockers == ()
     assert resolved.node_data is not None
@@ -292,14 +491,14 @@ def test_external_email_conversion_is_independent_of_unrelated_directory_state()
                         "body": "Please review",
                     },
                 }
-            ]
+            ],
         }
     )
 
-    without_directory_entries = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    without_directory_entries = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
     with_unrelated_entries = convert_legacy_human_input_node_data(
         legacy_node_data,
-        MappingProxyType({"unrelated-account": "approver@example.com"}),
+        _member_email_snapshot({"unrelated-account": "approver@example.com"}),
     )
 
     assert without_directory_entries == with_unrelated_entries
@@ -338,7 +537,7 @@ def test_whole_workspace_marker_preserves_overlap_source_order_and_deduplicates(
 
     conversion = convert_legacy_human_input_node_data(
         legacy_node_data,
-        MappingProxyType({"member-1": "member@example.com"}),
+        _member_email_snapshot({"member-1": "member@example.com"}),
     )
 
     assert conversion.blockers == ()
@@ -385,7 +584,7 @@ def test_matching_email_templates_debug_mode_and_canonical_dedupe_are_determinis
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -433,11 +632,11 @@ def test_lossy_delivery_configuration_produces_stably_ordered_blockers() -> None
                         },
                     },
                 },
-            ]
+            ],
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id, blocker.value) for blocker in conversion.blockers] == [
@@ -458,7 +657,7 @@ def test_conversion_forces_untrusted_legacy_node_type_to_human_input() -> None:
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert conversion.blockers == ()
     assert conversion.node_data is not None
@@ -489,11 +688,11 @@ def test_conflicting_email_templates_block_after_recipient_preflight() -> None:
                         "body": "Shared body",
                     },
                 },
-            ]
+            ],
         }
     )
 
-    conversion = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    conversion = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert conversion.node_data is None
     assert [(blocker.code, blocker.method_id) for blocker in conversion.blockers] == [
@@ -518,8 +717,8 @@ def test_shared_fields_input_immutability_and_repeated_conversion_are_preserved(
     )
     original_legacy_value = legacy_node_data.model_dump(mode="json")
 
-    first = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
-    second = convert_legacy_human_input_node_data(legacy_node_data, MappingProxyType({}))
+    first = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
+    second = convert_legacy_human_input_node_data(legacy_node_data, _member_email_snapshot())
 
     assert first == second
     assert legacy_node_data.model_dump(mode="json") == original_legacy_value

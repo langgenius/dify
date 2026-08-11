@@ -8,12 +8,13 @@ application and adapter layers.
 from __future__ import annotations
 
 import enum
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Annotated, Literal, Self
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.shared.values import NormalizedEmail
@@ -24,7 +25,7 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import FormInputType, TimeoutUnit, ValueSourceType
-from graphon.entities.base_node_data import DefaultValue, RetryConfig
+from graphon.entities.base_node_data import DefaultValue, DefaultValueType, RetryConfig
 from graphon.enums import ErrorStrategy
 
 from .entities import (
@@ -65,6 +66,99 @@ class LegacyPlaceholderType(enum.StrEnum):
 class LegacyTimeoutUnit(enum.StrEnum):
     HOUR = "hour"
     DAY = "day"
+
+
+type LegacyDefaultPayload = (
+    str | int | float | bool | None | list[LegacyDefaultPayload] | dict[str, LegacyDefaultPayload]
+)
+
+
+class LegacyDefaultValuePayload(RootModel[LegacyDefaultPayload]):
+    """Typed value object preserving the historical unrestricted JSON payload."""
+
+
+class LegacyDefaultValue(BaseModel):
+    """Historical BaseNodeData fallback with its original type/value contract."""
+
+    value: LegacyDefaultValuePayload = Field(default_factory=lambda: LegacyDefaultValuePayload(None))
+    type: DefaultValueType
+    key: str
+
+    @staticmethod
+    def _parse_json_payload(value: str) -> LegacyDefaultPayload:
+        try:
+            return LegacyDefaultValuePayload.model_validate_json(value).root
+        except ValueError as error:
+            raise ValueError(f"invalid JSON default value: {value}") from error
+
+    @staticmethod
+    def _convert_number(value: str) -> float:
+        try:
+            return float(value)
+        except ValueError as error:
+            raise ValueError(f"cannot convert default value to number: {value}") from error
+
+    @model_validator(mode="after")
+    def validate_value_type(self) -> Self:
+        value = self.value.root
+        match self.type:
+            case DefaultValueType.STRING:
+                if not isinstance(value, str):
+                    raise ValueError("string default value must be a string")
+            case DefaultValueType.NUMBER:
+                if isinstance(value, str):
+                    value = self._convert_number(value)
+                elif not isinstance(value, int | float):
+                    raise ValueError("number default value must be a number")
+            case DefaultValueType.OBJECT:
+                if isinstance(value, str):
+                    value = self._parse_json_payload(value)
+                if not isinstance(value, dict):
+                    raise ValueError("object default value must be an object")
+            case DefaultValueType.ARRAY_NUMBER:
+                if isinstance(value, str):
+                    value = self._parse_json_payload(value)
+                if not isinstance(value, list):
+                    raise ValueError("array[number] default value must be an array")
+                if any(not isinstance(element, int | float) for element in value):
+                    raise ValueError("array[number] default value must contain only numbers")
+            case DefaultValueType.ARRAY_STRING:
+                if isinstance(value, str):
+                    value = self._parse_json_payload(value)
+                if not isinstance(value, list):
+                    raise ValueError("array[string] default value must be an array")
+                if any(not isinstance(element, str) for element in value):
+                    raise ValueError("array[string] default value must contain only strings")
+            case DefaultValueType.ARRAY_OBJECT:
+                if isinstance(value, str):
+                    value = self._parse_json_payload(value)
+                if not isinstance(value, list):
+                    raise ValueError("array[object] default value must be an array")
+                if any(not isinstance(element, dict) for element in value):
+                    raise ValueError("array[object] default value must contain only objects")
+            case DefaultValueType.ARRAY_FILES:
+                pass
+        self.value = LegacyDefaultValuePayload(value)
+        return self
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedMemberEmail:
+    member_id: str
+    email: NormalizedEmail
+
+
+@dataclass(frozen=True, slots=True)
+class MemberEmailSnapshot:
+    """Immutable request-local workspace member Email snapshot."""
+
+    entries: tuple[ResolvedMemberEmail, ...] = ()
+
+    def email_for(self, member_id: str) -> NormalizedEmail | None:
+        for entry in self.entries:
+            if entry.member_id == member_id:
+                return entry.email
+        return None
 
 
 class LegacyWebAppDeliveryConfig(BaseModel):
@@ -142,10 +236,24 @@ class LegacyFormInput(BaseModel):
     default: LegacyFormInputDefault | None = None
 
 
+_HISTORICAL_USER_ACTION_ID_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
 class LegacyUserAction(BaseModel):
-    id: str = Field(max_length=20, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    id: str = Field(max_length=20)
     title: str = Field(max_length=20)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        # Historical v1 used Python re.match, whose `$` accepts a final line feed.
+        if not _HISTORICAL_USER_ACTION_ID_PATTERN.match(value):
+            raise ValueError(
+                f"'{value}' is not a valid identifier. It must start with a letter or underscore, "
+                f"and contain only letters, numbers, or underscores."
+            )
+        return value
 
 
 class LegacyHumanInputNodeData(BaseModel):
@@ -156,7 +264,7 @@ class LegacyHumanInputNodeData(BaseModel):
 
     version: str = "1"
     error_strategy: ErrorStrategy | None = None
-    default_value: list[DefaultValue] | None = None
+    default_value: list[LegacyDefaultValue] | None = None
     retry_config: RetryConfig = Field(default_factory=RetryConfig)
 
     delivery_methods: list[LegacyDeliveryChannelConfig] = Field(default_factory=list)
@@ -195,6 +303,8 @@ class NodeMigrationBlocker:
     code: MigrationBlockerCode
     method_id: str | None = None
     value: str | None = None
+    method_index: int | None = None
+    recipient_index: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +314,7 @@ class NodeMigrationConversion:
 
 
 class MigrationBlockerCode(enum.StrEnum):
+    INVALID_DEFAULT_VALUE = "invalid-default-value"
     CONFIGURED_DISABLED_METHOD = "configured-disabled-method"
     UNSUPPORTED_DELIVERY_METHOD = "unsupported-delivery-method"
     INVALID_EMAIL_CONFIGURATION = "invalid-email-configuration"
@@ -218,9 +329,10 @@ class LegacyDeliveryParseIssue:
     """One transport/preflight issue that did not become canonical v1 data."""
 
     code: MigrationBlockerCode
-    method_position: int
+    method_position: int | None = None
     method_id: str | None = None
     value: str | None = None
+    recipient_position: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,6 +341,7 @@ class LegacyNodeDataPreflight:
 
     node_data: LegacyHumanInputNodeData
     method_positions: tuple[int, ...]
+    recipient_positions: tuple[tuple[int, ...], ...]
     issues: tuple[LegacyDeliveryParseIssue, ...]
 
 
@@ -261,6 +374,16 @@ def _validated_email_template(config: LegacyEmailDeliveryConfig) -> tuple[str, s
     return config.subject, config.body
 
 
+def _convert_form_input_type(
+    legacy_type: LegacyFormInputType,
+) -> Literal[FormInputType.PARAGRAPH]:
+    """Map both historical string inputs to v2's sole string input model."""
+
+    if legacy_type in {LegacyFormInputType.TEXT_INPUT, LegacyFormInputType.PARAGRAPH}:
+        return FormInputType.PARAGRAPH
+    raise AssertionError(f"unsupported historical form input type: {legacy_type}")
+
+
 def _convert_form_inputs(inputs: list[LegacyFormInput]) -> list[FormInputConfig]:
     converted_inputs: list[FormInputConfig] = []
     for form_input in inputs:
@@ -274,7 +397,7 @@ def _convert_form_inputs(inputs: list[LegacyFormInput]) -> list[FormInputConfig]
             )
         converted_inputs.append(
             ParagraphInputConfig(
-                type=FormInputType.PARAGRAPH,
+                type=_convert_form_input_type(form_input.type),
                 output_variable_name=form_input.output_variable_name,
                 default=converted_default,
             )
@@ -286,9 +409,18 @@ def _convert_user_actions(actions: list[LegacyUserAction]) -> list[UserActionCon
     return [UserActionConfig(id=action.id, title=action.title, button_style=action.button_style) for action in actions]
 
 
+def _convert_default_values(default_values: list[LegacyDefaultValue] | None) -> list[DefaultValue] | None:
+    if default_values is None:
+        return None
+    return [
+        DefaultValue(key=default_value.key, type=default_value.type, value=default_value.value.root)
+        for default_value in default_values
+    ]
+
+
 def convert_legacy_human_input_node_data(
     legacy_node_data: LegacyHumanInputNodeData,
-    member_emails: Mapping[str, str],
+    member_emails: MemberEmailSnapshot,
 ) -> NodeMigrationConversion:
     """Convert one legacy node against a caller-owned immutable Email snapshot."""
 
@@ -299,10 +431,10 @@ def convert_legacy_human_input_node_data(
     has_workspace_marker = False
     email_debug_enabled = False
     email_template: tuple[str, str] | None = None
-    conflicting_template_method_id: str | None = None
+    conflicting_template: tuple[str, int] | None = None
     subject = ""
     body = ""
-    for method in legacy_node_data.delivery_methods:
+    for method_index, method in enumerate(legacy_node_data.delivery_methods):
         method_id = str(method.id)
         if not method.enabled:
             if _disabled_method_has_material_configuration(method):
@@ -311,6 +443,7 @@ def convert_legacy_human_input_node_data(
                         MigrationBlockerCode.CONFIGURED_DISABLED_METHOD,
                         method_id,
                         method.type.value,
+                        method_index=method_index,
                     )
                 )
             continue
@@ -326,35 +459,47 @@ def convert_legacy_human_input_node_data(
                     MigrationBlockerCode.INVALID_EMAIL_CONFIGURATION,
                     method_id,
                     _invalid_template_field(method.config),
+                    method_index=method_index,
                 )
             )
         else:
             if email_template is None:
                 subject, body = current_template
                 email_template = current_template
-            elif current_template != email_template and conflicting_template_method_id is None:
-                conflicting_template_method_id = method_id
+            elif current_template != email_template and conflicting_template is None:
+                conflicting_template = method_id, method_index
         email_debug_enabled = email_debug_enabled or method.config.debug_mode
         email_recipients = method.config.recipients
-        for source in email_recipients.items:
+        for recipient_index, source in enumerate(email_recipients.items):
             if isinstance(source, LegacyExternalRecipient):
                 try:
                     normalized_email = str(NormalizedEmail(source.email))
                 except ValueError:
-                    blockers.append(NodeMigrationBlocker(MigrationBlockerCode.INVALID_EMAIL, method_id, source.email))
+                    blockers.append(
+                        NodeMigrationBlocker(
+                            MigrationBlockerCode.INVALID_EMAIL,
+                            method_id,
+                            source.email,
+                            method_index=method_index,
+                            recipient_index=recipient_index,
+                        )
+                    )
                     continue
             else:
                 member_id = source.user_id
-                member_email = member_emails.get(member_id)
-                try:
-                    normalized_email = str(NormalizedEmail(member_email)) if member_email is not None else None
-                except ValueError:
-                    normalized_email = None
-                if normalized_email is None:
-                    blockers.append(NodeMigrationBlocker(MigrationBlockerCode.UNRESOLVED_MEMBER, method_id, member_id))
+                member_email = member_emails.email_for(member_id)
+                if member_email is None:
+                    blockers.append(
+                        NodeMigrationBlocker(
+                            MigrationBlockerCode.UNRESOLVED_MEMBER,
+                            method_id,
+                            member_id,
+                            method_index=method_index,
+                            recipient_index=recipient_index,
+                        )
+                    )
                     continue
-            if normalized_email is None:
-                continue
+                normalized_email = str(member_email)
             if normalized_email in seen_emails:
                 continue
             recipients.append(OnetimeEmail(email=normalized_email))
@@ -363,11 +508,13 @@ def convert_legacy_human_input_node_data(
             recipients.append(AllWorkspaceContacts())
             has_workspace_marker = True
 
-    if conflicting_template_method_id is not None:
+    if conflicting_template is not None:
+        conflicting_template_method_id, conflicting_template_method_index = conflicting_template
         blockers.append(
             NodeMigrationBlocker(
                 MigrationBlockerCode.CONFLICTING_EMAIL_TEMPLATES,
                 conflicting_template_method_id,
+                method_index=conflicting_template_method_index,
             )
         )
     if not recipients:
@@ -380,7 +527,7 @@ def convert_legacy_human_input_node_data(
         title=legacy_node_data.title,
         desc=legacy_node_data.desc,
         error_strategy=legacy_node_data.error_strategy,
-        default_value=legacy_node_data.default_value,
+        default_value=_convert_default_values(legacy_node_data.default_value),
         retry_config=legacy_node_data.retry_config,
         recipients_spec=recipients,
         message_template=MessageTemplateConfig(subject=subject, body=body),

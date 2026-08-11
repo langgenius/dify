@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from core.workflow.nodes.human_input_v2.migration import (
+    LegacyDefaultValue,
     LegacyDeliveryParseIssue,
     LegacyEmailDeliveryMethod,
     LegacyFormInput,
@@ -16,7 +17,7 @@ from core.workflow.nodes.human_input_v2.migration import (
     LegacyWebAppDeliveryMethod,
     MigrationBlockerCode,
 )
-from graphon.entities.base_node_data import DefaultValue, RetryConfig
+from graphon.entities.base_node_data import RetryConfig
 from graphon.enums import ErrorStrategy
 
 
@@ -25,11 +26,11 @@ class LegacyHITLv1NodeData(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    title: str = ""
+    title: str
     desc: str | None = None
     version: Literal["1"] = "1"
     error_strategy: ErrorStrategy | None = None
-    default_value: list[DefaultValue] | None = None
+    default_value: JsonValue = None
     retry_config: RetryConfig = Field(default_factory=RetryConfig)
     delivery_methods: list[JsonValue] = Field(default_factory=list)
     form_content: str = ""
@@ -60,14 +61,74 @@ def _json_value_is_material(value: JsonValue) -> bool:
     return True
 
 
+def _disabled_email_config_is_historical_default(config: JsonValue) -> bool:
+    if not isinstance(config, Mapping):
+        return False
+    if not set(config).issubset({"recipients", "subject", "body", "debug_mode"}):
+        return False
+    if "subject" in config and config["subject"] != "":
+        return False
+    if "body" in config and config["body"] != "":
+        return False
+    if "debug_mode" in config and config["debug_mode"] is not False:
+        return False
+
+    if "recipients" not in config:
+        return True
+    recipients = config["recipients"]
+    if not isinstance(recipients, Mapping):
+        return False
+    if not set(recipients).issubset({"items", "whole_workspace", "include_bound_group"}):
+        return False
+    if "items" in recipients and recipients["items"] != []:
+        return False
+    if "whole_workspace" in recipients and recipients["whole_workspace"] is not False:
+        return False
+    return "include_bound_group" not in recipients or recipients["include_bound_group"] is False
+
+
 def _disabled_method_is_configured(method: _TransportDeliveryMethod) -> bool:
-    return _json_value_is_material(method.config) or any(
-        _json_value_is_material(value) for value in (method.__pydantic_extra__ or {}).values()
+    if method.__pydantic_extra__:
+        return True
+    if "config" not in method.model_fields_set:
+        return False
+    if method.type == "email":
+        return not _disabled_email_config_is_historical_default(method.config)
+    if method.type == "webapp":
+        return not isinstance(method.config, Mapping) or bool(method.config)
+    return _json_value_is_material(method.config)
+
+
+def _transport_method_value(method: _TransportDeliveryMethod) -> dict[str, JsonValue]:
+    method_value = method.model_dump(mode="python")
+    if "id" not in method.model_fields_set:
+        method_value.pop("id", None)
+    return method_value
+
+
+def _parse_default_values(
+    raw_default_values: JsonValue,
+) -> tuple[list[LegacyDefaultValue] | None, tuple[LegacyDeliveryParseIssue, ...]]:
+    if raw_default_values is None:
+        return None, ()
+    if isinstance(raw_default_values, list):
+        try:
+            return [LegacyDefaultValue.model_validate(raw_default) for raw_default in raw_default_values], ()
+        except ValidationError:
+            pass
+    return (
+        None,
+        (
+            LegacyDeliveryParseIssue(
+                code=MigrationBlockerCode.INVALID_DEFAULT_VALUE,
+                value="default_value",
+            ),
+        ),
     )
 
 
 def _normalize_email_compatibility_aliases(method: _TransportDeliveryMethod) -> dict[str, JsonValue]:
-    method_value = method.model_dump(mode="python")
+    method_value = _transport_method_value(method)
     config = method_value.get("config")
     if not isinstance(config, Mapping):
         return method_value
@@ -123,6 +184,7 @@ def _parse_method(
 ) -> tuple[
     LegacyEmailDeliveryMethod | LegacyWebAppDeliveryMethod | None,
     tuple[LegacyDeliveryParseIssue, ...],
+    tuple[int, ...],
 ]:
     try:
         transport_method = _TransportDeliveryMethod.model_validate(raw_method)
@@ -135,23 +197,23 @@ def _parse_method(
                     method_position=method_position,
                 ),
             ),
+            (),
         )
 
-    if not transport_method.enabled and _disabled_method_is_configured(transport_method):
+    if "id" in transport_method.model_fields_set and transport_method.id is None:
         return (
             None,
             (
                 LegacyDeliveryParseIssue(
-                    code=MigrationBlockerCode.CONFIGURED_DISABLED_METHOD,
+                    code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
                     method_position=method_position,
-                    method_id=transport_method.id,
                     value=transport_method.type,
                 ),
             ),
+            (),
         )
+
     if transport_method.type not in {"email", "webapp"}:
-        if not transport_method.enabled:
-            return None, ()
         return (
             None,
             (
@@ -162,11 +224,28 @@ def _parse_method(
                     value=transport_method.type,
                 ),
             ),
+            (),
         )
+
+    if not transport_method.enabled:
+        if _disabled_method_is_configured(transport_method):
+            return (
+                None,
+                (
+                    LegacyDeliveryParseIssue(
+                        code=MigrationBlockerCode.CONFIGURED_DISABLED_METHOD,
+                        method_position=method_position,
+                        method_id=transport_method.id,
+                        value=transport_method.type,
+                    ),
+                ),
+                (),
+            )
+        return None, (), ()
 
     if transport_method.type == "webapp":
         try:
-            return LegacyWebAppDeliveryMethod.model_validate(transport_method.model_dump(mode="python")), ()
+            return LegacyWebAppDeliveryMethod.model_validate(_transport_method_value(transport_method)), (), ()
         except ValidationError:
             return (
                 None,
@@ -178,6 +257,7 @@ def _parse_method(
                         value=transport_method.type,
                     ),
                 ),
+                (),
             )
 
     method_value = _normalize_email_compatibility_aliases(transport_method)
@@ -193,6 +273,7 @@ def _parse_method(
                     value="recipients",
                 ),
             ),
+            (),
         )
     recipients = config.get("recipients")
     if not isinstance(recipients, Mapping):
@@ -206,6 +287,7 @@ def _parse_method(
                     value="recipients",
                 ),
             ),
+            (),
         )
     raw_items = recipients.get("items", [])
     if not isinstance(raw_items, list):
@@ -219,11 +301,13 @@ def _parse_method(
                     value="recipients",
                 ),
             ),
+            (),
         )
 
     valid_items: list[JsonValue] = []
+    valid_item_positions: list[int] = []
     issues: list[LegacyDeliveryParseIssue] = []
-    for raw_recipient in raw_items:
+    for recipient_position, raw_recipient in enumerate(raw_items):
         if not isinstance(raw_recipient, Mapping):
             issues.append(
                 LegacyDeliveryParseIssue(
@@ -231,6 +315,7 @@ def _parse_method(
                     method_position=method_position,
                     method_id=transport_method.id,
                     value="recipients",
+                    recipient_position=recipient_position,
                 )
             )
             continue
@@ -242,6 +327,7 @@ def _parse_method(
                         code=MigrationBlockerCode.INVALID_EMAIL,
                         method_position=method_position,
                         method_id=transport_method.id,
+                        recipient_position=recipient_position,
                     )
                 )
                 continue
@@ -252,6 +338,7 @@ def _parse_method(
                         code=MigrationBlockerCode.UNRESOLVED_MEMBER,
                         method_position=method_position,
                         method_id=transport_method.id,
+                        recipient_position=recipient_position,
                     )
                 )
                 continue
@@ -262,10 +349,12 @@ def _parse_method(
                     method_position=method_position,
                     method_id=transport_method.id,
                     value="recipients",
+                    recipient_position=recipient_position,
                 )
             )
             continue
         valid_items.append(dict(raw_recipient))
+        valid_item_positions.append(recipient_position)
 
     normalized_method_value = {
         **method_value,
@@ -278,7 +367,11 @@ def _parse_method(
         },
     }
     try:
-        return LegacyEmailDeliveryMethod.model_validate(normalized_method_value), tuple(issues)
+        return (
+            LegacyEmailDeliveryMethod.model_validate(normalized_method_value),
+            tuple(issues),
+            tuple(valid_item_positions),
+        )
     except ValidationError:
         issues.append(
             LegacyDeliveryParseIssue(
@@ -288,7 +381,7 @@ def _parse_method(
                 value=_email_configuration_error_field(transport_method),
             )
         )
-        return None, tuple(issues)
+        return None, tuple(issues), ()
 
 
 def preflight_legacy_human_input_node_data(
@@ -296,14 +389,17 @@ def preflight_legacy_human_input_node_data(
 ) -> LegacyNodeDataPreflight:
     """Normalize transport aliases and classify non-canonical delivery input."""
 
+    default_value, default_value_issues = _parse_default_values(transport_node_data.default_value)
     delivery_methods: list[LegacyEmailDeliveryMethod | LegacyWebAppDeliveryMethod] = []
     method_positions: list[int] = []
-    issues: list[LegacyDeliveryParseIssue] = []
+    recipient_positions: list[tuple[int, ...]] = []
+    issues = list(default_value_issues)
     for method_position, raw_method in enumerate(transport_node_data.delivery_methods):
-        method, method_issues = _parse_method(raw_method, method_position)
+        method, method_issues, method_recipient_positions = _parse_method(raw_method, method_position)
         if method is not None:
             delivery_methods.append(method)
             method_positions.append(method_position)
+            recipient_positions.append(method_recipient_positions)
         issues.extend(method_issues)
 
     canonical_node_data = LegacyHumanInputNodeData(
@@ -311,7 +407,7 @@ def preflight_legacy_human_input_node_data(
         desc=transport_node_data.desc,
         version=transport_node_data.version,
         error_strategy=transport_node_data.error_strategy,
-        default_value=transport_node_data.default_value,
+        default_value=default_value,
         retry_config=transport_node_data.retry_config,
         delivery_methods=delivery_methods,
         form_content=transport_node_data.form_content,
@@ -323,5 +419,6 @@ def preflight_legacy_human_input_node_data(
     return LegacyNodeDataPreflight(
         node_data=canonical_node_data,
         method_positions=tuple(method_positions),
+        recipient_positions=tuple(recipient_positions),
         issues=tuple(issues),
     )

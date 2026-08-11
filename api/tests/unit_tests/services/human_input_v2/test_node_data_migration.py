@@ -1,18 +1,23 @@
 import inspect
-import operator
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
+from dataclasses import FrozenInstanceError
+from typing import Never, override
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common import human_input_v2_migration as migration_boundary
+from core.human_input_v2.shared.values import NormalizedEmail
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
     LegacyHumanInputNodeData,
+    MemberEmailSnapshot,
     MigrationBlockerCode,
     NodeMigrationConversion,
+    ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin
@@ -39,9 +44,7 @@ def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
                     "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
-                        "recipients": {
-                            "items": [{"type": "member", "user_id": member_id} for member_id in member_ids]
-                        },
+                        "recipients": {"items": [{"type": "member", "user_id": member_id} for member_id in member_ids]},
                         "subject": "Review",
                         "body": "Please review",
                     },
@@ -56,13 +59,15 @@ class _LookupSpy:
         self.calls: list[tuple[str, tuple[str, ...]]] = []
         self._unavailable_account_ids = unavailable_account_ids
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> Mapping[str, str]:
+    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
         self.calls.append((workspace_id, tuple(account_ids)))
-        return {
-            account_id: f"{account_id}@example.com"
-            for account_id in account_ids
-            if account_id not in self._unavailable_account_ids
-        }
+        return MemberEmailSnapshot(
+            tuple(
+                ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
+                for account_id in account_ids
+                if account_id not in self._unavailable_account_ids
+            )
+        )
 
 
 class _ReadOnlyBoundarySpy(_LookupSpy):
@@ -70,7 +75,7 @@ class _ReadOnlyBoundarySpy(_LookupSpy):
         super().__init__()
         self.write_attempts: list[str] = []
 
-    def __getattr__(self, attribute_name: str):
+    def __getattr__(self, attribute_name: str) -> Never:
         self.write_attempts.append(attribute_name)
         raise AssertionError(f"unexpected persistence access: {attribute_name}")
 
@@ -82,11 +87,11 @@ class _ConverterSpy:
     def __call__(
         self,
         node_data: LegacyHumanInputNodeData,
-        member_emails: Mapping[str, str],
+        member_emails: MemberEmailSnapshot,
     ) -> NodeMigrationConversion:
         self.snapshot_ids.append(id(member_emails))
-        with pytest.raises(TypeError):
-            operator.setitem(member_emails, "unexpected", "unexpected@example.com")
+        with pytest.raises(FrozenInstanceError):
+            member_emails.__setattr__("entries", ())
         return convert_legacy_human_input_node_data(node_data, member_emails)
 
 
@@ -123,7 +128,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
                         "recipients": {"items": [{"type": "member", "user_id": "member-1"}]},
                     },
                 }
-            ]
+            ],
         }
     )
 
@@ -223,6 +228,187 @@ def test_service_preserves_method_order_when_merging_preflight_and_conversion_bl
         ("invalid-email", "11111111-1111-4111-8111-111111111111"),
         ("unsupported-delivery-method", "33333333-3333-4333-8333-333333333333"),
         ("missing-recipients", None),
+    ]
+
+
+def test_service_preserves_recipient_source_order_across_preflight_and_converter_blockers() -> None:
+    transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [
+                {
+                    "id": _EMAIL_METHOD_ID,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {
+                            "items": [
+                                {"type": "external", "email": "invalid-email"},
+                                {"type": "external", "email": 7},
+                                {"type": "member"},
+                                {"type": "external", "email": "approver@example.com"},
+                            ]
+                        },
+                    },
+                }
+            ],
+        }
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode.from_preflight(
+                "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert [(blocker.code, blocker.value) for blocker in outcome.blockers] == [
+        ("invalid-email", "invalid-email"),
+        ("invalid-email", None),
+        ("unresolved-member", None),
+    ]
+
+
+def test_service_preserves_adversarial_preflight_and_conversion_order_without_partial_data() -> None:
+    transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "title": "Approval",
+            "default_value": [{"key": "fallback", "type": "object", "value": False}],
+            "delivery_methods": [
+                {"id": None, "type": "webapp", "config": {}},
+                {
+                    "id": _EMAIL_METHOD_ID,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
+                    },
+                },
+                {"type": "email", "enabled": False, "config": None},
+                {"type": "webapp", "config": {}},
+            ],
+        }
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode.from_preflight(
+                "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert not hasattr(outcome, "data")
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
+        ("invalid-default-value", None, "default_value"),
+        ("unsupported-delivery-method", None, "webapp"),
+        ("invalid-email", _EMAIL_METHOD_ID, "invalid-email"),
+        ("configured-disabled-method", None, "email"),
+    ]
+
+
+def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_partial_data() -> None:
+    transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [
+                {"id": "unknown-1", "type": "future-one", "enabled": False},
+                {
+                    "id": _EMAIL_METHOD_ID,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
+                    },
+                },
+                {"id": "unknown-2", "type": "future-two", "enabled": False, "config": {}},
+                {"type": "webapp", "config": {}},
+            ],
+        }
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode.from_preflight(
+                "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert not hasattr(outcome, "data")
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
+        ("unsupported-delivery-method", "unknown-1", "future-one"),
+        ("invalid-email", _EMAIL_METHOD_ID, "invalid-email"),
+        ("unsupported-delivery-method", "unknown-2", "future-two"),
+    ]
+
+
+def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None:
+    duplicate_method_id = "11111111-1111-4111-8111-111111111111"
+    node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [
+                {
+                    "id": duplicate_method_id,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {"items": [{"type": "external", "email": "first-invalid"}]},
+                    },
+                },
+                {
+                    "id": duplicate_method_id,
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {"items": [{"type": "external", "email": "second-invalid"}]},
+                    },
+                },
+            ],
+        }
+    )
+    issue = LegacyDeliveryParseIssue(
+        code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+        method_position=1,
+        method_id="unsupported-between-duplicates",
+        value="im",
+    )
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode(
+                "node-1",
+                node_data,
+                method_positions=(0, 2),
+                preflight_issues=(issue,),
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
+        ("invalid-email", duplicate_method_id, "first-invalid"),
+        ("unsupported-delivery-method", "unsupported-between-duplicates", "im"),
+        ("invalid-email", duplicate_method_id, "second-invalid"),
+        ("missing-recipients", None, None),
     ]
 
 
@@ -371,7 +557,7 @@ def test_whole_workspace_does_not_enumerate_members() -> None:
                         "recipients": {"whole_workspace": True},
                     },
                 }
-            ]
+            ],
         }
     )
 
@@ -389,14 +575,17 @@ class _TrackingReadSession(Session):
     commit_count = 0
     flush_count = 0
 
+    @override
     def close(self) -> None:
         _TrackingReadSession.close_count += 1
         super().close()
 
+    @override
     def commit(self) -> None:
         _TrackingReadSession.commit_count += 1
         super().commit()
 
+    @override
     def flush(self, objects: Sequence[object] | None = None) -> None:
         _TrackingReadSession.flush_count += 1
         super().flush(objects)
@@ -431,7 +620,14 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
     read_factory = sessionmaker(bind=engine, class_=_TrackingReadSession, expire_on_commit=False)
     select_count = 0
 
-    def count_selects(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def count_selects(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: object,
+    ) -> None:
         nonlocal select_count
         if statement.lstrip().upper().startswith("SELECT"):
             select_count += 1
@@ -446,7 +642,10 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
     finally:
         event.remove(engine, "before_cursor_execute", count_selects)
 
-    assert dict(member_emails) == {active.id: "active@example.com"}
+    assert isinstance(member_emails, migration_module.MemberEmailSnapshot)
+    assert [(entry.member_id, str(entry.email)) for entry in member_emails.entries] == [
+        (active.id, "active@example.com")
+    ]
     assert select_count == 1
     assert _TrackingReadSession.close_count == 1
     assert _TrackingReadSession.commit_count == 0

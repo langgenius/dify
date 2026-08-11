@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
-from types import MappingProxyType
+from collections.abc import Callable, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.shared.values import NormalizedEmail
+from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, ResolvedMemberEmail
 from models.account import Account, AccountStatus, TenantAccountJoin
 
 
@@ -18,9 +18,9 @@ class SQLAlchemyWorkspaceMemberEmailLookup:
     def __init__(self, session_factory: Callable[[], Session]) -> None:
         self._session_factory = session_factory
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> Mapping[str, str]:
+    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
         if not account_ids:
-            return MappingProxyType({})
+            return MemberEmailSnapshot()
 
         statement = (
             select(Account.id, Account.email)
@@ -35,10 +35,15 @@ class SQLAlchemyWorkspaceMemberEmailLookup:
             with session.no_autoflush:
                 rows = session.execute(statement).all()
 
-        member_emails: dict[str, str] = {}
+        member_emails: list[ResolvedMemberEmail] = []
         for account_id, email in rows:
             try:
-                member_emails[account_id] = str(NormalizedEmail(email))
+                member_emails.append(
+                    ResolvedMemberEmail(
+                        member_id=account_id,
+                        email=NormalizedEmail(email),
+                    )
+                )
             except ValueError:
                 continue
-        return MappingProxyType(member_emails)
+        return MemberEmailSnapshot(tuple(member_emails))

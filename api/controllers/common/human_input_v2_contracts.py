@@ -802,6 +802,7 @@ class NodeDataMigrationResponse(ResponseModel):
 
 NodeDataMigrationBlockerCode = Literal[
     "unsupported-version",
+    "invalid-default-value",
     "configured-disabled-method",
     "unsupported-delivery-method",
     "invalid-email-configuration",

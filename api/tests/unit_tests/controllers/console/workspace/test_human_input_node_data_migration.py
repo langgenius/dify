@@ -1,8 +1,10 @@
 import inspect
+from collections.abc import Sequence
 from http import HTTPStatus
 from importlib import import_module
 from inspect import unwrap
-from types import MappingProxyType, SimpleNamespace
+from types import SimpleNamespace
+from typing import Never
 
 import pytest
 from flask import Flask
@@ -10,15 +12,20 @@ from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.human_input import NodeDataMigrationAPI
+from core.human_input_v2.shared.values import NormalizedEmail
+from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyHumanInputNodeData,
+    MemberEmailSnapshot,
     MigrationBlockerCode,
+    ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from models.account import Account, TenantAccountRole
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
     MigratedNode,
+    MigrationNode,
     NodeDataMigrationBlocker,
     NodeDataMigrationFailure,
     NodeDataMigrationSuccess,
@@ -28,23 +35,27 @@ _CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
 
 
 class _StaticMemberEmailLookup:
-    def find_member_emails(self, _workspace_id, account_ids):
-        return {account_id: f"{account_id}@example.com" for account_id in account_ids}
+    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
+        del workspace_id
+        return MemberEmailSnapshot(
+            tuple(
+                ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
+                for account_id in account_ids
+            )
+        )
 
 
 def _legacy_webapp_node(title: str = "Approval") -> LegacyHumanInputNodeData:
     return LegacyHumanInputNodeData.model_validate(
         {
             "title": title,
-            "delivery_methods": [
-                {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}
-            ],
+            "delivery_methods": [{"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}],
         }
     )
 
 
-def _migrated_webapp_node():
-    conversion = convert_legacy_human_input_node_data(_legacy_webapp_node(), MappingProxyType({}))
+def _migrated_webapp_node() -> HumanInputNodeData:
+    conversion = convert_legacy_human_input_node_data(_legacy_webapp_node(), MemberEmailSnapshot())
     assert conversion.node_data is not None
     return conversion.node_data
 
@@ -53,7 +64,7 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     migrated_node_data = _migrated_webapp_node()
 
     class Service:
-        def migrate(self, *, workspace_id, nodes):
+        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationSuccess:
             assert workspace_id == "workspace-1"
             assert [(node.node_id, node.node_data.title) for node in nodes] == [("node-1", "Approval")]
             return NodeDataMigrationSuccess((MigratedNode("node-1", migrated_node_data),))
@@ -89,6 +100,37 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     }
 
 
+def test_controller_preserves_historically_accepted_action_id_with_trailing_line_feed(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    historical_action_id = f"{'a' * 19}\n"
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    handler = unwrap(NodeDataMigrationAPI.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "nodes": [
+                {
+                    "node_id": "node-1",
+                    "node_data": {
+                        "title": "Approval",
+                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                        "user_actions": [{"id": historical_action_id, "title": "Approve"}],
+                    },
+                }
+            ]
+        },
+    ):
+        response = handler(NodeDataMigrationAPI(), "workspace-1")
+
+    assert response["data"][0]["node_data"]["user_actions"] == [
+        {"id": historical_action_id, "title": "Approve", "button_style": "default"}
+    ]
+
+
 def test_controller_normalizes_compatibility_member_id_before_service(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -104,6 +146,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "delivery_methods": [
                             {
                                 "id": "11111111-1111-4111-8111-111111111111",
@@ -114,7 +157,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
                                     "recipients": {"items": [{"type": "member", "reference_id": "member-1"}]},
                                 },
                             }
-                        ]
+                        ],
                     },
                 }
             ]
@@ -127,7 +170,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
     ]
 
 
-def test_controller_maps_real_im_and_disabled_unknown_config_to_ordered_blockers(
+def test_controller_maps_unsupported_methods_to_ordered_blockers_regardless_of_enabled_state(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -165,13 +208,95 @@ def test_controller_maps_real_im_and_disabled_unknown_config_to_ordered_blockers
             ]
         },
     ):
-        body, status = handler(NodeDataMigrationAPI(), "workspace-1")
+        response = handler(NodeDataMigrationAPI(), "workspace-1")
 
+    assert isinstance(response, tuple)
+    body, status = response
     assert status == HTTPStatus.BAD_REQUEST
     assert [(blocker["code"], blocker["method_id"], blocker["value"]) for blocker in body["blockers"]] == [
         ("unsupported-delivery-method", "im-1", "im"),
-        ("configured-disabled-method", "future-1", "future-channel"),
+        ("unsupported-delivery-method", "future-1", "future-channel"),
         ("missing-recipients", None, None),
+    ]
+
+
+def test_controller_rejects_disabled_unknown_method_with_empty_config_without_partial_data(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    handler = unwrap(NodeDataMigrationAPI.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "nodes": [
+                {
+                    "node_id": "node-1",
+                    "node_data": {
+                        "title": "Approval",
+                        "delivery_methods": [
+                            {
+                                "id": "future-1",
+                                "type": "future-channel",
+                                "enabled": False,
+                                "config": {},
+                            },
+                            {"type": "webapp", "config": {}},
+                        ],
+                    },
+                }
+            ]
+        },
+    ):
+        response = handler(NodeDataMigrationAPI(), "workspace-1")
+
+    assert isinstance(response, tuple)
+    body, status = response
+    assert status == HTTPStatus.BAD_REQUEST
+    assert "data" not in body
+    assert [(blocker["code"], blocker["method_id"], blocker["value"]) for blocker in body["blockers"]] == [
+        ("unsupported-delivery-method", "future-1", "future-channel")
+    ]
+
+
+def test_controller_maps_invalid_default_value_to_typed_all_or_error_response(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    handler = unwrap(NodeDataMigrationAPI.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "nodes": [
+                {
+                    "node_id": "node-invalid",
+                    "node_data": {
+                        "title": "Invalid",
+                        "default_value": [{"key": "fallback", "type": "object", "value": False}],
+                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                    },
+                },
+                {
+                    "node_id": "node-valid",
+                    "node_data": {
+                        "title": "Valid",
+                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                    },
+                },
+            ]
+        },
+    ):
+        body, status = handler(NodeDataMigrationAPI(), "workspace-1")
+
+    assert status == HTTPStatus.BAD_REQUEST
+    assert "data" not in body
+    assert [(blocker["node_id"], blocker["code"], blocker["value"]) for blocker in body["blockers"]] == [
+        ("node-invalid", "invalid-default-value", "default_value")
     ]
 
 
@@ -185,7 +310,8 @@ def test_controller_maps_blocked_batch_without_partial_data(app: Flask, monkeypa
     )
 
     class Service:
-        def migrate(self, **_kwargs):
+        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationFailure:
+            del workspace_id, nodes
             return NodeDataMigrationFailure((blocker,))
 
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", Service)
@@ -193,7 +319,7 @@ def test_controller_maps_blocked_batch_without_partial_data(app: Flask, monkeypa
 
     with app.test_request_context(
         method="POST",
-        json={"nodes": [{"node_id": "node-1", "node_data": {"delivery_methods": []}}]},
+        json={"nodes": [{"node_id": "node-1", "node_data": {"title": "Approval", "delivery_methods": []}}]},
     ):
         body, status = handler(NodeDataMigrationAPI(), "workspace-1")
 
@@ -229,7 +355,8 @@ def test_controller_validates_request_before_building_service(app: Flask, monkey
 
 def test_controller_does_not_disguise_unexpected_service_errors(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class Service:
-        def migrate(self, **_kwargs):
+        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> Never:
+            del workspace_id, nodes
             raise RuntimeError("unexpected")
 
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", Service)
@@ -238,7 +365,7 @@ def test_controller_does_not_disguise_unexpected_service_errors(app: Flask, monk
     with (
         app.test_request_context(
             method="POST",
-            json={"nodes": [{"node_id": "node-1", "node_data": {"delivery_methods": []}}]},
+            json={"nodes": [{"node_id": "node-1", "node_data": {"title": "Approval", "delivery_methods": []}}]},
         ),
         pytest.raises(RuntimeError, match="unexpected"),
     ):
