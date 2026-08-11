@@ -1,5 +1,5 @@
-from types import SimpleNamespace
-from typing import cast
+import json
+from typing import Any, cast
 from unittest.mock import Mock
 
 import pytest
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
-from models import App, AppMode
+from models import Account, App, AppMode, Tenant
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.app_dsl_service import AppDslService, PendingData
@@ -52,9 +52,46 @@ def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCO
     return app
 
 
+def _account(*, account_id: str = "account-1", tenant_id: str | None = None) -> Account:
+    account = Account(name="DSL User", email=f"{account_id}@example.com")
+    account.id = account_id
+    if tenant_id is not None:
+        tenant = Tenant(name=f"Tenant {tenant_id}")
+        tenant.id = tenant_id
+        account._current_tenant = tenant
+    return account
+
+
+def _workflow(*, graph: dict[str, Any], environment_variables: list[LLMEnvironmentVariable]) -> Workflow:
+    workflow = Workflow(tenant_id="tenant-1", graph=json.dumps(graph))
+    workflow.environment_variables = environment_variables
+    return workflow
+
+
+def _app(
+    *,
+    app_id: str = "11111111-1111-1111-1111-111111111111",
+    tenant_id: str = "33333333-3333-3333-3333-333333333333",
+    app_model_config_id: str | None = None,
+    mode: AppMode = AppMode.CHAT,
+) -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        app_model_config_id=app_model_config_id,
+        mode=mode,
+        name="Existing app",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        use_icon_as_answer_icon=False,
+    )
+
+
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow(
+        graph={
             "nodes": [
                 {
                     "id": "llm-node",
@@ -83,7 +120,7 @@ def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(mo
         analyze_dependency,
     )
 
-    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+    result = AppDslService._extract_dependencies_from_workflow(workflow)
 
     assert result == ["new-provider"]
     analyze_dependency.assert_called_once_with("new-provider")
@@ -93,8 +130,8 @@ def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(mo
 def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
     monkeypatch: pytest.MonkeyPatch, model_selector: list[str]
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow(
+        graph={
             "nodes": [
                 {
                     "id": "llm-node",
@@ -118,7 +155,7 @@ def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_refe
         analyze_dependency,
     )
 
-    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+    result = AppDslService._extract_dependencies_from_workflow(workflow)
 
     assert result == ["old-provider"]
     analyze_dependency.assert_called_once_with("old-provider")
@@ -129,7 +166,7 @@ def test_import_app_rejects_oversized_yaml_content_before_parsing(
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
     service = AppDslService(session=unbound_session)
-    account = Mock(current_tenant_id="tenant-1")
+    account = _account(tenant_id="tenant-1")
 
     result = service.import_app(account=account, import_mode="yaml-content", yaml_content="你你")
 
@@ -149,7 +186,7 @@ def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
     service = AppDslService(session=unbound_session)
 
     result = service.import_app(
-        account=Mock(current_tenant_id="tenant-1"),
+        account=_account(tenant_id="tenant-1"),
         import_mode="yaml-url",
         yaml_url="https://example.com/app.yaml",
     )
@@ -169,7 +206,7 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     service = AppDslService(session=unbound_session)
 
     result = service.import_app(
-        account=Mock(current_tenant_id="tenant-1"),
+        account=_account(tenant_id="tenant-1"),
         import_mode="yaml-url",
         yaml_url="https://example.com/app.yaml",
     )
@@ -279,7 +316,7 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
     service = AppDslService(session=unbound_session)
-    creator = Mock(id="account-1", current_tenant_id="tenant-1")
+    creator = _account(tenant_id="tenant-1")
 
     pending = service.import_app(
         account=creator,
@@ -299,12 +336,12 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
     monkeypatch.setattr(
         service,
         "_create_or_update_app",
-        Mock(return_value=Mock(id="app-1", mode=AppMode.WORKFLOW)),
+        Mock(return_value=_app(app_id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)),
     )
 
     for other_account in (
-        Mock(id="account-1", current_tenant_id="tenant-2"),
-        Mock(id="account-2", current_tenant_id="tenant-1"),
+        _account(tenant_id="tenant-2"),
+        _account(account_id="account-2", tenant_id="tenant-1"),
     ):
         assert service.confirm_import(import_id=pending.id, account=other_account).status == ImportStatus.FAILED
 
@@ -356,25 +393,13 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
         arrange_session.add(app_model_config)
         arrange_session.commit()
         app_model_config_id = app_model_config.id
-    app = cast(
-        App,
-        SimpleNamespace(
-            id="11111111-1111-1111-1111-111111111111",
-            tenant_id="33333333-3333-3333-3333-333333333333",
-            app_model_config_id=app_model_config_id,
-            name="Existing app",
-            description="",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#FFFFFF",
-        ),
-    )
+    app = _app(app_model_config_id=app_model_config_id)
 
     with sqlite_session_factory() as service_session:
         result = AppDslService(session=service_session)._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
-            account=Mock(id="account-1"),
+            account=_account(),
         )
 
         assert result is app
@@ -398,25 +423,13 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     signal = Mock()
     signal.send.side_effect = record_signal
     monkeypatch.setattr("services.app_dsl_service.app_model_config_was_updated", signal)
-    app = cast(
-        App,
-        SimpleNamespace(
-            id="11111111-1111-1111-1111-111111111111",
-            tenant_id="33333333-3333-3333-3333-333333333333",
-            app_model_config_id=None,
-            name="Existing app",
-            description="",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#FFFFFF",
-        ),
-    )
+    app = _app()
 
     try:
         AppDslService(session=sqlite_session)._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
-            account=Mock(id="22222222-2222-2222-2222-222222222222"),
+            account=_account(account_id="22222222-2222-2222-2222-222222222222"),
         )
     finally:
         event.remove(sqlite_session, "after_flush", record_flush)
@@ -503,21 +516,7 @@ def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session
         "services.app_dsl_service.DependenciesAnalysisService.generate_dependencies",
         Mock(return_value=[]),
     )
-    app = cast(
-        App,
-        SimpleNamespace(
-            id="11111111-1111-1111-1111-111111111111",
-            tenant_id="33333333-3333-3333-3333-333333333333",
-            app_model_config_id=app_model_config_id,
-            mode=AppMode.CHAT,
-            name="Chat app",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#FFFFFF",
-            description="",
-            use_icon_as_answer_icon=False,
-        ),
-    )
+    app = _app(app_model_config_id=app_model_config_id)
 
     with sqlite_session_factory() as service_session:
         exported = AppDslService.export_dsl(app, session=service_session)
@@ -533,7 +532,7 @@ def test_ensure_agent_manage_permission_noops_when_rbac_disabled(monkeypatch: py
     check = Mock()
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
 
-    AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+    AppDslService._ensure_agent_manage_permission(_account(tenant_id="tenant-1"))
 
     check.assert_not_called()
 
@@ -543,7 +542,7 @@ def test_ensure_agent_manage_permission_allows_agent_manager(monkeypatch: pytest
     check = Mock(return_value=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
 
-    AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+    AppDslService._ensure_agent_manage_permission(_account(tenant_id="tenant-1"))
 
     check.assert_called_once_with("tenant-1", "account-1", scene=RBACPermission.AGENT_MANAGE)
 
@@ -553,7 +552,7 @@ def test_ensure_agent_manage_permission_rejects_without_agent_manage(monkeypatch
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
 
     with pytest.raises(NoPermissionError):
-        AppDslService._ensure_agent_manage_permission(Mock(id="account-1", current_tenant_id="tenant-1"))
+        AppDslService._ensure_agent_manage_permission(_account(tenant_id="tenant-1"))
 
 
 def test_create_or_update_app_gates_agent_mode_before_creation(
@@ -567,7 +566,7 @@ def test_create_or_update_app_gates_agent_mode_before_creation(
         service._create_or_update_app(
             app=None,
             data={"app": {"mode": "agent", "name": "Gated agent"}},
-            account=Mock(id="account-1", current_tenant_id="tenant-1"),
+            account=_account(tenant_id="tenant-1"),
         )
 
     assert not unbound_session.in_transaction()
@@ -582,7 +581,7 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
 
     with pytest.raises(NoPermissionError):
         service.import_app(
-            account=Mock(id="account-1", current_tenant_id="tenant-1"),
+            account=_account(tenant_id="tenant-1"),
             import_mode="yaml-content",
             yaml_content="app:\n  mode: agent\n  name: Denied agent\n",
         )

@@ -254,20 +254,3 @@ def persist_service_api_dataset_owner(
     """Persist the tenant-owner mapping resolved by dataset-token authentication."""
     session.add_all([tenant, tenant_account_join])
     session.commit()
-
-
-def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: object, mock_owner: object) -> None:
-    """Stub the legacy owner query; SQLite-backed tests use ``persist_service_api_tenant_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
-
-
-def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
-    mock_tenant: object,
-    mock_tenant_account_join: object,
-) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
-        mock_tenant,
-        mock_tenant_account_join,
-    )
