@@ -499,7 +499,7 @@ def _agent_api_key_count(session: Session, app_id: str) -> int:
 def _agent_app_access_ready(session: Session, app_model: App) -> bool:
     agent = _agent_roster_service(session).get_app_backing_agent(
         tenant_id=app_model.tenant_id,
-        app_id=str(app_model.id),
+        app_id=app_model.id,
     )
     return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
 
