@@ -26,11 +26,14 @@ const HomeSearch = ({ children }: { children?: ReactNode }) => {
   return (
     <div
       className={cn(
-        'pointer-events-none sticky z-[60] -mt-9 flex h-9 shrink-0 justify-center px-4',
+        'pointer-events-none sticky z-[60] -mt-9 flex h-9 shrink-0 justify-center',
         styles.search,
       )}
     >
-      <div ref={searchRef} className="pointer-events-auto relative w-full max-w-[420px]">
+      <div
+        ref={searchRef}
+        className={cn('pointer-events-auto relative w-full', styles.searchContent)}
+      >
         {children ?? (
           <MarketplacePluginSearch
             placeholder={t(($) => $['marketplace.home.searchPlaceholder'])}
