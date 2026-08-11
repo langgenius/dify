@@ -1,17 +1,27 @@
 from __future__ import annotations
 
+import json
 import os
+import sys
 from collections.abc import Generator, Mapping, Sequence
+from copy import deepcopy
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 from slack_sdk.web import WebClient
 
+from core.human_input import ButtonStyle
+from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter, _SlackMessageLocator
 from core.human_input_v2.im_provider import (
+    AuthenticatedIMEvent,
+    CorrelationToken,
     Directory,
+    IMCardEvent,
+    IMCardEventDecodingError,
     MessageAccepted,
     ProviderUserId,
     SlackIMIntegrationCredentials,
@@ -19,6 +29,28 @@ from core.human_input_v2.im_provider import (
 
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
+_RAW_JSON_EXTRA_PLACEHOLDER = "__raw_json_extra_placeholder__"
+
+
+def _serialize_callback_with_raw_extra(callback: Mapping[str, object], raw_json_value: str) -> str:
+    callback_with_extra = dict(callback)
+    callback_with_extra["ignored_extra"] = _RAW_JSON_EXTRA_PLACEHOLDER
+    serialized_callback = json.dumps(callback_with_extra, ensure_ascii=False)
+    serialized_placeholder = json.dumps(_RAW_JSON_EXTRA_PLACEHOLDER)
+    assert serialized_callback.count(serialized_placeholder) == 1
+    return serialized_callback.replace(serialized_placeholder, raw_json_value)
+
+
+def _authenticated_slack_card_event(serialized_callback: str, received_second: int) -> AuthenticatedIMEvent:
+    return AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=datetime(2026, 8, 11, 12, 0, received_second),
+        payload=serialized_callback,
+    )
 
 
 def _non_empty_environment_value(name: str) -> str | None:
@@ -140,6 +172,23 @@ def _paginated_slack_directory_entries(client: WebClient) -> tuple[dict[str, tup
         cursor = next_cursor
 
 
+def _read_exact_message(client: WebClient, reference: _SlackMessageLocator) -> Mapping[object, object]:
+    response = client.conversations_replies(
+        channel=reference.channel_id,
+        ts=reference.message_ts,
+        inclusive=True,
+        limit=1,
+    )
+    messages = response.get("messages")
+    assert isinstance(messages, Sequence)
+    assert not isinstance(messages, str | bytes | bytearray)
+    matching_messages = [
+        message for message in messages if isinstance(message, Mapping) and message.get("ts") == reference.message_ts
+    ]
+    assert len(matching_messages) == 1
+    return matching_messages[0]
+
+
 def test_slack_directory_matches_real_paginated_directory(
     slack_adapter: SlackIMProviderAdapter,
     slack_web_client: WebClient,
@@ -191,3 +240,307 @@ def test_slack_messaging_sends_and_reads_exact_text(
     ]
     assert len(matching_messages) == 1
     assert matching_messages[0].get("text") == message_body
+
+
+def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
+    slack_test_recipient_id: ProviderUserId,
+    slack_adapter: SlackIMProviderAdapter,
+    slack_web_client: WebClient,
+) -> None:
+    marker = f"codex-implementer-slack-card-event-5ab7-20260811-{uuid4()}"
+    correlation_token = CorrelationToken(f"{marker}-correlation")
+    intent = ResolvedForm(
+        title=f"Slack card integration [{marker}]",
+        blocks=(
+            MarkdownText("Review the provider-persisted form."),
+            ParagraphInput("review_comment", "Initial review"),
+            SelectInput("risk_level", ("low", "high"), "low"),
+        ),
+        user_actions=(
+            ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),
+            ResolvedFormAction("reject", "Reject", ButtonStyle.ACCENT),
+        ),
+        legacy_form_content="unused",
+    )
+
+    message_result = slack_adapter.dynamic_card_messaging.send_card(
+        slack_test_recipient_id,
+        intent,
+        correlation_token,
+    )
+
+    assert isinstance(message_result, MessageAccepted)
+    assert isinstance(message_result.reference, _SlackMessageLocator)
+    message_reference = message_result.reference
+    persisted_message = _read_exact_message(slack_web_client, message_reference)
+    assert persisted_message.get("text") == intent.title
+    blocks = persisted_message.get("blocks")
+    assert isinstance(blocks, Sequence)
+    assert not isinstance(blocks, str | bytes | bytearray)
+    input_blocks = [block for block in blocks if isinstance(block, Mapping) and block.get("type") == "input"]
+    assert len(input_blocks) == 2
+    assert [block.get("block_id") for block in input_blocks] == ["__dify.input.0", "__dify.input.1"]
+    select_input_block = next(
+        block
+        for block in input_blocks
+        if isinstance(block.get("element"), Mapping) and block["element"].get("action_id") == "risk_level"
+    )
+    select_element = select_input_block.get("element")
+    assert isinstance(select_element, Mapping)
+    assert select_element.get("type") == "static_select"
+    assert select_element.get("placeholder") == {
+        "type": "plain_text",
+        "text": "Select an option",
+        "emoji": True,
+    }
+    assert select_element.get("options") == [
+        {"text": {"type": "plain_text", "text": "low", "emoji": True}, "value": "low"},
+        {"text": {"type": "plain_text", "text": "high", "emoji": True}, "value": "high"},
+    ]
+    assert select_element.get("initial_option") == {
+        "text": {"type": "plain_text", "text": "low", "emoji": True},
+        "value": "low",
+    }
+    action_blocks = [block for block in blocks if isinstance(block, Mapping) and block.get("type") == "actions"]
+    assert len(action_blocks) == 1
+    action_block = action_blocks[0]
+    action_block_id = action_block.get("block_id")
+    assert action_block_id == "__dify.actions"
+    action_elements = action_block.get("elements")
+    assert isinstance(action_elements, Sequence)
+    assert not isinstance(action_elements, str | bytes | bytearray)
+    assert len(action_elements) == 2
+    invoked_action = next(
+        action for action in action_elements if isinstance(action, Mapping) and action.get("action_id") == "approve"
+    )
+    assert isinstance(invoked_action, Mapping)
+    callback_action = {**invoked_action, "block_id": action_block_id}
+
+    input_block_ids: dict[str, str] = {}
+    for input_block in input_blocks:
+        block_id = input_block.get("block_id")
+        element = input_block.get("element")
+        assert isinstance(block_id, str)
+        assert isinstance(element, Mapping)
+        action_id = element.get("action_id")
+        assert isinstance(action_id, str)
+        input_block_ids[action_id] = block_id
+
+    callback_payload = {
+        "type": "block_actions",
+        "team": {"id": "integration-workspace"},
+        "user": {"id": str(slack_test_recipient_id)},
+        "container": {
+            "type": "message",
+            "channel_id": message_reference.channel_id,
+            "message_ts": message_reference.message_ts,
+        },
+        "message": persisted_message,
+        "state": {
+            "values": {
+                input_block_ids["review_comment"]: {
+                    "review_comment": {"type": "plain_text_input", "value": "Reviewed exactly ✅"}
+                },
+                input_block_ids["risk_level"]: {
+                    "risk_level": {
+                        "type": "static_select",
+                        "selected_option": {"value": "high"},
+                    }
+                },
+            }
+        },
+        "actions": [callback_action],
+    }
+    socket_envelope = {
+        "envelope_id": f"{marker}-envelope",
+        "payload": callback_payload,
+        "type": "interactive",
+        "accepts_response_payload": False,
+    }
+    authenticated_event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=datetime(2026, 8, 11, 12, 0, 0),
+        payload=json.dumps(socket_envelope, ensure_ascii=False),
+    )
+
+    decoded = SlackIMProviderAdapter.card_event_decoder().decode(authenticated_event)
+
+    assert decoded == IMCardEvent(
+        provider_user_id=slack_test_recipient_id,
+        action_id="approve",
+        inputs={"review_comment": "Reviewed exactly ✅", "risk_level": "high"},
+        correlation_token=correlation_token,
+    )
+
+    finite_number_decoded = SlackIMProviderAdapter.card_event_decoder().decode(
+        _authenticated_slack_card_event(
+            _serialize_callback_with_raw_extra(callback_payload, '{"integer":42,"float":1e300}'),
+            received_second=6,
+        )
+    )
+    assert finite_number_decoded == decoded
+
+    parser_boundary_values = (
+        "1" * (sys.get_int_max_str_digits() + 1),
+        "[" * (sys.getrecursionlimit() * 20) + "null" + "]" * (sys.getrecursionlimit() * 20),
+        "1e400",
+    )
+    for received_second, raw_json_value in enumerate(parser_boundary_values, start=7):
+        with pytest.raises(IMCardEventDecodingError) as captured:
+            SlackIMProviderAdapter.card_event_decoder().decode(
+                _authenticated_slack_card_event(
+                    _serialize_callback_with_raw_extra(callback_payload, raw_json_value),
+                    received_second=received_second,
+                )
+            )
+        assert captured.value.__cause__ is None
+        assert captured.value.__context__ is None
+
+    missing_input_payload = deepcopy(callback_payload)
+    missing_state = missing_input_payload["state"]
+    assert isinstance(missing_state, dict)
+    missing_values = missing_state["values"]
+    assert isinstance(missing_values, dict)
+    missing_values.pop(input_block_ids["risk_level"])
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(
+            AuthenticatedIMEvent(
+                provider=IMProvider.SLACK,
+                provider_tenant_id="integration-workspace",
+                event_id=None,
+                event_type="block_actions",
+                occurred_at=None,
+                received_at=datetime(2026, 8, 11, 12, 0, 1),
+                payload=json.dumps(missing_input_payload, ensure_ascii=False),
+            )
+        )
+
+    mismatched_action_payload = deepcopy(callback_payload)
+    mismatched_actions = mismatched_action_payload["actions"]
+    assert isinstance(mismatched_actions, list)
+    mismatched_action = mismatched_actions[0]
+    assert isinstance(mismatched_action, dict)
+    mismatched_action["action_id"] = "reject"
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(
+            AuthenticatedIMEvent(
+                provider=IMProvider.SLACK,
+                provider_tenant_id="integration-workspace",
+                event_id=None,
+                event_type="block_actions",
+                occurred_at=None,
+                received_at=datetime(2026, 8, 11, 12, 0, 2),
+                payload=json.dumps(mismatched_action_payload, ensure_ascii=False),
+            )
+        )
+
+    extra_input_payload = deepcopy(callback_payload)
+    extra_state = extra_input_payload["state"]
+    assert isinstance(extra_state, dict)
+    extra_values = extra_state["values"]
+    assert isinstance(extra_values, dict)
+    extra_values["external.unexpected"] = {"external": {"type": "plain_text_input", "value": "unexpected"}}
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(
+            AuthenticatedIMEvent(
+                provider=IMProvider.SLACK,
+                provider_tenant_id="integration-workspace",
+                event_id=None,
+                event_type="block_actions",
+                occurred_at=None,
+                received_at=datetime(2026, 8, 11, 12, 0, 3),
+                payload=json.dumps(extra_input_payload, ensure_ascii=False),
+            )
+        )
+
+    null_input_payload = deepcopy(callback_payload)
+    null_state = null_input_payload["state"]
+    assert isinstance(null_state, dict)
+    null_values = null_state["values"]
+    assert isinstance(null_values, dict)
+    null_text_state = null_values[input_block_ids["review_comment"]]
+    null_select_state = null_values[input_block_ids["risk_level"]]
+    assert isinstance(null_text_state, dict)
+    assert isinstance(null_select_state, dict)
+    null_text_state["review_comment"] = {"type": "plain_text_input", "value": None}
+    null_select_state["risk_level"] = {"type": "static_select", "selected_option": None}
+    null_decoded = SlackIMProviderAdapter.card_event_decoder().decode(
+        AuthenticatedIMEvent(
+            provider=IMProvider.SLACK,
+            provider_tenant_id="integration-workspace",
+            event_id=None,
+            event_type="block_actions",
+            occurred_at=None,
+            received_at=datetime(2026, 8, 11, 12, 0, 4),
+            payload=json.dumps(null_input_payload, ensure_ascii=False),
+        )
+    )
+    assert isinstance(null_decoded, IMCardEvent)
+    assert null_decoded.inputs == {"review_comment": None, "risk_level": None}
+
+
+def test_slack_zero_input_card_round_trips_without_callback_state(
+    slack_test_recipient_id: ProviderUserId,
+    slack_adapter: SlackIMProviderAdapter,
+    slack_web_client: WebClient,
+) -> None:
+    marker = f"codex-implementer-slack-card-event-zero-input-5ab7-20260811-{uuid4()}"
+    correlation_token = CorrelationToken(f"{marker}-correlation")
+    intent = ResolvedForm(
+        title=f"Slack zero-input card integration [{marker}]",
+        blocks=(MarkdownText("Choose one action."),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="unused",
+    )
+
+    message_result = slack_adapter.dynamic_card_messaging.send_card(
+        slack_test_recipient_id,
+        intent,
+        correlation_token,
+    )
+
+    assert isinstance(message_result, MessageAccepted)
+    assert isinstance(message_result.reference, _SlackMessageLocator)
+    persisted_message = _read_exact_message(slack_web_client, message_result.reference)
+    blocks = persisted_message.get("blocks")
+    assert isinstance(blocks, Sequence)
+    assert not isinstance(blocks, str | bytes | bytearray)
+    assert not any(isinstance(block, Mapping) and block.get("type") == "input" for block in blocks)
+    action_block = next(block for block in blocks if isinstance(block, Mapping) and block.get("type") == "actions")
+    action_block_id = action_block.get("block_id")
+    action_elements = action_block.get("elements")
+    assert isinstance(action_block_id, str)
+    assert isinstance(action_elements, Sequence)
+    assert not isinstance(action_elements, str | bytes | bytearray)
+    assert len(action_elements) == 1
+    invoked_action = action_elements[0]
+    assert isinstance(invoked_action, Mapping)
+    callback_payload = {
+        "type": "block_actions",
+        "team": {"id": "integration-workspace"},
+        "user": {"id": str(slack_test_recipient_id)},
+        "message": persisted_message,
+        "actions": [{**invoked_action, "block_id": action_block_id}],
+    }
+    authenticated_event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="integration-workspace",
+        event_id=None,
+        event_type="block_actions",
+        occurred_at=None,
+        received_at=datetime(2026, 8, 11, 12, 0, 5),
+        payload=json.dumps(callback_payload, ensure_ascii=False),
+    )
+
+    decoded = SlackIMProviderAdapter.card_event_decoder().decode(authenticated_event)
+
+    assert decoded == IMCardEvent(
+        provider_user_id=slack_test_recipient_id,
+        action_id="approve",
+        inputs={},
+        correlation_token=correlation_token,
+    )

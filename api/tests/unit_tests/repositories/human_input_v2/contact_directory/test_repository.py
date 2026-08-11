@@ -1,5 +1,7 @@
 """Contract tests for the SQLAlchemy Contact Directory adapter."""
 
+from __future__ import annotations
+
 from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -20,16 +22,56 @@ from core.human_input_v2.contact_directory import (
     ContactResolution,
     ExternalContactOwner,
     PlatformWorkspaceEntry,
+    WorkspaceMemberOwner,
 )
-from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, WorkspaceId
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    DeploymentScope,
+    DirectoryScope,
+    PlatformEntryId,
+    WorkspaceId,
+    WorkspaceScope,
+)
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
 from models.model import DifySetup
 from repositories.human_input_v2.contact_directory.repository import SQLAlchemyContactDirectoryRepository
+from repositories.human_input_v2.organization_write_unit_of_work import SQLAlchemyOrganizationWriteUnitOfWork
 
 _NOW = datetime(2026, 7, 25)
 _WORKSPACE_ID = WorkspaceId("workspace-1")
 _OTHER_WORKSPACE_ID = WorkspaceId("workspace-2")
+
+
+class _RecordingOwnedWriteLock:
+    def __init__(self, factory: _RecordingWriteUnitOfWorkFactory) -> None:
+        self._factory = factory
+
+    def __enter__(self) -> _RecordingOwnedWriteLock:
+        self._factory.active = True
+        return self
+
+    def __exit__(self, *_unused: object) -> None:
+        self._factory.active = False
+
+    def ensure_owned(self) -> None:
+        if not self._factory.active:
+            raise RuntimeError("lock is not held")
+
+    def extend(self) -> None:
+        self.ensure_owned()
+
+
+class _RecordingWriteUnitOfWorkFactory:
+    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+        self._session_maker = session_maker
+        self.scopes: list[DirectoryScope] = []
+        self.active = False
+
+    def __call__(self, scope: DirectoryScope) -> SQLAlchemyOrganizationWriteUnitOfWork:
+        self.scopes.append(scope)
+        return SQLAlchemyOrganizationWriteUnitOfWork(self._session_maker, _RecordingOwnedWriteLock(self))
 
 
 @pytest.fixture
@@ -47,7 +89,8 @@ def repository_context(
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with session_maker.begin() as session:
         session.add(DifySetup(version="test-version"))
-    return SQLAlchemyContactDirectoryRepository(session_maker), session_maker
+    write_unit_of_work_factory = _RecordingWriteUnitOfWorkFactory(session_maker)
+    return SQLAlchemyContactDirectoryRepository(session_maker, write_unit_of_work_factory), session_maker
 
 
 def _account(account_id: str, *, status: AccountStatus = AccountStatus.ACTIVE) -> Account:
@@ -77,6 +120,60 @@ def _workspace_member_contact(contact_id: str, workspace_id: WorkspaceId, accoun
     )
 
 
+def _save_organization_contact(repository: SQLAlchemyContactDirectoryRepository, contact: Contact) -> Contact:
+    return repository.save_organization_contact(contact, organization_scope=DeploymentScope())
+
+
+def _save_workspace_member_contact(repository: SQLAlchemyContactDirectoryRepository, contact: Contact) -> Contact:
+    if not isinstance(contact.owner, (ExternalContactOwner, WorkspaceMemberOwner)):
+        raise TypeError("test Contact owner does not have a workspace scope")
+    return repository.save_workspace_member_contact(
+        contact,
+        organization_scope=WorkspaceScope(contact.owner.workspace_id),
+    )
+
+
+def test_account_backed_writes_enter_the_explicit_owner_guard_before_sql(sqlite_engine: Engine) -> None:
+    tables = [
+        DifySetup.__table__,
+        Account.__table__,
+        TenantAccountJoin.__table__,
+        HumanInputContact.__table__,
+    ]
+    DifySetup.metadata.create_all(sqlite_engine, tables=tables)
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with session_maker.begin() as session:
+        session.add(DifySetup(version="test-version"))
+        session.add_all([_account("organization-account"), _account("workspace-account")])
+        session.add(
+            TenantAccountJoin(
+                tenant_id=str(_WORKSPACE_ID),
+                account_id="workspace-account",
+                role=TenantAccountRole.NORMAL,
+            )
+        )
+    write_unit_of_work_factory = _RecordingWriteUnitOfWorkFactory(session_maker)
+    repository = SQLAlchemyContactDirectoryRepository(session_maker, write_unit_of_work_factory)
+
+    def assert_guarded(_connection, _cursor, _statement, _parameters, _context, _executemany) -> None:
+        assert write_unit_of_work_factory.active is True
+
+    event.listen(sqlite_engine, "before_cursor_execute", assert_guarded)
+    try:
+        _save_organization_contact(
+            repository,
+            _organization_contact("organization", "organization-account", "organization@example.com"),
+        )
+        _save_workspace_member_contact(
+            repository,
+            _workspace_member_contact("workspace", _WORKSPACE_ID, "workspace-account"),
+        )
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", assert_guarded)
+
+    assert write_unit_of_work_factory.scopes == [DeploymentScope(), WorkspaceScope(_WORKSPACE_ID)]
+
+
 def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
@@ -100,12 +197,12 @@ def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(reposit
                 ),
             ]
         )
-    organization = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    organization = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
-    member = repository.save_workspace_member_contact(_workspace_member_contact("member", _WORKSPACE_ID, "account-2"))
-    repository.save_workspace_member_contact(
-        _workspace_member_contact("other-member", _OTHER_WORKSPACE_ID, "account-3")
+    member = _save_workspace_member_contact(repository, _workspace_member_contact("member", _WORKSPACE_ID, "account-2"))
+    _save_workspace_member_contact(
+        repository, _workspace_member_contact("other-member", _OTHER_WORKSPACE_ID, "account-3")
     )
     repository.set_platform_availability(
         _WORKSPACE_ID,
@@ -126,8 +223,8 @@ def test_snapshot_scopes_eager_platform_entries_in_sql(repository_context) -> No
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("admin")])
-    organization = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    organization = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     repository.set_platform_availability(
         _WORKSPACE_ID,
@@ -173,8 +270,8 @@ def test_disabled_account_is_unavailable_without_deleting_contact(repository_con
                 role=TenantAccountRole.NORMAL,
             )
         )
-    contact = repository.save_organization_contact(
-        _organization_contact("contact-1", "disabled", "disabled@example.com")
+    contact = _save_organization_contact(
+        repository, _organization_contact("contact-1", "disabled", "disabled@example.com")
     )
     with session_maker.begin() as session:
         account = session.get_one(Account, "disabled")
@@ -229,7 +326,7 @@ def test_external_admission_without_setup_still_rejects_existing_organization_em
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    repository.save_organization_contact(_organization_contact("organization", "account-1", "reviewer@example.com"))
+    _save_organization_contact(repository, _organization_contact("organization", "account-1", "reviewer@example.com"))
     with session_maker.begin() as session:
         session.execute(sa.delete(DifySetup))
 
@@ -243,8 +340,8 @@ def test_external_admission_rejects_visible_organization_contact_email(repositor
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("admin")])
-    organization = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "reviewer@example.com")
+    organization = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "reviewer@example.com")
     )
     repository.set_platform_availability(
         _WORKSPACE_ID,
@@ -266,8 +363,8 @@ def test_organization_contact_write_rejects_existing_external_email(repository_c
         session.add(_account("account-1"))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(
-            _organization_contact("organization", "account-1", " REVIEWER@EXAMPLE.COM ")
+        _save_organization_contact(
+            repository, _organization_contact("organization", "account-1", " REVIEWER@EXAMPLE.COM ")
         )
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
@@ -284,11 +381,11 @@ def test_source_specific_contact_writes_reject_external_bypass(repository_contex
     )
 
     with pytest.raises(ContactDirectoryError) as organization_error:
-        repository.save_organization_contact(external)
+        _save_organization_contact(repository, external)
     assert organization_error.value.code is ContactRejectionCode.INVALID_OWNER
 
     with pytest.raises(ContactDirectoryError) as workspace_error:
-        repository.save_workspace_member_contact(external)
+        _save_workspace_member_contact(repository, external)
     assert workspace_error.value.code is ContactRejectionCode.INVALID_OWNER
 
 
@@ -315,8 +412,8 @@ def test_platform_mutation_is_idempotent_and_restricted_to_organization_contacts
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("admin")])
-    organization = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    organization = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
 
@@ -364,8 +461,8 @@ def test_snapshot_uses_explicit_bounded_queries_and_returns_only_domain_values(r
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    organization = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    organization = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     repository.set_platform_availability(
         _WORKSPACE_ID,
@@ -400,7 +497,7 @@ def test_organization_write_requires_and_queries_stable_setup_row(repository_con
 
     event.listen(session_maker.kw["bind"], "before_cursor_execute", record_statement)
     try:
-        repository.save_organization_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+        _save_organization_contact(repository, _organization_contact("organization", "account-1", "ada@example.com"))
     finally:
         event.remove(session_maker.kw["bind"], "before_cursor_execute", record_statement)
 
@@ -413,7 +510,7 @@ def test_organization_write_fails_closed_when_setup_row_is_missing(repository_co
         session.execute(sa.delete(DifySetup))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(_organization_contact("organization", "account-1", "ada@example.com"))
+        _save_organization_contact(repository, _organization_contact("organization", "account-1", "ada@example.com"))
     assert error.value.code is ContactRejectionCode.SETUP_ROW_MISSING
 
 
@@ -421,8 +518,8 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    original = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    original = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     updated = Contact.create(
         contact_id=original.id,
@@ -434,7 +531,7 @@ def test_contact_update_preserves_identity_source_and_owner(repository_context) 
         now=datetime(2026, 7, 26),
     )
 
-    restored = repository.save_organization_contact(updated)
+    restored = _save_organization_contact(repository, updated)
 
     assert restored.name == "Ada Lovelace"
     assert restored.identity_source is ContactIdentitySource.ORGANIZATION_ACCOUNT
@@ -445,12 +542,12 @@ def test_contact_update_rejects_account_owner_takeover(repository_context) -> No
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("account-2")])
-    original = repository.save_organization_contact(
-        _organization_contact("organization", "account-1", "ada@example.com")
+    original = _save_organization_contact(
+        repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(_organization_contact("organization", "account-2", "grace@example.com"))
+        _save_organization_contact(repository, _organization_contact("organization", "account-2", "grace@example.com"))
 
     assert error.value.code is ContactRejectionCode.INVALID_OWNER
     with session_maker() as session:
@@ -463,10 +560,10 @@ def test_organization_contact_without_email_still_reserves_account_identity(repo
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add(_account("account-1"))
-    original = repository.save_organization_contact(_organization_contact("organization", "account-1", None))
+    original = _save_organization_contact(repository, _organization_contact("organization", "account-1", None))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(_organization_contact("duplicate", "account-1", None))
+        _save_organization_contact(repository, _organization_contact("duplicate", "account-1", None))
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
     with session_maker() as session:
@@ -482,7 +579,9 @@ def test_account_backed_admission_rejects_unavailable_account(repository_context
         session.add(_account("disabled", status=AccountStatus.BANNED))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(_organization_contact("organization", "disabled", "disabled@example.com"))
+        _save_organization_contact(
+            repository, _organization_contact("organization", "disabled", "disabled@example.com")
+        )
     assert error.value.code is ContactRejectionCode.ACCOUNT_UNAVAILABLE
 
 
@@ -492,8 +591,8 @@ def test_workspace_member_write_requires_current_membership(repository_context) 
         session.add(_account("account-1"))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_workspace_member_contact(
-            _workspace_member_contact("workspace-contact", _WORKSPACE_ID, "account-1")
+        _save_workspace_member_contact(
+            repository, _workspace_member_contact("workspace-contact", _WORKSPACE_ID, "account-1")
         )
 
     assert error.value.code is ContactRejectionCode.INVALID_OWNER
@@ -503,10 +602,10 @@ def test_organization_contact_write_rejects_owner_scoped_identity_collision(repo
     repository, session_maker = repository_context
     with session_maker.begin() as session:
         session.add_all([_account("account-1"), _account("account-2")])
-    repository.save_organization_contact(_organization_contact("first", "account-1", "ada@example.com"))
+    _save_organization_contact(repository, _organization_contact("first", "account-1", "ada@example.com"))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.save_organization_contact(_organization_contact("second", "account-2", "ADA@example.com"))
+        _save_organization_contact(repository, _organization_contact("second", "account-2", "ADA@example.com"))
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
 

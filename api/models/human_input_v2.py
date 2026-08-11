@@ -21,7 +21,7 @@ from enum import StrEnum
 from typing import Annotated, Literal
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, RootModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime, RootModel, TypeAdapter
 from sqlalchemy import orm
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column, relationship
 
@@ -71,6 +71,12 @@ from core.human_input_v2.entities import (
 )
 from core.human_input_v2.entities import (
     IMSyncRunStatus as _IMSyncRunStatus,
+)
+from core.human_input_v2.im_integration.change_log import (
+    IMReconciliationOperation as _IMReconciliationOperation,
+)
+from core.human_input_v2.im_integration.change_log import (
+    IMReconciliationSubjectKind as _IMReconciliationSubjectKind,
 )
 from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
 from graphon.file.enums import FileTransferMethod, FileType
@@ -204,6 +210,10 @@ class IMSyncContactSnapshot(_ImmutableJSONModel):
     name: str = Field(description="Contact display name captured by the sync result.")
     email: str | None = Field(default=None, description="Contact email captured by the sync result.")
     avatar_file_id: str | None = Field(default=None, description="Avatar file identifier captured by the result.")
+    created_at: NaiveDatetime | None = Field(
+        default=None,
+        description="Contact creation time captured by new results; absent from historical snapshots.",
+    )
 
 
 class IMSyncIdentitySnapshot(_ImmutableJSONModel):
@@ -217,6 +227,39 @@ class IMSyncIdentitySnapshot(_ImmutableJSONModel):
     provider_user_id: str = Field(description="Provider user identifier captured by the sync result.")
     display_name: str | None = Field(default=None, description="Provider display name captured by the result.")
     email: str | None = Field(default=None, description="Provider email captured by the result.")
+
+
+class IMIdentityReconciliationSnapshot(_ImmutableJSONModel):
+    """Minimal current IM identity state retained by the reconciliation change log."""
+
+    subject_kind: Literal[_IMReconciliationSubjectKind.IDENTITY] = _IMReconciliationSubjectKind.IDENTITY
+    identity_id: str
+    provider: _IMProvider = Field(strict=False)
+    provider_user_id: str
+    display_name: str | None = None
+    email: str | None = None
+    normalized_email: str | None = None
+    last_seen_sync_run_id: str | None = None
+
+
+class IMBindingReconciliationSnapshot(_ImmutableJSONModel):
+    """Minimal current IM binding state retained by the reconciliation change log."""
+
+    subject_kind: Literal[_IMReconciliationSubjectKind.BINDING] = _IMReconciliationSubjectKind.BINDING
+    binding_id: str
+    identity_id: str
+    contact_id: str
+
+
+type IMReconciliationChangeSnapshot = Annotated[
+    IMIdentityReconciliationSnapshot | IMBindingReconciliationSnapshot,
+    Field(discriminator="subject_kind"),
+]
+
+
+_IM_RECONCILIATION_SNAPSHOT_ADAPTER: TypeAdapter[IMReconciliationChangeSnapshot] = TypeAdapter(
+    IMReconciliationChangeSnapshot
+)
 
 
 class FormApproverGrantMatchedSource(_ImmutableJSONModel):
@@ -1134,6 +1177,11 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
 
     __tablename__ = "human_input_im_sync_results"
     __table_args__ = (
+        sa.UniqueConstraint(
+            "sync_run_id",
+            "operation_key",
+            name="human_input_im_sync_results_run_operation_uq",
+        ),
         sa.Index("hiimsres_run_type_created_idx", "sync_run_id", "result_type", "created_at", "id"),
         sa.Index("hiimsres_integration_contact_created_idx", "integration_id", "contact_id", "created_at"),
         sa.Index("hiimsres_integration_identity_created_idx", "integration_id", "im_identity_id", "created_at"),
@@ -1153,6 +1201,12 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
     )
     result_type: Mapped[_IMSyncResultType] = mapped_column(
         EnumText(_IMSyncResultType), nullable=False, comment="Stable result bucket used by pagination."
+    )
+    operation_key: Mapped[str | None] = mapped_column(
+        sa.String(255),
+        nullable=True,
+        default=None,
+        comment="Deterministic run-local idempotency key; null only for historical results.",
     )
     provider_user_id: Mapped[str | None] = mapped_column(
         sa.String(255),
@@ -1250,6 +1304,72 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
         viewonly=True,
         lazy="raise",
         init=False,
+    )
+
+
+class HumanInputIMReconciliationChange(DefaultFieldsDCMixin, TypeBase):
+    """Append-only before/after fact for one committed identity or IM binding mutation."""
+
+    __tablename__ = "human_input_im_reconciliation_changes"
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "sync_run_id",
+            "operation_key",
+            name="human_input_im_reconciliation_changes_run_operation_uq",
+        ),
+        sa.CheckConstraint(
+            "before_snapshot IS NOT NULL OR after_snapshot IS NOT NULL",
+            name="snapshot_present",
+        ),
+        sa.CheckConstraint(
+            "(operation = 'create' AND before_snapshot IS NULL AND after_snapshot IS NOT NULL) OR "
+            "(operation = 'delete' AND before_snapshot IS NOT NULL AND after_snapshot IS NULL) OR "
+            "(operation NOT IN ('create', 'delete') AND before_snapshot IS NOT NULL AND after_snapshot IS NOT NULL)",
+            name="snapshot_operation_shape",
+        ),
+        sa.CheckConstraint(
+            "(subject_kind = 'identity' AND im_binding_id IS NULL) OR "
+            "(subject_kind = 'binding' AND im_binding_id IS NOT NULL)",
+            name="subject_identifier_shape",
+        ),
+        sa.Index("hiimrc_run_subject_committed_idx", "sync_run_id", "subject_kind", "committed_at", "id"),
+        sa.Index("hiimrc_integration_committed_idx", "integration_id", "committed_at", "id"),
+        {"comment": "Append-only IM identity and IM binding reconciliation mutation history."},
+    )
+
+    integration_id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_im_integrations.id."
+    )
+    sync_run_id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, comment="Logical foreign key to human_input_im_sync_runs.id."
+    )
+    operation_key: Mapped[str] = mapped_column(
+        sa.String(255), nullable=False, comment="Deterministic run-local idempotency key."
+    )
+    subject_kind: Mapped[_IMReconciliationSubjectKind] = mapped_column(
+        EnumText(_IMReconciliationSubjectKind), nullable=False
+    )
+    operation: Mapped[_IMReconciliationOperation] = mapped_column(EnumText(_IMReconciliationOperation), nullable=False)
+    reason_code: Mapped[str] = mapped_column(sa.String(100), nullable=False)
+    im_identity_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    committed_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)
+    im_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    contact_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    before_snapshot: Mapped[IMReconciliationChangeSnapshot | None] = mapped_column(
+        FrozenPydanticModelColumn(
+            _IM_RECONCILIATION_SNAPSHOT_ADAPTER,
+            model_types=(IMIdentityReconciliationSnapshot, IMBindingReconciliationSnapshot),
+        ),
+        nullable=True,
+        default=None,
+    )
+    after_snapshot: Mapped[IMReconciliationChangeSnapshot | None] = mapped_column(
+        FrozenPydanticModelColumn(
+            _IM_RECONCILIATION_SNAPSHOT_ADAPTER,
+            model_types=(IMIdentityReconciliationSnapshot, IMBindingReconciliationSnapshot),
+        ),
+        nullable=True,
+        default=None,
     )
 
 

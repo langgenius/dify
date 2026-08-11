@@ -109,17 +109,17 @@ def test_reset_to_global_is_represented_by_absent_workspace_override() -> None:
     assert result.binding.binding_id == IMBindingId("binding-org")
 
 
-def test_normalized_email_fallback_is_used_when_no_binding_exists() -> None:
+def test_matching_email_without_persisted_binding_is_not_available() -> None:
     identity = _identity("identity-1", "provider-user-1", " REVIEWER@EXAMPLE.COM ")
 
     result = _resolve(identities=(identity,), bindings=())
 
-    assert result.kind is BindingResolutionKind.EMAIL_FALLBACK
-    assert result.binding is not None
-    assert result.binding.binding_id is None
-    assert result.binding.account_id == AccountId("account-1")
-    assert not hasattr(result.binding, "raw_payload")
-    assert not hasattr(result.binding, "encrypted_credentials")
+    assert result.kind is BindingResolutionKind.NOT_AVAILABLE
+    assert result.binding is None
+
+
+def test_resolution_kind_does_not_expose_implicit_email_fallback() -> None:
+    assert "email_fallback" not in {kind.value for kind in BindingResolutionKind}
 
 
 def test_missing_email_or_matching_identity_returns_not_available() -> None:

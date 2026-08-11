@@ -1,0 +1,154 @@
+{
+  "envelope_id": "sanitized-selection-envelope-id",
+  "payload": {
+    "actions": [
+      {
+        "action_id": "risk_level",
+        "action_ts": "1786400101.000002",
+        "block_id": "__dify.input.1",
+        "selected_option": {
+          "text": {
+            "emoji": true,
+            "text": "High",
+            "type": "plain_text"
+          },
+          "value": "high"
+        },
+        "type": "static_select"
+      }
+    ],
+    "api_app_id": "A012SANITIZED",
+    "channel": {
+      "id": "D012SANITIZED",
+      "name": "directmessage"
+    },
+    "container": {
+      "channel_id": "D012SANITIZED",
+      "is_ephemeral": false,
+      "message_ts": "1786400100.000001",
+      "type": "message"
+    },
+    "message": {
+      "app_id": "A012SANITIZED",
+      "blocks": [
+        {
+          "block_id": "slack-generated-header-selection",
+          "text": {
+            "emoji": true,
+            "text": "Approval request",
+            "type": "plain_text"
+          },
+          "type": "header"
+        },
+        {
+          "block_id": "__dify.input.0",
+          "dispatch_action": false,
+          "element": {
+            "action_id": "review_comment",
+            "multiline": true,
+            "type": "plain_text_input"
+          },
+          "label": {
+            "text": "Review comment",
+            "type": "plain_text"
+          },
+          "optional": false,
+          "type": "input"
+        },
+        {
+          "block_id": "__dify.input.1",
+          "dispatch_action": false,
+          "element": {
+            "action_id": "risk_level",
+            "options": [
+              {
+                "text": {
+                  "text": "Low",
+                  "type": "plain_text"
+                },
+                "value": "low"
+              },
+              {
+                "text": {
+                  "text": "High",
+                  "type": "plain_text"
+                },
+                "value": "high"
+              }
+            ],
+            "placeholder": {
+              "emoji": true,
+              "text": "Select an option",
+              "type": "plain_text"
+            },
+            "type": "static_select"
+          },
+          "label": {
+            "text": "Risk level",
+            "type": "plain_text"
+          },
+          "optional": false,
+          "type": "input"
+        },
+        {
+          "block_id": "__dify.actions",
+          "elements": [
+            {
+              "action_id": "approve",
+              "text": {
+                "text": "Approve",
+                "type": "plain_text"
+              },
+              "type": "button",
+              "value": "{\"action_id\":\"approve\",\"correlation_token\":\"sanitized-selection-token\",\"version\":1}"
+            }
+          ],
+          "type": "actions"
+        }
+      ],
+      "bot_id": "B012SANITIZED",
+      "team": "T012SANITIZED",
+      "text": "Approval request [sanitized selection fixture]",
+      "ts": "1786400100.000001",
+      "type": "message",
+      "user": "UAPP012SANITIZED"
+    },
+    "response_url": "https://hooks.slack.com/actions/SANITIZED_SELECTION",
+    "state": {
+      "values": {
+        "__dify.input.0": {
+          "review_comment": {
+            "type": "plain_text_input",
+            "value": "Review in progress"
+          }
+        },
+        "__dify.input.1": {
+          "risk_level": {
+            "selected_option": {
+              "text": {
+                "text": "High",
+                "type": "plain_text"
+              },
+              "value": "high"
+            },
+            "type": "static_select"
+          }
+        }
+      }
+    },
+    "team": {
+      "domain": "sanitized-workspace",
+      "id": "T012SANITIZED"
+    },
+    "token": "sanitized-verification-token",
+    "trigger_id": "sanitized-selection-trigger-id",
+    "type": "block_actions",
+    "user": {
+      "id": "U012SANITIZED",
+      "name": "sanitized-user",
+      "team_id": "T012SANITIZED",
+      "username": "sanitized-user"
+    }
+  },
+  "type": "interactive"
+}

@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
+    LegacyDeliveryParseIssue,
     LegacyHumanInputNodeData,
+    MigrationBlockerCode,
     NodeMigrationConversion,
     convert_legacy_human_input_node_data,
 )
@@ -24,6 +26,9 @@ from services.human_input_v2.node_data_migration import (
 )
 from services.human_input_v2.workspace_member_email_lookup import SQLAlchemyWorkspaceMemberEmailLookup
 
+_EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
+_WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
+
 
 def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
     return LegacyHumanInputNodeData.model_validate(
@@ -31,11 +36,11 @@ def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
             "title": title,
             "delivery_methods": [
                 {
-                    "id": f"email-{title}",
+                    "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
                         "recipients": {
-                            "items": [{"type": "member", "reference_id": member_id} for member_id in member_ids]
+                            "items": [{"type": "member", "user_id": member_id} for member_id in member_ids]
                         },
                         "subject": "Review",
                         "body": "Please review",
@@ -107,9 +112,10 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
     node_data = LegacyHumanInputNodeData.model_validate(
         {
+            "title": "Approval",
             "delivery_methods": [
                 {
-                    "id": "email-1",
+                    "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
                         "subject": "Review",
@@ -134,7 +140,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
     }
 
 
-def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> None:
+def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> None:
     lookup = _LookupSpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
     node_data = LegacyHumanInputNodeData.model_validate(
@@ -142,26 +148,111 @@ def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> No
             "title": "Approval",
             "delivery_methods": [
                 {
-                    "id": "im-1",
-                    "type": "im",
-                    "config": {
-                        "provider": "slack",
-                        "recipients": {"items": [{"type": "channel", "channel_id": "channel-1"}]},
-                    },
-                },
-                {
-                    "id": "future-1",
-                    "type": "future-channel",
-                    "enabled": False,
-                    "config": {"message": "Configured"},
-                },
+                    "id": "22222222-2222-4222-8222-222222222222",
+                    "type": "webapp",
+                    "config": {},
+                }
             ],
         }
+    )
+    issue = LegacyDeliveryParseIssue(
+        code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+        method_position=0,
+        method_id="33333333-3333-4333-8333-333333333333",
+        value="im",
     )
 
     outcome = service.migrate(
         workspace_id="workspace-1",
-        nodes=(MigrationNode("node-1", node_data),),
+        nodes=(
+            MigrationNode(
+                "node-1",
+                node_data,
+                method_positions=(1,),
+                preflight_issues=(issue,),
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
+        ("unsupported-delivery-method", "33333333-3333-4333-8333-333333333333", "im")
+    ]
+    assert not hasattr(outcome, "data")
+
+
+def test_service_preserves_method_order_when_merging_preflight_and_conversion_blockers() -> None:
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
+    node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [
+                {
+                    "id": "11111111-1111-4111-8111-111111111111",
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Please review",
+                        "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
+                    },
+                }
+            ],
+        }
+    )
+    issue = LegacyDeliveryParseIssue(
+        code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+        method_position=1,
+        method_id="33333333-3333-4333-8333-333333333333",
+        value="im",
+    )
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode(
+                "node-1",
+                node_data,
+                method_positions=(0,),
+                preflight_issues=(issue,),
+            ),
+        ),
+    )
+
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert [(blocker.code, blocker.method_id) for blocker in outcome.blockers] == [
+        ("invalid-email", "11111111-1111-4111-8111-111111111111"),
+        ("unsupported-delivery-method", "33333333-3333-4333-8333-333333333333"),
+        ("missing-recipients", None),
+    ]
+
+
+def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> None:
+    lookup = _LookupSpy()
+    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+    node_data = LegacyHumanInputNodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [],
+        }
+    )
+    issues = (
+        LegacyDeliveryParseIssue(
+            code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+            method_position=0,
+            method_id="im-1",
+            value="im",
+        ),
+        LegacyDeliveryParseIssue(
+            code=MigrationBlockerCode.CONFIGURED_DISABLED_METHOD,
+            method_position=1,
+            method_id="future-1",
+            value="future-channel",
+        ),
+    )
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(MigrationNode("node-1", node_data, preflight_issues=issues),),
     )
 
     assert isinstance(outcome, NodeDataMigrationFailure)
@@ -176,14 +267,17 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
     lookup = _LookupSpy(frozenset({"missing-member"}))
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
     valid_node = LegacyHumanInputNodeData.model_validate(
-        {"title": "Valid", "delivery_methods": [{"id": "webapp-1", "type": "webapp", "config": {}}]}
+        {
+            "title": "Valid",
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+        }
     )
     invalid_node = LegacyHumanInputNodeData.model_validate(
         {
             "title": "Invalid",
             "delivery_methods": [
                 {
-                    "id": "email-1",
+                    "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
                         "subject": "Review",
@@ -191,7 +285,7 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
                         "recipients": {
                             "items": [
                                 {"type": "external", "email": "invalid-email"},
-                                {"type": "member", "reference_id": "missing-member"},
+                                {"type": "member", "user_id": "missing-member"},
                             ]
                         },
                     },
@@ -236,14 +330,17 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
         MigrationNode(
             "node-success",
             LegacyHumanInputNodeData.model_validate(
-                {"delivery_methods": [{"id": "webapp-1", "type": "webapp", "config": {}}]}
+                {
+                    "title": "Success",
+                    "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
+                }
             ),
         ),
     )
     blocked_nodes = (
         MigrationNode(
             "node-blocked",
-            LegacyHumanInputNodeData.model_validate({"delivery_methods": []}),
+            LegacyHumanInputNodeData.model_validate({"title": "Blocked", "delivery_methods": []}),
         ),
     )
 
@@ -263,9 +360,10 @@ def test_whole_workspace_does_not_enumerate_members() -> None:
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
     node_data = LegacyHumanInputNodeData.model_validate(
         {
+            "title": "Approval",
             "delivery_methods": [
                 {
-                    "id": "email-1",
+                    "id": _EMAIL_METHOD_ID,
                     "type": "email",
                     "config": {
                         "subject": "Review",

@@ -11,15 +11,21 @@ from core.human_input_v2 import ResolvedForm, im_provider
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
+    CorrelationToken,
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
+    IMCardEvent,
+    IMCardEventDecoder,
+    IMCardEventDecodeResult,
+    IMCardEventDecodingError,
     IMDynamicCardMessaging,
     IMEventStream,
     IMStreamStartError,
     IMStreamStopError,
     ProviderUserId,
     SlackIMIntegrationCredentials,
+    UnrecognizedIMEvent,
 )
 
 
@@ -59,6 +65,64 @@ def test_provider_neutral_values_are_immutable() -> None:
         directory.entries = ()
     with pytest.raises(FrozenInstanceError):
         success.provider_tenant_id = "team-2"
+
+
+def test_card_event_contract_is_immutable_and_requires_json_inputs() -> None:
+    source_inputs = {"nested": {"values": [1, True, None, "text"]}}
+    event = IMCardEvent(
+        provider_user_id=ProviderUserId("user"),
+        action_id="approve",
+        inputs=source_inputs,
+        correlation_token=CorrelationToken("token"),
+    )
+
+    source_inputs["nested"] = "changed"
+    assert event.inputs == {"nested": {"values": [1, True, None, "text"]}}
+    with pytest.raises(TypeError):
+        event.inputs["other"] = "value"
+    with pytest.raises(TypeError):
+        del event.inputs["nested"]
+    with pytest.raises(FrozenInstanceError):
+        event.action_id = "changed"
+    with pytest.raises(ValueError):
+        IMCardEvent(ProviderUserId("user"), "", {}, CorrelationToken("token"))
+    with pytest.raises(TypeError):
+        IMCardEvent(ProviderUserId("user"), "approve", {"invalid": object()}, CorrelationToken("token"))
+
+
+def test_card_event_nested_json_values_remain_mutable() -> None:
+    event = IMCardEvent(
+        provider_user_id=ProviderUserId("user"),
+        action_id="approve",
+        inputs={"nested": {"values": [1, {"approved": True}]}},
+        correlation_token=CorrelationToken("token"),
+    )
+    nested = event.inputs["nested"]
+    assert isinstance(nested, dict)
+    values = nested["values"]
+    assert isinstance(values, list)
+
+    nested["added"] = "mutated"
+    values.append("mutated")
+
+    assert event.inputs == {
+        "nested": {
+            "values": [1, {"approved": True}, "mutated"],
+            "added": "mutated",
+        }
+    }
+
+
+def test_card_event_decode_contract_exposes_explicit_safe_routing_types() -> None:
+    assert get_type_hints(IMCardEventDecoder.decode)["return"] is IMCardEventDecodeResult
+    unrecognized = UnrecognizedIMEvent()
+    assert unrecognized == UnrecognizedIMEvent()
+
+    error = IMCardEventDecodingError("Card event schema is invalid.")
+    assert isinstance(error, ValueError)
+    assert vars(error) == {}
+    assert error.__cause__ is None
+    assert error.__context__ is None
 
 
 def test_event_stream_contract_exposes_owner_managed_lifecycle() -> None:

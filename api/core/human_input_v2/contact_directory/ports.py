@@ -6,7 +6,7 @@ rollback. Callers receive domain values and never persistence records.
 
 from typing import Protocol
 
-from core.human_input_v2.shared import AccountId, ContactId, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, WorkspaceId
 
 from .entities import Contact
 from .policy import ContactDirectorySnapshot
@@ -19,11 +19,21 @@ class ContactDirectoryRepository(Protocol):
         """Load one immutable workspace-scoped directory view."""
         ...
 
-    def save_organization_contact(self, contact: Contact) -> Contact:
+    def save_organization_contact(
+        self,
+        contact: Contact,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> Contact:
         """Create or update one deployment-owned Organization Contact with a serialized Email claim."""
         ...
 
-    def save_workspace_member_contact(self, contact: Contact) -> Contact:
+    def save_workspace_member_contact(
+        self,
+        contact: Contact,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> Contact:
         """Create or update one Contact backed by current workspace membership."""
         ...
 

@@ -16,6 +16,7 @@ from typing import Annotated, Literal, Self, Union
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
 
+from controllers.common.human_input_v2_migration import LegacyHITLv1NodeData
 from core.human_input_v2.entities import (
     ContactId,
     EmailProviderType,
@@ -35,7 +36,6 @@ from core.human_input_v2.entities import (
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input_v2.entities import Channel
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
-from core.workflow.nodes.human_input_v2.migration import LegacyHumanInputNodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
@@ -470,6 +470,14 @@ class CreateIMSyncRunResponse(ResponseModel):
     run: IMSyncRun = Field(description="Newly created sync run snapshot.")
 
 
+class IMContactSyncErrorResponse(ResponseModel):
+    """Stable expected application failure returned by IM sync and binding routes."""
+
+    code: str = Field(description="Machine-readable application error code.")
+    message: str = Field(description="Operator-safe error message.")
+    status: int = Field(description="HTTP status code associated with this failure.")
+
+
 class IMDirectoryEntry(_RequestModel):
     """Normalized provider-side account observed during an IM sync run.
 
@@ -757,27 +765,6 @@ class FormSubmitResponse(ResponseModel):
 # =================== Node migration related entities ===================
 
 
-class LegacyHITLv1NodeData(LegacyHumanInputNodeData):
-    """Legacy Human Input node data accepted by the v1-to-v2 migration helper.
-
-    Missing versions use the historical v1 default. Any explicit value other
-    than the string ``"1"`` is rejected before migration.
-    """
-
-    model_config = ConfigDict(extra="ignore")
-
-    # Keep the mutable parent field type for static substitutability while
-    # preserving the literal transport schema and runtime validation.
-    version: str = Field(
-        default="1",
-        description=(
-            'Legacy Human Input node version. Missing values default to "1"; '
-            'any explicit value other than the string "1" is rejected.'
-        ),
-        json_schema_extra={"const": "1"},
-    )
-
-
 class NodeDataMigrationInput(_MigrationInputModel):
     """One legacy node submitted through the frontend migration adapter boundary."""
 
@@ -933,6 +920,7 @@ __all__ = [
     "HumanInputContactType",
     "HumanInputV2FormSubmitRequest",
     "HumanInputV2ServiceFormSubmitRequest",
+    "IMContactSyncErrorResponse",
     "IMIdentity",
     "IMIdentityBindingStatus",
     "IMIntegration",

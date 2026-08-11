@@ -9,8 +9,11 @@ from typing import Protocol
 
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
-    LegacyEmailRecipients,
+    LegacyDeliveryParseIssue,
+    LegacyEmailDeliveryMethod,
     LegacyHumanInputNodeData,
+    LegacyMemberRecipient,
+    LegacyNodeDataPreflight,
     MigrationBlockerCode,
     NodeMigrationConversion,
     convert_legacy_human_input_node_data,
@@ -33,6 +36,17 @@ type NodeDataConverter = Callable[
 class MigrationNode:
     node_id: str
     node_data: LegacyHumanInputNodeData
+    method_positions: tuple[int, ...] = ()
+    preflight_issues: tuple[LegacyDeliveryParseIssue, ...] = ()
+
+    @classmethod
+    def from_preflight(cls, node_id: str, preflight: LegacyNodeDataPreflight) -> MigrationNode:
+        return cls(
+            node_id=node_id,
+            node_data=preflight.node_data,
+            method_positions=preflight.method_positions,
+            preflight_issues=preflight.issues,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +77,14 @@ class NodeDataMigrationFailure:
 type NodeDataMigrationOutcome = NodeDataMigrationSuccess | NodeDataMigrationFailure
 
 
+@dataclass(frozen=True, slots=True)
+class _PositionedMigrationBlocker:
+    blocker: NodeDataMigrationBlocker
+    postflight: bool
+    method_position: int
+    ordinal: int
+
+
 class HumanInputNodeDataMigrationService:
     """Create one member snapshot and deterministically preflight a whole batch."""
 
@@ -84,16 +106,7 @@ class HumanInputNodeDataMigrationService:
         blockers: list[NodeDataMigrationBlocker] = []
         for node in nodes:
             conversion = self._converter(node.node_data, member_email_snapshot)
-            blockers.extend(
-                NodeDataMigrationBlocker(
-                    node_id=node.node_id,
-                    node_title=node.node_data.title,
-                    code=blocker.code,
-                    method_id=blocker.method_id,
-                    value=blocker.value,
-                )
-                for blocker in conversion.blockers
-            )
+            blockers.extend(self._ordered_node_blockers(node, conversion))
             if conversion.node_data is not None:
                 migrated_nodes.append(MigratedNode(node.node_id, conversion.node_data))
 
@@ -102,20 +115,70 @@ class HumanInputNodeDataMigrationService:
         return NodeDataMigrationSuccess(tuple(migrated_nodes))
 
     @staticmethod
+    def _ordered_node_blockers(
+        node: MigrationNode,
+        conversion: NodeMigrationConversion,
+    ) -> tuple[NodeDataMigrationBlocker, ...]:
+        method_positions = node.method_positions or tuple(range(len(node.node_data.delivery_methods)))
+        positions_by_method_id = {
+            str(method.id): position
+            for method, position in zip(node.node_data.delivery_methods, method_positions, strict=True)
+        }
+        positioned_blockers: list[_PositionedMigrationBlocker] = []
+        ordinal = 0
+        for issue in node.preflight_issues:
+            positioned_blockers.append(
+                _PositionedMigrationBlocker(
+                    blocker=NodeDataMigrationBlocker(
+                        node_id=node.node_id,
+                        node_title=node.node_data.title,
+                        code=issue.code,
+                        method_id=issue.method_id,
+                        value=issue.value,
+                    ),
+                    postflight=False,
+                    method_position=issue.method_position,
+                    ordinal=ordinal,
+                )
+            )
+            ordinal += 1
+        for blocker in conversion.blockers:
+            postflight = blocker.code in {
+                MigrationBlockerCode.CONFLICTING_EMAIL_TEMPLATES,
+                MigrationBlockerCode.MISSING_RECIPIENTS,
+            }
+            method_position = positions_by_method_id.get(blocker.method_id or "", len(method_positions))
+            positioned_blockers.append(
+                _PositionedMigrationBlocker(
+                    blocker=NodeDataMigrationBlocker(
+                        node_id=node.node_id,
+                        node_title=node.node_data.title,
+                        code=blocker.code,
+                        method_id=blocker.method_id,
+                        value=blocker.value,
+                    ),
+                    postflight=postflight,
+                    method_position=method_position,
+                    ordinal=ordinal,
+                )
+            )
+            ordinal += 1
+        positioned_blockers.sort(
+            key=lambda positioned: (positioned.postflight, positioned.method_position, positioned.ordinal)
+        )
+        return tuple(positioned.blocker for positioned in positioned_blockers)
+
+    @staticmethod
     def _collect_member_ids(nodes: Sequence[MigrationNode]) -> tuple[str, ...]:
         member_ids: list[str] = []
         seen_member_ids: set[str] = set()
         for node in nodes:
             for method in node.node_data.delivery_methods:
-                if not method.enabled or method.type != "email":
+                if not method.enabled or not isinstance(method, LegacyEmailDeliveryMethod):
                     continue
-                recipients = method.config.recipients
-                if not isinstance(recipients, LegacyEmailRecipients):
-                    continue
-                for source in recipients.items:
-                    member_id = source.reference_id
-                    if source.type != "member" or not isinstance(member_id, str) or member_id in seen_member_ids:
+                for source in method.config.recipients.items:
+                    if not isinstance(source, LegacyMemberRecipient) or source.user_id in seen_member_ids:
                         continue
-                    member_ids.append(member_id)
-                    seen_member_ids.add(member_id)
+                    member_ids.append(source.user_id)
+                    seen_member_ids.add(source.user_id)
         return tuple(member_ids)

@@ -114,20 +114,21 @@ class IMRepository:
             return self.current
         return None
 
-    def create_integration(self, integration):
-        del integration
+    def create_integration(self, integration, *, organization_scope):
+        del integration, organization_scope
         self.mutations.append("create")
         raise AssertionError("create is not used by this test")
 
-    def compare_and_swap_configuration(self, transition):
+    def compare_and_swap_configuration(self, transition, *, organization_scope):
+        del organization_scope
         self.mutations.append("update")
         if self.current.revision != transition.expected_revision:
             return StaleRevision(transition.expected_revision, self.current.revision)
         self.current = transition.integration
         return self.current
 
-    def compare_and_swap_delete(self, deletion):
-        del deletion
+    def compare_and_swap_delete(self, deletion, *, organization_scope):
+        del deletion, organization_scope
         self.mutations.append("delete")
         raise AssertionError("delete is not used by this test")
 

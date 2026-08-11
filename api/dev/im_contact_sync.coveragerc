@@ -1,0 +1,6 @@
+[run]
+branch = True
+omit =
+    api/conftest.py
+    api/tests/*
+    api/core/rag/datasource/vdb/*

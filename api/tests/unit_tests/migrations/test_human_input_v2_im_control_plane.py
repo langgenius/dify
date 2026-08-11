@@ -17,6 +17,7 @@ from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
+    HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
     IMSyncDirectoryEntryPayload,
@@ -26,10 +27,14 @@ _MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
     / "migrations/versions/2026_07_25_1100-6d9f2b4c5e7a_add_human_input_v2_im_control_plane.py"
 )
+_CHANGE_LOG_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "migrations/versions/2026_08_11_1000-b7d3e5f9a1c2_add_im_reconciliation_change_log.py"
+)
 
 
-def _load_migration_module():
-    spec = importlib.util.spec_from_file_location("human_input_v2_im_control_plane_migration", _MIGRATION_PATH)
+def _load_migration_module(path: Path = _MIGRATION_PATH):
+    spec = importlib.util.spec_from_file_location(f"human_input_v2_migration_{path.stem}", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
     module = importlib.util.module_from_spec(spec)
@@ -69,6 +74,7 @@ def test_upgrade_matches_all_im_model_columns_constraints_and_indexes() -> None:
     module = _load_migration_module()
 
     _run_migration_step(module, engine, "upgrade")
+    _run_migration_step(_load_migration_module(_CHANGE_LOG_MIGRATION_PATH), engine, "upgrade")
 
     inspector = sa.inspect(engine)
     model_by_table = {
@@ -77,6 +83,7 @@ def test_upgrade_matches_all_im_model_columns_constraints_and_indexes() -> None:
         HumanInputIMBinding.__tablename__: HumanInputIMBinding,
         HumanInputIMSyncRun.__tablename__: HumanInputIMSyncRun,
         HumanInputIMSyncResult.__tablename__: HumanInputIMSyncResult,
+        HumanInputIMReconciliationChange.__tablename__: HumanInputIMReconciliationChange,
     }
     assert set(inspector.get_table_names()) == set(model_by_table)
     for table_name, model in model_by_table.items():
@@ -112,6 +119,7 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()
     _run_migration_step(module, engine, "upgrade")
+    _run_migration_step(_load_migration_module(_CHANGE_LOG_MIGRATION_PATH), engine, "upgrade")
 
     with Session(engine) as session, session.begin():
         integration = HumanInputIMIntegration(

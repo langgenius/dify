@@ -11,10 +11,12 @@ from typing import Protocol
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.entities import IMProvider, IMSyncResultType
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
+    DirectoryScope,
+    IMIdentityId,
     IMSyncRunId,
     IntegrationId,
     WorkspaceId,
@@ -28,7 +30,8 @@ from .integration import (
     IntegrationRevisionToken,
     StaleRevision,
 )
-from .sync_reconciliation import IMSyncRun, ReconciliationPlan, ReconciliationSnapshot, SyncResultFact
+from .sync_reconciliation import ReconciliationReasonCode
+from .sync_records import IMSyncRun, SynchronizedIMIdentityPage, SyncResultFact, SyncResultPage
 
 
 class ActiveRunDecisionKind(StrEnum):
@@ -65,39 +68,46 @@ class ApplyReconciliationStatus(StrEnum):
     # Integration configuration changed after capture, so the plan cannot mutate current state.
     STALE_REVISION = "stale_revision"
 
+    LOCK_UNAVAILABLE = "lock_unavailable"
+    LOCK_LOST = "lock_lost"
+    PRECONDITION_FAILED = "precondition_failed"
+    DIRECTORY_READ_FAILED = "directory_read_failed"
+    PLAN_BLOCKED = "plan_blocked"
+    UNEXPECTED_APPLY_FAILURE = "unexpected_apply_failure"
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedReconciliationWarning:
+    warning_key: str
+    reason: ReconciliationReasonCode
+    identity_ids: tuple[IMIdentityId, ...]
+    contact_ids: tuple[ContactId, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class ApplyReconciliationResult:
-    """Run and append-only facts returned after reconciliation apply."""
+    """Transport-neutral persisted outcome of one conditional plan apply."""
 
     status: ApplyReconciliationStatus
-    run: IMSyncRun
-    results: tuple[SyncResultFact, ...]
+    sync_run_id: IMSyncRunId
+    committed_at: NaiveDatetime | None
+    result_count: int
+    change_count: int
+    warnings: tuple[ResolvedReconciliationWarning, ...]
 
 
-class IMControlPlaneRepository(Protocol):
-    """Atomic persistence capabilities required by the IM domain."""
+class IMSyncRepository(Protocol):
+    """Transport-neutral command and query persistence required by IM sync."""
 
     def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
         """Load the exact tenant or deployment-owned current configuration."""
-        ...
-
-    def create_integration(self, integration: IMIntegration) -> IMIntegration:
-        """Create the first integration configuration for its owner scope."""
-        ...
-
-    def compare_and_swap_configuration(self, transition: ConfigurationTransition) -> IMIntegration | StaleRevision:
-        """Atomically apply rotation or replacement and its invalidation plan."""
-        ...
-
-    def compare_and_swap_delete(self, deletion: IntegrationDeletion) -> None | StaleRevision:
-        """Delete current configuration and current children under complete CAS."""
         ...
 
     def create_or_get_active_run(
         self,
         integration_revision: IntegrationRevisionToken,
         *,
+        organization_scope: DirectoryScope,
         sync_run_id: IMSyncRunId,
         started_by_account_id: AccountId | None,
         now: NaiveDatetime,
@@ -105,12 +115,66 @@ class IMControlPlaneRepository(Protocol):
         """Lock Integration and return at most one active run."""
         ...
 
-    def load_reconciliation_snapshot(self, sync_run_id: IMSyncRunId) -> ReconciliationSnapshot:
-        """Load current identities, bindings, and eligible Contact facts."""
+    def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:
+        """Load one persisted run without acquiring the Organization write lock."""
         ...
 
-    def apply_reconciliation(self, plan: ReconciliationPlan, *, now: NaiveDatetime) -> ApplyReconciliationResult:
-        """Apply one plan using its persisted sync run capture as CAS authority."""
+    def load_latest_sync_run(self, integration_id: IntegrationId) -> IMSyncRun | None:
+        """Load the latest run for one current Integration."""
+        ...
+
+    def page_sync_results(
+        self,
+        sync_run_id: IMSyncRunId,
+        result_type: IMSyncResultType,
+        *,
+        page: int,
+        limit: int,
+    ) -> SyncResultPage:
+        """Page one required product-result bucket for one exact run."""
+        ...
+
+    def search_identities(
+        self,
+        integration_id: IntegrationId,
+        provider: IMProvider,
+        *,
+        keyword: str | None,
+        page: int,
+        limit: int,
+    ) -> SynchronizedIMIdentityPage:
+        """Search current identities without exposing raw payload or ORM state."""
+        ...
+
+
+class IMControlPlaneRepository(IMSyncRepository, Protocol):
+    """Atomic persistence capabilities required by the complete IM domain."""
+
+    def create_integration(
+        self,
+        integration: IMIntegration,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> IMIntegration:
+        """Create the first integration configuration for its owner scope."""
+        ...
+
+    def compare_and_swap_configuration(
+        self,
+        transition: ConfigurationTransition,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> IMIntegration | StaleRevision:
+        """Atomically apply rotation or replacement and its invalidation plan."""
+        ...
+
+    def compare_and_swap_delete(
+        self,
+        deletion: IntegrationDeletion,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> None | StaleRevision:
+        """Delete current configuration and current children under complete CAS."""
         ...
 
     def resolve_effective_binding(
@@ -135,4 +199,6 @@ __all__ = [
     "ApplyReconciliationResult",
     "ApplyReconciliationStatus",
     "IMControlPlaneRepository",
+    "IMSyncRepository",
+    "ResolvedReconciliationWarning",
 ]

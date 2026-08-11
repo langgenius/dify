@@ -6,13 +6,14 @@ not imported by production code and deliberately contains no SDK behavior.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal, NewType, Protocol
 
 from core.human_input_v2.approval.form import FrozenFormDefinition
 from core.human_input_v2.entities import IMProvider
-from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime
 
 
 class _ResolvedIMIntegrationCredentials(BaseModel):
@@ -362,6 +363,36 @@ class AuthenticatedIMEvent:
     payload: str
 
 
+@dataclass(frozen=True, slots=True)
+class IMCardEvent:
+    """Provider-neutral normalized card interaction."""
+
+    provider_user_id: ProviderUserId
+    action_id: str
+    inputs: Mapping[str, JsonValue]
+    correlation_token: CorrelationToken
+
+
+@dataclass(frozen=True, slots=True)
+class UnrecognizedIMEvent:
+    """Authenticated event outside one decoder's supported card protocol."""
+
+
+type IMCardEventDecodeResult = IMCardEvent | UnrecognizedIMEvent
+
+
+class IMCardEventDecodingError(ValueError):
+    """Recognized card event cannot be decoded using the expected schema."""
+
+
+class IMCardEventDecoder(Protocol):
+    """Credential-free and thread-safe Provider card callback decoder."""
+
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        """Normalize one authenticated event without Provider or persistence I/O."""
+        ...
+
+
 class EventAcceptance(StrEnum):
     """consumer outcome needed for Provider-specific acknowledgement."""
 
@@ -434,6 +465,11 @@ class IMProviderAdapter(Protocol):
 
     This class is NOT thread safe.
     """
+
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder | None:
+        """Return a stateless decoder independent from credentials and root lifecycles."""
+        return None
 
     @property
     def provider(self) -> IMProvider:

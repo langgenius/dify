@@ -8,6 +8,9 @@ never cross this boundary.
 
 from __future__ import annotations
 
+from contextlib import AbstractContextManager
+from typing import Protocol
+
 import sqlalchemy as sa
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -27,7 +30,15 @@ from core.human_input_v2.contact_directory import (
     PlatformWorkspaceEntry,
     WorkspaceMemberOwner,
 )
-from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, WorkspaceId
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    DeploymentScope,
+    DirectoryScope,
+    PlatformEntryId,
+    WorkspaceId,
+    WorkspaceScope,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
@@ -41,13 +52,22 @@ from models.model import DifySetup
 from .mappers import contact_from_record, contact_to_record, platform_entry_to_record
 
 
+class _OrganizationWriteUnitOfWorkFactory(Protocol):
+    def __call__(self, scope: DirectoryScope) -> AbstractContextManager[Session]: ...
+
+
 class SQLAlchemyContactDirectoryRepository:
     """Transactional adapter for coherent Contact Directory operations."""
 
     _session_maker: sessionmaker[Session]
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        session_maker: sessionmaker[Session],
+        write_unit_of_work_factory: _OrganizationWriteUnitOfWorkFactory,
+    ) -> None:
         self._session_maker = session_maker
+        self._write_unit_of_work_factory = write_unit_of_work_factory
 
     def load_snapshot(self, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
         """Load one coherent contacts, membership, allow-list, and Account view."""
@@ -61,30 +81,56 @@ class SQLAlchemyContactDirectoryRepository:
         except SQLAlchemyError as error:
             raise self._persistence_error() from error
 
-    def save_organization_contact(self, contact: Contact) -> Contact:
+    def save_organization_contact(
+        self,
+        contact: Contact,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> Contact:
         """Persist one deployment-owned Organization Contact after a serialized identity claim."""
 
         if not isinstance(contact.owner, OrganizationAccountOwner):
             raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
-        return self._save_account_backed_contact(contact, workspace_owner=None)
+        if not isinstance(organization_scope, DeploymentScope):
+            raise ValueError("Organization write scope does not match Contact owner")
+        return self._save_account_backed_contact(
+            contact,
+            organization_scope=organization_scope,
+            workspace_owner=None,
+        )
 
-    def save_workspace_member_contact(self, contact: Contact) -> Contact:
+    def save_workspace_member_contact(
+        self,
+        contact: Contact,
+        *,
+        organization_scope: DirectoryScope,
+    ) -> Contact:
         """Persist one Contact only while its owning workspace membership exists."""
 
         if not isinstance(contact.owner, WorkspaceMemberOwner):
             raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
-        return self._save_account_backed_contact(contact, workspace_owner=contact.owner)
+        if (
+            not isinstance(organization_scope, WorkspaceScope)
+            or organization_scope.workspace_id != contact.owner.workspace_id
+        ):
+            raise ValueError("Organization write scope does not match Contact owner")
+        return self._save_account_backed_contact(
+            contact,
+            organization_scope=organization_scope,
+            workspace_owner=contact.owner,
+        )
 
     def _save_account_backed_contact(
         self,
         contact: Contact,
         *,
+        organization_scope: DirectoryScope,
         workspace_owner: WorkspaceMemberOwner | None,
     ) -> Contact:
         """Persist an already source-validated Account-backed Contact."""
 
         try:
-            with self._session_maker() as session, session.begin():
+            with self._write_unit_of_work_factory(organization_scope) as session:
                 if workspace_owner is None:
                     self._lock_deployment_owner(session, require_setup_row=True)
                 else:

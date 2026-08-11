@@ -7,7 +7,7 @@ from time import monotonic, sleep
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import event
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.contact_directory import (
     Contact,
@@ -15,13 +15,40 @@ from core.human_input_v2.contact_directory import (
     ContactDirectorySnapshot,
     ContactRejectionCode,
 )
-from core.human_input_v2.shared import AccountId, ContactId, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, DirectoryScope, WorkspaceId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
 from repositories.human_input_v2.contact_directory.repository import SQLAlchemyContactDirectoryRepository
+from repositories.human_input_v2.organization_write_unit_of_work import SQLAlchemyOrganizationWriteUnitOfWork
+
+
+class _OwnedWriteLock:
+    def __enter__(self) -> _OwnedWriteLock:
+        return self
+
+    def __exit__(self, *_unused: object) -> None:
+        pass
+
+    def ensure_owned(self) -> None:
+        pass
+
+    def extend(self) -> None:
+        pass
+
+
+def _repository(session_maker: sessionmaker[Session]) -> SQLAlchemyContactDirectoryRepository:
+    def create_write_unit_of_work(scope: DirectoryScope) -> SQLAlchemyOrganizationWriteUnitOfWork:
+        del scope
+        return SQLAlchemyOrganizationWriteUnitOfWork(session_maker, _OwnedWriteLock())
+
+    return SQLAlchemyContactDirectoryRepository(session_maker, create_write_unit_of_work)
+
+
+def _save_organization_contact(repository: SQLAlchemyContactDirectoryRepository, contact: Contact) -> Contact:
+    return repository.save_organization_contact(contact, organization_scope=DeploymentScope())
 
 
 def test_concurrent_organization_writes_serialize_on_dify_setup(flask_req_ctx, setup_account) -> None:
@@ -39,7 +66,7 @@ def test_concurrent_organization_writes_serialize_on_dify_setup(flask_req_ctx, s
     barrier = Barrier(2)
 
     def write_contact(contact_id: str) -> Contact | ContactRejectionCode:
-        repository = SQLAlchemyContactDirectoryRepository(session_maker)
+        repository = _repository(session_maker)
         contact = Contact.organization_account(
             contact_id=ContactId(contact_id),
             account_id=AccountId(setup_account.id),
@@ -49,7 +76,7 @@ def test_concurrent_organization_writes_serialize_on_dify_setup(flask_req_ctx, s
         )
         barrier.wait()
         try:
-            return repository.save_organization_contact(contact)
+            return _save_organization_contact(repository, contact)
         except ContactDirectoryError as error:
             return error.code
 
@@ -135,17 +162,18 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
             assert backend_pid is not None
             organization_backend_pid.append(backend_pid)
             connection.commit()
-            repository = SQLAlchemyContactDirectoryRepository(sessionmaker(bind=connection, expire_on_commit=False))
+            repository = _repository(sessionmaker(bind=connection, expire_on_commit=False))
             organization_thread_id.append(get_ident())
             try:
-                return repository.save_organization_contact(
+                return _save_organization_contact(
+                    repository,
                     Contact.organization_account(
                         contact_id=organization_contact_id,
                         account_id=AccountId(organization_account_id),
                         name="Concurrent Organization Account",
                         email=normalized_email,
                         now=naive_utc_now(),
-                    )
+                    ),
                 )
             except ContactDirectoryError as error:
                 return error.code
@@ -157,7 +185,7 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
             external_backend_pid.append(backend_pid)
             connection.commit()
             external_connection_ready.set()
-            repository = SQLAlchemyContactDirectoryRepository(sessionmaker(bind=connection, expire_on_commit=False))
+            repository = _repository(sessionmaker(bind=connection, expire_on_commit=False))
             try:
                 return repository.admit_external(
                     WorkspaceId(workspace_id),
@@ -220,20 +248,21 @@ def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) 
             sa.select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id)
         )
     assert workspace_id is not None
-    repository = SQLAlchemyContactDirectoryRepository(session_maker)
-    contact = repository.save_organization_contact(
+    repository = _repository(session_maker)
+    contact = _save_organization_contact(
+        repository,
         Contact.organization_account(
             contact_id=ContactId(str(uuidv7())),
             account_id=AccountId(setup_account.id),
             name="Concurrent Platform Account",
             email="concurrent-platform@example.com",
             now=naive_utc_now(),
-        )
+        ),
     )
     barrier = Barrier(2)
 
     def enable_platform_contact() -> ContactRejectionCode | None:
-        concurrent_repository = SQLAlchemyContactDirectoryRepository(session_maker)
+        concurrent_repository = _repository(session_maker)
         barrier.wait()
         try:
             concurrent_repository.set_platform_availability(
@@ -280,15 +309,16 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
         )
     assert membership is not None
     workspace_id = WorkspaceId(membership.tenant_id)
-    repository = SQLAlchemyContactDirectoryRepository(session_maker)
-    contact = repository.save_organization_contact(
+    repository = _repository(session_maker)
+    contact = _save_organization_contact(
+        repository,
         Contact.organization_account(
             contact_id=ContactId(str(uuidv7())),
             account_id=AccountId(setup_account.id),
             name="Snapshot Account",
             email="snapshot-account@example.com",
             now=naive_utc_now(),
-        )
+        ),
     )
     contact_query_finished = Event()
     mutation_committed = Event()

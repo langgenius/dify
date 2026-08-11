@@ -8,8 +8,12 @@ from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
 from core.human_input_v2.im_integration import (
     EncryptedCredentials,
     IMBinding,
+    IMBindingChangeSnapshot,
     IMIdentity,
+    IMIdentityChangeSnapshot,
     IMIntegration,
+    IMReconciliationChange,
+    IMReconciliationSubjectKind,
     IMSyncRun,
     IntegrationRevisionToken,
     OpaqueProviderPayload,
@@ -18,11 +22,13 @@ from core.human_input_v2.im_integration import (
     SyncIdentitySnapshot,
     SyncResultFact,
 )
+from core.human_input_v2.im_provider import ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
     IMBindingId,
     IMIdentityId,
+    IMReconciliationChangeId,
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
@@ -34,9 +40,12 @@ from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
+    HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
+    IMBindingReconciliationSnapshot,
     IMIdentityRawPayload,
+    IMIdentityReconciliationSnapshot,
     IMIntegrationEncryptedCredentials,
     IMSyncContactSnapshot,
     IMSyncDirectoryEntryPayload,
@@ -244,6 +253,7 @@ def sync_result_from_record(record: HumanInputIMSyncResult) -> SyncResultFact:
         id=IMSyncResultId(record.id),
         integration_id=IntegrationId(record.integration_id),
         sync_run_id=IMSyncRunId(record.sync_run_id),
+        operation_key=record.operation_key,
         result_type=record.result_type,
         provider_user_id=record.provider_user_id,
         display_name=record.display_name,
@@ -266,6 +276,9 @@ def sync_result_from_record(record: HumanInputIMSyncResult) -> SyncResultFact:
                 name=contact_snapshot.name,
                 email=contact_snapshot.email,
                 avatar_file_id=contact_snapshot.avatar_file_id,
+                created_at=(
+                    _timestamp(contact_snapshot.created_at) if contact_snapshot.created_at is not None else None
+                ),
             )
             if contact_snapshot is not None
             else None
@@ -294,6 +307,7 @@ def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
     record = HumanInputIMSyncResult(
         integration_id=str(result.integration_id),
         sync_run_id=str(result.sync_run_id),
+        operation_key=result.operation_key,
         result_type=result.result_type,
         provider_user_id=result.provider_user_id,
         display_name=result.display_name,
@@ -316,6 +330,7 @@ def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
                 name=contact_snapshot.name,
                 email=contact_snapshot.email,
                 avatar_file_id=contact_snapshot.avatar_file_id,
+                created_at=contact_snapshot.created_at,
             )
             if contact_snapshot is not None
             else None
@@ -336,3 +351,96 @@ def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
     record.created_at = result.created_at
     record.updated_at = result.updated_at
     return record
+
+
+def reconciliation_change_from_record(record: HumanInputIMReconciliationChange) -> IMReconciliationChange:
+    """Map one append-only ORM change record into an immutable application value."""
+
+    return IMReconciliationChange(
+        id=IMReconciliationChangeId(record.id),
+        integration_id=IntegrationId(record.integration_id),
+        sync_run_id=IMSyncRunId(record.sync_run_id),
+        operation_key=record.operation_key,
+        subject_kind=record.subject_kind,
+        operation=record.operation,
+        reason_code=record.reason_code,
+        identity_id=IMIdentityId(record.im_identity_id),
+        binding_id=IMBindingId(record.im_binding_id) if record.im_binding_id is not None else None,
+        contact_id=ContactId(record.contact_id) if record.contact_id is not None else None,
+        before=_change_snapshot_from_record(record.before_snapshot),
+        after=_change_snapshot_from_record(record.after_snapshot),
+        committed_at=_timestamp(record.committed_at),
+    )
+
+
+def reconciliation_change_to_record(change: IMReconciliationChange) -> HumanInputIMReconciliationChange:
+    """Map one immutable change value into a detached append-only ORM record."""
+
+    record = HumanInputIMReconciliationChange(
+        integration_id=str(change.integration_id),
+        sync_run_id=str(change.sync_run_id),
+        operation_key=change.operation_key,
+        subject_kind=change.subject_kind,
+        operation=change.operation,
+        reason_code=change.reason_code,
+        im_identity_id=str(change.identity_id),
+        im_binding_id=str(change.binding_id) if change.binding_id is not None else None,
+        contact_id=str(change.contact_id) if change.contact_id is not None else None,
+        before_snapshot=_change_snapshot_to_record(change.before),
+        after_snapshot=_change_snapshot_to_record(change.after),
+        committed_at=change.committed_at,
+    )
+    record.id = str(change.id)
+    record.created_at = change.committed_at
+    record.updated_at = change.committed_at
+    return record
+
+
+def _change_snapshot_from_record(
+    snapshot: IMIdentityReconciliationSnapshot | IMBindingReconciliationSnapshot | None,
+) -> IMIdentityChangeSnapshot | IMBindingChangeSnapshot | None:
+    if snapshot is None:
+        return None
+    if snapshot.subject_kind is IMReconciliationSubjectKind.IDENTITY:
+        if not isinstance(snapshot, IMIdentityReconciliationSnapshot):
+            raise ValueError("identity change contains an invalid snapshot")
+        return IMIdentityChangeSnapshot(
+            identity_id=IMIdentityId(snapshot.identity_id),
+            provider=snapshot.provider,
+            provider_user_id=ProviderUserId(snapshot.provider_user_id),
+            display_name=snapshot.display_name,
+            email=snapshot.email,
+            normalized_email=NormalizedEmail(snapshot.normalized_email) if snapshot.normalized_email else None,
+            last_seen_sync_run_id=(
+                IMSyncRunId(snapshot.last_seen_sync_run_id) if snapshot.last_seen_sync_run_id else None
+            ),
+        )
+    if not isinstance(snapshot, IMBindingReconciliationSnapshot):
+        raise ValueError("IM binding change contains an invalid snapshot")
+    return IMBindingChangeSnapshot(
+        binding_id=IMBindingId(snapshot.binding_id),
+        identity_id=IMIdentityId(snapshot.identity_id),
+        contact_id=ContactId(snapshot.contact_id),
+    )
+
+
+def _change_snapshot_to_record(
+    snapshot: IMIdentityChangeSnapshot | IMBindingChangeSnapshot | None,
+) -> IMIdentityReconciliationSnapshot | IMBindingReconciliationSnapshot | None:
+    if snapshot is None:
+        return None
+    if isinstance(snapshot, IMIdentityChangeSnapshot):
+        return IMIdentityReconciliationSnapshot(
+            identity_id=str(snapshot.identity_id),
+            provider=snapshot.provider,
+            provider_user_id=str(snapshot.provider_user_id),
+            display_name=snapshot.display_name,
+            email=snapshot.email,
+            normalized_email=str(snapshot.normalized_email) if snapshot.normalized_email else None,
+            last_seen_sync_run_id=(str(snapshot.last_seen_sync_run_id) if snapshot.last_seen_sync_run_id else None),
+        )
+    return IMBindingReconciliationSnapshot(
+        binding_id=str(snapshot.binding_id),
+        identity_id=str(snapshot.identity_id),
+        contact_id=str(snapshot.contact_id),
+    )

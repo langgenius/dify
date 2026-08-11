@@ -13,8 +13,13 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.im_integration import (
     EncryptedCredentials,
     IMBinding,
+    IMBindingChangeSnapshot,
     IMIdentity,
+    IMIdentityChangeSnapshot,
     IMIntegration,
+    IMReconciliationChange,
+    IMReconciliationOperation,
+    IMReconciliationSubjectKind,
     IMSyncRun,
     IntegrationRevisionToken,
     OpaqueProviderPayload,
@@ -28,6 +33,7 @@ from core.human_input_v2.shared import (
     ContactId,
     IMBindingId,
     IMIdentityId,
+    IMReconciliationChangeId,
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
@@ -41,6 +47,8 @@ from repositories.human_input_v2.im_integration.mappers import (
     identity_to_record,
     integration_from_record,
     integration_to_record,
+    reconciliation_change_from_record,
+    reconciliation_change_to_record,
     sync_result_from_record,
     sync_result_to_record,
     sync_run_from_record,
@@ -109,6 +117,7 @@ def _result() -> SyncResultFact:
         id=IMSyncResultId("result-1"),
         integration_id=_INTEGRATION_ID,
         sync_run_id=IMSyncRunId("run-1"),
+        operation_key="result:removed:1",
         result_type=IMSyncResultType.REMOVED,
         provider_user_id="provider-user-1",
         display_name="Reviewer",
@@ -126,6 +135,7 @@ def _result() -> SyncResultFact:
             name="Reviewer",
             email="reviewer@example.com",
             avatar_file_id=None,
+            created_at=_NOW,
         ),
         identity_snapshot=SyncIdentitySnapshot(
             identity_id=IMIdentityId("identity-1"),
@@ -185,3 +195,73 @@ def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:
     assert record.directory_entry_payload is not None
     assert record.directory_entry_payload.root == {"provider": "value"}
     assert sync_result_from_record(record) == result
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        IMReconciliationChange(
+            id=IMReconciliationChangeId("change-identity"),
+            integration_id=_INTEGRATION_ID,
+            sync_run_id=IMSyncRunId("run-1"),
+            operation_key="identity:update:1",
+            subject_kind=IMReconciliationSubjectKind.IDENTITY,
+            operation=IMReconciliationOperation.UPDATE,
+            reason_code="profile_changed",
+            identity_id=IMIdentityId("identity-1"),
+            binding_id=None,
+            contact_id=None,
+            before=IMIdentityChangeSnapshot(
+                identity_id=IMIdentityId("identity-1"),
+                provider=IMProvider.FEISHU,
+                provider_user_id="provider-user-1",
+                display_name="Before",
+                email="reviewer@example.com",
+                normalized_email=NormalizedEmail("reviewer@example.com"),
+                last_seen_sync_run_id=None,
+            ),
+            after=IMIdentityChangeSnapshot(
+                identity_id=IMIdentityId("identity-1"),
+                provider=IMProvider.FEISHU,
+                provider_user_id="provider-user-1",
+                display_name="After",
+                email="reviewer@example.com",
+                normalized_email=NormalizedEmail("reviewer@example.com"),
+                last_seen_sync_run_id=IMSyncRunId("run-1"),
+            ),
+            committed_at=_NOW,
+        ),
+        IMReconciliationChange(
+            id=IMReconciliationChangeId("change-binding"),
+            integration_id=_INTEGRATION_ID,
+            sync_run_id=IMSyncRunId("run-1"),
+            operation_key="binding:replace:1",
+            subject_kind=IMReconciliationSubjectKind.BINDING,
+            operation=IMReconciliationOperation.REPLACE,
+            reason_code="binding_replaced",
+            identity_id=IMIdentityId("identity-2"),
+            binding_id=IMBindingId("binding-1"),
+            contact_id=ContactId("contact-1"),
+            before=IMBindingChangeSnapshot(
+                binding_id=IMBindingId("binding-1"),
+                identity_id=IMIdentityId("identity-1"),
+                contact_id=ContactId("contact-1"),
+            ),
+            after=IMBindingChangeSnapshot(
+                binding_id=IMBindingId("binding-1"),
+                identity_id=IMIdentityId("identity-2"),
+                contact_id=ContactId("contact-1"),
+            ),
+            committed_at=_NOW,
+        ),
+    ],
+)
+def test_reconciliation_change_mapping_round_trips_without_orm_leak(
+    change: IMReconciliationChange,
+) -> None:
+    record = reconciliation_change_to_record(change)
+
+    mapped = reconciliation_change_from_record(record)
+
+    assert mapped == change
+    assert type(mapped) is IMReconciliationChange

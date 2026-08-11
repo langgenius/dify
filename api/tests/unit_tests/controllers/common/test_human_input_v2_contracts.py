@@ -20,6 +20,7 @@ from controllers.common.human_input_v2_contracts import (
     NodeDataMigrationResponse,
     UpdateIMIntegrationRequest,
 )
+from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
 
 
@@ -180,7 +181,7 @@ def test_node_data_migration_contract_matches_frontend_adapter_boundary() -> Non
         )
 
 
-def test_node_data_migration_transport_defers_delivery_semantics_to_converter() -> None:
+def test_node_data_migration_transport_defers_raw_delivery_semantics_to_preflight() -> None:
     request_body = NodeDataMigrationPayload.model_validate(
         {
             "nodes": [
@@ -205,8 +206,16 @@ def test_node_data_migration_transport_defers_delivery_semantics_to_converter() 
         }
     )
 
-    assert [method.type for method in request_body.nodes[0].node_data.delivery_methods] == ["sms", "email"]
-    assert request_body.nodes[0].node_data.delivery_methods[1].config.body == 7
+    methods = request_body.nodes[0].node_data.delivery_methods
+    assert [method["type"] for method in methods] == ["sms", "email"]
+    assert methods[1]["config"]["body"] == 7
+
+    preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
+    assert [(issue.code, issue.value) for issue in preflight.issues] == [
+        ("unsupported-delivery-method", "sms"),
+        ("invalid-email-configuration", "body"),
+    ]
+    assert preflight.node_data.delivery_methods == []
 
 
 def test_node_data_migration_transport_normalizes_real_and_compatibility_member_ids() -> None:
@@ -216,9 +225,10 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
                 {
                     "node_id": "node-1",
                     "node_data": {
+                        "title": "Approval",
                         "delivery_methods": [
                             {
-                                "id": "email-1",
+                                "id": "11111111-1111-4111-8111-111111111111",
                                 "type": "email",
                                 "config": {
                                     "subject": "Review",
@@ -238,11 +248,14 @@ def test_node_data_migration_transport_normalizes_real_and_compatibility_member_
         }
     )
 
-    sources = request_body.nodes[0].node_data.delivery_methods[0].config.recipients.items
-    assert [source.reference_id for source in sources] == ["member-real", "member-compat"]
+    preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
+    assert preflight.issues == ()
+    method = preflight.node_data.delivery_methods[0]
+    assert method.type == "email"
+    assert [source.user_id for source in method.config.recipients.items] == ["member-real", "member-compat"]
 
 
-def test_node_data_migration_transport_preserves_real_im_configuration_for_semantic_blockers() -> None:
+def test_node_data_migration_transport_preserves_real_im_configuration_for_preflight_blockers() -> None:
     request_body = NodeDataMigrationPayload.model_validate(
         {
             "nodes": [
@@ -279,14 +292,20 @@ def test_node_data_migration_transport_preserves_real_im_configuration_for_seman
     )
 
     methods = request_body.nodes[0].node_data.delivery_methods
-    assert methods[0].config.model_dump(mode="json")["recipients"] == {
+    assert methods[0]["config"]["recipients"] == {
         "items": [
             {"type": "channel", "channel_id": "channel-1"},
             {"type": "user", "user_id": "user-1"},
         ]
     }
-    assert methods[0].config.model_dump(mode="json")["message"] == "Please review"
-    assert methods[1].config.model_dump(mode="json")["message"] == "Configured"
+    assert methods[0]["config"]["message"] == "Please review"
+    assert methods[1]["config"]["message"] == "Configured"
+
+    preflight = preflight_legacy_human_input_node_data(request_body.nodes[0].node_data)
+    assert [(issue.code, issue.value) for issue in preflight.issues] == [
+        ("unsupported-delivery-method", "im"),
+        ("configured-disabled-method", "future-channel"),
+    ]
 
 
 @pytest.mark.parametrize("version", ["2", "v1", 1, None])
@@ -345,7 +364,9 @@ def test_node_data_migration_success_schema_forces_human_input_node_type() -> No
                     "node_id": "node-1",
                     "node_data": {
                         "type": "code",
-                        "delivery_methods": [{"id": "webapp-1", "type": "webapp", "config": {}}],
+                        "delivery_methods": [
+                            {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}
+                        ],
                     },
                 }
             ]
@@ -353,7 +374,7 @@ def test_node_data_migration_success_schema_forces_human_input_node_type() -> No
     )
     response_schema = NodeDataMigrationResponse.model_json_schema()
 
-    assert request_body.nodes[0].node_data.type == "code"
+    assert not hasattr(request_body.nodes[0].node_data, "type")
     assert response_schema["$defs"]["HumanInputNodeData"]["properties"]["type"]["const"] == "human-input"
 
 

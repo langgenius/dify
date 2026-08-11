@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from .integration import IMIntegration
 from .records import IMBinding, IMIdentity
-from .sync_reconciliation import IMSyncRun, SyncResultFact
+from .sync_records import IMSyncRun, SyncResultFact
 
 
 @dataclass(frozen=True, slots=True)

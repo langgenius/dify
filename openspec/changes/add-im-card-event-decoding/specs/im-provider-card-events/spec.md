@@ -26,16 +26,21 @@ The shared contract MUST define immutable `IMCardEvent` with exactly one `Provid
 - **AND** the adapter MUST NOT substitute an application-scoped `open_id`
 
 ### Requirement: IMCardEventDecoder MUST distinguish non-card events from decoding failures
-The shared contract MUST define `UnrecognizedIMEvent`, `IMCardEventDecodeResult` as `IMCardEvent | UnrecognizedIMEvent`, `IMCardEventDecodingError`, and `IMCardEventDecoder.decode(AuthenticatedIMEvent)`. A decoder MUST return `UnrecognizedIMEvent` when the authenticated event is not a card event supported by that concrete Provider decoder. Once the event is recognized as a Provider card event, invalid JSON, missing or incorrectly typed required facts, ambiguous invoked actions, and callback payloads that violate the expected Dify card schema MUST raise `IMCardEventDecodingError` rather than return `UnrecognizedIMEvent` or fabricate an `IMCardEvent`.
+The shared contract MUST define `UnrecognizedIMEvent`, `IMCardEventDecodeResult` as `IMCardEvent | UnrecognizedIMEvent`, `IMCardEventDecodingError`, and `IMCardEventDecoder.decode(AuthenticatedIMEvent)`. A decoder MUST return `UnrecognizedIMEvent` when the authenticated event is not a card event supported by that concrete Provider decoder. A coarse Provider event type that carries both Dify submission actions and other interactions MUST NOT by itself establish recognition. After Provider-specific recognition establishes a Dify card action, missing or incorrectly typed required facts, ambiguous invoked actions, and callback payloads that violate the expected Dify card schema MUST raise `IMCardEventDecodingError` rather than return `UnrecognizedIMEvent` or fabricate an `IMCardEvent`. Invalid serialized JSON or a malformed transport envelope MUST also raise `IMCardEventDecodingError` when safe decoding of that authenticated transport-discriminated event is required before the decoder can inspect the Provider-specific recognition marker.
 
 #### Scenario: Authenticated event is not a card event
 - **WHEN** a decoder receives a valid authenticated event whose Provider discriminator and event type do not identify a supported card event
 - **THEN** it MUST return `UnrecognizedIMEvent`
 - **AND** it MUST NOT raise a decoding error or fabricate card facts
 
-#### Scenario: Recognized card event has invalid JSON
-- **WHEN** a decoder recognizes the event as a Provider card event but its serialized payload is not valid JSON
+#### Scenario: Transport-discriminated event has invalid JSON
+- **WHEN** a Provider event type requires safe payload inspection to distinguish a Dify card action but its serialized payload is not valid JSON
 - **THEN** it MUST raise `IMCardEventDecodingError`
+
+#### Scenario: Provider event type carries a non-Dify interaction
+- **WHEN** a valid authenticated Provider event uses the same coarse event type as Dify submissions but contains no Provider-specific Dify action marker
+- **THEN** the decoder MUST return `UnrecognizedIMEvent`
+- **AND** it MUST NOT require that interaction to satisfy the Dify callback schema
 
 #### Scenario: Recognized card event violates the callback schema
 - **WHEN** a decoder recognizes a Provider card event but its payload omits, ambiguously supplies or incorrectly types the callback actor, invoked action, submitted inputs or correlation token required by the Dify card schema
@@ -92,15 +97,30 @@ Each concrete Dynamic Card Provider implementation MUST own both the encoding us
 - **AND** it MUST NOT silently replace input values or callback metadata
 
 ### Requirement: Slack card decoding MUST converge across Webhook and Socket Mode
-The Slack decoder MUST decode authenticated Block Actions delivered through either the Webhook direct payload or the complete Socket Mode SDK serialization. It MUST read the callback actor as Slack `ProviderUserId`, require one unambiguous invoked action, recover the embedded `CorrelationToken`, and normalize every supported submitted card input. Equivalent Webhook and Socket Mode callbacks MUST produce equal `IMCardEvent` semantics.
+The Slack decoder MUST decode authenticated Block Actions delivered through either the Webhook direct payload or the complete Socket Mode SDK serialization. After safe JSON and transport-envelope decoding, it MUST recognize a Dify submission only when at least one invoked action uses the sender-owned `__dify.actions.` block namespace. Slack selection changes and other Block Actions without that marker MUST return `UnrecognizedIMEvent` before strict Dify callback validation. Once the marker is present, the decoder MUST read the callback actor as Slack `ProviderUserId`, require one unambiguous invoked Dify button action, recover the embedded `CorrelationToken`, and normalize every supported submitted card input. Equivalent Webhook and Socket Mode submission callbacks MUST produce equal `IMCardEvent` semantics.
 
 #### Scenario: Equivalent Slack callbacks use different transports
 - **WHEN** equivalent Slack Block Actions arrive through Webhook and Socket Mode with different authenticated payload envelopes
 - **THEN** the Slack decoder MUST produce equal `IMCardEvent` values
 
 #### Scenario: Slack callback contains multiple invoked actions
-- **WHEN** a recognized Slack Block Actions payload does not identify exactly one invoked Dify action
+- **WHEN** a Slack Block Actions payload contains a `__dify.actions.` marker but does not identify exactly one valid invoked Dify button action
 - **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
+
+#### Scenario: Slack selection change is not a Dify submission
+- **WHEN** Slack delivers a `static_select` or `radio_buttons` change through Block Actions under a `__dify.input.*` or foreign block namespace
+- **THEN** the Slack decoder MUST return `UnrecognizedIMEvent`
+- **AND** it MUST NOT decode the current state as a form submission
+
+#### Scenario: Slack Block Actions contain no Dify submission marker
+- **WHEN** Slack delivers missing, empty, non-object or non-Dify invoked action entries without any `__dify.actions.` block marker
+- **THEN** the Slack decoder MUST return `UnrecognizedIMEvent`
+- **AND** non-Dify blocks MUST NOT be forced through the Dify callback schema
+
+#### Scenario: Marked Slack submission is malformed
+- **WHEN** any invoked action uses the `__dify.actions.` namespace but the action type, value, actor, metadata, state or complete callback schema is malformed or ambiguous
+- **THEN** the Slack decoder MUST raise `IMCardEventDecodingError`
+- **AND** it MUST NOT downgrade that recognized submission to `UnrecognizedIMEvent`
 
 ### Requirement: Feishu and Lark card decoding MUST implement the shared callback protocol
 The Feishu and Lark adapters MUST each expose a card-event decoder implemented through their verified shared callback protocol path while retaining their distinct Provider discriminators. The decoders MUST support authenticated card actions delivered through Webhook and STREAM, normalize the callback actor as the `union_id`-based `ProviderUserId` used by Directory and Messaging, recover the invoked action and embedded `CorrelationToken`, and return only submitted JSON values as `IMCardEvent.inputs`. These behaviors MUST be backed by sanitized real callback evidence for both transport envelopes.

@@ -172,6 +172,16 @@ def _intent_with_paragraph_default(default_value: str) -> ResolvedForm:
     )
 
 
+def _intent_with_select_option_count(option_count: int) -> ResolvedForm:
+    options = tuple(f"option-{ordinal}" for ordinal in range(option_count))
+    return ResolvedForm(
+        title="Approval",
+        blocks=(SelectInput("risk_level", options, options[0]),),
+        user_actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.PRIMARY),),
+        legacy_form_content="This value must not be rendered",
+    )
+
+
 def _signed_request(body: bytes, *, signature: str | None = None) -> WebhookRequest:
     calculated = (
         "v0="
@@ -658,6 +668,27 @@ def test_card_assessment_rejects_file_controls_without_side_effects(mocker, inpu
 
     assert assessment.representable is False
     assert client.post_calls == []
+
+
+@pytest.mark.parametrize(
+    ("option_count", "expected_representable"),
+    [
+        pytest.param(100, True, id="maximum-static-select-options"),
+        pytest.param(101, False, id="too-many-static-select-options"),
+    ],
+)
+def test_card_assessment_uses_static_select_option_limit(
+    mocker: MockerFixture,
+    option_count: int,
+    expected_representable: bool,
+) -> None:
+    client = FakeWebClient()
+    adapter = _adapter(mocker, client)
+
+    assessment = adapter.dynamic_card_messaging.assess(_intent_with_select_option_count(option_count))
+
+    assert assessment.representable is expected_representable
+    assert client.post_calls == []
     with pytest.raises(DynamicCardMessagingError):
         adapter.dynamic_card_messaging.send_card(
             ProviderUserId("user-1"),
@@ -695,7 +726,7 @@ def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -
     ]
     assert [block["type"] for block in blocks] == ["header", "markdown", "input", "markdown", "actions"]
     assert len(input_blocks) == 1
-    assert input_blocks[0]["element"]["type"] == "radio_buttons"
+    assert input_blocks[0]["element"]["type"] == "static_select"
     assert input_blocks[0]["element"]["initial_option"]["value"] == "One"
     assert len(action_blocks) == 1
     assert [element["action_id"] for element in action_blocks[0]["elements"]] == ["approve", "reject"]

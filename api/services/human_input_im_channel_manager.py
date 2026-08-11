@@ -38,7 +38,13 @@ from core.human_input_v2.im_integration import (
     ProviderTenantIdentity,
     StaleRevision,
 )
-from core.human_input_v2.shared import IntegrationId, WorkspaceId
+from core.human_input_v2.shared import (
+    DeploymentScope,
+    DirectoryScope,
+    IntegrationId,
+    WorkspaceId,
+    WorkspaceScope,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -197,6 +203,7 @@ class HumanInputIMChannelManager:
             return self._mismatch()
 
         now = self._clock()
+        organization_scope = self._organization_write_scope(context)
         if current is None:
             integration = IMIntegration.create(
                 integration_id=IntegrationId(self._id_factory()),
@@ -208,7 +215,10 @@ class HumanInputIMChannelManager:
                 now=now,
             )
             try:
-                created_integration = self._repository.create_integration(integration)
+                created_integration = self._repository.create_integration(
+                    integration,
+                    organization_scope=organization_scope,
+                )
             except ValueError:
                 return ChannelOperationResult.failed(ChannelFailureCategory.CONFLICT)
             return ChannelOperationResult.success(self._view(context, created_integration))
@@ -229,7 +239,10 @@ class HumanInputIMChannelManager:
         )
         if isinstance(transition, StaleRevision):
             return ChannelOperationResult.failed(ChannelFailureCategory.STALE_CONFIGURATION)
-        persisted_result = self._repository.compare_and_swap_configuration(transition)
+        persisted_result = self._repository.compare_and_swap_configuration(
+            transition,
+            organization_scope=organization_scope,
+        )
         if isinstance(persisted_result, StaleRevision):
             return ChannelOperationResult.failed(ChannelFailureCategory.STALE_CONFIGURATION)
         return ChannelOperationResult.success(self._view(context, persisted_result))
@@ -251,7 +264,10 @@ class HumanInputIMChannelManager:
         deletion = current.plan_deletion(expected)
         if isinstance(deletion, StaleRevision):
             return ChannelOperationResult.failed(ChannelFailureCategory.STALE_CONFIGURATION)
-        result = self._repository.compare_and_swap_delete(deletion)
+        result = self._repository.compare_and_swap_delete(
+            deletion,
+            organization_scope=self._organization_write_scope(context),
+        )
         if isinstance(result, StaleRevision):
             return ChannelOperationResult.failed(ChannelFailureCategory.STALE_CONFIGURATION)
         return ChannelOperationResult.success(self._view(context, None))
@@ -295,6 +311,12 @@ class HumanInputIMChannelManager:
     @staticmethod
     def _owner_workspace_id(context: HumanInputChannelManagementContext) -> WorkspaceId | None:
         return None if context.use_deployment_im_scope else context.workspace_id
+
+    @staticmethod
+    def _organization_write_scope(context: HumanInputChannelManagementContext) -> DirectoryScope:
+        if context.use_deployment_im_scope:
+            return DeploymentScope()
+        return WorkspaceScope(context.workspace_id)
 
     @staticmethod
     def _scope(context: HumanInputChannelManagementContext) -> ChannelScope:

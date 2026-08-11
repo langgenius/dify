@@ -25,7 +25,6 @@ class BindingResolutionKind(StrEnum):
 
     WORKSPACE_OVERRIDE = "workspace_override"
     ORGANIZATION_BINDING = "organization_binding"
-    EMAIL_FALLBACK = "email_fallback"
     NOT_AVAILABLE = "not_available"
     INVALID_BINDING = "invalid_binding"
 
@@ -41,7 +40,7 @@ class EffectiveIMBindingSnapshot:
     contact_id: ContactId
     account_id: AccountId | None
     identity_id: IMIdentityId
-    binding_id: IMBindingId | None
+    binding_id: IMBindingId
     provider_user_id: str
     display_name: str | None
     email: str | None
@@ -56,7 +55,7 @@ class BindingResolutionResult:
 
 
 class EffectiveBindingResolver:
-    """Resolve workspace override, organization binding, then Email fallback."""
+    """Resolve only persisted workspace overrides or Organization bindings."""
 
     @staticmethod
     def resolve(
@@ -115,29 +114,6 @@ class EffectiveBindingResolver:
                 ),
             )
 
-        normalized_email = contact.contact.normalized_email
-        if normalized_email is not None:
-            identity = next(
-                (
-                    candidate
-                    for candidate in identities
-                    if candidate.integration_id == integration_revision.integration_id
-                    and candidate.provider is provider_tenant.provider
-                    and candidate.normalized_email == normalized_email
-                ),
-                None,
-            )
-            if identity is not None:
-                return BindingResolutionResult(
-                    BindingResolutionKind.EMAIL_FALLBACK,
-                    EffectiveBindingResolver._snapshot(
-                        integration_revision,
-                        provider_tenant,
-                        contact,
-                        identity,
-                        None,
-                    ),
-                )
         return BindingResolutionResult(BindingResolutionKind.NOT_AVAILABLE, None)
 
     @staticmethod
@@ -161,7 +137,7 @@ class EffectiveBindingResolver:
         provider_tenant: ProviderTenantIdentity,
         contact: ContactSnapshot,
         identity: IMIdentity,
-        binding_id: IMBindingId | None,
+        binding_id: IMBindingId,
     ) -> EffectiveIMBindingSnapshot:
         return EffectiveIMBindingSnapshot(
             integration_id=revision.integration_id,

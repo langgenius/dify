@@ -7,11 +7,13 @@ outside this boundary.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Literal, NewType, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, NaiveDatetime
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime, TypeAdapter, ValidationError
 
 from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
@@ -283,6 +285,53 @@ class AuthenticatedIMEvent:
     payload: str
 
 
+_CARD_EVENT_INPUTS_ADAPTER = TypeAdapter(
+    dict[str, JsonValue],
+    config=ConfigDict(strict=True, allow_inf_nan=False),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class IMCardEvent:
+    """Provider-neutral normalized card interaction."""
+
+    provider_user_id: ProviderUserId
+    action_id: str
+    inputs: Mapping[str, JsonValue]
+    correlation_token: CorrelationToken
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.action_id, str) or not self.action_id:
+            raise ValueError("card event action identifier must not be empty")
+        if not isinstance(self.inputs, Mapping):
+            raise TypeError("card event inputs must be a mapping")
+        try:
+            copied_inputs = _CARD_EVENT_INPUTS_ADAPTER.validate_python(dict(self.inputs), strict=True)
+        except ValidationError:
+            raise TypeError("card event inputs must contain only JSON values") from None
+        object.__setattr__(self, "inputs", MappingProxyType(copied_inputs))
+
+
+@dataclass(frozen=True, slots=True)
+class UnrecognizedIMEvent:
+    """Authenticated event outside one decoder's supported card protocol."""
+
+
+type IMCardEventDecodeResult = IMCardEvent | UnrecognizedIMEvent
+
+
+class IMCardEventDecodingError(ValueError):
+    """Recognized card event cannot be decoded using the expected schema."""
+
+
+class IMCardEventDecoder(Protocol):
+    """Credential-free and thread-safe Provider card callback decoder."""
+
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        """Normalize one authenticated event without Provider or persistence I/O."""
+        ...
+
+
 class EventAcceptance(StrEnum):
     """Consumer result controlling provider acknowledgement."""
 
@@ -329,6 +378,11 @@ class IMEventStream(Protocol):
 class IMProviderAdapter(Protocol):
     """Externally serialized provider-bound capability composition root."""
 
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder | None:
+        """Return a stateless decoder independent from credentials and root lifecycles."""
+        return None
+
     @property
     def provider(self) -> IMProvider: ...
 
@@ -365,6 +419,10 @@ __all__ = [
     "DirectoryReadFailure",
     "DynamicCardMessagingError",
     "EventAcceptance",
+    "IMCardEvent",
+    "IMCardEventDecodeResult",
+    "IMCardEventDecoder",
+    "IMCardEventDecodingError",
     "IMDirectory",
     "IMDynamicCardMessaging",
     "IMEventConsumer",
@@ -384,6 +442,7 @@ __all__ = [
     "ReplacementErrorKind",
     "SlackIMIntegrationCredentials",
     "StaticCardIntent",
+    "UnrecognizedIMEvent",
     "WeComIMIntegrationCredentials",
     "WebhookRequest",
     "WebhookResponse",

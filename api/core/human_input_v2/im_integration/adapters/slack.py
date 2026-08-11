@@ -30,6 +30,12 @@ from slack_sdk.web.slack_response import SlackResponse
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.slack_card_events import (
+    SlackCardEventDecoder,
+)
+from core.human_input_v2.im_integration.adapters.slack_card_events import (
+    render_card_blocks as _render_card_blocks,
+)
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CardAssessment,
@@ -42,6 +48,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMCardEventDecoder,
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
@@ -77,7 +84,6 @@ _MAX_BLOCK_COUNT = 50
 _MAX_ACTION_COUNT = 25
 _MAX_ACTION_ID_LENGTH = 255
 _MAX_ACTION_TEXT_LENGTH = 75
-_MAX_ACTION_VALUE_LENGTH = 2000
 _MAX_INPUT_LABEL_LENGTH = 2000
 _MAX_INPUT_INITIAL_VALUE_LENGTH = 3000
 _MAX_RADIO_OPTION_COUNT = 10
@@ -500,6 +506,11 @@ class _SlackEventStream(IMEventStream):
 class SlackIMProviderAdapter:
     """Externally serialized Slack capability composition root."""
 
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder:
+        """Return a credential-free decoder independent from root adapter instances."""
+        return SlackCardEventDecoder()
+
     def __init__(self, credentials: SlackIMIntegrationCredentials) -> None:
         if not isinstance(credentials, SlackIMIntegrationCredentials):
             raise TypeError("Slack adapter requires resolved Slack credentials")
@@ -686,65 +697,6 @@ def _card_unrepresentable_reason(intent: ResolvedForm) -> str | None:
         if action.button_style not in {ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT}:
             return "Slack cannot preserve one card action style."
     return None
-
-
-def _render_card_blocks(
-    intent: ResolvedForm,
-    correlation_token: CorrelationToken,
-) -> list[dict[str, object]]:
-    blocks: list[dict[str, object]] = []
-    if intent.title:
-        blocks.append({"type": "header", "text": {"type": "plain_text", "text": intent.title}})
-    for block in intent.blocks:
-        if isinstance(block, MarkdownText):
-            blocks.append(MarkdownBlock(text=block.text).to_dict())
-            continue
-        input_name = block.output_variable_name
-        input_element: dict[str, object] = {"action_id": input_name}
-        if isinstance(block, ParagraphInput):
-            input_element.update({"type": "plain_text_input", "multiline": True})
-            if block.default_value is not None:
-                input_element["initial_value"] = block.default_value
-        elif isinstance(block, SelectInput):
-            options = [{"text": {"type": "plain_text", "text": option}, "value": option} for option in block.options]
-            input_element.update({"type": "radio_buttons", "options": options})
-            if block.default_value is not None:
-                input_element["initial_option"] = next(
-                    option for option in options if option["value"] == block.default_value
-                )
-        else:
-            raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
-        blocks.append(
-            {
-                "type": "input",
-                "block_id": input_name,
-                "label": {"type": "plain_text", "text": input_name},
-                "element": input_element,
-            }
-        )
-    if intent.user_actions:
-        action_elements: list[dict[str, object]] = []
-        for action in intent.user_actions:
-            action_value = json.dumps(
-                {"action_id": action.id, "correlation_token": str(correlation_token)},
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-            if len(action_value) > _MAX_ACTION_VALUE_LENGTH:
-                raise DynamicCardMessagingError("Slack cannot preserve the correlation token.")
-            action_element: dict[str, object] = {
-                "type": "button",
-                "action_id": action.id,
-                "text": {"type": "plain_text", "text": action.title},
-                "value": action_value,
-            }
-            if action.button_style is ButtonStyle.PRIMARY:
-                action_element["style"] = "primary"
-            elif action.button_style is ButtonStyle.ACCENT:
-                action_element["style"] = "danger"
-            action_elements.append(action_element)
-        blocks.append({"type": "actions", "elements": action_elements})
-    return blocks
 
 
 def _card_summary(intent: ResolvedForm) -> str:

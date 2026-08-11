@@ -30,7 +30,14 @@ from core.human_input_v2.im_integration import (
     ProviderTenantIdentity,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import (
+    AccountId,
+    DirectoryScope,
+    IntegrationId,
+    NormalizedEmail,
+    WorkspaceId,
+    WorkspaceScope,
+)
 from services.human_input_im_channel_manager import (
     ConfirmedIMConfiguration,
     HumanInputIMChannelManager,
@@ -65,6 +72,7 @@ class FakeRepository:
         self.transition_kind = None
         self.load_calls = 0
         self.loaded_workspace_ids: list[WorkspaceId | None] = []
+        self.write_scopes: list[DirectoryScope] = []
 
     def load_current_integration(self, workspace_id):
         self.load_calls += 1
@@ -73,20 +81,23 @@ class FakeRepository:
             return self.current
         return None
 
-    def create_integration(self, integration):
+    def create_integration(self, integration, *, organization_scope):
+        self.write_scopes.append(organization_scope)
         if self.current is not None:
             raise ValueError("conflict")
         self.current = integration
         return integration
 
-    def compare_and_swap_configuration(self, transition):
+    def compare_and_swap_configuration(self, transition, *, organization_scope):
+        self.write_scopes.append(organization_scope)
         if self.current is None or self.current.revision != transition.expected_revision:
             return StaleRevision(transition.expected_revision, self.current.revision if self.current else None)
         self.transition_kind = transition.kind
         self.current = transition.integration
         return self.current
 
-    def compare_and_swap_delete(self, deletion):
+    def compare_and_swap_delete(self, deletion, *, organization_scope):
+        self.write_scopes.append(organization_scope)
         if self.current is None or self.current.revision != deletion.expected_revision:
             return StaleRevision(deletion.expected_revision, self.current.revision if self.current else None)
         self.current = None
@@ -166,6 +177,7 @@ def test_provider_replacement_is_planned_by_im_aggregate() -> None:
     assert repository.transition_kind is ConfigurationTransitionKind.PROVIDER_REPLACEMENT
     assert repository.current is not None
     assert repository.current.id == IntegrationId("integration-2")
+    assert repository.write_scopes == [WorkspaceScope(_CONTEXT.workspace_id)]
 
 
 def test_im_capabilities_expose_provider_replacement_without_unimplemented_secret_retention() -> None:

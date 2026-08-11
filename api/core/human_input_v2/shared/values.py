@@ -24,6 +24,7 @@ UploadFileAssociationId = NewType("UploadFileAssociationId", str)
 IntegrationId = NewType("IntegrationId", str)
 IMIdentityId = NewType("IMIdentityId", str)
 IMBindingId = NewType("IMBindingId", str)
+IMReconciliationChangeId = NewType("IMReconciliationChangeId", str)
 IMSyncRunId = NewType("IMSyncRunId", str)
 IMSyncResultId = NewType("IMSyncResultId", str)
 

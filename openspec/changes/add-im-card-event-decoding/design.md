@@ -70,7 +70,7 @@ class IMCardEventDecoder(Protocol):
         ...
 ```
 
-一个 event 不属于该 Provider 的 card-event type 时，decoder 返回 `UnrecognizedIMEvent`。一旦 event 已被 Provider discriminator 识别为 card event，以下情况统一抛出 `IMCardEventDecodingError`：payload 不是合法 JSON、缺少 callback actor/action/inputs/correlation facts、字段类型错误、出现 ambiguous invoked action，或 payload 不符合 Dify 发送端承诺的 callback schema。
+一个 event 不属于该 Provider 的 card-event type 时，decoder 返回 `UnrecognizedIMEvent`。当 Provider 的粗粒度 event type 同时承载 Dify submission 与其他 interaction 时，decoder 采用两阶段边界：先安全解析 JSON 和 transport envelope，只读取足以识别 sender-owned action marker 的浅层 facts；不存在 marker 时立即返回 `UnrecognizedIMEvent`，存在 marker 后才执行完整 Dify callback schema 校验。transport discriminator 要求检查 payload、但 payload 不是合法 JSON 或 envelope 不可解包时，仍统一抛出 `IMCardEventDecodingError`，因为 decoder 无法安全完成 recognition。marker 已命中后，缺少 callback actor/action/inputs/correlation facts、字段类型错误、出现 ambiguous invoked action，或 payload 不符合 Dify 发送端承诺的 callback schema，也统一抛出 `IMCardEventDecodingError`。
 
 异常只能包含 operator-safe diagnostics，不得保存或输出 raw payload、submitted inputs、correlation token 或 Provider user profile。Unexpected implementation failures 不得伪装成 `UnrecognizedIMEvent`。
 
@@ -104,7 +104,7 @@ Alternative considered: 全局 `card_event_decoder_for(provider)` registry。Rej
 - `inputs` 只包含 normalized submitted input values，不包含 callback metadata 或 raw Provider envelope。
 - callback metadata 与合法 input names 不得发生 silent collision。
 
-Slack 保持 action metadata 位于 button `value`，decoder 同时支持 Webhook direct payload 与 Socket Mode SDK envelope，并把当前支持的 text/radio state values 归一化为 JSON inputs。Microsoft Teams 必须将 action metadata 与 `Action.Submit` 合并返回的 inputs 隔离；具体 reserved member 是 implementation detail，card assessment 必须在必要时拒绝与其冲突的 input identifier。Feishu/Lark decoder 也属于本 change 的实现范围；其 actor path、Webhook/STREAM envelope 与 action/value schema 必须先以脱敏的真实 callback evidence 固定，再实现共享 protocol path 下的 Feishu 与 Lark variants。
+Slack 保持 action metadata 位于 button `value`，用稳定的 Provider-owned English `plain_text` placeholder 完成 `static_select` 元素。由于 Slack 对 submission button、`static_select` change、legacy/foreign `radio_buttons` change 和其他 interactions 都使用 `block_actions`，该 event type 只作为 transport discriminator；JSON/envelope 解包后，只有 actions 中至少一个 object entry 的 string `block_id` 使用 sender-owned `__dify.actions.` namespace 才识别为 Dify submission。不存在该 marker 时立即返回 `UnrecognizedIMEvent`；存在 marker 后再严格要求 exactly one valid Dify button action，并把当前支持的 text/static_select state values 归一化为 JSON inputs。该 decoder 同时支持 Webhook direct payload 与 Socket Mode SDK envelope。Microsoft Teams 必须将 action metadata 与 `Action.Submit` 合并返回的 inputs 隔离；具体 reserved member 是 implementation detail，card assessment 必须在必要时拒绝与其冲突的 input identifier。Feishu/Lark decoder 也属于本 change 的实现范围；其 actor path、Webhook/STREAM envelope 与 action/value schema 必须先以脱敏的真实 callback evidence 固定，再实现共享 protocol path 下的 Feishu 与 Lark variants。
 
 Alternative considered: 由 inbox consumer 解析 correlation/action metadata。Rejected because这会复制发送端的 Provider wire knowledge，并使 consumer 依赖 Slack、Teams 与 Feishu/Lark schema。
 
@@ -120,6 +120,7 @@ Decoder 不把 authenticated Provider delivery 提升为 HITL authorization proo
 - [A malformed card callback now raises instead of being ignored] → 使用 operator-safe `IMCardEventDecodingError` 保留可观测失败，让后续 inbox consumer 决定 retry 或 terminal disposition。
 - [Microsoft Teams merges action data and inputs] → 发送端与 decoder 使用同一隔离规则，并增加 reserved-key collision tests。
 - [Slack Webhook and Socket Mode payload envelopes differ] → 同一个 Slack decoder 对两种 authenticated snapshot 运行 conformance tests，并要求产生相同 `IMCardEvent`。
+- [Slack `block_actions` conflates submission and selection/foreign interactions] → JSON/envelope 解包后先用私有 `__dify.actions.` marker 做浅层、无 I/O recognition；无 marker 返回 `UnrecognizedIMEvent`，命中 marker 后保留完整严格 schema failure。
 - [Class-level capability can drift from instance messaging availability] → 加入所有 concrete adapters 的 pairing conformance test，禁止单独出现 decoder 或 Dynamic Card Messaging。
 
 ## Migration Plan

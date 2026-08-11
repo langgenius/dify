@@ -36,7 +36,9 @@ def _legacy_webapp_node(title: str = "Approval") -> LegacyHumanInputNodeData:
     return LegacyHumanInputNodeData.model_validate(
         {
             "title": title,
-            "delivery_methods": [{"id": "webapp-1", "type": "webapp", "config": {}}],
+            "delivery_methods": [
+                {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}
+            ],
         }
     )
 
@@ -67,7 +69,9 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
                     "node_id": "node-1",
                     "node_data": {
                         "title": "Approval",
-                        "delivery_methods": [{"id": "webapp-1", "type": "webapp", "config": {}}],
+                        "delivery_methods": [
+                            {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}}
+                        ],
                     },
                 }
             ]
@@ -85,7 +89,7 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     }
 
 
-def test_controller_resolves_real_frontend_user_id_member_shape(
+def test_controller_normalizes_compatibility_member_id_before_service(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -102,12 +106,12 @@ def test_controller_resolves_real_frontend_user_id_member_shape(
                     "node_data": {
                         "delivery_methods": [
                             {
-                                "id": "email-1",
+                                "id": "11111111-1111-4111-8111-111111111111",
                                 "type": "email",
                                 "config": {
                                     "subject": "Review",
                                     "body": "Please review",
-                                    "recipients": {"items": [{"type": "member", "user_id": "member-1"}]},
+                                    "recipients": {"items": [{"type": "member", "reference_id": "member-1"}]},
                                 },
                             }
                         ]

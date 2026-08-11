@@ -1,8 +1,8 @@
 ## 1. Shared Card Event Contracts
 
-- [ ] 1.1 Add immutable `IMCardEvent`, `UnrecognizedIMEvent`, `IMCardEventDecodeResult`, safe `IMCardEventDecodingError` and `IMCardEventDecoder` to the shared IM Provider contracts, using `ProviderUserId`, `CorrelationToken` and `Mapping[str, JsonValue]` without introducing duplicate identity or token types.
-- [ ] 1.2 Add the class-level `card_event_decoder()` optional capability to `IMProviderAdapter`, update public exports and the Provider API stub, and document its credential-free, no-I/O, thread-safe and root-lifecycle-independent semantics.
-- [ ] 1.3 Add shared contract tests for non-empty action identity, JSON-only inputs, non-card `UnrecognizedIMEvent` results, recognized-card decoding failures and operator-safe exceptions that do not retain callback payload data.
+- [x] 1.1 Add immutable `IMCardEvent`, `UnrecognizedIMEvent`, `IMCardEventDecodeResult`, safe `IMCardEventDecodingError` and `IMCardEventDecoder` to the shared IM Provider contracts, using `ProviderUserId`, `CorrelationToken` and `Mapping[str, JsonValue]` without introducing duplicate identity or token types.
+- [x] 1.2 Add the class-level `card_event_decoder()` optional capability to `IMProviderAdapter`, update public exports and the Provider API stub, and document its credential-free, no-I/O, thread-safe and root-lifecycle-independent semantics.
+- [x] 1.3 Add shared contract tests for non-empty action identity, JSON-only inputs, non-card `UnrecognizedIMEvent` results, recognized-card decoding failures and operator-safe exceptions that do not retain callback payload data.
 
 ## 2. Capability Pairing
 
@@ -13,10 +13,12 @@
 
 ## 3. Slack Card Event Decoder
 
-- [ ] 3.1 Add complete sanitized Slack Block Actions fixtures for equivalent Webhook and Socket Mode callbacks, including callback user, exactly one invoked action, embedded correlation metadata and supported text/radio state values.
-- [ ] 3.2 Implement the Slack decoder for both authenticated payload envelopes, normalize the actor, action, inputs and correlation token, and validate agreement between outer and embedded action identifiers.
-- [ ] 3.3 Add Slack tests proving Webhook/Socket convergence, exact round trip of Unicode action/input/token values, and `UnrecognizedIMEvent` for authenticated non-card Slack events.
-- [ ] 3.4 Add Slack failure tests for invalid JSON, missing or incorrectly typed actor/action/token/input facts, ambiguous invoked actions, unsupported Dify callback schema and safe `IMCardEventDecodingError` diagnostics.
+- [x] 3.1 Add complete sanitized Slack Block Actions fixtures for equivalent Webhook and Socket Mode submissions plus static_select and legacy/foreign radio_buttons change interactions, including callback user, invoked action shape, embedded correlation metadata where applicable and supported state values.
+- [x] 3.2 Implement the Slack decoder for both authenticated payload envelopes with a shallow `__dify.actions.` recognition stage before strict Dify submission validation; normalize the actor, action, inputs and correlation token, validate agreement between outer and embedded action identifiers, reconstruct the sender-owned input schema from `message.blocks`, and require exact Dify state agreement while preserving explicit JSON null values.
+- [x] 3.3 Add Slack tests proving Webhook/Socket convergence, exact round trip of Unicode action/input/token values, and `UnrecognizedIMEvent` for authenticated non-card events, selection changes, missing/empty/non-object actions and non-Dify Block Actions.
+- [x] 3.4 Add Slack failure tests for transport-discriminated invalid JSON/envelopes and prove that any inspectable `__dify.actions.` marker enables strict validation for missing or incorrectly typed actor/action/token/input facts, wrong action type/value, malformed or duplicate Dify block schema, missing/extra/mismatched input state, multiple actions, unsupported Dify callback schema and safe `IMCardEventDecodingError` diagnostics.
+- [x] 3.5 Add a targeted real Slack Web API sender/readback integration test that rebuilds a callback from Provider-returned blocks and proves sender/decoder agreement.
+- [x] 3.6 Run focused Slack unit and integration coverage and one uniquely marked live callback probe, retaining only sanitized conclusions.
 
 ## 4. Microsoft Teams Card Event Decoder
 

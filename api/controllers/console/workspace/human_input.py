@@ -54,6 +54,7 @@ from controllers.common.human_input_v2_contracts import (
     GetLatestIMSyncRunResponse,
     HumanInputContact,
     HumanInputContactType,
+    IMContactSyncErrorResponse,
     IMIntegrationStatus,
     IMProvider,
     IMSyncResultType,
@@ -79,6 +80,7 @@ from controllers.common.human_input_v2_contracts import (
     UpdateIMIntegrationRequest,
     UpdateIMIntegrationResponse,
 )
+from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -104,8 +106,18 @@ from core.human_input_v2.channel_management import (
     ChannelScopeKind,
     ChannelStatus,
 )
+from core.human_input_v2.im_integration import (
+    ContactIMBindingView,
+    IMBindingCommandError,
+    IMBindingCommandErrorCode,
+    IMSyncRun,
+    SyncContactSnapshot,
+    SyncResultFact,
+)
+from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, WorkspaceId, WorkspaceScope
 from enums.deployment_edition import DeploymentEdition
-from libs.helper import dump_response
+from graphon.file import helpers as file_helpers
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models.account import Account
 from services.human_input_channel_management_composition import (
@@ -113,6 +125,12 @@ from services.human_input_channel_management_composition import (
     build_human_input_channel_management_service,
 )
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
+from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
+from services.human_input_v2.im_contact_sync.service import (
+    IMIntegrationNotConfiguredError,
+    IMSyncRevisionChangedError,
+    IMSyncRunNotFoundError,
+)
 from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
 register_enum_models(
@@ -167,6 +185,7 @@ register_response_schema_models(
     UpdateIMIntegrationResponse,
     TestIMIntegrationResponse,
     CreateIMSyncRunResponse,
+    IMContactSyncErrorResponse,
     GetLatestIMSyncRunResponse,
     ListLatestIMSyncRunResultsResponse,
     ListOrganizationCandidatesResponse,
@@ -201,6 +220,149 @@ def _reject_enterprise_channel_management() -> None:
 
 def _raise_stub_not_implemented() -> None:
     abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 stub endpoint is not implemented yet.")
+
+
+_IM_BINDING_ERROR_STATUS = {
+    IMBindingCommandErrorCode.INTEGRATION_NOT_CONFIGURED: HTTPStatus.NOT_FOUND,
+    IMBindingCommandErrorCode.CONTACT_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    IMBindingCommandErrorCode.IDENTITY_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    IMBindingCommandErrorCode.BINDING_NOT_FOUND: HTTPStatus.NOT_FOUND,
+    IMBindingCommandErrorCode.BINDING_CONFLICT: HTTPStatus.CONFLICT,
+    IMBindingCommandErrorCode.INVALID_SCOPE: HTTPStatus.UNPROCESSABLE_ENTITY,
+}
+
+
+def _workspace_scope(tenant_id: str) -> WorkspaceScope:
+    return WorkspaceScope(WorkspaceId(tenant_id))
+
+
+type _IMApplicationError = (
+    IMBindingCommandError | IMIntegrationNotConfiguredError | IMSyncRevisionChangedError | IMSyncRunNotFoundError
+)
+
+
+def _im_application_error_response(error: _IMApplicationError) -> tuple[dict[str, object], HTTPStatus]:
+    if isinstance(error, IMBindingCommandError):
+        status = _IM_BINDING_ERROR_STATUS[error.code]
+        code = error.code.value
+    elif isinstance(error, IMIntegrationNotConfiguredError):
+        status = HTTPStatus.NOT_FOUND
+        code = "im_integration_not_configured"
+    elif isinstance(error, IMSyncRunNotFoundError):
+        status = HTTPStatus.NOT_FOUND
+        code = "im_sync_run_not_found"
+    else:
+        status = HTTPStatus.CONFLICT
+        code = "im_sync_revision_changed"
+    return (
+        dump_response(
+            IMContactSyncErrorResponse,
+            {"code": code, "message": str(error), "status": status},
+        ),
+        status,
+    )
+
+
+def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
+    return {
+        "id": run.id,
+        "status": run.status,
+        "started_at": to_timestamp(run.started_at),
+        "finished_at": to_timestamp(run.finished_at),
+        "error_message": run.error_message,
+        "result_counts": {
+            "added": run.added_count,
+            "not_matched": run.not_matched_count,
+            "failed": run.failed_count,
+            "removed": run.removed_count,
+            "skipped": run.skipped_count,
+        },
+        "provider": run.provider,
+        "integration_id": run.integration_revision.integration_id,
+        "integration_config_version": run.integration_revision.config_version,
+    }
+
+
+def _directory_entry_payload(result: SyncResultFact) -> dict[str, object] | None:
+    if result.provider_user_id is None:
+        return None
+    return {
+        "provider_user_id": result.provider_user_id,
+        "display_name": result.display_name,
+        "email": result.email,
+    }
+
+
+def _avatar_url(avatar_file_id: str | None) -> str:
+    if avatar_file_id is None:
+        return ""
+    return file_helpers.get_signed_file_url(upload_file_id=avatar_file_id) or ""
+
+
+def _sync_contact_payload(contact: SyncContactSnapshot, fallback_created_at) -> dict[str, object]:
+    # Historical result snapshots predate the Contact creation-time field.
+    created_at = contact.created_at if contact.created_at is not None else fallback_created_at
+    return {
+        "id": contact.contact_id,
+        "name": contact.name,
+        "avatar_url": _avatar_url(contact.avatar_file_id),
+        "created_at": to_timestamp(created_at),
+    }
+
+
+def _sync_result_payload(result: SyncResultFact) -> dict[str, object]:
+    entry = _directory_entry_payload(result)
+    if result.result_type is IMSyncResultType.NOT_MATCHED:
+        return {"type": result.result_type, "entry": entry}
+    if result.result_type is IMSyncResultType.FAILED:
+        return {
+            "type": result.result_type,
+            "entry": entry,
+            "reason": result.reason_message or result.reason_code or "sync_failed",
+        }
+    if result.result_type is IMSyncResultType.ADDED:
+        if result.contact_snapshot is None or entry is None:
+            raise RuntimeError("added sync result is missing its persisted display snapshot")
+        return {
+            "type": result.result_type,
+            "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
+            "entry": entry,
+        }
+    if result.result_type is IMSyncResultType.SKIPPED:
+        if result.contact_snapshot is None:
+            raise RuntimeError("skipped sync result is missing its persisted Contact snapshot")
+        return {
+            "type": result.result_type,
+            "entry": entry,
+            "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
+        }
+    if result.contact_snapshot is None or result.identity_snapshot is None or result.removal_reason is None:
+        raise RuntimeError("removed sync result is missing its persisted display snapshot")
+    return {
+        "type": result.result_type,
+        "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
+        "last_known_identity": {
+            "identity_id": result.identity_snapshot.identity_id,
+            "provider_user_id": result.identity_snapshot.provider_user_id,
+            "display_name": result.identity_snapshot.display_name,
+            "email": result.identity_snapshot.email,
+        },
+        "reason": result.removal_reason,
+    }
+
+
+def _contact_binding_payload(contact: ContactIMBindingView) -> dict[str, object]:
+    return {
+        "id": contact.id,
+        "type": contact.type,
+        "name": contact.name,
+        "email": contact.email,
+        "avatar_url": _avatar_url(contact.avatar_file_id),
+        "im_bindings": [
+            {"id": binding.id, "provider": binding.provider, "scope": binding.scope} for binding in contact.im_bindings
+        ],
+        "created_at": to_timestamp(contact.created_at),
+    }
 
 
 @console_ns.route("/workspaces/current/human-input/contacts")
@@ -376,13 +538,23 @@ class WorkspaceIMIntegrationTestApi(Resource):
 @console_ns.route("/workspaces/current/human-input/im-sync-runs")
 class WorkspaceIMSyncRunsApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[CreateIMSyncRunResponse.__name__])
+    @console_ns.response(404, "IM Integration not configured", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(409, "IM Integration revision changed", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        _raise_stub_not_implemented()
+    def post(self, tenant_id: str, current_user: Account):
+        try:
+            run = build_im_contact_sync_application().sync_service.create_or_get_active_run(
+                _workspace_scope(tenant_id),
+                AccountId(current_user.id),
+            )
+        except (IMIntegrationNotConfiguredError, IMSyncRevisionChangedError) as error:
+            return _im_application_error_response(error)
+        return dump_response(CreateIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
 
 @console_ns.route("/workspaces/current/human-input/im-sync-runs/latest")
@@ -394,13 +566,18 @@ class WorkspaceLatestIMSyncRunApi(Resource):
         )
     )
     @console_ns.response(200, "Success", console_ns.models[GetLatestIMSyncRunResponse.__name__])
+    @console_ns.response(404, "Latest IM sync run not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        _raise_stub_not_implemented()
+        try:
+            run = build_im_contact_sync_application().sync_service.get_latest_run(_workspace_scope(tenant_id))
+        except (IMIntegrationNotConfiguredError, IMSyncRunNotFoundError) as error:
+            return _im_application_error_response(error)
+        return dump_response(GetLatestIMSyncRunResponse, {"run": _sync_run_payload(run)})
 
 
 @console_ns.route("/workspaces/current/human-input/im-sync-runs/latest/results")
@@ -413,28 +590,64 @@ class WorkspaceLatestIMSyncRunResultsApi(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ListLatestIMSyncRunResultsResponse.__name__])
+    @console_ns.response(404, "Latest IM sync run not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        ListLatestIMSyncRunResultsQuery.model_validate(request.args.to_dict(flat=True))
-        _raise_stub_not_implemented()
+        query = ListLatestIMSyncRunResultsQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            result_page = build_im_contact_sync_application().sync_service.list_latest_results(
+                _workspace_scope(tenant_id),
+                query.result,
+                page=query.page,
+                limit=query.limit,
+            )
+        except (IMIntegrationNotConfiguredError, IMSyncRunNotFoundError) as error:
+            return _im_application_error_response(error)
+        return dump_response(
+            ListLatestIMSyncRunResultsResponse,
+            {
+                "data": [{"id": result.id, "result": _sync_result_payload(result)} for result in result_page.items],
+                "page": result_page.page,
+                "limit": result_page.limit,
+                "total": result_page.total,
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/im-identities")
 class WorkspaceIMIdentitiesApi(Resource):
     @console_ns.doc(params=query_params_from_model(ListIMIdentitiesQuery))
     @console_ns.response(200, "Success", console_ns.models[ListIMIdentitiesResponse.__name__])
+    @console_ns.response(404, "IM Integration not configured", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        ListIMIdentitiesQuery.model_validate(request.args.to_dict(flat=True))
-        _raise_stub_not_implemented()
+        query = ListIMIdentitiesQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            identity_page = build_im_contact_sync_application().sync_service.search_identities(
+                _workspace_scope(tenant_id),
+                keyword=query.keyword,
+                page=query.page,
+                limit=query.limit,
+            )
+        except IMIntegrationNotConfiguredError as error:
+            return _im_application_error_response(error)
+        return dump_response(
+            ListIMIdentitiesResponse,
+            {
+                "data": identity_page.items,
+                "page": identity_page.page,
+                "limit": identity_page.limit,
+                "total": identity_page.total,
+            },
+        )
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override")
@@ -447,15 +660,33 @@ class WorkspaceContactIMOverrideApi(Resource):
     )
     @console_ns.expect(console_ns.models[SetContactIMOverrideRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[SetContactIMOverrideResponse.__name__])
+    @console_ns.response(
+        404,
+        "Contact or IM identity not found",
+        console_ns.models[IMContactSyncErrorResponse.__name__],
+    )
+    @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @with_current_user
     @with_current_tenant_id
-    def put(self, tenant_id: str, contact_id: str):
-        # This API only works in EE.
-        SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    def put(self, tenant_id: str, current_user: Account, contact_id: str):
+        request_body = SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
+        workspace_id = WorkspaceId(tenant_id)
+        try:
+            contact = build_im_contact_sync_application().binding_service.set_workspace_override(
+                organization_scope=WorkspaceScope(workspace_id),
+                workspace_id=workspace_id,
+                contact_id=ContactId(contact_id),
+                identity_id=IMIdentityId(request_body.identity_id),
+                bound_by_account_id=AccountId(current_user.id),
+            )
+        except IMBindingCommandError as error:
+            return _im_application_error_response(error)
+        return dump_response(SetContactIMOverrideResponse, {"contact": _contact_binding_payload(contact)})
 
     @console_ns.doc(
         description=(
@@ -464,14 +695,24 @@ class WorkspaceContactIMOverrideApi(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ResetContactIMOverrideResponse.__name__])
+    @console_ns.response(404, "Contact not found", console_ns.models[IMContactSyncErrorResponse.__name__])
+    @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
-        # This API only works in EE.
-        _raise_stub_not_implemented()
+        workspace_id = WorkspaceId(tenant_id)
+        try:
+            contact = build_im_contact_sync_application().binding_service.reset_workspace_override(
+                organization_scope=WorkspaceScope(workspace_id),
+                workspace_id=workspace_id,
+                contact_id=ContactId(contact_id),
+            )
+        except IMBindingCommandError as error:
+            return _im_application_error_response(error)
+        return dump_response(ResetContactIMOverrideResponse, {"contact": _contact_binding_payload(contact)})
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings")
@@ -485,16 +726,35 @@ class WorkspaceContactIMBindingsApi(Resource):
     )
     @console_ns.expect(console_ns.models[CreateIMBindingRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[CreateIMBindingResponse.__name__])
+    @console_ns.response(
+        404,
+        "Contact or IM identity not found",
+        console_ns.models[IMContactSyncErrorResponse.__name__],
+    )
+    @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @with_current_user
     @with_current_tenant_id
-    def put(self, tenant_id: str, contact_id: str):
-        CreateIMBindingRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
+    def put(self, tenant_id: str, current_user: Account, contact_id: str):
+        request_body = CreateIMBindingRequest.model_validate(console_ns.payload or {})
+        workspace_id = WorkspaceId(tenant_id)
+        try:
+            contact = build_im_contact_sync_application().binding_service.create_organization_binding(
+                organization_scope=WorkspaceScope(workspace_id),
+                workspace_id=workspace_id,
+                contact_id=ContactId(contact_id),
+                identity_id=IMIdentityId(request_body.identity_id),
+                bound_by_account_id=AccountId(current_user.id),
+            )
+        except IMBindingCommandError as error:
+            return _im_application_error_response(error)
+        return dump_response(CreateIMBindingResponse, {"contact": _contact_binding_payload(contact)})
 
     @console_ns.response(200, "Success", console_ns.models[DeleteIMBindingResponse.__name__])
+    @console_ns.response(404, "IM binding not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.doc(
         params=query_params_from_model(DeleteIMBindingQuery),
         description=(
@@ -509,8 +769,16 @@ class WorkspaceContactIMBindingsApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
-        query_params_from_request(DeleteIMBindingQuery)
-        _raise_stub_not_implemented()
+        query = query_params_from_request(DeleteIMBindingQuery)
+        try:
+            build_im_contact_sync_application().binding_service.delete_organization_binding(
+                organization_scope=_workspace_scope(tenant_id),
+                contact_id=ContactId(contact_id),
+                binding_id=IMBindingId(query.binding_id),
+            )
+        except IMBindingCommandError as error:
+            return _im_application_error_response(error)
+        return dump_response(DeleteIMBindingResponse, {})
 
 
 @console_ns.route("/workspaces/current/human-input/contacts/batch")
@@ -578,7 +846,13 @@ class NodeDataMigrationAPI(Resource):
         request_body = NodeDataMigrationPayload.model_validate(console_ns.payload or {})
         outcome = build_human_input_node_data_migration_service().migrate(
             workspace_id=tenant_id,
-            nodes=tuple(MigrationNode(node_id=node.node_id, node_data=node.node_data) for node in request_body.nodes),
+            nodes=tuple(
+                MigrationNode.from_preflight(
+                    node.node_id,
+                    preflight_legacy_human_input_node_data(node.node_data),
+                )
+                for node in request_body.nodes
+            ),
         )
         if isinstance(outcome, NodeDataMigrationFailure):
             return (
