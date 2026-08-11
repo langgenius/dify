@@ -12,68 +12,46 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { useCallback, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEducation } from './hooks'
+import { useInstitutionSuggestions } from './use-institution-suggestions'
 
-type SearchInputProps = {
-  value?: string
-  onChange: (value: string) => void
+type InstitutionFieldProps = {
+  value: string
+  onValueChange: (value: string) => void
 }
 
-const SearchInput = ({ value, onChange }: SearchInputProps) => {
+const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const { t } = useTranslation()
   const inputId = useId()
   const {
-    schools,
-    setSchools,
-    querySchoolsWithDebounced,
-    handleUpdateSchools,
-    hasNext,
-    isLoading,
-  } = useEducation()
+    suggestions,
+    clearSuggestions,
+    requestSuggestions,
+    requestSuggestionsDebounced,
+    hasNextPage,
+    isPending,
+  } = useInstitutionSuggestions()
   const pageRef = useRef(0)
-  const valueRef = useRef(value)
-
-  const handleSearch = useCallback(
-    (debounced?: boolean) => {
-      const keywords = valueRef.current
-      const page = pageRef.current
-      if (debounced) {
-        querySchoolsWithDebounced({
-          keywords,
-          page,
-        })
-        return
-      }
-
-      handleUpdateSchools({
-        keywords,
-        page,
-      })
-    },
-    [handleUpdateSchools, querySchoolsWithDebounced],
-  )
 
   const handleValueChange = useCallback(
     (inputValue: string) => {
-      setSchools([])
+      clearSuggestions()
       pageRef.current = 0
-      valueRef.current = inputValue
-      onChange(inputValue)
-      handleSearch(true)
+      onValueChange(inputValue)
+      requestSuggestionsDebounced({ query: inputValue, page: 0 })
     },
-    [handleSearch, onChange, setSchools],
+    [clearSuggestions, onValueChange, requestSuggestionsDebounced],
   )
 
   const handleScroll: UIEventHandler<HTMLDivElement> = useCallback(
-    (e) => {
-      const target = e.currentTarget
-      const { scrollTop, scrollHeight, clientHeight } = target
-      if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0 && hasNext) {
-        pageRef.current += 1
-        handleSearch()
-      }
+    (event) => {
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0
+      if (!isAtBottom || !hasNextPage || isPending) return
+
+      pageRef.current += 1
+      requestSuggestions({ query: value, page: pageRef.current })
     },
-    [handleSearch, hasNext],
+    [hasNextPage, isPending, requestSuggestions, value],
   )
 
   return (
@@ -85,7 +63,7 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
         {t(($) => $['form.schoolName.title'], { ns: 'education' })}
       </FieldLabel>
       <Autocomplete
-        items={schools}
+        items={suggestions}
         value={value}
         onValueChange={handleValueChange}
         filter={null}
@@ -98,15 +76,18 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
             placeholder={t(($) => $['form.schoolName.placeholder'], { ns: 'education' })}
           />
         </AutocompleteInputGroup>
-        {!!value && (isLoading || schools.length > 0) && (
-          <AutocompleteContent popupProps={{ 'aria-busy': isLoading || undefined }}>
-            {isLoading && (
+        {!!value && (isPending || suggestions.length > 0) && (
+          <AutocompleteContent
+            popupClassName="w-(--anchor-width)"
+            popupProps={{ 'aria-busy': isPending || undefined }}
+          >
+            {isPending && (
               <AutocompleteStatus>{t(($) => $.loading, { ns: 'appApi' })}</AutocompleteStatus>
             )}
             <AutocompleteList<string> onScroll={handleScroll}>
-              {(school) => (
-                <AutocompleteItem key={school} value={school} title={school}>
-                  <AutocompleteItemText>{school}</AutocompleteItemText>
+              {(institution) => (
+                <AutocompleteItem key={institution} value={institution} title={institution}>
+                  <AutocompleteItemText>{institution}</AutocompleteItemText>
                 </AutocompleteItem>
               )}
             </AutocompleteList>
@@ -117,4 +98,4 @@ const SearchInput = ({ value, onChange }: SearchInputProps) => {
   )
 }
 
-export default SearchInput
+export default InstitutionField

@@ -25,8 +25,8 @@ import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
+import InstitutionField from './institution-field'
 import RoleSelector from './role-selector'
-import SearchInput from './search-input'
 
 const REQUIRED_AGREEMENTS = ['age', 'inSchool', 'personalUse']
 
@@ -204,7 +204,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
         </div>
       ) : (
         <Form onFormSubmit={handleSubmit}>
-          <SearchInput value={schoolName} onChange={setSchoolName} />
+          <InstitutionField value={schoolName} onValueChange={setSchoolName} />
           <RoleSelector value={role} onChange={setRole} />
           <Field name="agreements" className="mb-7">
             <Fieldset
