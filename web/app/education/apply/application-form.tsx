@@ -226,7 +226,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
                   href="https://dify.ai/terms"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-text-secondary hover:underline"
+                  className="text-text-secondary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 >
                   {t(($) => $['form.terms.desc.termsOfService'], { ns: 'education' })}
                 </a>
@@ -237,7 +237,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
                   href="https://dify.ai/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-text-secondary hover:underline"
+                  className="text-text-secondary hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 >
                   {t(($) => $['form.terms.desc.privacyPolicy'], { ns: 'education' })}
                 </a>
@@ -275,7 +275,7 @@ const EducationApplyPage = ({ token }: EducationApplyPageProps) => {
           </Button>
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
           <a
-            className="flex items-center system-xs-regular text-text-accent"
+            className="flex items-center system-xs-regular text-text-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
             target="_blank"
             rel="noopener noreferrer"
