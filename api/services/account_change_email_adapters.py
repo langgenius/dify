@@ -1,8 +1,7 @@
 """Infrastructure adapters for the account change-email application service."""
 
 import secrets
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast, override
+from typing import override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -35,16 +34,7 @@ from services.entities.auth_entities import (
 )
 from tasks.mail_change_mail_task import send_change_mail_completed_notification_task, send_change_mail_task
 
-if TYPE_CHECKING:
-    from models.account import Account
-
 _token_adapter: TypeAdapter[ChangeEmailTokenData] = TypeAdapter(ChangeEmailTokenData)
-
-
-@dataclass(frozen=True, slots=True)
-class _TokenAccount:
-    id: str
-    email: str
 
 
 class TokenManagerChangeEmailTokenGateway(ChangeEmailTokenGateway):
@@ -75,9 +65,8 @@ class TokenManagerChangeEmailTokenGateway(ChangeEmailTokenGateway):
 
     @override
     def issue(self, token_data: AccountChangeEmailTokenData) -> str:
-        account = cast("Account", _TokenAccount(id=token_data.account_id, email=token_data.email))
         return TokenManager.generate_token(
-            account=account,
+            account_id=token_data.account_id,
             email=token_data.email,
             token_type="change_email",
             additional_data={

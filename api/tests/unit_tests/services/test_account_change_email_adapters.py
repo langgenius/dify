@@ -53,9 +53,7 @@ def test_token_gateway_issues_account_bound_state() -> None:
     ) as generate_token:
         assert gateway.issue(token_data) == "token"
 
-    token_account = generate_token.call_args.kwargs["account"]
-    assert token_account.id == "account-1"
-    assert token_account.email == "new@example.com"
+    assert generate_token.call_args.kwargs["account_id"] == "account-1"
     assert generate_token.call_args.kwargs["email"] == "new@example.com"
     assert generate_token.call_args.kwargs["additional_data"] == {
         "old_email": "old@example.com",

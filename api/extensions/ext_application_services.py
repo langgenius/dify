@@ -196,7 +196,7 @@ def build_application_services(
                     verification_lockout_duration=dify_config.CHANGE_EMAIL_LOCKOUT_DURATION,
                 ),
                 email_policy=BillingAccountEmailPolicyGateway(
-                    billing_enabled=dify_config.BILLING_ENABLED,
+                    billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
                 ),
             ),
             deletion=AccountDeletionService(
