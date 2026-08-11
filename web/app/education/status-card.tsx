@@ -16,8 +16,12 @@ export function EducationStatusCard({ actions, children, icon, title }: Educatio
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="title-xl-semi-bold text-text-primary">{title}</h2>
-          {children && <div className="mt-2 system-md-regular text-text-tertiary">{children}</div>}
-          {actions && <div className="mt-6 flex flex-wrap items-center gap-2">{actions}</div>}
+          {children != null ? (
+            <div className="mt-2 system-md-regular text-text-tertiary">{children}</div>
+          ) : null}
+          {actions != null ? (
+            <div className="mt-6 flex flex-wrap items-center gap-2">{actions}</div>
+          ) : null}
         </div>
       </div>
     </section>
