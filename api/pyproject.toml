@@ -109,7 +109,7 @@ override-dependencies = [
     "jsonschema>=4.26.0",
     "python-dotenv==1.2.2",
     "pyarrow>=18.0.0",
-    "cryptography>=48.0.1,<50.0.0",
+    "cryptography>=50.0.0,<51.0.0",
  ]
 
 [dependency-groups]
