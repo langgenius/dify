@@ -80,25 +80,12 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ token: 'test-token' }),
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 const mockRouterPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="verify-state-modal" /> : null,
 }))
 
 vi.mock('@/app/components/header/utils/util', () => ({

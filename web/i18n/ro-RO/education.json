@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Reducerea educațională se aplică doar planului Professional anual. Dacă păstrezi planul curent, reducerea nu va fi inclusă.",
   "educationPricingConfirm.title": "Planul selectat nu acceptă reducerea educațională",
   "emailLabel": "Emailul tău curent",
+  "form.schoolName.noResults": "Nu a fost găsită nicio școală corespunzătoare. Puteți introduce în continuare numele oficial.",
   "form.schoolName.placeholder": "Introduceți numele oficial, neabbreviat al școlii dumneavoastră",
   "form.schoolName.title": "Numele Școlii Tale",
   "form.schoolRole.option.administrator": "Administrator școlar",

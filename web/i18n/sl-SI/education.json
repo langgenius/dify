@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Izobraževalni popust velja samo za letni paket Professional. Če obdržite trenutni paket, popust ne bo vključen.",
   "educationPricingConfirm.title": "Izbrani paket ne podpira izobraževalnega popusta",
   "emailLabel": "Vaš trenutni elektronski naslov",
+  "form.schoolName.noResults": "Ni bilo najdene ustrezne šole. Še vedno lahko vnesete njeno uradno ime.",
   "form.schoolName.placeholder": "Vpišite uradno, neokrnjeno ime vaše šole",
   "form.schoolName.title": "Ime vaše šole",
   "form.schoolRole.option.administrator": "Šolski administrator",

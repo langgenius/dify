@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "O desconto educacional se aplica apenas ao plano Professional anual. Manter seu plano atual não incluirá o desconto.",
   "educationPricingConfirm.title": "O plano selecionado não aceita o desconto educacional",
   "emailLabel": "Seu e-mail atual",
+  "form.schoolName.noResults": "Nenhuma escola correspondente foi encontrada. Você ainda pode inserir o nome oficial.",
   "form.schoolName.placeholder": "Digite o nome oficial e não abreviado da sua escola",
   "form.schoolName.title": "O nome da sua escola",
   "form.schoolRole.option.administrator": "Administrador Escolar",
