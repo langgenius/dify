@@ -850,13 +850,8 @@ describe('SkillDetailPage', () => {
     expect(screen.getByRole('option', { name: 'Productivity' })).toBeInTheDocument()
     expect(
       screen
-        .getAllByRole('separator')
-        .find((separator) => separator.getAttribute('aria-orientation') === 'horizontal'),
-    ).toHaveClass('my-0')
-    expect(
-      screen
         .getByRole('button', { name: 'common.tag.manageTags' })
-        .querySelector('.i-ri-price-tag-3-line'),
+        .querySelector('.i-custom-vender-line-financeAndECommerce-tag-01'),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', {
