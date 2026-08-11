@@ -32,6 +32,7 @@ from services.human_input_v2.node_data_migration import (
 )
 
 _CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
+_OMITTED_METHOD_ID = object()
 
 
 class _StaticMemberEmailLookup:
@@ -100,6 +101,52 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     }
 
 
+@pytest.mark.parametrize(
+    ("method_id", "expected_method_id"),
+    [(_OMITTED_METHOD_ID, None), (None, None), ("invalid-id", "invalid-id")],
+    ids=["omitted", "null", "invalid-uuid"],
+)
+def test_controller_maps_invalid_delivery_method_ids_to_typed_failure_without_partial_data(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method_id: object,
+    expected_method_id: str | None,
+) -> None:
+    invalid_method: dict[str, object] = {"type": "webapp", "config": {}}
+    if method_id is not _OMITTED_METHOD_ID:
+        invalid_method["id"] = method_id
+    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
+    handler = unwrap(NodeDataMigrationAPI.post)
+
+    with app.test_request_context(
+        method="POST",
+        json={
+            "nodes": [
+                {
+                    "node_id": "node-1",
+                    "node_data": {
+                        "title": "Approval",
+                        "delivery_methods": [
+                            invalid_method,
+                            {"id": "22222222-2222-4222-8222-222222222222", "type": "webapp", "config": {}},
+                        ],
+                    },
+                }
+            ]
+        },
+    ):
+        response = handler(NodeDataMigrationAPI(), "workspace-1")
+
+    assert isinstance(response, tuple)
+    body, status = response
+    assert status == HTTPStatus.BAD_REQUEST
+    assert "data" not in body
+    assert [(blocker["code"], blocker["method_id"], blocker["value"]) for blocker in body["blockers"]] == [
+        ("unsupported-delivery-method", expected_method_id, "webapp")
+    ]
+
+
 def test_controller_preserves_historically_accepted_action_id_with_trailing_line_feed(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
@@ -117,7 +164,13 @@ def test_controller_preserves_historically_accepted_action_id_with_trailing_line
                     "node_id": "node-1",
                     "node_data": {
                         "title": "Approval",
-                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                        "delivery_methods": [
+                            {
+                                "id": "22222222-2222-4222-8222-222222222222",
+                                "type": "webapp",
+                                "config": {},
+                            }
+                        ],
                         "user_actions": [{"id": historical_action_id, "title": "Approve"}],
                     },
                 }
@@ -243,7 +296,11 @@ def test_controller_rejects_disabled_unknown_method_with_empty_config_without_pa
                                 "enabled": False,
                                 "config": {},
                             },
-                            {"type": "webapp", "config": {}},
+                            {
+                                "id": "22222222-2222-4222-8222-222222222222",
+                                "type": "webapp",
+                                "config": {},
+                            },
                         ],
                     },
                 }
@@ -278,14 +335,26 @@ def test_controller_maps_invalid_default_value_to_typed_all_or_error_response(
                     "node_data": {
                         "title": "Invalid",
                         "default_value": [{"key": "fallback", "type": "object", "value": False}],
-                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                        "delivery_methods": [
+                            {
+                                "id": "22222222-2222-4222-8222-222222222222",
+                                "type": "webapp",
+                                "config": {},
+                            }
+                        ],
                     },
                 },
                 {
                     "node_id": "node-valid",
                     "node_data": {
                         "title": "Valid",
-                        "delivery_methods": [{"type": "webapp", "config": {}}],
+                        "delivery_methods": [
+                            {
+                                "id": "22222222-2222-4222-8222-222222222222",
+                                "type": "webapp",
+                                "config": {},
+                            }
+                        ],
                     },
                 },
             ]

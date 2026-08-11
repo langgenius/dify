@@ -12,7 +12,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Annotated, Literal, Self
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 
@@ -195,7 +195,7 @@ class LegacyEmailDeliveryConfig(BaseModel):
 
 class _LegacyDeliveryMethodBase(BaseModel):
     enabled: bool = True
-    id: UUID = Field(default_factory=uuid4)
+    id: UUID
 
 
 class LegacyWebAppDeliveryMethod(_LegacyDeliveryMethodBase):

@@ -198,9 +198,9 @@ def test_node_data_migration_transport_defers_raw_delivery_semantics_to_prefligh
                     "node_data": {
                         "title": "Approval",
                         "delivery_methods": [
-                            {"id": "sms-1", "type": "sms", "config": {}},
+                            {"id": "33333333-3333-4333-8333-333333333333", "type": "sms", "config": {}},
                             {
-                                "id": "email-1",
+                                "id": "11111111-1111-4111-8111-111111111111",
                                 "type": "email",
                                 "config": {
                                     "subject": "Subject",

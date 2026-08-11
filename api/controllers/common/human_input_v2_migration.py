@@ -1,12 +1,16 @@
 """Transport compatibility and preflight parsing for HITL v1 node migration."""
 
 from collections.abc import Mapping
-from typing import Literal
+from typing import Annotated, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, JsonValue, TypeAdapter, ValidationError
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDefaultValue,
+    LegacyDeliveryChannelConfig,
     LegacyDeliveryParseIssue,
     LegacyEmailDeliveryMethod,
     LegacyFormInput,
@@ -21,6 +25,21 @@ from graphon.entities.base_node_data import RetryConfig
 from graphon.enums import ErrorStrategy
 
 
+class _CanonicalDeliveryMethodJsonSchema:
+    """Document canonical methods without narrowing compatibility validation."""
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        _core_schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        return handler(TypeAdapter(LegacyDeliveryChannelConfig).core_schema)
+
+
+_TransportDeliveryMethodValue = Annotated[JsonValue, _CanonicalDeliveryMethodJsonSchema]
+
+
 class LegacyHITLv1NodeData(BaseModel):
     """HTTP compatibility DTO; raw delivery JSON stops at preflight."""
 
@@ -32,7 +51,7 @@ class LegacyHITLv1NodeData(BaseModel):
     error_strategy: ErrorStrategy | None = None
     default_value: JsonValue = None
     retry_config: RetryConfig = Field(default_factory=RetryConfig)
-    delivery_methods: list[JsonValue] = Field(default_factory=list)
+    delivery_methods: list[_TransportDeliveryMethodValue] = Field(default_factory=list)
     form_content: str = ""
     inputs: list[LegacyFormInput] = Field(default_factory=list)
     user_actions: list[LegacyUserAction] = Field(default_factory=list)
@@ -200,13 +219,29 @@ def _parse_method(
             (),
         )
 
-    if "id" in transport_method.model_fields_set and transport_method.id is None:
+    if "id" not in transport_method.model_fields_set or transport_method.id is None:
         return (
             None,
             (
                 LegacyDeliveryParseIssue(
                     code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
                     method_position=method_position,
+                    value=transport_method.type,
+                ),
+            ),
+            (),
+        )
+
+    try:
+        UUID(transport_method.id)
+    except ValueError:
+        return (
+            None,
+            (
+                LegacyDeliveryParseIssue(
+                    code=MigrationBlockerCode.UNSUPPORTED_DELIVERY_METHOD,
+                    method_position=method_position,
+                    method_id=transport_method.id,
                     value=transport_method.type,
                 ),
             ),

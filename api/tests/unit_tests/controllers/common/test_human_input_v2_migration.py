@@ -28,11 +28,11 @@ def test_migration_transport_requires_historical_node_title() -> None:
         migration_boundary.LegacyHITLv1NodeData.model_validate({"delivery_methods": []})
 
 
-def test_preflight_preserves_historical_delivery_method_id_factory() -> None:
+def test_preflight_preserves_valid_persisted_delivery_method_id() -> None:
     transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
         {
             "title": "Approval",
-            "delivery_methods": [{"type": "webapp", "config": {}}],
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
         }
     )
 
@@ -43,27 +43,36 @@ def test_preflight_preserves_historical_delivery_method_id_factory() -> None:
     assert preflight.recipient_positions == ((),)
     method = preflight.node_data.delivery_methods[0]
     assert isinstance(method, LegacyWebAppDeliveryMethod)
-    assert isinstance(method.id, UUID)
+    assert method.id == UUID(_WEBAPP_METHOD_ID)
 
 
-def test_preflight_rejects_explicit_null_delivery_ids_without_invoking_the_factory() -> None:
+def test_preflight_rejects_omitted_null_and_invalid_delivery_ids_before_canonical_construction() -> None:
     transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
         {
             "title": "Approval",
             "delivery_methods": [
-                {"id": None, "type": "webapp", "config": {}},
                 {"type": "webapp", "config": {}},
+                {"id": None, "type": "webapp", "config": {}},
+                {"id": "invalid-webapp-id", "type": "webapp", "config": {}},
+                {"type": "email", "enabled": False, "config": {}},
                 {"id": None, "type": "email", "enabled": False, "config": {}},
+                {"id": "invalid-email-id", "type": "email", "enabled": False, "config": {}},
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
             ],
         }
     )
 
     preflight = migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
 
-    assert preflight.method_positions == (1,)
+    assert preflight.method_positions == (6,)
+    assert len(preflight.node_data.delivery_methods) == 1
     assert [(issue.code, issue.method_position, issue.method_id, issue.value) for issue in preflight.issues] == [
         ("unsupported-delivery-method", 0, None, "webapp"),
-        ("unsupported-delivery-method", 2, None, "email"),
+        ("unsupported-delivery-method", 1, None, "webapp"),
+        ("unsupported-delivery-method", 2, "invalid-webapp-id", "webapp"),
+        ("unsupported-delivery-method", 3, None, "email"),
+        ("unsupported-delivery-method", 4, None, "email"),
+        ("unsupported-delivery-method", 5, "invalid-email-id", "email"),
     ]
 
 
@@ -86,8 +95,8 @@ def test_preflight_ignores_disabled_email_with_only_default_empty_configuration(
         {
             "title": "Approval",
             "delivery_methods": [
-                {"type": "email", "enabled": False, "config": empty_config},
-                {"type": "webapp", "config": {}},
+                {"id": _EMAIL_METHOD_ID, "type": "email", "enabled": False, "config": empty_config},
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
             ],
         }
     )
@@ -129,8 +138,13 @@ def test_preflight_blocks_explicit_malformed_falsy_disabled_delivery_config(
         {
             "title": "Approval",
             "delivery_methods": [
-                {"type": method_type, "enabled": False, "config": malformed_config},
-                {"type": "webapp", "config": {}},
+                {
+                    "id": _EMAIL_METHOD_ID if method_type == "email" else _WEBAPP_METHOD_ID,
+                    "type": method_type,
+                    "enabled": False,
+                    "config": malformed_config,
+                },
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
             ],
         }
     )
@@ -155,7 +169,10 @@ def test_preflight_rejects_disabled_unknown_method_before_empty_config_exemption
     transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
         {
             "title": "Approval",
-            "delivery_methods": [unknown_method, {"type": "webapp", "config": {}}],
+            "delivery_methods": [
+                unknown_method,
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
+            ],
         }
     )
 
@@ -186,7 +203,7 @@ def test_preflight_types_invalid_historical_default_values_without_constructing_
         {
             "title": "Approval",
             "default_value": [invalid_default],
-            "delivery_methods": [{"type": "webapp", "config": {}}],
+            "delivery_methods": [{"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}}],
         }
     )
 

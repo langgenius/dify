@@ -188,6 +188,55 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
+def test_console_node_data_migration_documents_canonical_delivery_method_union(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    schemas = payload["components"]["schemas"]
+    operation = payload["paths"]["/workspaces/current/human-input/node-data-migration"]["post"]
+    request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+
+    assert request_schema == {"$ref": "#/components/schemas/NodeDataMigrationPayload"}
+    payload_schema = schemas["NodeDataMigrationPayload"]
+    node_input_ref = payload_schema["properties"]["nodes"]["items"]["$ref"]
+    node_input_schema = schemas[node_input_ref.removeprefix("#/components/schemas/")]
+    node_data_ref = node_input_schema["properties"]["node_data"]["$ref"]
+    node_data_schema = schemas[node_data_ref.removeprefix("#/components/schemas/")]
+    method_items = node_data_schema["properties"]["delivery_methods"]["items"]
+
+    assert method_items == {
+        "discriminator": {
+            "mapping": {
+                "email": "#/components/schemas/LegacyEmailDeliveryMethod",
+                "webapp": "#/components/schemas/LegacyWebAppDeliveryMethod",
+            },
+            "propertyName": "type",
+        },
+        "oneOf": [
+            {"$ref": "#/components/schemas/LegacyWebAppDeliveryMethod"},
+            {"$ref": "#/components/schemas/LegacyEmailDeliveryMethod"},
+        ],
+    }
+    for method_schema_name in ("LegacyWebAppDeliveryMethod", "LegacyEmailDeliveryMethod"):
+        method_schema = schemas[method_schema_name]
+        assert "id" in method_schema["required"]
+        assert method_schema["properties"]["id"] == {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string",
+        }
+
+
 def test_service_document_file_routes_document_multipart_form_data(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.service_api import bp as service_api_bp

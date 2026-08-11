@@ -7,6 +7,7 @@ from uuid import UUID
 
 import pytest
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, field_validator
+from pydantic_core import PydanticUndefined
 
 from core.human_input_v2.shared.values import NormalizedEmail
 from core.workflow.nodes.human_input_v2 import migration as migration_module
@@ -66,6 +67,49 @@ def test_canonical_v1_models_are_exposed() -> None:
     }
 
     assert expected_model_names <= set(dir(migration_module))
+
+
+@pytest.mark.parametrize(
+    "delivery_method_model",
+    [migration_module.LegacyWebAppDeliveryMethod, migration_module.LegacyEmailDeliveryMethod],
+)
+def test_canonical_delivery_method_id_is_required_without_any_default(
+    delivery_method_model: type[BaseModel],
+) -> None:
+    id_field = delivery_method_model.model_fields["id"]
+
+    assert id_field.is_required()
+    assert id_field.default is PydanticUndefined
+    assert id_field.default_factory is None
+
+
+@pytest.mark.parametrize(
+    ("delivery_method_model", "method_value"),
+    [
+        (migration_module.LegacyWebAppDeliveryMethod, {"type": "webapp", "config": {}}),
+        (
+            migration_module.LegacyEmailDeliveryMethod,
+            {
+                "type": "email",
+                "config": {
+                    "recipients": {"items": []},
+                    "subject": "Review",
+                    "body": "Please review",
+                },
+            },
+        ),
+    ],
+)
+def test_canonical_delivery_method_schema_requires_id(
+    delivery_method_model: type[BaseModel],
+    method_value: dict[str, object],
+) -> None:
+    schema = delivery_method_model.model_json_schema()
+
+    assert "id" in schema["required"]
+    assert "default" not in schema["properties"]["id"]
+    with pytest.raises(ValidationError):
+        delivery_method_model.model_validate(method_value)
 
 
 def test_canonical_v1_schema_matches_historical_base_form_and_action_fields() -> None:

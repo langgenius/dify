@@ -290,8 +290,8 @@ def test_service_preserves_adversarial_preflight_and_conversion_order_without_pa
                         "recipients": {"items": [{"type": "external", "email": "invalid-email"}]},
                     },
                 },
-                {"type": "email", "enabled": False, "config": None},
-                {"type": "webapp", "config": {}},
+                {"id": _EMAIL_METHOD_ID, "type": "email", "enabled": False, "config": None},
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
             ],
         }
     )
@@ -312,7 +312,42 @@ def test_service_preserves_adversarial_preflight_and_conversion_order_without_pa
         ("invalid-default-value", None, "default_value"),
         ("unsupported-delivery-method", None, "webapp"),
         ("invalid-email", _EMAIL_METHOD_ID, "invalid-email"),
-        ("configured-disabled-method", None, "email"),
+        ("configured-disabled-method", _EMAIL_METHOD_ID, "email"),
+    ]
+
+
+def test_service_orders_invalid_delivery_ids_without_partial_data_or_persistence_writes() -> None:
+    transport_node_data = migration_boundary.LegacyHITLv1NodeData.model_validate(
+        {
+            "title": "Approval",
+            "delivery_methods": [
+                {"type": "webapp", "config": {}},
+                {"id": None, "type": "webapp", "config": {}},
+                {"id": "invalid-id", "type": "webapp", "config": {}},
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
+            ],
+        }
+    )
+    lookup = _ReadOnlyBoundarySpy()
+    service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
+
+    outcome = service.migrate(
+        workspace_id="workspace-1",
+        nodes=(
+            MigrationNode.from_preflight(
+                "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
+            ),
+        ),
+    )
+
+    assert lookup.calls == [("workspace-1", ())]
+    assert lookup.write_attempts == []
+    assert isinstance(outcome, NodeDataMigrationFailure)
+    assert not hasattr(outcome, "data")
+    assert [(blocker.code, blocker.method_id, blocker.value) for blocker in outcome.blockers] == [
+        ("unsupported-delivery-method", None, "webapp"),
+        ("unsupported-delivery-method", None, "webapp"),
+        ("unsupported-delivery-method", "invalid-id", "webapp"),
     ]
 
 
@@ -332,7 +367,7 @@ def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_p
                     },
                 },
                 {"id": "unknown-2", "type": "future-two", "enabled": False, "config": {}},
-                {"type": "webapp", "config": {}},
+                {"id": _WEBAPP_METHOD_ID, "type": "webapp", "config": {}},
             ],
         }
     )
