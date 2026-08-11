@@ -8,9 +8,9 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useAppWorkflow } from '@/service/use-workflow'
@@ -31,7 +31,10 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appInfo = useAppStore((state) => state.appDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const shouldFetchWorkflow = Boolean(appInfo && isAdvancedApp(appInfo))

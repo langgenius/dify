@@ -8,13 +8,6 @@ const mockReplace = vi.hoisted(() => vi.fn())
 const mockRedirect = vi.hoisted(() => vi.fn(() => null as never))
 const mockRequestVerification = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { email: 'student@university.edu' },
-  }))
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
 }))
@@ -38,6 +31,7 @@ function renderFlow({
   isEducationAccount?: boolean
 }) {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
+    accountProfile: { email: 'student@university.edu' },
     educationStatus: {
       allow_refresh: allowRefresh,
       is_student: isEducationAccount,
@@ -84,6 +78,7 @@ describe('EducationVerifyFlow', () => {
   it('requests one token on entry and replaces the route with the application form', async () => {
     mockRequestVerification.mockResolvedValue({ token: 'education token' })
     const { queryClient, wrapper } = createConsoleQueryWrapper({
+      accountProfile: { email: 'student@university.edu' },
       educationStatus: { allow_refresh: false, is_student: false },
     })
     seedFeatures(queryClient, { education: { enabled: true } })

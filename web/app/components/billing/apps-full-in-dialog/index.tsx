@@ -4,21 +4,25 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import { langGeniusCurrentVersionAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
 const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const currentVersion = useAtomValue(langGeniusCurrentVersionAtom)
   const isTeam = plan.type === Plan.team
   const usage = plan.usage.buildApps

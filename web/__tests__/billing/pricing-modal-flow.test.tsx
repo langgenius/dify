@@ -24,7 +24,10 @@ let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: 
 const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 
 const render = (ui: React.ReactElement) => {
-  const { wrapper } = createConsoleQueryWrapper({ educationStatus: mockEducationStatus })
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
+    educationStatus: mockEducationStatus,
+  })
   return renderWithConsoleState(ui, { wrapper })
 }
 
@@ -33,10 +36,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)

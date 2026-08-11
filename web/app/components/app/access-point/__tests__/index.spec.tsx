@@ -6,6 +6,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/client'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
@@ -37,11 +38,6 @@ vi.mock('@/app/components/app/store', () => ({
       },
     }),
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -123,6 +119,7 @@ const renderAccessPoint = ({
   searchParams?: string
 } = {}) => {
   const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   const queryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
       input: {

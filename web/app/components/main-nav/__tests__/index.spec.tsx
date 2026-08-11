@@ -492,7 +492,6 @@ const mainNavUserProfile = {
 
 const consoleState: ConsoleStateFixture = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',

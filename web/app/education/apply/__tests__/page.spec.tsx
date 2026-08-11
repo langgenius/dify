@@ -1,3 +1,4 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -24,11 +25,6 @@ const mockWorkspaces = vi.hoisted(() => [
     plan: 'sandbox',
   },
 ])
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -70,6 +66,11 @@ vi.mock('@/service/client', () => ({
       },
     },
     account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
       education: {
         autocomplete: {
           get: {
@@ -131,6 +132,7 @@ const setupContext = (isCurrentWorkspaceManager: boolean) => {
 
 const renderPage = (isEducationAccount = true) => {
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as Partial<GetAccountProfileResponse>,
     educationStatus: { is_student: isEducationAccount },
     workspacePermissionKeys: null,
   })

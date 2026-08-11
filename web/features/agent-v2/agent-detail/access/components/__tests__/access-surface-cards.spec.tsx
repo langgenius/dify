@@ -3,6 +3,7 @@ import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
@@ -44,21 +45,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_notes: '',
-    },
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -107,6 +93,13 @@ vi.mock('@/context/version-state', async () => {
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
@@ -256,6 +249,7 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
       enabled: webAppAuthEnabled,
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   return queryClient
 }
 

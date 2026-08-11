@@ -14,6 +14,7 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
@@ -188,16 +189,6 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     textGenerationModelList: [
@@ -239,6 +230,13 @@ vi.mock('@/service/client', async () => {
       },
     },
     consoleQuery: {
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       agent: {
         byAgentId: {
           chatMessages: {
@@ -275,6 +273,7 @@ function renderPreviewChat(
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -349,6 +348,7 @@ function renderPreviewChatWithConversationHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -374,6 +374,7 @@ function renderPreviewChatWithClearCommandHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
