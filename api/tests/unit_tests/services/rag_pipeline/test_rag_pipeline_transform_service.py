@@ -13,6 +13,7 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 
 
@@ -167,16 +168,43 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(sqlite_session:
 # --- transform_dataset ---
 
 
-@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 def test_transform_dataset_returns_early_when_pipeline_exists(sqlite_session: Session) -> None:
     service = RagPipelineTransformService()
     dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
-    sqlite_session.add(dataset)
-    sqlite_session.commit()
+    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", description="")
+    pipeline.id = "p1"
+    sqlite_session.add_all([dataset, pipeline])
 
     result = service.transform_dataset(dataset, "user-1", sqlite_session)
 
     assert result == {"pipeline_id": "p1", "dataset_id": "d1", "status": "success"}
+
+
+@pytest.mark.parametrize("pipeline_tenant_id", [None, "tenant-2"])
+def test_transform_dataset_rejects_missing_or_foreign_pipeline_before_side_effects(
+    mocker: MockerFixture,
+    sqlite_session: Session,
+    pipeline_tenant_id: str | None,
+) -> None:
+    service = RagPipelineTransformService()
+    dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
+    sqlite_session.add(dataset)
+    if pipeline_tenant_id is not None:
+        pipeline = Pipeline(tenant_id=pipeline_tenant_id, name="Pipeline", description="")
+        pipeline.id = "p1"
+        sqlite_session.add(pipeline)
+    install_plugins = mocker.patch(
+        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+    )
+    create_pipeline = mocker.patch.object(service, "_create_pipeline")
+    transform_empty = mocker.patch.object(service, "_transform_to_empty_pipeline")
+
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Pipeline not found"):
+        service.transform_dataset(dataset, "user-1", sqlite_session)
+
+    install_plugins.assert_not_called()
+    create_pipeline.assert_not_called()
+    transform_empty.assert_not_called()
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)

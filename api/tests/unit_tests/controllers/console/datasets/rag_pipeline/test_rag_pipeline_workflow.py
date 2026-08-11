@@ -32,6 +32,7 @@ from models.enums import PermissionEnum
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -248,7 +249,7 @@ def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app
     assert response == recommended_plugins
 
 
-def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engine: Engine) -> None:
+def test_rag_pipeline_transform_rejects_read_only_member(sqlite_engine: Engine) -> None:
     account = _account()
     account.role = TenantAccountRole.NORMAL
     api = module.RagPipelineTransformApi()
@@ -256,10 +257,8 @@ def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engi
 
     with Session(sqlite_engine) as session:
         session.add(_dataset())
-        session.commit()
 
         with (
-            app.test_request_context("/"),
             patch.object(module.dify_config, "RBAC_ENABLED", False),
             pytest.raises(Forbidden),
         ):
@@ -267,17 +266,15 @@ def test_rag_pipeline_transform_rejects_read_only_member(app: Flask, sqlite_engi
 
 
 def test_rag_pipeline_transform_rejects_dataset_from_another_tenant_before_service_call(
-    app: Flask, sqlite_engine: Engine
+    sqlite_engine: Engine,
 ) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
 
     with Session(sqlite_engine) as session:
         session.add(_dataset(tenant_id="00000000-0000-0000-0000-000000000099"))
-        session.commit()
 
         with (
-            app.test_request_context("/"),
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
             pytest.raises(NotFound),
         ):
@@ -287,17 +284,15 @@ def test_rag_pipeline_transform_rejects_dataset_from_another_tenant_before_servi
 
 
 def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_service_call(
-    app: Flask, sqlite_engine: Engine
+    sqlite_engine: Engine,
 ) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
 
     with Session(sqlite_engine) as session:
         session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
-        session.commit()
 
         with (
-            app.test_request_context("/"),
             patch.object(module.dify_config, "RBAC_ENABLED", False),
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
             pytest.raises(Forbidden),
@@ -308,7 +303,7 @@ def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_servic
 
 
 def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service(
-    app: Flask, sqlite_engine: Engine
+    sqlite_engine: Engine,
 ) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
@@ -316,26 +311,40 @@ def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service
     expected = {"pipeline_id": "pipeline-1", "dataset_id": DEFAULT_DATASET_ID, "status": "success"}
 
     with Session(sqlite_engine) as session:
-        session.add(_dataset())
-        session.commit()
+        dataset = _dataset()
+        session.add(dataset)
 
         with (
-            app.test_request_context("/"),
             patch.object(module.dify_config, "RBAC_ENABLED", False),
             patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
         ):
             response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
 
-        transformed_dataset, account_id, transformed_session = transform.call_args.args
-        assert transformed_dataset.id == DEFAULT_DATASET_ID
-        assert transformed_dataset.tenant_id == DEFAULT_WORKFLOW_TENANT_ID
-        assert account_id == account.id
-        assert transformed_session is session
+        transform.assert_called_once_with(dataset, account.id, session)
 
     assert response == expected
 
 
-def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(app: Flask, sqlite_engine: Engine) -> None:
+def test_rag_pipeline_transform_maps_missing_pipeline_to_not_found(sqlite_engine: Engine) -> None:
+    api = module.RagPipelineTransformApi()
+    handler = unwrap_all(api.post)
+
+    with Session(sqlite_engine) as session:
+        session.add(_dataset())
+
+        with (
+            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            patch.object(
+                module.RagPipelineTransformService,
+                "transform_dataset",
+                side_effect=RagPipelineResourceNotFoundError("Pipeline not found"),
+            ),
+            pytest.raises(NotFound, match="Pipeline not found"),
+        ):
+            handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, _account(), UUID(DEFAULT_DATASET_ID))
+
+
+def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(sqlite_engine: Engine) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
     account = _account()
@@ -344,10 +353,8 @@ def test_rag_pipeline_transform_skips_legacy_acl_when_rbac_is_enabled(app: Flask
 
     with Session(sqlite_engine) as session:
         session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
-        session.commit()
 
         with (
-            app.test_request_context("/"),
             patch.object(module.dify_config, "RBAC_ENABLED", True),
             patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
         ):

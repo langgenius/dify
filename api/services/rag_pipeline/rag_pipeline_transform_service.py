@@ -20,6 +20,7 @@ from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipe
 from models.enums import DatasetRuntimeMode, DataSourceType
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.file_service import FileService
 from services.plugin.plugin_migration import PluginMigration
 
@@ -34,11 +35,17 @@ class RagPipelineTransformService:
         intentionally non-transactional prerequisite; database changes are committed only after the pipeline and
         migrated document metadata have been persisted.
         """
-        dataset_id = dataset.id
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
+            pipeline = session.scalar(
+                select(Pipeline)
+                .where(Pipeline.id == dataset.pipeline_id, Pipeline.tenant_id == dataset.tenant_id)
+                .limit(1)
+            )
+            if pipeline is None:
+                raise RagPipelineResourceNotFoundError("Pipeline not found")
             return {
-                "pipeline_id": dataset.pipeline_id,
-                "dataset_id": dataset_id,
+                "pipeline_id": pipeline.id,
+                "dataset_id": dataset.id,
                 "status": "success",
             }
         if dataset.provider != "vendor":
@@ -105,7 +112,7 @@ class RagPipelineTransformService:
         session.commit()
         return {
             "pipeline_id": pipeline.id,
-            "dataset_id": dataset_id,
+            "dataset_id": dataset.id,
             "status": "success",
         }
 

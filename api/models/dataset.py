@@ -347,7 +347,11 @@ class Dataset(Base):
     def get_doc_form(self, *, session: Session) -> str | None:
         if self.chunk_structure:
             return self.chunk_structure
-        return session.scalar(select(Document.doc_form).where(Document.dataset_id == self.id).limit(1))
+        return session.scalar(
+            select(Document.doc_form)
+            .where(Document.dataset_id == self.id, Document.tenant_id == self.tenant_id)
+            .limit(1)
+        )
 
     @property
     def retrieval_model_dict(self):

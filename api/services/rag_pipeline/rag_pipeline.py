@@ -1265,14 +1265,13 @@ class RagPipelineService:
     @staticmethod
     def publish_customized_pipeline_template(
         pipeline: Pipeline,
+        dataset: Dataset,
         args: dict[str, Any],
         current_user: Account,
         *,
         session: Session,
     ) -> None:
-        """
-        Publish customized pipeline template
-        """
+        """Publish a customized template from a caller-validated pipeline and dataset."""
         if not pipeline.workflow_id:
             raise RagPipelineResourceNotFoundError("Pipeline workflow not found")
         workflow = session.scalar(
@@ -1284,9 +1283,15 @@ class RagPipelineService:
         )
         if not workflow:
             raise RagPipelineResourceNotFoundError("Workflow not found")
-        dataset = pipeline.retrieve_dataset(session=session)
-        if not dataset:
-            raise RagPipelineResourceNotFoundError("Dataset not found")
+        draft_workflow_id = session.scalar(
+            select(Workflow.id).where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+        )
+        if not draft_workflow_id:
+            raise RagPipelineResourceNotFoundError("Draft workflow not found")
 
         # check template name is exist
         template = session.scalar(

@@ -108,13 +108,14 @@ def _make_workflow(
     graph: dict[str, object] | None = None,
     features: dict[str, object] | None = None,
     created_by: str = "u1",
+    version: str = Workflow.VERSION_DRAFT,
 ) -> Workflow:
     workflow = Workflow(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
         type="workflow",
-        version="draft",
+        version=version,
         marked_name="",
         marked_comment="",
         graph=json.dumps(graph or {"nodes": []}),
@@ -890,7 +891,7 @@ def test_publish_customized_pipeline_template_success(
     account = _make_account(account_id="user-123")
 
     rag_pipeline_service.service.publish_customized_pipeline_template(
-        pipeline, _make_template_args(), account, session=session
+        pipeline, dataset, _make_template_args(), account, session=session
     )
 
     mock_dsl_service.export_rag_pipeline_dsl.assert_called_once_with(pipeline=pipeline, include_secret=True)
@@ -1861,7 +1862,7 @@ def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(
 
     with pytest.raises(RagPipelineResourceNotFoundError, match="Pipeline workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
-            pipeline, _make_template_args(), _make_account(), session=rag_pipeline_service.session
+            pipeline, _make_dataset(), _make_template_args(), _make_account(), session=rag_pipeline_service.session
         )
 
 
@@ -2164,30 +2165,54 @@ def test_publish_customized_pipeline_template_rejects_unowned_workflow_before_ex
 
     with pytest.raises(RagPipelineResourceNotFoundError, match="Workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
-            pipeline, _make_template_args(), _make_account(), session=rag_pipeline_service.session
+            pipeline,
+            _make_dataset(),
+            _make_template_args(),
+            _make_account(),
+            session=rag_pipeline_service.session,
         )
 
     dsl_service.assert_not_called()
     assert rag_pipeline_service.session.query(PipelineCustomizedTemplate).count() == 0
 
 
-def test_publish_customized_pipeline_template_rejects_unowned_dataset_before_export(
-    mocker: MockerFixture,
+def test_pipeline_retrieve_dataset_rejects_unowned_dataset(
     rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     pipeline = _make_pipeline(workflow_id="wf-1")
-    workflow = _make_workflow(workflow_id="wf-1")
     other_tenant_dataset = _make_dataset(tenant_id="t2")
-    _persist(rag_pipeline_service.session, pipeline, workflow, other_tenant_dataset)
+    _persist(rag_pipeline_service.session, pipeline, other_tenant_dataset)
+
+    assert pipeline.retrieve_dataset(session=rag_pipeline_service.session) is None
+
+
+@pytest.mark.parametrize(
+    ("draft_tenant_id", "draft_app_id"),
+    [(None, None), ("t2", "p1"), ("t1", "p2")],
+)
+def test_publish_customized_pipeline_template_rejects_missing_or_unowned_draft_before_side_effects(
+    mocker: MockerFixture,
+    rag_pipeline_service: RagPipelineServiceTestContext,
+    draft_tenant_id: str | None,
+    draft_app_id: str | None,
+) -> None:
+    session = rag_pipeline_service.session
+    pipeline = _make_pipeline(workflow_id="wf-published")
+    published_workflow = _make_workflow(workflow_id="wf-published", version="published")
+    dataset = _make_dataset()
+    resources = [pipeline, published_workflow, dataset]
+    if draft_tenant_id and draft_app_id:
+        resources.append(_make_workflow(workflow_id="wf-draft", tenant_id=draft_tenant_id, app_id=draft_app_id))
+    _persist(session, *resources)
     dsl_service = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService")
 
-    with pytest.raises(RagPipelineResourceNotFoundError, match="Dataset not found"):
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Draft workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
-            pipeline, _make_template_args(), _make_account(), session=rag_pipeline_service.session
+            pipeline, dataset, _make_template_args(), _make_account(), session=session
         )
 
     dsl_service.assert_not_called()
-    assert rag_pipeline_service.session.query(PipelineCustomizedTemplate).count() == 0
+    assert session.query(PipelineCustomizedTemplate).count() == 0
 
 
 def test_get_recommended_plugins_skips_manifest_when_missing(

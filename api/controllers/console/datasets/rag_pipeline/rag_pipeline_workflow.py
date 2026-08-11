@@ -64,6 +64,7 @@ from models.workflow import Workflow
 from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
@@ -1018,7 +1019,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
 class RagPipelineTransformApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
-    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(404, "Dataset or pipeline not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1027,8 +1028,7 @@ class RagPipelineTransformApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), current_tenant_id, session=session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
@@ -1037,12 +1037,13 @@ class RagPipelineTransformApi(Resource):
                 raise Forbidden()
             try:
                 DatasetService.check_dataset_permission(dataset, current_user, session)
-            except services.errors.account.NoPermissionError as e:
-                raise Forbidden(str(e))
+            except services.errors.account.NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
 
-        rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset, current_user.id, session)
-        return result
+        try:
+            return RagPipelineTransformService().transform_dataset(dataset, current_user.id, session)
+        except RagPipelineResourceNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")

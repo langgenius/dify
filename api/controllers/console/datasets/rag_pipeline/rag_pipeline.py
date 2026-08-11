@@ -4,8 +4,9 @@ from typing import Any
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from controllers.common.fields import SimpleDataResponse
 from controllers.common.schema import (
     JsonResponseWithStatus,
@@ -20,7 +21,6 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
-    edit_permission_required,
     enterprise_license_required,
     knowledge_pipeline_publish_enabled,
     model_validate,
@@ -35,7 +35,9 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from models.dataset import Pipeline
+from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
+from services.errors.account import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
@@ -221,8 +223,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @knowledge_pipeline_publish_enabled
     @with_current_user
     @get_rag_pipeline
-    @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_RELEASE)
     @model_validate(CustomizedPipelineTemplatePayload)
     def post(
         self,
@@ -230,9 +231,22 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         current_user: Account,
         pipeline: Pipeline,
     ) -> tuple[str, int]:
+        session = db.session()
+        dataset = pipeline.retrieve_dataset(session=session)
+        if dataset is None:
+            raise NotFound("Dataset not found")
+
+        if not dify_config.RBAC_ENABLED:
+            if not current_user.is_dataset_editor:
+                raise Forbidden()
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
+
         try:
             RagPipelineService.publish_customized_pipeline_template(
-                pipeline, req_data.model_dump(), current_user, session=db.session()
+                pipeline, dataset, req_data.model_dump(), current_user, session=session
             )
         except RagPipelineResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc
