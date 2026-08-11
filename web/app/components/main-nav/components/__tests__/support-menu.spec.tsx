@@ -52,11 +52,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
@@ -90,6 +85,9 @@ describe('SupportMenu', () => {
   const renderSupportMenu = () => {
     const { wrapper } = createConsoleQueryWrapper({
       accountProfile: mockConsoleState.current.userProfile,
+      accountProfileMeta: {
+        currentVersion: mockConsoleState.current.langGeniusVersionInfo.current_version,
+      },
       systemFeatures: { deployment_edition: deploymentEdition },
     })
     return render(
