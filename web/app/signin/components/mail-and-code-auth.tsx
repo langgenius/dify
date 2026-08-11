@@ -96,6 +96,9 @@ export default function MailAndCodeAuth({ isInvite, isCloudEdition }: MailAndCod
             onInvalidate={() => {
               setTurnstileToken('')
             }}
+            onError={() => {
+              setTurnstileToken('')
+            }}
           />
         )}
         <div className="mt-3">

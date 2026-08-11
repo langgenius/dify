@@ -29,13 +29,15 @@ type TurnstileProps = {
   siteKey: string
   onVerify: (token: string) => void
   onInvalidate: () => void
+  onError?: () => void
 }
 
-export default function Turnstile({ siteKey, onVerify, onInvalidate }: TurnstileProps) {
+export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: TurnstileProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const onVerifyRef = useRef(onVerify)
   const onInvalidateRef = useRef(onInvalidate)
+  const onErrorRef = useRef(onError)
   const [hasError, setHasError] = useState(false)
   const [isScriptReady, setIsScriptReady] = useState(false)
   const [scriptGeneration, setScriptGeneration] = useState(0)
@@ -43,16 +45,17 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate }: Turnstile
   useEffect(() => {
     onVerifyRef.current = onVerify
     onInvalidateRef.current = onInvalidate
-  }, [onInvalidate, onVerify])
+    onErrorRef.current = onError
+  }, [onError, onInvalidate, onVerify])
 
   const invalidate = useCallback(() => {
     onInvalidateRef.current()
   }, [])
 
   const handleChallengeError = useCallback(() => {
-    invalidate()
+    onErrorRef.current?.()
     setHasError(true)
-  }, [invalidate])
+  }, [])
 
   useEffect(() => {
     if (!isScriptReady || hasError) return
@@ -96,15 +99,13 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate }: Turnstile
       return
     }
 
-    onInvalidateRef.current()
     setIsScriptReady(false)
-    setHasError(true)
+    handleChallengeError()
   }
 
   const handleScriptError = () => {
-    onInvalidateRef.current()
     setIsScriptReady(false)
-    setHasError(true)
+    handleChallengeError()
   }
 
   const handleRetry = () => {
