@@ -100,6 +100,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
         onValueChange={handleValueChange}
         filter={null}
         mode="list"
+        loopFocus={false}
         open={shouldOpenPopup}
         onOpenChange={setIsPopupOpen}
       >

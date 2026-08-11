@@ -223,6 +223,24 @@ describe('InstitutionField', () => {
     })
   })
 
+  it('keeps keyboard navigation at the loaded list boundary', async () => {
+    const user = userEvent.setup()
+    educationAutocompleteQueryMock.hasNextPage = true
+
+    render(<ControlledInstitutionField />)
+
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
+    await screen.findByText('Beta College')
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+
+    expect(screen.getByText('Beta College').closest('[role="option"]')).toHaveAttribute(
+      'data-highlighted',
+    )
+  })
+
   it('keeps loaded suggestions visible when the next page fails', async () => {
     const user = userEvent.setup()
     educationAutocompleteQueryMock.hasNextPage = true
