@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginModelProviderEntity,
 )
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
@@ -1426,7 +1427,7 @@ class TestPluginModelProviderCacheInvalidation:
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
             patch("core.provider_manager.ProviderManager.invalidate_configurations_cache") as invalidate_configurations,
         ):
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             installer = installer_cls.return_value
             installer.list_plugins.return_value = [plugin]
             installer.uninstall.return_value = True

@@ -25,6 +25,7 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
@@ -272,7 +273,7 @@ class MCPTool(Tool):
         the deployment actually has the enterprise side that can mint tokens.
         Non-enterprise installs treat the DB value as a no-op — a stale row
         won't trigger a 5xx against a missing inner-API endpoint."""
-        return self.identity_mode != IdentityMode.OFF and dify_config.ENTERPRISE_ENABLED
+        return self.identity_mode != IdentityMode.OFF and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
     def invoke_remote_mcp_tool(
         self,

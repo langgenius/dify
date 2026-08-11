@@ -13,10 +13,15 @@ import smtplib
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from python_http_client.exceptions import ForbiddenError, UnauthorizedError
 
 from configs import dify_config
 from configs.feature import TemplateMode
-from libs.email_i18n import EmailType
+from extensions.ext_mail import Mail
+from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
+from libs.sendgrid import SendGridClient
+from libs.smtp import SMTPClient
+from services.entities.feature_entities import BrandingModel
 from tasks.mail_inner_task import _render_template_with_strategy, send_inner_email_task
 from tasks.mail_register_task import (
     send_email_register_mail_task,
@@ -131,8 +136,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_tls_ssl(self, mock_smtp_ssl):
         """Test SMTP send with TLS using SMTP_SSL."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -161,8 +164,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_opportunistic_tls(self, mock_smtp):
         """Test SMTP send with opportunistic TLS (STARTTLS)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -193,8 +194,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_tls(self, mock_smtp):
         """Test SMTP send without TLS encryption."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -223,8 +222,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_authentication(self, mock_smtp):
         """Test SMTP send without authentication (empty credentials)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -252,8 +249,6 @@ class TestSMTPIntegration:
     def test_smtp_send_authentication_failure(self, mock_smtp_ssl):
         """Test SMTP send handles authentication failure."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.login.side_effect = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
@@ -280,8 +275,6 @@ class TestSMTPIntegration:
     def test_smtp_send_timeout_error(self, mock_smtp_ssl):
         """Test SMTP send handles timeout errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = TimeoutError("Connection timeout")
 
         client = SMTPClient(
@@ -304,8 +297,6 @@ class TestSMTPIntegration:
     def test_smtp_send_connection_refused(self, mock_smtp_ssl):
         """Test SMTP send handles connection refused errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = ConnectionRefusedError("Connection refused")
 
         client = SMTPClient(
@@ -328,8 +319,6 @@ class TestSMTPIntegration:
     def test_smtp_send_ensures_cleanup_on_error(self, mock_smtp_ssl):
         """Test SMTP send ensures cleanup even when errors occur."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.sendmail.side_effect = smtplib.SMTPException("Send failed")
@@ -610,8 +599,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_success(self, mock_sg_client):
         """Test SendGrid client sends email successfully."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_response = MagicMock()
@@ -633,8 +620,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_missing_recipient(self, mock_sg_client):
         """Test SendGrid client raises error when recipient is missing."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="noreply@example.com")
 
         mail_data = {"to": "", "subject": "Test Subject", "html": "<p>Test Content</p>"}
@@ -647,10 +632,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_unauthorized_error(self, mock_sg_client):
         """Test SendGrid client handles unauthorized errors."""
         # Arrange
-        from python_http_client.exceptions import UnauthorizedError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(
@@ -669,10 +650,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_forbidden_error(self, mock_sg_client):
         """Test SendGrid client handles forbidden errors."""
         # Arrange
-        from python_http_client.exceptions import ForbiddenError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(MagicMock(status_code=403), "Forbidden")
@@ -689,8 +666,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_timeout_error(self, mock_sg_client):
         """Test SendGrid client handles timeout errors."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = TimeoutError("Request timeout")
@@ -711,8 +686,6 @@ class TestMailExtension:
     def test_mail_init_smtp_configuration(self, mock_config):
         """Test mail extension initializes SMTP client correctly."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = "smtp.example.com"
         mock_config.SMTP_PORT = 465
@@ -736,8 +709,6 @@ class TestMailExtension:
     def test_mail_init_without_mail_type(self, mock_config):
         """Test mail extension skips initialization when MAIL_TYPE is not set."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = None
 
         mail = Mail()
@@ -753,8 +724,6 @@ class TestMailExtension:
     def test_mail_send_validates_parameters(self, mock_config):
         """Test mail send validates required parameters."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mail._client = MagicMock()
         mail._default_send_from = "noreply@example.com"
@@ -775,8 +744,6 @@ class TestMailExtension:
     def test_mail_send_uses_default_from(self, mock_config):
         """Test mail send uses default from address when not provided."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -800,9 +767,6 @@ class TestEmailI18nService:
     def test_email_service_sends_with_branding(self, mock_renderer_class, mock_branding_class, mock_sender_class):
         """Test email service sends email with branding support."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
-        from services.entities.feature_entities import BrandingModel
-
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "<html>Rendered content</html>"
         mock_renderer_class.return_value = mock_renderer
@@ -848,8 +812,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_single_recipient(self, mock_sender_class):
         """Test email service sends raw email to single recipient."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -872,8 +834,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_multiple_recipients(self, mock_sender_class):
         """Test email service sends raw email to multiple recipients."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -941,8 +901,6 @@ class TestEdgeCasesAndErrorHandling:
         configuration parameters are not provided.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = None  # Missing required parameter
         mock_config.SMTP_PORT = 465
@@ -963,8 +921,6 @@ class TestEdgeCasesAndErrorHandling:
         This test ensures the configuration is validated properly.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = "smtp.example.com"
         mock_config.SMTP_PORT = 587
@@ -987,8 +943,6 @@ class TestEdgeCasesAndErrorHandling:
         are accepted and invalid types are rejected.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "unsupported_provider"
 
         mail = Mail()
@@ -1007,8 +961,6 @@ class TestEdgeCasesAndErrorHandling:
         emails with empty subjects without crashing.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1040,8 +992,6 @@ class TestEdgeCasesAndErrorHandling:
         subject lines and email bodies.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1141,8 +1091,6 @@ class TestResendIntegration:
         and the client is initialized.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = "re_test_api_key"
         mock_config.RESEND_API_URL = None
@@ -1183,8 +1131,6 @@ class TestResendIntegration:
         This test ensures custom URLs are properly configured.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = "re_test_api_key"
         mock_config.RESEND_API_URL = "https://custom-resend.example.com"
@@ -1224,8 +1170,6 @@ class TestResendIntegration:
         proper validation of required configuration.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = None  # Missing API key
 
@@ -1333,8 +1277,6 @@ class TestEmailValidation:
         this test documents the current behavior.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -1364,8 +1306,6 @@ class TestSMTPEdgeCases:
         or extensive formatting. This test ensures they're handled.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1401,8 +1341,6 @@ class TestSMTPEdgeCases:
         recipient per call. This test documents that behavior.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1434,8 +1372,6 @@ class TestSMTPEdgeCases:
         whitespace to avoid authentication with blank credentials.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 

@@ -65,6 +65,7 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
@@ -1791,7 +1792,7 @@ class TestIndexingRunnerEstimate:
 
         # Create too many extract settings
         with patch("core.indexing_runner.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
             mock_config.BATCH_UPLOAD_LIMIT = 10
             extract_settings = [MagicMock() for _ in range(15)]
 
@@ -1832,7 +1833,7 @@ class TestIndexingRunnerEstimate:
             patch("core.indexing_runner.storage") as mock_storage,
             patch("core.indexing_runner.dify_config") as mock_config,
         ):
-            mock_config.BILLING_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             result = runner.indexing_estimate(
                 tenant_id=tenant_id,

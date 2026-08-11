@@ -1,6 +1,6 @@
 import pytest
 
-from enums.hosted_provider import HostedTrialProvider
+from enums import HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.feature_service import FeatureService
 

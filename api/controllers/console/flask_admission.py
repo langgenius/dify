@@ -12,7 +12,7 @@ from controllers.common.wraps import enforce_rbac_access
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.logging.context import get_request_id, get_trace_id
 from core.rbac import RBACPermission, RBACResourceScope
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 from machinery.errors import AdmissionConfigurationError

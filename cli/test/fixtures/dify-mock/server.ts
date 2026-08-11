@@ -150,9 +150,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/_version', (c) => {
     const scenario = getScenario()
-    if (scenario === 'server-version-empty') return c.json({ version: '', edition: 'SELF_HOSTED' })
+    if (scenario === 'server-version-empty') return c.json({ version: '', edition: 'COMMUNITY' })
     if (scenario === 'server-version-unsupported')
-      return c.json({ version: '99.0.0', edition: 'SELF_HOSTED' })
+      return c.json({ version: '99.0.0', edition: 'COMMUNITY' })
     return c.json({ version: '1.6.4', edition: 'CLOUD' })
   })
 

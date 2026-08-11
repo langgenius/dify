@@ -16,16 +16,16 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from configs import dify_config
 from controllers.openapi._audit import emit_wrong_surface
 from controllers.openapi.auth.data import (
     AuthData,
-    Edition,
     ExternalIdentity,
     RBACRequirement,
     RequestContext,
-    current_edition,
 )
 from controllers.openapi.auth.flow import When
+from enums import DeploymentEdition
 from libs.oauth_bearer import (
     AuthContext,
     Scope,
@@ -112,7 +112,7 @@ class AuthPipeline:
 @dataclass(frozen=True)
 class PipelineRoute:
     pipeline: AuthPipeline
-    required_edition: frozenset[Edition] | None = None
+    required_edition: frozenset[DeploymentEdition] | None = None
 
 
 class PipelineRouter:
@@ -131,7 +131,7 @@ class PipelineRouter:
         *,
         scope: Scope | None = None,
         allowed_token_types: frozenset[TokenType] | None = None,
-        edition: frozenset[Edition] | None = None,
+        edition: frozenset[DeploymentEdition] | None = None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
@@ -150,7 +150,7 @@ class PipelineRouter:
         *,
         scope: Scope | None = None,
         allowed_token_types: frozenset[TokenType] | None = None,
-        edition: frozenset[Edition] | None = None,
+        edition: frozenset[DeploymentEdition] | None = None,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
     ) -> Callable:
@@ -168,7 +168,7 @@ class PipelineRouter:
         *,
         scope: Scope | None,
         allowed_token_types: frozenset[TokenType] | None,
-        edition: frozenset[Edition] | None,
+        edition: frozenset[DeploymentEdition] | None,
         workspace_membership: bool,
         allowed_roles: frozenset[TenantAccountRole] | None,
         rbac: RBACRequirement | None,
@@ -200,17 +200,17 @@ class PipelineRouter:
         *,
         scope: Scope | None,
         allowed_token_types: frozenset[TokenType] | None,
-        edition: frozenset[Edition] | None,
+        edition: frozenset[DeploymentEdition] | None,
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
         rbac: RBACRequirement | None = None,
     ) -> Any:
         # 404 not 403 — this edition doesn't expose the feature at all
-        if edition is not None and current_edition() not in edition:
+        if edition is not None and dify_config.DEPLOYMENT_EDITION not in edition:
             raise NotFound()
 
         license_checked = False
-        if edition is not None and Edition.EE in edition:
+        if edition is not None and DeploymentEdition.ENTERPRISE in edition:
             _check_license()
             license_checked = True
 
@@ -234,9 +234,9 @@ class PipelineRouter:
             raise Forbidden("unsupported_token_type")
 
         if route.required_edition is not None:
-            if current_edition() not in route.required_edition:
+            if dify_config.DEPLOYMENT_EDITION not in route.required_edition:
                 raise Forbidden("external_sso_requires_ee")
-            if not license_checked and Edition.EE in route.required_edition:
+            if not license_checked and DeploymentEdition.ENTERPRISE in route.required_edition:
                 _check_license()
 
         return route.pipeline._run(

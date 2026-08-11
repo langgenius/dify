@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.entities.document_task import DocumentTask
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
 
 # ---------------------------------------------------------------------------

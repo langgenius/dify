@@ -42,7 +42,7 @@ from controllers.service_api.app.error import (
 )
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.base import TypeBase
 from models.enums import ConversationFromSource, EndUserType
@@ -556,7 +556,7 @@ class TestChatApiController:
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"enabled": True, "subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
@@ -582,12 +582,13 @@ class TestChatApiController:
         assert exc_info.value.error_code == "workflow_version_execution_not_allowed"
 
     @pytest.mark.parametrize(
-        ("billing_config_enabled", "billing_enabled", "plan", "workflow_id"),
+        ("deployment_edition", "billing_enabled", "plan", "workflow_id"),
         [
-            (False, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
-            (True, True, CloudPlan.SANDBOX, None),
+            (DeploymentEdition.COMMUNITY, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.ENTERPRISE, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
+            (DeploymentEdition.CLOUD, True, CloudPlan.SANDBOX, None),
         ],
     )
     def test_allows_default_or_entitled_workflow_version_execution(
@@ -595,13 +596,13 @@ class TestChatApiController:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         orm_session: Session,
-        billing_config_enabled: bool,
+        deployment_edition: DeploymentEdition,
         billing_enabled: bool,
         plan: CloudPlan,
         workflow_id: str | None,
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
-        monkeypatch.setattr(completion_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
+        monkeypatch.setattr(completion_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
 
         billing_get_info = Mock(return_value={"enabled": billing_enabled, "subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
@@ -621,7 +622,7 @@ class TestChatApiController:
 
         assert response == {"result": "ok"}
         generate.assert_called_once()
-        if billing_config_enabled and workflow_id:
+        if deployment_edition == DeploymentEdition.CLOUD and workflow_id:
             billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         else:
             billing_get_info.assert_not_called()

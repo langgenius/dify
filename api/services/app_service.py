@@ -19,6 +19,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
+from enums import DeploymentEdition
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db  # noqa: F401
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -652,7 +653,7 @@ class AppService:
             # update web app setting as private
             EnterpriseService.WebAppAuth.update_app_access_mode(app.id, "private")
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
 
         return app
@@ -1056,7 +1057,7 @@ class AppService:
         if FeatureService.get_system_features().webapp_auth.enabled:
             EnterpriseService.WebAppAuth.cleanup_webapp(app.id)
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
 
         # Trigger asynchronous deletion of app and related data

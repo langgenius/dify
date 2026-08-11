@@ -13,7 +13,7 @@ from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus

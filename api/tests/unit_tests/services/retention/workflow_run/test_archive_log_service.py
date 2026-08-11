@@ -1,10 +1,9 @@
 import datetime
 from contextlib import nullcontext
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_download_task_cache import (
@@ -63,18 +62,16 @@ def _bundle(
     row_count: int = 9,
     archived_at: datetime.datetime | None = None,
 ) -> WorkflowRunArchiveBundle:
-    return cast(
-        WorkflowRunArchiveBundle,
-        SimpleNamespace(
-            year=year,
-            month=month,
-            shard=shard,
-            bundle_id=bundle_id,
-            workflow_run_count=workflow_run_count,
-            row_count=row_count,
-            archive_bytes=archive_bytes,
-            archived_at=archived_at or datetime.datetime(2026, 6, 25, 8, 0),
-        ),
+    return WorkflowRunArchiveBundle(
+        tenant_id="tenant-1",
+        year=year,
+        month=month,
+        shard=shard,
+        bundle_id=bundle_id,
+        workflow_run_count=workflow_run_count,
+        row_count=row_count,
+        archive_bytes=archive_bytes,
+        archived_at=archived_at or datetime.datetime(2026, 6, 25, 8, 0),
     )
 
 
@@ -89,10 +86,9 @@ def _fake_dispatcher(dispatched_tasks: list[WorkflowRunArchiveDownloadTask]) -> 
     return dispatch
 
 
-def test_list_workflow_run_archives_aggregates_month_rows() -> None:
+def test_list_workflow_run_archives_aggregates_month_rows(sqlite_session: Session) -> None:
     latest = datetime.datetime(2026, 6, 25, 8, 0)
     previous = datetime.datetime(2026, 6, 24, 8, 0)
-    session = MagicMock()
     march_download_id = build_archive_download_id(
         tenant_id="tenant-1",
         year=2025,
@@ -117,40 +113,45 @@ def test_list_workflow_run_archives_aggregates_month_rows() -> None:
         }
     )
     cache = FakeTaskCache(tasks_by_download_id={march_download_id: ready_task})
-    session.scalars.return_value = [
-        _bundle(
-            year=2025,
-            month=3,
-            shard="00-of-01",
-            bundle_id="bundle-a",
-            workflow_run_count=40,
-            row_count=360,
-            archive_bytes=1024,
-            archived_at=previous,
-        ),
-        _bundle(
-            year=2025,
-            month=3,
-            shard="00-of-01",
-            bundle_id="bundle-b",
-            workflow_run_count=60,
-            row_count=540,
-            archive_bytes=3072,
-            archived_at=latest,
-        ),
-        _bundle(
-            year=2025,
-            month=2,
-            shard="00-of-01",
-            bundle_id="bundle-c",
-            workflow_run_count=20,
-            row_count=180,
-            archive_bytes=1024,
-            archived_at=previous,
-        ),
-    ]
+    sqlite_session.add_all(
+        [
+            _bundle(
+                year=2025,
+                month=3,
+                shard="00-of-01",
+                bundle_id="bundle-a",
+                workflow_run_count=40,
+                row_count=360,
+                archive_bytes=1024,
+                archived_at=previous,
+            ),
+            _bundle(
+                year=2025,
+                month=3,
+                shard="00-of-01",
+                bundle_id="bundle-b",
+                workflow_run_count=60,
+                row_count=540,
+                archive_bytes=3072,
+                archived_at=latest,
+            ),
+            _bundle(
+                year=2025,
+                month=2,
+                shard="00-of-01",
+                bundle_id="bundle-c",
+                workflow_run_count=20,
+                row_count=180,
+                archive_bytes=1024,
+                archived_at=previous,
+            ),
+        ]
+    )
+    sqlite_session.flush()
 
-    result = list_workflow_run_archives(session, "tenant-1", cache=cast(WorkflowRunArchiveDownloadTaskCache, cache))
+    result = list_workflow_run_archives(
+        sqlite_session, "tenant-1", cache=cast(WorkflowRunArchiveDownloadTaskCache, cache)
+    )
 
     assert result.summary.archived_month_count == 2
     assert result.summary.workflow_run_count == 120
@@ -165,17 +166,19 @@ def test_list_workflow_run_archives_aggregates_month_rows() -> None:
     assert result.months[1].download_task is None
 
 
-def test_create_workflow_run_archive_download_task_creates_stable_pending_task() -> None:
-    session = MagicMock()
-    session.scalars.return_value = [
-        _bundle(shard="01-of-02", bundle_id="bundle-b", archive_bytes=2048),
-        _bundle(shard="00-of-02", bundle_id="bundle-a", archive_bytes=1024),
-    ]
+def test_create_workflow_run_archive_download_task_creates_stable_pending_task(sqlite_session: Session) -> None:
+    sqlite_session.add_all(
+        [
+            _bundle(shard="01-of-02", bundle_id="bundle-b", archive_bytes=2048),
+            _bundle(shard="00-of-02", bundle_id="bundle-a", archive_bytes=1024),
+        ]
+    )
+    sqlite_session.flush()
     cache = FakeTaskCache()
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
 
     task = create_workflow_run_archive_download_task(
-        session,
+        sqlite_session,
         tenant_id="tenant-1",
         requested_by="account-1",
         year=2025,
@@ -188,22 +191,24 @@ def test_create_workflow_run_archive_download_task_creates_stable_pending_task()
         tenant_id="tenant-1",
         year=2025,
         month=3,
-        bundle_refs=[("01-of-02", "bundle-b"), ("00-of-02", "bundle-a")],
+        bundle_refs=[("00-of-02", "bundle-a"), ("01-of-02", "bundle-b")],
     )
     assert task.requested_by == "account-1"
-    assert task.bundle_ids == ["bundle-b", "bundle-a"]
+    assert task.bundle_ids == ["bundle-a", "bundle-b"]
     assert [(ref.shard, ref.bundle_id) for ref in task.bundle_refs] == [
-        ("01-of-02", "bundle-b"),
         ("00-of-02", "bundle-a"),
+        ("01-of-02", "bundle-b"),
     ]
     assert task.archive_bytes == 3072
     assert cache.saved_task == dispatched_tasks[0]
     assert task.celery_task_id is not None
 
 
-def test_create_workflow_run_archive_download_task_returns_existing_task_when_cache_key_exists() -> None:
-    session = MagicMock()
-    session.scalars.return_value = [_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024)]
+def test_create_workflow_run_archive_download_task_returns_existing_task_when_cache_key_exists(
+    sqlite_session: Session,
+) -> None:
+    sqlite_session.add(_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024))
+    sqlite_session.flush()
     existing_task = build_pending_archive_download_task(
         tenant_id="tenant-1",
         requested_by="account-1",
@@ -217,7 +222,7 @@ def test_create_workflow_run_archive_download_task_returns_existing_task_when_ca
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
 
     task = create_workflow_run_archive_download_task(
-        session,
+        sqlite_session,
         tenant_id="tenant-1",
         requested_by="account-1",
         year=2025,
@@ -231,9 +236,11 @@ def test_create_workflow_run_archive_download_task_returns_existing_task_when_ca
     assert dispatched_tasks == []
 
 
-def test_create_workflow_run_archive_download_task_retries_failed_cached_task() -> None:
-    session = MagicMock()
-    session.scalars.return_value = [_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024)]
+def test_create_workflow_run_archive_download_task_retries_failed_cached_task(
+    sqlite_session: Session,
+) -> None:
+    sqlite_session.add(_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024))
+    sqlite_session.flush()
     existing_task = build_pending_archive_download_task(
         tenant_id="tenant-1",
         requested_by="account-1",
@@ -253,7 +260,7 @@ def test_create_workflow_run_archive_download_task_retries_failed_cached_task() 
     dispatched_tasks: list[WorkflowRunArchiveDownloadTask] = []
 
     task = create_workflow_run_archive_download_task(
-        session,
+        sqlite_session,
         tenant_id="tenant-1",
         requested_by="account-1",
         year=2025,
@@ -269,9 +276,11 @@ def test_create_workflow_run_archive_download_task_retries_failed_cached_task() 
 
 
 @pytest.mark.parametrize("retry_failed_task", [False, True])
-def test_create_workflow_run_archive_download_task_claims_dispatch_once(retry_failed_task: bool) -> None:
-    session = MagicMock()
-    session.scalars.return_value = [_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024)]
+def test_create_workflow_run_archive_download_task_claims_dispatch_once(
+    retry_failed_task: bool, sqlite_session: Session
+) -> None:
+    sqlite_session.add(_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024))
+    sqlite_session.flush()
     download_id = build_archive_download_id(
         tenant_id="tenant-1",
         year=2025,
@@ -301,7 +310,7 @@ def test_create_workflow_run_archive_download_task_claims_dispatch_once(retry_fa
         dispatched_tasks.append(task)
         concurrent_results.append(
             create_workflow_run_archive_download_task(
-                session,
+                sqlite_session,
                 tenant_id="tenant-1",
                 requested_by="account-2",
                 year=2025,
@@ -313,7 +322,7 @@ def test_create_workflow_run_archive_download_task_claims_dispatch_once(retry_fa
         return task
 
     result = create_workflow_run_archive_download_task(
-        session,
+        sqlite_session,
         tenant_id="tenant-1",
         requested_by="account-1",
         year=2025,
@@ -326,13 +335,10 @@ def test_create_workflow_run_archive_download_task_claims_dispatch_once(retry_fa
     assert concurrent_results == [result]
 
 
-def test_create_workflow_run_archive_download_task_rejects_missing_month() -> None:
-    session = MagicMock()
-    session.scalars.return_value = []
-
+def test_create_workflow_run_archive_download_task_rejects_missing_month(sqlite_session: Session) -> None:
     with pytest.raises(WorkflowRunArchiveNotFoundError):
         create_workflow_run_archive_download_task(
-            session,
+            sqlite_session,
             tenant_id="tenant-1",
             requested_by="account-1",
             year=2025,
