@@ -140,8 +140,24 @@ export function StepByStepTourCoachmark({
   const measuredRectMatchesGuide =
     measuredTargetElement === targetElement &&
     targetElement.matches(getStepByStepTourTargetSelector(guide.target))
+  const currentOverlayReady = highlightPartsReady && rectSettled && measuredRectMatchesGuide
+  const currentOverlay = currentOverlayReady
+    ? {
+        coachmarkPosition,
+        guide,
+        highlightRect,
+        onComplete,
+        onSkip,
+        placement: coachmarkPosition.placement,
+        skipLabel,
+        interactionPolicy,
+        stepLabel,
+      }
+    : undefined
 
-  if (highlightPartsReady && rectSettled && measuredRectMatchesGuide) {
+  useLayoutEffect(() => {
+    if (!currentOverlayReady) return
+
     stableOverlayRef.current = {
       coachmarkPosition,
       guide,
@@ -153,9 +169,19 @@ export function StepByStepTourCoachmark({
       interactionPolicy,
       stepLabel,
     }
-  }
+  }, [
+    coachmarkPosition,
+    currentOverlayReady,
+    guide,
+    highlightRect,
+    interactionPolicy,
+    onComplete,
+    onSkip,
+    skipLabel,
+    stepLabel,
+  ])
 
-  const stableOverlay = stableOverlayRef.current
+  const stableOverlay = currentOverlay ?? stableOverlayRef.current
   const isActionGuide = stableOverlay
     ? getStepByStepTourGuideKind(stableOverlay.guide) === 'action'
     : false

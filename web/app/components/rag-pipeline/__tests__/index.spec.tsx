@@ -50,7 +50,9 @@ vi.mock('../components/rag-pipeline-main', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="workflow-default-context">{children}</div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
