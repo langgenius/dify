@@ -3,7 +3,8 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { Banner } from '../banner'
 
 const mockTrackEvent = vi.fn()
@@ -21,6 +22,11 @@ const mockConsoleState = vi.hoisted(() => ({
     name: 'Evan',
   },
 }))
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: mockConsoleState.userProfile }).wrapper,
+  })
 
 const emitAutoplay = (event: 'play' | 'stop') => {
   mockAutoplayListeners[event].forEach((listener) => listener())
@@ -57,11 +63,6 @@ const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
   mockCarouselListeners.forEach((listener) => listener())
 }
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),

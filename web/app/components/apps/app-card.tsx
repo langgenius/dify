@@ -43,9 +43,9 @@ import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
 } from '@/app/components/step-by-step-tour/dropdown-menu'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -361,7 +361,10 @@ export const AppCardActionBar = memo(
   }: AppCardActionBarProps) => {
     const { t } = useTranslation()
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
     const isRbacEnabled = systemFeatures.rbac_enabled
     const { onPlanInfoChanged } = useProviderContext()
@@ -864,7 +867,10 @@ export const AppCard = memo(
   }: AppCardProps) => {
     const { t } = useTranslation()
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
     const isRbacEnabled = systemFeatures.rbac_enabled
     const resourceMaintainer = app.maintainer ?? undefined

@@ -17,10 +17,6 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -81,7 +77,11 @@ const renderItem = (
   systemFeatures: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'] = {
     rbac_enabled: true,
   },
-) => renderWithConsoleQuery(<ContinueWorkItem app={app} />, { systemFeatures })
+) =>
+  renderWithConsoleQuery(<ContinueWorkItem app={app} />, {
+    accountProfile: mockConsoleState.userProfile,
+    systemFeatures,
+  })
 
 describe('ContinueWorkItem', () => {
   beforeEach(() => {
