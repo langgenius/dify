@@ -6784,7 +6784,7 @@ Check if dataset is in use
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [EmailPayload](#emailpayload)<br> |
+|  Yes | **application/json**: [EmailCodeSendPayload](#emailcodesendpayload)<br> |
 
 #### Responses
 
@@ -17762,6 +17762,14 @@ Portable DSL reference that could not be restored in the target workspace.
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string |  | Yes |
+
+#### EmailCodeSendPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| language | string |  | No |
+| turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
 #### EmailPayload
 
