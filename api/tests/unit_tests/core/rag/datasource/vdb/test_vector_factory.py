@@ -1,4 +1,5 @@
 import base64
+import json
 import sys
 import types
 from datetime import UTC, datetime
@@ -11,9 +12,26 @@ from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType
-from models.dataset import Whitelist
+from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+
+
+def _dataset(**overrides) -> Dataset:
+    values = {
+        "id": "dataset-1",
+        "tenant_id": "tenant-1",
+        "name": "Dataset",
+        "description": "",
+        "created_by": "user-1",
+        "embedding_model_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+    }
+    index_struct_dict = overrides.pop("index_struct_dict", ...)
+    if index_struct_dict is not ...:
+        overrides["index_struct"] = json.dumps(index_struct_dict) if index_struct_dict is not None else None
+    values.update(overrides)
+    return Dataset(**values)
 
 
 def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str):
@@ -153,7 +171,7 @@ def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module,
 
 
 def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, unbound_session: Session):
-    dataset = SimpleNamespace(id="dataset-1")
+    dataset = _dataset()
 
     with patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor") as init_vector:
         default_vector = vector_factory_module.Vector(dataset, session=unbound_session)
@@ -192,11 +210,7 @@ def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_m
     for_tenant_mock = MagicMock(side_effect=AssertionError("ModelManager.for_tenant must not be called eagerly"))
     monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
 
-    dataset = SimpleNamespace(
-        tenant_id="tenant-1",
-        embedding_model_provider="openai",
-        embedding_model="text-embedding-3-small",
-    )
+    dataset = _dataset()
 
     proxy = vector_factory_module._LazyEmbeddings(dataset)
 
@@ -243,9 +257,7 @@ def test_init_vector_prefers_dataset_index_struct(
     )
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(
-        index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH}, tenant_id="tenant-1"
-    )
+    vector._dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
 
@@ -277,7 +289,7 @@ def test_init_vector_uses_whitelist_override(
     )
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(index_struct_dict=None, tenant_id=tenant_id)
+    vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
 
@@ -294,7 +306,7 @@ def test_init_vector_raises_when_vector_store_missing(
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(index_struct_dict=None, tenant_id="tenant-1")
+    vector._dataset = _dataset(index_struct_dict=None)
     vector._attributes = []
     vector._embeddings = "embeddings"
 
@@ -560,11 +572,7 @@ def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatc
     monkeypatch.setattr(vector_factory_module, "CacheEmbedding", MagicMock(return_value="cached-embedding"))
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(
-        tenant_id="tenant-1",
-        embedding_model_provider="openai",
-        embedding_model="text-embedding-3-small",
-    )
+    vector._dataset = _dataset()
 
     result = vector._get_embeddings()
 
