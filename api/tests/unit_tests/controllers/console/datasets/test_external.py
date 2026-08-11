@@ -1,7 +1,8 @@
 import inspect
-from types import SimpleNamespace
+import json
+from datetime import datetime
 from typing import Any
-from unittest.mock import ANY, MagicMock, PropertyMock, patch
+from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -23,7 +24,9 @@ from controllers.console.datasets.external import (
     ExternalKnowledgeApiPayload,
     ExternalKnowledgeHitTestingApi,
 )
+from fields.dataset_fields import DatasetDetailResponse
 from models.account import Account, TenantAccountRole
+from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from services.dataset_service import DatasetService
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
@@ -66,16 +69,34 @@ def _external_api_dict(api_id: str = "api-1") -> dict:
     }
 
 
-def _external_api_object(api_id: str = "api-1") -> SimpleNamespace:
+def _external_api_object(session: Session, api_id: str = "api-1") -> ExternalKnowledgeApis:
     payload = _external_api_dict(api_id)
-    dataset_bindings = [SimpleNamespace(**binding) for binding in payload["dataset_bindings"]]
-    return SimpleNamespace(
-        **{
-            **payload,
-            "dataset_bindings": dataset_bindings,
-            "get_dataset_bindings": MagicMock(return_value=dataset_bindings),
-        }
+    api = ExternalKnowledgeApis(
+        name=payload["name"],
+        description=payload["description"],
+        tenant_id=payload["tenant_id"],
+        settings=json.dumps(payload["settings"]),
+        created_by=payload["created_by"],
+        updated_by=None,
     )
+    api.id = api_id
+    api.created_at = datetime.fromisoformat(payload["created_at"])
+    bound_dataset = Dataset(
+        id=payload["dataset_bindings"][0]["id"],
+        tenant_id=payload["tenant_id"],
+        name=payload["dataset_bindings"][0]["name"],
+        created_by=payload["created_by"],
+    )
+    binding = ExternalKnowledgeBindings(
+        tenant_id=payload["tenant_id"],
+        external_knowledge_api_id=api_id,
+        dataset_id=bound_dataset.id,
+        external_knowledge_id=f"knowledge-{api_id}",
+        created_by=payload["created_by"],
+    )
+    session.add_all([api, bound_dataset, binding])
+    session.flush()
+    return api
 
 
 def _expected_dataset_detail_payload() -> dict[str, Any]:
@@ -148,19 +169,23 @@ def _expected_dataset_detail_payload() -> dict[str, Any]:
     }
 
 
-def _dataset_detail_object() -> SimpleNamespace:
+def _dataset() -> Dataset:
     payload = _expected_dataset_detail_payload()
-    return SimpleNamespace(
-        **{
-            **payload,
-            "summary_index_setting": SimpleNamespace(**payload["summary_index_setting"]),
-            "tags": [SimpleNamespace(**tag) for tag in payload["tags"]],
-            "external_knowledge_info": SimpleNamespace(**payload["external_knowledge_info"]),
-            "external_retrieval_model": SimpleNamespace(**payload["external_retrieval_model"]),
-            "doc_metadata": [SimpleNamespace(**item) for item in payload["doc_metadata"]],
-            "icon_info": SimpleNamespace(**payload["icon_info"]),
-        }
+    return Dataset(
+        id=payload["id"],
+        tenant_id="tenant-1",
+        name=payload["name"],
+        description=payload["description"],
+        provider=payload["provider"],
+        permission=payload["permission"],
+        data_source_type=payload["data_source_type"],
+        indexing_technique=payload["indexing_technique"],
+        created_by=payload["created_by"],
     )
+
+
+def _dataset_detail_response() -> DatasetDetailResponse:
+    return DatasetDetailResponse.model_validate(_expected_dataset_detail_payload())
 
 
 class _UsesSQLiteSession:
@@ -176,8 +201,8 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        api_item = _external_api_object("api-1")
         session = self.session
+        api_item = _external_api_object(session, "api-1")
 
         with (
             app.test_request_context("/?page=2&limit=1&keyword=vector"),
@@ -199,7 +224,6 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
             "total": 3,
             "page": 2,
         }
-        api_item.get_dataset_bindings.assert_called_once_with(session=session)
         get_external_knowledge_apis.assert_called_once_with(2, 1, "tenant-1", "vector", session=ANY)
 
     def test_post_success_uses_validated_payload_and_returns_template(self, app: Flask, current_user: Account):
@@ -215,8 +239,8 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
                 "timeout": 30,
             },
         }
-        created = _external_api_object("api-created")
         session = self.session
+        created = _external_api_object(session, "api-created")
 
         with (
             app.test_request_context("/", json=payload),
@@ -234,7 +258,6 @@ class TestExternalApiTemplateListApi(_UsesSQLiteSession):
 
         assert status == 201
         assert resp == _external_api_dict("api-created")
-        created.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         create_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -282,8 +305,8 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
     def test_get_success_returns_template_contract(self, app: Flask):
         api = ExternalApiTemplateApi()
         method = inspect.unwrap(api.get)
-        template = _external_api_object("api-detail")
         session = self.session
+        template = _external_api_object(session, "api-detail")
 
         with (
             app.test_request_context("/"),
@@ -297,7 +320,6 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
 
         assert status == 200
         assert resp == _external_api_dict("api-detail")
-        template.get_dataset_bindings.assert_called_once_with(session=session)
         get_external_knowledge_api.assert_called_once_with(
             external_knowledge_api_id="api-detail", tenant_id="tenant-1", session=session
         )
@@ -329,8 +351,8 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
                 "headers": {"X-Version": "2"},
             },
         }
-        updated = _external_api_object("api-updated")
         session = self.session
+        updated = _external_api_object(session, "api-updated")
 
         with (
             app.test_request_context("/", json=payload),
@@ -353,7 +375,6 @@ class TestExternalApiTemplateApi(_UsesSQLiteSession):
 
         assert status == 200
         assert resp == _external_api_dict("api-updated")
-        updated.get_dataset_bindings.assert_called_once_with(session=session)
         validate_api_list.assert_called_once_with(payload["settings"])
         update_external_knowledge_api.assert_called_once_with(
             tenant_id="tenant-1",
@@ -413,7 +434,7 @@ class TestExternalDatasetCreateApi(_UsesSQLiteSession):
             },
         }
 
-        dataset = _dataset_detail_object()
+        dataset = _dataset()
 
         with (
             app.test_request_context("/", json=payload),
@@ -425,12 +446,15 @@ class TestExternalDatasetCreateApi(_UsesSQLiteSession):
             ) as create_external_dataset,
             patch(
                 "controllers.console.datasets.external.dataset_detail_response_source",
-                return_value=dataset,
+                return_value=_dataset_detail_response(),
             ) as dataset_response_source,
         ):
-            session = MagicMock()
             resp, status = method(
-                api, ExternalDatasetCreatePayload.model_validate(payload), session, "tenant-1", current_user
+                api,
+                ExternalDatasetCreatePayload.model_validate(payload),
+                self.session,
+                "tenant-1",
+                current_user,
             )
 
         assert status == 201
@@ -439,9 +463,9 @@ class TestExternalDatasetCreateApi(_UsesSQLiteSession):
             tenant_id="tenant-1",
             user_id="user-1",
             args=ExternalDatasetCreatePayload.model_validate(payload),
-            session=session,
+            session=self.session,
         )
-        dataset_response_source.assert_called_once_with(dataset, session=session)
+        dataset_response_source.assert_called_once_with(dataset, session=self.session)
 
     def test_create_forbidden(self, app: Flask, current_user: Account):
         current_user.role = TenantAccountRole.NORMAL
@@ -497,7 +521,7 @@ class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
             },
         }
 
-        dataset = MagicMock()
+        dataset = _dataset()
         retrieve_response = {
             "query": {"content": "hello"},
             "records": [
@@ -608,7 +632,7 @@ class TestExternalApiTemplateListApiAdvanced(_UsesSQLiteSession):
         api = ExternalApiTemplateListApi()
         method = inspect.unwrap(api.get)
 
-        templates = [_external_api_object(f"api-{i}") for i in range(3)]
+        templates = [_external_api_object(self.session, f"api-{i}") for i in range(3)]
 
         with (
             app.test_request_context("/?page=2&limit=3"),
@@ -678,7 +702,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
         api = ExternalKnowledgeHitTestingApi()
         method = inspect.unwrap(api.post)
 
-        dataset = MagicMock()
+        dataset = _dataset()
         payload = {
             "query": "test query",
             "external_retrieval_model": {"type": "bm25"},
