@@ -911,20 +911,21 @@ def test_card_send_rejects_correlation_that_exceeds_provider_payload_limit_befor
 
 @pytest.mark.parametrize("button_style", [ButtonStyle.PRIMARY, ButtonStyle.ACCENT, ButtonStyle.DEFAULT])
 def test_card_renderer_omits_unsupported_teams_action_style(button_style: ButtonStyle) -> None:
-    card, reason = ms_teams._adaptive_card(
+    card = ms_teams._MSTeamsCardCodec().encode(
         _custom_card_intent(blocks=(), action_style=button_style),
         CorrelationToken("sanitized-correlation"),
     )
 
-    assert reason is None
-    assert card is not None
-    assert card.model_dump(mode="json", by_alias=True, exclude_none=True)["actions"] == [
+    assert card["actions"] == [
         {
             "type": "Action.Submit",
             "title": "Approve",
             "data": {
-                "action_id": "approve",
-                "correlation_token": "sanitized-correlation",
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "approve",
+                    "correlation_token": "sanitized-correlation",
+                }
             },
         }
     ]
@@ -988,16 +989,22 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
             "type": "Action.Submit",
             "title": "Approve",
             "data": {
-                "action_id": "approve",
-                "correlation_token": "sanitized-correlation",
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "approve",
+                    "correlation_token": "sanitized-correlation",
+                }
             },
         },
         {
             "type": "Action.Submit",
             "title": "Reject",
             "data": {
-                "action_id": "reject",
-                "correlation_token": "sanitized-correlation",
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "reject",
+                    "correlation_token": "sanitized-correlation",
+                }
             },
         },
     ]

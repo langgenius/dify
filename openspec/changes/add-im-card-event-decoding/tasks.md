@@ -22,10 +22,10 @@
 
 ## 4. Microsoft Teams Card Event Decoder
 
-- [ ] 4.1 Define one collision-safe internal layout for Microsoft Teams `Action.Submit` metadata, update card assessment/rendering and the sanitized callback fixture, and keep the layout outside the shared contract.
-- [ ] 4.2 Implement the Microsoft Teams decoder to recognize applicable card invoke activities, normalize `from.id` as `ProviderUserId`, recover action/correlation metadata and remove only internal metadata from returned inputs.
-- [ ] 4.3 Add Microsoft Teams tests proving exact action/input/token round trip, metadata/input separation, reserved-name collision behavior and `UnrecognizedIMEvent` for authenticated non-card or non-applicable invoke events.
-- [ ] 4.4 Add Microsoft Teams failure tests for invalid JSON, missing or incorrectly typed callback actor/value/metadata, malformed input objects and safe `IMCardEventDecodingError` diagnostics.
+- [x] 4.1 Define one collision-safe internal layout for Microsoft Teams `Action.Submit` metadata, update card assessment/rendering and the sanitized callback fixture, and keep the layout outside the shared contract.
+- [x] 4.2 Implement the Microsoft Teams decoder to recognize applicable card invoke activities, normalize `from.id` as `ProviderUserId`, recover action/correlation metadata and remove only internal metadata from returned inputs.
+- [x] 4.3 Add Microsoft Teams tests proving exact action/input/token round trip, metadata/input separation, reserved-name collision behavior and `UnrecognizedIMEvent` for authenticated non-card or non-applicable invoke events.
+- [x] 4.4 Add Microsoft Teams failure tests for invalid JSON, missing or incorrectly typed callback actor/value/metadata, malformed input objects and safe `IMCardEventDecodingError` diagnostics.
 
 ## 5. Feishu/Lark Card Event Decoder
 

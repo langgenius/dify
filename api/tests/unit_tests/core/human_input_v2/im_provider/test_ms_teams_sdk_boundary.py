@@ -515,16 +515,22 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
             "type": "Action.Submit",
             "title": "Approve",
             "data": {
-                "action_id": "approve",
-                "correlation_token": "test-only-correlation",
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "approve",
+                    "correlation_token": "test-only-correlation",
+                }
             },
         },
         {
             "type": "Action.Submit",
             "title": "Reject",
             "data": {
-                "action_id": "reject",
-                "correlation_token": "test-only-correlation",
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "reject",
+                    "correlation_token": "test-only-correlation",
+                }
             },
         },
     ]

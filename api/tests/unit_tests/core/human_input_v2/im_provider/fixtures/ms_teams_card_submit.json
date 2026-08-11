@@ -1,0 +1,36 @@
+{
+  "type": "message",
+  "id": "test-only-card-event",
+  "timestamp": "2026-08-11T18:26:39Z",
+  "serviceUrl": "https://smba.trafficmanager.net/teams/",
+  "channelId": "msteams",
+  "from": {
+    "id": "test-only-teams-user",
+    "name": "Sanitized User"
+  },
+  "conversation": {
+    "id": "test-only-conversation",
+    "tenantId": "test-only-tenant"
+  },
+  "recipient": {
+    "id": "test-only-bot"
+  },
+  "channelData": {
+    "tenant": {
+      "id": "test-only-tenant"
+    },
+    "source": {
+      "name": "message"
+    }
+  },
+  "value": {
+    "__dify.human_input": {
+      "version": 1,
+      "action_id": "approve-✅",
+      "correlation_token": "correlation-🔐"
+    },
+    "comment-🧪": "Ready 🚀",
+    "decision": "ship"
+  },
+  "locale": "en-US"
+}

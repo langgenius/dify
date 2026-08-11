@@ -9,10 +9,11 @@ import hashlib
 import hmac
 import json
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.message import Message
-from typing import Literal, override
+from typing import ClassVar, Literal, override
 from urllib.parse import urlsplit
 from uuid import UUID
 
@@ -35,7 +36,7 @@ from botframework.connector.auth import (
     SimpleCredentialProvider,
 )
 from msrest.exceptions import HttpOperationError
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
 
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
@@ -52,6 +53,10 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMCardEvent,
+    IMCardEventDecoder,
+    IMCardEventDecodeResult,
+    IMCardEventDecodingError,
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
@@ -67,6 +72,7 @@ from core.human_input_v2.im_provider import (
     ReplacementError,
     ReplacementErrorKind,
     StaticCardIntent,
+    UnrecognizedIMEvent,
     WebhookRequest,
     WebhookResponse,
 )
@@ -81,73 +87,11 @@ _GRAPH_DIRECTORY_PAGE_SIZE = 999
 _BOT_FRAMEWORK_AUDIENCE = "https://api.botframework.com"
 _BASELINE_GRAPH_ROLES = frozenset(("User.Read.All",))
 _PUBLIC_TEAMS_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
-_ADAPTIVE_CARD_CONTENT_TYPE = "application/vnd.microsoft.card.adaptive"
-_MAX_ADAPTIVE_CARD_SIZE_BYTES = 28 * 1024
-_SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
 _JSON_CONTENT_TYPE = "application/json"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
 _MESSAGE_LOCATOR_DIGEST_CONTEXT = b"dify-ms-teams-message-reference-v1\0"
 _MESSAGE_LOCATOR_DIGEST_SIZE = 32
 _OAUTH_CREDENTIAL_REJECTION_CODES = frozenset(("invalid_client", "invalid_grant", "unauthorized_client"))
-
-
-class _AdaptiveCardModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
-
-
-class _AdaptiveTextBlock(_AdaptiveCardModel):
-    type: Literal["TextBlock"] = "TextBlock"
-    text: str
-    wrap: bool = True
-    size: Literal["Medium"] | None = None
-    weight: Literal["Bolder"] | None = None
-
-
-class _AdaptiveTextInput(_AdaptiveCardModel):
-    type: Literal["Input.Text"] = "Input.Text"
-    id: str
-    label: str
-    is_multiline: bool = Field(default=True, alias="isMultiline")
-    value: str | None = None
-
-
-class _AdaptiveChoice(_AdaptiveCardModel):
-    title: str
-    value: str
-
-
-class _AdaptiveChoiceInput(_AdaptiveCardModel):
-    type: Literal["Input.ChoiceSet"] = "Input.ChoiceSet"
-    id: str
-    label: str
-    choices: tuple[_AdaptiveChoice, ...]
-    style: Literal["expanded"] = "expanded"
-    value: str | None = None
-
-
-class _AdaptiveActionData(_AdaptiveCardModel):
-    action_id: str
-    correlation_token: str
-
-
-class _AdaptiveSubmitAction(_AdaptiveCardModel):
-    type: Literal["Action.Submit"] = "Action.Submit"
-    title: str
-    data: _AdaptiveActionData
-
-
-type _AdaptiveCardBody = _AdaptiveTextBlock | _AdaptiveTextInput | _AdaptiveChoiceInput
-
-
-class _AdaptiveCard(_AdaptiveCardModel):
-    schema_: Literal["http://adaptivecards.io/schemas/adaptive-card.json"] = Field(
-        default="http://adaptivecards.io/schemas/adaptive-card.json",
-        alias="$schema",
-    )
-    type: Literal["AdaptiveCard"] = "AdaptiveCard"
-    version: Literal["1.5"] = "1.5"
-    body: tuple[_AdaptiveCardBody, ...]
-    actions: tuple[_AdaptiveSubmitAction, ...]
 
 
 class _AccessTokenClaims(BaseModel):
@@ -372,79 +316,6 @@ def _mutation_connector(credentials: MicrosoftAppCredentials, base_url: str) -> 
     return client
 
 
-def _adaptive_card(
-    intent: ResolvedForm,
-    correlation_token: CorrelationToken,
-) -> tuple[_AdaptiveCard | None, str | None]:
-    if not intent.blocks and not intent.user_actions:
-        return None, "Microsoft Teams cannot preserve an empty card."
-    if intent.title is not None and not intent.title:
-        return None, "Microsoft Teams cannot preserve an empty card title."
-
-    body: list[_AdaptiveCardBody] = []
-    if intent.title is not None:
-        body.append(_AdaptiveTextBlock(text=intent.title, size="Medium", weight="Bolder"))
-
-    input_names: set[str] = set()
-    for block in intent.blocks:
-        match block:
-            case MarkdownText(text=text):
-                if not text:
-                    return None, "Microsoft Teams cannot preserve an empty Markdown block."
-                body.append(_AdaptiveTextBlock(text=text))
-                continue
-            case FileInput() | FileListInput():
-                return None, "Microsoft Teams cards cannot represent file inputs."
-            case ParagraphInput(output_variable_name=input_name, default_value=default_value):
-                adaptive_input: _AdaptiveTextInput | _AdaptiveChoiceInput = _AdaptiveTextInput(
-                    id=input_name,
-                    label=input_name,
-                    value=default_value,
-                )
-            case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
-                if not options or any(not option for option in options):
-                    return None, "Microsoft Teams cannot preserve one select input's options."
-                if len(options) != len(set(options)):
-                    return None, "Microsoft Teams cannot preserve duplicate select options."
-                if default_value is not None and default_value not in options:
-                    return None, "Microsoft Teams cannot preserve one select input default."
-                adaptive_input = _AdaptiveChoiceInput(
-                    id=input_name,
-                    label=input_name,
-                    choices=tuple(_AdaptiveChoice(title=option, value=option) for option in options),
-                    value=default_value,
-                )
-        if input_name in input_names:
-            return None, "Microsoft Teams cannot preserve duplicate card input identifiers."
-        input_names.add(input_name)
-        body.append(adaptive_input)
-
-    actions: list[_AdaptiveSubmitAction] = []
-    for action in intent.user_actions:
-        if action.button_style not in _SUPPORTED_ACTION_STYLES:
-            return None, "Microsoft Teams cannot preserve one card action style."
-        # Teams does not support positive or destructive Adaptive Card action styling.
-        # The approved degradation preserves the action while allowing Teams to use its default style.
-        actions.append(
-            _AdaptiveSubmitAction(
-                title=action.title,
-                data=_AdaptiveActionData(
-                    action_id=action.id,
-                    correlation_token=str(correlation_token),
-                ),
-            )
-        )
-    card = _AdaptiveCard(body=tuple(body), actions=tuple(actions))
-    serialized_card = json.dumps(
-        card.model_dump(mode="json", by_alias=True, exclude_none=True),
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode()
-    if len(serialized_card) > _MAX_ADAPTIVE_CARD_SIZE_BYTES:
-        return None, "Microsoft Teams cannot preserve a card beyond the Provider payload limit."
-    return card, None
-
-
 def _card_summary(intent: ResolvedForm) -> str:
     if intent.title:
         return intent.title
@@ -452,6 +323,240 @@ def _card_summary(intent: ResolvedForm) -> str:
         if isinstance(block, MarkdownText) and block.text.strip():
             return block.text
     return "Human input form"
+
+
+@dataclass(frozen=True, slots=True)
+class _MSTeamsCardCodec(IMCardEventDecoder):
+    """Own the credential-free Microsoft Teams card wire contract."""
+
+    _CONTENT_TYPE = "application/vnd.microsoft.card.adaptive"
+    _SCHEMA_URL = "http://adaptivecards.io/schemas/adaptive-card.json"
+    _CARD_VERSION = "1.5"
+    _MAX_CARD_SIZE_BYTES = 28 * 1024
+    _SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
+    _METADATA_MEMBER = "__dify.human_input"
+    _CALLBACK_SCHEMA_VERSION: ClassVar[Literal[1]] = 1
+    _APPLICABLE_ACTIVITY_TYPES = frozenset(("invoke", "message"))
+
+    class _CallbackModel(BaseModel):
+        model_config = ConfigDict(
+            allow_inf_nan=False,
+            extra="ignore",
+            frozen=True,
+            strict=True,
+        )
+
+    class _CallbackActor(_CallbackModel):
+        id: str = Field(min_length=1)
+
+        @field_validator("id")
+        @classmethod
+        def _require_non_blank_identifier(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Microsoft Teams card actor identifier is empty.")
+            return value
+
+    class _ButtonMetadata(BaseModel):
+        model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+        version: Literal[1]
+        action_id: str = Field(min_length=1)
+        correlation_token: str
+
+    class _SubmissionActivity(_CallbackModel):
+        type: Literal["invoke", "message"]
+        actor: _MSTeamsCardCodec._CallbackActor = Field(alias="from")
+        value: dict[str, JsonValue]
+
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            return CardAssessment(False, reason)
+        return CardAssessment(True)
+
+    def encode(
+        self,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> Mapping[str, JsonValue]:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            raise DynamicCardMessagingError(reason)
+        card = self._render_card(intent, correlation_token)
+        if self._serialized_card_size(card) > self._MAX_CARD_SIZE_BYTES:
+            raise DynamicCardMessagingError("Microsoft Teams cannot preserve a card beyond the Provider payload limit.")
+        return card
+
+    @override
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        if event.provider is not IMProvider.MS_TEAMS or event.event_type not in self._APPLICABLE_ACTIVITY_TYPES:
+            return UnrecognizedIMEvent()
+        callback = self._decode_json_object(event.payload)
+        if callback is None:
+            raise IMCardEventDecodingError("Microsoft Teams card event payload is invalid.")
+
+        callback_value = callback.get("value")
+        if not isinstance(callback_value, dict):
+            return UnrecognizedIMEvent()
+        if self._METADATA_MEMBER not in callback_value:
+            return UnrecognizedIMEvent()
+
+        validated_submission = self._validate_submission(callback)
+        if validated_submission is None:
+            raise IMCardEventDecodingError("Microsoft Teams card event schema is invalid.")
+        submission, metadata = validated_submission
+        if submission.type != event.event_type:
+            raise IMCardEventDecodingError("Microsoft Teams card event schema is invalid.")
+        inputs = dict(submission.value)
+        inputs.pop(self._METADATA_MEMBER)
+        return IMCardEvent(
+            provider_user_id=ProviderUserId(submission.actor.id),
+            action_id=metadata.action_id,
+            inputs=inputs,
+            correlation_token=CorrelationToken(metadata.correlation_token),
+        )
+
+    @classmethod
+    def _decode_json_object(cls, serialized_callback: str) -> dict[str, object] | None:
+        try:
+            decoded_callback = json.loads(
+                serialized_callback,
+                parse_constant=_reject_non_standard_json_constant,
+            )
+        except (json.JSONDecodeError, ValueError, RecursionError):
+            return None
+        if not isinstance(decoded_callback, dict) or any(not isinstance(key, str) for key in decoded_callback):
+            return None
+        return decoded_callback
+
+    @classmethod
+    def _validate_submission(
+        cls,
+        callback: dict[str, object],
+    ) -> tuple[_SubmissionActivity, _ButtonMetadata] | None:
+        try:
+            submission = cls._SubmissionActivity.model_validate(callback)
+            metadata = cls._ButtonMetadata.model_validate(submission.value[cls._METADATA_MEMBER])
+        except (KeyError, ValidationError):
+            return None
+        return submission, metadata
+
+    @classmethod
+    def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
+        if not intent.blocks and not intent.user_actions:
+            return "Microsoft Teams cannot preserve an empty card."
+        if intent.title is not None and not intent.title:
+            return "Microsoft Teams cannot preserve an empty card title."
+
+        input_names: set[str] = set()
+        for block in intent.blocks:
+            match block:
+                case MarkdownText(text=text):
+                    if not text:
+                        return "Microsoft Teams cannot preserve an empty Markdown block."
+                    continue
+                case FileInput() | FileListInput():
+                    return "Microsoft Teams cards cannot represent file inputs."
+                case ParagraphInput(output_variable_name=input_name):
+                    pass
+                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                    if not options or any(not option for option in options):
+                        return "Microsoft Teams cannot preserve one select input's options."
+                    if len(options) != len(set(options)):
+                        return "Microsoft Teams cannot preserve duplicate select options."
+                    if default_value is not None and default_value not in options:
+                        return "Microsoft Teams cannot preserve one select input default."
+            if input_name in input_names:
+                return "Microsoft Teams cannot preserve duplicate card input identifiers."
+            if input_name == cls._METADATA_MEMBER:
+                return "Microsoft Teams card input identifier is reserved."
+            input_names.add(input_name)
+
+        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.user_actions):
+            return "Microsoft Teams cannot preserve one card action style."
+        assessment_card = cls._render_card(intent, CorrelationToken(""))
+        if cls._serialized_card_size(assessment_card) > cls._MAX_CARD_SIZE_BYTES:
+            return "Microsoft Teams cannot preserve a card beyond the Provider payload limit."
+        return None
+
+    @classmethod
+    def _render_card(
+        cls,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> dict[str, JsonValue]:
+        body: list[JsonValue] = []
+        if intent.title is not None:
+            body.append(
+                {
+                    "type": "TextBlock",
+                    "text": intent.title,
+                    "wrap": True,
+                    "size": "Medium",
+                    "weight": "Bolder",
+                }
+            )
+        for block in intent.blocks:
+            if isinstance(block, MarkdownText):
+                body.append({"type": "TextBlock", "text": block.text, "wrap": True})
+                continue
+            if isinstance(block, ParagraphInput):
+                text_input: dict[str, JsonValue] = {
+                    "type": "Input.Text",
+                    "id": block.output_variable_name,
+                    "label": block.output_variable_name,
+                    "isMultiline": True,
+                }
+                if block.default_value is not None:
+                    text_input["value"] = block.default_value
+                body.append(text_input)
+                continue
+            if isinstance(block, SelectInput):
+                choice_input: dict[str, JsonValue] = {
+                    "type": "Input.ChoiceSet",
+                    "id": block.output_variable_name,
+                    "label": block.output_variable_name,
+                    "choices": [{"title": option, "value": option} for option in block.options],
+                    "style": "compact",
+                }
+                if block.default_value is not None:
+                    choice_input["value"] = block.default_value
+                body.append(choice_input)
+                continue
+            raise DynamicCardMessagingError("Microsoft Teams cards cannot represent file inputs.")
+
+        actions: list[JsonValue] = []
+        for action in intent.user_actions:
+            metadata = cls._ButtonMetadata(
+                version=cls._CALLBACK_SCHEMA_VERSION,
+                action_id=action.id,
+                correlation_token=str(correlation_token),
+            )
+            actions.append(
+                {
+                    "type": "Action.Submit",
+                    "title": action.title,
+                    "data": {cls._METADATA_MEMBER: metadata.model_dump(mode="json")},
+                }
+            )
+        return {
+            "$schema": cls._SCHEMA_URL,
+            "type": "AdaptiveCard",
+            "version": cls._CARD_VERSION,
+            "body": body,
+            "actions": actions,
+        }
+
+    @staticmethod
+    def _serialized_card_size(card: Mapping[str, JsonValue]) -> int:
+        return len(
+            json.dumps(
+                card,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+            ).encode()
+        )
 
 
 class _MSTeamsDirectory(IMDirectory):
@@ -565,12 +670,19 @@ class _MSTeamsMessaging(IMMessaging):
 
 
 class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
+    def __init__(
+        self,
+        credentials: MicrosoftAppCredentials,
+        tenant_id: str,
+        client_id: str,
+        codec: _MSTeamsCardCodec,
+    ) -> None:
+        super().__init__(credentials, tenant_id, client_id)
+        self._codec = codec
+
     @override
     def assess(self, intent: ResolvedForm) -> CardAssessment:
-        _, reason = _adaptive_card(intent, CorrelationToken(""))
-        if reason is not None:
-            return CardAssessment(False, reason)
-        return CardAssessment(True)
+        return self._codec.assess(intent)
 
     @override
     def send_card(
@@ -579,15 +691,11 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
-        card, reason = _adaptive_card(intent, correlation_token)
-        if reason is not None:
-            raise DynamicCardMessagingError(reason)
-        assert card is not None
-        content = card.model_dump(mode="json", by_alias=True, exclude_none=True)
+        content = self._codec.encode(intent, correlation_token)
         activity = Activity(
             type="message",
             summary=_card_summary(intent),
-            attachments=[Attachment(content_type=_ADAPTIVE_CARD_CONTENT_TYPE, content=content)],
+            attachments=[Attachment(content_type=self._codec._CONTENT_TYPE, content=dict(content))],
         )
         return self._send_activity(provider_user_id, activity, message_kind="dynamic_card")
 
@@ -753,6 +861,11 @@ class _MSTeamsWebhookHandler(IMWebhookHandler):
 class MSTeamsIMProviderAdapter:
     """Externally serialized Microsoft Teams capability composition root."""
 
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder:
+        """Return a credential-free decoder independent from root adapter instances."""
+        return _MSTeamsCardCodec()
+
     def __init__(self, credentials: MSTeamsIMIntegrationCredentials) -> None:
         if not isinstance(credentials, MSTeamsIMIntegrationCredentials):
             raise TypeError("Microsoft Teams adapter requires resolved Microsoft Teams credentials")
@@ -778,6 +891,7 @@ class MSTeamsIMProviderAdapter:
             self._bot_credentials,
             credentials.tenant_id,
             credentials.client_id,
+            _MSTeamsCardCodec(),
         )
 
     @property
