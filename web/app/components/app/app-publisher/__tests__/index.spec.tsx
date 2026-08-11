@@ -388,7 +388,8 @@ describe('AppPublisher', () => {
     expect(invalidateQueries).not.toHaveBeenCalled()
   })
 
-  it('should edit the current workflow version from the publish summary', () => {
+  it('should edit the current workflow version from the publish summary', async () => {
+    const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
@@ -402,23 +403,26 @@ describe('AppPublisher', () => {
 
     render(<AppPublisher publishedAt={Date.now()} />)
 
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
+    await user.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     expect(sectionProps.summary).toEqual(
       expect.objectContaining({
         isWorkflowApp: true,
         versionInfo: mockPublishedWorkflow,
       }),
     )
-    fireEvent.click(screen.getByText('publisher-summary-edit-version'))
+    await user.click(screen.getByText('publisher-summary-edit-version'))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
-    fireEvent.change(titleInput!, { target: { value: 'Release 6' } })
-    fireEvent.change(notesInput!, { target: { value: 'Updated notes' } })
-    const publishButtons = screen.getAllByRole('button', {
-      name: /(?:^|\.)common\.publish(?=$|:)/,
-    })
-    fireEvent.click(publishButtons.at(-1)!)
+    await user.clear(titleInput!)
+    await user.type(titleInput!, 'Release 6')
+    await user.clear(notesInput!)
+    await user.type(notesInput!, 'Updated notes')
+    await user.click(
+      screen.getByRole('button', {
+        name: /(?:^|\.)operation\.save(?=$|:)/,
+      }),
+    )
 
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {

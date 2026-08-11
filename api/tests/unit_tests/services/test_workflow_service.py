@@ -1102,7 +1102,10 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
+            patch(
+                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
         ):
             first, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             second, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
@@ -1129,7 +1132,10 @@ class TestWorkflowService:
 
         with (
             patch("services.workflow_service.app_published_workflow_was_updated"),
-            patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
+            patch(
+                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
         ):
             published, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             sqlite_session.flush()
@@ -1165,7 +1171,10 @@ class TestWorkflowService:
 
             with (
                 patch("services.workflow_service.app_published_workflow_was_updated"),
-                patch("services.workflow_service.dify_config.BILLING_ENABLED", False),
+                patch(
+                    "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                    DeploymentEdition.COMMUNITY,
+                ),
             ):
                 workflow, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             published.append(workflow)
