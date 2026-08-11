@@ -166,7 +166,7 @@ describe('useMCPServiceCardState', () => {
 
   describe('Permission Flags', () => {
     it('should expose MCP manage capability from app edit ACL', () => {
-      const appInfo = createMockAppInfo()
+      const appInfo = createMockAppInfo(AppModeEnum.CHAT, [AppACLPermission.Edit])
       const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
         wrapper: createWrapper(),
       })
@@ -320,7 +320,7 @@ describe('useMCPServiceCardState', () => {
   })
 
   describe('Handler Functions', () => {
-    it('should call handleGenCode and invalidate server detail', async () => {
+    it('should refresh the MCP server by app ID and invalidate server detail', async () => {
       const appInfo = createMockAppInfo()
       const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
         wrapper: createWrapper(),
@@ -330,8 +330,8 @@ describe('useMCPServiceCardState', () => {
         await result.current.handleGenCode()
       })
 
-      // handleGenCode should complete without error
-      expect(result.current.genLoading).toBe(false)
+      expect(mockRefreshMCPServerCode).toHaveBeenCalledWith('app-123')
+      expect(mockInvalidateMCPServerDetail).toHaveBeenCalledWith('app-123')
     })
 
     it('should call invalidateBasicAppConfig', () => {

@@ -77,7 +77,7 @@ function WorkspaceSwitchControls({
             disabled={disabled}
             className={cn(
               workspaceSwitchActionButtonClassName,
-              sortMenuOpen && 'bg-state-base-hover text-text-secondary',
+              'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
             )}
           >
             <span aria-hidden className={workspaceSwitchActionIconWrapClassName}>

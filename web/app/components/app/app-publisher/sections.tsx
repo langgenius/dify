@@ -88,12 +88,12 @@ export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MA
 
   return (
     <>
-      <span className={`${icon} size-4 shrink-0 text-text-secondary`} />
-      <div className="grow truncate">
+      <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />
+      <span className="grow truncate">
         <span className="system-sm-medium text-text-secondary">
           {t(($) => $[`accessControlDialog.accessItems.${label}`], { ns: 'app' })}
         </span>
-      </div>
+      </span>
     </>
   )
 }
@@ -219,22 +219,23 @@ export const PublisherAccessSection = ({
               {t(($) => $['publishApp.title'], { ns: 'app' })}
             </p>
           </div>
-          <div
-            className="flex h-8 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 hover:bg-primary-50 hover:text-text-accent"
+          <button
+            type="button"
+            className="flex h-8 w-full cursor-pointer appearance-none items-center gap-x-0.5 rounded-lg border-0 bg-components-input-bg-normal py-1 pr-2 pl-2.5 text-start outline-hidden hover:bg-primary-50 hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={onClick}
           >
-            <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
+            <span className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
               <AccessModeDisplay mode={accessMode} />
-            </div>
+            </span>
             {!isAppAccessSet && (
-              <p className="shrink-0 system-xs-regular text-text-tertiary">
+              <span className="shrink-0 system-xs-regular text-text-tertiary">
                 {t(($) => $['publishApp.notSet'], { ns: 'app' })}
-              </p>
+              </span>
             )}
-            <div className="flex size-4 shrink-0 items-center justify-center">
-              <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
-            </div>
-          </div>
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              <span aria-hidden className="i-ri-arrow-right-s-line size-4 text-text-quaternary" />
+            </span>
+          </button>
           {!isAppAccessSet && (
             <p className="mt-1 system-xs-regular text-text-warning">
               {t(($) => $['publishApp.notSetDesc'], { ns: 'app' })}

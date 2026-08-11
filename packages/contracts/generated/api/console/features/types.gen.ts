@@ -27,6 +27,12 @@ export type FeatureModel = {
   workspace_members: LicenseLimitationModel
 }
 
+export type VectorSpaceLimitationModel = {
+  limit: number
+  size: number
+  usage_unknown?: boolean
+}
+
 export type LimitationModel = {
   limit: number
   size: number
@@ -84,7 +90,7 @@ export type GetFeaturesVectorSpaceData = {
 }
 
 export type GetFeaturesVectorSpaceResponses = {
-  200: LimitationModel
+  200: VectorSpaceLimitationModel
 }
 
 export type GetFeaturesVectorSpaceResponse =

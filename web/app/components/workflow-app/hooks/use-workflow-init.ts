@@ -106,7 +106,7 @@ export const useWorkflowInit = () => {
           .filter((env) => env.value_type === 'secret')
           .reduce(
             (acc, env) => {
-              acc[env.id] = env.value
+              if (typeof env.value === 'string') acc[env.id] = env.value
               return acc
             },
             {} as Record<string, string>,
@@ -121,7 +121,10 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     } catch (error: unknown) {
-      const responseError = error as { bodyUsed?: boolean; json?: () => Promise<{ code?: string }> }
+      const responseError = error as {
+        bodyUsed?: boolean
+        json?: () => Promise<{ code?: string }>
+      }
       if (responseError.json && !responseError.bodyUsed && appDetail) {
         responseError.json().then((err) => {
           if (err.code === 'draft_workflow_not_exist') {
@@ -163,7 +166,6 @@ export const useWorkflowInit = () => {
                 features: {
                   retriever_resource: { enabled: true },
                 },
-                environment_variables: [],
                 conversation_variables: [],
               },
             }).then((res) => {

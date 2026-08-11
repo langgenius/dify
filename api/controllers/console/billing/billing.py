@@ -1,7 +1,6 @@
 import base64
 from typing import Any, Literal
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
 from werkzeug.exceptions import BadRequest
@@ -10,6 +9,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
     with_current_tenant_id,
@@ -54,10 +54,10 @@ class Subscription(Resource):
     @only_edition_cloud
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(SubscriptionQuery)
+    def get(self, req_data: SubscriptionQuery, current_tenant_id: str, current_user: Account):
         BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
-        return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
+        return BillingService.get_subscription(req_data.plan, req_data.interval, current_user.email, current_tenant_id)
 
 
 @console_ns.route("/billing/invoices")
@@ -87,10 +87,10 @@ class PartnerTenants(Resource):
     @account_initialization_required
     @only_edition_cloud
     @with_current_user
-    def put(self, current_user: Account, partner_key: str):
+    @model_validate(PartnerTenantsPayload)
+    def put(self, req_data: PartnerTenantsPayload, current_user: Account, partner_key: str):
         try:
-            args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
-            click_id = args.click_id
+            click_id = req_data.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
         except Exception:
             raise BadRequest("Invalid partner_key")

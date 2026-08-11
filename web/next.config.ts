@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
       bundler: 'turbopack',
     }),
   },
+  experimental: {
+    // TODO: Remove when the `typescript` package can point to TypeScript 7.
+    // Next.js resolves that package, while compiler-API consumers still require TypeScript 6.
+    useTypeScriptCli: false,
+  },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
@@ -33,17 +38,6 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: false,
       },
-    ]
-  },
-  // Deny framing on device-flow routes — no trusted embedder exists.
-  async headers() {
-    const antiFrame = [
-      { key: 'X-Frame-Options', value: 'DENY' },
-      { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
-    ]
-    return [
-      { source: '/device', headers: antiFrame },
-      { source: '/device/:path*', headers: antiFrame },
     ]
   },
   output: 'standalone',

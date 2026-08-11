@@ -14,11 +14,11 @@ import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
-export type ExpireNoticeModalPayloadProps = {
+type ExpireNoticeModalPayloadProps = {
   expireAt: number
   expired: boolean
 }
-export type Props = {
+type Props = {
   onClose: () => void
 } & ExpireNoticeModalPayloadProps
 
@@ -114,7 +114,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
                   onClose()
                   setShowPricingModal()
                 }}
-                className="flex items-center space-x-1"
+                className="flex items-center"
               >
                 <SparklesSoftAccent className="size-4" />
                 <div className="text-components-button-secondary-accent-text">

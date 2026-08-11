@@ -3,9 +3,3 @@ export type SearchParams = {
   page?: number
   limit?: number
 }
-
-export type EducationAddParams = {
-  token: string
-  institution: string
-  role: string
-}

@@ -13,6 +13,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_paid_plan_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
 )
@@ -144,16 +145,16 @@ class WorkflowRunArchiveDownloadsApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @cloud_edition_billing_paid_plan_required
-    def post(self):
+    @model_validate(WorkflowRunArchiveDownloadPayload)
+    def post(self, req_data: WorkflowRunArchiveDownloadPayload):
         tenant_id, account_id = _current_owner_or_admin_ids()
-        payload = WorkflowRunArchiveDownloadPayload.model_validate(console_ns.payload or {})
         try:
             task = create_workflow_run_archive_download_task(
                 db.session(),
                 tenant_id=tenant_id,
                 requested_by=account_id,
-                year=payload.year,
-                month=payload.month,
+                year=req_data.year,
+                month=req_data.month,
             )
         except WorkflowRunArchiveNotFoundError as exc:
             raise NotFound(str(exc)) from exc

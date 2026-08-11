@@ -156,9 +156,9 @@ class DocumentValidationTestDataFactory:
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
         **kwargs,
-    ) -> Mock:
+    ) -> Dataset:
         """
-        Create a mock Dataset with specified attributes.
+        Create a Dataset with specified attributes.
 
         Args:
             dataset_id: Unique identifier for the dataset
@@ -167,22 +167,20 @@ class DocumentValidationTestDataFactory:
             indexing_technique: Indexing technique
             embedding_model_provider: Embedding model provider
             embedding_model: Embedding model name
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
-            Mock object configured as a Dataset instance
+            Configured Dataset instance
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.tenant_id = tenant_id
-        dataset.doc_form = doc_form
-        dataset.get_doc_form.return_value = doc_form
-        dataset.indexing_technique = indexing_technique
-        dataset.embedding_model_provider = embedding_model_provider
-        dataset.embedding_model = embedding_model
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
-        return dataset
+        return Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            chunk_structure=doc_form,
+            indexing_technique=indexing_technique,
+            embedding_model_provider=embedding_model_provider,
+            embedding_model=embedding_model,
+            **kwargs,
+        )
 
     @staticmethod
     def create_knowledge_config_mock(
@@ -205,14 +203,14 @@ class DocumentValidationTestDataFactory:
         Returns:
             Mock object configured as a KnowledgeConfig instance
         """
-        config = Mock(spec=KnowledgeConfig)
-        config.data_source = data_source
-        config.process_rule = process_rule
-        config.doc_form = doc_form
-        config.indexing_technique = indexing_technique
-        for key, value in kwargs.items():
-            setattr(config, key, value)
-        return config
+        return Mock(
+            spec=KnowledgeConfig,
+            data_source=data_source,
+            process_rule=process_rule,
+            doc_form=doc_form,
+            indexing_technique=indexing_technique,
+            **kwargs,
+        )
 
     @staticmethod
     def create_data_source_mock(
@@ -352,6 +350,7 @@ class TestDatasetServiceCheckDocForm:
         dataset = DocumentValidationTestDataFactory.create_dataset_mock(doc_form=None)
         doc_form = IndexStructureType.PARAGRAPH_INDEX
         session = Mock()
+        session.scalar.return_value = None
 
         # Act (should not raise)
         DatasetService.check_doc_form(dataset, doc_form, session=session)

@@ -26,7 +26,8 @@ vi.mock('@/context/account-state', async () => {
   return createAccountStateModuleMock(() => ({ userProfile: { id: 'account-1' } }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

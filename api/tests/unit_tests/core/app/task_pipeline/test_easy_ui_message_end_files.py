@@ -169,7 +169,7 @@ class TestMessageEndStreamResponseFiles:
         assert file_dict["url"].startswith("https://example.com/signed-url")
         assert file_dict["upload_file_id"] == message_file_local.upload_file_id
         assert file_dict["remote_url"] == ""
-        get_signed_url.assert_called_once_with(upload_file_id=str(upload_file.id))
+        get_signed_url.assert_called_once_with(upload_file_id=upload_file.id)
 
     def test_message_end_with_remote_url(
         self, sqlite_session: Session, mock_pipeline: Mock, message_file_remote: MessageFile

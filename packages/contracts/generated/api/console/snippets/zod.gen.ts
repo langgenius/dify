@@ -1155,6 +1155,13 @@ export const zAgentModelResponseFormatConfig = z.object({
 
 /**
  * AgentSoulModelSettings
+ *
+ * Model parameters for the Agent Soul model.
+ *
+ * Model plugins can declare arbitrary parameters via ``parameter_rules``
+ * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+ * fields typed below, so extra keys must round-trip through persistence
+ * rather than being dropped.
  */
 export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
@@ -1439,6 +1446,14 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
 
 /**
  * AgentKnowledgeMetadataCondition
+ *
+ * One manual metadata filter clause.
+ *
+ * ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+ * every save (a stable row key and a reference to the selected metadata
+ * field). They are persisted here for round-tripping the composer's draft
+ * state but are stripped before building the Agent runtime request, whose
+ * DTO only accepts ``name``/``comparison_operator``/``value``.
  */
 export const zAgentKnowledgeMetadataCondition = z.object({
   comparison_operator: z.enum([
@@ -1461,6 +1476,8 @@ export const zAgentKnowledgeMetadataCondition = z.object({
     '≤',
     '≥',
   ]),
+  id: z.string().nullish(),
+  metadata_id: z.string().nullish(),
   name: z.string().min(1).max(255),
   value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
 })

@@ -69,7 +69,7 @@ vi.mock('@/context/permission-state', async () => {
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
   return createSystemFeaturesStateModuleMock(() => ({

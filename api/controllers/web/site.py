@@ -15,7 +15,8 @@ from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from models.account import Tenant, TenantStatus
 from models.model import App, AppMode, EndUser, IconType, Site
-from services.feature_service import FeatureModel, FeatureService
+from services.entities.feature_entities import FeatureModel
+from services.feature_service import FeatureService
 from services.file_service import FileService
 
 

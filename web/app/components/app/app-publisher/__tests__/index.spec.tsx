@@ -171,8 +171,6 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 vi.mock('../sections', () => ({
   PublisherSummarySection: (props: Record<string, any>) => {
     sectionProps.summary = props
@@ -417,8 +415,7 @@ describe('AppPublisher', () => {
   })
 
   it('should refresh app detail after access control confirmation', async () => {
-    const { queryClient } = render(<AppPublisher publishedAt={Date.now()} />)
-    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
+    render(<AppPublisher publishedAt={Date.now()} />)
 
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-access-control'))
@@ -430,12 +427,6 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
-    expect(setQueryDataSpy).toHaveBeenCalledWith(
-      ['apps', 'detail', 'app-1'],
-      expect.objectContaining({
-        access_mode: AccessMode.PUBLIC,
-      }),
-    )
     expect(mockSetAppDetail).toHaveBeenCalledWith(
       expect.objectContaining({
         access_mode: AccessMode.PUBLIC,

@@ -41,9 +41,9 @@ from controllers.console.wraps import (
     cloud_edition_billing_enabled,
     enable_change_email,
     enterprise_license_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
-    with_current_tenant_id,
     with_current_user,
 )
 from enums.deployment_edition import DeploymentEdition
@@ -333,19 +333,15 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
-        avatar = args.avatar
+    @model_validate(AccountAvatarQuery)
+    def get(self, req_data: AccountAvatarQuery, current_user: Account):
+        avatar = req_data.avatar
 
         if avatar.startswith(("http://", "https://")):
             return AvatarUrlResponse(avatar_url=avatar).model_dump(mode="json")
 
         upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
         if upload_file is None:
-            raise NotFound("Avatar file not found")
-
-        if upload_file.tenant_id != current_tenant_id:
             raise NotFound("Avatar file not found")
 
         if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:

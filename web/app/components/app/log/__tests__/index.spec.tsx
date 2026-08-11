@@ -17,24 +17,11 @@ const mockUseCompletionConversations = vi.fn()
 const mockPlanState = vi.hoisted(() => ({
   value: 'unrestricted' as CloudSandboxPlanState,
 }))
-const mockDebouncedPeriod = vi.hoisted(() => ({
-  value: null as string | null,
-}))
 
 let mockSearchParams = new URLSearchParams()
 vi.mock('ahooks', async () => {
   return {
-    useDebounce: <T,>(value: T) => {
-      if (
-        mockDebouncedPeriod.value === null ||
-        typeof value !== 'object' ||
-        value === null ||
-        !('period' in value)
-      )
-        return value
-
-      return { ...value, period: mockDebouncedPeriod.value }
-    },
+    useDebounce: <T,>(value: T) => value,
   }
 })
 
@@ -87,20 +74,11 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div>loading-logs</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/pagination', () => ({
-  Pagination: ({ onPageChange }: { onPageChange: (page: number) => void }) => (
-    <div>
-      <button onClick={() => onPageChange(2)}>go-to-page-2</button>
-    </div>
-  ),
-}))
-
 describe('Logs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSearchParams = new URLSearchParams()
     mockPlanState.value = 'unrestricted'
-    mockDebouncedPeriod.value = null
     mockUseChatConversations.mockReturnValue({
       data: undefined,
       refetch: vi.fn(),
@@ -179,7 +157,7 @@ describe('Logs', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('go-to-page-2'))
+    fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })
@@ -219,7 +197,7 @@ describe('Logs', () => {
     )
   })
 
-  it('should use a valid period for the real Chip and request when a cached period settles to Sandbox', async () => {
+  it('should use today when a cached period is unavailable to a Sandbox workspace', async () => {
     const user = userEvent.setup()
     const appDetail = {
       id: 'app-period-transition',
@@ -244,9 +222,8 @@ describe('Logs', () => {
     )
     unrestrictedRender.unmount()
 
-    mockPlanState.value = 'pending'
-    mockDebouncedPeriod.value = '9'
-    const pendingRender = render(<Logs appDetail={appDetail} />)
+    mockPlanState.value = 'sandbox'
+    render(<Logs appDetail={appDetail} />)
 
     expect(
       screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),
@@ -255,21 +232,6 @@ describe('Logs', () => {
       screen.getByRole('button', {
         name: /common\.operation\.clear appLog\.filter\.period\.today/,
       }),
-    ).toBeInTheDocument()
-    expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          start: dayjs().startOf('day').format('YYYY-MM-DD HH:mm'),
-          end: expect.any(String),
-        }),
-      }),
-    )
-
-    mockPlanState.value = 'sandbox'
-    pendingRender.rerender(<Logs appDetail={appDetail} />)
-
-    expect(
-      screen.getByRole('combobox', { name: /appLog\.filter\.period\.today/ }),
     ).toBeInTheDocument()
     expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({

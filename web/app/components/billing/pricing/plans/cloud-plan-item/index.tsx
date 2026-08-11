@@ -10,13 +10,14 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { consoleClient } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import { Plan } from '../../../type'
@@ -49,7 +50,13 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
-  const { enableEducationPlan, isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
   const educationDiscountWarningText =

@@ -5,6 +5,7 @@ import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
@@ -102,6 +103,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       if ((config.file_upload as any).enabled && files?.length && supportVision) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
+        onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>

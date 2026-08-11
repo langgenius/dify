@@ -1,10 +1,39 @@
 import logging
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import inspect
 
 from core.app.apps.base_app_generator import BaseAppGenerator
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from models import Workflow, WorkflowRun
+
+
+def test_restore_workflow_run_graph():
+    workflow = Workflow(graph='{"nodes": [{"id": "edited"}]}')
+    session = SimpleNamespace(get=Mock(return_value=SimpleNamespace(graph='{"nodes": [{"id": "paused"}]}')))
+
+    BaseAppGenerator._restore_workflow_run_graph(session=session, workflow=workflow, workflow_run_id="run-id")
+
+    session.get.assert_called_once_with(WorkflowRun, "run-id")
+    assert workflow.graph == '{"nodes": [{"id": "paused"}]}'
+    assert not inspect(workflow).attrs.graph.history.has_changes()
+
+
+@pytest.mark.parametrize(
+    ("workflow_run_id", "workflow_run"),
+    [(None, None), ("run-id", None), ("run-id", SimpleNamespace(graph=None))],
+)
+def test_restore_workflow_run_graph_requires_persisted_snapshot(workflow_run_id, workflow_run):
+    session = SimpleNamespace(get=Mock(return_value=workflow_run))
+
+    with pytest.raises(ValueError):
+        BaseAppGenerator._restore_workflow_run_graph(
+            session=session,
+            workflow=Workflow(graph="{}"),
+            workflow_run_id=workflow_run_id,
+        )
 
 
 def test_validate_inputs_with_zero():

@@ -33,6 +33,8 @@ const DebugAndPreview = () => {
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
   const visibleVariables = variables
+  const restartLabel = t(($) => $['operation.refresh'], { ns: 'common' })
+  const userInputFieldLabel = t(($) => $['panel.userInputField'], { ns: 'workflow' })
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
@@ -94,12 +96,12 @@ const DebugAndPreview = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 className="size-4" />
+                  <ActionButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
+                    <RefreshCcw01 aria-hidden="true" className="size-4" />
                   </ActionButton>
                 }
               />
-              <TooltipContent>{t(($) => $['operation.refresh'], { ns: 'common' })}</TooltipContent>
+              <TooltipContent>{restartLabel}</TooltipContent>
             </Tooltip>
             {visibleVariables.length > 0 && (
               <div className="relative">
@@ -107,16 +109,16 @@ const DebugAndPreview = () => {
                   <TooltipTrigger
                     render={
                       <ActionButton
+                        aria-label={userInputFieldLabel}
+                        aria-pressed={expanded}
                         state={expanded ? ActionButtonState.Active : undefined}
                         onClick={() => setExpanded(!expanded)}
                       >
-                        <RiEqualizer2Line className="size-4" />
+                        <RiEqualizer2Line aria-hidden="true" className="size-4" />
                       </ActionButton>
                     }
                   />
-                  <TooltipContent>
-                    {t(($) => $['panel.userInputField'], { ns: 'workflow' })}
-                  </TooltipContent>
+                  <TooltipContent>{userInputFieldLabel}</TooltipContent>
                 </Tooltip>
                 {expanded && (
                   <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />

@@ -1,3 +1,4 @@
+import type { AgentWorkingDirectorySource } from '../working-directory-panel'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -17,23 +18,73 @@ const mocks = vi.hoisted(() => ({
   sandboxInfoQueryOptions: vi.fn(),
   sandboxFilesQueryOptions: vi.fn(),
   sandboxFileReadQueryOptions: vi.fn(),
-  sandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
+  sandboxFileDownloadMutationFn: vi.fn(async (_input: unknown) => ({
     url: 'https://example.com/sandbox-file',
   })),
   workflowSandboxFilesQueryOptions: vi.fn(),
   workflowSandboxFileReadQueryOptions: vi.fn(),
-  workflowSandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
+  workflowSandboxFileDownloadMutationFn: vi.fn(async (_input: unknown) => ({
     url: 'https://example.com/workflow-sandbox-file',
   })),
-  sandboxFileUploadClientPost: vi.fn(async (_input: unknown) => ({
+  sandboxFileDownloadClientPost: vi.fn(async (_input: unknown) => ({
     url: 'https://example.com/chart.png',
   })),
-  workflowSandboxFileUploadClientPost: vi.fn(async (_input: unknown) => ({
+  workflowSandboxFileDownloadClientPost: vi.fn(async (_input: unknown) => ({
     url: 'https://example.com/workflow-chart.png',
   })),
   downloadUrl: vi.fn(),
   toastSuccess: vi.fn(),
 }))
+
+const agentSource = {
+  type: 'agent',
+  agentId: 'agent-1',
+  callerType: 'conversation',
+  callerId: 'conversation-1',
+} satisfies AgentWorkingDirectorySource
+
+const workflowSource = {
+  type: 'workflow-node',
+  appId: 'app-1',
+  workflowRunId: 'run-1',
+  nodeId: 'node-1',
+  nodeExecutionId: 'execution-1',
+} satisfies AgentWorkingDirectorySource
+
+const previewSourceCases = [
+  {
+    label: 'Agent',
+    source: agentSource,
+    identitySource: {
+      ...agentSource,
+      callerId: 'conversation-2',
+    } satisfies AgentWorkingDirectorySource,
+    imagePaths: ['workspace/chart-a.png', 'workspace/chart-b.png'],
+    nonImagePath: 'workspace/model.bin',
+    previewClient: mocks.sandboxFileDownloadClientPost,
+    urls: [
+      'https://example.com/agent-chart-a.png',
+      'https://example.com/agent-chart-caller-b.png',
+      'https://example.com/agent-chart-path-c.png',
+    ],
+  },
+  {
+    label: 'Workflow',
+    source: workflowSource,
+    identitySource: {
+      ...workflowSource,
+      nodeExecutionId: 'execution-2',
+    } satisfies AgentWorkingDirectorySource,
+    imagePaths: ['chart-a.png', 'chart-b.png'],
+    nonImagePath: 'model.bin',
+    previewClient: mocks.workflowSandboxFileDownloadClientPost,
+    urls: [
+      'https://example.com/workflow-chart-a.png',
+      'https://example.com/workflow-chart-execution-b.png',
+      'https://example.com/workflow-chart-path-c.png',
+    ],
+  },
+] as const
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -41,8 +92,8 @@ vi.mock('@/service/client', () => ({
       byAgentId: {
         sandbox: {
           files: {
-            upload: {
-              post: mocks.sandboxFileUploadClientPost,
+            download: {
+              post: mocks.sandboxFileDownloadClientPost,
             },
           },
         },
@@ -56,8 +107,8 @@ vi.mock('@/service/client', () => ({
               byNodeId: {
                 sandbox: {
                   files: {
-                    upload: {
-                      post: mocks.workflowSandboxFileUploadClientPost,
+                    download: {
+                      post: mocks.workflowSandboxFileDownloadClientPost,
                     },
                   },
                 },
@@ -84,9 +135,9 @@ vi.mock('@/service/client', () => ({
                 queryOptions: mocks.sandboxFileReadQueryOptions,
               },
             },
-            upload: {
+            download: {
               post: {
-                mutationOptions: () => ({ mutationFn: mocks.sandboxFileUploadMutationFn }),
+                mutationOptions: () => ({ mutationFn: mocks.sandboxFileDownloadMutationFn }),
               },
             },
           },
@@ -109,10 +160,10 @@ vi.mock('@/service/client', () => ({
                         queryOptions: mocks.workflowSandboxFileReadQueryOptions,
                       },
                     },
-                    upload: {
+                    download: {
                       post: {
                         mutationOptions: () => ({
-                          mutationFn: mocks.workflowSandboxFileUploadMutationFn,
+                          mutationFn: mocks.workflowSandboxFileDownloadMutationFn,
                         }),
                       },
                     },
@@ -139,57 +190,114 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((promiseResolve) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
     resolve = promiseResolve
+    reject = promiseReject
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
-function renderWorkingDirectoryPanel() {
+type RenderWorkingDirectoryPanelOptions = {
+  open?: boolean
+  source?: AgentWorkingDirectorySource
+}
+
+function renderWorkingDirectoryPanel({
+  open = true,
+  source = agentSource,
+}: RenderWorkingDirectoryPanelOptions = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
     },
   })
 
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <AgentWorkingDirectoryPanel
-        open
-        onOpenChange={vi.fn()}
-        source={{
-          type: 'agent',
-          agentId: 'agent-1',
-          callerType: 'conversation',
-          callerId: 'conversation-1',
-        }}
-      />
+      <AgentWorkingDirectoryPanel open={open} onOpenChange={vi.fn()} source={source} />
     </QueryClientProvider>,
   )
+  return {
+    ...rendered,
+    rerenderPanel: (nextOptions: Required<RenderWorkingDirectoryPanelOptions>) => {
+      rendered.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentWorkingDirectoryPanel
+            open={nextOptions.open}
+            onOpenChange={vi.fn()}
+            source={nextOptions.source}
+          />
+        </QueryClientProvider>,
+      )
+    },
+  }
 }
 
 function renderWorkflowWorkingDirectoryPanel() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
+  return renderWorkingDirectoryPanel({ source: workflowSource })
+}
+
+function mockFileListEntries(
+  source: AgentWorkingDirectorySource,
+  entries: Array<{ name: string; type: 'file' }>,
+) {
+  const queryOptions =
+    source.type === 'agent'
+      ? mocks.sandboxFilesQueryOptions
+      : mocks.workflowSandboxFilesQueryOptions
+  queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+    queryKey: [`${source.type}-sandbox-files`, input, entries],
+    queryFn: async () => ({
+      path: input.query?.path ?? (source.type === 'agent' ? '~/workspace' : '.'),
+      entries,
+    }),
+  }))
+}
+
+function mockFileReadAsBinary(source: AgentWorkingDirectorySource) {
+  const queryOptions =
+    source.type === 'agent'
+      ? mocks.sandboxFileReadQueryOptions
+      : mocks.workflowSandboxFileReadQueryOptions
+  queryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+    queryKey: [`${source.type}-sandbox-file-read`, input],
+    queryFn: async () => ({
+      binary: true,
+      path: input.query?.path ?? '',
+      text: null,
+      truncated: false,
+    }),
+  }))
+}
+
+function expectedImagePreviewRequest(source: AgentWorkingDirectorySource, path: string) {
+  if (source.type === 'agent') {
+    return {
+      params: { agent_id: source.agentId },
+      body: {
+        caller_type: source.callerType,
+        caller_id: source.callerId,
+        path: `~/${path}`,
+      },
+    }
+  }
+
+  return {
+    params: {
+      app_id: source.appId,
+      workflow_run_id: source.workflowRunId,
+      node_id: source.nodeId,
     },
-  })
-  const rendered = render(
-    <QueryClientProvider client={queryClient}>
-      <AgentWorkingDirectoryPanel
-        open
-        onOpenChange={vi.fn()}
-        source={{
-          type: 'workflow-node',
-          appId: 'app-1',
-          workflowRunId: 'run-1',
-          nodeId: 'node-1',
-          nodeExecutionId: 'execution-1',
-        }}
-      />
-    </QueryClientProvider>,
-  )
-  return { ...rendered, queryClient }
+    body: {
+      node_execution_id: source.nodeExecutionId,
+      path: `~/${path}`,
+    },
+  }
+}
+
+function fileName(path: string) {
+  return path.slice(path.lastIndexOf('/') + 1)
 }
 
 describe('AgentWorkingDirectoryPanel', () => {
@@ -244,8 +352,8 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should download the selected working directory file from the preview header download action', async () => {
     const user = userEvent.setup()
-    const upload = createDeferred<{ url: string }>()
-    mocks.sandboxFileUploadMutationFn.mockReturnValueOnce(upload.promise)
+    const download = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('notes.md'))
@@ -259,12 +367,14 @@ describe('AgentWorkingDirectoryPanel', () => {
       name: /common\.operation\.downloading.*notes\.md/i,
     })
     expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
+    await user.click(downloadingButton)
+    expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
 
-    upload.resolve({ url: 'https://example.com/sandbox-file' })
+    download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileUploadMutationFn.mock.calls[0]?.[0]).toEqual({
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
+      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
         params: {
           agent_id: 'agent-1',
         },
@@ -284,8 +394,8 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should download binary working directory files from the unsupported preview download link', async () => {
     const user = userEvent.setup()
-    const upload = createDeferred<{ url: string }>()
-    mocks.sandboxFileUploadMutationFn.mockReturnValueOnce(upload.promise)
+    const download = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('model.bin'))
@@ -304,11 +414,11 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
     expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
 
-    upload.resolve({ url: 'https://example.com/sandbox-file' })
+    download.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
-      expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
-      expect(mocks.sandboxFileUploadMutationFn.mock.calls[0]?.[0]).toEqual({
+      expect(mocks.sandboxFileDownloadMutationFn).toHaveBeenCalled()
+      expect(mocks.sandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
         params: {
           agent_id: 'agent-1',
         },
@@ -326,22 +436,22 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
   })
 
-  it('should preview sandbox images with the uploaded file url', async () => {
+  it('should preview sandbox images with the downloaded file url', async () => {
     const user = userEvent.setup()
-    const upload = createDeferred<{ url: string }>()
-    mocks.sandboxFileUploadClientPost.mockReturnValueOnce(upload.promise)
+    const download = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadClientPost.mockReturnValueOnce(download.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
 
     await waitFor(() => {
-      expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalled()
+      expect(mocks.sandboxFileDownloadClientPost).toHaveBeenCalled()
     })
-    upload.resolve({ url: 'https://example.com/chart.png' })
+    download.resolve({ url: 'https://example.com/chart.png' })
 
     const image = await screen.findByAltText('chart.png')
     expect(image).toHaveAttribute('src', 'https://example.com/chart.png')
-    expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalledWith({
+    expect(mocks.sandboxFileDownloadClientPost).toHaveBeenCalledWith({
       params: {
         agent_id: 'agent-1',
       },
@@ -357,27 +467,186 @@ describe('AgentWorkingDirectoryPanel', () => {
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
   })
 
-  it('should scope workflow image previews to the exact node execution', async () => {
-    const { queryClient } = renderWorkflowWorkingDirectoryPanel()
+  it.each(previewSourceCases)(
+    'should refresh $label image previews when caller ownership or path changes',
+    async ({ source, identitySource, imagePaths, previewClient, urls }) => {
+      const user = userEvent.setup()
+      const [initialImagePath, nextImagePath] = imagePaths
+      const [initialUrl, identityUrl, pathUrl] = urls
+      mockFileListEntries(
+        source,
+        imagePaths.map((name) => ({ name, type: 'file' })),
+      )
+      previewClient
+        .mockResolvedValueOnce({ url: initialUrl })
+        .mockResolvedValueOnce({ url: identityUrl })
+        .mockResolvedValueOnce({ url: pathUrl })
+      const { rerenderPanel } = renderWorkingDirectoryPanel({ source })
 
-    await waitFor(() => {
-      expect(mocks.workflowSandboxFileUploadClientPost).toHaveBeenCalled()
-    })
+      expect(await screen.findByAltText(fileName(initialImagePath))).toHaveAttribute(
+        'src',
+        initialUrl,
+      )
+      expect(previewClient).toHaveBeenCalledTimes(1)
+
+      rerenderPanel({ open: true, source: identitySource })
+
+      await waitFor(() => {
+        expect(previewClient).toHaveBeenCalledTimes(2)
+        expect(screen.getByAltText(fileName(initialImagePath))).toHaveAttribute('src', identityUrl)
+      })
+      expect(previewClient).toHaveBeenNthCalledWith(
+        2,
+        expectedImagePreviewRequest(identitySource, initialImagePath),
+      )
+
+      await user.click(await screen.findByText(fileName(nextImagePath)))
+
+      await waitFor(() => {
+        expect(previewClient).toHaveBeenCalledTimes(3)
+        expect(screen.getByAltText(fileName(nextImagePath))).toHaveAttribute('src', pathUrl)
+      })
+      expect(previewClient).toHaveBeenNthCalledWith(
+        3,
+        expectedImagePreviewRequest(identitySource, nextImagePath),
+      )
+    },
+  )
+
+  it.each(previewSourceCases)(
+    'should disable $label image preview requests while closed and for non-images',
+    async ({ source, identitySource, imagePaths, nonImagePath, previewClient, urls }) => {
+      const [imagePath] = imagePaths
+      const [firstUrl] = urls
+      mockFileListEntries(source, [{ name: imagePath, type: 'file' }])
+      previewClient.mockResolvedValueOnce({ url: firstUrl })
+      const { rerenderPanel, unmount } = renderWorkingDirectoryPanel({ source })
+
+      expect(await screen.findByAltText(fileName(imagePath))).toHaveAttribute('src', firstUrl)
+      expect(previewClient).toHaveBeenCalledTimes(1)
+      previewClient.mockClear()
+
+      rerenderPanel({ open: false, source: identitySource })
+      await waitFor(() => {
+        expect(screen.queryByAltText(fileName(imagePath))).not.toBeInTheDocument()
+      })
+      expect(previewClient).toHaveBeenCalledTimes(0)
+      unmount()
+
+      mockFileListEntries(source, [{ name: nonImagePath, type: 'file' }])
+      mockFileReadAsBinary(source)
+      renderWorkingDirectoryPanel({ source })
+      expect(
+        await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported'),
+      ).toBeInTheDocument()
+      expect(previewClient).toHaveBeenCalledTimes(0)
+    },
+  )
+
+  it('should download workflow files from the exact node execution', async () => {
+    const user = userEvent.setup()
+    const download = createDeferred<{ url: string }>()
+    mocks.workflowSandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
+    renderWorkflowWorkingDirectoryPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*chart\.png/i,
+      }),
+    )
 
     expect(
-      queryClient.getQueryCache().find({
-        queryKey: [
-          'agent-v2',
-          'working-directory',
-          'image-preview',
-          'workflow-node',
-          'app-1',
-          'run-1',
-          'node-1',
-          'execution-1',
-          'chart.png',
-        ],
+      await screen.findByRole('button', {
+        name: /common\.operation\.downloading.*chart\.png/i,
       }),
-    ).toBeDefined()
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.downloading.*chart\.png/i,
+      }),
+    )
+    expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalledTimes(1)
+
+    download.resolve({ url: 'https://example.com/workflow-sandbox-file' })
+
+    await waitFor(() => {
+      expect(mocks.workflowSandboxFileDownloadMutationFn).toHaveBeenCalled()
+      expect(mocks.workflowSandboxFileDownloadMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+          workflow_run_id: 'run-1',
+          node_id: 'node-1',
+        },
+        body: {
+          node_execution_id: 'execution-1',
+          path: '~/chart.png',
+        },
+      })
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/workflow-sandbox-file',
+        fileName: 'chart.png',
+      })
+      expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
+    })
+  })
+
+  it('should clear Agent download pending state without reporting success after failure', async () => {
+    const user = userEvent.setup()
+    const download = createDeferred<{ url: string }>()
+    mocks.sandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
+    renderWorkingDirectoryPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*report\.md/i,
+      }),
+    )
+    expect(
+      await screen.findByRole('button', {
+        name: /common\.operation\.downloading.*report\.md/i,
+      }),
+    ).toBeInTheDocument()
+
+    download.reject(new Error('download failed'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: /common\.operation\.download.*report\.md/i,
+        }),
+      ).toBeInTheDocument()
+    })
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('should clear workflow download pending state without reporting success after failure', async () => {
+    const user = userEvent.setup()
+    const download = createDeferred<{ url: string }>()
+    mocks.workflowSandboxFileDownloadMutationFn.mockReturnValueOnce(download.promise)
+    renderWorkflowWorkingDirectoryPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /common\.operation\.download.*chart\.png/i,
+      }),
+    )
+    expect(
+      await screen.findByRole('button', {
+        name: /common\.operation\.downloading.*chart\.png/i,
+      }),
+    ).toBeInTheDocument()
+
+    download.reject(new Error('download failed'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: /common\.operation\.download.*chart\.png/i,
+        }),
+      ).toBeInTheDocument()
+    })
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })

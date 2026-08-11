@@ -8,15 +8,12 @@ import { resolveEducationExpireNotice } from '../use-expire-notice'
 const mockEducationStatus = vi.hoisted(() => ({
   allowRefresh: true,
   expireAt: Date.UTC(2099, 0, 1) / 1000,
-  isLoading: false,
 }))
 const mockPricingModal = vi.hoisted(() => ({ isOpen: false }))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    allowRefreshEducationVerify: mockEducationStatus.allowRefresh,
-    educationAccountExpireAt: mockEducationStatus.expireAt,
-    isLoadingEducationAccountInfo: mockEducationStatus.isLoading,
+    enableEducationPlan: true,
   }),
 }))
 
@@ -40,6 +37,10 @@ vi.mock('@/next/dynamic', () => ({
 const renderNotice = (accountId = 'user-1') => {
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: accountId, timezone: 'UTC' },
+    educationStatus: {
+      allow_refresh: mockEducationStatus.allowRefresh,
+      expire_at: mockEducationStatus.expireAt,
+    },
   })
 
   return render(<EducationExpireNotice />, { wrapper })
@@ -50,7 +51,6 @@ describe('EducationExpireNotice', () => {
     localStorage.clear()
     mockEducationStatus.allowRefresh = true
     mockEducationStatus.expireAt = Date.UTC(2099, 0, 1) / 1000
-    mockEducationStatus.isLoading = false
     mockPricingModal.isOpen = false
   })
 
@@ -78,14 +78,6 @@ describe('EducationExpireNotice', () => {
     renderNotice()
 
     expect(await screen.findByRole('dialog')).toHaveTextContent('Expired')
-  })
-
-  it('does not show while education status is unavailable', async () => {
-    mockEducationStatus.isLoading = true
-
-    renderNotice()
-
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('defers the notice while the URL-driven pricing modal is open', async () => {

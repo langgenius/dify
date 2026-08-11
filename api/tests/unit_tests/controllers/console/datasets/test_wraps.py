@@ -39,9 +39,11 @@ class TestGetRagPipeline:
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session_factory.return_value)
 
     def test_pipeline_found_and_injected(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(
+            tenant_id="tenant-1",
+            name="Test Pipeline",
+        )
         pipeline.id = "pipeline-1"
-        pipeline.tenant_id = "tenant-1"
 
         @get_rag_pipeline
         def dummy_view(**kwargs):
@@ -64,7 +66,7 @@ class TestGetRagPipeline:
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session_factory.return_value)
 
     def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         session = Mock(spec=Session)
 
         mocker.patch(
@@ -82,7 +84,7 @@ class TestGetRagPipeline:
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session)
 
     def test_pipeline_id_removed_from_kwargs(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
         def dummy_view(**kwargs):
@@ -105,7 +107,7 @@ class TestGetRagPipeline:
         assert result == "ok"
 
     def test_pipeline_id_cast_to_string(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
         def dummy_view(**kwargs):

@@ -23,8 +23,8 @@ import { Button } from '../button'
 import { cn } from '../cn'
 import { Input } from '../input'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -723,16 +723,19 @@ export const MobileNavigation: Story = {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport className="group">
-          <ScrollAreaRoot
+          <ScrollArea
             style={{ position: undefined }}
-            className="h-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-ending-style:pointer-events-none group-data-starting-style:translate-y-[100dvh] motion-reduce:transition-none"
+            className="h-full transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-ending-style:pointer-events-none group-data-starting-style:translate-y-[100dvh] motion-reduce:transition-none"
           >
             <ScrollAreaViewport
               className="size-full touch-auto overscroll-contain"
               role="region"
               aria-label="Mobile drawer viewport"
             >
-              <ScrollAreaContent className="flex min-h-full min-w-0 items-end justify-center pt-8 min-[42rem]:px-16 min-[42rem]:py-16">
+              <ScrollAreaContent
+                style={{ minWidth: 0 }}
+                className="flex min-h-full items-end justify-center pt-8 min-[42rem]:px-16 min-[42rem]:py-16"
+              >
                 <DrawerPopup className="relative w-full max-w-2xl touch-auto overflow-visible transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] data-swiping:select-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)+2px))] motion-reduce:transition-none min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px] min-[42rem]:border-b-[0.5px]">
                   <nav
                     aria-label="Mobile navigation"
@@ -789,7 +792,7 @@ export const MobileNavigation: Story = {
             <ScrollAreaScrollbar orientation="vertical">
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         </DrawerViewport>
       </DrawerPortal>
     </Drawer>

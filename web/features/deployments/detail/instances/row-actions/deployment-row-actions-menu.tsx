@@ -1,6 +1,5 @@
 'use client'
 
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,10 +121,7 @@ export function DeploymentActionsDropdown({
                 variant="destructive"
                 disabled={undeployActionDisabled}
                 aria-disabled={undeployActionDisabled}
-                className={cn(
-                  'gap-2 px-3',
-                  undeployActionDisabled && 'cursor-not-allowed opacity-60',
-                )}
+                className="gap-2 px-3 data-disabled:cursor-not-allowed data-disabled:opacity-60"
                 onClick={handleRequestUndeploy}
               >
                 <span aria-hidden className="i-ri-logout-box-line size-4 shrink-0" />

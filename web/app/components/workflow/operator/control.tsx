@@ -47,8 +47,7 @@ const Control = () => {
           focusableWhenDisabled
           className={cn(
             'ml-px size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
           )}
           onClick={addNote}
         >
@@ -71,8 +70,7 @@ const Control = () => {
             controlMode === ControlMode.Pointer
               ? 'bg-state-accent-active text-text-accent'
               : 'hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
           )}
           onClick={handleModePointer}
         >
@@ -94,8 +92,7 @@ const Control = () => {
             controlMode === ControlMode.Hand
               ? 'bg-state-accent-active text-text-accent'
               : 'hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
           )}
           onClick={handleModeHand}
         >
@@ -118,8 +115,7 @@ const Control = () => {
               controlMode === ControlMode.Comment
                 ? 'bg-state-accent-active text-text-accent'
                 : 'hover:bg-state-base-hover hover:text-text-secondary',
-              !canUseCommentMode &&
-                'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+              'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
             )}
             onClick={handleModeComment}
           >
@@ -140,8 +136,7 @@ const Control = () => {
           focusableWhenDisabled
           className={cn(
             'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
           )}
           onClick={handleLayout}
         >

@@ -65,7 +65,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       >
         <>
           {t(($) => $['operation.applyConfig'], { ns: 'appDebug' })}
-          <RiArrowDownSLine className="ml-0.5 size-3" />
+          <RiArrowDownSLine className="size-3" />
         </>
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[288px] p-1">

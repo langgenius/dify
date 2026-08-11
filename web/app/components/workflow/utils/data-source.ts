@@ -1,13 +1,14 @@
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { InputVar, ToolWithProvider } from '../types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { DataSourceClassification } from '../nodes/data-source/types'
 
 export const getDataSourceCheckParams = (
   toolData: DataSourceNodeType,
   dataSourceList: ToolWithProvider[],
   language: string,
 ) => {
-  const { plugin_id, datasource_name } = toolData
+  const { plugin_id, provider_type, datasource_name } = toolData
   const currentDataSource = dataSourceList.find((item) => item.plugin_id === plugin_id)
   const currentDataSourceItem = currentDataSource?.tools.find(
     (tool) => tool.name === datasource_name,
@@ -30,7 +31,10 @@ export const getDataSourceCheckParams = (
       })
       return formInputs
     })(),
-    notAuthed: !!currentDataSource?.allow_delete && !currentDataSource?.is_authorized,
+    notAuthed:
+      provider_type !== DataSourceClassification.localFile &&
+      !!currentDataSource?.allow_delete &&
+      !currentDataSource?.is_authorized,
     language,
   }
 }

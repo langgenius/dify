@@ -119,7 +119,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
                 variant="ghost"
                 size="small"
                 className={cn(
-                  'flex items-center space-x-1 px-2',
+                  'flex items-center px-2',
                   isPreview && 'bg-state-accent-active text-text-accent',
                 )}
                 onClick={togglePreview}

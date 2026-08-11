@@ -179,7 +179,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
 
     mocker.patch("services.dataset_service.DocumentService.get_documents_position", return_value=1)
     features = SimpleNamespace()
-    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
+    get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
     check_limits = mocker.patch("services.dataset_service.DocumentService.check_document_creation_limits")
 
     document1 = SimpleNamespace(
@@ -236,6 +236,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     session.flush.assert_called_once_with()
     session.commit.assert_called_once_with()
     task_proxy.delay.assert_called_once()
+    get_features.assert_called_once_with("tenant")
 
 
 def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(generator, mocker: MockerFixture):
@@ -309,20 +310,26 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
         return_value=MagicMock(),
     )
 
-    mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
+    generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
+
+    args = _build_args()
+    args["original_document_id"] = "document-1"
 
     result = generator.generate(
         session=session,
         pipeline=pipeline,
         workflow=workflow,
         user=_build_user(),
-        args=_build_args(),
+        args=args,
         invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
         streaming=True,
         is_retry=True,
     )
 
     assert result == {"result": "ok"}
+    application_generate_entity = generate.call_args.kwargs["application_generate_entity"]
+    assert application_generate_entity.document_id == "document-1"
+    assert application_generate_entity.original_document_id is None
 
 
 def test_generate_worker_handles_errors(generator, mocker: MockerFixture):

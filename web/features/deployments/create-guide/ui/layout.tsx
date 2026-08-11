@@ -3,7 +3,13 @@
 import type { ReactNode } from 'react'
 import type { GuideStep } from '@/features/deployments/create-guide/state/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 
@@ -161,14 +167,13 @@ export function GuideCard({
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
       {contentScrollable ? (
-        <ScrollArea
-          className="min-h-0 flex-1"
-          slotClassNames={{
-            viewport: 'overscroll-contain',
-            content: 'min-h-full pt-0.5 pb-6',
-          }}
-        >
-          {children}
+        <ScrollArea className="min-h-0 flex-1">
+          <ScrollAreaViewport className="overscroll-contain">
+            <ScrollAreaContent className="min-h-full pt-0.5 pb-6">{children}</ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
         </ScrollArea>
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden pt-0.5 pb-6">{children}</div>

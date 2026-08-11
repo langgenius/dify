@@ -283,12 +283,18 @@ describe('AddMemberOrGroupDialog', () => {
     expect(document.querySelector('.spin-animation')).toBeInTheDocument()
 
     const groupOption = screen.getByRole('option', { name: /Group One/ })
+    expect(groupOption).not.toHaveAttribute('data-selected')
     fireEvent.click(groupOption)
+    expect(groupOption).toHaveAttribute('data-selected')
     fireEvent.click(groupOption)
+    expect(groupOption).not.toHaveAttribute('data-selected')
 
     const memberOption = screen.getByRole('option', { name: /Member One/ })
+    expect(memberOption).not.toHaveAttribute('data-selected')
     fireEvent.click(memberOption)
+    expect(memberOption).toHaveAttribute('data-selected')
     fireEvent.click(memberOption)
+    expect(memberOption).not.toHaveAttribute('data-selected')
 
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))

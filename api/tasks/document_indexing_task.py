@@ -107,7 +107,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False
     try:
-        indexing_runner = IndexingRunner()
+        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
         with session_factory.create_session() as session:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:

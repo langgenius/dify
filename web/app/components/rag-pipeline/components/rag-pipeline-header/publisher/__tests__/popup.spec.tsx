@@ -11,46 +11,6 @@ const render = (ui: React.ReactElement) => {
   return renderWithConsoleState(ui, { wrapper })
 }
 
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => (
-    <button onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-}))
-
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
 const toastMocks = vi.hoisted(() => ({
@@ -135,19 +95,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       setPublishedAt: mockSetPublishedAt,
     }),
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as () => void}
-      disabled={disabled as boolean}
-      data-variant={variant as string}
-      className={className as string}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
@@ -459,7 +406,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      fireEvent.click(screen.getByTestId('alert-dialog-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
     })

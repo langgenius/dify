@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview exécute l’agent final comme vos utilisateurs le verront, avec des réponses claires et les fonctions de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Prévisualiser votre agent",
   "agentDetail.configure.skills.add": "Ajouter une compétence",
-  "agentDetail.configure.skills.detail.contentRegion": "Contenu des détails de la compétence",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} FICHIERS",
   "agentDetail.configure.skills.detail.files": "Fichiers",
   "agentDetail.configure.skills.empty.description": "Les compétences offrent à l’agent une expertise réutilisable qu’il peut invoquer pendant son travail",

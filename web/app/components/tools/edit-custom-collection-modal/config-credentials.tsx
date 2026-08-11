@@ -16,7 +16,13 @@ import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -112,185 +118,203 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                   />
                 </div>
               </div>
-              <ScrollArea
-                className="min-h-0 flex-1 overflow-hidden"
-                slotClassNames={{
-                  viewport: 'overscroll-contain',
-                  content: 'space-y-4 pt-2 pr-8 pl-6',
-                }}
-              >
-                <Field name="auth_type" className="contents">
-                  <Fieldset
-                    render={
-                      <RadioGroup<AuthType>
-                        className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
-                        value={tempCredential.auth_type}
-                        onValueChange={handleAuthTypeChange}
-                      />
-                    }
-                  >
-                    <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                      {t(($) => $['createTool.authMethod.type'], { ns: 'tools' })}
-                    </FieldsetLegend>
-                    <SelectItem<AuthType>
-                      text={t(($) => $['createTool.authMethod.types.none'], { ns: 'tools' })}
-                      value={AuthType.none}
-                      isChecked={tempCredential.auth_type === AuthType.none}
-                    />
-                    <SelectItem<AuthType>
-                      text={t(($) => $['createTool.authMethod.types.api_key_header'], {
-                        ns: 'tools',
-                      })}
-                      value={AuthType.apiKeyHeader}
-                      isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
-                    />
-                    <SelectItem<AuthType>
-                      text={t(($) => $['createTool.authMethod.types.api_key_query'], {
-                        ns: 'tools',
-                      })}
-                      value={AuthType.apiKeyQuery}
-                      isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
-                    />
-                  </Fieldset>
-                </Field>
-                {tempCredential.auth_type === AuthType.apiKeyHeader && (
-                  <>
-                    <Field name="api_key_header_prefix" className="contents">
+              <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+                <ScrollAreaViewport className="overscroll-contain">
+                  <ScrollAreaContent className="space-y-4 pt-2 pr-8 pl-6">
+                    <Field name="auth_type" className="contents">
                       <Fieldset
                         render={
-                          <RadioGroup<AuthHeaderPrefix>
+                          <RadioGroup<AuthType>
                             className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
-                            value={tempCredential.api_key_header_prefix}
-                            onValueChange={(value) =>
-                              setTempCredential({ ...tempCredential, api_key_header_prefix: value })
-                            }
+                            value={tempCredential.auth_type}
+                            onValueChange={handleAuthTypeChange}
                           />
                         }
                       >
                         <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
-                          {t(($) => $['createTool.authHeaderPrefix.title'], { ns: 'tools' })}
+                          {t(($) => $['createTool.authMethod.type'], { ns: 'tools' })}
                         </FieldsetLegend>
-                        <SelectItem<AuthHeaderPrefix>
-                          text={t(($) => $['createTool.authHeaderPrefix.types.basic'], {
-                            ns: 'tools',
-                          })}
-                          value={AuthHeaderPrefix.basic}
-                          isChecked={
-                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic
-                          }
+                        <SelectItem<AuthType>
+                          text={t(($) => $['createTool.authMethod.types.none'], { ns: 'tools' })}
+                          value={AuthType.none}
+                          isChecked={tempCredential.auth_type === AuthType.none}
                         />
-                        <SelectItem<AuthHeaderPrefix>
-                          text={t(($) => $['createTool.authHeaderPrefix.types.bearer'], {
+                        <SelectItem<AuthType>
+                          text={t(($) => $['createTool.authMethod.types.api_key_header'], {
                             ns: 'tools',
                           })}
-                          value={AuthHeaderPrefix.bearer}
-                          isChecked={
-                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer
-                          }
+                          value={AuthType.apiKeyHeader}
+                          isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                         />
-                        <SelectItem<AuthHeaderPrefix>
-                          text={t(($) => $['createTool.authHeaderPrefix.types.custom'], {
+                        <SelectItem<AuthType>
+                          text={t(($) => $['createTool.authMethod.types.api_key_query'], {
                             ns: 'tools',
                           })}
-                          value={AuthHeaderPrefix.custom}
-                          isChecked={
-                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom
-                          }
+                          value={AuthType.apiKeyQuery}
+                          isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
                         />
                       </Fieldset>
                     </Field>
-                    <div>
-                      <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
-                        <Infotip
-                          aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                            ns: 'tools',
-                          })}
-                          className="ml-0.5 size-4"
-                          popupClassName="w-[261px] text-text-tertiary"
-                        >
-                          {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
-                        </Infotip>
-                      </div>
-                      <Input
-                        value={tempCredential.api_key_header}
-                        onChange={(e) =>
-                          setTempCredential({ ...tempCredential, api_key_header: e.target.value })
-                        }
-                        placeholder={t(($) => $['createTool.authMethod.types.apiKeyPlaceholder'], {
-                          ns: 'tools',
-                        })!}
-                      />
-                    </div>
-                    <div>
-                      <div className="py-2 system-sm-medium text-text-primary">
-                        {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
-                      </div>
-                      <Input
-                        value={tempCredential.api_key_value}
-                        onChange={(e) =>
-                          setTempCredential({ ...tempCredential, api_key_value: e.target.value })
-                        }
-                        placeholder={t(
-                          ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
-                          {
-                            ns: 'tools',
-                          },
-                        )!}
-                      />
-                    </div>
-                  </>
-                )}
-                {tempCredential.auth_type === AuthType.apiKeyQuery && (
-                  <>
-                    <div>
-                      <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                        {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
-                        <Infotip
-                          aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                            ns: 'tools',
-                          })}
-                          className="ml-0.5 size-4"
-                          popupClassName="w-[261px] text-text-tertiary"
-                        >
-                          {t(($) => $['createTool.authMethod.queryParamTooltip'], { ns: 'tools' })}
-                        </Infotip>
-                      </div>
-                      <Input
-                        value={tempCredential.api_key_query_param}
-                        onChange={(e) =>
-                          setTempCredential({
-                            ...tempCredential,
-                            api_key_query_param: e.target.value,
-                          })
-                        }
-                        placeholder={t(
-                          ($) => $['createTool.authMethod.types.queryParamPlaceholder'],
-                          {
-                            ns: 'tools',
-                          },
-                        )!}
-                      />
-                    </div>
-                    <div>
-                      <div className="py-2 system-sm-medium text-text-primary">
-                        {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
-                      </div>
-                      <Input
-                        value={tempCredential.api_key_value}
-                        onChange={(e) =>
-                          setTempCredential({ ...tempCredential, api_key_value: e.target.value })
-                        }
-                        placeholder={t(
-                          ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
-                          {
-                            ns: 'tools',
-                          },
-                        )!}
-                      />
-                    </div>
-                  </>
-                )}
+                    {tempCredential.auth_type === AuthType.apiKeyHeader && (
+                      <>
+                        <Field name="api_key_header_prefix" className="contents">
+                          <Fieldset
+                            render={
+                              <RadioGroup<AuthHeaderPrefix>
+                                className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
+                                value={tempCredential.api_key_header_prefix}
+                                onValueChange={(value) =>
+                                  setTempCredential({
+                                    ...tempCredential,
+                                    api_key_header_prefix: value,
+                                  })
+                                }
+                              />
+                            }
+                          >
+                            <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
+                              {t(($) => $['createTool.authHeaderPrefix.title'], { ns: 'tools' })}
+                            </FieldsetLegend>
+                            <SelectItem<AuthHeaderPrefix>
+                              text={t(($) => $['createTool.authHeaderPrefix.types.basic'], {
+                                ns: 'tools',
+                              })}
+                              value={AuthHeaderPrefix.basic}
+                              isChecked={
+                                tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic
+                              }
+                            />
+                            <SelectItem<AuthHeaderPrefix>
+                              text={t(($) => $['createTool.authHeaderPrefix.types.bearer'], {
+                                ns: 'tools',
+                              })}
+                              value={AuthHeaderPrefix.bearer}
+                              isChecked={
+                                tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer
+                              }
+                            />
+                            <SelectItem<AuthHeaderPrefix>
+                              text={t(($) => $['createTool.authHeaderPrefix.types.custom'], {
+                                ns: 'tools',
+                              })}
+                              value={AuthHeaderPrefix.custom}
+                              isChecked={
+                                tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom
+                              }
+                            />
+                          </Fieldset>
+                        </Field>
+                        <div>
+                          <div className="flex items-center py-2 system-sm-medium text-text-primary">
+                            {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
+                            <Infotip
+                              aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
+                                ns: 'tools',
+                              })}
+                              className="ml-0.5 size-4"
+                              popupClassName="w-[261px] text-text-tertiary"
+                            >
+                              {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                            </Infotip>
+                          </div>
+                          <Input
+                            value={tempCredential.api_key_header}
+                            onChange={(e) =>
+                              setTempCredential({
+                                ...tempCredential,
+                                api_key_header: e.target.value,
+                              })
+                            }
+                            placeholder={t(
+                              ($) => $['createTool.authMethod.types.apiKeyPlaceholder'],
+                              {
+                                ns: 'tools',
+                              },
+                            )!}
+                          />
+                        </div>
+                        <div>
+                          <div className="py-2 system-sm-medium text-text-primary">
+                            {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
+                          </div>
+                          <Input
+                            value={tempCredential.api_key_value}
+                            onChange={(e) =>
+                              setTempCredential({
+                                ...tempCredential,
+                                api_key_value: e.target.value,
+                              })
+                            }
+                            placeholder={t(
+                              ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
+                              {
+                                ns: 'tools',
+                              },
+                            )!}
+                          />
+                        </div>
+                      </>
+                    )}
+                    {tempCredential.auth_type === AuthType.apiKeyQuery && (
+                      <>
+                        <div>
+                          <div className="flex items-center py-2 system-sm-medium text-text-primary">
+                            {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
+                            <Infotip
+                              aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                ns: 'tools',
+                              })}
+                              className="ml-0.5 size-4"
+                              popupClassName="w-[261px] text-text-tertiary"
+                            >
+                              {t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                ns: 'tools',
+                              })}
+                            </Infotip>
+                          </div>
+                          <Input
+                            value={tempCredential.api_key_query_param}
+                            onChange={(e) =>
+                              setTempCredential({
+                                ...tempCredential,
+                                api_key_query_param: e.target.value,
+                              })
+                            }
+                            placeholder={t(
+                              ($) => $['createTool.authMethod.types.queryParamPlaceholder'],
+                              {
+                                ns: 'tools',
+                              },
+                            )!}
+                          />
+                        </div>
+                        <div>
+                          <div className="py-2 system-sm-medium text-text-primary">
+                            {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
+                          </div>
+                          <Input
+                            value={tempCredential.api_key_value}
+                            onChange={(e) =>
+                              setTempCredential({
+                                ...tempCredential,
+                                api_key_value: e.target.value,
+                              })
+                            }
+                            placeholder={t(
+                              ($) => $['createTool.authMethod.types.apiValuePlaceholder'],
+                              {
+                                ns: 'tools',
+                              },
+                            )!}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </ScrollAreaContent>
+                </ScrollAreaViewport>
+                <ScrollAreaScrollbar>
+                  <ScrollAreaThumb />
+                </ScrollAreaScrollbar>
               </ScrollArea>
               <div className="mt-4 flex shrink-0 justify-end space-x-2 px-6 py-4">
                 <Button onClick={onHide}>

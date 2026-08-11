@@ -70,7 +70,7 @@ const TriggerFormItem: FC<Props> = ({
                 onClick={() => setIsShowSchema(true)}
                 className="px-1 system-xs-regular text-text-tertiary"
               >
-                <span aria-hidden className="mr-1 i-ri-braces-line size-3.5" />
+                <span aria-hidden className="i-ri-braces-line size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>

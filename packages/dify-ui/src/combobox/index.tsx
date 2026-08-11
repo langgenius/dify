@@ -207,13 +207,11 @@ type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'className' | 'size'> &
 function ComboboxInput({
   className,
   size = 'medium',
-  type = 'text',
   autoComplete = 'off',
   ...props
 }: ComboboxInputProps) {
   return (
     <BaseCombobox.Input
-      type={type}
       autoComplete={autoComplete}
       className={cn(comboboxInputVariants({ size }), className)}
       {...props}

@@ -1,7 +1,6 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
@@ -101,20 +100,26 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }
 
   return (
-    <form onSubmit={noop}>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void handleEmailPasswordLogin()
+      }}
+    >
       <div className="mb-3">
         <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </label>
         <div className="mt-1">
           <Input
+            name="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             id="email"
             type="email"
             autoComplete="email"
+            spellCheck={false}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={1}
           />
         </div>
       </div>
@@ -135,16 +140,14 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         </label>
         <div className="relative mt-1">
           <Input
+            name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             id="password"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleEmailPasswordLogin()
-            }}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
+            spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={2}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
             <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
@@ -156,9 +159,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
       <div className="mb-2">
         <Button
-          tabIndex={2}
+          type="submit"
           variant="primary"
-          onClick={handleEmailPasswordLogin}
           disabled={isLoading || !email || !password}
           className="w-full"
         >

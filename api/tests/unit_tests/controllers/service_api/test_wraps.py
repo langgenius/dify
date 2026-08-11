@@ -10,7 +10,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from controllers.service_api.wraps import (
     DatasetApiResource,
@@ -338,6 +338,7 @@ class TestCloudEditionBillingResourceCheck:
         mock_vector_space = Mock()
         mock_vector_space.limit = 10
         mock_vector_space.size = 5
+        mock_vector_space.usage_unknown = False
         mock_get_vector_space.return_value = mock_vector_space
 
         @cloud_edition_billing_resource_check("vector_space", "dataset")
@@ -355,6 +356,64 @@ class TestCloudEditionBillingResourceCheck:
         assert result == "segment_added"
         mock_get_vector_space.assert_called_once_with("tenant123")
         mock_get_features.assert_not_called()
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    @patch("controllers.service_api.wraps.FeatureService.get_vector_space")
+    def test_rejects_sandbox_when_vector_space_usage_is_unknown(
+        self, mock_get_vector_space, mock_get_features, mock_validate_token, app: Flask
+    ):
+        mock_validate_token.return_value = Mock(tenant_id="tenant123")
+        mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
+        mock_get_features.return_value = SimpleNamespace(
+            billing=SimpleNamespace(
+                enabled=True,
+                subscription=SimpleNamespace(plan=CloudPlan.SANDBOX),
+            )
+        )
+
+        @cloud_edition_billing_resource_check("vector_space", "dataset")
+        def upload_document():
+            return "document_uploaded"
+
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            pytest.raises(ServiceUnavailable) as exc_info,
+        ):
+            upload_document()
+
+        assert "Please try again later" in str(exc_info.value)
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.FeatureService.get_features")
+    @patch("controllers.service_api.wraps.FeatureService.get_vector_space")
+    @pytest.mark.parametrize("plan", [CloudPlan.PROFESSIONAL, CloudPlan.TEAM])
+    def test_allows_paid_plan_when_vector_space_usage_is_unknown(
+        self, mock_get_vector_space, mock_get_features, mock_validate_token, app: Flask, plan: CloudPlan
+    ):
+        mock_validate_token.return_value = Mock(tenant_id="tenant123")
+        mock_get_vector_space.return_value = Mock(size=0, limit=50, usage_unknown=True)
+        mock_get_features.return_value = SimpleNamespace(
+            billing=SimpleNamespace(
+                enabled=True,
+                subscription=SimpleNamespace(plan=plan),
+            )
+        )
+
+        @cloud_edition_billing_resource_check("vector_space", "dataset")
+        def upload_document():
+            return "document_uploaded"
+
+        with (
+            app.test_request_context("/", method="GET"),
+            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+        ):
+            result = upload_document()
+
+        assert result == "document_uploaded"
+        mock_get_features.assert_called_once_with("tenant123", exclude_vector_space=True)
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")

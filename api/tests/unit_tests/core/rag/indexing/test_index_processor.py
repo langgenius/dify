@@ -47,19 +47,77 @@ class TestIndexProcessor:
 
         index_processor = MagicMock()
         index_processor.index.side_effect = lambda *args: phase_events.append("index")
+        processor = IndexProcessor()
+        admission_service = MagicMock()
+        chunks = {"general_chunks": ["content"]}
 
-        with patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory:
+        with (
+            patch(
+                "core.rag.index_processor.index_processor.VectorSpaceAdmissionService",
+                return_value=admission_service,
+            ),
+            patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory,
+        ):
             index_processor_factory.return_value.init_index_processor.return_value = index_processor
-            IndexProcessor().index_and_clean(
+            processor.index_and_clean(
                 dataset_id=dataset.id,
                 document_id=document.id,
                 original_document_id="",
-                chunks={"general_chunks": ["content"]},
+                chunks=chunks,
                 batch="batch-1",
                 session=session,
             )
 
         assert phase_events == ["commit", "index", "commit"]
+        admission_service.ensure_pipeline_can_be_indexed.assert_called_once_with(
+            dataset=dataset,
+            document_id=document.id,
+            chunk_structure=dataset.chunk_structure,
+            chunks=chunks,
+            include_summaries=False,
+            session=session,
+        )
+
+    def test_index_and_clean_skips_admission_for_replacement_without_existing_vector_points(self) -> None:
+        document = SimpleNamespace(
+            id="document-1",
+            name="Document",
+            created_at=datetime.datetime(2026, 1, 1),
+            indexing_latency=None,
+            indexing_status=None,
+            completed_at=None,
+            word_count=0,
+            need_summary=False,
+        )
+        dataset = SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="Dataset",
+            chunk_structure="text_model",
+            summary_index_setting=None,
+        )
+        session = MagicMock()
+        session.scalar.side_effect = [dataset, document, 3]
+        session.scalars.return_value.all.return_value = []
+        index_processor = MagicMock()
+        processor = IndexProcessor()
+        chunks = {"general_chunks": ["content"]}
+
+        with (
+            patch("core.rag.index_processor.index_processor.VectorSpaceAdmissionService") as admission_service_class,
+            patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory,
+        ):
+            index_processor_factory.return_value.init_index_processor.return_value = index_processor
+            processor.index_and_clean(
+                dataset_id=dataset.id,
+                document_id=document.id,
+                original_document_id=document.id,
+                chunks=chunks,
+                batch="batch-1",
+                session=session,
+            )
+
+        admission_service_class.assert_not_called()
 
     def test_index_and_clean_scopes_replacement_queries_to_dataset_owner(self) -> None:
         dataset = SimpleNamespace(
@@ -90,9 +148,13 @@ class TestIndexProcessor:
         session.scalar.side_effect = resolve_owner
         session.scalars.return_value.all.return_value = [segment]
 
-        with patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory:
+        processor = IndexProcessor()
+        with (
+            patch("core.rag.index_processor.index_processor.VectorSpaceAdmissionService") as admission_service_class,
+            patch("core.rag.index_processor.index_processor.IndexProcessorFactory") as index_processor_factory,
+        ):
             index_backend = index_processor_factory.return_value.init_index_processor.return_value
-            IndexProcessor().index_and_clean(
+            processor.index_and_clean(
                 dataset_id="dataset-1",
                 document_id="doc-1",
                 original_document_id="original-doc",
@@ -126,6 +188,7 @@ class TestIndexProcessor:
             session=session,
         )
         index_backend.index.assert_called_once_with(dataset, document, {}, session)
+        admission_service_class.assert_not_called()
 
     def test_get_preview_output_scopes_document_to_dataset_owner(self) -> None:
         dataset = SimpleNamespace(

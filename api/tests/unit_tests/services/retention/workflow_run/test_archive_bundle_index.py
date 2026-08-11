@@ -130,7 +130,7 @@ def test_backfill_lists_tenant_month_prefix_and_upserts_bundle_index() -> None:
     session_factory.return_value.__enter__.return_value = session
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, session_factory),
+        session_factory=session_factory,
     )
 
     summary = backfill.run(tenant_ids=[TENANT_ID], year=2025, month=3)
@@ -159,7 +159,7 @@ def test_backfill_dry_run_filters_by_year_month_without_database_write() -> None
     session_factory = MagicMock()
     backfill = WorkflowRunArchiveBundleIndexBackfill(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, session_factory),
+        session_factory=session_factory,
     )
 
     summary = backfill.run(tenant_prefixes=["1"], year=2025, month=3, dry_run=True)

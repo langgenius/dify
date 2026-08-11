@@ -145,10 +145,6 @@ export const deploymentsListIsFetchingNextPageAtom = selectAtom(
   deploymentsListQueryAtom,
   (query) => query.isFetchingNextPage,
 )
-export const deploymentsListIsLoadingAtom = selectAtom(
-  deploymentsListQueryAtom,
-  (query) => query.isLoading,
-)
 const deploymentsListIsErrorAtom = selectAtom(deploymentsListQueryAtom, (query) => query.isError)
 
 export const deploymentsListRowsAtom = atom((get) => {
@@ -158,9 +154,7 @@ export const deploymentsListRowsAtom = atom((get) => {
 export const deploymentsListShowSkeletonAtom = atom((get) => {
   const pages = get(deploymentsListDataAtom)?.pages ?? []
 
-  return (
-    get(deploymentsListIsLoadingAtom) || (get(deploymentsListIsFetchingAtom) && pages.length === 0)
-  )
+  return get(deploymentsListIsFetchingAtom) && pages.length === 0
 })
 
 export const deploymentsListShowEmptyStateAtom = atom((get) => {

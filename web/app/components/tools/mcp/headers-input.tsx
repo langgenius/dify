@@ -51,7 +51,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
         </div>
         {!readonly && (
           <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
           </Button>
         )}
@@ -111,7 +111,7 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
       </div>
       {!readonly && (
         <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
-          <RiAddLine className="mr-1 size-4" />
+          <RiAddLine className="size-4" />
           {t(($) => $['mcp.modal.addHeader'], { ns: 'tools' })}
         </Button>
       )}

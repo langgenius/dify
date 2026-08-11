@@ -30,21 +30,18 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-let rootQueryClient: QueryClient
+let queryClient: QueryClient
 
-vi.mock('@/context/query-client-server', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/query-client-server')>()
-
+vi.mock('@/app/get-query-client', () => {
   return {
-    ...actual,
-    getQueryClientServer: () => rootQueryClient,
+    getQueryClient: () => queryClient,
   }
 })
 
 describe('HydrateQueryClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    rootQueryClient = new QueryClient({
+    queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     })
     mockCollections.mockResolvedValue({
@@ -95,9 +92,6 @@ describe('HydrateQueryClient', () => {
   })
 
   it('should dehydrate only Marketplace-owned queries', async () => {
-    rootQueryClient.setQueryData(['console', 'system-features'], {
-      deployment_edition: 'CLOUD',
-    })
     const { HydrateQueryClient } = await import('../hydration-server')
 
     const element = await HydrateQueryClient({

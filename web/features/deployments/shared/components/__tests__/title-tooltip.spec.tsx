@@ -1,13 +1,7 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it } from 'vitest'
 import { TitleTooltip } from '../title-tooltip'
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: ReactNode }) => <div data-testid="tooltip">{children}</div>,
-  TooltipTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: ReactNode }) => <div role="tooltip">{children}</div>,
-}))
 
 function setElementSize(
   element: HTMLElement,
@@ -38,7 +32,8 @@ describe('TitleTooltip', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
-  it('shows duplicate content when the trigger is truncated', () => {
+  it('shows duplicate content when the trigger is truncated', async () => {
+    const user = userEvent.setup()
     render(
       <TitleTooltip content="Long deployment name">
         <p>Long deployment name</p>
@@ -47,22 +42,23 @@ describe('TitleTooltip', () => {
 
     const trigger = screen.getByText('Long deployment name')
     setElementSize(trigger, { clientWidth: 80, scrollWidth: 160 })
-    fireEvent.pointerOver(trigger)
+    await user.hover(trigger)
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Long deployment name')
+    await waitFor(() => {
+      expect(screen.getAllByText('Long deployment name')).toHaveLength(2)
+    })
   })
 
-  it('shows content that adds information beyond the trigger text', () => {
+  it('shows content that adds information beyond the trigger text', async () => {
+    const user = userEvent.setup()
     render(
       <TitleTooltip content="Disabled until an initial release exists">
         <button type="button">Deploy</button>
       </TitleTooltip>,
     )
 
-    fireEvent.pointerOver(screen.getByRole('button', { name: 'Deploy' }))
+    await user.hover(screen.getByRole('button', { name: 'Deploy' }))
 
-    expect(screen.getByRole('tooltip')).toHaveTextContent(
-      'Disabled until an initial release exists',
-    )
+    expect(await screen.findByText('Disabled until an initial release exists')).toBeInTheDocument()
   })
 })

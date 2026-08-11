@@ -3,6 +3,15 @@
 import * as z from 'zod'
 
 /**
+ * VectorSpaceLimitationModel
+ */
+export const zVectorSpaceLimitationModel = z.object({
+  limit: z.int(),
+  size: z.int(),
+  usage_unknown: z.boolean().optional().default(false),
+})
+
+/**
  * LimitationModel
  */
 export const zLimitationModel = z.object({
@@ -112,4 +121,4 @@ export const zGetFeaturesResponse = zFeatureModel
 /**
  * Success
  */
-export const zGetFeaturesVectorSpaceResponse = zLimitationModel
+export const zGetFeaturesVectorSpaceResponse = zVectorSpaceLimitationModel

@@ -175,7 +175,10 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <ActionButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
             <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
@@ -193,7 +196,10 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <ActionButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
             <RiCloseLine className="size-4" />
           </ActionButton>
         </div>

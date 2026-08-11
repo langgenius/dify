@@ -1,10 +1,11 @@
 from collections.abc import Iterator
 from datetime import datetime
-from inspect import unwrap
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -32,9 +33,14 @@ def banner_session(sqlite_engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _banner(*, text: str, language: str, link: str, created_at: datetime) -> ExporleBanner:
+def _banner(*, title: str, language: str, link: str, created_at: datetime) -> ExporleBanner:
     banner = ExporleBanner(
-        content={"text": text},
+        content={
+            "category": "Featured",
+            "title": title,
+            "description": "Banner description",
+            "img-src": "https://example.com/banner.png",
+        },
         link=link,
         sort=1,
         status=BannerStatus.ENABLED,
@@ -53,10 +59,9 @@ class TestBannerApi:
         banner_session: Session,
     ):
         api = banner_module.BannerApi()
-        method = unwrap(api.get)
 
         banner = _banner(
-            text="hello",
+            title="hello",
             language="fr-FR",
             link="https://example.com",
             created_at=datetime(2024, 1, 1),
@@ -64,14 +69,20 @@ class TestBannerApi:
         banner_session.add(banner)
         banner_session.commit()
         monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
 
         with app.test_request_context("/?language=fr-FR"):
-            result = method(api)
+            result = api.get()
 
         assert result == [
             {
                 "id": banner.id,
-                "content": {"text": "hello"},
+                "content": {
+                    "category": "Featured",
+                    "title": "hello",
+                    "description": "Banner description",
+                    "img-src": "https://example.com/banner.png",
+                },
                 "link": "https://example.com",
                 "sort": 1,
                 "status": "enabled",
@@ -86,10 +97,9 @@ class TestBannerApi:
         banner_session: Session,
     ):
         api = banner_module.BannerApi()
-        method = unwrap(api.get)
 
         banner = _banner(
-            text="fallback",
+            title="fallback",
             language="en-US",
             link="https://example.com/fallback",
             created_at=datetime(2024, 1, 2),
@@ -97,14 +107,20 @@ class TestBannerApi:
         banner_session.add(banner)
         banner_session.commit()
         monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
 
         with app.test_request_context("/?language=es-ES"):
-            result = method(api)
+            result = api.get()
 
         assert result == [
             {
                 "id": banner.id,
-                "content": {"text": "fallback"},
+                "content": {
+                    "category": "Featured",
+                    "title": "fallback",
+                    "description": "Banner description",
+                    "img-src": "https://example.com/banner.png",
+                },
                 "link": "https://example.com/fallback",
                 "sort": 1,
                 "status": "enabled",
@@ -119,10 +135,79 @@ class TestBannerApi:
         banner_session: Session,
     ):
         api = banner_module.BannerApi()
-        method = unwrap(api.get)
         monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
 
         with app.test_request_context("/"):
-            result = method(api)
+            result = api.get()
 
         assert result == []
+
+    def test_get_banners_allows_empty_supporting_copy(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        banner_session: Session,
+    ):
+        api = banner_module.BannerApi()
+        banner = _banner(
+            title="title only",
+            language="en-US",
+            link="https://example.com",
+            created_at=datetime(2024, 1, 3),
+        )
+        banner.content["category"] = ""
+        banner.content["description"] = ""
+        banner_session.add(banner)
+        banner_session.commit()
+        monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
+
+        with app.test_request_context("/?language=en-US"):
+            result = api.get()
+
+        assert result[0]["content"] == {
+            "category": "",
+            "title": "title only",
+            "description": "",
+            "img-src": "https://example.com/banner.png",
+        }
+
+    def test_get_banners_returns_empty_without_querying_when_disabled(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        api = banner_module.BannerApi()
+        session = MagicMock()
+        monkeypatch.setattr(banner_module.db, "session", session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: False)
+
+        with app.test_request_context("/"):
+            result = api.get()
+
+        assert result == []
+        session.scalars.assert_not_called()
+
+    def test_get_banners_rejects_invalid_content(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        banner_session: Session,
+    ):
+        api = banner_module.BannerApi()
+        banner = _banner(
+            title="invalid",
+            language="en-US",
+            link="https://example.com",
+            created_at=datetime(2024, 1, 4),
+        )
+        banner.content = {"title": "invalid"}
+        banner_session.add(banner)
+        banner_session.commit()
+        monkeypatch.setattr(banner_module.db, "session", banner_session)
+        monkeypatch.setattr(banner_module.FeatureService, "is_explore_banner_enabled", lambda: True)
+
+        with app.test_request_context("/"):
+            with pytest.raises(ValidationError):
+                api.get()

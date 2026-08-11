@@ -39,6 +39,7 @@ from ..wraps import (
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -233,13 +234,12 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str):
+    @model_validate(TriggerSubscriptionBuilderCreatePayload)
+    def post(self, req_data: TriggerSubscriptionBuilderCreatePayload, tenant_id: str, user: Account, provider: str):
         """Add a new subscription instance for a trigger provider"""
 
-        payload = TriggerSubscriptionBuilderCreatePayload.model_validate(console_ns.payload or {})
-
         try:
-            credential_type = CredentialType.of(payload.credential_type)
+            credential_type = CredentialType.of(req_data.credential_type)
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
                 tenant_id=tenant_id,
                 user_id=user.id,
@@ -268,9 +268,16 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider: str, subscription_builder_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
-        subscription_builder = TriggerSubscriptionBuilderService.get_subscription_builder_by_id(subscription_builder_id)
+        subscription_builder = TriggerSubscriptionBuilderService.get_subscription_builder_by_id(
+            tenant_id=tenant_id,
+            user_id=user.id,
+            provider_id=TriggerProviderID(provider),
+            subscription_builder_id=subscription_builder_id,
+        )
         return subscription_builder.model_dump(mode="json")
 
 
@@ -291,10 +298,16 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
+    @model_validate(TriggerSubscriptionBuilderVerifyPayload)
+    def post(
+        self,
+        req_data: TriggerSubscriptionBuilderVerifyPayload,
+        tenant_id: str,
+        user: Account,
+        provider: str,
+        subscription_builder_id: str,
+    ):
         """Verify and update a subscription instance for a trigger provider"""
-
-        payload = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             # Use atomic update_and_verify to prevent race conditions
@@ -304,7 +317,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
-                    credentials=payload.credentials,
+                    credentials=req_data.credentials,
                 ),
             )
             return dump_response(TriggerVerificationResponse, result)
@@ -328,21 +341,30 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str, subscription_builder_id: str):
+    @model_validate(TriggerSubscriptionBuilderUpdatePayload)
+    def post(
+        self,
+        req_data: TriggerSubscriptionBuilderUpdatePayload,
+        tenant_id: str,
+        user: Account,
+        provider: str,
+        subscription_builder_id: str,
+    ):
         """Update a subscription instance for a trigger provider"""
 
-        payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
         try:
             return TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
                 tenant_id=tenant_id,
+                user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
-                    name=payload.name,
-                    parameters=payload.parameters,
-                    properties=payload.properties,
-                    credentials=payload.credentials,
+                    name=req_data.name,
+                    parameters=req_data.parameters,
+                    properties=req_data.properties,
+                    credentials=req_data.credentials,
                 ),
             ).model_dump(mode="json")
         except Exception as e:
@@ -364,11 +386,18 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def get(self, provider: str, subscription_builder_id: str):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
 
         try:
-            logs = TriggerSubscriptionBuilderService.list_logs(subscription_builder_id)
+            logs = TriggerSubscriptionBuilderService.list_logs(
+                tenant_id=tenant_id,
+                user_id=user.id,
+                provider_id=TriggerProviderID(provider),
+                subscription_builder_id=subscription_builder_id,
+            )
             return dump_response(TriggerSubscriptionBuilderLogsResponse, {"logs": logs})
         except Exception as e:
             logger.exception("Error getting request logs for subscription builder", exc_info=e)
@@ -390,9 +419,16 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str, subscription_builder_id: str):
+    @model_validate(TriggerSubscriptionBuilderUpdatePayload)
+    def post(
+        self,
+        req_data: TriggerSubscriptionBuilderUpdatePayload,
+        tenant_id: str,
+        user: Account,
+        provider: str,
+        subscription_builder_id: str,
+    ):
         """Build a subscription instance for a trigger provider"""
-        payload = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
         try:
             # Use atomic update_and_build to prevent race conditions
             TriggerSubscriptionBuilderService.update_and_build_builder(
@@ -401,9 +437,9 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                 provider_id=TriggerProviderID(provider),
                 subscription_builder_id=subscription_builder_id,
                 subscription_builder_updater=SubscriptionBuilderUpdater(
-                    name=payload.name,
-                    parameters=payload.parameters,
-                    properties=payload.properties,
+                    name=req_data.name,
+                    parameters=req_data.parameters,
+                    properties=req_data.properties,
                 ),
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
@@ -426,10 +462,9 @@ class TriggerSubscriptionUpdateApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, subscription_id: str):
+    @model_validate(TriggerSubscriptionBuilderUpdatePayload)
+    def post(self, req_data: TriggerSubscriptionBuilderUpdatePayload, tenant_id: str, subscription_id: str):
         """Update a subscription instance"""
-
-        request = TriggerSubscriptionBuilderUpdatePayload.model_validate(console_ns.payload or {})
 
         subscription = TriggerProviderService.get_subscription_by_id(
             tenant_id=tenant_id,
@@ -442,7 +477,9 @@ class TriggerSubscriptionUpdateApi(Resource):
 
         try:
             # For rename only, just update the name
-            rename = request.name is not None and not any((request.credentials, request.parameters, request.properties))
+            rename = req_data.name is not None and not any(
+                (req_data.credentials, req_data.parameters, req_data.properties)
+            )
             # When credential type is UNAUTHORIZED, it indicates the subscription was manually created
             # For Manually created subscription, they dont have credentials, parameters
             # They only have name and properties(which is input by user)
@@ -451,8 +488,8 @@ class TriggerSubscriptionUpdateApi(Resource):
                 TriggerProviderService.update_trigger_subscription(
                     tenant_id=tenant_id,
                     subscription_id=subscription_id,
-                    name=request.name,
-                    properties=request.properties,
+                    name=req_data.name,
+                    properties=req_data.properties,
                 )
                 return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -460,11 +497,11 @@ class TriggerSubscriptionUpdateApi(Resource):
             # we need to call third party provider(e.g. GitHub) to rebuild the subscription
             TriggerProviderService.rebuild_trigger_subscription(
                 tenant_id=tenant_id,
-                name=request.name,
+                name=req_data.name,
                 provider_id=provider_id,
                 subscription_id=subscription_id,
-                credentials=request.credentials or subscription.credentials,
-                parameters=request.parameters or subscription.parameters,
+                credentials=req_data.credentials or subscription.credentials,
+                parameters=req_data.parameters or subscription.parameters,
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
@@ -652,6 +689,7 @@ class TriggerOAuthCallbackApi(Resource):
         # Update subscription builder
         TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
             tenant_id=tenant_id,
+            user_id=user_id,
             provider_id=provider_id,
             subscription_builder_id=subscription_builder_id,
             subscription_builder_updater=SubscriptionBuilderUpdater(
@@ -723,18 +761,17 @@ class TriggerOAuthClientManageApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    @model_validate(TriggerOAuthClientPayload)
+    def post(self, req_data: TriggerOAuthClientPayload, tenant_id: str, provider: str):
         """Configure custom OAuth client for a provider"""
-
-        payload = TriggerOAuthClientPayload.model_validate(console_ns.payload or {})
 
         try:
             provider_id = TriggerProviderID(provider)
             result = TriggerProviderService.save_custom_oauth_client_params(
                 tenant_id=tenant_id,
                 provider_id=provider_id,
-                client_params=payload.client_params,
-                enabled=payload.enabled,
+                client_params=req_data.client_params,
+                enabled=req_data.enabled,
             )
             return dump_response(SimpleResultResponse, result)
 
@@ -788,10 +825,16 @@ class TriggerSubscriptionVerifyApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, user: Account, provider: str, subscription_id: str):
+    @model_validate(TriggerSubscriptionBuilderVerifyPayload)
+    def post(
+        self,
+        req_data: TriggerSubscriptionBuilderVerifyPayload,
+        tenant_id: str,
+        user: Account,
+        provider: str,
+        subscription_id: str,
+    ):
         """Verify credentials for an existing subscription (edit mode only)"""
-
-        verify_request = TriggerSubscriptionBuilderVerifyPayload.model_validate(console_ns.payload or {})
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
@@ -799,7 +842,7 @@ class TriggerSubscriptionVerifyApi(Resource):
                 user_id=user.id,
                 provider_id=TriggerProviderID(provider),
                 subscription_id=subscription_id,
-                credentials=verify_request.credentials,
+                credentials=req_data.credentials,
             )
             return dump_response(TriggerVerificationResponse, result)
         except ValueError as e:

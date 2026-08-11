@@ -227,7 +227,7 @@ const WorkflowPreview = () => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData?.resultText === 'string' && (
                   <Button
-                    className={cn('mb-4 ml-4 space-x-1')}
+                    className={cn('mb-4 ml-4')}
                     onClick={() => {
                       const content = workflowRunningData?.resultText
                       if (typeof content === 'string') copy(content)

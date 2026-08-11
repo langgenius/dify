@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Longitud de fragmentos",
   "embedding.segments": "Párrafos",
   "embedding.textCleaning": "Definición de texto y limpieza previa",
+  "embedding.vectorSpaceEstimateExceeded.description": "Documento recibido, pero el almacenamiento vectorial estimado es de {{estimated}} MB y supera el límite de {{limit}} MB de tu plan, por lo que no se guardó ningún vector. Si se está procesando otro documento o acaba de producirse un error, inténtalo de nuevo más tarde. De lo contrario, reduce el tamaño del archivo o el número de fragmentos.",
+  "embedding.vectorSpaceEstimateExceeded.title": "El almacenamiento vectorial estimado tras la carga supera la capacidad de tu plan",
   "embedding.waiting": "Esperando incrustación...",
   "list.action.addButton": "Agregar fragmento",
   "list.action.archive": "Archivar",

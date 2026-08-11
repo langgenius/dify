@@ -94,24 +94,6 @@ vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: () => <div data-testid="user-avatar-list" />,
 }))
 
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({
-    checked,
-    onCheckedChange,
-  }: {
-    checked: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => (
-    <button
-      type="button"
-      data-testid="show-resolved-switch"
-      onClick={() => onCheckedChange(!checked)}
-    >
-      toggle
-    </button>
-  ),
-}))
-
 describe('CommentsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -152,7 +134,7 @@ describe('CommentsPanel', () => {
     render(<CommentsPanel />)
 
     fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByTestId('show-resolved-switch'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)
   })

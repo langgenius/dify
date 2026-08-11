@@ -4,7 +4,6 @@ import enum
 import logging
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -17,12 +16,10 @@ from services.enterprise.base import (
     MCPNoRefreshTokenError,
     MCPTokenError,
 )
+from services.entities.feature_entities import LicenseStatus
 from services.errors.enterprise import (
     EnterpriseServiceError,
 )
-
-if TYPE_CHECKING:
-    from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -390,8 +387,6 @@ class EnterpriseService:
     @classmethod
     def _read_cached_license_status(cls) -> LicenseStatus | None:
         """Read license status from Redis cache, returning None on miss or failure."""
-        from services.feature_service import LicenseStatus
-
         try:
             raw = redis_client.get(LICENSE_STATUS_CACHE_KEY)
             if raw:
@@ -404,8 +399,6 @@ class EnterpriseService:
     @classmethod
     def _fetch_and_cache_license_status(cls) -> LicenseStatus | None:
         """Fetch license status from enterprise API and cache the result."""
-        from services.feature_service import LicenseStatus
-
         try:
             info = cls.get_info()
             license_info = info.get("License")

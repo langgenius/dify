@@ -71,12 +71,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: any) => <>{children}</>,
-  TooltipContent: ({ children }: any) => <div>{children}</div>,
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
   default: ({ value }: any) => <div>{value}</div>,
 }))

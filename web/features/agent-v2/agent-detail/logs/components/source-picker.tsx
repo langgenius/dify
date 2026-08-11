@@ -132,13 +132,16 @@ export function AgentLogSourcePicker({
                         key={source.id}
                         value={source}
                         className="min-h-7 grid-cols-[1fr] gap-0 px-1 py-1"
-                      >
-                        <ComboboxItemText className="flex min-w-0 items-center gap-2 px-0 system-sm-regular">
-                          <SourceCheckbox checked={value.includes(source.id)} />
-                          <LogSourceIcon source={source} />
-                          <span className="min-w-0 flex-1 truncate">{source.app_name}</span>
-                        </ComboboxItemText>
-                      </ComboboxItem>
+                        render={(props, state) => (
+                          <div {...props} className={props.className}>
+                            <ComboboxItemText className="flex min-w-0 items-center gap-2 px-0 system-sm-regular">
+                              <SourceCheckbox checked={state.selected} />
+                              <LogSourceIcon source={source} />
+                              <span className="min-w-0 flex-1 truncate">{source.app_name}</span>
+                            </ComboboxItemText>
+                          </div>
+                        )}
+                      />
                     )}
                   </ComboboxCollection>
                 </ComboboxGroup>

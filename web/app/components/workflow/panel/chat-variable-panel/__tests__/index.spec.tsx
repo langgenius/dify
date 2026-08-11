@@ -197,7 +197,7 @@ describe('ChatVariablePanel', () => {
 
   it('should toggle the tips area and close the panel', async () => {
     const user = userEvent.setup()
-    const { container } = render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />)
 
     expect(screen.getByText('workflow.chatVariable.panelDescription')).toBeInTheDocument()
 
@@ -205,10 +205,7 @@ describe('ChatVariablePanel', () => {
     await user.click(toggleTipButton)
     expect(screen.queryByText('workflow.chatVariable.panelDescription')).not.toBeInTheDocument()
 
-    const closeButton = container.querySelector(
-      '.flex.size-6.cursor-pointer.items-center.justify-center',
-    ) as HTMLElement
-    await user.click(closeButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetShowChatVariablePanel).toHaveBeenCalledWith(false)
   })

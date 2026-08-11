@@ -1,11 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
 const mockUseExploreAppList = vi.fn()
-const mockImportDSL = vi.fn()
+const mockImportDSL = vi.hoisted(() => vi.fn())
 const mockFetchAppDetail = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
@@ -13,7 +12,6 @@ const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockTrackCreateApp = vi.fn()
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
@@ -151,12 +149,28 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
-vi.mock('@/service/apps', () => ({
-  importDSL: (...args: unknown[]) => mockImportDSL(...args),
-}))
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        imports: {
+          ...actual.consoleQuery.apps.imports,
+          post: {
+            mutationOptions: () => ({
+              mutationFn: ({ body }: { body: Record<string, unknown> }) => mockImportDSL(body),
+            }),
+          },
+        },
+      },
+    },
+  }
+})
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
@@ -227,7 +241,6 @@ describe('Apps', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockUseExploreAppList.mockReturnValue({
       data: defaultData,
@@ -337,8 +350,6 @@ describe('Apps', () => {
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
-    expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).toHaveBeenCalledWith(
       {
         id: 'created-app-id',

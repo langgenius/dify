@@ -354,7 +354,7 @@ class TestGetCachedLicenseStatus:
             assert EnterpriseService.get_cached_license_status() is None
 
     def test_cache_hit_returns_license_status_enum(self):
-        from services.feature_service import LicenseStatus
+        from services.entities.feature_entities import LicenseStatus
 
         with (
             patch(f"{_EE_SVC}.dify_config") as mock_config,
@@ -371,7 +371,7 @@ class TestGetCachedLicenseStatus:
             mock_get_info.assert_not_called()
 
     def test_cache_miss_fetches_api_and_caches_valid_status(self):
-        from services.feature_service import LicenseStatus
+        from services.entities.feature_entities import LicenseStatus
 
         with (
             patch(f"{_EE_SVC}.dify_config") as mock_config,
@@ -390,7 +390,7 @@ class TestGetCachedLicenseStatus:
             )
 
     def test_cache_miss_fetches_api_and_caches_invalid_status_with_short_ttl(self):
-        from services.feature_service import LicenseStatus
+        from services.entities.feature_entities import LicenseStatus
 
         with (
             patch(f"{_EE_SVC}.dify_config") as mock_config,
@@ -409,7 +409,7 @@ class TestGetCachedLicenseStatus:
             )
 
     def test_redis_read_failure_falls_through_to_api(self):
-        from services.feature_service import LicenseStatus
+        from services.entities.feature_entities import LicenseStatus
 
         with (
             patch(f"{_EE_SVC}.dify_config") as mock_config,
@@ -426,7 +426,7 @@ class TestGetCachedLicenseStatus:
             mock_get_info.assert_called_once()
 
     def test_redis_write_failure_still_returns_status(self):
-        from services.feature_service import LicenseStatus
+        from services.entities.feature_entities import LicenseStatus
 
         with (
             patch(f"{_EE_SVC}.dify_config") as mock_config,

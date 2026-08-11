@@ -18,6 +18,7 @@ from controllers.console.datasets.datasets import (
     DatasetApiDeleteApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetCreatePayload,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
@@ -28,13 +29,18 @@ from controllers.console.datasets.datasets import (
     DatasetRelatedAppListApi,
     DatasetRetrievalSettingApi,
     DatasetRetrievalSettingMockApi,
+    DatasetUpdatePayload,
     DatasetUseCheckApi,
+    IndexingEstimatePayload,
+    _get_retrieval_methods_by_vector_type,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, DatasetQuery, Document
@@ -486,7 +492,7 @@ class TestDatasetListApiPost:
             patch.object(type(console_ns), "payload", payload),
             patch.object(DatasetService, "create_empty_dataset", return_value=dataset),
         ):
-            _, status = method(api, MagicMock(), "tenant-1", user)
+            _, status = method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
         assert status == 201
 
     def test_post_forbidden(self, app: Flask):
@@ -496,7 +502,7 @@ class TestDatasetListApiPost:
         user = make_account(TenantAccountRole.NORMAL)
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
 
     def test_post_duplicate_name(self, app: Flask):
         api = DatasetListApi()
@@ -511,14 +517,14 @@ class TestDatasetListApiPost:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, MagicMock(), "tenant-1", user)
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", user)
 
     def test_post_invalid_payload_missing_name(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
         with app.test_request_context("/datasets", json={}), patch.object(type(console_ns), "payload", {}):
             with pytest.raises(ValueError):
-                method(api, MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(), MagicMock(), "tenant-1", make_account())
 
     def test_post_invalid_indexing_technique(self, app: Flask):
         api = DatasetListApi()
@@ -526,7 +532,7 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "indexing_technique": "invalid-tech"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid indexing technique"):
-                method(api, MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
 
     def test_post_invalid_provider(self, app: Flask):
         api = DatasetListApi()
@@ -534,7 +540,7 @@ class TestDatasetListApiPost:
         payload = {"name": "bad", "provider": "unknown"}
         with app.test_request_context("/datasets", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(ValueError, match="Invalid provider"):
-                method(api, MagicMock(), "tenant-1", make_account())
+                method(api, DatasetCreatePayload(**payload), MagicMock(), "tenant-1", make_account())
 
 
 class TestDatasetApiGet:
@@ -689,7 +695,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetService, "update_dataset", return_value=dataset),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=[]),
         ):
-            result, status = method(api, MagicMock(), tenant_id, user, dataset_id)
+            result, status = method(api, DatasetUpdatePayload(), MagicMock(), tenant_id, user, dataset_id)
         assert status == 200
         assert result["partial_member_list"] == []
 
@@ -701,7 +707,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetService, "get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), "tenant-1", make_account(), "missing")
+                method(api, DatasetUpdatePayload(), MagicMock(), "tenant-1", make_account(), "missing")
 
     def test_patch_permission_denied(self, app: Flask):
         api = DatasetApi()
@@ -716,7 +722,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "check_permission", side_effect=Forbidden("no permission")),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant", make_account(), dataset_id)
+                method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
 
     def test_patch_partial_members_update(self, app: Flask):
         api = DatasetApi()
@@ -733,7 +739,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "update_partial_member_list", return_value=None),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["u1", "u2"]),
         ):
-            result, _ = method(api, MagicMock(), "tenant", make_account(), dataset_id)
+            result, _ = method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
         assert result["partial_member_list"] == ["u1", "u2"]
 
     def test_patch_clear_partial_members(self, app: Flask):
@@ -751,7 +757,7 @@ class TestDatasetApiPatch:
             patch.object(DatasetPermissionService, "clear_partial_member_list", return_value=None),
             patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=[]),
         ):
-            result, _ = method(api, MagicMock(), "tenant", make_account(), dataset_id)
+            result, _ = method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
         assert result["partial_member_list"] == []
 
 
@@ -1011,7 +1017,12 @@ class TestDatasetIndexingEstimateApi:
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
             patch("controllers.console.datasets.datasets.IndexingRunner.indexing_estimate", return_value=mock_response),
         ):
-            response, status = method(api, session, "tenant-1")
+            response, status = method(
+                api,
+                IndexingEstimatePayload(**payload),
+                session,
+                "tenant-1",
+            )
         assert status == 200
         assert response == {
             "tokens": 0,
@@ -1033,7 +1044,12 @@ class TestDatasetIndexingEstimateApi:
             patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
         ):
             with pytest.raises(NotFound):
-                method(api, session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(**payload),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_llm_bad_request_error(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1052,7 +1068,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(**payload),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1071,7 +1092,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(**payload),
+                    session,
+                    "tenant-1",
+                )
 
     def test_post_generic_exception(self, app: Flask):
         api = DatasetIndexingEstimateApi()
@@ -1089,7 +1115,12 @@ class TestDatasetIndexingEstimateApi:
             ),
         ):
             with pytest.raises(IndexingEstimateError):
-                method(api, session, "tenant-1")
+                method(
+                    api,
+                    IndexingEstimatePayload(**payload),
+                    session,
+                    "tenant-1",
+                )
 
 
 class TestDatasetRelatedAppListApi:
@@ -1272,18 +1303,20 @@ class TestDatasetApiKeyApi:
     def test_get_api_keys_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.get)
-        mock_key_1 = MagicMock(spec=ApiToken)
-        mock_key_1.id = "key-1"
-        mock_key_1.type = "dataset"
-        mock_key_1.token = "ds-abc"
-        mock_key_1.last_used_at = None
-        mock_key_1.created_at = None
-        mock_key_2 = MagicMock(spec=ApiToken)
-        mock_key_2.id = "key-2"
-        mock_key_2.type = "dataset"
-        mock_key_2.token = "ds-def"
-        mock_key_2.last_used_at = None
-        mock_key_2.created_at = None
+        mock_key_1 = ApiToken(
+            id="key-1",
+            type="dataset",
+            token="ds-abc",
+            last_used_at=None,
+            created_at=None,
+        )
+        mock_key_2 = ApiToken(
+            id="key-2",
+            type="dataset",
+            token="ds-def",
+            last_used_at=None,
+            created_at=None,
+        )
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]
         with app.test_request_context("/"):
@@ -1424,6 +1457,28 @@ class TestDatasetRetrievalSettingApi:
         ):
             response = method(api)
         assert "retrieval_method" in response
+
+    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self):
+        with patch(
+            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
+            False,
+        ):
+            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+
+        assert response["retrieval_method"] == [RetrievalMethod.SEMANTIC_SEARCH.value]
+
+    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self):
+        with patch(
+            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
+            True,
+        ):
+            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+
+        assert response["retrieval_method"] == [
+            RetrievalMethod.SEMANTIC_SEARCH.value,
+            RetrievalMethod.FULL_TEXT_SEARCH.value,
+            RetrievalMethod.HYBRID_SEARCH.value,
+        ]
 
 
 class TestDatasetRetrievalSettingMockApi:

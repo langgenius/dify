@@ -182,7 +182,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               disabled={readonly}
             >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.notConfigured`], { ns: 'workflow' })}
-              <StatusDot status="warning" className="ml-1" />
+              <StatusDot status="warning" />
             </Button>
           )}
         </div>

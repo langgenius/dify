@@ -1,7 +1,10 @@
 'use client'
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  DatePickerProps,
+  TriggerProps,
+} from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
@@ -23,15 +26,19 @@ const today = dayjs()
 const DatePicker: FC<Props> = ({ start, end, onStartChange, onEndChange }) => {
   const locale = useLocale()
 
-  const renderDate = useCallback(
-    ({ value, handleClickTrigger, isOpen }: TriggerProps) => {
+  const renderDate = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
+    (props, _state, { value, handleClickTrigger }: TriggerProps) => {
       return (
         <div
+          {...props}
           className={cn(
-            'flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover',
-            isOpen && 'bg-state-base-hover',
+            'flex h-7 cursor-pointer items-center rounded-lg px-1 system-sm-regular text-components-input-text-filled hover:bg-state-base-hover data-popup-open:bg-state-base-hover',
+            props.className,
           )}
-          onClick={handleClickTrigger}
+          onClick={(event) => {
+            handleClickTrigger(event)
+            props.onClick?.(event)
+          }}
         >
           {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
         </div>

@@ -619,9 +619,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                   size="small"
                   disabled={loading || !value.trim()}
                   onClick={() => handleSubmit()}
-                  className="gap-1"
                 >
-                  {loading && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
+                  {loading && <RiLoader2Line className="size-3.5 animate-spin" />}
                   <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
                   {!loading && <EnterKey className="size-4" />}
                 </Button>

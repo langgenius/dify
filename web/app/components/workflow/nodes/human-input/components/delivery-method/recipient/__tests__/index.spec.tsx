@@ -28,14 +28,6 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
 }))
 
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: { checked: boolean; onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
-      toggle-workspace
-    </button>
-  ),
-}))
-
 vi.mock('../member-selector', () => ({
   __esModule: true,
   default: ({ onSelect }: { onSelect: (id: string) => void }) => (
@@ -116,7 +108,7 @@ describe('Recipient', () => {
     fireEvent.click(screen.getByText('add-email-member'))
     fireEvent.click(screen.getByText('delete-member'))
     fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByText('toggle-workspace'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       whole_workspace: false,

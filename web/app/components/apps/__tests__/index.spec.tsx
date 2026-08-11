@@ -10,7 +10,7 @@ import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
 import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import Apps from '../index'
+import { Apps } from '../index'
 
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
@@ -140,7 +140,7 @@ vi.mock('../list', () => {
     )
   }
 
-  return { default: MockList }
+  return { List: MockList }
 })
 
 vi.mock('../../explore/try-app', () => ({

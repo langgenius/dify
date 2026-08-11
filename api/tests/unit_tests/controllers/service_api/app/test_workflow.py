@@ -582,7 +582,7 @@ class TestWorkflowRunApi:
                 handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
 
     def test_sandbox_billing_does_not_gate_default_workflow_run(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
@@ -598,7 +598,7 @@ class TestWorkflowRunApi:
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             response = handler(
                 api,
-                session=Mock(),
+                session=sqlite_session,
                 app_model=_make_app_model(),
                 end_user=_make_end_user(),
             )
@@ -609,7 +609,9 @@ class TestWorkflowRunApi:
 
 
 class TestWorkflowRunByIdApi:
-    def test_rejects_sandbox_plan_with_upgrade_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_rejects_sandbox_plan_with_upgrade_error(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", True)
 
@@ -626,7 +628,7 @@ class TestWorkflowRunByIdApi:
             with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
                 handler(
                     api,
-                    session=Mock(),
+                    session=sqlite_session,
                     app_model=app_model,
                     end_user=_make_end_user(),
                     workflow_id="w1",
@@ -660,6 +662,7 @@ class TestWorkflowRunByIdApi:
         billing_config_enabled: bool,
         billing_enabled: bool,
         plan: CloudPlan,
+        sqlite_session: Session,
     ) -> None:
         workflow_module = sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(workflow_module.dify_config, "BILLING_ENABLED", billing_config_enabled)
@@ -676,7 +679,7 @@ class TestWorkflowRunByIdApi:
         with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
             response = handler(
                 api,
-                session=Mock(),
+                session=sqlite_session,
                 app_model=app_model,
                 end_user=_make_end_user(),
                 workflow_id="w1",

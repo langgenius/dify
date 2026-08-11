@@ -7,8 +7,6 @@ import WorkflowToolConfigureButton from '../configure-button'
 import { WorkflowToolDrawer } from '../index'
 import MethodSelector from '../method-selector'
 
-vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
-
 // Mock Next.js navigation
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -1316,11 +1314,11 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('popover-trigger'))
+      await user.click(screen.getByRole('button'))
 
       // Assert
       // Assert
-      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
     })
 
     it('should call onChange with llm when parameter option clicked', async () => {
@@ -1334,7 +1332,7 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('popover-trigger'))
+      await user.click(screen.getByRole('button'))
 
       const paramOption = screen.getAllByText('tools.createTool.toolInput.methodParameter')[0]
       await user.click(paramOption!)
@@ -1354,7 +1352,7 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('popover-trigger'))
+      await user.click(screen.getByRole('button'))
 
       const settingOption = screen.getByText('tools.createTool.toolInput.methodSetting')
       await user.click(settingOption)
@@ -1373,51 +1371,17 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
+      const trigger = screen.getByRole('button')
 
       // First click - open
-      await user.click(screen.getByTestId('popover-trigger'))
-      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
+      await user.click(trigger)
+      expect(screen.getByText('tools.createTool.toolInput.methodParameterTip')).toBeInTheDocument()
 
       // Second click - close
-      await user.click(screen.getByTestId('popover-trigger'))
-      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
-    })
-  })
-
-  // Props Tests (REQUIRED)
-  describe('Props', () => {
-    it('should show check icon for selected llm value', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const props = {
-        value: 'llm',
-        onChange: vi.fn(),
-      }
-
-      // Act
-      render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('popover-trigger'))
-
-      // Assert - the first option (llm) should have a check icon container
-      const content = screen.getByTestId('popover-content')
-      expect(content)!.toBeInTheDocument()
-    })
-
-    it('should show check icon for selected form value', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const props = {
-        value: 'form',
-        onChange: vi.fn(),
-      }
-
-      // Act
-      render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('popover-trigger'))
-
-      // Assert
-      const content = screen.getByTestId('popover-content')
-      expect(content)!.toBeInTheDocument()
+      await user.click(trigger)
+      expect(
+        screen.queryByText('tools.createTool.toolInput.methodParameterTip'),
+      ).not.toBeInTheDocument()
     })
   })
 

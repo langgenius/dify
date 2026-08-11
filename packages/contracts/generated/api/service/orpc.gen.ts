@@ -68,7 +68,10 @@ import {
   zGetFilesByFileIdPreviewPath,
   zGetFilesByFileIdPreviewQuery,
   zGetFilesByFileIdPreviewResponse,
+  zGetFormHumanInputByFormToken2Path,
+  zGetFormHumanInputByFormToken2Response,
   zGetFormHumanInputByFormTokenPath,
+  zGetFormHumanInputByFormTokenQuery,
   zGetFormHumanInputByFormTokenResponse,
   zGetInfoResponse,
   zGetMessagesByMessageIdSuggestedPath,
@@ -194,6 +197,9 @@ import {
   zPostDatasetsTagsUnbindingResponse,
   zPostFilesUploadBody,
   zPostFilesUploadResponse,
+  zPostFormHumanInputByFormToken2Body,
+  zPostFormHumanInputByFormToken2Path,
+  zPostFormHumanInputByFormToken2Response,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
@@ -2069,12 +2075,44 @@ export const files = {
   byFileId,
 }
 
+export const get23 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputByFormToken',
+    path: '/form/human-input/{form_token}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetFormHumanInputByFormTokenPath,
+      query: zGetFormHumanInputByFormTokenQuery,
+    }),
+  )
+  .output(zGetFormHumanInputByFormTokenResponse)
+
+export const post34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormToken',
+    path: '/form/human-input/{form_token}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputByFormTokenResponse)
+
 /**
  * Get Human Input Form
  *
  * Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     description:
       "Retrieve a paused Human Input form's contents using the `form_token` from a `human_input_required` event. Requires **WebApp** delivery.",
@@ -2085,15 +2123,15 @@ export const get23 = oc
     summary: 'Get Human Input Form',
     tags: ['Human Input'],
   })
-  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
-  .output(zGetFormHumanInputByFormTokenResponse)
+  .input(z.object({ params: zGetFormHumanInputByFormToken2Path }))
+  .output(zGetFormHumanInputByFormToken2Response)
 
 /**
  * Submit Human Input Form
  *
  * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
-export const post34 = oc
+export const post35 = oc
   .route({
     description:
       "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
@@ -2106,15 +2144,15 @@ export const post34 = oc
   })
   .input(
     z.object({
-      body: zPostFormHumanInputByFormTokenBody,
-      params: zPostFormHumanInputByFormTokenPath,
+      body: zPostFormHumanInputByFormToken2Body,
+      params: zPostFormHumanInputByFormToken2Path,
     }),
   )
-  .output(zPostFormHumanInputByFormTokenResponse)
+  .output(zPostFormHumanInputByFormToken2Response)
 
 export const byFormToken = {
-  get: get23,
-  post: post34,
+  get: get24,
+  post: post35,
 }
 
 export const humanInput = {
@@ -2130,7 +2168,7 @@ export const form = {
  *
  * Retrieve basic information about this application, including name, description, tags, and mode.
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     description:
       'Retrieve basic information about this application, including name, description, tags, and mode.',
@@ -2144,7 +2182,7 @@ export const get24 = oc
   .output(zGetInfoResponse)
 
 export const info = {
-  get: get24,
+  get: get25,
 }
 
 /**
@@ -2152,7 +2190,7 @@ export const info = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post35 = oc
+export const post36 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -2172,7 +2210,7 @@ export const post35 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post35,
+  post: post36,
 }
 
 /**
@@ -2180,7 +2218,7 @@ export const feedbacks2 = {
  *
  * Get next questions suggestions for the current message.
  */
-export const get25 = oc
+export const get26 = oc
   .route({
     description: 'Get next questions suggestions for the current message.',
     inputStructure: 'detailed',
@@ -2199,7 +2237,7 @@ export const get25 = oc
   .output(zGetMessagesByMessageIdSuggestedResponse)
 
 export const suggested = {
-  get: get25,
+  get: get26,
 }
 
 export const byMessageId = {
@@ -2212,7 +2250,7 @@ export const byMessageId = {
  *
  * Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     description:
       'Returns historical chat records in a scrolling load format, with the first page returning the latest `limit` messages, i.e., in reverse order.',
@@ -2227,7 +2265,7 @@ export const get26 = oc
   .output(zGetMessagesResponse)
 
 export const messages = {
-  get: get26,
+  get: get27,
   byMessageId,
 }
 
@@ -2236,7 +2274,7 @@ export const messages = {
  *
  * Retrieve metadata about this application, including tool icons and other configuration details.
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     description:
       'Retrieve metadata about this application, including tool icons and other configuration details.',
@@ -2250,7 +2288,7 @@ export const get27 = oc
   .output(zGetMetaResponse)
 
 export const meta = {
-  get: get27,
+  get: get28,
 }
 
 /**
@@ -2258,7 +2296,7 @@ export const meta = {
  *
  * Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.
  */
-export const get28 = oc
+export const get29 = oc
   .route({
     description:
       "Retrieve the application's input form configuration, including feature switches, input parameter names, types, and default values.",
@@ -2272,7 +2310,7 @@ export const get28 = oc
   .output(zGetParametersResponse)
 
 export const parameters = {
-  get: get28,
+  get: get29,
 }
 
 /**
@@ -2280,7 +2318,7 @@ export const parameters = {
  *
  * Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.
  */
-export const get29 = oc
+export const get30 = oc
   .route({
     description:
       'Retrieve the WebApp settings of this application, including site configuration, theme, and customization options.',
@@ -2294,7 +2332,7 @@ export const get29 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get29,
+  get: get30,
 }
 
 /**
@@ -2302,7 +2340,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -2316,7 +2354,7 @@ export const post36 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post36,
+  post: post37,
 }
 
 /**
@@ -2324,7 +2362,7 @@ export const textToAudio = {
  *
  * Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
  */
-export const get30 = oc
+export const get31 = oc
   .route({
     description:
       'Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.',
@@ -2341,7 +2379,7 @@ export const get30 = oc
   .output(zGetWorkflowByTaskIdEventsResponse)
 
 export const events = {
-  get: get30,
+  get: get31,
 }
 
 export const byTaskId3 = {
@@ -2357,7 +2395,7 @@ export const workflow = {
  *
  * Retrieve paginated workflow execution logs with filtering options.
  */
-export const get31 = oc
+export const get32 = oc
   .route({
     description: 'Retrieve paginated workflow execution logs with filtering options.',
     inputStructure: 'detailed',
@@ -2371,7 +2409,7 @@ export const get31 = oc
   .output(zGetWorkflowsLogsResponse)
 
 export const logs = {
-  get: get31,
+  get: get32,
 }
 
 /**
@@ -2379,7 +2417,7 @@ export const logs = {
  *
  * Retrieve the current execution results of a workflow task based on the workflow execution ID.
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description:
       'Retrieve the current execution results of a workflow task based on the workflow execution ID.',
@@ -2394,7 +2432,7 @@ export const get32 = oc
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
 
 export const byWorkflowRunId = {
-  get: get32,
+  get: get33,
 }
 
 /**
@@ -2402,7 +2440,7 @@ export const byWorkflowRunId = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post37 = oc
+export const post38 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -2416,7 +2454,7 @@ export const post37 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
-  post: post37,
+  post: post38,
   byWorkflowRunId,
 }
 
@@ -2425,7 +2463,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -2444,7 +2482,7 @@ export const post38 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post38,
+  post: post39,
 }
 
 export const byTaskId4 = {
@@ -2460,7 +2498,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post39 = oc
+export const post40 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -2480,7 +2518,7 @@ export const post39 = oc
   .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
-  post: post39,
+  post: post40,
 }
 
 export const byWorkflowId = {
@@ -2499,7 +2537,7 @@ export const workflows = {
  *
  * Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     description:
       'Retrieve the list of available models by type. Primarily used to query `text-embedding` and `rerank` models for knowledge base configuration.',
@@ -2514,7 +2552,7 @@ export const get33 = oc
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
-  get: get33,
+  get: get34,
 }
 
 export const modelTypes = {

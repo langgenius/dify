@@ -17,7 +17,25 @@ const mockUpdateAppSiteStatus = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteConfig = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteAccessToken = vi.hoisted(() => vi.fn())
 const mockFetchAppDetail = vi.hoisted(() => vi.fn())
-const mockSetQueryData = vi.hoisted(() => vi.fn())
+const mockInvalidateQueries = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      get: { key: () => ['console', 'apps', 'get'] },
+      starred: { get: { key: () => ['console', 'apps', 'starred', 'get'] } },
+      recent: { get: { key: () => ['console', 'apps', 'recent', 'get'] } },
+    },
+  },
+}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof mockAppState) => T): T => selector(mockAppState),
@@ -33,17 +51,6 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteConfig: (...args: unknown[]) => mockUpdateAppSiteConfig(...args),
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQueryClient: () => ({
-      setQueryData: mockSetQueryData,
-    }),
-  }
-})
 
 vi.mock('@/context/account-state', async () => {
   const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
@@ -188,16 +195,19 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteAccessToken).toHaveBeenCalledWith({
         url: '/apps/app-1/site/access-token-reset',
       })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'starred', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'recent', 'get'],
+      })
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalled()
       })
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ['apps', 'detail', 'app-1'],
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
       expect(mockAppState.setAppDetail).toHaveBeenCalledWith(
         expect.objectContaining({
           site: expect.objectContaining({ title: 'Saved site title' }),

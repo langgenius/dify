@@ -121,6 +121,9 @@ class DocumentStatusResponse(ResponseModel):
     completed_at: int | None
     paused_at: int | None
     error: str | None
+    error_code: str | None = None
+    estimated_vector_space_mb: int | None = None
+    vector_space_limit_mb: int | None = None
     stopped_at: int | None
     completed_segments: int | None = None
     total_segments: int | None = None

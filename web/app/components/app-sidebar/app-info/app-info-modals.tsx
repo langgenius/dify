@@ -64,6 +64,7 @@ const AppInfoModals = ({
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [isSecretExporting, setIsSecretExporting] = useState(false)
+  const confirmDeleteInputId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
     secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
@@ -95,13 +96,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal
-          inAppDetail
-          show
-          appDetail={appDetail}
-          onClose={closeModal}
-          onSuccess={closeModal}
-        />
+        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -153,7 +148,10 @@ const AppInfoModals = ({
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <div className="mt-2">
-                <label className="mb-1 block system-sm-regular text-text-secondary">
+                <label
+                  htmlFor={confirmDeleteInputId}
+                  className="mb-1 block system-sm-regular text-text-secondary"
+                >
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -167,6 +165,7 @@ const AppInfoModals = ({
                 </label>
                 <div className="relative">
                   <Input
+                    id={confirmDeleteInputId}
                     type="text"
                     autoComplete="off"
                     spellCheck={false}

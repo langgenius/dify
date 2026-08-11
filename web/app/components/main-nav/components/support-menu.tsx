@@ -16,11 +16,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
-type SupportMenuProps = {
-  onContactUsClick?: () => void
-}
-
-export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
+export default function SupportMenu() {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -46,7 +42,6 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             setShowPricingModal()
-            onContactUsClick?.()
           }}
         >
           <MenuItemContent
@@ -72,7 +67,6 @@ export default function SupportMenu({ onContactUsClick }: SupportMenuProps) {
           className="mx-0 h-8 gap-1 px-3 py-1"
           onClick={() => {
             openZendeskWindow(deploymentEdition)
-            onContactUsClick?.()
           }}
         >
           <MenuItemContent

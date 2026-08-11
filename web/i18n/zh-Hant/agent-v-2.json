@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "像使用者一樣測試它。你的互動不會影響 Agent 後續的行為。",
   "agentDetail.configure.rightPanel.previewTipTitle": "預覽你的 Agent",
   "agentDetail.configure.skills.add": "新增 Skill",
-  "agentDetail.configure.skills.detail.contentRegion": "Skill 詳情內容",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} 個檔案",
   "agentDetail.configure.skills.detail.files": "檔案",
   "agentDetail.configure.skills.empty.description": "Skill 為 Agent 提供工作時可呼叫的可複用專業能力",

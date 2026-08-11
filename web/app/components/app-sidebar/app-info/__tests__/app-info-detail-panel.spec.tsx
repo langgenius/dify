@@ -58,32 +58,6 @@ vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view',
   default: ({ appId }: { appId: string }) => <div data-testid="card-view" data-app-id={appId} />,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    className,
-    size,
-    variant,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    className?: string
-    size?: string
-    variant?: string
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={className}
-      data-size={size}
-      data-variant={variant}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('../app-operations', () => ({
   default: ({
     primaryOperations,

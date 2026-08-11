@@ -78,7 +78,7 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
           render={
             <ActionButton
               size="l"
-              className={open ? 'bg-state-base-hover' : ''}
+              className="data-popup-open:bg-state-base-hover"
               aria-label={t(($) => $['operation.moreActions'], { ns: 'common' })}
             />
           }

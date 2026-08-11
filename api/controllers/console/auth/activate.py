@@ -9,6 +9,7 @@ from controllers.common.schema import query_params_from_model, register_schema_m
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.wraps import model_validate
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
@@ -86,14 +87,14 @@ class ActivateCheckApi(Resource):
         "Success",
         console_ns.models[ActivationCheckResponse.__name__],
     )
-    def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ActivateCheckQuery)
+    def get(self, req_data: ActivateCheckQuery):
 
-        workspaceId = args.workspace_id
-        token = args.token
+        workspaceId = req_data.workspace_id
+        token = req_data.token
 
         invitation = RegisterService.get_invitation_with_case_fallback(
-            workspaceId, args.email, token, session=db.session()
+            workspaceId, req_data.email, token, session=db.session()
         )
         if invitation:
             data = invitation.get("data", {})
@@ -138,18 +139,18 @@ class ActivateApi(Resource):
         console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
-    def post(self):
+    @model_validate(ActivatePayload)
+    def post(self, req_data: ActivatePayload):
         """Accept an invitation without letting an existing session act for another account.
 
         Token-only activation remains available for legacy clients. When the request already
         carries a console session, that session must belong to the account encoded in the
         invitation before the token is consumed or tenant membership is changed.
         """
-        args = ActivatePayload.model_validate(console_ns.payload)
 
-        normalized_request_email = args.email.lower() if args.email else None
+        normalized_request_email = req_data.email.lower() if req_data.email else None
         invitation = RegisterService.get_invitation_with_case_fallback(
-            args.workspace_id, args.email, args.token, session=db.session()
+            req_data.workspace_id, req_data.email, req_data.token, session=db.session()
         )
         if invitation is None:
             raise AlreadyActivateError()
@@ -185,11 +186,11 @@ class ActivateApi(Resource):
 
         setup_fields: tuple[str, str, str] | None = None
         if requires_setup:
-            if not args.name or not args.interface_language or not args.timezone:
+            if not req_data.name or not req_data.interface_language or not req_data.timezone:
                 raise AlreadyActivateError()
-            setup_fields = (args.name, args.interface_language, args.timezone)
+            setup_fields = (req_data.name, req_data.interface_language, req_data.timezone)
 
-        RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
+        RegisterService.revoke_token(req_data.workspace_id, normalized_request_email, req_data.token)
 
         if membership_id is None:
             TenantService.create_tenant_member(tenant, account, db.session(), role=role)

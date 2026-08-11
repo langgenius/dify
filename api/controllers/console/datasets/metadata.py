@@ -14,6 +14,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -59,9 +60,15 @@ class DatasetMetadataCreateApi(Resource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
-        metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
-
+    @model_validate(MetadataArgs)
+    def post(
+        self,
+        req_data: MetadataArgs,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
@@ -69,7 +76,7 @@ class DatasetMetadataCreateApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
         metadata = MetadataService.create_metadata(
-            dataset_id_str, metadata_args, current_user, current_tenant_id, session=session
+            dataset_id_str, req_data, current_user, current_tenant_id, session=session
         )
         return dump_response(DatasetMetadataResponse, metadata), 201
 
@@ -103,16 +110,17 @@ class DatasetMetadataApi(Resource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
+    @model_validate(MetadataUpdatePayload)
     def patch(
         self,
+        req_data: MetadataUpdatePayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
         dataset_id: UUID,
         metadata_id: UUID,
     ):
-        payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
-        name = payload.name
+        name = req_data.name
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -203,16 +211,15 @@ class DocumentMetadataEditApi(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID):
+    @model_validate(MetadataOperationData)
+    def post(self, req_data: MetadataOperationData, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, session)
 
-        metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})
-
-        MetadataService.update_documents_metadata(dataset, metadata_args, current_user, session=session)
+        MetadataService.update_documents_metadata(dataset, req_data, current_user, session=session)
 
         # Frontend callers only await success and invalidate caches; no response body is consumed.
         return "", 204

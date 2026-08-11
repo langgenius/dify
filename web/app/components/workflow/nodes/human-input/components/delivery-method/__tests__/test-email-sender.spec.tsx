@@ -19,7 +19,8 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { render } from '@/test/console/render'
 import EmailSenderModal from '../test-email-sender'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
   },

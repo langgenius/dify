@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview ejecuta el agente terminado como lo verán tus usuarios, con respuestas claras y funciones de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Previsualiza tu agente",
   "agentDetail.configure.skills.add": "Agregar habilidad",
-  "agentDetail.configure.skills.detail.contentRegion": "Contenido de los detalles de la habilidad",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} ARCHIVOS",
   "agentDetail.configure.skills.detail.files": "Archivos",
   "agentDetail.configure.skills.empty.description": "Las habilidades le dan al agente experiencia reutilizable que puede invocar mientras trabaja",

@@ -8,11 +8,85 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
-from services.app_dsl_service import AppDslService
+from models.workflow import Workflow
+from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
+
+
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
+
+
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    monkeypatch: pytest.MonkeyPatch, model_selector: list[str]
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        "services.app_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = AppDslService._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
 
 
 def test_import_app_rejects_oversized_yaml_content_before_parsing(
@@ -68,6 +142,78 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     assert result.status == ImportStatus.FAILED
     assert "utf-8" in result.error
     assert not unbound_session.in_transaction()
+
+
+def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    service = AppDslService(session=unbound_session)
+    creator = Mock(id="account-1", current_tenant_id="tenant-1")
+
+    pending = service.import_app(
+        account=creator,
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    redis_key = f"app_import_info:{pending.id}"
+    assert pending.status == ImportStatus.PENDING
+    assert redis_key in pending_imports
+    pending_data = PendingData.model_validate_json(pending_imports[redis_key])
+    assert pending_data.tenant_id == "tenant-1"
+    assert pending_data.account_id == "account-1"
+
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
+    monkeypatch.setattr(
+        service,
+        "_create_or_update_app",
+        Mock(return_value=Mock(id="app-1", mode=AppMode.WORKFLOW)),
+    )
+
+    for other_account in (
+        Mock(id="account-1", current_tenant_id="tenant-2"),
+        Mock(id="account-2", current_tenant_id="tenant-1"),
+    ):
+        assert service.confirm_import(import_id=pending.id, account=other_account).status == ImportStatus.FAILED
+
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.COMPLETED
+    assert redis_key not in pending_imports
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "account_id", "expected"),
+    [
+        ("tenant-1", "account-1", True),
+        (None, "account-1", False),
+        ("tenant-1", None, False),
+        ("tenant-2", "account-1", False),
+        ("tenant-1", "account-2", False),
+    ],
+)
+def test_pending_import_owner_access(
+    tenant_id: str | None,
+    account_id: str | None,
+    expected: bool,
+) -> None:
+    pending = PendingData(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        import_mode="yaml-content",
+        yaml_content="",
+    )
+
+    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1") is expected
+
+
+def test_pending_import_owner_access_accepts_legacy_json() -> None:
+    pending = PendingData.model_validate_json('{"import_mode":"yaml-content","yaml_content":""}')
+
+    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1")
+    assert not pending.is_accessible_by(tenant_id=None, account_id="account-1")
 
 
 def test_create_or_update_app_loads_existing_model_config_with_service_session(

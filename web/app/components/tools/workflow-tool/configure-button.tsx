@@ -76,7 +76,7 @@ const WorkflowToolConfigureButton = ({
               <div className="flex justify-between gap-x-2">
                 <Button size="small" className="w-35" onClick={onConfigure} disabled={disabled}>
                   {t(($) => $['common.configure'], { ns: 'workflow' })}
-                  {outdated && <StatusDot className="ml-1" status="warning" />}
+                  {outdated && <StatusDot status="warning" />}
                 </Button>
                 <Button
                   size="small"
@@ -85,7 +85,7 @@ const WorkflowToolConfigureButton = ({
                   disabled={disabled}
                 >
                   {t(($) => $['common.manageInTools'], { ns: 'workflow' })}
-                  <span className="ml-1 i-ri-arrow-right-up-line size-4" />
+                  <span className="i-ri-arrow-right-up-line size-4" />
                 </Button>
               </div>
               {outdated && (

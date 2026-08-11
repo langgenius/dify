@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview chạy agent hoàn chỉnh theo cách người dùng sẽ thấy, với câu trả lời rõ ràng và các tính năng chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Xem trước agent",
   "agentDetail.configure.skills.add": "Thêm kỹ năng",
-  "agentDetail.configure.skills.detail.contentRegion": "Nội dung chi tiết kỹ năng",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} TỆP",
   "agentDetail.configure.skills.detail.files": "Tệp",
   "agentDetail.configure.skills.empty.description": "Kỹ năng mang đến cho tác nhân chuyên môn có thể tái sử dụng mà nó có thể gọi khi làm việc",

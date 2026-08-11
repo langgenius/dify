@@ -152,7 +152,7 @@ describe('MCPServiceCard', () => {
       expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
-    it('should keep status visible and disable management controls without mcp.manage', () => {
+    it('should keep status visible and disable management controls without app edit permission', () => {
       mockHookState = createDefaultHookState({
         canManageMCP: false,
         toggleDisabled: true,

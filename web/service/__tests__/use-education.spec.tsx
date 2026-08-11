@@ -1,14 +1,18 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
-import { useEducationVerify } from '../use-education'
+import { useEducationAutocomplete, useEducationVerify } from '../use-education'
 
+const mockAutocompleteEducation = vi.hoisted(() => vi.fn())
 const mockVerifyEducation = vi.hoisted(() => vi.fn())
 
 vi.mock('../client', () => ({
   consoleClient: {
     account: {
       education: {
+        autocomplete: {
+          get: mockAutocompleteEducation,
+        },
         verify: {
           get: mockVerifyEducation,
         },
@@ -29,6 +33,29 @@ const createWrapper = () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
+
+describe('useEducationAutocomplete', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('normalizes an empty generated response for the search UI', async () => {
+    mockAutocompleteEducation.mockResolvedValue({})
+    const { result } = renderHook(() => useEducationAutocomplete(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await expect(result.current.mutateAsync({ keywords: 'Dify' })).resolves.toEqual({
+        curr_page: 0,
+        data: [],
+        has_next: false,
+      })
+    })
+
+    expect(mockAutocompleteEducation).toHaveBeenCalledWith({
+      query: { keywords: 'Dify', limit: 40, page: 0 },
+    })
+  })
+})
 
 describe('useEducationVerify', () => {
   beforeEach(() => {

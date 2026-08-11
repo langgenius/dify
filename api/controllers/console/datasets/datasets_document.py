@@ -21,7 +21,7 @@ from controllers.common.fields import SimpleResultMessageResponse, SimpleResultR
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import (
     LLMBadRequestError,
@@ -60,6 +60,7 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
+from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 from ..app.error import (
@@ -935,6 +936,7 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                 "completed_at": document.completed_at,
                 "paused_at": document.paused_at,
                 "error": document.error,
+                **get_vector_space_admission_error_fields(document.error),
                 "stopped_at": document.stopped_at,
                 "completed_segments": completed_segments,
                 "total_segments": total_segments,
@@ -995,6 +997,7 @@ class DocumentIndexingStatusApi(DocumentResource):
             "completed_at": document.completed_at,
             "paused_at": document.paused_at,
             "error": document.error,
+            **get_vector_space_admission_error_fields(document.error),
             "stopped_at": document.stopped_at,
             "completed_segments": completed_segments,
             "total_segments": total_segments,
@@ -1264,12 +1267,19 @@ class DocumentMetadataApi(DocumentResource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def put(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @model_validate(DocumentMetadataUpdatePayload)
+    def put(
+        self,
+        req_data: DocumentMetadataUpdatePayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
         document = self.get_document(session, dataset_id_str, document_id_str, current_user, current_tenant_id)
-
-        req_data = DocumentMetadataUpdatePayload.model_validate(request.get_json() or {})
 
         doc_type = req_data.doc_type
         doc_metadata = req_data.doc_metadata
@@ -1441,9 +1451,11 @@ class DocumentRetryApi(DocumentResource):
         retry_documents = []
         if not dataset:
             raise NotFound("Dataset not found.")
+        documents = DocumentService.get_documents_by_ids(dataset.id, payload.document_ids, session)
+        documents_by_id = {document.id: document for document in documents}
         for document_id in payload.document_ids:
             try:
-                document = DocumentService.get_document(dataset.id, document_id, session=session)
+                document = documents_by_id.get(document_id)
 
                 # 404 if document not found
                 if document is None:

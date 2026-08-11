@@ -53,11 +53,6 @@ vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
 }))
 
-vi.mock('@/service/use-education', () => ({
-  useEducationAdd: () => ({ isPending: false, mutateAsync: mockEducationAdd }),
-  useInvalidateEducationStatus: () => vi.fn(),
-}))
-
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: vi.fn() }),
 }))
@@ -75,6 +70,20 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    account: {
+      education: {
+        get: {
+          key: () => ['account', 'education'],
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: ['account', 'education'],
+            ...options,
+          }),
+        },
+        post: {
+          mutationOptions: () => ({ mutationFn: mockEducationAdd }),
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
@@ -103,7 +112,6 @@ vi.mock('@/service/client', () => ({
 const setupContext = (isCurrentWorkspaceManager: boolean) => {
   mockProviderContext = {
     plan: { type: Plan.sandbox },
-    isEducationAccount: true,
     onPlanInfoChanged: vi.fn(),
   }
   mockConsoleState = {
@@ -118,7 +126,10 @@ const setupContext = (isCurrentWorkspaceManager: boolean) => {
 }
 
 const renderPage = () => {
-  const { wrapper } = createConsoleQueryWrapper({ workspacePermissionKeys: null })
+  const { wrapper } = createConsoleQueryWrapper({
+    educationStatus: { is_student: true },
+    workspacePermissionKeys: null,
+  })
   return render(<EducationApplyPage />, {
     wrapper,
   })

@@ -1,7 +1,8 @@
 import pytest
 
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, LicenseModel, LicenseStatus
+from services.entities.feature_entities import LicenseModel, LicenseStatus
+from services.feature_service import FeatureService
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 

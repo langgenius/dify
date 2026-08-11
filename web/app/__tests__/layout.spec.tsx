@@ -7,8 +7,13 @@ const mocks = vi.hoisted(() => ({
   requestHeaders: new Headers(),
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => queryClient,
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeaturesQueryClient: () => queryClient,
+  systemFeaturesServerQueryOptions: () => ({
+    queryKey: ['console', 'system-features'],
+    queryFn: mocks.getSystemFeatures,
+    retry: false,
+  }),
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -19,20 +24,6 @@ vi.mock('@/env', async (importOriginal) => {
     getDatasetMap: () => ({}),
   }
 })
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: () => ({
-          queryKey: ['console', 'system-features'],
-          queryFn: mocks.getSystemFeatures,
-          retry: false,
-        }),
-      },
-    },
-  },
-}))
 
 vi.mock('@/i18n-config/server', () => ({
   getLocaleOnServer: async () => 'en-US',

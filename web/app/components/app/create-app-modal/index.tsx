@@ -2,28 +2,21 @@
 
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconSelection } from '../../base/app-icon-picker'
+import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
-import {
-  BubbleTextMod,
-  ChatBot,
-  ListSparkle,
-  Logic,
-} from '@/app/components/base/icons/src/vender/solid/communication'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -31,8 +24,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
-import { createApp } from '@/service/apps'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -82,11 +74,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const invalidateAppList = useInvalidateAppList()
-
-  const isCreatingRef = useRef(false)
-
-  const setNeedRefresh = useSetNeedRefreshAppList()
+  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const creatingRef = useRef(false)
+  const [isCreating, setIsCreating] = useState(false)
 
   const onCreate = useCallback(async () => {
     if (!canCreateApp) return
@@ -95,24 +85,32 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       toast.error(t(($) => $['newApp.appTypeRequired'], { ns: 'app' }))
       return
     }
+    const appModeResult = zPostAppsBody.shape.mode.safeParse(appMode)
+    if (!appModeResult.success) {
+      toast.error(t(($) => $['newApp.appTypeRequired'], { ns: 'app' }))
+      return
+    }
     if (!name.trim()) {
       toast.error(t(($) => $['newApp.nameNotEmpty'], { ns: 'app' }))
       return
     }
-    if (isCreatingRef.current) return
-    isCreatingRef.current = true
+    if (creatingRef.current) return
+    creatingRef.current = true
+    setIsCreating(true)
     try {
       const app = await createApp({
-        name,
-        description,
-        icon_type: appIcon.type,
-        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
-        mode: appMode,
+        body: {
+          name,
+          description,
+          icon_type: appIcon.type,
+          icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+          icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+          mode: appModeResult.data,
+        },
       })
 
       try {
-        await trackCreateApp({ source: 'studio_blank', appMode: app.mode })
+        await trackCreateApp({ source: 'studio_blank', appMode })
       } catch {
         // Analytics should not turn a successful app creation into a failed flow.
       }
@@ -120,8 +118,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       onSuccess()
       onClose()
-      setNeedRefresh('1')
-      invalidateAppList()
       getRedirection(app, push, {
         currentUserId,
         resourceMaintainer: app.maintainer,
@@ -134,8 +130,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           ? error.message
           : t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
       )
+    } finally {
+      creatingRef.current = false
+      setIsCreating(false)
     }
-    isCreatingRef.current = false
   }, [
     canCreateApp,
     currentUserId,
@@ -149,8 +147,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
     push,
     workspacePermissionKeys,
     isRbacEnabled,
-    setNeedRefresh,
-    invalidateAppList,
+    createApp,
   ])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
@@ -189,7 +186,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     description={t(($) => $['newApp.workflowShortDescription'], { ns: 'app' })}
                     icon={
                       <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
-                        <RiExchange2Fill className="size-4 text-components-avatar-shape-fill-stop-100" />
+                        <span
+                          aria-hidden
+                          className="i-ri-exchange-2-fill size-4 text-components-avatar-shape-fill-stop-100"
+                        />
                       </div>
                     }
                     onClick={() => {
@@ -202,7 +202,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     description={t(($) => $['newApp.advancedShortDescription'], { ns: 'app' })}
                     icon={
                       <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid">
-                        <BubbleTextMod className="size-4 text-components-avatar-shape-fill-stop-100" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-solid-communication-bubble-text-mod size-4 text-components-avatar-shape-fill-stop-100"
+                        />
                       </div>
                     }
                     onClick={() => {
@@ -221,9 +224,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     <span className="system-2xs-medium-uppercase text-text-tertiary">
                       {t(($) => $['newApp.forBeginners'], { ns: 'app' })}
                     </span>
-                    <RiArrowRightSLine
-                      className={`ml-1 size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}
-                      aria-hidden="true"
+                    <span
+                      aria-hidden
+                      className={`ml-1 i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}
                     />
                   </button>
                 </div>
@@ -235,7 +238,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       description={t(($) => $['newApp.chatbotShortDescription'], { ns: 'app' })}
                       icon={
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
-                          <ChatBot className="size-4 text-components-avatar-shape-fill-stop-100" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-chat-bot size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
                       }
                       onClick={() => {
@@ -248,7 +254,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       description={t(($) => $['newApp.agentShortDescription'], { ns: 'app' })}
                       icon={
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid">
-                          <Logic className="size-4 text-components-avatar-shape-fill-stop-100" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-logic size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
                       }
                       onClick={() => {
@@ -261,7 +270,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                       description={t(($) => $['newApp.completionShortDescription'], { ns: 'app' })}
                       icon={
                         <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid">
-                          <ListSparkle className="size-4 text-components-avatar-shape-fill-stop-100" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-solid-communication-list-sparkle size-4 text-components-avatar-shape-fill-stop-100"
+                          />
                         </div>
                       }
                       onClick={() => {
@@ -338,14 +350,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               >
                 <span>{t(($) => $['newApp.noIdeaTip'], { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="size-3.5" aria-hidden="true" />
+                  <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
                 </div>
               </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
                 <Button
                   disabled={!canCreateApp || isAppsFull || !name}
-                  className="gap-1"
+                  loading={isCreating}
                   variant="primary"
                   onClick={handleCreateApp}
                 >

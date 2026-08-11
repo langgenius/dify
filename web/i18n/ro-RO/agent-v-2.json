@@ -203,7 +203,6 @@
   "agentDetail.configure.rightPanel.previewTipBody": "Preview rulează agentul finalizat așa cum îl vor vedea utilizatorii, cu răspunsuri clare și funcții de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Previzualizează agentul",
   "agentDetail.configure.skills.add": "Adaugă abilitate",
-  "agentDetail.configure.skills.detail.contentRegion": "Conținutul detaliilor abilității",
   "agentDetail.configure.skills.detail.fileCount": "{{count}} FIȘIERE",
   "agentDetail.configure.skills.detail.files": "Fișiere",
   "agentDetail.configure.skills.empty.description": "Abilitățile oferă agentului expertiză reutilizabilă pe care o poate apela în timpul lucrului",

@@ -245,7 +245,7 @@ const PermissionSelector = ({
                     <button
                       type="button"
                       aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer touch-manipulation border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer touch-manipulation border-none bg-transparent p-px focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => handleKeywordsChange('')}
                     >
                       <span

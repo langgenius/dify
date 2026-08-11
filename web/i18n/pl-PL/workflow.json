@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "Wzmianka",
   "nodes.agent.task.placeholder": "Opisz, co ma robić ten agent…",
   "nodes.agent.task.tooltip": "Dodatkowy prompt, który pomaga agentowi obsłużyć dokładnie ten węzeł. Użyj /, aby jawnie odwołać się do zmiennych.\nJeśli zostanie poprawnie skonfigurowany, możesz zaufać agentowi, że sam rozwiąże problem.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Nieautoryzowany",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} nie jest autoryzowany",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} nie jest zainstalowany",
   "nodes.agent.toolbox": "skrzynka z narzędziami",
   "nodes.agent.tools": "Narzędzia",

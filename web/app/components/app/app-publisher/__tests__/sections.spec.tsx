@@ -1,6 +1,7 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -85,19 +86,30 @@ describe('app-publisher sections', () => {
     expect(handleRestore).toHaveBeenCalled()
   })
 
-  it('should expose the access control warning when subjects are missing', () => {
+  it('should expose the access control warning and open access settings from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+
     render(
       <PublisherAccessSection
         enabled
         isAppAccessSet={false}
         isLoading={false}
         accessMode={AccessMode.SPECIFIC_GROUPS_MEMBERS}
-        onClick={vi.fn()}
+        onClick={onClick}
       />,
     )
 
     expect(screen.getByText(/(?:^|\.)publishApp\.notSet(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText(/(?:^|\.)publishApp\.notSetDesc(?=$|:)/)).toBeInTheDocument()
+
+    const accessButton = screen.getByRole('button', {
+      name: /accessControlDialog\.accessItems\.specific/,
+    })
+    accessButton.focus()
+    await user.keyboard('{Enter}')
+
+    expect(onClick).toHaveBeenCalledOnce()
   })
 
   it('should render the publish update action when the draft has not been published yet', () => {
