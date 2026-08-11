@@ -27,6 +27,7 @@ import {
 } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
@@ -257,9 +258,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
   const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
+  const hasDocumentDownloadPermission = hasPermission(
+    datasetDefaultPermissionKeys,
+    DatasetACLPermission.DocumentDownload,
+  )
   const permissionPending = workspacePermissionKeysLoading
   const permissionQueryError = Boolean(workspacePermissionKeysError)
   const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
+  const canDownload = hasDocumentDownloadPermission && !permissionPending && !permissionQueryError
   const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
@@ -334,7 +340,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ReadonlyMap<File, KnowledgeFsUploadPhase>
   >(() => new Map())
   const [bulkActionPending, setBulkActionPending] = useState<
-    'disable' | 'reindex' | 'remove' | undefined
+    'disable' | 'download' | 'reindex' | 'remove' | undefined
   >()
   const [pendingDocumentAction, setPendingDocumentAction] = useState<
     { action: DocumentAction; documentId: string } | undefined
@@ -817,6 +823,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         [...selectedDocumentIds].filter((documentId) => availableDocumentIds.has(documentId)),
       ),
     [availableDocumentIds, selectedDocumentIds],
+  )
+  const downloadableSelectedDocumentIds = useMemo(
+    () =>
+      documents.flatMap((document) =>
+        validSelectedDocumentIds.has(document.id) && document.active ? [document.id] : [],
+      ),
+    [documents, validSelectedDocumentIds],
   )
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
@@ -1786,20 +1799,26 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       const missingIds = result.items
         .filter((item) => item.status === 'not_found')
         .flatMap((item) => (item.document_id ? [item.document_id] : []))
-      const queuedCount = result.items.length - missingIds.length
+      const disabledIds = result.items
+        .filter((item) => item.status === 'disabled')
+        .flatMap((item) => (item.document_id ? [item.document_id] : []))
+      const queuedCount = result.items.filter((item) => item.status === 'queued').length
       if (!queuedCount) {
-        setSelectedDocumentIds(new Set())
+        setSelectedDocumentIds(new Set(disabledIds))
         toast.error(
-          t(($) => $['newKnowledge.documentsReindexPartial'], {
-            missing: missingIds.length,
-            queued: 0,
-          }),
+          disabledIds.length
+            ? t(($) => $['newKnowledge.documentsReindexFailed'])
+            : t(($) => $['newKnowledge.documentsReindexPartial'], {
+                missing: missingIds.length,
+                queued: 0,
+              }),
         )
         refreshDocumentsAndTasks()
         return
       }
-      setSelectedDocumentIds(new Set(missingIds))
-      if (missingIds.length)
+      setSelectedDocumentIds(new Set([...missingIds, ...disabledIds]))
+      if (disabledIds.length) toast.warning(t(($) => $['newKnowledge.documentsReindexFailed']))
+      else if (missingIds.length)
         toast.warning(
           t(($) => $['newKnowledge.documentsReindexPartial'], {
             missing: missingIds.length,
@@ -1838,13 +1857,16 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           body: { documentIds: [documentId] },
           params: { control_space_id: knowledgeSpaceId },
         })
-        if (!result.items[0] || result.items[0].status === 'not_found')
+        const item = result.items[0]
+        if (!item || item.status === 'not_found')
           toast.error(
             t(($) => $['newKnowledge.documentsReindexPartial'], {
               missing: 1,
               queued: 0,
             }),
           )
+        else if (item.status === 'disabled')
+          toast.error(t(($) => $['newKnowledge.documentsReindexFailed']))
         else toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
         refreshDocumentsAndTasks()
       } catch (error) {
@@ -1898,6 +1920,39 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
     },
     [canWrite, documents, handleWritePermissionDenied, knowledgeSpaceId, refreshDocuments, t],
+  )
+
+  const handleDownloadDocument = useCallback(
+    async (documentId: string) => {
+      if (!canDownload || documentActionPendingRef.current) return false
+      const currentDocument = documents.find((document) => document.id === documentId)
+      if (!currentDocument?.active) return false
+      documentActionPendingRef.current = true
+      setPendingDocumentAction({ action: 'download', documentId })
+      try {
+        const file =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
+            {
+              params: { control_space_id: knowledgeSpaceId, document_id: documentId },
+            },
+          )
+        downloadBlob({
+          data: file,
+          fileName:
+            typeof File !== 'undefined' && file instanceof File && file.name
+              ? file.name
+              : currentDocument.title,
+        })
+        return true
+      } catch {
+        toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+        return false
+      } finally {
+        documentActionPendingRef.current = false
+        setPendingDocumentAction(undefined)
+      }
+    },
+    [canDownload, documents, knowledgeSpaceId, tCommon],
   )
 
   const handleToggleDocumentAvailability = useCallback(
@@ -1981,6 +2036,32 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     t,
     validSelectedDocumentIds,
   ])
+
+  const handleDownloadDocuments = useCallback(async () => {
+    if (!canDownload || !downloadableSelectedDocumentIds.length || bulkActionPendingRef.current)
+      return
+    bulkActionPendingRef.current = true
+    setBulkActionPending('download')
+    try {
+      const file =
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
+          body: { document_ids: downloadableSelectedDocumentIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      downloadBlob({
+        data: file,
+        fileName:
+          typeof File !== 'undefined' && file instanceof File && file.name
+            ? file.name
+            : 'knowledge-documents.zip',
+      })
+    } catch {
+      toast.error(tCommon(($) => $['actionMsg.downloadUnsuccessfully']))
+    } finally {
+      bulkActionPendingRef.current = false
+      setBulkActionPending(undefined)
+    }
+  }, [canDownload, downloadableSelectedDocumentIds, knowledgeSpaceId, tCommon])
 
   const handleRemoveDocuments = useCallback(async () => {
     if (
@@ -2771,6 +2852,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             activeTaskCount={activeTasks.length}
             allSelected={allFilteredSelected}
             attentionTaskBadge={attentionTaskBadge}
+            canDownload={canDownload}
             canEdit={canWrite}
             canUpload={canUpload}
             completingResults={completingFilteredResults}
@@ -2790,6 +2872,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             onAddDocument={() => openUploadForm()}
             onFilterChange={setFilter}
             onLoadMore={loadMoreResults}
+            onDownloadDocument={handleDownloadDocument}
             onOpenMetadata={() => setMetadataOpen(true)}
             onOpenTasks={() => setTasksOpen(true)}
             onRemoveDocument={handleRemoveDocument}
@@ -2832,8 +2915,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           actionPending={bulkActionPending}
           disabled={selectionDisabled}
           disabledReason={reindexUnavailableReason}
+          downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
           onClear={() => setSelectedDocumentIds(new Set())}
           onDisable={() => void handleDisableDocuments()}
+          onDownload={() => void handleDownloadDocuments()}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null))
               bulkActionsHadFocusRef.current = false

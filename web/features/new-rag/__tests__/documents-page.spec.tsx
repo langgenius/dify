@@ -66,6 +66,9 @@ const removeDocumentMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
 const updateLogicalDocumentMutation = vi.hoisted(() => vi.fn())
 const bulkUpdateLogicalDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentMutation = vi.hoisted(() => vi.fn())
+const downloadDocumentsMutation = vi.hoisted(() => vi.fn())
+const downloadBlobMock = vi.hoisted(() => vi.fn())
 const listLogicalDocuments = vi.hoisted(() => vi.fn())
 const createMetadataField = vi.hoisted(() => vi.fn())
 const renameMetadataField = vi.hoisted(() => vi.fn())
@@ -255,6 +258,7 @@ vi.mock('jotai', async (importOriginal) => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({ ...options, queryKind: 'documents' })),
@@ -355,7 +359,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
                 (item: {
                   documentId?: string
                   document_id?: string
-                  status: 'not_found' | 'queued'
+                  status: 'disabled' | 'not_found' | 'queued'
                 }) => ({
                   ...item,
                   document_id: item.document_id ?? item.documentId ?? null,
@@ -432,9 +436,15 @@ vi.mock('@/service/client', () => ({
           logicalDocuments: {
             get: listLogicalDocuments,
             patch: bulkUpdateLogicalDocumentsMutation,
+            downloadZip: {
+              post: downloadDocumentsMutation,
+            },
             byDocumentId: {
               delete: removeDocumentMutation,
               patch: updateLogicalDocumentMutation,
+              download: {
+                get: downloadDocumentMutation,
+              },
             },
           },
           metadata: {
@@ -712,22 +722,30 @@ describe('DocumentsPage', () => {
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
     sourcesQuery.refetch.mockResolvedValue({ error: null })
-    permissionStateMock.datasetKeys = ['dataset.acl.edit']
+    permissionStateMock.datasetKeys = ['dataset.acl.edit', 'dataset.acl.document_download']
     permissionStateMock.error = null
     permissionStateMock.fetching = false
     permissionStateMock.loading = false
     permissionStateMock.retry.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
     permissionStateMock.refreshAfterDenial.mockResolvedValue({
       data: {
-        dataset: { default_permission_keys: ['dataset.acl.edit'] },
+        dataset: {
+          default_permission_keys: ['dataset.acl.edit', 'dataset.acl.document_download'],
+        },
       },
       error: null,
     })
+    downloadDocumentMutation.mockResolvedValue(new Blob(['document']))
+    downloadDocumentsMutation.mockResolvedValue(
+      new Blob(['documents'], { type: 'application/zip' }),
+    )
     getTaskSnapshot.mockResolvedValue(task({ state: 'succeeded' }))
     cancelMutation.mutateAsync.mockResolvedValue(task({ state: 'canceled' }))
     retryMutation.mutateAsync.mockResolvedValue(task({ state: 'queued' }))
@@ -938,7 +956,7 @@ describe('DocumentsPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ])
-    expect(rowMenuItems[2]).toHaveAttribute('aria-disabled', 'true')
+    expect(rowMenuItems[2]).not.toHaveAttribute('aria-disabled', 'true')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -946,6 +964,26 @@ describe('DocumentsPage', () => {
     )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('downloads the active revision from the document action menu', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'report', title: 'Report.pdf' })] }],
+    }
+    const file = new File(['report'], 'source-report.md', { type: 'text/markdown' })
+    downloadDocumentMutation.mockResolvedValue(file)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
   it('creates a metadata field without scanning or rewriting documents', async () => {
@@ -1218,6 +1256,33 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.documentsReindexStarted',
       ),
     )
+  })
+
+  it('reports a row re-index that loses availability before the request runs', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+    }
+    reindexMutation.mutateAsync.mockResolvedValue({
+      bulkJobId: 'reindex-disabled',
+      items: [{ documentId: 'one', status: 'disabled' }],
+      total: 1,
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.documentActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.reindexDocument',
+      }),
+    )
+
+    expect(toastMock.success).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
   })
 
   it('retries a failed document from its row action', async () => {
@@ -2062,9 +2127,7 @@ describe('DocumentsPage', () => {
     })
 
     expect(stageUploadMutation).toHaveBeenCalledTimes(2)
-    await user.click(
-      screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove · cancel.txt' }))
     expect(canceledSignal?.aborted).toBe(true)
 
     await act(async () => {
@@ -2099,6 +2162,34 @@ describe('DocumentsPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+  })
+
+  it('rejects empty files locally while staging a one-byte file from a mixed selection', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const emptyFile = new File([], 'empty.txt', { type: 'text/plain' })
+    const oneByteFile = new File(['x'], 'one-byte.txt', { type: 'text/plain' })
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), [
+      emptyFile,
+      oneByteFile,
+    ])
+
+    expect(
+      screen.getByText(/dataset\.newKnowledge\.selectedFiles:.*"total":2.*"valid":1/),
+    ).toBeVisible()
+    expect(screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileEmpty')).toBeVisible()
+    await waitFor(() =>
+      expect(stageUploadMutation).toHaveBeenCalledWith(
+        {
+          body: { file: expect.objectContaining({ name: 'one-byte.txt', size: 1 }) },
+        },
+        { signal: expect.any(AbortSignal) },
+      ),
+    )
+    expect(stageUploadMutation).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
   })
 
   it('rejects oversized files before invoking an upload contract', async () => {
@@ -2967,7 +3058,7 @@ describe('DocumentsPage', () => {
     const orderedActions = within(actions).getAllByRole('button')
     expect(orderedActions[0]).toHaveAccessibleName('dataset.newKnowledge.reindexDocuments')
     expect(orderedActions[1]).toHaveAccessibleName('dataset.newKnowledge.downloadDocuments')
-    expect(orderedActions[1]).toBeDisabled()
+    expect(orderedActions[1]).toBeEnabled()
     expect(orderedActions[2]).toHaveAccessibleName('dataset.newKnowledge.disableSource')
     expect(orderedActions[2]).toBeEnabled()
     expect(orderedActions[3]).toHaveAccessibleName('common.operation.remove')
@@ -3009,7 +3100,7 @@ describe('DocumentsPage', () => {
     })
     expect(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     await user.click(
       within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
     )
@@ -3029,6 +3120,43 @@ describe('DocumentsPage', () => {
         screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
       ).not.toBeInTheDocument(),
     )
+  })
+
+  it('downloads selected active revisions as a ZIP archive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', title: 'One.pdf' }),
+            document({ id: 'two', title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+    const archive = new File(['documents'], 'space-1-documents.zip', {
+      type: 'application/zip',
+    })
+    downloadDocumentsMutation.mockResolvedValue(archive)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    await user.click(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'space-1-documents.zip',
+    })
   })
 
   it('confirms removal of selected documents from the designed bulk action', async () => {
@@ -3163,6 +3291,53 @@ describe('DocumentsPage', () => {
     expect(toastMock.warning).toHaveBeenCalledWith(
       'dataset.newKnowledge.documentsReindexPartial:{"missing":1,"queued":1}',
     )
+  })
+
+  it('keeps concurrently disabled documents selected after a partial bulk re-index result', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', title: 'One.pdf' }),
+            document({ id: 'disabled', title: 'Disabled.pdf' }),
+          ],
+        },
+      ],
+    }
+    reindexMutation.mutateAsync.mockResolvedValue({
+      bulkJobId: 'reindex-partial-disabled',
+      items: [
+        {
+          asset: {
+            createdAt: '2026-07-20T10:00:00Z',
+            filename: 'one.pdf',
+            id: 'asset-1',
+            knowledgeSpaceId: 'space-1',
+            mimeType: 'application/pdf',
+            objectKey: 'documents/one.pdf',
+            parserStatus: 'pending',
+            sha256: 'sha',
+            sizeBytes: 1024,
+            version: 1,
+          },
+          compilationJob: { id: 'job-1', stage: 'queued' },
+          status: 'queued',
+          statusUrl: '/tasks/job-1',
+        },
+        { documentId: 'disabled', status: 'disabled' },
+      ],
+      total: 2,
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Disabled.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+
+    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Disabled.pdf' })).toBeChecked()
+    expect(toastMock.warning).toHaveBeenCalledWith('dataset.newKnowledge.documentsReindexFailed')
   })
 
   it('clears stale selection and refreshes after every re-index target is missing', async () => {

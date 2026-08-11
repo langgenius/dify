@@ -129,6 +129,7 @@ export function CreateKnowledgePage() {
   const navigationFallbackRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
   const submissionPending = createMutation.isPending || uploading || stagingCount > 0
+  const validUploads = uploads.filter(({ issue }) => !issue)
   const createErrorMessage = t(($) => $['newKnowledge.createFailed'])
   const normalizedName = name.trim()
   const normalizedDescription = description.trim()
@@ -138,8 +139,8 @@ export function CreateKnowledgePage() {
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable ||
-      !uploads.length ||
-      uploads.some((upload) => upload.issue || upload.stagingFailed || !upload.stagedUploadId))
+      !validUploads.length ||
+      validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
   const sourceSubmissionBlocked = startMode === 'source' && !initialSource
   const sourceDraftChanged =
     JSON.stringify(sourceDraft) !==
@@ -376,7 +377,7 @@ export function CreateKnowledgePage() {
           await waitForKnowledgeSpaceReady(created.control_space_id)
           await uploadKnowledgeFsDocuments(
             created.control_space_id,
-            uploads.map(({ file, id, stagedUploadId }) => ({
+            validUploads.map(({ file, id, stagedUploadId }) => ({
               file,
               id,
               uploadId: stagedUploadId!,

@@ -114,6 +114,8 @@ const DocumentRow = memo(
     document,
     documentHref,
     formatTimeFromNow,
+    canDownload,
+    onDownload,
     onRemove,
     onRename,
     onSelectedChange,
@@ -130,9 +132,11 @@ const DocumentRow = memo(
     status,
     statusPending,
   }: {
+    canDownload: boolean
     document: LogicalDocument
     documentHref: string
     formatTimeFromNow: (time: number) => string
+    onDownload: (documentId: string) => Promise<boolean>
     onRemove: (documentId: string) => Promise<boolean>
     onRename: (documentId: string, title: string) => Promise<boolean>
     onSelectedChange: (documentId: string) => void
@@ -234,9 +238,12 @@ const DocumentRow = memo(
         </td>
         <td className="w-10 align-middle">
           <DocumentActionsDropdown
+            canDownload={canDownload}
             canEdit={!selectionDisabled}
             documentEnabled={document.enabled}
             documentTitle={document.title}
+            downloadDisabled={!document.active}
+            onDownload={() => onDownload(document.id)}
             onRemove={() => onRemove(document.id)}
             onRename={(title) => onRename(document.id, title)}
             onReindex={() => onReindex(document.id)}
@@ -313,6 +320,7 @@ export function DocumentsList({
   activeTaskCount,
   allSelected,
   attentionTaskBadge,
+  canDownload,
   canEdit,
   canUpload,
   completingResults,
@@ -328,6 +336,7 @@ export function DocumentsList({
   onAddDocument,
   onFilterChange,
   onLoadMore,
+  onDownloadDocument,
   onOpenMetadata,
   onOpenTasks,
   onRemoveDocument,
@@ -360,6 +369,7 @@ export function DocumentsList({
   activeTaskCount: number
   allSelected: boolean
   attentionTaskBadge?: string
+  canDownload: boolean
   canEdit: boolean
   canUpload: boolean
   completingResults: boolean
@@ -375,6 +385,7 @@ export function DocumentsList({
   onAddDocument: () => void
   onFilterChange: (filter: DocumentFilter) => void
   onLoadMore: () => void
+  onDownloadDocument: (documentId: string) => Promise<boolean>
   onOpenMetadata: () => void
   onOpenTasks: () => void
   onRemoveDocument: (documentId: string) => Promise<boolean>
@@ -548,9 +559,11 @@ export function DocumentsList({
             {visibleDocuments.map((document) => (
               <DocumentRow
                 key={document.id}
+                canDownload={canDownload}
                 document={document}
                 documentHref={getDocumentHref(document.id)}
                 formatTimeFromNow={formatTimeFromNow}
+                onDownload={onDownloadDocument}
                 onRemove={onRemoveDocument}
                 onRename={onRenameDocument}
                 onSelectedChange={onSelectDocument}
@@ -683,22 +696,26 @@ export function DocumentsList({
 
 export function DocumentBulkActions({
   actionPending,
+  downloadDisabled,
   disabled,
   disabledReason,
   onBlurCapture,
   onClear,
   onDisable,
+  onDownload,
   onFocusCapture,
   onRemove,
   onReindex,
   selectedCount,
 }: {
-  actionPending?: 'disable' | 'reindex' | 'remove'
+  actionPending?: 'disable' | 'download' | 'reindex' | 'remove'
   disabled: boolean
   disabledReason?: string
+  downloadDisabled: boolean
   onBlurCapture: FocusEventHandler<HTMLDivElement>
   onClear: () => void
   onDisable: () => void
+  onDownload: () => void
   onFocusCapture: FocusEventHandler<HTMLDivElement>
   onRemove: () => Promise<boolean>
   onReindex: () => void
@@ -746,10 +763,13 @@ export function DocumentBulkActions({
             </span>
           )}
           <Button
-            aria-describedby="document-download-unavailable"
+            aria-busy={actionPending === 'download'}
+            aria-describedby={downloadDisabled ? 'document-download-unavailable' : undefined}
             className="shrink-0"
-            disabled
+            disabled={downloadDisabled || busy}
+            loading={actionPending === 'download'}
             size="small"
+            onClick={onDownload}
           >
             {t(($) => $['newKnowledge.downloadDocuments'])}
           </Button>

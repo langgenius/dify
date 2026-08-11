@@ -1200,6 +1200,33 @@ class KnowledgeFSDocumentListResponse(ResponseModel):
     next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
+class KnowledgeFSDocumentDownloadDescriptor(ResponseModel):
+    """Trusted, internal description of the active object behind a logical document."""
+
+    document_id: str
+    filename: str
+    mime_type: str
+    object_key: str
+    sha256: str
+    size_bytes: int = Field(ge=0)
+
+
+class KnowledgeFSDocumentBatchDownloadPayload(BaseModel):
+    document_ids: list[str] = Field(min_length=1, max_length=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("document_ids")
+    @classmethod
+    def validate_document_ids(cls, value: list[str]) -> list[str]:
+        normalized = [document_id.strip() for document_id in value]
+        if any(not document_id for document_id in normalized):
+            raise ValueError("document_ids must not contain empty identifiers")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("document_ids must be unique")
+        return normalized
+
+
 class KnowledgeFSDocumentOutlineNodeResponse(ResponseModel):
     child_node_ids: list[str] = Field(
         default_factory=list, validation_alias=AliasChoices("child_node_ids", "childNodeIds")
@@ -1587,7 +1614,7 @@ class KnowledgeFSDocumentReindexItemResponse(ResponseModel):
         default=None, validation_alias=AliasChoices("compilation_job", "compilationJob")
     )
     document_id: str | None = Field(default=None, validation_alias=AliasChoices("document_id", "documentId"))
-    status: Literal["not_found", "queued"]
+    status: Literal["disabled", "not_found", "queued"]
     status_url: str | None = Field(default=None, validation_alias=AliasChoices("status_url", "statusUrl"))
 
 
@@ -2914,12 +2941,14 @@ __all__ = [
     "KnowledgeFSCredentialListResponse",
     "KnowledgeFSCursorQuery",
     "KnowledgeFSDocumentAvailabilityPayload",
+    "KnowledgeFSDocumentBatchDownloadPayload",
     "KnowledgeFSDocumentChunkListQuery",
     "KnowledgeFSDocumentChunkListResponse",
     "KnowledgeFSDocumentChunkResponse",
     "KnowledgeFSDocumentCompilationJobResponse",
     "KnowledgeFSDocumentCreatePayload",
     "KnowledgeFSDocumentDeletePayload",
+    "KnowledgeFSDocumentDownloadDescriptor",
     "KnowledgeFSDocumentListResponse",
     "KnowledgeFSDocumentMetadataPayload",
     "KnowledgeFSDocumentOutlineResponse",

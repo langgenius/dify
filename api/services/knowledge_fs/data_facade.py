@@ -36,6 +36,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentOutlineResponse,
@@ -136,6 +137,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRemotePort,
     KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteBinaryRequest,
     KnowledgeFSRemoteJSONRequest,
     KnowledgeFSRemoteMultipartFile,
@@ -629,6 +631,36 @@ class KnowledgeFSDataFacade:
             path_parameters=(("documentId", document_id),),
         )
         return KnowledgeFSLogicalDocumentResponse.model_validate(raw)
+
+    def prepare_logical_document_download(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
+    ) -> KnowledgeFSDocumentDownloadDescriptor:
+        """Resolve the readable active revision of a logical document to its stored asset."""
+        logical_document = self.get_logical_document(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+        )
+        active = logical_document.active
+        if active is None:
+            raise KnowledgeFSProductResourceNotFoundError("Logical document has no active revision")
+        asset = self.get_document(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            document_id=active.document_asset_id,
+        )
+        if asset.version != active.document_asset_version:
+            raise KnowledgeFSProductResourceNotFoundError("Logical document active asset version is unavailable")
+        return KnowledgeFSDocumentDownloadDescriptor(
+            document_id=logical_document.id,
+            filename=asset.filename,
+            mime_type=asset.mime_type,
+            object_key=asset.object_key,
+            sha256=asset.sha256,
+            size_bytes=asset.size_bytes,
+        )
 
     def update_logical_document_availability(
         self,

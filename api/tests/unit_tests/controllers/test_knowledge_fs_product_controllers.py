@@ -5,19 +5,22 @@ import inspect
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
-from types import SimpleNamespace
+from types import FunctionType, SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import Forbidden, NotFound, RequestEntityTooLarge
 
+from controllers.common import wraps as common_wraps
 from controllers.console import console_ns
 from controllers.console.knowledge_fs import resources as console_resources
+from controllers.console.wraps import RBACPermission, RBACResourceScope
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
@@ -27,11 +30,22 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
     KnowledgeFSRemoteMultipartFile,
     KnowledgeFSRemoteSSEResponse,
 )
 
 _API_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _rbac_wrapper(view: FunctionType) -> FunctionType:
+    current = view
+    while "rbac_permission_required" not in current.__code__.co_qualname:
+        wrapped = getattr(current, "__wrapped__", None)
+        if not isinstance(wrapped, FunctionType):
+            raise AssertionError("RBAC permission wrapper is missing")
+        current = wrapped
+    return current
 
 
 def test_console_and_service_api_routes_are_registered() -> None:
@@ -52,7 +66,9 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/settings",
         "/knowledge-fs/spaces/<string:control_space_id>/documents",
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/download-zip",
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download",
         "/knowledge-fs/spaces/<string:control_space_id>/sources",
         "/knowledge-fs/spaces/<string:control_space_id>/source-connections",
         ("/knowledge-fs/spaces/<string:control_space_id>/source-connections/<string:connection_id>/refresh"),
@@ -119,6 +135,147 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/evidence",
         "/knowledge-fs/spaces/<string:control_space_id>/traces/<string:trace_id>/missing",
     }
+
+
+@pytest.mark.parametrize(
+    ("api_class", "method_name", "path_args"),
+    [
+        (
+            console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi,
+            "get",
+            {"control_space_id": "control-1", "document_id": "document-1"},
+        ),
+        (
+            console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi,
+            "post",
+            {"control_space_id": "control-1"},
+        ),
+    ],
+)
+def test_document_download_routes_deny_callers_without_dataset_download_permission(
+    monkeypatch: pytest.MonkeyPatch,
+    api_class: type,
+    method_name: str,
+    path_args: dict[str, str],
+) -> None:
+    permission_gate = MagicMock(side_effect=Forbidden())
+    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        common_wraps,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr(
+        console_resources,
+        "_console_services",
+        lambda: pytest.fail("permission denial must happen before KnowledgeFS access"),
+    )
+
+    permission_wrapper = _rbac_wrapper(getattr(api_class, method_name))
+    with pytest.raises(Forbidden):
+        permission_wrapper(api_class(), **path_args)
+
+    permission_gate.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        resource_type=RBACResourceScope.DATASET,
+        scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+        path_args=path_args,
+    )
+
+
+def test_single_document_download_allows_dataset_download_permission_and_keeps_tenant_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor = KnowledgeFSDocumentDownloadDescriptor(
+        document_id="document-1",
+        filename="guide.md",
+        mime_type="text/markdown",
+        object_key="namespaces/tenant-1/spaces/space-1/documents/guide.md",
+        sha256="a" * 64,
+        size_bytes=4,
+    )
+    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
+    download_service = SimpleNamespace(load_stream=MagicMock(return_value=iter((b"body",))))
+    permission_gate = MagicMock()
+    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        common_wraps,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
+    permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
+    app = Flask(__name__)
+
+    with app.test_request_context():
+        response = permission_wrapper(
+            console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi(),
+            control_space_id="control-1",
+            document_id="document-1",
+        )
+
+    assert response.get_data() == b"body"
+    assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''guide.md"
+    permission_gate.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        resource_type=RBACResourceScope.DATASET,
+        scene=RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+        path_args={"control_space_id": "control-1", "document_id": "document-1"},
+    )
+    facade.prepare_logical_document_download.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        document_id="document-1",
+    )
+
+
+def test_single_document_download_preserves_resource_not_found_after_permission_allows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    facade = SimpleNamespace(
+        prepare_logical_document_download=MagicMock(
+            side_effect=KnowledgeFSProductResourceNotFoundError("document not found")
+        )
+    )
+    permission_gate = MagicMock()
+    download_service_factory = MagicMock()
+    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        common_wraps,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", download_service_factory)
+    permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
+    app = Flask(__name__)
+
+    with app.test_request_context(), pytest.raises(NotFound):
+        permission_wrapper(
+            console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi(),
+            control_space_id="foreign-control",
+            document_id="document-1",
+        )
+
+    permission_gate.assert_called_once()
+    facade.prepare_logical_document_download.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="foreign-control",
+        document_id="document-1",
+    )
+    download_service_factory.assert_not_called()
 
 
 def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:

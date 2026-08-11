@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import ExitStack
 from datetime import UTC
 from functools import wraps
 from http import HTTPStatus
 from typing import Literal
 from urllib.parse import quote, urlencode
 
-from flask import Response, jsonify, request
+from flask import Response, jsonify, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -30,8 +32,11 @@ from controllers.console.knowledge_fs.error import (
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
+    rbac_permission_required,
     setup_required,
 )
 from core.db.session_factory import session_factory
@@ -48,6 +53,11 @@ from services.knowledge_fs.control_plane_service import (
 )
 from services.knowledge_fs.credential_service import (
     KnowledgeFSCredentialPolicyError,
+)
+from services.knowledge_fs.download_service import (
+    KnowledgeFSDownloadObjectNotFoundError,
+    KnowledgeFSDownloadService,
+    KnowledgeFSDownloadTooLargeError,
 )
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.product_authorization import (
@@ -81,6 +91,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSCredentialListResponse,
     KnowledgeFSCursorQuery,
     KnowledgeFSDocumentAvailabilityPayload,
+    KnowledgeFSDocumentBatchDownloadPayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentChunkListResponse,
     KnowledgeFSDocumentChunkResponse,
@@ -234,6 +245,7 @@ register_schema_models(
     KnowledgeFSCursorQuery,
     KnowledgeFSBulkDocumentAvailabilityPayload,
     KnowledgeFSBulkDocumentDeletePayload,
+    KnowledgeFSDocumentBatchDownloadPayload,
     KnowledgeFSDocumentChunkListQuery,
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentAvailabilityPayload,
@@ -289,6 +301,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    BinaryFileResponse,
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingResponse,
@@ -1263,6 +1276,87 @@ class KnowledgeFSSpaceLogicalDocumentsApi(Resource):
             payload=_payload(KnowledgeFSBulkDocumentAvailabilityPayload),
         )
         return dump_response(KnowledgeFSBulkDocumentAvailabilityResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/download-zip")
+class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSDocumentBatchDownloadPayload.__name__])
+    @console_ns.produces(["application/zip"])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS logical documents ZIP",
+        console_ns.models[BinaryFileResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET,
+        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+    )
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSDocumentBatchDownloadPayload)
+        descriptors = [
+            _console_services().facade.prepare_logical_document_download(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                document_id=document_id,
+            )
+            for document_id in payload.document_ids
+        ]
+        service = KnowledgeFSDownloadService()
+        try:
+            with ExitStack() as stack:
+                zip_path = stack.enter_context(service.build_zip_tempfile(descriptors))
+                response = send_file(
+                    zip_path,
+                    mimetype="application/zip",
+                    as_attachment=True,
+                    download_name="knowledge-documents.zip",
+                )
+                cleanup = stack.pop_all()
+                response.call_on_close(cleanup.close)
+                return response
+        except KnowledgeFSDownloadTooLargeError as exc:
+            raise RequestEntityTooLarge(str(exc)) from exc
+        except KnowledgeFSDownloadObjectNotFoundError as exc:
+            raise NotFound("KnowledgeFS document object not found") from exc
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
+class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
+    @console_ns.produces(["application/octet-stream"])
+    @console_ns.response(HTTPStatus.OK, "KnowledgeFS logical document", console_ns.models[BinaryFileResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET,
+        RBACPermission.DATASET_DOCUMENT_DOWNLOAD,
+        resource_required=False,
+    )
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, document_id: str):
+        actor_id, tenant_id = _actor()
+        descriptor = _console_services().facade.prepare_logical_document_download(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+        )
+        try:
+            body = KnowledgeFSDownloadService().load_stream(descriptor)
+        except KnowledgeFSDownloadObjectNotFoundError as exc:
+            raise NotFound("KnowledgeFS document object not found") from exc
+        response = Response(body, content_type=descriptor.mime_type or "application/octet-stream")
+        response.content_length = descriptor.size_bytes
+        response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(descriptor.filename, safe='')}"
+        response.headers["ETag"] = f'"{descriptor.sha256}"'
+        return response
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>")
