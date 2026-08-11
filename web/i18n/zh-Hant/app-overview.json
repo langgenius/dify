@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "進一步了解觸發器",
   "overview.triggerInfo.noTriggerAdded": "未添加觸發器",
   "overview.triggerInfo.title": "觸發因素",
-  "overview.triggerInfo.triggerStatusDescription": "觸發節點狀態將顯示於此。（可能已存在於草稿中，發布後生效）",
+  "overview.triggerInfo.triggerStatusDescription": "發布包含觸發器的版本後，觸發器會顯示在這裡。",
   "overview.triggerInfo.triggersAdded": "{{count}} 已新增觸發器",
   "welcome.enterKeyTip": "請先在下方輸入你的 OpenAI API Key",
   "welcome.firstStepTip": "開始之前，",

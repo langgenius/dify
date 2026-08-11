@@ -120,7 +120,7 @@
   "overview.triggerInfo.learnAboutTriggers": "ຮຽນຮູ້ເພີ່ມເຕີມກ່ຽວກັບຕົວກະຕຸ້ນ",
   "overview.triggerInfo.noTriggerAdded": "ຍັງບໍ່ມີການເພີ່ມ Trigger",
   "overview.triggerInfo.title": "Triggers",
-  "overview.triggerInfo.triggerStatusDescription": "ສະຖານະຂອງ Trigger Node ຈະປາກົດຢູ່ທີ່ນີ້. (ອາດຈະມີຢູ່ໃນສະບັບຮ່າງແລ້ວ, ເຊິ່ງຈະມີຜົນຫຼັງຈາກການເຜີຍແຜ່)",
+  "overview.triggerInfo.triggerStatusDescription": "Triggers ຈະປາກົດຢູ່ບ່ອນນີ້ຫຼັງຈາກທ່ານເຜີຍແຜ່ເວີຊັນທີ່ມີພວກມັນ.",
   "overview.triggerInfo.triggersAdded": "ເພີ່ມແລ້ວ {{count}} Triggers",
   "welcome.enterKeyTip": "ປ້ອນ OpenAI API Key ຂອງທ່ານຂ້າງລຸ່ມນີ້",
   "welcome.firstStepTip": "ເພື່ອເລີ່ມຕົ້ນ,",

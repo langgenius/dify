@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Află mai multe despre declanșatoare",
   "overview.triggerInfo.noTriggerAdded": "Niciun declanșator adăugat",
   "overview.triggerInfo.title": "Declanșatoare",
-  "overview.triggerInfo.triggerStatusDescription": "Starea nodului declanșator apare aici. (Poate exista deja în draft, devine efectivă după publicare)",
+  "overview.triggerInfo.triggerStatusDescription": "Declanșatoarele apar aici după ce publicați versiunea care le conține.",
   "overview.triggerInfo.triggersAdded": "{{count}} Declanșatoare adăugate",
   "welcome.enterKeyTip": "introduceți cheia API OpenAI mai jos",
   "welcome.firstStepTip": "Pentru a începe,",

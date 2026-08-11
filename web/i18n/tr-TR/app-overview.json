@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Tetikleyiciler hakkında daha fazla bilgi edinin",
   "overview.triggerInfo.noTriggerAdded": "Hiç tetikleyici eklenmedi",
   "overview.triggerInfo.title": "Tetikleyiciler",
-  "overview.triggerInfo.triggerStatusDescription": "Tetikleyici düğüm durumu burada görünür. (Zaten taslakta mevcut olabilir, yayımlandıktan sonra geçerli olur)",
+  "overview.triggerInfo.triggerStatusDescription": "Tetikleyiciler, onları içeren sürümü yayımladıktan sonra burada görünür.",
   "overview.triggerInfo.triggersAdded": "{{count}} Tetikleyiciler eklendi",
   "welcome.enterKeyTip": "aşağıya OpenAI API Anahtarınızı girin",
   "welcome.firstStepTip": "Başlamak için,",

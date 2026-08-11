@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Más información sobre los desencadenantes",
   "overview.triggerInfo.noTriggerAdded": "No se agregó ningún disparador",
   "overview.triggerInfo.title": "Desencadenantes",
-  "overview.triggerInfo.triggerStatusDescription": "El estado del nodo de activación aparece aquí. (Puede que ya exista en el borrador, surte efecto después de publicar)",
+  "overview.triggerInfo.triggerStatusDescription": "Los desencadenantes aparecerán aquí después de que publiques la versión que los contiene.",
   "overview.triggerInfo.triggersAdded": "Se añadieron los disparadores de {{count}}",
   "welcome.enterKeyTip": "ingresa tu clave de API de OpenAI a continuación",
   "welcome.firstStepTip": "Para comenzar,",

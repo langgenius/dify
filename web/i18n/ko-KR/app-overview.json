@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "트리거에 대해 자세히 알아보기",
   "overview.triggerInfo.noTriggerAdded": "트리거가 추가되지 않았습니다",
   "overview.triggerInfo.title": "유발 요인",
-  "overview.triggerInfo.triggerStatusDescription": "트리거 노드 상태가 여기에 표시됩니다. (이미 초안에 존재할 수 있으며, 게시 후에 적용됩니다)",
+  "overview.triggerInfo.triggerStatusDescription": "트리거는 해당 트리거가 포함된 버전을 게시한 후 여기에 표시됩니다.",
   "overview.triggerInfo.triggersAdded": "{{count}} 트리거 추가됨",
   "welcome.enterKeyTip": "아래에 OpenAI API 키를 입력하세요",
   "welcome.firstStepTip": "시작하려면,",

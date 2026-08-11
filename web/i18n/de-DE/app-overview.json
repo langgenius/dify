@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Erfahren Sie mehr über Auslöser",
   "overview.triggerInfo.noTriggerAdded": "Kein Auslöser hinzugefügt",
   "overview.triggerInfo.title": "Auslöser",
-  "overview.triggerInfo.triggerStatusDescription": "Der Status des Trigger-Knotens wird hier angezeigt. (Kann bereits im Entwurf vorhanden sein, tritt nach der Veröffentlichung in Kraft)",
+  "overview.triggerInfo.triggerStatusDescription": "Auslöser werden hier angezeigt, nachdem Sie die Version veröffentlicht haben, in der sie enthalten sind.",
   "overview.triggerInfo.triggersAdded": "{{count}} Auslöser hinzugefügt",
   "welcome.enterKeyTip": "geben Sie unten Ihren OpenAI-API-Schlüssel ein",
   "welcome.firstStepTip": "Um zu beginnen,",

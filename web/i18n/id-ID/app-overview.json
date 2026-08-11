@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Pelajari lebih lanjut tentang pemicu",
   "overview.triggerInfo.noTriggerAdded": "Tidak ada pemicu yang ditambahkan",
   "overview.triggerInfo.title": "Pemicu",
-  "overview.triggerInfo.triggerStatusDescription": "Status node pemicu muncul di sini. (Mungkin sudah ada di draf, berlaku setelah dipublikasikan)",
+  "overview.triggerInfo.triggerStatusDescription": "Pemicu akan muncul di sini setelah Anda menerbitkan versi yang memuatnya.",
   "overview.triggerInfo.triggersAdded": "{{count}} Pemicu ditambahkan",
   "welcome.enterKeyTip": "masukkan Kunci API OpenAI Anda di bawah ini",
   "welcome.firstStepTip": "Untuk memulai,",

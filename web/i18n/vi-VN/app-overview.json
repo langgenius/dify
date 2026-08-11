@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Tìm hiểu thêm về trình kích hoạt",
   "overview.triggerInfo.noTriggerAdded": "Chưa thêm trình kích hoạt",
   "overview.triggerInfo.title": "Nguyên nhân kích hoạt",
-  "overview.triggerInfo.triggerStatusDescription": "Trạng thái nút kích hoạt sẽ hiển thị ở đây. (Có thể đã tồn tại trong bản nháp, có hiệu lực sau khi xuất bản)",
+  "overview.triggerInfo.triggerStatusDescription": "Các trình kích hoạt sẽ xuất hiện ở đây sau khi bạn xuất bản phiên bản có chứa chúng.",
   "overview.triggerInfo.triggersAdded": "{{count}} Kích hoạt đã được thêm",
   "welcome.enterKeyTip": "nhập khóa API OpenAI của bạn bên dưới",
   "welcome.firstStepTip": "Để bắt đầu,",

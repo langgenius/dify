@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "تعرّف على المزيد حول المشغلات",
   "overview.triggerInfo.noTriggerAdded": "لم تتم إضافة أي مشغل",
   "overview.triggerInfo.title": "المشغلات",
-  "overview.triggerInfo.triggerStatusDescription": "تظهر حالة عقدة المشغل هنا. (قد تكون موجودة بالفعل في المسودة، وتدخل حيز التنفيذ بعد النشر)",
+  "overview.triggerInfo.triggerStatusDescription": "تظهر المشغلات هنا بعد نشر الإصدار الذي يحتوي عليها.",
   "overview.triggerInfo.triggersAdded": "تمت إضافة {{count}} مشغلات",
   "welcome.enterKeyTip": "أدخل مفتاح OpenAI API الخاص بك أدناه",
   "welcome.firstStepTip": "للبدء،",

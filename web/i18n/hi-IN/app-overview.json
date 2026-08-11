@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "ट्रिगर्स के बारे में और जानें",
   "overview.triggerInfo.noTriggerAdded": "कोई ट्रिगर जोड़ा नहीं गया",
   "overview.triggerInfo.title": "ट्रिगर्स",
-  "overview.triggerInfo.triggerStatusDescription": "ट्रिगर नोड की स्थिति यहाँ दिखाई देगी। (शायद पहले से ड्राफ्ट में मौजूद है, प्रकाशित करने के बाद प्रभावी होगी)",
+  "overview.triggerInfo.triggerStatusDescription": "जिस संस्करण में ट्रिगर शामिल हैं, उसे प्रकाशित करने के बाद वे यहाँ दिखाई देंगे।",
   "overview.triggerInfo.triggersAdded": "{{count}} ट्रिगर्स जोड़े गए",
   "welcome.enterKeyTip": "नीचे अपना OpenAI API कुंजी दर्ज करें",
   "welcome.firstStepTip": "शुरू करने के लिए,",

@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Več o sprožilcih",
   "overview.triggerInfo.noTriggerAdded": "Sprožilec ni dodan",
   "overview.triggerInfo.title": "Sprožilci",
-  "overview.triggerInfo.triggerStatusDescription": "Stanje sprožilnega vozlišča se prikaže tukaj. (Morda že obstaja v osnutku, začne veljati po objavi)",
+  "overview.triggerInfo.triggerStatusDescription": "Sprožilci se tukaj prikažejo po objavi različice, ki jih vsebuje.",
   "overview.triggerInfo.triggersAdded": "{{count}} sprožilci dodani",
   "welcome.enterKeyTip": "vnesete svoj OpenAI API ključ spodaj",
   "welcome.firstStepTip": "Začnite s tem, da",

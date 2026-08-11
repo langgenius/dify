@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "درباره محرک‌ها بیشتر بدانید",
   "overview.triggerInfo.noTriggerAdded": "هیچ ماشه‌ای افزوده نشده است",
   "overview.triggerInfo.title": "محرک‌ها",
-  "overview.triggerInfo.triggerStatusDescription": "وضعیت گره تریگر در اینجا نمایش داده می‌شود. (ممکن است قبلاً در پیش‌نویس وجود داشته باشد، پس از انتشار اعمال می‌شود)",
+  "overview.triggerInfo.triggerStatusDescription": "محرک‌ها پس از انتشار نسخه‌ای که شامل آن‌هاست، در اینجا ظاهر می‌شوند.",
   "overview.triggerInfo.triggersAdded": "{{count}} محرک‌ها اضافه شدند",
   "welcome.enterKeyTip": "کلید API خود را در زیر وارد کنید",
   "welcome.firstStepTip": "برای شروع،",

@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Dowiedz się więcej o wyzwalaczach",
   "overview.triggerInfo.noTriggerAdded": "Nie dodano wyzwalacza",
   "overview.triggerInfo.title": "Czynniki wywołujące",
-  "overview.triggerInfo.triggerStatusDescription": "Status węzła wyzwalacza pojawia się tutaj. (Może już istnieć w wersji roboczej, obowiązuje po opublikowaniu)",
+  "overview.triggerInfo.triggerStatusDescription": "Wyzwalacze pojawią się tutaj po opublikowaniu wersji, która je zawiera.",
   "overview.triggerInfo.triggersAdded": "{{count}} Wyzwalacze dodane",
   "welcome.enterKeyTip": "wprowadź poniżej swój klucz API OpenAI",
   "welcome.firstStepTip": "Aby rozpocząć,",

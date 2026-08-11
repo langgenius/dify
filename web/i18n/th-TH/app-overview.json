@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "เรียนรู้เพิ่มเติมเกี่ยวกับทริกเกอร์",
   "overview.triggerInfo.noTriggerAdded": "ยังไม่ได้เพิ่มทริกเกอร์",
   "overview.triggerInfo.title": "สิ่งกระตุ้น",
-  "overview.triggerInfo.triggerStatusDescription": "สถานะของโหนดตัวเรียกปรากฏที่นี่ (อาจมีอยู่แล้วในร่าง และจะมีผลหลังจากเผยแพร่)",
+  "overview.triggerInfo.triggerStatusDescription": "ทริกเกอร์จะแสดงที่นี่หลังจากที่คุณเผยแพร่เวอร์ชันที่มีทริกเกอร์เหล่านั้น",
   "overview.triggerInfo.triggersAdded": "{{count}} ทริกเกอร์ที่เพิ่มแล้ว",
   "welcome.enterKeyTip": "ป้อนคีย์ OpenAI API ของคุณด้านล่าง",
   "welcome.firstStepTip": "ในการเริ่มต้น",

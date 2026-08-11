@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Saiba mais sobre gatilhos",
   "overview.triggerInfo.noTriggerAdded": "Nenhum gatilho adicionado",
   "overview.triggerInfo.title": "Gatilhos",
-  "overview.triggerInfo.triggerStatusDescription": "O status do nó de gatilho aparece aqui. (Pode já existir no rascunho, entra em vigor após a publicação)",
+  "overview.triggerInfo.triggerStatusDescription": "Os gatilhos aparecerão aqui depois que você publicar a versão que os contém.",
   "overview.triggerInfo.triggersAdded": "{{count}} gatilhos adicionados",
   "welcome.enterKeyTip": "insira sua chave de API OpenAI abaixo",
   "welcome.firstStepTip": "Para começar,",
