@@ -52,6 +52,8 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const suggestions = isSearchReady ? (data?.pages.flatMap((page) => page.data ?? []) ?? []) : []
   const isLoading = isPending || isFetchingNextPage
   const shouldOpenPopup = isPopupOpen && isSearchReady && (isLoading || isSuccess)
+  const shouldShowEmpty = shouldOpenPopup && isSuccess && !isLoading && suggestions.length === 0
+  const shouldShowLoading = shouldOpenPopup && isLoading
 
   const handleValueChange = (inputValue: string, eventDetails: AutocompleteChangeEventDetails) => {
     onValueChange(inputValue)
@@ -110,10 +112,10 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
             )}
           </AutocompleteList>
           <AutocompleteEmpty>
-            {!isLoading ? t(($) => $['form.schoolName.noResults'], { ns: 'education' }) : null}
+            {shouldShowEmpty ? t(($) => $['form.schoolName.noResults'], { ns: 'education' }) : null}
           </AutocompleteEmpty>
           <AutocompleteStatus className="p-0">
-            {isLoading ? (
+            {shouldShowLoading ? (
               <>
                 <span className="sr-only">{t(($) => $.loading, { ns: 'appApi' })}</span>
                 <div aria-hidden="true">

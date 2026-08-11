@@ -86,22 +86,20 @@ describe('InstitutionField', () => {
     })
   })
 
-  it('closes the suggestions after selecting an institution', async () => {
+  it('closes the suggestions without showing the empty state after keyboard selection', async () => {
     const user = userEvent.setup()
 
     render(<ControlledInstitutionField />)
 
-    await user.type(
-      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
-      'A',
-    )
+    const input = screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/)
+    await user.type(input, 'A')
 
     expect(await screen.findByText('Alpha University')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Beta College' }))
+    await user.keyboard('{ArrowDown}{Enter}')
 
-    expect(screen.getByRole('combobox')).toHaveValue('Beta College')
-    expect(screen.queryByRole('option', { name: 'Alpha University' })).not.toBeInTheDocument()
+    expect(input).toHaveValue('Alpha University')
+    expect(screen.queryByText('education.form.schoolName.noResults')).not.toBeInTheDocument()
   })
 
   it('keeps an unmatched institution name as free-form input', async () => {
