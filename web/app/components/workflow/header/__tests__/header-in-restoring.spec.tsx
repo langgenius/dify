@@ -13,17 +13,6 @@ const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: '',
-    name: '',
-  },
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
