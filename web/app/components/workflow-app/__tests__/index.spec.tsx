@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { useEffect } from 'react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -65,6 +66,11 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(consoleState.userProfile),
+  })
+
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
   getState: () => ({
@@ -92,15 +98,6 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
-    currentWorkspace: consoleState.currentWorkspace,
-    userProfile: consoleState.userProfile,
-    workspacePermissionKeys: consoleState.workspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
