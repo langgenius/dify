@@ -9,11 +9,6 @@ const educationAutocompleteQueryMock = vi.hoisted(() => ({
   hasNextPage: false,
   isError: false,
   isFetching: false,
-  isFetchingNextPage: false,
-  isFetchNextPageError: false,
-  isPending: false,
-  isPlaceholderData: false,
-  isSuccess: true,
   data: {
     pages: [
       {
@@ -99,11 +94,6 @@ describe('InstitutionField', () => {
     educationAutocompleteQueryMock.hasNextPage = false
     educationAutocompleteQueryMock.isError = false
     educationAutocompleteQueryMock.isFetching = false
-    educationAutocompleteQueryMock.isFetchingNextPage = false
-    educationAutocompleteQueryMock.isFetchNextPageError = false
-    educationAutocompleteQueryMock.isPending = false
-    educationAutocompleteQueryMock.isPlaceholderData = false
-    educationAutocompleteQueryMock.isSuccess = true
     educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpha University', 'Beta College']
     debouncedValueMock.hold = false
     debouncedValueMock.value = ''
@@ -184,7 +174,6 @@ describe('InstitutionField', () => {
 
     debouncedValueMock.hold = false
     educationAutocompleteQueryMock.isFetching = true
-    educationAutocompleteQueryMock.isPlaceholderData = true
     view.rerender(<ControlledInstitutionField />)
 
     expect(input).toHaveAttribute('aria-expanded', 'true')
@@ -195,7 +184,6 @@ describe('InstitutionField', () => {
 
     educationAutocompleteQueryMock.data.pages[0]!.data = ['Alpine University']
     educationAutocompleteQueryMock.isFetching = false
-    educationAutocompleteQueryMock.isPlaceholderData = false
     view.rerender(<ControlledInstitutionField />)
 
     expect(screen.getByText('Alpine University')).toBeInTheDocument()
@@ -245,8 +233,6 @@ describe('InstitutionField', () => {
     const user = userEvent.setup()
     educationAutocompleteQueryMock.hasNextPage = true
     educationAutocompleteQueryMock.isError = true
-    educationAutocompleteQueryMock.isFetchNextPageError = true
-    educationAutocompleteQueryMock.isSuccess = false
 
     render(<ControlledInstitutionField />)
 

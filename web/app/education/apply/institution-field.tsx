@@ -36,18 +36,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const hasSearchQuery = !!searchQuery
   const isDebouncing = hasSearchQuery && searchQuery !== debouncedSearchQuery
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isError,
-    isFetching,
-    isFetchingNextPage,
-    isFetchNextPageError,
-    isPending,
-    isPlaceholderData,
-    isSuccess,
-  } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isError, isFetching } = useInfiniteQuery({
     ...consoleQuery.account.education.autocomplete.get.infiniteOptions({
       input: (pageParam) => ({
         query: {
@@ -64,15 +53,16 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
     placeholderData: keepPreviousData,
   })
   const suggestions = hasSearchQuery ? (data?.pages.flatMap((page) => page.data ?? []) ?? []) : []
-  const isSearching = isDebouncing || isPending || (isFetching && !isFetchingNextPage)
-  const isLoading = isSearching || isFetchingNextPage
+  const isLoading = isDebouncing || isFetching
   const shouldOpenPopup = isPopupOpen && hasSearchQuery
-  const shouldShowEmpty = shouldOpenPopup && isSuccess && !isLoading && suggestions.length === 0
-  const shouldAnnounceLoading = shouldOpenPopup && isLoading
-  const shouldShowError = shouldOpenPopup && isError && !isLoading
-  const shouldShowFooter = shouldOpenPopup && (isLoading || hasNextPage || shouldShowError)
-  const canLoadMore =
-    shouldOpenPopup && !isDebouncing && !isPlaceholderData && !isFetching && !isFetchNextPageError
+  let footerState: 'error' | 'loading' | null = null
+  if (shouldOpenPopup) {
+    if (isLoading) footerState = 'loading'
+    else if (isError) footerState = 'error'
+    else if (hasNextPage) footerState = 'loading'
+  }
+  const shouldShowEmpty = shouldOpenPopup && footerState === null && suggestions.length === 0
+  const canLoadMore = shouldOpenPopup && hasNextPage && !isLoading && !isError
 
   const handleValueChange = (inputValue: string, eventDetails: AutocompleteChangeEventDetails) => {
     onValueChange(inputValue)
@@ -114,7 +104,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
         <AutocompleteContent
           popupClassName="w-(--anchor-width) max-w-(--available-width)"
           portalProps={{ keepMounted: true }}
-          popupProps={{ 'aria-busy': isLoading || undefined }}
+          popupProps={{ 'aria-busy': (shouldOpenPopup && isLoading) || undefined }}
         >
           <AutocompleteList ref={listRef}>
             <AutocompleteCollection<string>>
@@ -124,7 +114,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                 </AutocompleteItem>
               )}
             </AutocompleteCollection>
-            {shouldShowFooter ? (
+            {footerState !== null ? (
               <div
                 className="relative flex h-10 items-center justify-center px-3"
                 aria-hidden="true"
@@ -140,7 +130,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                     scrollContainerRef={listRef}
                   />
                 ) : null}
-                {shouldShowError ? (
+                {footerState === 'error' ? (
                   <span className="system-sm-regular text-text-destructive">
                     {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
                   </span>
@@ -155,9 +145,9 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
           </AutocompleteEmpty>
           <AutocompleteStatus className="p-0">
             <span className="sr-only">
-              {shouldAnnounceLoading
+              {shouldOpenPopup && isLoading
                 ? t(($) => $.loading, { ns: 'common' })
-                : shouldShowError
+                : footerState === 'error'
                   ? t(($) => $['dynamicSelect.error'], { ns: 'common' })
                   : null}
             </span>
