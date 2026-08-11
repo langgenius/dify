@@ -117,6 +117,7 @@ export default function OAuthAuthorize() {
   )
   const { mutateAsync: logout } = useLogout()
   const hasNotifiedRef = useRef(false)
+  const authorizationStartedRef = useRef(false)
   const marketplaceFlowHandledRef = useRef(false)
   const frameContext = useSyncExternalStore(
     subscribeToFrameContext,
@@ -142,7 +143,8 @@ export default function OAuthAuthorize() {
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri) return
+    if (!client_id || !redirect_uri || authorizationStartedRef.current) return
+    authorizationStartedRef.current = true
     try {
       const { code } = await authorize({ body: { client_id } })
       const url = new URL(redirect_uri)
@@ -150,6 +152,7 @@ export default function OAuthAuthorize() {
       if (state) url.searchParams.set('state', state)
       globalThis.location.href = url.toString()
     } catch (error: unknown) {
+      authorizationStartedRef.current = false
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }

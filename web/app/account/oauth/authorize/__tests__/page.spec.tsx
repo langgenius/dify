@@ -81,6 +81,10 @@ function findRequest(path: string) {
   return mocks.request.mock.calls.find(([url]) => String(url).endsWith(path))
 }
 
+function countRequests(path: string) {
+  return mocks.request.mock.calls.filter(([url]) => String(url).endsWith(path)).length
+}
+
 describe('OAuthAuthorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -139,6 +143,24 @@ describe('OAuthAuthorize', () => {
         'https://client.example.com/callback?code=oauth-code&state=state-1',
       ),
     )
+  })
+
+  it('submits authorization only once while the browser is navigating to the callback', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    const continueButton = screen.getByRole('button', { name: /continue/i })
+
+    await user.click(continueButton)
+    await waitFor(() =>
+      expect(globalThis.location.href).toBe(
+        'https://client.example.com/callback?code=oauth-code&state=state-1',
+      ),
+    )
+    await user.click(continueButton)
+
+    await waitFor(() => expect(countRequests('/oauth/provider/authorize')).toBe(1))
   })
 
   it('silently authorizes the configured Marketplace client when the Dify user is logged in', async () => {
