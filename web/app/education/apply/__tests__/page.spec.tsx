@@ -239,6 +239,7 @@ describe('EducationApplyPage billing boundary', () => {
       screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
       'DifyUniversity',
     )
+    await user.keyboard('{Escape}')
     expect(
       screen.getByRole('radiogroup', { name: 'education.form.schoolRole.title' }),
     ).toBeInTheDocument()
