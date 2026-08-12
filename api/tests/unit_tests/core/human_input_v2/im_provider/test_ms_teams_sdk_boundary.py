@@ -589,8 +589,8 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
     assert isinstance(accepted.reference, ms_teams._MSTeamsMessageLocator)
     serialized_value = accepted.reference._serialized_value
     replacement_character = "A" if serialized_value[-1] != "A" else "B"
-    altered_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    object.__setattr__(altered_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
+    malformed_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
+    object.__setattr__(malformed_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
         accepted.reference,
@@ -600,8 +600,8 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
         MessageReference(),
         StaticCardIntent("Sanitized static content"),
     )
-    altered = adapter.dynamic_card_messaging.replace_with_static(
-        altered_reference,
+    malformed = adapter.dynamic_card_messaging.replace_with_static(
+        malformed_reference,
         StaticCardIntent("Sanitized static content"),
     )
     unknown = adapter.dynamic_card_messaging.replace_with_static(
@@ -613,8 +613,8 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
     assert result.kind is ReplacementErrorKind.STALE_REFERENCE
     assert isinstance(invalid, ReplacementError)
     assert invalid.kind is ReplacementErrorKind.INVALID_REFERENCE
-    assert isinstance(altered, ReplacementError)
-    assert altered.kind is ReplacementErrorKind.INVALID_REFERENCE
+    assert isinstance(malformed, ReplacementError)
+    assert malformed.kind is ReplacementErrorKind.INVALID_REFERENCE
     assert isinstance(unknown, ReplacementError)
     assert unknown.kind is ReplacementErrorKind.UNKNOWN
     assert len(state.requests_for("update")) == 2
@@ -623,8 +623,7 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
 def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter, _, _ = _adapter(monkeypatch)
     undersized_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    digest_only = base64.urlsafe_b64encode(b"x" * ms_teams._MESSAGE_LOCATOR_DIGEST_SIZE).rstrip(b"=").decode()
-    object.__setattr__(undersized_reference, "_serialized_value", digest_only)
+    object.__setattr__(undersized_reference, "_serialized_value", "")
 
     result = adapter.dynamic_card_messaging.replace_with_static(
         undersized_reference,

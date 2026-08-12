@@ -1056,7 +1056,6 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
         "_SynchronousEventChannel",
         "_create_sdk_gateway",
         "_create_sdk_stream_client",
-        "_reference_signing_secret",
     }
     for seam_name in dependency_seam_names:
         monkeypatch.setattr(feishu_lark, seam_name, reject_dependency_call)

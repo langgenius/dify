@@ -298,7 +298,7 @@ def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatc
     class ForeignReference(MessageReference):
         pass
 
-    assert adapter_module._decode_reference(ForeignReference(), "sanitized-app-secret") is None
+    assert adapter_module._decode_reference(ForeignReference()) is None
 
 
 def test_sdk_mapping_rejects_non_object_json(monkeypatch: pytest.MonkeyPatch) -> None:

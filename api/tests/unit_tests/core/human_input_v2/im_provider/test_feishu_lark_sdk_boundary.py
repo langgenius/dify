@@ -17,7 +17,6 @@ import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from configs import dify_config
 from controllers.common.human_input_feishu_lark_credentials import (
     resolve_feishu_request_credentials,
     resolve_lark_request_credentials,
@@ -390,11 +389,6 @@ class _SDKRequestHandler(BaseHTTPRequestHandler):
 class _RunningServer:
     domain: str
     state: _ServerState
-
-
-@pytest.fixture(autouse=True)
-def _reference_signing_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dify_config, "SECRET_KEY", "sanitized-dify-reference-key")
 
 
 def _credentials() -> FeishuIMIntegrationCredentials:

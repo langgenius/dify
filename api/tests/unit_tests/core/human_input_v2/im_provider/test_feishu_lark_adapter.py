@@ -7,7 +7,6 @@ from typing import Literal, overload
 
 import pytest
 
-from configs import dify_config
 from core.human_input import ButtonStyle
 from core.human_input_v2 import (
     FileInput,
@@ -136,7 +135,6 @@ def _adapter(
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
     gateway: FakeSDKGateway,
 ) -> FeishuIMProviderAdapter | LarkIMProviderAdapter:
-    monkeypatch.setattr(dify_config, "SECRET_KEY", "sanitized-dify-reference-key")
     monkeypatch.setattr(adapter_module, "_create_sdk_gateway", lambda _credentials, _domain: gateway)
     if provider is IMProvider.FEISHU:
         return FeishuIMProviderAdapter(_credentials(provider))
@@ -1123,6 +1121,15 @@ def test_reference_round_trips_and_updates_only_exact_original_message(monkeypat
         CorrelationToken("opaque-correlation-token"),
     )
     assert isinstance(accepted, MessageAccepted)
+    padding = "=" * (-len(accepted.reference.opaque) % 4)
+    serialized_payload = base64.urlsafe_b64decode(accepted.reference.opaque + padding)
+    assert json.loads(serialized_payload) == {
+        "version": 1,
+        "provider": "feishu",
+        "provider_tenant_id": "tenant_sanitized",
+        "message_kind": "dynamic_card",
+        "message_id": "om_sanitized_card",
+    }
     persisted = type(accepted.reference)(accepted.reference.opaque)
 
     replacement_gateway = FakeSDKGateway()
@@ -1185,17 +1192,14 @@ def test_reference_survives_provider_app_secret_rotation(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_reference_replacement_fails_closed_when_dify_signing_key_is_missing(
+def test_message_reference_does_not_depend_on_dify_secret_key(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
 ) -> None:
-    signing_key_marker = "sensitive-dify-signing-key-marker"
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
     source = _adapter(monkeypatch, provider, source_gateway)
-    monkeypatch.setattr(dify_config, "SECRET_KEY", signing_key_marker)
     accepted = source.dynamic_card_messaging.send_card(
         ProviderUserId("union_sanitized_user"),
         _intent(),
@@ -1204,21 +1208,17 @@ def test_reference_replacement_fails_closed_when_dify_signing_key_is_missing(
     assert isinstance(accepted, MessageAccepted)
 
     replacement_gateway = FakeSDKGateway()
+    replacement_gateway.tenant_responses.append(_tenant_response())
+    replacement_gateway.patch_responses.append({"code": 0})
     replacement = _adapter(monkeypatch, provider, replacement_gateway)
-    monkeypatch.setattr(dify_config, "SECRET_KEY", "")
 
     result = replacement.dynamic_card_messaging.replace_with_static(
         accepted.reference,
         StaticCardIntent("Submitted"),
     )
 
-    assert isinstance(result, ReplacementError)
-    assert result.kind is ReplacementErrorKind.UNKNOWN
-    assert replacement_gateway.calls == []
-    assert signing_key_marker not in accepted.reference.opaque
-    assert signing_key_marker not in repr(accepted.reference)
-    assert signing_key_marker not in result.reason
-    assert signing_key_marker not in caplog.text
+    assert result is None
+    assert len([call for call in replacement_gateway.calls if call[0] == "patch_message"]) == 1
 
 
 def test_cross_provider_reference_is_invalid_without_mutation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1245,7 +1245,7 @@ def test_cross_provider_reference_is_invalid_without_mutation(monkeypatch: pytes
     assert not lark_gateway.calls
 
 
-def test_altered_reference_is_invalid_without_provider_io(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_malformed_reference_is_invalid_without_provider_io(monkeypatch: pytest.MonkeyPatch) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
@@ -1256,119 +1256,59 @@ def test_altered_reference_is_invalid_without_provider_io(monkeypatch: pytest.Mo
         CorrelationToken("opaque-correlation-token"),
     )
     assert isinstance(accepted, MessageAccepted)
-    altered_suffix = "A" if not accepted.reference.opaque.endswith("A") else "B"
-    altered = type(accepted.reference)(accepted.reference.opaque[:-1] + altered_suffix)
+    malformed_suffix = "A" if not accepted.reference.opaque.endswith("A") else "B"
+    malformed = type(accepted.reference)(accepted.reference.opaque[:-1] + malformed_suffix)
     replacement_gateway = FakeSDKGateway()
     replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
 
-    result = replacement.dynamic_card_messaging.replace_with_static(altered, StaticCardIntent("Submitted"))
+    result = replacement.dynamic_card_messaging.replace_with_static(malformed, StaticCardIntent("Submitted"))
 
     assert isinstance(result, ReplacementError)
     assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
     assert replacement_gateway.calls == []
 
 
-@pytest.mark.parametrize("segment_index", [0, 1], ids=("payload", "signature"))
 def test_reference_rejects_redundant_base64_padding_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
-    segment_index: int,
 ) -> None:
     reference = _accepted_card_reference(monkeypatch)
-    segments = reference.opaque.split(".")
-    segments[segment_index] += "="
 
-    _assert_invalid_reference_without_mutation(monkeypatch, reference, ".".join(segments))
-
-
-@pytest.mark.parametrize(
-    ("canonical_character", "standard_base64_alias"),
-    [("-", "+"), ("_", "/")],
-    ids=("plus-alias", "slash-alias"),
-)
-def test_reference_rejects_standard_base64_aliases_without_message_mutation(
-    monkeypatch: pytest.MonkeyPatch,
-    canonical_character: str,
-    standard_base64_alias: str,
-) -> None:
-    reference = _accepted_card_reference(monkeypatch, message_id="om_sanitized_card_0")
-    payload_segment, signature_segment = reference.opaque.split(".")
-    assert canonical_character in signature_segment
-    aliased_signature = signature_segment.replace(canonical_character, standard_base64_alias)
-
-    _assert_invalid_reference_without_mutation(
-        monkeypatch,
-        reference,
-        f"{payload_segment}.{aliased_signature}",
-    )
+    _assert_invalid_reference_without_mutation(monkeypatch, reference, f"{reference.opaque}=")
 
 
 @pytest.mark.parametrize(
     ("message_id", "canonical_character", "standard_base64_alias"),
-    [
-        ("om_sanitized_\u00be", "-", "+"),
-        ("om_sanitized_\u00bf", "_", "/"),
-    ],
-    ids=("payload-plus-alias", "payload-slash-alias"),
+    [("om_sanitized_\u00be", "-", "+"), ("om_sanitized_\u00bf", "_", "/")],
+    ids=("plus-alias", "slash-alias"),
 )
-def test_reference_rejects_standard_base64_aliases_in_payload_without_message_mutation(
+def test_reference_rejects_standard_base64_aliases_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
     message_id: str,
     canonical_character: str,
     standard_base64_alias: str,
 ) -> None:
     reference = _accepted_card_reference(monkeypatch, message_id=message_id)
-    payload_segment, signature_segment = reference.opaque.split(".")
-    assert canonical_character in payload_segment
-    aliased_payload = payload_segment.replace(canonical_character, standard_base64_alias)
+    assert canonical_character in reference.opaque
+    aliased_payload = reference.opaque.replace(canonical_character, standard_base64_alias)
 
-    _assert_invalid_reference_without_mutation(
-        monkeypatch,
-        reference,
-        f"{aliased_payload}.{signature_segment}",
-    )
-
-
-@pytest.mark.parametrize(
-    "signature_bytes",
-    [b"", b"short", b"x" * (32 + 1)],
-    ids=("empty", "short", "long"),
-)
-def test_reference_rejects_malformed_signature_length_without_message_mutation(
-    monkeypatch: pytest.MonkeyPatch,
-    signature_bytes: bytes,
-) -> None:
-    reference = _accepted_card_reference(monkeypatch)
-    payload_segment, _signature_segment = reference.opaque.split(".")
-    malformed_signature = base64.urlsafe_b64encode(signature_bytes).decode().rstrip("=")
-
-    _assert_invalid_reference_without_mutation(
-        monkeypatch,
-        reference,
-        f"{payload_segment}.{malformed_signature}",
-    )
+    _assert_invalid_reference_without_mutation(monkeypatch, reference, aliased_payload)
 
 
 @pytest.mark.parametrize(
     "opaque_template",
     [
         ".{reference}",
-        "{payload}..{signature}",
         "{reference}.",
         "{reference}.extra",
     ],
-    ids=("leading-dot", "empty-middle-segment", "trailing-dot", "extra-segment"),
+    ids=("leading-dot", "trailing-dot", "extra-segment"),
 )
 def test_reference_rejects_extra_segments_and_dots_without_message_mutation(
     monkeypatch: pytest.MonkeyPatch,
     opaque_template: str,
 ) -> None:
     reference = _accepted_card_reference(monkeypatch)
-    payload_segment, signature_segment = reference.opaque.split(".")
-    opaque = opaque_template.format(
-        reference=reference.opaque,
-        payload=payload_segment,
-        signature=signature_segment,
-    )
+    opaque = opaque_template.format(reference=reference.opaque)
 
     _assert_invalid_reference_without_mutation(monkeypatch, reference, opaque)
 

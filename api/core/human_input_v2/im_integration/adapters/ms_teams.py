@@ -5,8 +5,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
-import hashlib
-import hmac
 import json
 import logging
 from collections.abc import Mapping
@@ -89,8 +87,6 @@ _BASELINE_GRAPH_ROLES = frozenset(("User.Read.All",))
 _PUBLIC_TEAMS_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
 _JSON_CONTENT_TYPE = "application/json"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
-_MESSAGE_LOCATOR_DIGEST_CONTEXT = b"dify-ms-teams-message-reference-v1\0"
-_MESSAGE_LOCATOR_DIGEST_SIZE = 32
 _OAUTH_CREDENTIAL_REJECTION_CODES = frozenset(("invalid_client", "invalid_grant", "unauthorized_client"))
 
 
@@ -212,24 +208,18 @@ def _encode_message_locator(locator: _MSTeamsMessageLocatorData) -> str:
         sort_keys=True,
         separators=(",", ":"),
     ).encode()
-    digest = hashlib.sha256(_MESSAGE_LOCATOR_DIGEST_CONTEXT + serialized_locator).digest()
-    return base64.urlsafe_b64encode(serialized_locator + digest).rstrip(b"=").decode("ascii")
+    return base64.urlsafe_b64encode(serialized_locator).rstrip(b"=").decode("ascii")
 
 
 def _decode_message_locator(serialized_value: str) -> _MSTeamsMessageLocatorData | None:
     try:
         padding = "=" * (-len(serialized_value) % 4)
-        serialized_with_digest = base64.b64decode(
+        serialized_locator = base64.b64decode(
             serialized_value + padding,
             altchars=b"-_",
             validate=True,
         )
-        if len(serialized_with_digest) <= _MESSAGE_LOCATOR_DIGEST_SIZE:
-            return None
-        serialized_locator = serialized_with_digest[:-_MESSAGE_LOCATOR_DIGEST_SIZE]
-        supplied_digest = serialized_with_digest[-_MESSAGE_LOCATOR_DIGEST_SIZE:]
-        expected_digest = hashlib.sha256(_MESSAGE_LOCATOR_DIGEST_CONTEXT + serialized_locator).digest()
-        if not hmac.compare_digest(supplied_digest, expected_digest):
+        if base64.urlsafe_b64encode(serialized_locator).rstrip(b"=").decode("ascii") != serialized_value:
             return None
         decoded_locator = json.loads(serialized_locator, parse_constant=_reject_non_standard_json_constant)
         return _MSTeamsMessageLocatorData.model_validate(decoded_locator)

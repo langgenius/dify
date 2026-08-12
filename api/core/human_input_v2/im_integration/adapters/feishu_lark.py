@@ -39,7 +39,6 @@ from markdown_it.token import Token
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
 from websockets.asyncio.client import ClientConnection
 
-from configs import dify_config
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
@@ -99,7 +98,6 @@ _STALE_MESSAGE_CODES = frozenset((230001, 230011, 230020))
 _REFERENCE_VERSION: Literal[1] = 1
 _REFERENCE_KIND_TEXT: Literal["text"] = "text"
 _REFERENCE_KIND_DYNAMIC_CARD: Literal["dynamic_card"] = "dynamic_card"
-_REFERENCE_SIGNING_CONTEXT = b"dify:human-input-v2:feishu-lark-message-reference:v1"
 _WEBHOOK_REPLAY_CLAIM_TTL_SECONDS = 300
 _WEBHOOK_REPLAY_CACHE_CAPACITY = 4096
 _JSON_RESPONSE_HEADERS = (("Content-Type", "application/json"),)
@@ -1224,7 +1222,6 @@ class _FeishuLarkMessaging(IMMessaging):
     @override
     def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
         try:
-            signing_secret = _reference_signing_secret()
             plain_text = _commonmark_plain_text(body)
             content = json.dumps({"text": plain_text}, ensure_ascii=False, separators=(",", ":"))
             provider_tenant_id = _query_tenant_id(self._gateway)
@@ -1244,7 +1241,6 @@ class _FeishuLarkMessaging(IMMessaging):
                 provider_tenant_id=provider_tenant_id,
                 message_kind=_REFERENCE_KIND_TEXT,
                 message_id=response.data.message_id,
-                signing_secret=signing_secret,
             )
         )
 
@@ -1274,14 +1270,6 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         encoded_card = _MS_FEISHU_LARK_CARD_CODEC.encode(intent, correlation_token)
         content = json.dumps(encoded_card, ensure_ascii=False, separators=(",", ":"))
         failure = MessageSendingError(f"{_provider_name(self._provider)} card acceptance could not be confirmed.")
-        try:
-            signing_secret = _reference_signing_secret()
-        except ValueError:
-            _log_safe_error(
-                "Feishu/Lark card acceptance failed at reference-signing stage",
-                extra={"im_provider": self._provider.value},
-            )
-            return failure
         try:
             provider_tenant_id = _query_tenant_id(self._gateway)
         except Exception:
@@ -1324,7 +1312,6 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
                 provider_tenant_id=provider_tenant_id,
                 message_kind=_REFERENCE_KIND_DYNAMIC_CARD,
                 message_id=response.data.message_id,
-                signing_secret=signing_secret,
             )
         )
 
@@ -1334,14 +1321,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         reference: MessageReference,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        try:
-            signing_secret = _reference_signing_secret()
-        except ValueError:
-            return ReplacementError(
-                ReplacementErrorKind.UNKNOWN,
-                f"{_provider_name(self._provider)} replacement acceptance is unknown.",
-            )
-        locator = _decode_reference(reference, signing_secret)
+        locator = _decode_reference(reference)
         if (
             locator is None
             or locator.provider is not self._provider
@@ -1964,7 +1944,6 @@ def _encode_reference(
     provider_tenant_id: str,
     message_kind: Literal["text", "dynamic_card"],
     message_id: str,
-    signing_secret: str,
 ) -> _FeishuLarkMessageReference:
     reference_payload = _ReferencePayload(
         version=_REFERENCE_VERSION,
@@ -1974,31 +1953,15 @@ def _encode_reference(
         message_id=message_id,
     )
     payload_bytes = reference_payload.model_dump_json().encode()
-    signature = hmac.new(signing_secret.encode(), payload_bytes, hashlib.sha256).digest()
-    opaque = f"{_urlsafe_encode(payload_bytes)}.{_urlsafe_encode(signature)}"
-    return _FeishuLarkMessageReference(opaque)
+    return _FeishuLarkMessageReference(_urlsafe_encode(payload_bytes))
 
 
-def _reference_signing_secret() -> str:
-    secret_key = dify_config.SECRET_KEY
-    if not secret_key:
-        raise ValueError("Dify reference signing key is unavailable")
-    return hmac.new(secret_key.encode(), _REFERENCE_SIGNING_CONTEXT, hashlib.sha256).hexdigest()
-
-
-def _decode_reference(reference: MessageReference, signing_secret: str) -> _ReferencePayload | None:
+def _decode_reference(reference: MessageReference) -> _ReferencePayload | None:
     if not isinstance(reference, _FeishuLarkMessageReference):
         return None
     try:
-        payload_part, signature_part = reference.opaque.split(".", maxsplit=1)
-        payload_bytes = _urlsafe_decode(payload_part)
-        signature = _urlsafe_decode(signature_part)
-        if _urlsafe_encode(payload_bytes) != payload_part or _urlsafe_encode(signature) != signature_part:
-            return None
-        if len(signature) != hashlib.sha256().digest_size:
-            return None
-        expected_signature = hmac.new(signing_secret.encode(), payload_bytes, hashlib.sha256).digest()
-        if not hmac.compare_digest(signature, expected_signature):
+        payload_bytes = _urlsafe_decode(reference.opaque)
+        if _urlsafe_encode(payload_bytes) != reference.opaque:
             return None
         return _ReferencePayload.model_validate_json(payload_bytes)
     except (ValueError, binascii.Error, ValidationError):

@@ -1080,7 +1080,30 @@ def test_message_reference_does_not_expose_provider_locator_fields() -> None:
     assert exposed_locator_fields == set()
 
 
-def test_message_reference_rejects_an_altered_opaque_value_without_provider_io(mocker) -> None:
+def test_message_reference_serializes_only_the_locator_payload() -> None:
+    reference = ms_teams._MSTeamsMessageLocator(
+        message_kind="dynamic_card",
+        tenant_id=_credentials().tenant_id,
+        client_id=_credentials().client_id,
+        service_url="https://smba.trafficmanager.net/teams/",
+        conversation_id="sanitized-conversation",
+        activity_id="sanitized-card-activity",
+    )
+    padding = "=" * (-len(reference._serialized_value) % 4)
+    serialized_locator = base64.urlsafe_b64decode(reference._serialized_value + padding)
+
+    assert json.loads(serialized_locator) == {
+        "activity_id": "sanitized-card-activity",
+        "client_id": _credentials().client_id,
+        "conversation_id": "sanitized-conversation",
+        "message_kind": "dynamic_card",
+        "service_url": "https://smba.trafficmanager.net/teams/",
+        "tenant_id": _credentials().tenant_id,
+        "version": 1,
+    }
+
+
+def test_message_reference_rejects_a_malformed_serialized_value_without_provider_io(mocker) -> None:
     reference = ms_teams._MSTeamsMessageLocator(
         message_kind="dynamic_card",
         tenant_id=_credentials().tenant_id,
@@ -1092,8 +1115,8 @@ def test_message_reference_rejects_an_altered_opaque_value_without_provider_io(m
     assert [field.name for field in fields(reference)] == ["_serialized_value"]
     serialized_value = reference._serialized_value
     replacement_character = "A" if serialized_value[-1] != "A" else "B"
-    altered_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    object.__setattr__(altered_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
+    malformed_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
+    object.__setattr__(malformed_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1110,7 +1133,7 @@ def test_message_reference_rejects_an_altered_opaque_value_without_provider_io(m
     connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        altered_reference,
+        malformed_reference,
         StaticCardIntent("Recorded"),
     )
 
