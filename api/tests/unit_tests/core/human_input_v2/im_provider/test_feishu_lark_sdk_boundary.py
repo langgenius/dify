@@ -862,7 +862,7 @@ def test_full_adapter_over_official_http_sdk_preserves_wrapper_parity(
     assert isinstance(card_result, MessageAccepted)
     assert (
         adapter.dynamic_card_messaging.replace_with_static(
-            card_result.reference,
+            card_result.locator,
             StaticCardIntent("Submitted **successfully**"),
         )
         is None
@@ -1189,7 +1189,7 @@ def test_card_reference_update_failures_preserve_exact_mutation_semantics(
     unknown_tenant_gateway = _ScriptedGateway()
     unknown_tenant_gateway.tenant.append(RuntimeError("sanitized tenant failure"))
     unknown_tenant = _scripted_adapter(monkeypatch, unknown_tenant_gateway).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
     assert isinstance(unknown_tenant, ReplacementError)
@@ -1198,17 +1198,17 @@ def test_card_reference_update_failures_preserve_exact_mutation_semantics(
     cross_tenant_gateway = _ScriptedGateway()
     cross_tenant_gateway.tenant.append(_tenant_response("tenant_other"))
     cross_tenant = _scripted_adapter(monkeypatch, cross_tenant_gateway).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
     assert isinstance(cross_tenant, ReplacementError)
-    assert cross_tenant.kind is ReplacementErrorKind.INVALID_REFERENCE
+    assert cross_tenant.kind is ReplacementErrorKind.UNKNOWN
 
     patch_failure_gateway = _ScriptedGateway()
     patch_failure_gateway.tenant.append(_tenant_response())
     patch_failure_gateway.patches.append(RuntimeError("sanitized patch failure"))
     patch_failure = _scripted_adapter(monkeypatch, patch_failure_gateway).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
     assert isinstance(patch_failure, ReplacementError)
@@ -1218,7 +1218,7 @@ def test_card_reference_update_failures_preserve_exact_mutation_semantics(
     stale_gateway.tenant.append(_tenant_response())
     stale_gateway.patches.append({"code": 230011})
     stale = _scripted_adapter(monkeypatch, stale_gateway).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
     assert isinstance(stale, ReplacementError)
@@ -1228,7 +1228,7 @@ def test_card_reference_update_failures_preserve_exact_mutation_semantics(
     unknown_gateway.tenant.append(_tenant_response())
     unknown_gateway.patches.append({"code": 500})
     unknown = _scripted_adapter(monkeypatch, unknown_gateway).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
     assert isinstance(unknown, ReplacementError)

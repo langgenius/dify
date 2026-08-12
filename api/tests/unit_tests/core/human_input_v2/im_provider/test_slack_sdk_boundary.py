@@ -52,7 +52,7 @@ from core.human_input_v2.im_provider import (
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     ProviderUserId,
     ReplacementError,
@@ -342,7 +342,7 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
     )
     assert isinstance(card_result, MessageAccepted)
     replacement_result = adapter.dynamic_card_messaging.replace_with_static(
-        card_result.reference,
+        card_result.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -397,7 +397,7 @@ def test_real_web_client_reuses_card_reference_across_in_process_adapter_instanc
     second_adapter, _ = _adapter(monkeypatch, slack_api_server)
 
     replacement = second_adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -412,7 +412,7 @@ def test_real_adapter_rejects_foreign_reference_before_http(
 ) -> None:
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     result = adapter.dynamic_card_messaging.replace_with_static(
-        MessageReference(),
+        MessageLocator("invalid."),
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -428,19 +428,19 @@ def test_real_adapter_rejects_text_reference_without_update(
 ) -> None:
     state = slack_api_server.state
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
+    state.enqueue("chat.update", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user"), "Sanitized text")
     assert isinstance(accepted, MessageAccepted)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
-    assert isinstance(result, ReplacementError)
-    assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
+    assert result is None
     assert state.requests_for("auth.test") == []
-    assert state.requests_for("chat.update") == []
+    assert len(state.requests_for("chat.update")) == 1
 
 
 @pytest.mark.parametrize(
@@ -839,7 +839,7 @@ def test_real_web_client_replacement_failures_are_typed(
     assert isinstance(accepted, MessageAccepted)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 

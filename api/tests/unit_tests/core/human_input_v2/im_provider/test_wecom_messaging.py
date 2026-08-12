@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-from copy import deepcopy
 
 import pytest
 from wechatpy.exceptions import WeChatClientException
@@ -9,6 +8,7 @@ from wechatpy.exceptions import WeChatClientException
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_provider import (
     MessageAccepted,
+    MessageLocator,
     MessageSendingError,
     ProviderUserId,
     WeComIMIntegrationCredentials,
@@ -123,10 +123,17 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
     )
 
     assert isinstance(result, MessageAccepted)
-    assert isinstance(result.reference, wecom_module._WeComMessageReference)
-    assert result.reference.msg_id == "fake-message-id-001"
-    assert "fake-message-id-001" not in repr(result.reference)
-    assert deepcopy(result.reference) == result.reference
+    assert isinstance(result.locator, str)
+    assert type(result.locator) is str
+    assert MessageLocator(str(result.locator)) == result.locator
+    assert (
+        wecom_module._WeComLocatorPayload.decode(str(result.locator))
+        == wecom_module._WeComLocatorPayload(
+            v=1,
+            p=IMProvider.WE_COM,
+            message_id="fake-message-id-001",
+        )
+    )
     assert token_client.fetch_calls == 1
     assert access_tokens == [None, "fake-access-token-001"]
     assert messaging_client.message.calls == [

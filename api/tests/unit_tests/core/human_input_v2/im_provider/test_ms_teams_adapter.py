@@ -3,11 +3,9 @@ from __future__ import annotations
 import base64
 import importlib.util
 import json
-import pickle
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import fields
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -34,6 +32,7 @@ from core.human_input_v2 import (
     ResolvedFormContent,
     SelectInput,
 )
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import ms_teams
 from core.human_input_v2.im_provider import (
     CardAssessment,
@@ -46,7 +45,7 @@ from core.human_input_v2.im_provider import (
     DynamicCardMessagingError,
     EventAcceptance,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MSTeamsIMIntegrationCredentials,
     ProviderUserId,
@@ -114,10 +113,6 @@ class _ProviderMetadataResponse:
         return self._response_body
 
 
-class _ForeignMessageReference(MessageReference):
-    pass
-
-
 def _unsigned_token(claims: dict[str, object]) -> str:
     header = base64.urlsafe_b64encode(b'{"alg":"none"}').rstrip(b"=").decode()
     payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
@@ -128,10 +123,27 @@ def _adapter_with_tokens(mocker, *, graph_claims: dict[str, object], bot_claims:
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
     graph_credential.get_token.return_value = SimpleNamespace(token=_unsigned_token(graph_claims))
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
-    bot_credentials = mocker.patch.object(ms_teams, "MicrosoftAppCredentials", autospec=True).return_value
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
     bot_credentials.get_access_token.return_value = _unsigned_token(bot_claims)
     adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
     return adapter, graph_credential, graph_client, bot_credentials
+
+
+def _locator(
+    *,
+    service_url: str = "https://smba.trafficmanager.net/teams/",
+    conversation_id: str = "sanitized-conversation",
+    activity_id: str = "sanitized-card-activity",
+) -> MessageLocator:
+    return MessageLocator(
+        ms_teams._MSTeamsLocatorPayload(
+            v=1,
+            p=IMProvider.MS_TEAMS,
+            service_url=service_url,
+            conversation_id=conversation_id,
+            activity_id=activity_id,
+        ).encode()
+    )
 
 
 def _card_intent(
@@ -243,10 +255,10 @@ def test_ms_teams_adapter_rejects_any_other_credential_type() -> None:
 
 
 def test_construction_exposes_webhook_only_capabilities_without_provider_io(mocker) -> None:
-    assert all(hasattr(ms_teams, name) for name in ("ClientSecretCredential", "MicrosoftAppCredentials", "httpx"))
+    assert all(hasattr(ms_teams, name) for name in ("ClientSecretCredential", "_MSTeamsBotCredentials", "httpx"))
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
-    bot_credentials = mocker.patch.object(ms_teams, "MicrosoftAppCredentials", autospec=True).return_value
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
     adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
 
     assert adapter.provider.value == "ms_teams"
@@ -367,7 +379,7 @@ def test_credential_test_compares_guid_claims_case_insensitively(mocker) -> None
         )
     )
     mocker.patch.object(ms_teams.httpx, "Client", autospec=True)
-    bot_credentials = mocker.patch.object(ms_teams, "MicrosoftAppCredentials", autospec=True).return_value
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
     bot_credentials.get_access_token.return_value = _unsigned_token(
         {
             "aud": "https://api.botframework.com",
@@ -643,7 +655,7 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(mo
     accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "**Review requested**")
 
     assert isinstance(accepted, MessageAccepted)
-    assert "sanitized-conversation" not in repr(accepted.reference)
+    assert "sanitized-conversation" not in repr(accepted.locator)
     conversation_parameters = connector.conversations.create_conversation.call_args.args[0]
     assert conversation_parameters.tenant_id == _credentials().tenant_id
     assert conversation_parameters.bot.id == f"28:{_credentials().client_id}"
@@ -962,7 +974,7 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
     )
 
     assert isinstance(accepted, MessageAccepted)
-    assert "sanitized-card-activity" not in repr(accepted.reference)
+    assert "sanitized-card-activity" not in repr(accepted.locator)
     create_conversation.assert_called_once()
     send_to_conversation.assert_called_once()
     _, activity = send_to_conversation.call_args.args
@@ -1010,7 +1022,7 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
     ]
 
 
-def test_card_reference_updates_the_exact_activity_after_adapter_recreation(mocker) -> None:
+def test_card_locator_updates_the_exact_activity_after_adapter_recreation(mocker) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1039,8 +1051,8 @@ def test_card_reference_updates_the_exact_activity_after_adapter_recreation(mock
         CorrelationToken("sanitized-correlation"),
     )
     assert isinstance(accepted, MessageAccepted)
-    persisted_reference = pickle.loads(  # noqa: S301 - trusted in-process test value
-        pickle.dumps(accepted.reference)
+    persisted_reference = MessageLocator(
+        json.loads(json.dumps({"locator": str(accepted.locator)}, separators=(",", ":")))["locator"]
     )
     update_activity = mocker.patch.object(connector.conversations, "update_activity", autospec=True)
     recreated_adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
@@ -1061,15 +1073,8 @@ def test_card_reference_updates_the_exact_activity_after_adapter_recreation(mock
     assert connector.config.retry_policy.retries == 0
 
 
-def test_message_reference_does_not_expose_provider_locator_fields() -> None:
-    reference: MessageReference = ms_teams._MSTeamsMessageLocator(
-        message_kind="dynamic_card",
-        tenant_id=_credentials().tenant_id,
-        client_id=_credentials().client_id,
-        service_url="https://smba.trafficmanager.net/teams/",
-        conversation_id="sanitized-conversation",
-        activity_id="sanitized-card-activity",
-    )
+def test_message_locator_does_not_expose_provider_locator_fields() -> None:
+    reference = _locator()
 
     exposed_locator_fields = {
         name
@@ -1080,43 +1085,25 @@ def test_message_reference_does_not_expose_provider_locator_fields() -> None:
     assert exposed_locator_fields == set()
 
 
-def test_message_reference_serializes_only_the_locator_payload() -> None:
-    reference = ms_teams._MSTeamsMessageLocator(
-        message_kind="dynamic_card",
-        tenant_id=_credentials().tenant_id,
-        client_id=_credentials().client_id,
-        service_url="https://smba.trafficmanager.net/teams/",
-        conversation_id="sanitized-conversation",
-        activity_id="sanitized-card-activity",
-    )
-    padding = "=" * (-len(reference._serialized_value) % 4)
-    serialized_locator = base64.urlsafe_b64decode(reference._serialized_value + padding)
+def test_message_locator_serializes_only_the_locator_payload() -> None:
+    reference = _locator()
+    padding = "=" * (-len(str(reference)) % 4)
+    serialized_locator = base64.urlsafe_b64decode(str(reference) + padding)
 
     assert json.loads(serialized_locator) == {
+        "v": 1,
+        "p": "ms_teams",
         "activity_id": "sanitized-card-activity",
-        "client_id": _credentials().client_id,
         "conversation_id": "sanitized-conversation",
-        "message_kind": "dynamic_card",
         "service_url": "https://smba.trafficmanager.net/teams/",
-        "tenant_id": _credentials().tenant_id,
-        "version": 1,
     }
 
 
-def test_message_reference_rejects_a_malformed_serialized_value_without_provider_io(mocker) -> None:
-    reference = ms_teams._MSTeamsMessageLocator(
-        message_kind="dynamic_card",
-        tenant_id=_credentials().tenant_id,
-        client_id=_credentials().client_id,
-        service_url="https://smba.trafficmanager.net/teams/",
-        conversation_id="sanitized-conversation",
-        activity_id="sanitized-card-activity",
-    )
-    assert [field.name for field in fields(reference)] == ["_serialized_value"]
-    serialized_value = reference._serialized_value
+def test_message_locator_rejects_a_malformed_serialized_value_without_provider_io(mocker) -> None:
+    reference = _locator()
+    serialized_value = str(reference)
     replacement_character = "A" if serialized_value[-1] != "A" else "B"
-    malformed_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    object.__setattr__(malformed_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
+    malformed_reference = MessageLocator(serialized_value[:-1] + replacement_character)
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1144,10 +1131,16 @@ def test_message_reference_rejects_a_malformed_serialized_value_without_provider
     connector_client.assert_not_called()
 
 
-@pytest.mark.parametrize("reference", [MessageReference(), _ForeignMessageReference()])
+@pytest.mark.parametrize(
+    "reference",
+    [
+        MessageLocator("invalid."),
+        MessageLocator(base64.urlsafe_b64encode(b'{"v":1,"p":"slack"}').rstrip(b"=").decode()),
+    ],
+)
 def test_card_update_rejects_incompatible_reference_without_provider_io(
     mocker,
-    reference: MessageReference,
+    reference: MessageLocator,
 ) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
@@ -1217,14 +1210,7 @@ def test_card_update_classifies_provider_failure_without_replaying_or_leaking_de
         update_activity.side_effect = HttpOperationError(None, response)
     else:
         update_activity.side_effect = RuntimeError("sensitive provider response")
-    reference = ms_teams._MSTeamsMessageLocator(
-        message_kind="dynamic_card",
-        tenant_id=_credentials().tenant_id,
-        client_id=_credentials().client_id,
-        service_url="https://smba.trafficmanager.net/teams/",
-        conversation_id="sanitized-conversation",
-        activity_id="sanitized-card-activity",
-    )
+    reference = _locator()
 
     result = adapter.dynamic_card_messaging.replace_with_static(reference, StaticCardIntent("Recorded"))
 

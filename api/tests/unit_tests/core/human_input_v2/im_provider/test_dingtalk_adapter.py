@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import pickle
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -741,8 +740,16 @@ def test_messaging_calls_sdk_once_and_returns_opaque_process_reference() -> None
     assert headers.x_acs_dingtalk_access_token == "sanitized-access-token"
     assert runtime.autoretry is False
     assert runtime.max_attempts == 1
-    assert result.reference.__class__.__name__ == "_DingTalkMessageLocator"
-    assert "sanitized-process-key" not in repr(result.reference)
+    assert isinstance(result.locator, str)
+    assert type(result.locator) is str
+    assert (
+        dingtalk_module._DingTalkLocatorPayload.decode(str(result.locator))
+        == dingtalk_module._DingTalkLocatorPayload(
+            v=1,
+            p=IMProvider.DING_TALK,
+            process_query_key="sanitized-process-key",
+        )
+    )
 
 
 _SANITIZED_PROTOCOL_FIXTURE = (
@@ -1125,7 +1132,7 @@ def test_urllib_directory_client_normalizes_transport_errors(
     assert str(caught.value) == ""
 
 
-def test_messaging_accepts_complete_sdk_response_and_reference_round_trips() -> None:
+def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through_json_text() -> None:
     token_provider = _FakeTokenProvider("fake-access-token-message-001")
     response = BatchSendOTOResponse(
         headers={"content-type": "application/json", "x-acs-request-id": "fake-request-message-001"},
@@ -1145,8 +1152,9 @@ def test_messaging_accepts_complete_sdk_response_and_reference_round_trips() -> 
     )
 
     assert isinstance(result, MessageAccepted)
-    rehydrated = pickle.loads(pickle.dumps(result.reference))  # noqa: S301
-    assert rehydrated == result.reference
+    persisted_locator = json.loads(json.dumps({"locator": str(result.locator)}, separators=(",", ":")))["locator"]
+    rehydrated = dingtalk_module.MessageLocator(persisted_locator)
+    assert rehydrated == result.locator
     assert "fake-process-query-key-001" not in repr(rehydrated)
     assert token_provider.calls == 1
     assert len(robot.calls) == 1

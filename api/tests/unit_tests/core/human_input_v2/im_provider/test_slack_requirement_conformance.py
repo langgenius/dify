@@ -54,7 +54,7 @@ from core.human_input_v2.im_provider import (
     EventAcceptance,
     IMStreamStartError,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     ProviderUserId,
     ReplacementError,
@@ -698,14 +698,14 @@ def test_static_replacement_maps_transport_failures_without_workspace_preflight(
     transport_client = mocker.Mock(spec=WebClient)
     transport_client.chat_update.side_effect = SlackClientError("sanitized transport details")
     transport_result = _adapter(mocker, transport_client).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
     unconfirmed_client = mocker.Mock(spec=WebClient)
     unconfirmed_client.chat_update.return_value = _SlackResponse({"ok": False})
     unconfirmed_result = _adapter(mocker, unconfirmed_client).dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -918,7 +918,7 @@ def test_webhook_consumer_failure_does_not_log_exception_details(
     assert sensitive_marker not in caplog.text
 
 
-def test_message_reference_can_be_reused_across_in_process_adapter_instances(mocker: MockerFixture) -> None:
+def test_message_locator_can_be_reused_across_adapter_instances(mocker: MockerFixture) -> None:
     first_client = mocker.Mock(spec=WebClient)
     first_client.chat_postMessage.return_value = _SlackResponse(
         {"ok": True, "channel": "D0123456789", "ts": "1712345678.123456"}
@@ -937,7 +937,7 @@ def test_message_reference_can_be_reused_across_in_process_adapter_instances(moc
     second_adapter = SlackIMProviderAdapter(_credentials())
 
     result = second_adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -960,7 +960,7 @@ def test_static_replacement_rejects_foreign_reference_before_provider_io(mocker:
     adapter = _adapter(mocker, client)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        MessageReference(),
+        MessageLocator("invalid."),
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -980,16 +980,18 @@ def test_static_replacement_rejects_public_text_reference_without_mutation(mocke
     accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user"), "Sanitized message")
     assert isinstance(accepted, MessageAccepted)
     client.reset_mock()
+    client.chat_update.return_value = _SlackResponse(
+        {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"}
+    )
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
-    assert isinstance(result, ReplacementError)
-    assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
+    assert result is None
     client.auth_test.assert_not_called()
-    client.chat_update.assert_not_called()
+    client.chat_update.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -1022,7 +1024,7 @@ def test_static_replacement_maps_provider_failures_without_replay(
     )
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 

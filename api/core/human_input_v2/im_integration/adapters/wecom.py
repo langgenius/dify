@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 from email.headerregistry import Address
 from typing import Annotated, Literal, Protocol, override
 
@@ -13,6 +12,7 @@ from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
 from core.human_input_v2.im_provider import (
     CredentialTestFailure,
     CredentialTestFailureKind,
@@ -27,7 +27,7 @@ from core.human_input_v2.im_provider import (
     IMMessaging,
     IMWebhookHandler,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
@@ -233,9 +233,16 @@ class _DirectoryBoundaryError(Exception):
     pass
 
 
-@dataclass(frozen=True, slots=True)
-class _WeComMessageReference(MessageReference):
-    msg_id: str = field(repr=False)
+class _WeComLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: Literal[IMProvider.WE_COM]
+    # WeCom application message identifier returned by the send API:
+    # https://developer.work.weixin.qq.com/document/path/90236
+    message_id: StrictStr = Field(pattern=r"\S")
 
 
 class _SDKAccessTokenProvider(AccessTokenProvider):
@@ -334,7 +341,15 @@ class _WeComMessaging(IMMessaging):
                 return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
             if not response.msgid.strip():
                 return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            return MessageAccepted(_WeComMessageReference(response.msgid))
+            return MessageAccepted(
+                MessageLocator(
+                    _WeComLocatorPayload(
+                        v=1,
+                        p=IMProvider.WE_COM,
+                        message_id=response.msgid,
+                    ).encode()
+                )
+            )
         # One mutation attempt is the maximum; every SDK/transport/response
         # failure is normalized without replay or Provider material.
         except Exception:

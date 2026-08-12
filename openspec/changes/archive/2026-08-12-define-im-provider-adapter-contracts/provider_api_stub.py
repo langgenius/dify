@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal, NewType, Protocol
 
-from core.human_input_v2.approval.form import FrozenFormDefinition
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, NaiveDatetime
 
@@ -52,19 +52,19 @@ class SlackIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
 ProviderUserId = NewType("ProviderUserId", str)
 
 
-# Opaque, persistable reference to an exact Provider message.
+# Opaque, persistable locator to an exact Provider message.
 #
 # Callers may store, compare, and return the value to a compatible adapter, but
 # must not parse, alter, or synthesize it.
 #
-# A MessageReference may be consumed across process boundaries and after the
+# A MessageLocator may be consumed across process boundaries and after the
 # originating adapter has been recreated. Its consumption must not depend on
 # in-memory state held by the originating adapter instance.
 #
-# A MessageReference is valid only for a compatible concrete adapter of the same
-# Provider and tenant. References from different adapter types, Providers, or
+# A MessageLocator is valid only for a compatible concrete adapter of the same
+# Provider and tenant. Locators from different adapter types, Providers, or
 # tenants are not interchangeable.
-MessageReference = NewType("MessageReference", str)
+MessageLocator = NewType("MessageLocator", str)
 
 
 # Caller-issued opaque value exposed unchanged by interaction callbacks from
@@ -144,15 +144,6 @@ class IMDirectory(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class NormalizedCardIntent:
-    # Fully rendered CommonMark content shared with the text fallback path.
-    rendered_content: str
-
-    # Complete immutable HITL form definition used for card controls and actions.
-    form_definition: FrozenFormDefinition
-
-
-@dataclass(frozen=True, slots=True)
 class StaticCardIntent:
     # Fully rendered CommonMark replacing the original interactive card.
     rendered_content: str
@@ -178,7 +169,7 @@ class MessageAccepted:
     """Provider acceptance of one send operation, not end-user delivery proof."""
 
     # Opaque exact-message locator issued by the accepting concrete adapter.
-    reference: MessageReference
+    locator: MessageLocator
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +192,7 @@ type MessageSendingResult = MessageAccepted | MessageSendingError
 class ReplacementErrorKind(StrEnum):
     """Stable terminal-card failures that require different caller behavior."""
 
-    # The opaque reference is malformed or was issued by an incompatible adapter.
+    # The opaque locator is malformed or was issued by an incompatible adapter.
     INVALID_REFERENCE = "invalid_reference"
 
     # The referenced Provider message no longer exists or cannot be replaced.
@@ -243,7 +234,7 @@ class DynamicCardMessagingError(Exception):
 
 
 class IMDynamicCardMessaging(Protocol):
-    def assess(self, intent: NormalizedCardIntent) -> CardAssessment:
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
         """Judge the complete intent without trigger any side effect.
 
         If assess returns representable=False, the caller should not invoke send_card
@@ -254,10 +245,10 @@ class IMDynamicCardMessaging(Protocol):
     def send_card(
         self,
         provider_user_id: ProviderUserId,
-        intent: NormalizedCardIntent,
+        intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
-        """Send one complete dynamic card and return its opaque exact reference.
+        """Send one complete dynamic card and return its opaque exact locator.
 
         If th intent is not representable by the provider's dynamic card, this method must
         raise a `DynamicCardMessagingError` exception, and must not downgrades to text implicitly
@@ -270,12 +261,12 @@ class IMDynamicCardMessaging(Protocol):
 
     def replace_with_static(
         self,
-        reference: MessageReference,
+        locator: MessageLocator,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        """Replace the referenced interactive card with a static presentation.
+        """Replace the located interactive card with a static presentation.
 
-        The `reference` argument must be a valid reference returned by `send_card`.
+        The `locator` argument must be a valid locator returned by `send_card`.
         """
         ...
 
@@ -325,7 +316,7 @@ class AuthenticatedIMEvent:
 
     ``event_id`` is present only when Provider evidence confirms a stable ID
     across redelivery. The adapter must never synthesize it from payloads,
-    timestamps, message references or transport ACK envelopes.
+    timestamps, message locators or transport ACK envelopes.
     """
 
     # Provider whose concrete adapter authenticated the event.

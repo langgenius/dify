@@ -3,7 +3,6 @@ from __future__ import annotations
 # These tests exercise local SDK boundaries with test doubles, not Microsoft systems.
 import base64
 import json
-import pickle
 import threading
 from collections import deque
 from collections.abc import Callable, Generator, Mapping
@@ -52,7 +51,7 @@ from core.human_input_v2.im_provider import (
     DynamicCardMessagingError,
     EventAcceptance,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MSTeamsIMIntegrationCredentials,
     ProviderUserId,
@@ -315,7 +314,7 @@ def _adapter(
     monkeypatch.setattr(bot_credentials, "get_access_token", bot_access_token)
     monkeypatch.setattr(ms_teams, "ClientSecretCredential", graph_credential_factory)
     monkeypatch.setattr(ms_teams.httpx, "Client", graph_client_factory)
-    monkeypatch.setattr(ms_teams, "MicrosoftAppCredentials", bot_credentials_factory)
+    monkeypatch.setattr(ms_teams, "_MSTeamsBotCredentials", bot_credentials_factory)
     if connector_factory is not None:
         monkeypatch.setattr(ms_teams, "ConnectorClient", connector_factory)
     return ms_teams.MSTeamsIMProviderAdapter(selected_credentials), graph_credential, graph_boundary
@@ -452,9 +451,7 @@ def test_real_connector_and_graph_boundaries_round_trip_all_outbound_capabilitie
         CorrelationToken("test-only-correlation"),
     )
     assert isinstance(card_result, MessageAccepted)
-    persisted_reference: MessageReference = pickle.loads(  # noqa: S301 - trusted in-process test value
-        pickle.dumps(card_result.reference)
-    )
+    persisted_reference = MessageLocator(str(card_result.locator))
     recreated_adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
     replacement_result = recreated_adapter.dynamic_card_messaging.replace_with_static(
         persisted_reference,
@@ -586,18 +583,16 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
         CorrelationToken("test-only-correlation"),
     )
     assert isinstance(accepted, MessageAccepted)
-    assert isinstance(accepted.reference, ms_teams._MSTeamsMessageLocator)
-    serialized_value = accepted.reference._serialized_value
+    serialized_value = str(accepted.locator)
     replacement_character = "A" if serialized_value[-1] != "A" else "B"
-    malformed_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    object.__setattr__(malformed_reference, "_serialized_value", serialized_value[:-1] + replacement_character)
+    malformed_reference = MessageLocator(serialized_value[:-1] + replacement_character)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
     invalid = adapter.dynamic_card_messaging.replace_with_static(
-        MessageReference(),
+        MessageLocator("invalid."),
         StaticCardIntent("Sanitized static content"),
     )
     malformed = adapter.dynamic_card_messaging.replace_with_static(
@@ -605,7 +600,7 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
         StaticCardIntent("Sanitized static content"),
     )
     unknown = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Sanitized static content"),
     )
 
@@ -622,8 +617,7 @@ def test_real_connector_maps_exact_update_failures_without_selecting_another_mes
 
 def test_replacement_rejects_locator_without_serialized_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     adapter, _, _ = _adapter(monkeypatch)
-    undersized_reference = object.__new__(ms_teams._MSTeamsMessageLocator)
-    object.__setattr__(undersized_reference, "_serialized_value", "")
+    undersized_reference = MessageLocator("")
 
     result = adapter.dynamic_card_messaging.replace_with_static(
         undersized_reference,

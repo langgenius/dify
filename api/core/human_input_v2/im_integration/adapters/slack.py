@@ -7,6 +7,7 @@ delegates connection concurrency and resource shutdown to the Slack SDK.
 
 from __future__ import annotations
 
+import binascii
 import json
 import logging
 import re
@@ -42,6 +43,7 @@ from slack_sdk.web.slack_response import SlackResponse
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CardAssessment,
@@ -67,7 +69,7 @@ from core.human_input_v2.im_provider import (
     IMStreamStopError,
     IMWebhookHandler,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
@@ -89,13 +91,28 @@ def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = Non
     logger.error(message, extra=extra)
 
 
-@dataclass(frozen=True, slots=True)
-class _SlackMessageLocator(MessageReference):
+class _SlackLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
     _TIMESTAMP_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^[0-9]+\.[0-9]+$")
 
-    message_kind: Literal["text", "dynamic_card"]
-    channel_id: str
-    message_ts: str
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: Literal[IMProvider.SLACK]
+    # Slack channel containing the message to update:
+    # https://docs.slack.dev/reference/methods/chat.update/
+    channel_id: str = Field(min_length=1, pattern=r"\S")
+    # Slack timestamp of the message to update:
+    # https://docs.slack.dev/reference/methods/chat.update/
+    message_ts: str = Field(min_length=1)
+
+    @field_validator("message_ts")
+    @classmethod
+    def _validate_message_timestamp(cls, value: str) -> str:
+        if cls._TIMESTAMP_PATTERN.fullmatch(value) is None:
+            raise ValueError("message_ts must be a Slack message timestamp")
+        return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -740,7 +757,7 @@ class _SlackMessaging(IMMessaging):
             )
         except SlackClientError:
             return MessageSendingError("Slack message acceptance could not be confirmed.")
-        return _accepted_message(response, "text")
+        return _accepted_message(response)
 
 
 class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
@@ -783,21 +800,22 @@ class _SlackDynamicCardMessaging(IMDynamicCardMessaging):
             )
         except SlackClientError:
             return MessageSendingError("Slack card acceptance could not be confirmed.")
-        return _accepted_message(response, "dynamic_card")
+        return _accepted_message(response)
 
     @override
     def replace_with_static(
         self,
-        reference: MessageReference,
+        locator: MessageLocator,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        if not isinstance(reference, _SlackMessageLocator) or reference.message_kind != "dynamic_card":
+        try:
+            decoded_locator = _SlackLocatorPayload.decode(str(locator))
+        except (binascii.Error, UnicodeDecodeError, ValidationError, ValueError):
             return ReplacementError(ReplacementErrorKind.INVALID_REFERENCE, "The Slack message reference is invalid.")
-        locator = reference
         try:
             response = self._client.chat_update(
-                channel=locator.channel_id,
-                ts=locator.message_ts,
+                channel=decoded_locator.channel_id,
+                ts=decoded_locator.message_ts,
                 text=intent.rendered_content,
                 blocks=[],
             )
@@ -1172,7 +1190,6 @@ def _optional_non_empty_string(value: JsonValue) -> str | None:
 
 def _accepted_message(
     response: SlackResponse,
-    message_kind: Literal["text", "dynamic_card"],
 ) -> MessageSendingResult:
     if response.get("ok") is not True:
         return MessageSendingError("Slack message acceptance could not be confirmed.")
@@ -1182,10 +1199,19 @@ def _accepted_message(
         not isinstance(channel_id, str)
         or not channel_id.strip()
         or not isinstance(message_ts, str)
-        or _SlackMessageLocator._TIMESTAMP_PATTERN.fullmatch(message_ts) is None
+        or _SlackLocatorPayload._TIMESTAMP_PATTERN.fullmatch(message_ts) is None
     ):
         return MessageSendingError("Slack returned no exact message reference.")
-    return MessageAccepted(_SlackMessageLocator(message_kind, channel_id, message_ts))
+    return MessageAccepted(
+        MessageLocator(
+            _SlackLocatorPayload(
+                v=1,
+                p=IMProvider.SLACK,
+                channel_id=channel_id,
+                message_ts=message_ts,
+            ).encode()
+        )
+    )
 
 
 def _header_values(headers: tuple[tuple[str, str], ...], target_name: str) -> tuple[str, ...]:

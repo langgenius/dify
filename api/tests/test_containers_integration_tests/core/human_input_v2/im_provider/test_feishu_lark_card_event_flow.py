@@ -443,7 +443,6 @@ def test_sender_wire_agrees_with_sanitized_webhook_and_stream_boundaries(
 ) -> None:
     gateway = _RecordingGateway()
     monkeypatch.setattr(feishu_lark, "_create_sdk_gateway", lambda _credentials, _domain: gateway)
-    monkeypatch.setattr(feishu_lark, "_reference_signing_secret", lambda: "signing-secret-test-only")
     adapter = FeishuIMProviderAdapter(_credentials())
     token = CorrelationToken("feishu-lark-card-evidence-token")
     webhook_fixture = _load_fixture(_WEBHOOK_FIXTURE)
@@ -665,7 +664,6 @@ def test_live_feishu_sender_is_accepted_and_replaced_without_callback_synthesis(
     )
     live_gateway = _LiveRecordingGateway(feishu_lark._OfficialSDKGateway(credentials, feishu_lark._FEISHU_DOMAIN))
     monkeypatch.setattr(feishu_lark, "_create_sdk_gateway", lambda _credentials, _domain: live_gateway)
-    monkeypatch.setattr(feishu_lark, "_reference_signing_secret", lambda: "signing-secret-test-only")
     adapter = FeishuIMProviderAdapter(credentials)
     marker = f"codex-feishu-lark-card-event-{uuid4()}"
     token = CorrelationToken(f"{marker}-correlation")
@@ -684,7 +682,7 @@ def test_live_feishu_sender_is_accepted_and_replaced_without_callback_synthesis(
         assert marker_metadata["correlation_token"] == token
         assert (
             adapter.dynamic_card_messaging.replace_with_static(
-                result.reference,
+                result.locator,
                 StaticCardIntent(f"Feishu/Lark card integration completed [{marker}]"),
             )
             is None

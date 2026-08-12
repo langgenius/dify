@@ -36,7 +36,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     ProviderUserId,
     ReplacementError,
@@ -149,7 +149,7 @@ def _accepted_card_reference(
     monkeypatch: pytest.MonkeyPatch,
     *,
     message_id: str = "om_sanitized_card",
-) -> MessageReference:
+) -> MessageLocator:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response())
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": message_id}})
@@ -160,15 +160,14 @@ def _accepted_card_reference(
         CorrelationToken("opaque-correlation-token"),
     )
     assert isinstance(accepted, MessageAccepted)
-    return accepted.reference
+    return accepted.locator
 
 
 def _assert_invalid_reference_without_mutation(
     monkeypatch: pytest.MonkeyPatch,
-    reference: MessageReference,
     opaque: str,
 ) -> None:
-    invalid = type(reference)(opaque)
+    invalid = MessageLocator(opaque)
     replacement_gateway = FakeSDKGateway()
     replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
 
@@ -1121,16 +1120,14 @@ def test_reference_round_trips_and_updates_only_exact_original_message(monkeypat
         CorrelationToken("opaque-correlation-token"),
     )
     assert isinstance(accepted, MessageAccepted)
-    padding = "=" * (-len(accepted.reference.opaque) % 4)
-    serialized_payload = base64.urlsafe_b64decode(accepted.reference.opaque + padding)
+    padding = "=" * (-len(str(accepted.locator)) % 4)
+    serialized_payload = base64.urlsafe_b64decode(str(accepted.locator) + padding)
     assert json.loads(serialized_payload) == {
-        "version": 1,
-        "provider": "feishu",
-        "provider_tenant_id": "tenant_sanitized",
-        "message_kind": "dynamic_card",
+        "v": 1,
+        "p": "feishu",
         "message_id": "om_sanitized_card",
     }
-    persisted = type(accepted.reference)(accepted.reference.opaque)
+    persisted = MessageLocator(str(accepted.locator))
 
     replacement_gateway = FakeSDKGateway()
     replacement_gateway.tenant_responses.append(_tenant_response())
@@ -1182,7 +1179,7 @@ def test_reference_survives_provider_app_secret_rotation(
     )
 
     result = replacement.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted after credential rotation"),
     )
 
@@ -1213,7 +1210,7 @@ def test_message_reference_does_not_depend_on_dify_secret_key(
     replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
@@ -1236,7 +1233,7 @@ def test_cross_provider_reference_is_invalid_without_mutation(monkeypatch: pytes
     lark = _adapter(monkeypatch, IMProvider.LARK, lark_gateway)
 
     result = lark.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
@@ -1256,8 +1253,9 @@ def test_malformed_reference_is_invalid_without_provider_io(monkeypatch: pytest.
         CorrelationToken("opaque-correlation-token"),
     )
     assert isinstance(accepted, MessageAccepted)
-    malformed_suffix = "A" if not accepted.reference.opaque.endswith("A") else "B"
-    malformed = type(accepted.reference)(accepted.reference.opaque[:-1] + malformed_suffix)
+    locator_value = str(accepted.locator)
+    malformed_suffix = "A" if not locator_value.endswith("A") else "B"
+    malformed = MessageLocator(locator_value[:-1] + malformed_suffix)
     replacement_gateway = FakeSDKGateway()
     replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
 
@@ -1273,12 +1271,12 @@ def test_reference_rejects_redundant_base64_padding_without_message_mutation(
 ) -> None:
     reference = _accepted_card_reference(monkeypatch)
 
-    _assert_invalid_reference_without_mutation(monkeypatch, reference, f"{reference.opaque}=")
+    _assert_invalid_reference_without_mutation(monkeypatch, f"{str(reference)}=")
 
 
 @pytest.mark.parametrize(
     ("message_id", "canonical_character", "standard_base64_alias"),
-    [("om_sanitized_\u00be", "-", "+"), ("om_sanitized_\u00bf", "_", "/")],
+    [("om_\u00be", "-", "+"), ("om_\u00bf", "_", "/")],
     ids=("plus-alias", "slash-alias"),
 )
 def test_reference_rejects_standard_base64_aliases_without_message_mutation(
@@ -1288,10 +1286,10 @@ def test_reference_rejects_standard_base64_aliases_without_message_mutation(
     standard_base64_alias: str,
 ) -> None:
     reference = _accepted_card_reference(monkeypatch, message_id=message_id)
-    assert canonical_character in reference.opaque
-    aliased_payload = reference.opaque.replace(canonical_character, standard_base64_alias)
+    assert canonical_character in str(reference)
+    aliased_payload = str(reference).replace(canonical_character, standard_base64_alias)
 
-    _assert_invalid_reference_without_mutation(monkeypatch, reference, aliased_payload)
+    _assert_invalid_reference_without_mutation(monkeypatch, aliased_payload)
 
 
 @pytest.mark.parametrize(
@@ -1308,12 +1306,12 @@ def test_reference_rejects_extra_segments_and_dots_without_message_mutation(
     opaque_template: str,
 ) -> None:
     reference = _accepted_card_reference(monkeypatch)
-    opaque = opaque_template.format(reference=reference.opaque)
+    opaque = opaque_template.format(reference=str(reference))
 
-    _assert_invalid_reference_without_mutation(monkeypatch, reference, opaque)
+    _assert_invalid_reference_without_mutation(monkeypatch, opaque)
 
 
-def test_cross_tenant_reference_is_invalid_without_message_mutation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reference_does_not_require_tenant_lookup_before_patch(monkeypatch: pytest.MonkeyPatch) -> None:
     source_gateway = FakeSDKGateway()
     source_gateway.tenant_responses.append(_tenant_response("tenant_source"))
     source_gateway.create_responses.append({"code": 0, "data": {"message_id": "om_sanitized_card"}})
@@ -1325,17 +1323,16 @@ def test_cross_tenant_reference_is_invalid_without_message_mutation(monkeypatch:
     )
     assert isinstance(accepted, MessageAccepted)
     replacement_gateway = FakeSDKGateway()
-    replacement_gateway.tenant_responses.append(_tenant_response("tenant_other"))
+    replacement_gateway.patch_responses.append({"code": 0, "data": {}})
     replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
-    assert isinstance(result, ReplacementError)
-    assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
-    assert not any(call[0] == "patch_message" for call in replacement_gateway.calls)
+    assert result is None
+    assert [call[0] for call in replacement_gateway.calls] == ["patch_message"]
 
 
 @pytest.mark.parametrize("provider_code", [230001, 230011, 230020])
@@ -1359,7 +1356,7 @@ def test_provider_stale_reference_is_classified_without_replay(
     replacement = _adapter(monkeypatch, IMProvider.FEISHU, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
@@ -1392,7 +1389,7 @@ def test_card_replacement_rejects_non_integer_success_code(
     replacement = _adapter(monkeypatch, provider, replacement_gateway)
 
     result = replacement.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 

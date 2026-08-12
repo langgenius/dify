@@ -70,13 +70,13 @@ Directory 不再次接收 credentials、Provider client 或 generic integration 
 
 ### 5. Messaging exposes send semantics rather than transport mechanics
 
-Basic Messaging 定义 `send_text`。Dynamic Card Messaging 定义 side-effect-free `assess`、`send_card` 和 exact-reference `replace_with_static`。Messaging 接收 `ProviderUserId`，不向 caller 暴露 destination ID、conversation state 或其他 Provider transport addressing。
+Basic Messaging 定义 `send_text`。Dynamic Card Messaging 定义 side-effect-free `assess`、`send_card` 和 exact-message `replace_with_static`。Messaging 接收 `ProviderUserId`，不向 caller 暴露 destination ID、conversation state 或其他 Provider transport addressing。
 
-`send_card` 接收 Dify 侧预先生成的 nominal `CorrelationToken`。该 token 是 caller-owned opaque string；任一卡片交互 callback 都必须原样暴露同一个 token，使其可关联到 Dify interaction，adapter 不解释其内容。Provider-native action identity 继续区分具体按钮，`CorrelationToken` 不承担 action identity、Provider configuration 或 message location；后者仍由 `MessageReference` 表达。共享 contract 不规定 concrete adapter 使用 card-level metadata、action-level data、encoding 或 external lookup 实现该语义。
+`send_card` 接收 Dify 侧预先生成的 nominal `CorrelationToken`。该 token 是 caller-owned opaque string；任一卡片交互 callback 都必须原样暴露同一个 token，使其可关联到 Dify interaction，adapter 不解释其内容。Provider-native action identity 继续区分具体按钮，`CorrelationToken` 不承担 action identity、Provider configuration 或 message location；后者仍由 `MessageLocator` 表达。共享 contract 不规定 concrete adapter 使用 card-level metadata、action-level data、encoding 或 external lookup 实现该语义。
 
-Card assessment 对完整 `NormalizedCardIntent` 做整体 representability judgment。它不能忽略不支持的 input 并报告 partial success。初始 card-capable Providers 对包含 `FILE` 或 `FILE_LIST` 的 intent 返回 not representable。Caller 不得把 assessment 判定为不可表示的 intent 传给 `send_card`；如果仍然传入，`send_card` 必须在创建 Provider message 之前抛出 `DynamicCardMessagingError`。
+Card assessment 对完整 `ResolvedForm` 做整体 representability judgment。它不能忽略不支持的 input 并报告 partial success。初始 card-capable Providers 对包含 `FILE` 或 `FILE_LIST` 的 intent 返回 not representable。Caller 不得把 assessment 判定为不可表示的 intent 传给 `send_card`；如果仍然传入，`send_card` 必须在创建 Provider message 之前抛出 `DynamicCardMessagingError`。
 
-一次 send invocation 对目标 message creation 至多尝试一次；一次 `replace_with_static` invocation 对目标 replacement 至多尝试一次。只有获得 confirmed Provider acceptance 才返回 success；明确拒绝或无法确认 acceptance 都返回统一的 `MessageSendingError`，caller 不能据此推断 Provider 是否接受了消息。结果不确定时不自动 replay。成功只表示 Provider acceptance，并返回能够定位该 Provider message 的 discriminated exact reference，不表示 end-user delivery。`replace_with_static` 成功返回 `None`；失败返回携带 `ReplacementErrorKind` 的 `ReplacementError`。
+一次 send invocation 对目标 message creation 至多尝试一次；一次 `replace_with_static` invocation 对目标 replacement 至多尝试一次。只有获得 confirmed Provider acceptance 才返回 success；明确拒绝或无法确认 acceptance 都返回统一的 `MessageSendingError`，caller 不能据此推断 Provider 是否接受了消息。结果不确定时不自动 replay。成功只表示 Provider acceptance，并返回能够定位该 Provider message 的 discriminated exact locator，不表示 end-user delivery。`replace_with_static` 成功返回 `None`；失败返回携带 `ReplacementErrorKind` 的 `ReplacementError`。
 
 ### 6. Webhook and STREAM converge through IMEventConsumer
 
@@ -106,7 +106,7 @@ Concrete adapter 只负责 authentication、applicable decryption、control-mess
 
 ### 9. Provider evidence validates the contract without prescribing implementation
 
-每个初始 Provider verification unit 的适用 operation 和 event entry 都需要权威资料，以及授权非生产环境真实执行产生的 committed fixture evidence。该 evidence 用于确认 tenant identity、directory scope、identity mapping、message acceptance/reference、authentication、challenge、decryption 与 ACK semantics 确实能够支撑共享 contract。
+每个初始 Provider verification unit 的适用 operation 和 event entry 都需要权威资料，以及授权非生产环境真实执行产生的 committed fixture evidence。该 evidence 用于确认 tenant identity、directory scope、identity mapping、message acceptance/locator、authentication、challenge、decryption 与 ACK semantics 确实能够支撑共享 contract。
 
 初始 verification units 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams。Feishu 与 Lark 在 production protocol path 和 semantics 相同时作为一个共享 evidence unit，并使用授权飞书非生产环境提供真实证据；两者的 typed configuration、Provider discriminator 和 API host 仍保持独立。如果 production path 或 protocol semantics 分叉，共享 evidence assumption 失效，相关 contract 必须重新审阅。
 

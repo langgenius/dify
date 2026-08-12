@@ -107,10 +107,18 @@ ProviderUserId = NewType("ProviderUserId", str)
 CorrelationToken = NewType("CorrelationToken", str)
 
 
-class MessageReference:
-    """In-process nominal marker for a concrete Provider's private message locator."""
-
-    __slots__ = ()
+# Opaque, persistable locator for one exact Provider message.
+#
+# Callers may store, compare, and return this value to a compatible adapter,
+# but must not parse, alter, or synthesize it.
+#
+# The value is a plain, versioned serialization of Provider-private locator
+# facts. It may cross process boundaries and survive adapter recreation.
+# Keep this value within a trusted application boundary; it must not cross
+# a security boundary.
+# "Opaque" constrains caller behavior; it does not imply encryption, signing,
+# cryptographic authenticity, or authorization.
+MessageLocator = NewType("MessageLocator", str)
 
 
 class CredentialTestFailureKind(StrEnum):
@@ -187,7 +195,7 @@ class CardAssessment:
 class MessageAccepted:
     """Confirmed provider acceptance, not end-user delivery proof."""
 
-    reference: MessageReference
+    locator: MessageLocator
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,7 +254,7 @@ class IMDynamicCardMessaging(Protocol):
 
     def replace_with_static(
         self,
-        reference: MessageReference,
+        locator: MessageLocator,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
         """Replace only the exact compatible referenced card once."""
@@ -434,7 +442,7 @@ __all__ = [
     "IMWebhookHandler",
     "MSTeamsIMIntegrationCredentials",
     "MessageAccepted",
-    "MessageReference",
+    "MessageLocator",
     "MessageSendingError",
     "MessageSendingResult",
     "ProviderUserId",

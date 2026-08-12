@@ -32,7 +32,7 @@ from core.human_input_v2.im_provider import (
     CorrelationToken,
     IMStreamStartError,
     IMStreamStopError,
-    MessageReference,
+    MessageLocator,
     WebhookRequest,
 )
 
@@ -295,10 +295,8 @@ def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatc
     with pytest.raises(TypeError, match="Lark adapter"):
         LarkIMProviderAdapter(cast(LarkIMIntegrationCredentials, feishu))
 
-    class ForeignReference(MessageReference):
-        pass
-
-    assert adapter_module._decode_reference(ForeignReference()) is None
+    with pytest.raises(ValueError):
+        adapter_module._FeishuLarkLocatorPayload.decode(str(MessageLocator("invalid.")))
 
 
 def test_sdk_mapping_rejects_non_object_json(monkeypatch: pytest.MonkeyPatch) -> None:

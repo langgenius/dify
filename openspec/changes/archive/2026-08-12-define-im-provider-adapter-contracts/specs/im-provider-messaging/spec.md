@@ -29,7 +29,7 @@ Slack, Feishu/Lark, DingTalk, WeCom and Microsoft Teams MUST expose `send_text(p
 
 #### Scenario: Provider accepts a text message
 - **WHEN** `send_text` is accepted by the Provider
-- **THEN** it MUST return `MessageAccepted` with an opaque `MessageReference`
+- **THEN** it MUST return `MessageAccepted` with an opaque `MessageLocator`
 - **AND** the result MUST NOT claim end-user delivery
 
 #### Scenario: Text send does not yield confirmed acceptance
@@ -45,7 +45,7 @@ Messaging MUST expose neither a dedicated connection-test operation nor a recipi
 - **THEN** it MUST invoke the applicable real send operation rather than a separate Messaging probe
 
 ### Requirement: Dynamic Card Messaging MUST assess complete normalized intents
-Dynamic Card Messaging MUST expose side-effect-free `assess(intent)`. `NormalizedCardIntent` MUST contain fully rendered CommonMark content and the complete immutable HITL form definition. Assessment MUST evaluate every ordered input, action, default value and presentation fact. It MUST return one whole-intent representability decision and MAY return an operator-safe diagnostic reason. The reason MUST NOT be parsed as a stable decision code.
+Dynamic Card Messaging MUST expose side-effect-free `assess(intent)`. `ResolvedForm` MUST contain fully rendered CommonMark content and the complete immutable HITL form definition. Assessment MUST evaluate every ordered input, action, default value and presentation fact. It MUST return one whole-intent representability decision and MAY return an operator-safe diagnostic reason. The reason MUST NOT be parsed as a stable decision code.
 
 #### Scenario: Provider can represent a card intent
 - **WHEN** every control and semantic in the complete intent can be preserved
@@ -60,11 +60,11 @@ Dynamic Card Messaging MUST expose side-effect-free `assess(intent)`. `Normalize
 - **THEN** it MUST return not representable without filtering out that input
 
 ### Requirement: Dynamic Card Messaging MUST send one complete card
-Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, correlation_token)`. The operation MUST receive the same complete `NormalizedCardIntent` used by assessment. The caller MUST NOT invoke `send_card` when `assess(intent)` returns `representable=False`. If an unrepresentable intent is nevertheless passed, `send_card` MUST raise `DynamicCardMessagingError` before creating a Provider message. `CorrelationToken` MUST be a caller-issued opaque string used only for later interaction correlation. Every interaction callback originating from the card MUST expose the supplied token unchanged, and the adapter MUST NOT interpret it. A card send failure MUST NOT implicitly send a text fallback or create a partial card.
+Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, correlation_token)`. The operation MUST receive the same complete `ResolvedForm` used by assessment. The caller MUST NOT invoke `send_card` when `assess(intent)` returns `representable=False`. If an unrepresentable intent is nevertheless passed, `send_card` MUST raise `DynamicCardMessagingError` before creating a Provider message. `CorrelationToken` MUST be a caller-issued opaque string used only for later interaction correlation. Every interaction callback originating from the card MUST expose the supplied token unchanged, and the adapter MUST NOT interpret it. A card send failure MUST NOT implicitly send a text fallback or create a partial card.
 
 #### Scenario: Provider accepts a dynamic card
 - **WHEN** `send_card` is accepted by the Provider
-- **THEN** it MUST return `MessageAccepted` with an opaque `MessageReference`
+- **THEN** it MUST return `MessageAccepted` with an opaque `MessageLocator`
 
 #### Scenario: A dynamic card contains multiple callback-capable actions
 - **WHEN** different callback-capable actions on a card are invoked
@@ -75,16 +75,16 @@ Dynamic Card Messaging MUST expose `send_card(provider_user_id, intent, correlat
 - **WHEN** `send_card` cannot preserve the complete input intent
 - **THEN** it MUST raise `DynamicCardMessagingError` without creating a Provider message
 
-### Requirement: MessageReference MUST be an opaque persistent round-trip value
-`MessageReference` MUST identify the exact Provider message accepted by `send_text` or `send_card`. A caller MAY persist, compare, and return the exact value to a compatible adapter, including after adapter recreation or process restart. A caller MUST NOT interpret, alter or synthesize a reference. The common interface MUST NOT expose Provider locator fields or assume one Provider-wide scalar message ID format.
+### Requirement: MessageLocator MUST be an opaque persistent round-trip value
+`MessageLocator` MUST identify the exact Provider message accepted by `send_text` or `send_card`. A caller MAY persist, compare, and return the exact value to a compatible adapter, including after adapter recreation or process restart. A caller MUST NOT interpret, alter or synthesize a locator. The common interface MUST NOT expose Provider locator fields or assume one Provider-wide scalar message ID format.
 
-#### Scenario: A message reference crosses a process boundary
-- **WHEN** a caller persists a successful send reference and later rehydrates it unchanged
-- **THEN** a compatible adapter MUST be able to consume the reference without access to the original adapter instance
+#### Scenario: A message locator crosses a process boundary
+- **WHEN** a caller persists a successful send locator and later rehydrates it unchanged
+- **THEN** a compatible adapter MUST be able to consume the locator without access to the original adapter instance
 
 #### Scenario: Providers use different message locators
 - **WHEN** Providers require different facts to identify an exact message
-- **THEN** those differences MUST remain opaque behind `MessageReference`
+- **THEN** those differences MUST remain opaque behind `MessageLocator`
 
 ### Requirement: Messaging MUST NOT automatically repeat a requested mutation
 One `send_text` or `send_card` invocation MUST attempt the requested message creation at most once. One `replace_with_static` invocation MUST attempt the requested replacement at most once. An invocation MUST NOT automatically repeat a requested mutation whose outcome is uncertain.
@@ -94,14 +94,14 @@ One `send_text` or `send_card` invocation MUST attempt the requested message cre
 - **THEN** it MUST NOT attempt that creation again within the same invocation
 
 ### Requirement: Dynamic Card Messaging MUST replace the exact accepted card with a static presentation
-Dynamic Card Messaging MUST expose `replace_with_static(reference, intent)`. The `reference` argument MUST be an unmodified `MessageReference` returned by `send_card` from a compatible adapter bound to the same Provider and tenant. `StaticCardIntent` MUST contain the caller-rendered static CommonMark presentation and MUST contain no interactive inputs, actions or callback metadata. The operation MUST replace only the exact card identified by the supplied `MessageReference`. A successful operation MUST return `None`. A failure MUST return `ReplacementError`; its `kind` MUST be a `ReplacementErrorKind` distinguishing `INVALID_REFERENCE`, `STALE_REFERENCE` and `UNKNOWN`.
+Dynamic Card Messaging MUST expose `replace_with_static(locator, intent)`. The `locator` argument MUST be an unmodified `MessageLocator` returned by `send_card` from a compatible adapter bound to the same Provider and tenant. `StaticCardIntent` MUST contain the caller-rendered static CommonMark presentation and MUST contain no interactive inputs, actions or callback metadata. The operation MUST replace only the exact card identified by the supplied `MessageLocator`. A successful operation MUST return `None`. A failure MUST return `ReplacementError`; its `kind` MUST be a `ReplacementErrorKind` distinguishing `INVALID_REFERENCE`, `STALE_REFERENCE` and `UNKNOWN`.
 
 #### Scenario: A committed submission is reflected on the Provider
-- **WHEN** the caller passes the exact accepted card reference and a static intent after the business submission commits
+- **WHEN** the caller passes the exact accepted card locator and a static intent after the business submission commits
 - **THEN** `replace_with_static` MUST replace that card with the supplied static presentation
 
-#### Scenario: Message reference is invalid or incompatible
-- **WHEN** `replace_with_static` receives a malformed, altered or incompatible reference
+#### Scenario: Message locator is invalid or incompatible
+- **WHEN** `replace_with_static` receives a malformed, altered or incompatible locator
 - **THEN** it MUST return `INVALID_REFERENCE` without mutating a Provider message
 
 #### Scenario: Referenced card is stale

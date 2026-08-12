@@ -21,7 +21,7 @@ from collections import deque
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from concurrent.futures import Future
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import ClassVar, Literal, Never, Protocol, override, runtime_checkable
 from urllib.parse import parse_qs, urlsplit
@@ -42,6 +42,7 @@ from websockets.asyncio.client import ClientConnection
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CardAssessment,
@@ -66,7 +67,7 @@ from core.human_input_v2.im_provider import (
     IMStreamStopError,
     IMWebhookHandler,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
@@ -84,6 +85,7 @@ _FEISHU_DOMAIN = "https://open.feishu.cn"
 _LARK_DOMAIN = "https://open.larksuite.com"
 _DIRECTORY_PAGE_SIZE = 50
 type _DepartmentIdType = Literal["department_id", "open_department_id"]
+type _FeishuLarkProvider = Literal[IMProvider.FEISHU, IMProvider.LARK]
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,9 +97,6 @@ class _DepartmentIdentity:
 _ROOT_DEPARTMENT = _DepartmentIdentity("0", "department_id")
 _AUTHENTICATION_REJECTED_CODES = frozenset((99991663, 99991664, 99991665))
 _STALE_MESSAGE_CODES = frozenset((230001, 230011, 230020))
-_REFERENCE_VERSION: Literal[1] = 1
-_REFERENCE_KIND_TEXT: Literal["text"] = "text"
-_REFERENCE_KIND_DYNAMIC_CARD: Literal["dynamic_card"] = "dynamic_card"
 _WEBHOOK_REPLAY_CLAIM_TTL_SECONDS = 300
 _WEBHOOK_REPLAY_CACHE_CAPACITY = 4096
 _JSON_RESPONSE_HEADERS = (("Content-Type", "application/json"),)
@@ -1118,23 +1117,21 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 _MS_FEISHU_LARK_CARD_CODEC = _MSFeishuLarkCardCodec()
 
 
-class _ReferencePayload(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
+class _FeishuLarkLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True, strict=True)
 
-    version: Literal[1]
-    provider: IMProvider
-    provider_tenant_id: str = Field(min_length=1)
-    message_kind: Literal["text", "dynamic_card"]
-    message_id: str = Field(min_length=1)
-
-
-@dataclass(frozen=True, slots=True)
-class _FeishuLarkMessageReference(MessageReference):
-    opaque: str = field(repr=False)
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: _FeishuLarkProvider
+    # Feishu/Lark message identifier used to update the card:
+    # Feishu: https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/patch
+    # Lark: https://open.larksuite.com/document/server-docs/im-v1/message-card/patch
+    message_id: str = Field(min_length=1, pattern=r"\S")
 
 
 class _FeishuLarkDirectory(IMDirectory):
-    def __init__(self, gateway: _SDKGateway, provider: IMProvider) -> None:
+    def __init__(self, gateway: _SDKGateway, provider: _FeishuLarkProvider) -> None:
         self._gateway = gateway
         self._provider = provider
 
@@ -1213,7 +1210,7 @@ class _FeishuLarkMessaging(IMMessaging):
         self,
         gateway: _SDKGateway,
         credentials: _FeishuLarkIMIntegrationCredentials,
-        provider: IMProvider,
+        provider: _FeishuLarkProvider,
     ) -> None:
         self._gateway = gateway
         self._credentials = credentials
@@ -1224,7 +1221,6 @@ class _FeishuLarkMessaging(IMMessaging):
         try:
             plain_text = _commonmark_plain_text(body)
             content = json.dumps({"text": plain_text}, ensure_ascii=False, separators=(",", ":"))
-            provider_tenant_id = _query_tenant_id(self._gateway)
             response = _MessageResponse.model_validate(
                 self._gateway.create_message(str(provider_user_id), "text", content)
             )
@@ -1236,11 +1232,12 @@ class _FeishuLarkMessaging(IMMessaging):
         if response.code != 0 or response.data is None:
             return MessageSendingError(f"{_provider_name(self._provider)} message acceptance could not be confirmed.")
         return MessageAccepted(
-            _encode_reference(
-                provider=self._provider,
-                provider_tenant_id=provider_tenant_id,
-                message_kind=_REFERENCE_KIND_TEXT,
-                message_id=response.data.message_id,
+            MessageLocator(
+                _FeishuLarkLocatorPayload(
+                    v=1,
+                    p=self._provider,
+                    message_id=response.data.message_id,
+                ).encode()
             )
         )
 
@@ -1250,7 +1247,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         self,
         gateway: _SDKGateway,
         credentials: _FeishuLarkIMIntegrationCredentials,
-        provider: IMProvider,
+        provider: _FeishuLarkProvider,
     ) -> None:
         self._gateway = gateway
         self._credentials = credentials
@@ -1270,14 +1267,6 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         encoded_card = _MS_FEISHU_LARK_CARD_CODEC.encode(intent, correlation_token)
         content = json.dumps(encoded_card, ensure_ascii=False, separators=(",", ":"))
         failure = MessageSendingError(f"{_provider_name(self._provider)} card acceptance could not be confirmed.")
-        try:
-            provider_tenant_id = _query_tenant_id(self._gateway)
-        except Exception:
-            _log_safe_error(
-                "Feishu/Lark card acceptance failed at tenant-resolution stage",
-                extra={"im_provider": self._provider.value},
-            )
-            return failure
         try:
             provider_response = self._gateway.create_message(str(provider_user_id), "interactive", content)
         except Exception:
@@ -1307,38 +1296,29 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
             )
             return failure
         return MessageAccepted(
-            _encode_reference(
-                provider=self._provider,
-                provider_tenant_id=provider_tenant_id,
-                message_kind=_REFERENCE_KIND_DYNAMIC_CARD,
-                message_id=response.data.message_id,
+            MessageLocator(
+                _FeishuLarkLocatorPayload(
+                    v=1,
+                    p=self._provider,
+                    message_id=response.data.message_id,
+                ).encode()
             )
         )
 
     @override
     def replace_with_static(
         self,
-        reference: MessageReference,
+        locator: MessageLocator,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        locator = _decode_reference(reference)
-        if (
-            locator is None
-            or locator.provider is not self._provider
-            or locator.message_kind != _REFERENCE_KIND_DYNAMIC_CARD
-        ):
+        try:
+            decoded_locator = _FeishuLarkLocatorPayload.decode(str(locator))
+        except (ValueError, binascii.Error, ValidationError):
             return ReplacementError(
                 ReplacementErrorKind.INVALID_REFERENCE,
                 f"The {_provider_name(self._provider)} message reference is invalid.",
             )
-        try:
-            provider_tenant_id = _query_tenant_id(self._gateway)
-        except Exception:
-            return ReplacementError(
-                ReplacementErrorKind.UNKNOWN,
-                f"{_provider_name(self._provider)} replacement acceptance is unknown.",
-            )
-        if provider_tenant_id != locator.provider_tenant_id:
+        if decoded_locator.p is not self._provider:
             return ReplacementError(
                 ReplacementErrorKind.INVALID_REFERENCE,
                 f"The {_provider_name(self._provider)} message reference is invalid.",
@@ -1349,7 +1329,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         }
         content = json.dumps(static_card, ensure_ascii=False, separators=(",", ":"))
         try:
-            response = _PatchResponse.model_validate(self._gateway.patch_message(locator.message_id, content))
+            response = _PatchResponse.model_validate(self._gateway.patch_message(decoded_locator.message_id, content))
         except Exception:
             _log_safe_error("Feishu/Lark card replacement is unknown", extra={"im_provider": self._provider.value})
             return ReplacementError(
@@ -1376,7 +1356,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
         self,
         gateway: _SDKGateway,
         credentials: _FeishuLarkIMIntegrationCredentials,
-        provider: IMProvider,
+        provider: _FeishuLarkProvider,
         consumer: IMEventConsumer,
     ) -> None:
         self._gateway = gateway
@@ -1507,7 +1487,7 @@ class _FeishuLarkEventStream:
         self,
         *,
         credentials: _FeishuLarkIMIntegrationCredentials,
-        provider: IMProvider,
+        provider: _FeishuLarkProvider,
         domain: str,
         consumer: IMEventConsumer,
     ) -> None:
@@ -1673,7 +1653,7 @@ class _FeishuLarkIMProviderAdapter:
     def __init__(
         self,
         credentials: _FeishuLarkIMIntegrationCredentials,
-        provider: IMProvider,
+        provider: _FeishuLarkProvider,
         domain: str,
     ) -> None:
         self._credentials = credentials
@@ -1936,45 +1916,6 @@ def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentit
     if open_department_id is not None:
         return _DepartmentIdentity(open_department_id, "open_department_id")
     return None
-
-
-def _encode_reference(
-    *,
-    provider: IMProvider,
-    provider_tenant_id: str,
-    message_kind: Literal["text", "dynamic_card"],
-    message_id: str,
-) -> _FeishuLarkMessageReference:
-    reference_payload = _ReferencePayload(
-        version=_REFERENCE_VERSION,
-        provider=provider,
-        provider_tenant_id=provider_tenant_id,
-        message_kind=message_kind,
-        message_id=message_id,
-    )
-    payload_bytes = reference_payload.model_dump_json().encode()
-    return _FeishuLarkMessageReference(_urlsafe_encode(payload_bytes))
-
-
-def _decode_reference(reference: MessageReference) -> _ReferencePayload | None:
-    if not isinstance(reference, _FeishuLarkMessageReference):
-        return None
-    try:
-        payload_bytes = _urlsafe_decode(reference.opaque)
-        if _urlsafe_encode(payload_bytes) != reference.opaque:
-            return None
-        return _ReferencePayload.model_validate_json(payload_bytes)
-    except (ValueError, binascii.Error, ValidationError):
-        return None
-
-
-def _urlsafe_encode(value: bytes) -> str:
-    return base64.urlsafe_b64encode(value).decode().rstrip("=")
-
-
-def _urlsafe_decode(value: str) -> bytes:
-    padding = "=" * (-len(value) % 4)
-    return base64.b64decode(value + padding, altchars=b"-_", validate=True)
 
 
 def _sdk_response_mapping(response: object) -> Mapping[str, object]:

@@ -10,7 +10,7 @@ Dify 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 提
 - 定义 capability presence 语义和初始 Provider capability matrix；不使用可能与实际 capability 漂移的独立 support flags，也不返回 dummy unsupported capabilities。
 - 定义 adapter-bound credential testing、Directory、Basic Messaging 与 Dynamic Card Messaging 的公共输入、输出和失败语义。
 - 定义 Directory 的完整 snapshot 语义，以及 Directory 与 Messaging 共享的 nominal `ProviderUserId` namespace。
-- 定义消息发送的 confirmed Provider acceptance、未确认 acceptance 的统一 failure、exact message reference 和 no-automatic-retry 语义。
+- 定义消息发送的 confirmed Provider acceptance、未确认 acceptance 的统一 failure、exact message locator 和 no-automatic-retry 语义。
 - 将 Webhook 与 STREAM 保留为两种独立 event transport interfaces，并通过 `AuthenticatedIMEvent` 与 thread-safe `IMEventConsumer` 形成共同的 downstream boundary。
 - 定义调用方必须遵守的并发与生命周期约束，包括 externally serialized root adapter、thread-safe Webhook handling、独立 STREAM lifecycle，以及 root close 对已创建 event transport 的可观察影响。
 - 使用逐 Provider 的权威资料、授权非生产环境真实调用或真实事件，以及专用 fixture repository 中已提交的完整 capture 验证公共接口假设；这些证据不要求复制或脱敏后进入 Dify repository，只约束 contract correctness，不规定 production implementation structure。
@@ -21,7 +21,7 @@ Dify 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 提
 
 - `im-provider-adapter`: 定义 Provider-bound root interface、credential testing、capability discovery、并发边界与 lifecycle contract。
 - `im-provider-directory`: 定义完整 Provider identity snapshot、最小共享 identity facts 与 failure contract。
-- `im-provider-messaging`: 定义 Basic Messaging、optional Dynamic Card Messaging、representability assessment、send/replacement outcomes 与 exact Provider message references。
+- `im-provider-messaging`: 定义 Basic Messaging、optional Dynamic Card Messaging、representability assessment、send/replacement outcomes 与 exact Provider message locators。
 - `im-provider-events`: 定义 `IMWebhookHandler`、`IMEventStream`、`AuthenticatedIMEvent`、`IMEventConsumer` 和 Provider ACK semantics。
 
 ### Modified Capabilities

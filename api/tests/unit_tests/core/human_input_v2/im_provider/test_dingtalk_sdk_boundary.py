@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import pickle
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -257,7 +256,8 @@ def test_public_adapter_round_trips_fresh_credentials_directory_and_text(
     assert directory.entries[1].display_name is None
     assert directory.entries[2].email is None
     assert isinstance(message, MessageAccepted)
-    assert pickle.loads(pickle.dumps(message.reference)) == message.reference  # noqa: S301
+    persisted_locator = json.loads(json.dumps({"locator": str(message.locator)}, separators=(",", ":")))["locator"]
+    assert dingtalk_module.MessageLocator(persisted_locator) == message.locator
     assert len(direct.calls) == 2
     assert len(provider.calls) == 2
     assert [corp_id for corp_id, _request in direct.calls] == ["fake-corp-001", "fake-corp-001"]

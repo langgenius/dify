@@ -26,6 +26,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_provider import (
     CorrelationToken,
@@ -39,7 +40,7 @@ from core.human_input_v2.im_provider import (
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     ProviderUserId,
     ReplacementError,
@@ -567,7 +568,7 @@ def test_directory_accepts_mapping_and_sequence_sdk_values(mocker) -> None:
     assert result.entries[0].display_name == "First"
 
 
-def test_text_send_attempts_creation_once_and_returns_in_process_reference(mocker) -> None:
+def test_text_send_attempts_creation_once_and_returns_persistable_locator(mocker) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
@@ -576,12 +577,21 @@ def test_text_send_attempts_creation_once_and_returns_in_process_reference(mocke
     result = adapter.messaging.send_text(ProviderUserId("user-1"), "Exact **CommonMark**")
 
     assert isinstance(result, MessageAccepted)
-    assert isinstance(result.reference, MessageReference)
+    assert isinstance(result.locator, str)
+    assert (
+        slack_module._SlackLocatorPayload.decode(str(result.locator))
+        == slack_module._SlackLocatorPayload(
+            v=1,
+            p=IMProvider.SLACK,
+            channel_id="dm-1",
+            message_ts="1000.000001",
+        )
+    )
     assert client.auth_calls == 0
     assert client.post_calls == [{"channel": "user-1", "markdown_text": "Exact **CommonMark**"}]
 
 
-def test_card_send_returns_private_in_process_reference(mocker) -> None:
+def test_card_send_returns_persistable_locator(mocker) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
@@ -594,12 +604,20 @@ def test_card_send_returns_private_in_process_reference(mocker) -> None:
     )
 
     assert isinstance(result, MessageAccepted)
-    assert isinstance(result.reference, MessageReference)
-    assert not hasattr(result.reference, "tenant_id")
+    assert isinstance(result.locator, str)
+    assert (
+        slack_module._SlackLocatorPayload.decode(str(result.locator))
+        == slack_module._SlackLocatorPayload(
+            v=1,
+            p=IMProvider.SLACK,
+            channel_id="dm-1",
+            message_ts="1000.000001",
+        )
+    )
     assert client.auth_calls == 0
 
 
-def test_static_replacement_accepts_in_process_reference_across_adapter_instances(mocker) -> None:
+def test_static_replacement_accepts_locator_across_adapter_instances(mocker) -> None:
     source_client = FakeWebClient()
     source_client.auth_responses.append(_successful_auth_response("T0123456789"))
     source_client.post_responses.append(
@@ -619,7 +637,7 @@ def test_static_replacement_accepts_in_process_reference_across_adapter_instance
     replacement_adapter = _adapter(mocker, replacement_client)
 
     result = replacement_adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
@@ -636,7 +654,7 @@ def test_static_replacement_accepts_in_process_reference_across_adapter_instance
     ]
 
 
-def test_static_replacement_rejects_text_reference_without_mutation(mocker) -> None:
+def test_static_replacement_updates_the_exact_message_from_a_valid_locator(mocker) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
@@ -646,13 +664,19 @@ def test_static_replacement_rejects_text_reference_without_mutation(mocker) -> N
     assert isinstance(accepted, MessageAccepted)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 
-    assert isinstance(result, ReplacementError)
-    assert result.kind is ReplacementErrorKind.INVALID_REFERENCE
-    assert client.update_calls == []
+    assert result is None
+    assert client.update_calls == [
+        {
+            "channel": "dm-1",
+            "ts": "1000.000001",
+            "text": "Submitted",
+            "blocks": [],
+        }
+    ]
 
 
 def test_static_replacement_rejects_foreign_reference_without_provider_io(mocker) -> None:
@@ -660,7 +684,7 @@ def test_static_replacement_rejects_foreign_reference_without_provider_io(mocker
     adapter = _adapter(mocker, client)
 
     result = adapter.dynamic_card_messaging.replace_with_static(
-        MessageReference(),
+        MessageLocator("invalid."),
         StaticCardIntent("Submitted"),
     )
 
@@ -798,11 +822,11 @@ def test_static_replacement_validates_reference_before_one_exact_mutation(mocker
     assert isinstance(accepted, MessageAccepted)
 
     invalid = adapter.dynamic_card_messaging.replace_with_static(
-        MessageReference(),
+        MessageLocator("invalid."),
         StaticCardIntent("Submitted"),
     )
     replaced = adapter.dynamic_card_messaging.replace_with_static(
-        accepted.reference,
+        accepted.locator,
         StaticCardIntent("Submitted"),
     )
 

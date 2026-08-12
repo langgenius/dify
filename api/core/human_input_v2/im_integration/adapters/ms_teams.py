@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import binascii
 import json
 import logging
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.message import Message
 from typing import ClassVar, Literal, override
@@ -39,6 +38,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, JsonValue, Val
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CardAssessment,
@@ -62,7 +62,7 @@ from core.human_input_v2.im_provider import (
     IMMessaging,
     IMWebhookHandler,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     MSTeamsIMIntegrationCredentials,
@@ -158,73 +158,38 @@ class _TeamsInboundActivity(BaseModel):
         return value
 
 
-class _MSTeamsMessageLocatorData(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+class _MSTeamsLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    version: Literal[1] = 1
-    message_kind: Literal["text", "dynamic_card"]
-    tenant_id: str
-    client_id: str
-    service_url: str
-    conversation_id: str
-    activity_id: str
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: Literal[IMProvider.MS_TEAMS]
+    # Bot Framework service endpoint used for subsequent message operations:
+    # https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference?view=azure-bot-service-4.0
+    service_url: str = Field(min_length=1)
+    # Bot Framework conversation containing the activity:
+    # https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference?view=azure-bot-service-4.0
+    conversation_id: str = Field(min_length=1, pattern=r"\S")
+    # Bot Framework activity identifier of the exact message:
+    # https://learn.microsoft.com/en-us/azure/bot-service/rest-api/bot-framework-rest-connector-api-reference?view=azure-bot-service-4.0
+    activity_id: str = Field(min_length=1, pattern=r"\S")
+
+    @field_validator("service_url")
+    @classmethod
+    def _require_trusted_service_url(cls, value: str) -> str:
+        if not _trusted_teams_service_url(value):
+            raise ValueError("service_url must be a trusted Teams service endpoint")
+        return value
 
 
-@dataclass(frozen=True, slots=True, repr=False, init=False)
-class _MSTeamsMessageLocator(MessageReference):
-    _serialized_value: str = field(repr=False)
-
-    def __init__(
-        self,
-        *,
-        message_kind: Literal["text", "dynamic_card"],
-        tenant_id: str,
-        client_id: str,
-        service_url: str,
-        conversation_id: str,
-        activity_id: str,
-    ) -> None:
-        locator = _MSTeamsMessageLocatorData(
-            message_kind=message_kind,
-            tenant_id=tenant_id,
-            client_id=client_id,
-            service_url=service_url,
-            conversation_id=conversation_id,
-            activity_id=activity_id,
-        )
-        object.__setattr__(self, "_serialized_value", _encode_message_locator(locator))
+class _MSTeamsBotCredentials(MicrosoftAppCredentials):
+    """Concrete credentials wrapper kept private to this adapter module."""
 
 
 def _reject_non_standard_json_constant(value: str) -> object:
     del value
     raise ValueError("non-standard JSON constant")
-
-
-def _encode_message_locator(locator: _MSTeamsMessageLocatorData) -> str:
-    serialized_locator = json.dumps(
-        locator.model_dump(mode="json"),
-        ensure_ascii=False,
-        allow_nan=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode()
-    return base64.urlsafe_b64encode(serialized_locator).rstrip(b"=").decode("ascii")
-
-
-def _decode_message_locator(serialized_value: str) -> _MSTeamsMessageLocatorData | None:
-    try:
-        padding = "=" * (-len(serialized_value) % 4)
-        serialized_locator = base64.b64decode(
-            serialized_value + padding,
-            altchars=b"-_",
-            validate=True,
-        )
-        if base64.urlsafe_b64encode(serialized_locator).rstrip(b"=").decode("ascii") != serialized_value:
-            return None
-        decoded_locator = json.loads(serialized_locator, parse_constant=_reject_non_standard_json_constant)
-        return _MSTeamsMessageLocatorData.model_validate(decoded_locator)
-    except (binascii.Error, UnicodeDecodeError, ValueError, ValidationError):
-        return None
 
 
 def _safe_access_token_claims(token: str) -> _AccessTokenClaims | None:
@@ -608,18 +573,12 @@ class _MSTeamsMessaging(IMMessaging):
 
     @override
     def send_text(self, provider_user_id: ProviderUserId, body: str) -> MessageSendingResult:
-        return self._send_activity(
-            provider_user_id,
-            Activity(type="message", text=body),
-            message_kind="text",
-        )
+        return self._send_activity(provider_user_id, Activity(type="message", text=body))
 
     def _send_activity(
         self,
         provider_user_id: ProviderUserId,
         activity: Activity,
-        *,
-        message_kind: Literal["text", "dynamic_card"],
     ) -> MessageSendingResult:
         try:
             conversation_client = _mutation_connector(self._credentials, _PUBLIC_TEAMS_SERVICE_URL)
@@ -645,13 +604,14 @@ class _MSTeamsMessaging(IMMessaging):
             if not _non_empty_string(activity_id):
                 return MessageSendingError("Microsoft Teams returned no exact message reference.")
             return MessageAccepted(
-                _MSTeamsMessageLocator(
-                    message_kind=message_kind,
-                    tenant_id=self._tenant_id,
-                    client_id=self._client_id,
-                    service_url=service_url,
-                    conversation_id=conversation_id,
-                    activity_id=activity_id,
+                MessageLocator(
+                    _MSTeamsLocatorPayload(
+                        v=1,
+                        p=IMProvider.MS_TEAMS,
+                        service_url=service_url,
+                        conversation_id=conversation_id,
+                        activity_id=activity_id,
+                    ).encode()
                 )
             )
         except Exception:
@@ -687,25 +647,25 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
             summary=_card_summary(intent),
             attachments=[Attachment(content_type=self._codec._CONTENT_TYPE, content=dict(content))],
         )
-        return self._send_activity(provider_user_id, activity, message_kind="dynamic_card")
+        return self._send_activity(provider_user_id, activity)
 
     @override
     def replace_with_static(
         self,
-        reference: MessageReference,
+        locator: MessageLocator,
         intent: StaticCardIntent,
     ) -> ReplacementError | None:
-        locator = self._compatible_card_locator(reference)
-        if locator is None:
+        decoded_locator = self._compatible_card_locator(locator)
+        if decoded_locator is None:
             return ReplacementError(
                 ReplacementErrorKind.INVALID_REFERENCE,
                 "The Microsoft Teams message reference is invalid.",
             )
         try:
-            client = _mutation_connector(self._credentials, locator.service_url)
+            client = _mutation_connector(self._credentials, decoded_locator.service_url)
             client.conversations.update_activity(
-                locator.conversation_id,
-                locator.activity_id,
+                decoded_locator.conversation_id,
+                decoded_locator.activity_id,
                 Activity(type="message", text=intent.rendered_content),
             )
         except HttpOperationError as error:
@@ -726,22 +686,11 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
             )
         return None
 
-    def _compatible_card_locator(self, reference: MessageReference) -> _MSTeamsMessageLocatorData | None:
-        if not isinstance(reference, _MSTeamsMessageLocator):
+    def _compatible_card_locator(self, locator: MessageLocator) -> _MSTeamsLocatorPayload | None:
+        try:
+            return _MSTeamsLocatorPayload.decode(str(locator))
+        except (binascii.Error, UnicodeDecodeError, ValueError, ValidationError):
             return None
-        locator = _decode_message_locator(reference._serialized_value)
-        if locator is None:
-            return None
-        if (
-            locator.message_kind != "dynamic_card"
-            or _canonical_guid(locator.tenant_id) != _canonical_guid(self._tenant_id)
-            or _canonical_guid(locator.client_id) != _canonical_guid(self._client_id)
-            or not _trusted_teams_service_url(locator.service_url)
-            or not _non_empty_string(locator.conversation_id)
-            or not _non_empty_string(locator.activity_id)
-        ):
-            return None
-        return locator
 
 
 class _MSTeamsWebhookHandler(IMWebhookHandler):
@@ -866,7 +815,7 @@ class MSTeamsIMProviderAdapter:
             credentials.client_secret,
         )
         self._graph_client = httpx.Client(timeout=_HTTP_TIMEOUT_SECONDS)
-        self._bot_credentials = MicrosoftAppCredentials(
+        self._bot_credentials = _MSTeamsBotCredentials(
             credentials.client_id,
             credentials.client_secret,
             channel_auth_tenant=credentials.tenant_id,

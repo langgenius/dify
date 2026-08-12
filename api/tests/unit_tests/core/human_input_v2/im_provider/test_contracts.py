@@ -23,6 +23,8 @@ from core.human_input_v2.im_provider import (
     IMEventStream,
     IMStreamStartError,
     IMStreamStopError,
+    MessageAccepted,
+    MessageLocator,
     ProviderUserId,
     SlackIMIntegrationCredentials,
     UnrecognizedIMEvent,
@@ -167,3 +169,24 @@ def test_dynamic_card_contract_consumes_resolved_form_without_runtime_wrapper() 
     assert get_type_hints(IMDynamicCardMessaging.assess)["intent"] is ResolvedForm
     assert get_type_hints(IMDynamicCardMessaging.send_card)["intent"] is ResolvedForm
     assert not hasattr(im_provider, "NormalizedCardIntent")
+
+
+def test_message_locator_contract_is_a_nominal_runtime_string() -> None:
+    stored_value = "opaque-locator-value"
+    locator = MessageLocator(stored_value)
+
+    assert MessageLocator.__supertype__ is str
+    assert isinstance(locator, str)
+    assert type(locator) is str
+    assert locator == stored_value
+    assert MessageLocator(str(locator)) == locator
+
+
+def test_provider_contract_exports_message_locator_without_legacy_reference_shape() -> None:
+    accepted = MessageAccepted(locator=MessageLocator("opaque-locator-value"))
+
+    assert "MessageLocator" in im_provider.__all__
+    assert not hasattr(im_provider, "MessageReference")
+    assert accepted.locator == "opaque-locator-value"
+    assert not hasattr(accepted, "reference")
+    assert get_type_hints(IMDynamicCardMessaging.replace_with_static)["locator"] is MessageLocator

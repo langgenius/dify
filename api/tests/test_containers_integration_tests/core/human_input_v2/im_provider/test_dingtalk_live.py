@@ -184,8 +184,10 @@ def test_live_messaging_reports_provider_send_success(
 
     if not isinstance(send_result, MessageAccepted):
         _fail("DingTalk did not confirm live message acceptance")
-    if not isinstance(send_result.reference, dingtalk_module._DingTalkMessageLocator):
-        _fail("DingTalk live message did not return its concrete opaque locator")
+    try:
+        locator_payload = dingtalk_module._DingTalkLocatorPayload.decode(str(send_result.locator))
+    except Exception as exc:
+        raise AssertionError("DingTalk live message did not return a valid opaque locator") from exc
 
     # DingTalk exposes send/read status for OTO robot messages, but not the
     # persisted message body. Exact msgParam content is therefore asserted in
@@ -193,7 +195,7 @@ def test_live_messaging_reports_provider_send_success(
     _wait_for_message_send_success(
         dingtalk_credentials,
         dingtalk_test_recipient_id,
-        send_result.reference.process_query_key,
+        locator_payload.process_query_key,
     )
 
 

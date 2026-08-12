@@ -19,7 +19,8 @@ from slack_sdk.web import WebClient
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter, _SlackMessageLocator
+from core.human_input_v2.im_integration.adapters import slack as slack_module
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CorrelationToken,
@@ -235,10 +236,11 @@ def _paginated_slack_directory_entries(client: WebClient) -> tuple[dict[str, tup
         cursor = next_cursor
 
 
-def _read_exact_message(client: WebClient, reference: _SlackMessageLocator) -> Mapping[object, object]:
+def _read_exact_message(client: WebClient, locator: str) -> Mapping[object, object]:
+    locator_payload = slack_module._SlackLocatorPayload.decode(locator)
     response = client.conversations_replies(
-        channel=reference.channel_id,
-        ts=reference.message_ts,
+        channel=locator_payload.channel_id,
+        ts=locator_payload.message_ts,
         inclusive=True,
         limit=1,
     )
@@ -246,7 +248,9 @@ def _read_exact_message(client: WebClient, reference: _SlackMessageLocator) -> M
     assert isinstance(messages, Sequence)
     assert not isinstance(messages, str | bytes | bytearray)
     matching_messages = [
-        message for message in messages if isinstance(message, Mapping) and message.get("ts") == reference.message_ts
+        message
+        for message in messages
+        if isinstance(message, Mapping) and message.get("ts") == locator_payload.message_ts
     ]
     assert len(matching_messages) == 1
     return matching_messages[0]
@@ -521,11 +525,10 @@ def test_slack_messaging_sends_and_reads_exact_text(
     message_result = slack_adapter.messaging.send_text(slack_test_recipient_id, message_body)
 
     assert isinstance(message_result, MessageAccepted)
-    assert isinstance(message_result.reference, _SlackMessageLocator)
-    message_reference = message_result.reference
+    locator_payload = slack_module._SlackLocatorPayload.decode(str(message_result.locator))
     response = slack_web_client.conversations_replies(
-        channel=message_reference.channel_id,
-        ts=message_reference.message_ts,
+        channel=locator_payload.channel_id,
+        ts=locator_payload.message_ts,
         inclusive=True,
         limit=1,
     )
@@ -535,7 +538,7 @@ def test_slack_messaging_sends_and_reads_exact_text(
     matching_messages = [
         message
         for message in messages
-        if isinstance(message, Mapping) and message.get("ts") == message_reference.message_ts
+        if isinstance(message, Mapping) and message.get("ts") == locator_payload.message_ts
     ]
     assert len(matching_messages) == 1
     assert matching_messages[0].get("text") == message_body
@@ -546,11 +549,11 @@ def test_slack_messaging_sends_and_reads_exact_text(
     )
     assert isinstance(invalid_recipient_result, MessageSendingError)
 
-    invalid_replacement = slack_adapter.dynamic_card_messaging.replace_with_static(
-        message_result.reference,
+    replacement_result = slack_adapter.dynamic_card_messaging.replace_with_static(
+        message_result.locator,
         StaticCardIntent("This must not replace a text message."),
     )
-    assert invalid_replacement is not None
+    assert replacement_result is None
 
 
 def test_slack_card_assessment_matches_static_select_provider_boundary(
@@ -610,8 +613,8 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
     )
 
     assert isinstance(message_result, MessageAccepted)
-    assert isinstance(message_result.reference, _SlackMessageLocator)
-    message_reference = message_result.reference
+    message_reference = str(message_result.locator)
+    locator_payload = slack_module._SlackLocatorPayload.decode(message_reference)
     persisted_message = _read_exact_message(slack_web_client, message_reference)
     blocks = persisted_message.get("blocks")
     assert isinstance(blocks, Sequence)
@@ -671,8 +674,8 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         "user": {"id": str(slack_test_recipient_id)},
         "container": {
             "type": "message",
-            "channel_id": message_reference.channel_id,
-            "message_ts": message_reference.message_ts,
+            "channel_id": locator_payload.channel_id,
+            "message_ts": locator_payload.message_ts,
         },
         "message": persisted_message,
         "state": {
@@ -950,8 +953,7 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
     )
 
     assert isinstance(message_result, MessageAccepted)
-    assert isinstance(message_result.reference, _SlackMessageLocator)
-    persisted_message = _read_exact_message(slack_web_client, message_result.reference)
+    persisted_message = _read_exact_message(slack_web_client, str(message_result.locator))
     blocks = persisted_message.get("blocks")
     assert isinstance(blocks, Sequence)
     assert not isinstance(blocks, str | bytes | bytearray)

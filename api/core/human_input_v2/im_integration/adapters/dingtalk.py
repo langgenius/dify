@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 from collections import deque
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol, override
+from typing import Literal, Protocol, override
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
@@ -27,6 +27,7 @@ from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
 from core.human_input_v2.im_provider import (
     CredentialTestFailure,
     CredentialTestFailureKind,
@@ -42,7 +43,7 @@ from core.human_input_v2.im_provider import (
     IMMessaging,
     IMWebhookHandler,
     MessageAccepted,
-    MessageReference,
+    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
@@ -171,9 +172,16 @@ class _UserListResponse(_ProviderResponse):
     result: _UserPage | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class _DingTalkMessageLocator(MessageReference):
-    process_query_key: str = field(repr=False)
+class _DingTalkLocatorPayload(_Base64JSONLocatorPayload):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    # version of the locator
+    v: Literal[1]
+    # provider of the locator
+    p: Literal[IMProvider.DING_TALK]
+    # DingTalk process query key returned for the sent message:
+    # https://open.dingtalk.com/document/orgapp/chatbots-send-one-on-one-chat-messages-in-batches.md
+    process_query_key: str = Field(min_length=1, pattern=r"\S")
 
 
 class _SDKAccessTokenProvider(AccessTokenProvider):
@@ -315,7 +323,15 @@ class _DingTalkMessaging(IMMessaging):
             process_query_key = getattr(response_body, "process_query_key", None)
             if not isinstance(process_query_key, str) or not process_query_key.strip():
                 return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            return MessageAccepted(_DingTalkMessageLocator(process_query_key))
+            return MessageAccepted(
+                MessageLocator(
+                    _DingTalkLocatorPayload(
+                        v=1,
+                        p=IMProvider.DING_TALK,
+                        process_query_key=process_query_key,
+                    ).encode()
+                )
+            )
         except Exception:
             return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
 
