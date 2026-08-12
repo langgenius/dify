@@ -514,6 +514,32 @@ describe('QualityPage', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
 
+  it('presents legacy retrieval-test reasons that duplicated the question as retrieval misses', async () => {
+    serviceMock.getBadCases.mockResolvedValue({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-legacy-retrieval-test',
+          question: 'Why is the Earth square?',
+          reason: 'Why is the Earth square?',
+          revision: 1,
+          status: 'open',
+          tags: ['retrieval-test'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    navigationMock.tab = 'bad-cases'
+
+    renderPage()
+
+    expect(await screen.findAllByText('Why is the Earth square?')).toHaveLength(1)
+    expect(
+      screen.getByText('dataset.newKnowledge.qualityPage.reasonValues.retrievalMiss'),
+    ).toBeInTheDocument()
+  })
+
   it('loads the next page of golden questions through the cursor contract', async () => {
     serviceMock.getGolden.mockImplementation(
       async (input: { query?: { cursor?: string } } | undefined) =>

@@ -58,12 +58,16 @@ function linkedGoldenQuestionId(tags: string[]) {
   return tags.find((tag) => tag.startsWith(goldenLinkPrefix))?.slice(goldenLinkPrefix.length)
 }
 
-function Reason({ reason }: { reason: string }) {
+function Reason({ question, reason, tags }: { question?: string; reason: string; tags: string[] }) {
   const { t } = useTranslation('dataset')
   const normalized = reason.toLowerCase()
   if (normalized.includes('outdated'))
     return t(($) => $['newKnowledge.qualityPage.reasonValues.outdatedContent'])
-  if (normalized.includes('retrieval') || normalized.includes('miss'))
+  if (
+    (tags.includes('retrieval-test') && reason.trim() === question?.trim()) ||
+    normalized.includes('retrieval') ||
+    normalized.includes('miss')
+  )
     return t(($) => $['newKnowledge.qualityPage.reasonValues.retrievalMiss'])
   if (normalized.includes('coverage') || normalized.includes('evidence'))
     return t(($) => $['newKnowledge.qualityPage.reasonValues.coverageGap'])
@@ -671,7 +675,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 <span className="truncate system-sm-medium text-text-primary">{item.question}</span>
                 <Status status={item.status} />
                 <span className="system-xs-regular text-text-secondary">
-                  <Reason reason={item.reason} />
+                  <Reason question={item.question} reason={item.reason} tags={item.tags} />
                 </span>
                 <span className="system-xs-regular text-text-secondary">
                   {updated(item.updated_at)}

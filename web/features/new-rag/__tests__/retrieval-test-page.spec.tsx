@@ -1285,7 +1285,7 @@ describe('RetrievalTestPage', () => {
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
         body: {
-          reason: 'Why did retrieval miss the refund exception?',
+          reason: 'retrieval-miss',
           tags: ['retrieval-test'],
           trace_id: 'trace-1',
         },
@@ -1374,7 +1374,7 @@ describe('RetrievalTestPage', () => {
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
         body: {
-          reason: 'An older production question',
+          reason: 'retrieval-miss',
           tags: ['retrieval-test'],
           trace_id: 'trace-old',
         },

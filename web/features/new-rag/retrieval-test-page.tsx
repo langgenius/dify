@@ -69,6 +69,8 @@ type ComposerDraft = {
 
 type QualityDecision = 'bad-case' | 'golden'
 
+const retrievalTestBadCaseReason = 'retrieval-miss'
+
 const researchStageOrder = ['planning', 'retrieving', 'analyzing', 'generating'] as const
 type ResearchStage = (typeof researchStageOrder)[number]
 const runRetrievalHotkey = 'Mod+Enter' satisfies Hotkey
@@ -1553,7 +1555,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         }
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
           body: {
-            reason: selectedQuery,
+            reason: retrievalTestBadCaseReason,
             tags: ['retrieval-test'],
             trace_id: selectedTraceId,
           },
