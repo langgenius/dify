@@ -49,6 +49,7 @@ const documentOutlineSummaryCheckpointsMigrationId = "0038_document_outline_summ
 const documentSemanticEnrichmentMigrationId = "0039_document_semantic_enrichment";
 const knowledgeSpaceMetadataMigrationId = "0040_knowledge_space_metadata";
 const logicalDocumentAvailabilityMigrationId = "0041_logical_document_availability";
+const workflowFailedRetrievalCaptureMigrationId = "0042_workflow_failed_retrieval_capture";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -74,6 +75,7 @@ const migrationsAfterDurableDeletion = [
   documentSemanticEnrichmentMigrationId,
   knowledgeSpaceMetadataMigrationId,
   logicalDocumentAvailabilityMigrationId,
+  workflowFailedRetrievalCaptureMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
