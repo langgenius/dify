@@ -20,6 +20,7 @@ from controllers.console.app.workflow import (
     WorkflowPaginationResponse,
     WorkflowPublishResponse,
     WorkflowResponse,
+    WorkflowResponseSource,
     WorkflowRestoreResponse,
 )
 from controllers.console.snippets.payloads import (
@@ -58,7 +59,6 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
-from models.workflow import Workflow
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -91,29 +91,6 @@ class SnippetWorkflowPaginationResponse(BaseModel):
     page: int
     limit: int
     has_more: bool
-
-
-class _SnippetWorkflowResponseSource:
-    """Expose workflow response properties through the controller-owned session."""
-
-    def __init__(self, workflow: Workflow, *, session: Session) -> None:
-        self._workflow = workflow
-        self._session = session
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._workflow, name)  # guard-ignore: no-new-getattr -- delegates mapped workflow fields
-
-    @property
-    def created_by_account(self) -> Account | None:
-        return self._workflow.get_created_by_account(session=self._session)
-
-    @property
-    def updated_by_account(self) -> Account | None:
-        return self._workflow.get_updated_by_account(session=self._session)
-
-    @property
-    def tool_published(self) -> bool:
-        return self._workflow.get_tool_published(session=self._session)
 
 
 register_schema_models(
@@ -206,7 +183,7 @@ class SnippetDraftWorkflowApi(Resource):
 
         workflow.conversation_variables = []
         response = SnippetWorkflowResponse.model_validate(
-            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+            WorkflowResponseSource(workflow, session=session), from_attributes=True
         ).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
             session=session,
@@ -304,7 +281,7 @@ class SnippetPublishedWorkflowApi(Resource):
             return None
 
         response = SnippetWorkflowResponse.model_validate(
-            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+            WorkflowResponseSource(workflow, session=session), from_attributes=True
         ).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
@@ -405,7 +382,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
 
         response = SnippetWorkflowPaginationResponse.model_validate(
             {
-                "items": [_SnippetWorkflowResponseSource(workflow, session=session) for workflow in workflows],
+                "items": [WorkflowResponseSource(workflow, session=session) for workflow in workflows],
                 "page": req_data.page,
                 "limit": req_data.limit,
                 "has_more": has_more,
@@ -504,7 +481,7 @@ class SnippetWorkflowByIdApi(Resource):
             raise NotFound("Workflow not found")
 
         response = SnippetWorkflowResponse.model_validate(
-            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+            WorkflowResponseSource(workflow, session=session), from_attributes=True
         ).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response

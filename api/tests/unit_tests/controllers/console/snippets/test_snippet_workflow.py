@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -54,6 +55,32 @@ def _workflow(**overrides) -> Workflow:
     workflow.updated_at = datetime(2024, 1, 1)
     for name, value in overrides.items():
         setattr(workflow, name, value)
+    return workflow
+
+
+def _workflow_response_stub(**overrides) -> SimpleNamespace:
+    data = {
+        "id": "workflow-1",
+        "graph_dict": {"nodes": [], "edges": []},
+        "features_dict": {},
+        "unique_hash": "hash-1",
+        "version": "2024-01-01 00:00:00",
+        "marked_name": "v1",
+        "marked_comment": "first version",
+        "created_by_account": None,
+        "created_at": datetime(2024, 1, 1),
+        "updated_by_account": None,
+        "updated_at": datetime(2024, 1, 1),
+        "tool_published": False,
+        "environment_variables": [],
+        "conversation_variables": [],
+        "rag_pipeline_variables": [],
+    }
+    data.update(overrides)
+    workflow = SimpleNamespace(**data)
+    workflow.get_created_by_account = Mock(return_value=workflow.created_by_account)
+    workflow.get_updated_by_account = Mock(return_value=workflow.updated_by_account)
+    workflow.get_tool_published = Mock(return_value=workflow.tool_published)
     return workflow
 
 
@@ -137,6 +164,34 @@ def test_draft_workflow_get_raises_when_missing(
             handler(api, unbound_session, snippet=snippet)
 
 
+def test_draft_workflow_get_uses_session_aware_response_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    workflow = _workflow_response_stub()
+    snippet = _snippet()
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "_snippet_service",
+        lambda: SimpleNamespace(get_draft_workflow=Mock(return_value=workflow)),
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module.WorkflowAgentPublishService,
+        "project_draft_bindings_to_graph",
+        Mock(return_value=workflow.graph_dict),
+    )
+
+    api = snippet_workflow_module.SnippetDraftWorkflowApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/draft"):
+        response = handler(api, unbound_session, snippet=snippet)
+
+    assert response["id"] == "workflow-1"
+    workflow.get_created_by_account.assert_called_once_with(session=unbound_session)
+    workflow.get_updated_by_account.assert_called_once_with(session=unbound_session)
+    workflow.get_tool_published.assert_called_once_with(session=unbound_session)
+
+
 def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
@@ -182,6 +237,29 @@ def test_published_workflow_get_returns_none_when_not_published(app, unbound_ses
 
     with app.test_request_context("/snippets/snippet-1/workflows/publish"):
         assert handler(api, unbound_session, snippet=_snippet(is_published=False)) is None
+
+
+def test_published_workflow_get_uses_session_aware_response_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    workflow = _workflow_response_stub()
+    snippet = _snippet(is_published=True)
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "_snippet_service",
+        lambda: SimpleNamespace(get_published_workflow=Mock(return_value=workflow)),
+    )
+
+    api = snippet_workflow_module.SnippetPublishedWorkflowApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/publish"):
+        response = handler(api, unbound_session, snippet=snippet)
+
+    assert response["id"] == "workflow-1"
+    workflow.get_created_by_account.assert_called_once_with(session=unbound_session)
+    workflow.get_updated_by_account.assert_called_once_with(session=unbound_session)
+    workflow.get_tool_published.assert_called_once_with(session=unbound_session)
 
 
 def test_published_workflow_post_returns_400_when_publish_fails(
