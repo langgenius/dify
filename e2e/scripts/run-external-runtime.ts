@@ -6,7 +6,16 @@ const defaultExternalRuntimeTags = '@external-model or @external-tool'
 const main = async () => {
   await runForegroundProcess({
     command: 'npx',
-    args: ['tsx', './scripts/run-cucumber.ts', '--', '--tags', defaultExternalRuntimeTags],
+    args: [
+      'tsx',
+      './scripts/run-cucumber.ts',
+      '--full',
+      '--profile',
+      'external-runtime',
+      '--',
+      '--tags',
+      defaultExternalRuntimeTags,
+    ],
     cwd: e2eDir,
   })
 }

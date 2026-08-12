@@ -2,11 +2,28 @@ import pytest
 
 from core.workflow.file_reference import build_file_reference
 from models.agent_config_entities import (
+    AgentSoulModelSettings,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
 )
+
+
+def test_agent_soul_model_settings_preserves_plugin_declared_parameters() -> None:
+    settings = AgentSoulModelSettings.model_validate(
+        {
+            "temperature": 0.7,
+            "enable_thinking": True,
+            "thinking_budget": 4096,
+        }
+    )
+
+    dumped = settings.model_dump(mode="json", exclude_none=True)
+
+    assert dumped["temperature"] == 0.7
+    assert dumped["enable_thinking"] is True
+    assert dumped["thinking_budget"] == 4096
 
 
 def test_file_default_value_accepts_canonical_reference_mapping() -> None:
@@ -137,6 +154,23 @@ def test_declared_output_child_validates_shape_and_defaults() -> None:
             type=DeclaredOutputType.STRING,
             children=[DeclaredOutputChildConfig(name="label", type=DeclaredOutputType.STRING)],
         )
+
+
+def test_declared_output_child_schema_matches_nullable_serialization() -> None:
+    config = DeclaredOutputConfig(
+        name="response",
+        type=DeclaredOutputType.OBJECT,
+        children=[DeclaredOutputChildConfig(name="text", type=DeclaredOutputType.STRING)],
+    )
+    child = config.model_dump(mode="json")["children"][0]
+
+    assert child["file"] is None
+    assert child["array_item"] is None
+
+    children_schema = DeclaredOutputConfig.model_json_schema(mode="serialization")["properties"]["children"]
+    child_properties = children_schema["items"]["properties"]
+    assert {"type": "null"} in child_properties["file"]["anyOf"]
+    assert {"type": "null"} in child_properties["array_item"]["anyOf"]
 
 
 def test_declared_output_validates_shape_and_defaults() -> None:

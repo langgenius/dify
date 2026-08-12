@@ -1,18 +1,13 @@
-import { render, waitFor } from '@testing-library/react'
+import type { AnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
+import { act, render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import ExternalAttributionRecorder from '../external-attribution-recorder'
 
-const mockConfig = vi.hoisted(() => ({ IS_CLOUD_EDITION: true }))
 const { mockRememberCreateAppExternalAttribution } = vi.hoisted(() => ({
   mockRememberCreateAppExternalAttribution: vi.fn(),
-}))
-
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -41,8 +36,40 @@ describe('ExternalAttributionRecorder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Cookies.remove('utm_info')
-    mockConfig.IS_CLOUD_EDITION = true
+    setAnalyticsConsent('granted')
     setSearchParams()
+  })
+
+  it.each<AnalyticsConsent>(['unknown', 'denied'])(
+    'does not persist attribution when analytics consent is %s',
+    (consent) => {
+      setAnalyticsConsent(consent)
+      setSearchParams('utm_source=dify_blog&slug=get-started-with-dify')
+
+      render(<ExternalAttributionRecorder />)
+
+      expect(getUtmInfoCookie()).toBeNull()
+      expect(mockRememberCreateAppExternalAttribution).not.toHaveBeenCalled()
+    },
+  )
+
+  it('persists attribution when analytics consent becomes granted', async () => {
+    setAnalyticsConsent('unknown')
+    setSearchParams('utm_source=dify_blog&slug=get-started-with-dify')
+    render(<ExternalAttributionRecorder />)
+
+    expect(getUtmInfoCookie()).toBeNull()
+    expect(mockRememberCreateAppExternalAttribution).not.toHaveBeenCalled()
+
+    act(() => setAnalyticsConsent('granted'))
+
+    await waitFor(() => {
+      expect(getUtmInfoCookie()).toEqual({
+        utm_source: 'dify_blog',
+        slug: 'get-started-with-dify',
+      })
+    })
+    expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledTimes(1)
   })
 
   it('seeds the utm_info cookie and create_app attribution from the landing url', async () => {
@@ -114,15 +141,5 @@ describe('ExternalAttributionRecorder', () => {
       })
     })
     expect(mockRememberCreateAppExternalAttribution).toHaveBeenCalledTimes(1)
-  })
-
-  it('is a no-op outside the cloud edition', () => {
-    mockConfig.IS_CLOUD_EDITION = false
-    setSearchParams('utm_source=dify_blog&slug=get-started-with-dify')
-
-    render(<ExternalAttributionRecorder />)
-
-    expect(getUtmInfoCookie()).toBeNull()
-    expect(mockRememberCreateAppExternalAttribution).not.toHaveBeenCalled()
   })
 })

@@ -63,7 +63,8 @@ describe('OAuthAuthorize', () => {
     vi.clearAllMocks()
     mocks.searchParams = new URLSearchParams({
       client_id: 'client-1',
-      redirect_uri: 'https://client.example.com/callback?state=state-1',
+      redirect_uri: 'https://client.example.com/callback',
+      state: 'state-1',
     })
     mocks.request.mockImplementation(async (url: string) => {
       if (url.endsWith('/oauth/provider/authorize')) return jsonResponse({ code: 'oauth-code' })
@@ -86,7 +87,7 @@ describe('OAuthAuthorize', () => {
     vi.unstubAllGlobals()
   })
 
-  it('authorizes the displayed app and redirects with the returned code', async () => {
+  it('authorizes the displayed app and redirects with the returned code and state', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -95,7 +96,7 @@ describe('OAuthAuthorize', () => {
     const providerTransportRequest = providerRequest?.[2]?.request as Request
     await expect(providerTransportRequest.clone().json()).resolves.toEqual({
       client_id: 'client-1',
-      redirect_uri: 'https://client.example.com/callback?state=state-1',
+      redirect_uri: 'https://client.example.com/callback',
     })
 
     await user.click(screen.getByRole('button', { name: /continue/i }))
@@ -106,7 +107,7 @@ describe('OAuthAuthorize', () => {
     await expect(transportRequest.clone().json()).resolves.toEqual({ client_id: 'client-1' })
     await waitFor(() =>
       expect(globalThis.location.href).toBe(
-        'https://client.example.com/callback?state=state-1&code=oauth-code',
+        'https://client.example.com/callback?code=oauth-code&state=state-1',
       ),
     )
   })

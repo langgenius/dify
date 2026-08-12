@@ -4,9 +4,11 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Tool } from '@/app/components/tools/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { useState } from 'react'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import { useTags } from '@/app/components/plugins/hooks'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
+import { ToolTrigger } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/tool-trigger'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
@@ -23,6 +25,7 @@ import {
   useInvalidateAllMCPTools,
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
 import ToolPicker from '../tool-picker'
 
@@ -63,41 +66,11 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -112,7 +85,7 @@ vi.mock('@/app/components/plugins/hooks', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
@@ -360,7 +333,7 @@ const mcpTools = [
 ]
 
 const renderToolPicker = (props: Partial<React.ComponentProps<typeof ToolPicker>> = {}) => {
-  return renderWithSystemFeatures(
+  return renderWithConsoleQuery(
     <ToolPicker
       disabled={false}
       trigger={<button type="button">open-picker</button>}
@@ -388,17 +361,7 @@ describe('ToolPicker', () => {
       getTagLabel: (name: string) => name,
     })
     mockUseMarketplacePlugins.mockReturnValue({
-      plugins: [],
-      total: 0,
-      resetPlugins: vi.fn(),
-      queryPlugins: vi.fn(),
-      queryPluginsWithDebounced: vi.fn(),
-      cancelQueryPluginsWithDebounced: vi.fn(),
-      isLoading: false,
-      isFetchingNextPage: false,
-      hasNextPage: false,
-      fetchNextPage: vi.fn(),
-      page: 0,
+      data: undefined,
     } as ReturnType<typeof useMarketplacePlugins>)
     mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<
       typeof useAllBuiltInTools
@@ -444,7 +407,7 @@ describe('ToolPicker', () => {
 
     renderToolPicker({ onShowChange })
 
-    await user.click(screen.getByText('open-picker').closest('[role="button"]')!)
+    await user.click(screen.getByRole('button', { name: 'open-picker' }))
     expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
@@ -452,8 +415,72 @@ describe('ToolPicker', () => {
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByText('open-picker')[1]!.closest('[role="button"]')!)
+    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
     expect(disabledOnShowChange).not.toHaveBeenCalled()
+  })
+
+  it('opens from the production plugin-detail trigger and restores focus on close', async () => {
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <ToolPicker
+          disabled={false}
+          trigger={<ToolTrigger open={open} />}
+          isShow={open}
+          onShowChange={setOpen}
+          onSelect={vi.fn()}
+          onSelectMultiple={vi.fn()}
+        />
+      )
+    }
+
+    renderWithConsoleQuery(<Harness />, { systemFeatures: { enable_marketplace: true } })
+
+    const trigger = screen.getByRole('button', {
+      name: 'plugin.detailPanel.toolSelector.placeholder',
+    })
+    await user.click(trigger)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+  })
+
+  it('opens from the production agent-tools trigger and restores focus on close', async () => {
+    const user = userEvent.setup()
+
+    function Harness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <ToolPicker
+          disabled={false}
+          trigger={<OperationButton operation="add" />}
+          isShow={open}
+          onShowChange={setOpen}
+          onSelect={vi.fn()}
+          onSelectMultiple={vi.fn()}
+        />
+      )
+    }
+
+    renderWithConsoleQuery(<Harness />, { systemFeatures: { enable_marketplace: true } })
+
+    const trigger = screen.getByRole('button', { name: 'common.operation.add' })
+    await user.click(trigger)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
   })
 
   it('should link the find-more footer to the marketplace tool category', () => {
@@ -462,32 +489,15 @@ describe('ToolPicker', () => {
       selectedTools: [],
     })
 
-    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute(
-      'href',
-      'https://marketplace.test/plugins/tool',
-    )
+    const footerLink = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })
+    expect(footerLink.closest('footer')).toBeInTheDocument()
+    expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
   })
 
   it('should render real search and tool lists, then forward tool selections', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
     const onSelectMultiple = vi.fn()
-    const queryPluginsWithDebounced = vi.fn()
-
-    mockUseMarketplacePlugins.mockReturnValue({
-      plugins: [],
-      total: 0,
-      resetPlugins: vi.fn(),
-      queryPlugins: vi.fn(),
-      queryPluginsWithDebounced,
-      cancelQueryPluginsWithDebounced: vi.fn(),
-      isLoading: false,
-      isFetchingNextPage: false,
-      hasNextPage: false,
-      fetchNextPage: vi.fn(),
-      page: 0,
-    } as ReturnType<typeof useMarketplacePlugins>)
-
     renderToolPicker({
       isShow: true,
       scope: 'custom',
@@ -500,15 +510,20 @@ describe('ToolPicker', () => {
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
 
-    await user.type(screen.getByRole('textbox'), 'weather')
+    await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
 
     await waitFor(() => {
-      expect(queryPluginsWithDebounced).toHaveBeenLastCalledWith({
+      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
         query: 'weather',
         tags: [],
         category: PluginCategoryEnum.tool,
       })
     })
+    expect(
+      mockUseMarketplacePlugins.mock.calls
+        .map(([params]) => params)
+        .filter((params) => params?.query && params.query !== 'weather'),
+    ).toEqual([])
 
     await waitFor(() => {
       expect(screen.getByText('Weather Tool')).toBeInTheDocument()
@@ -542,13 +557,7 @@ describe('ToolPicker', () => {
       supportAddCustomTool: true,
     })
 
-    const addCustomToolButton = Array.from(document.querySelectorAll('button')).find((button) => {
-      return button.className.includes('bg-components-button-primary-bg')
-    })
-
-    expect(addCustomToolButton).toBeTruthy()
-
-    await user.click(addCustomToolButton!)
+    await user.click(screen.getByRole('button', { name: 'tools.addToolModal.custom.tip' }))
     expect(screen.getByTestId('edit-custom-tool-modal')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'submit-custom-tool' }))
@@ -578,10 +587,8 @@ describe('ToolPicker', () => {
     expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
     expect(screen.getByText('MCP Provider')).toBeInTheDocument()
     expect(
-      Array.from(document.querySelectorAll('button')).some((button) => {
-        return button.className.includes('bg-components-button-primary-bg')
-      }),
-    ).toBe(false)
+      screen.queryByRole('button', { name: 'tools.addToolModal.custom.tip' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should invalidate all tool collections after featured install succeeds', async () => {

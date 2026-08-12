@@ -4,11 +4,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import {
-  useNodesInteractions,
-  useNodesReadOnly,
-  useToolIcon,
-} from '@/app/components/workflow/hooks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
+import { useToolIcon } from '../../../../hooks/use-tool-icon'
+import { useNodesReadOnly } from '../../../../hooks/use-workflow'
 import Operator from './operator'
 
 type ItemProps = {

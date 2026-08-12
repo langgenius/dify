@@ -71,9 +71,9 @@ describe('server console oRPC client', () => {
   })
 
   it('should call contracts with forwarded cookies, csrf header, and no-store cache', async () => {
-    const { defaultSystemFeatures } = await import('@/features/system-features/config')
+    const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(defaultSystemFeatures), {
+      new Response(JSON.stringify(createSystemFeaturesFixture()), {
         status: 200,
         headers: {
           'content-type': 'application/json',

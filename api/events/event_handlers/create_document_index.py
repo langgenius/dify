@@ -21,7 +21,7 @@ def handle(sender, **kwargs):
     document_ids = kwargs.get("document_ids", [])
     start_at = time.perf_counter()
     try:
-        indexing_runner = IndexingRunner()
+        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
         with session_factory.create_session() as session:
             documents = []
             for document_id in document_ids:

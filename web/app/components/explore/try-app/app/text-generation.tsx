@@ -192,7 +192,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       <div
         className={cn(
           'relative flex h-full shrink-0 flex-col',
-          isPC && 'w-[600px] max-w-[50%]',
+          isPC && 'w-150 max-w-[50%]',
           'rounded-l-2xl bg-components-panel-bg',
         )}
       >
@@ -215,7 +215,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
               <div
                 ref={handleDescRef}
                 className={cn(
-                  'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                  'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
                   !descExpanded && 'line-clamp-3',
                   descExpanded && 'max-h-32 overflow-y-auto',
                 )}
@@ -278,7 +278,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
             className={cn(
               isShowResultPanel
                 ? 'flex items-center justify-center p-2 pt-6'
-                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-[3px] pb-[57px]',
+                : 'absolute top-0 left-0 z-10 flex w-full items-center justify-center px-2 pt-0.75 pb-14.25',
             )}
             onClick={() => {
               if (isShowResultPanel) hideResultPanel()

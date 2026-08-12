@@ -1,9 +1,10 @@
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
 describe('UnsubmittedHumanInputContent Integration', () => {

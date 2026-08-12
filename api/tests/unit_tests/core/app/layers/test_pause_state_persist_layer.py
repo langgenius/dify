@@ -4,6 +4,8 @@ from time import time
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
@@ -30,6 +32,13 @@ from graphon.runtime import ReadOnlyVariablePool
 from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+
+
+@pytest.fixture
+def sqlite_session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Provide the real session factory injected into the persistence layer."""
+
+    return sessionmaker(sqlite_engine, expire_on_commit=False)
 
 
 def _create_initialized_response_stream_filter() -> ResponseStreamFilter:
@@ -211,27 +220,25 @@ class TestPauseStatePersistenceLayer:
             workflow_execution_id=workflow_execution_id,
         )
 
-    def test_init_with_dependency_injection(self):
-        session_factory = Mock(name="session_factory")
+    def test_init_with_dependency_injection(self, sqlite_session_factory: sessionmaker[Session]):
         state_owner_user_id = "user-123"
 
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id=state_owner_user_id,
             generate_entity=self._create_generate_entity(),
             response_stream_filter=ResponseStreamFilter(),
         )
 
-        assert layer._session_maker is session_factory
+        assert layer._session_maker is sqlite_session_factory
         assert layer._state_owner_user_id == state_owner_user_id
         with pytest.raises(GraphEngineLayerNotInitializedError):
             _ = layer.graph_runtime_state
         assert layer.command_channel is None
 
-    def test_initialize_sets_dependencies(self):
-        session_factory = Mock(name="session_factory")
+    def test_initialize_sets_dependencies(self, sqlite_session_factory: sessionmaker[Session]):
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner",
             generate_entity=self._create_generate_entity(),
             response_stream_filter=ResponseStreamFilter(),
@@ -245,11 +252,12 @@ class TestPauseStatePersistenceLayer:
         assert layer.graph_runtime_state is graph_runtime_state
         assert layer.command_channel is command_channel
 
-    def test_on_event_with_graph_run_paused_event(self, monkeypatch: pytest.MonkeyPatch):
-        session_factory = Mock(name="session_factory")
+    def test_on_event_with_graph_run_paused_event(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ):
         generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=generate_entity,
             response_stream_filter=_create_initialized_response_stream_filter(),
@@ -272,7 +280,7 @@ class TestPauseStatePersistenceLayer:
 
         layer.on_event(event)
 
-        mock_factory.assert_called_once_with(session_factory)
+        mock_factory.assert_called_once_with(sqlite_session_factory)
         assert mock_repo.create_workflow_pause.call_count == 1
         call_kwargs = mock_repo.create_workflow_pause.call_args.kwargs
         assert call_kwargs["workflow_run_id"] == "run-123"
@@ -285,11 +293,12 @@ class TestPauseStatePersistenceLayer:
 
         assert isinstance(pause_reasons, list)
 
-    def test_on_event_enriches_hitl_pause_reasons_before_persisting(self, monkeypatch: pytest.MonkeyPatch):
-        session_factory = Mock(name="session_factory")
+    def test_on_event_enriches_hitl_pause_reasons_before_persisting(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ):
         generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=generate_entity,
             response_stream_filter=_create_initialized_response_stream_filter(),
@@ -343,10 +352,11 @@ class TestPauseStatePersistenceLayer:
         )
         assert mock_repo.create_workflow_pause.call_args.kwargs["pause_reasons"] == [enriched_reason]
 
-    def test_on_event_ignores_non_paused_events(self, monkeypatch: pytest.MonkeyPatch):
-        session_factory = Mock(name="session_factory")
+    def test_on_event_ignores_non_paused_events(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ):
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
             response_stream_filter=ResponseStreamFilter(),
@@ -372,10 +382,11 @@ class TestPauseStatePersistenceLayer:
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
 
-    def test_on_event_raises_when_graph_runtime_state_is_uninitialized(self):
-        session_factory = Mock(name="session_factory")
+    def test_on_event_raises_when_graph_runtime_state_is_uninitialized(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ):
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
             response_stream_filter=ResponseStreamFilter(),
@@ -386,10 +397,11 @@ class TestPauseStatePersistenceLayer:
         with pytest.raises(GraphEngineLayerNotInitializedError):
             layer.on_event(event)
 
-    def test_on_event_asserts_when_workflow_execution_id_missing(self, monkeypatch: pytest.MonkeyPatch):
-        session_factory = Mock(name="session_factory")
+    def test_on_event_asserts_when_workflow_execution_id_missing(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ):
         layer = PauseStatePersistenceLayer(
-            session_factory=session_factory,
+            session_factory=sqlite_session_factory,
             state_owner_user_id="owner-123",
             generate_entity=self._create_generate_entity(),
             response_stream_filter=_create_initialized_response_stream_filter(),
@@ -494,12 +506,13 @@ def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResump
     assert restored_entity.extras["trace_session_id"] == "session-1"
 
 
-def test_on_event_persists_response_stream_filter_dump(monkeypatch: pytest.MonkeyPatch) -> None:
-    session_factory = Mock(name="session_factory")
+def test_on_event_persists_response_stream_filter_dump(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     generate_entity = TestPauseStatePersistenceLayer._create_generate_entity(workflow_execution_id="run-123")
     response_stream_filter = _create_initialized_response_stream_filter()
     layer = PauseStatePersistenceLayer(
-        session_factory=session_factory,
+        session_factory=sqlite_session_factory,
         state_owner_user_id="owner-123",
         generate_entity=generate_entity,
         response_stream_filter=response_stream_filter,

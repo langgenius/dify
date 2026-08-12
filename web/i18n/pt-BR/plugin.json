@@ -97,6 +97,7 @@
   "categorySingle.model": "Modelo",
   "categorySingle.tool": "Ferramenta",
   "categorySingle.trigger": "Gatilho",
+  "clearSearch": "Limpar {{label}}",
   "debugInfo.title": "Depuração",
   "debugInfo.viewDocs": "Ver documentos",
   "deprecated": "Obsoleto",

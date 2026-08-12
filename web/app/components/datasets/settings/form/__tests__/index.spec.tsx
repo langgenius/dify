@@ -1,8 +1,11 @@
+import type { ReactElement } from 'react'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
@@ -25,93 +28,29 @@ const mockUserProfile = {
 }
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        rbac_enabled: false,
-      },
-    }),
-  }
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
 })
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => ({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }),
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => ({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }),
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => ({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }),
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => ({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }),
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(
-    importOriginal,
-    () => ({
-      userProfile: mockUserProfile,
-      workspacePermissionKeys: mockWorkspacePermissionKeys,
-    }),
-    () => ({
-      isRbacEnabled: false,
-    }),
-  )
-})
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: false },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -197,13 +136,6 @@ vi.mock('@/context/dataset-detail', () => ({
   },
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
 // Mock services
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
@@ -287,7 +219,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
 

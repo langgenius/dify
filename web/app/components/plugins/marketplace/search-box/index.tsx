@@ -1,8 +1,9 @@
 'use client'
 import type { Ref } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
-import ActionButton from '@/app/components/base/action-button'
+import { useImperativeHandle, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import TagsFilter from './tags-filter'
 
@@ -20,11 +21,10 @@ type SearchBoxProps = {
   supportAddCustomTool?: boolean
   usedInMarketplace?: boolean
   onShowAddCustomCollectionModal?: () => void
-  onAddedCustomTool?: () => void
   autoFocus?: boolean
   showTags?: boolean
 }
-const SearchBox = ({
+function SearchBox({
   ref,
   search,
   onSearchChange,
@@ -40,7 +40,17 @@ const SearchBox = ({
   onShowAddCustomCollectionModal,
   autoFocus = false,
   showTags = true,
-}: SearchBoxProps) => {
+}: SearchBoxProps) {
+  const { t } = useTranslation()
+  const accessibleLabel = placeholder || t(($) => $.searchTools, { ns: 'plugin' })!
+  const inputRef = useRef<HTMLInputElement>(null)
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
+
+  const handleClear = () => {
+    onSearchChange('')
+    inputRef.current?.focus()
+  }
+
   return (
     <div className={cn('z-11 flex items-center', wrapperClassName)}>
       <div
@@ -63,10 +73,13 @@ const SearchBox = ({
             )}
             <div className="flex grow items-center gap-x-2 p-1">
               <input
-                ref={ref}
-                aria-label={placeholder || undefined}
+                ref={inputRef}
+                type="search"
+                name="query"
+                autoComplete="off"
+                aria-label={accessibleLabel}
                 className={cn(
-                  'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden',
+                  'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
                   inputElementClassName,
                 )}
                 value={search}
@@ -76,9 +89,18 @@ const SearchBox = ({
                 placeholder={placeholder}
               />
               {search && (
-                <ActionButton onClick={() => onSearchChange('')} className="shrink-0">
-                  <RiCloseLine className="size-4" />
-                </ActionButton>
+                <Button
+                  variant="ghost"
+                  size="small"
+                  aria-label={t(($) => $.clearSearch, {
+                    ns: 'plugin',
+                    label: accessibleLabel,
+                  })}
+                  onClick={handleClear}
+                  className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+                >
+                  <span className="i-ri-close-line size-4" aria-hidden />
+                </Button>
               )}
             </div>
           </>
@@ -86,16 +108,24 @@ const SearchBox = ({
         {!usedInMarketplace && (
           <>
             <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
-              <RiSearchLine
-                className={cn('size-4 text-components-input-text-placeholder', searchIconClassName)}
+              <span
+                aria-hidden
+                className={cn(
+                  'i-ri-search-line',
+                  'size-4 text-components-input-text-placeholder',
+                  searchIconClassName,
+                )}
               />
               <input
-                ref={ref}
-                aria-label={placeholder || undefined}
+                ref={inputRef}
+                type="search"
+                name="query"
+                autoComplete="off"
+                aria-label={accessibleLabel}
                 // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus={autoFocus}
                 className={cn(
-                  'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder',
+                  'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
                   search && 'mr-2',
                   inputElementClassName,
                 )}
@@ -106,9 +136,18 @@ const SearchBox = ({
                 placeholder={placeholder}
               />
               {search && (
-                <ActionButton size="xs" onClick={() => onSearchChange('')} className="shrink-0">
-                  <RiCloseLine className="size-4" />
-                </ActionButton>
+                <Button
+                  variant="ghost"
+                  size="small"
+                  aria-label={t(($) => $.clearSearch, {
+                    ns: 'plugin',
+                    label: accessibleLabel,
+                  })}
+                  onClick={handleClear}
+                  className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+                >
+                  <span className="i-ri-close-line size-4" aria-hidden />
+                </Button>
               )}
             </div>
             {showTags && (
@@ -122,12 +161,15 @@ const SearchBox = ({
       </div>
       {supportAddCustomTool && (
         <div className="flex shrink-0 items-center">
-          <ActionButton
-            className="ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text"
+          <Button
+            variant="primary"
+            size="small"
+            aria-label={t(($) => $['addToolModal.custom.tip'], { ns: 'tools' })}
+            className="ml-2 size-6 min-h-0 rounded-full p-0"
             onClick={onShowAddCustomCollectionModal}
           >
-            <RiAddLine className="size-4" />
-          </ActionButton>
+            <span className="i-ri-add-line size-4" aria-hidden />
+          </Button>
         </div>
       )}
     </div>

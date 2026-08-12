@@ -77,11 +77,11 @@ const ForgotPasswordForm = () => {
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-[32px] font-bold text-text-primary">
+        <h1 className="text-[32px] font-bold text-text-primary">
           {isEmailSent
             ? t(($) => $.resetLinkSent, { ns: 'login' })
             : t(($) => $.forgotPassword, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 text-sm text-text-secondary">
           {isEmailSent
             ? t(($) => $.checkEmailForResetLink, { ns: 'login' })

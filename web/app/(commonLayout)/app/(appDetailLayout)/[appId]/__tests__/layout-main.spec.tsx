@@ -1,9 +1,8 @@
 import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore } from '@/app/components/app/store'
-import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailLayout from '../layout-main'
@@ -11,69 +10,46 @@ import AppDetailLayout from '../layout-main'
 const mockReplace = vi.fn()
 let mockPathname = '/app/app-1/workflow'
 let mockIsRbacEnabled = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   currentWorkspace: { id: 'workspace-1' },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+const mockNavigation = vi.hoisted(() => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+}))
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
-  renderWithSystemFeatures(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: vi.fn(),
-  useRouter: vi.fn(),
-}))
+vi.mock('@/next/navigation', () => mockNavigation)
 
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockUsePathname = vi.mocked(usePathname)
-const mockUseRouter = vi.mocked(useRouter)
+const mockUsePathname = mockNavigation.usePathname
+const mockUseRouter = mockNavigation.useRouter
 const mockFetchAppDetailDirect = vi.mocked(fetchAppDetailDirect)
 
 const createAppDetail = (overrides: Partial<App> = {}) =>
@@ -96,19 +72,14 @@ describe('AppDetailLayout', () => {
     vi.clearAllMocks()
     mockPathname = '/app/app-1/workflow'
     mockIsRbacEnabled = true
-    mockAppContextState.currentWorkspace = { id: 'workspace-1' }
-    mockAppContextState.isLoadingCurrentWorkspace = false
-    mockAppContextState.isLoadingWorkspacePermissionKeys = false
-    mockAppContextState.userProfile = { id: 'user-1' }
-    mockAppContextState.workspacePermissionKeys = []
+    mockConsoleState.currentWorkspace = { id: 'workspace-1' }
+    mockConsoleState.isLoadingCurrentWorkspace = false
+    mockConsoleState.isLoadingWorkspacePermissionKeys = false
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = []
     mockUsePathname.mockImplementation(() => mockPathname)
     mockUseRouter.mockReturnValue({
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      push: vi.fn(),
       replace: mockReplace,
-      prefetch: vi.fn(),
     })
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail())
     useStore.getState().setAppDetail()
@@ -214,6 +185,59 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should allow access point pages without app deploy or app ACL permissions', async () => {
+    mockPathname = '/app/app-1/access-point'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
+    mockPathname = '/app/app-1/deploy'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should allow users with app deploy ACL permission to open deploy directly', async () => {
+    mockPathname = '/app/app-1/deploy'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.Deploy] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
   it('should allow users with layout access to open workflow pages directly', async () => {
     mockPathname = '/app/app-1/workflow'
 
@@ -240,7 +264,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
@@ -266,7 +290,7 @@ describe('AppDetailLayout', () => {
   })
 
   it('should wait for workspace permission keys before redirecting restricted pages', async () => {
-    mockAppContextState.isLoadingWorkspacePermissionKeys = true
+    mockConsoleState.isLoadingWorkspacePermissionKeys = true
     mockPathname = '/app/app-1/overview'
     mockFetchAppDetailDirect.mockResolvedValue(
       createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
@@ -284,7 +308,7 @@ describe('AppDetailLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
 
-    mockAppContextState.isLoadingWorkspacePermissionKeys = false
+    mockConsoleState.isLoadingWorkspacePermissionKeys = false
     rerender(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
@@ -365,7 +389,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()

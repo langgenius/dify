@@ -1,5 +1,6 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AgentPreviewVersionsPanel } from '../versions-panel'
 
 const versions: AgentConfigSnapshotSummaryResponse[] = [
@@ -46,6 +47,13 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     agent: {
       byAgentId: {
         versions: {
@@ -57,69 +65,6 @@ vi.mock('@/service/client', () => ({
     },
   },
 }))
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    },
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: 'user-1',
-      name: 'Alice',
-      email: 'alice@example.com',
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
 
 describe('AgentPreviewVersionsPanel', () => {
   beforeEach(() => {
@@ -137,6 +82,7 @@ describe('AgentPreviewVersionsPanel', () => {
           onSelectVersion={handleSelectVersion}
           onClose={vi.fn()}
         />,
+        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
       fireEvent.click(screen.getByRole('button', { name: /Initial release/i }))
@@ -154,6 +100,7 @@ describe('AgentPreviewVersionsPanel', () => {
           onSelectVersion={handleSelectVersion}
           onClose={vi.fn()}
         />,
+        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
       fireEvent.click(screen.getByRole('button', { name: /currentDraft/i }))
@@ -171,6 +118,7 @@ describe('AgentPreviewVersionsPanel', () => {
           onSelectVersion={vi.fn()}
           onClose={vi.fn()}
         />,
+        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
       fireEvent.click(screen.getByRole('button', { name: /filter/i }))
@@ -188,6 +136,7 @@ describe('AgentPreviewVersionsPanel', () => {
           onSelectVersion={vi.fn()}
           onClose={vi.fn()}
         />,
+        { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
       fireEvent.click(screen.getByRole('button', { name: /filter/i }))

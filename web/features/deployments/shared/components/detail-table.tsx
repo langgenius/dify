@@ -13,10 +13,7 @@ export function DetailTable({ className, containerClassName, ...props }: DetailT
     >
       <table
         data-slot="deployment-detail-table"
-        className={cn(
-          'w-full max-w-full min-w-[700px] border-collapse border-0 text-sm',
-          className,
-        )}
+        className={cn('w-full max-w-full min-w-175 border-collapse border-0 text-sm', className)}
         {...props}
       />
     </div>
@@ -65,7 +62,7 @@ export function DetailTableHead({ className, ...props }: ComponentProps<'th'>) {
       data-slot="deployment-detail-table-head"
       className={cn(
         className,
-        'box-border max-w-[200px] px-2.5 py-0 text-left align-middle font-medium whitespace-nowrap first:pl-3',
+        'box-border max-w-50 px-2.5 py-0 text-left align-middle font-medium whitespace-nowrap first:pl-3',
       )}
       {...props}
     />
@@ -76,7 +73,7 @@ export function DetailTableCell({ className, ...props }: ComponentProps<'td'>) {
   return (
     <td
       data-slot="deployment-detail-table-cell"
-      className={cn(className, 'box-border max-w-[200px] px-2.5 py-[5px] align-middle first:pl-3')}
+      className={cn(className, 'box-border max-w-50 px-2.5 py-1.25 align-middle first:pl-3')}
       {...props}
     />
   )

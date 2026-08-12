@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import ModelSelector from '../index'
 
 vi.mock('../../hooks', () => ({
-  useCurrentProviderAndModel: () => ({
+  getCurrentProviderAndModel: () => ({
     currentProvider: undefined,
     currentModel: undefined,
   }),

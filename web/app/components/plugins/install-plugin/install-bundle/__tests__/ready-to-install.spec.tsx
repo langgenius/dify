@@ -100,6 +100,7 @@ describe('ReadyToInstall', () => {
   const mockOnStartToInstall = vi.fn()
   const mockSetIsInstalling = vi.fn()
   const mockOnClose = vi.fn()
+  const mockOnInstallComplete = vi.fn()
 
   const defaultProps = {
     step: InstallStep.readyToInstall,
@@ -108,6 +109,7 @@ describe('ReadyToInstall', () => {
     setIsInstalling: mockSetIsInstalling,
     allPlugins: createMockDependencies(),
     onClose: mockOnClose,
+    onInstallComplete: mockOnInstallComplete,
   }
 
   beforeEach(() => {
@@ -177,6 +179,11 @@ describe('ReadyToInstall', () => {
       expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       expect(screen.getByTestId('installed-count')).toHaveTextContent('1')
       expect(screen.getByTestId('installed-status-count')).toHaveTextContent('1')
+      expect(mockOnInstallComplete).toHaveBeenCalledWith(
+        [expect.objectContaining({ plugin_id: 'p1' })],
+        [expect.objectContaining({ success: true })],
+        [expect.objectContaining({ toInstallVersion: '1.0.0' })],
+      )
     })
 
     it('should pass custom plugins and status via capturedOnInstalled', () => {

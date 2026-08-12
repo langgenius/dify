@@ -51,6 +51,7 @@ def _snapshot(*, snapshot_id: str = "snapshot-1", soul: AgentSoulConfig | None =
         tenant_id="tenant-1",
         agent_id="agent-1",
         version=1,
+        home_snapshot_id="home-1",
         config_snapshot=soul or AgentSoulConfig(),
         created_by="account-1",
     )
@@ -78,6 +79,7 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "api-key",
                         "credential_ref": {"type": "tool", "id": "tool-secret"},
@@ -189,13 +191,14 @@ def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) ->
         AgentPackage.model_validate(package)
 
 
-def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -> None:
+def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "tools": {
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "unauthorized",
                     }
@@ -323,7 +326,7 @@ def test_graph_without_package_bindings_removes_portable_fields() -> None:
     assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
 
 
-def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch) -> None:
+def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     soul = AgentSoulConfig(config_note="portable")
@@ -383,7 +386,11 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
     }
     for node in graph["nodes"][:3]:
         node["data"][AGENT_NODE_JOB_DSL_KEY] = {"workflow_prompt": node["id"]}
-    old_binding = SimpleNamespace(id="old-binding")
+    old_binding = SimpleNamespace(
+        id="old-binding",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="old-inline-agent",
+    )
     session = Mock()
     session.scalars.return_value.all.return_value = [old_binding]
     service = AgentDslService(session)
@@ -404,7 +411,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
         graph="{}",
     )
 
-    result, warnings = service.import_workflow_packages(
+    result, warnings, retirement_candidates = service.import_workflow_packages(
         workflow=workflow,
         portable_graph=graph,
         raw_packages={"agent_1": package.model_dump(mode="json")},
@@ -412,6 +419,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline()
     )
 
     session.delete.assert_called_once_with(old_binding)
+    assert retirement_candidates == {"old-inline-agent"}
     assert service._create_imported_inline_agent.call_count == 3
     assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
         "roster-1",
@@ -457,7 +465,7 @@ def test_import_workflow_packages_rejects_invalid_package_binding(binding: dict,
         )
 
 
-def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
+def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     target_agent = SimpleNamespace(id="target-agent")
@@ -497,7 +505,7 @@ def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
     )
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch) -> None:
+def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
@@ -513,10 +521,15 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypat
             "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
             "tools": {
                 "dify_tools": [
-                    {"provider_id": "provider/tool", "credential_type": "unauthorized"},
+                    {
+                        "provider_id": "provider/tool",
+                        "provider_type": "plugin",
+                        "credential_type": "unauthorized",
+                    },
                     {
                         "plugin_id": "plugin-id",
                         "provider": "fallback-provider",
+                        "provider_type": "plugin",
                         "credential_type": "unauthorized",
                     },
                 ]
@@ -575,7 +588,7 @@ def test_create_imported_inline_agent_uses_import_provenance() -> None:
     )
 
 
-def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -> None:
+def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     roster_service = Mock()
@@ -605,7 +618,7 @@ def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -
     assert session.flush.call_count == 2
 
 
-def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch) -> None:
+def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "config_skills": [{"name": "skill", "file_kind": "tool_file", "file_id": "skill-file"}],
@@ -685,6 +698,7 @@ def test_create_snapshot_increments_version_and_records_revision() -> None:
     )
 
     assert snapshot.version == 3
+    assert snapshot.home_snapshot_id is None
     assert isinstance(session.add.call_args_list[0].args[0], AgentConfigSnapshot)
     revision = session.add.call_args_list[1].args[0]
     assert isinstance(revision, AgentConfigRevision)

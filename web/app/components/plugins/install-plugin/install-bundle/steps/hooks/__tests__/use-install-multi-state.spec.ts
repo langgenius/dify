@@ -7,8 +7,8 @@ import type {
 } from '@/app/components/plugins/types'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { getPluginKey, useInstallMultiState } from '../use-install-multi-state'
 
 let mockMarketplaceData: ReturnType<typeof createMarketplaceApiData> | null = null

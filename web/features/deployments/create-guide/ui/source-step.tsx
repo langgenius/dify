@@ -4,14 +4,17 @@ import type {
   GuideMethod,
   WorkflowSourceApp,
 } from '@/features/deployments/create-guide/state/types'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
   dslFileAtom,
@@ -45,7 +48,6 @@ import { DeploymentStateMessage } from '@/features/deployments/shared/components
 import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
-import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -77,6 +79,7 @@ function SourceMethodSection() {
       hideHeader
     >
       <RadioGroup<GuideMethod>
+        aria-label={t(($) => $['createGuide.steps.method'])}
         value={method}
         onValueChange={selectMethod}
         className="flex flex-col items-stretch gap-2 sm:flex-row"
@@ -119,7 +122,7 @@ function SourceMethodCard({
       nativeButton
       render={<button type="button" />}
       className={cn(
-        `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-[240px]`,
+        `relative box-content h-21 w-full cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:w-60`,
         'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >
@@ -209,29 +212,16 @@ function SourceAppList() {
   const sourceAppsIsFetchingNextPage = useAtomValue(sourceAppsIsFetchingNextPageAtom)
   const sourceAppsIsLoading = useAtomValue(sourceAppsIsLoadingAtom)
   const sourceAppsIsPlaceholderData = useAtomValue(sourceAppsIsPlaceholderDataAtom)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sourceAppsLoading =
     sourceAppsIsLoading ||
     sourceAppsIsPlaceholderData ||
     (sourceAppsIsFetching && sourceApps.length === 0)
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(
-    {
-      error: sourceAppsError,
-      fetchNextPage: sourceAppsFetchNextPage,
-      hasNextPage: sourceAppsHasNextPage,
-      isFetching: sourceAppsIsFetching,
-      isFetchingNextPage: sourceAppsIsFetchingNextPage,
-      isLoading: sourceAppsIsLoading,
-    },
-    {
-      enabled: !sourceAppsLoading,
-      rootMargin: '0px 0px 160px 0px',
-      threshold: 0.1,
-    },
-  )
+  const canLoadMore = !sourceAppsIsFetching && !sourceAppsError
 
   return (
     <div
-      ref={rootRef}
+      ref={scrollContainerRef}
       className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default"
     >
       {sourceAppsLoading ? (
@@ -255,7 +245,16 @@ function SourceAppList() {
               {t(($) => $['createModal.loadingApps'])}
             </div>
           )}
-          {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
+          {sourceAppsHasNextPage && (
+            <InfiniteScrollSentinel
+              canLoadMore={canLoadMore}
+              onLoadMore={() => {
+                void sourceAppsFetchNextPage({ cancelRefetch: false })
+              }}
+              preloadDistance={160}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
         </div>
       )}
     </div>
@@ -287,6 +286,8 @@ function SourceAppOption({
   onSelect: () => void
   selected: boolean
 }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
   return (
     <label
       className={cn(
@@ -299,8 +300,8 @@ function SourceAppOption({
       <AppIcon
         className="shrink-0"
         size="xs"
-        iconType={app.icon_type}
-        icon={app.icon}
+        iconType={appIconType}
+        icon={app.icon ?? undefined}
         background={app.icon_background}
         imageUrl={app.icon_url}
       />

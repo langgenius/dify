@@ -80,7 +80,7 @@ const InputItem: FC<Props> = ({
           insertVarTipToLeft={insertVarTipToLeft}
         />
       ) : (
-        <div className="h-full w-full pl-0.5 leading-[18px]">
+        <div className="h-full w-full pl-0.5 leading-4.5">
           {!hasValue && (
             <div className="text-xs font-normal text-text-quaternary">{placeholder}</div>
           )}
@@ -91,7 +91,7 @@ const InputItem: FC<Props> = ({
                 isFocus
                   ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
                   : 'border-components-input-border-hover bg-components-input-bg-normal',
-                'clamp group h-full w-0 grow rounded-lg border px-3 py-[6px]',
+                'clamp group h-full w-0 grow rounded-lg border px-3 py-1.5',
               )}
               value={value}
               onChange={onChange}

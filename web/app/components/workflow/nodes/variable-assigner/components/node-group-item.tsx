@@ -97,7 +97,7 @@ const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
-      <div className="flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary">
+      <div className="flex h-4 items-center justify-between text-2xs font-medium text-text-tertiary">
         <span
           className={cn('grow truncate uppercase', showSelectedBorder && 'text-text-accent')}
           title={item.title}
@@ -118,7 +118,7 @@ const NodeGroupItem = ({ item }: NodeGroupItemProps) => {
       {!item.variables.length && (
         <div
           className={cn(
-            'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal text-text-tertiary uppercase',
+            'relative flex h-5.5 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-2xs font-normal text-text-tertiary uppercase',
             (showSelectedBorder || showSelectionBorder) && 'bg-black/2!',
           )}
         >

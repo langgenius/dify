@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Theme } from '../theme/theme-context'
+import type { Theme } from '../theme/theme'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import Divider from '@/app/components/base/divider'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
 import { useEmbeddedChatbotContext } from '../context'
@@ -105,7 +105,7 @@ const Header: FC<IHeaderProps> = ({
                     className="block h-5 w-auto"
                   />
                 ) : (
-                  <DifyLogo size="small" />
+                  <DifyLogo alt="Dify" size="small" />
                 )}
               </div>
             )}
@@ -126,14 +126,11 @@ const Header: FC<IHeaderProps> = ({
                   >
                     {expanded ? (
                       <div
-                        className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]"
+                        className="i-ri-collapse-diagonal-2-line h-4.5 w-4.5"
                         aria-hidden="true"
                       />
                     ) : (
-                      <div
-                        className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]"
-                        aria-hidden="true"
-                      />
+                      <div className="i-ri-expand-diagonal-2-line h-4.5 w-4.5" aria-hidden="true" />
                     )}
                   </ActionButton>
                 }
@@ -154,7 +151,7 @@ const Header: FC<IHeaderProps> = ({
                     aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                     onClick={onCreateNewChat}
                   >
-                    <div className="i-ri-reset-left-line h-[18px] w-[18px]" aria-hidden="true" />
+                    <div className="i-ri-reset-left-line h-4.5 w-4.5" aria-hidden="true" />
                   </ActionButton>
                 }
               />
@@ -200,7 +197,7 @@ const Header: FC<IHeaderProps> = ({
                   {expanded ? (
                     <div
                       className={cn(
-                        'i-ri-collapse-diagonal-2-line h-[18px] w-[18px]',
+                        'i-ri-collapse-diagonal-2-line h-4.5 w-4.5',
                         theme?.colorPathOnHeader,
                       )}
                       aria-hidden="true"
@@ -208,7 +205,7 @@ const Header: FC<IHeaderProps> = ({
                   ) : (
                     <div
                       className={cn(
-                        'i-ri-expand-diagonal-2-line h-[18px] w-[18px]',
+                        'i-ri-expand-diagonal-2-line h-4.5 w-4.5',
                         theme?.colorPathOnHeader,
                       )}
                       aria-hidden="true"
@@ -234,10 +231,7 @@ const Header: FC<IHeaderProps> = ({
                   onClick={onCreateNewChat}
                 >
                   <div
-                    className={cn(
-                      'i-ri-reset-left-line h-[18px] w-[18px]',
-                      theme?.colorPathOnHeader,
-                    )}
+                    className={cn('i-ri-reset-left-line h-4.5 w-4.5', theme?.colorPathOnHeader)}
                     aria-hidden="true"
                   />
                 </ActionButton>

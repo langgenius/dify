@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { API_PREFIX } from '@/config'
@@ -10,6 +10,8 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { render } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
@@ -91,6 +93,33 @@ const mockBuiltInTools = vi.hoisted(() => [
   },
 ])
 
+const wikipediaProvider = {
+  id: 'wikipedia',
+  name: 'Wikipedia',
+  author: 'Dify',
+  description: { en_US: 'Wikipedia tools' },
+  icon: 'wikipedia.svg',
+  icon_dark: 'wikipedia-dark.svg',
+  label: { en_US: 'Wikipedia' },
+  type: 'builtin',
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  meta: {},
+  tools: [
+    {
+      name: 'wikipedia_search',
+      author: 'Dify',
+      label: { en_US: 'Wikipedia Search' },
+      description: { en_US: 'Search Wikipedia.' },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+}
+
 vi.mock('@/app/components/base/prompt-editor', () => ({
   __esModule: true,
   default: (props: PromptEditorProps) => {
@@ -153,47 +182,11 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => 'https://docs.example.com',
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-123' },
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-tools', () => ({
@@ -232,6 +225,7 @@ const duckDuckGoProviderTool: AgentTool = {
   name: 'DuckDuckGo',
   kind: 'provider',
   iconClassName: 'i-simple-icons-duckduckgo',
+  providerType: 'builtin',
   credentialKey: 'agentDetail.configure.tools.credential.authOne',
   credentialVariant: 'authorized',
   actions: [duckDuckGoSearchAction],
@@ -247,6 +241,7 @@ const renderAgentPromptEditor = (
   draftOverrides: Partial<typeof defaultAgentSoulConfigFormState> = {},
 ) => {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   store.set(agentComposerDraftAtom, {
     ...promptEditorDraft,
     ...draftOverrides,
@@ -262,13 +257,8 @@ const renderAgentPromptEditor = (
   return {
     store,
     ...view,
-    rerenderWithValue: (nextValue: string) => {
-      store.set(agentComposerPromptAtom, nextValue)
-      view.rerender(
-        <JotaiProvider store={store}>
-          <AgentPromptEditor />
-        </JotaiProvider>,
-      )
+    setPromptValue: (nextValue: string) => {
+      act(() => store.set(agentComposerPromptAtom, nextValue))
     },
   }
 }
@@ -281,6 +271,12 @@ const syncSlashMenuFromEditor = (textbox = screen.getByRole('textbox')) => {
 const openSlashMenuFromEditor = async (textbox = screen.getByRole('textbox')) => {
   syncSlashMenuFromEditor(textbox)
   return screen.findByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i })
+}
+
+const flushAnimationFrame = async () => {
+  await act(async () => {
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+  })
 }
 
 describe('AgentPromptEditor', () => {
@@ -483,9 +479,64 @@ describe('AgentPromptEditor', () => {
 
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
   describe('Slash Commands', () => {
+    it('should open the slash menu at the start of the prompt', async () => {
+      renderAgentPromptEditor('/')
+
+      await openSlashMenuFromEditor()
+
+      expect(
+        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
+      ).toBeInTheDocument()
+    })
+
+    it.each(['Review/', 'Use https:/', 'path/to/'])(
+      'should not open the slash menu when slash follows a non-whitespace character in %s',
+      async (value) => {
+        renderAgentPromptEditor(value)
+
+        syncSlashMenuFromEditor()
+        await flushAnimationFrame()
+
+        expect(
+          screen.queryByRole('dialog', {
+            name: /agentDetail\.configure\.prompt\.insert\.label/i,
+          }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it.each([
+      ['protocol separator', 'Use https://dict.youdao.com/dictvoice', 'Use https:/'.length],
+      [
+        'path separator',
+        'Use https://dict.youdao.com/dictvoice',
+        'Use https://dict.youdao.com/'.length,
+      ],
+    ] as const)('should not open from an existing URL %s', async (_, value, selectionOffset) => {
+      renderAgentPromptEditor(value)
+      const textbox = screen.getByRole('textbox')
+      const textNode = textbox.firstChild
+      expect(textNode).not.toBeNull()
+
+      const range = document.createRange()
+      range.setStart(textNode!, selectionOffset)
+      range.setEnd(textNode!, selectionOffset)
+      const selection = window.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+
+      fireEvent.pointerUp(textbox)
+      await flushAnimationFrame()
+
+      expect(
+        screen.queryByRole('dialog', {
+          name: /agentDetail\.configure\.prompt\.insert\.label/i,
+        }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const { store, rerenderWithValue, container } =
-        renderAgentPromptEditor('Review these tenders')
+      const { store, setPromptValue, container } = renderAgentPromptEditor('Review these tenders')
 
       expect(mockPromptEditor).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -497,7 +548,7 @@ describe('AgentPromptEditor', () => {
         }),
       )
 
-      rerenderWithValue('Review these tenders/')
+      setPromptValue('Review these tenders /')
       await openSlashMenuFromEditor()
       expect(container).toContainElement(
         screen.getByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i }),
@@ -516,7 +567,7 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
-        'Review these tenders [§skill:playwright:Playwright§]',
+        'Review these tenders [§skill:playwright:Playwright§] ',
       )
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
@@ -525,7 +576,7 @@ describe('AgentPromptEditor', () => {
 
     it('should support keyboard navigation and selection in the slash menu', async () => {
       const user = userEvent.setup()
-      const { store } = renderAgentPromptEditor('Review these tenders/')
+      const { store } = renderAgentPromptEditor('Review these tenders /')
       const textbox = screen.getByRole('textbox')
 
       textbox.focus()
@@ -595,7 +646,7 @@ describe('AgentPromptEditor', () => {
       await user.keyboard('{Enter}')
 
       expect(store.get(agentComposerPromptAtom)).toBe(
-        'Review these tenders [§skill:playwright:Playwright§]',
+        'Review these tenders [§skill:playwright:Playwright§] ',
       )
       await waitFor(() => {
         expect(
@@ -606,7 +657,7 @@ describe('AgentPromptEditor', () => {
 
     it('should keep editor focus when selecting slash menu items with a pointer', async () => {
       const user = userEvent.setup()
-      const { store } = renderAgentPromptEditor('Review these tenders/')
+      const { store } = renderAgentPromptEditor('Review these tenders /')
       const textbox = screen.getByRole('textbox')
 
       textbox.focus()
@@ -623,7 +674,7 @@ describe('AgentPromptEditor', () => {
       await user.click(screen.getByRole('button', { name: /Playwright/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
-        'Review these tenders [§skill:playwright:Playwright§]',
+        'Review these tenders [§skill:playwright:Playwright§] ',
       )
       await waitFor(() => {
         expect(
@@ -633,7 +684,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should close the slash menu with Escape and restore focus to the editor', async () => {
-      renderAgentPromptEditor('Review/')
+      renderAgentPromptEditor('Review /')
       const textbox = screen.getByRole('textbox')
 
       textbox.focus()
@@ -669,14 +720,14 @@ describe('AgentPromptEditor', () => {
         .mockImplementation(() => DOMRect.fromRect({ x: 10, y: 50, width: 500, height: 240 }))
 
       try {
-        renderAgentPromptEditor('Review/')
+        renderAgentPromptEditor('Review /')
         const textbox = screen.getByRole('textbox')
         const textNode = textbox.firstChild
         expect(textNode).not.toBeNull()
 
         const range = document.createRange()
-        range.setStart(textNode!, 'Review/'.length)
-        range.setEnd(textNode!, 'Review/'.length)
+        range.setStart(textNode!, 'Review /'.length)
+        range.setEnd(textNode!, 'Review /'.length)
         const selection = window.getSelection()
         selection?.removeAllRanges()
         selection?.addRange(range)
@@ -853,7 +904,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should append available provider tool references and add missing tools to the configuration', async () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
+      const { store, setPromptValue } = renderAgentPromptEditor('Research /', { tools: [] })
       const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
       await openSlashMenuFromEditor()
@@ -869,7 +920,7 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe(
-        'Research [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
+        'Research [§tool:duckduckgo/ddg_search:DuckDuckGo Search§] ',
       )
       expect(store.get(agentComposerDraftAtom).tools).toEqual([
         expect.objectContaining({
@@ -884,7 +935,7 @@ describe('AgentPromptEditor', () => {
         }),
       ])
 
-      rerenderWithValue('Research/')
+      setPromptValue('Research /')
       await openSlashMenuFromEditor()
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
       fireEvent.click(
@@ -893,7 +944,7 @@ describe('AgentPromptEditor', () => {
         }),
       )
 
-      expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/*:DuckDuckGo§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/*:DuckDuckGo§] ')
       expect(store.get(agentComposerDraftAtom).tools).toEqual([
         expect.objectContaining({
           id: 'duckduckgo',
@@ -905,36 +956,99 @@ describe('AgentPromptEditor', () => {
       ])
     })
 
-    it('should close slash menu when slash is deleted or the user clicks outside', async () => {
-      const { rerenderWithValue } = renderAgentPromptEditor('Review/')
+    it('should show configured providers and actions before other available tools', () => {
+      mockBuiltInTools.unshift(wikipediaProvider)
+      const configuredDuckDuckGoTranslateTool: AgentTool = {
+        ...duckDuckGoProviderTool,
+        actions: [
+          {
+            id: 'duckduckgo-translate',
+            name: 'DuckDuckGo Translate',
+            toolName: 'ddg_translate',
+            description: 'Translate search results.',
+          },
+        ],
+      }
+
+      const view = render(
+        <AgentPromptSlashMenu
+          view="tools"
+          categories={[{ key: 'tools', label: 'Tools', icon: 'i-ri-box-3-line' }]}
+          skills={[]}
+          files={[]}
+          configuredTools={[configuredDuckDuckGoTranslateTool]}
+          onAddProviderTools={vi.fn()}
+          knowledgeRetrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onInsertToken={vi.fn()}
+        />,
+      )
+
+      try {
+        const providerButtons = screen
+          .getAllByRole('button')
+          .filter(
+            (button) =>
+              button.textContent?.includes('DuckDuckGo') ||
+              button.textContent?.includes('Wikipedia'),
+          )
+
+        expect(providerButtons).toHaveLength(2)
+        expect(providerButtons[0]).toHaveTextContent('DuckDuckGo')
+        expect(providerButtons[1]).toHaveTextContent('Wikipedia')
+
+        fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
+        const actionButtons = screen.getAllByRole('button', {
+          name: /DuckDuckGo (Search|Translate)/,
+        })
+        expect(actionButtons[0]).toHaveTextContent('DuckDuckGo Translate')
+        expect(actionButtons[1]).toHaveTextContent('DuckDuckGo Search')
+      } finally {
+        view.unmount()
+        mockBuiltInTools.shift()
+      }
+    })
+
+    it('should close the slash menu when the trailing slash is deleted', async () => {
+      const { setPromptValue } = renderAgentPromptEditor('Review /')
 
       await openSlashMenuFromEditor()
-      expect(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      ).toBeInTheDocument()
 
-      rerenderWithValue('Review')
+      setPromptValue('Review')
       fireEvent.keyUp(screen.getByRole('textbox'), { key: 'Backspace' })
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
+          screen.queryByRole('dialog', {
+            name: /agentDetail\.configure\.prompt\.insert\.label/i,
+          }),
         ).not.toBeInTheDocument()
       })
+    })
 
-      rerenderWithValue('Review/')
-      await openSlashMenuFromEditor()
-      expect(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      ).toBeInTheDocument()
+    it('should close the slash menu when the user clicks outside', async () => {
+      const user = userEvent.setup()
+      const outsideButton = document.createElement('button')
+      outsideButton.textContent = 'Outside'
+      document.body.append(outsideButton)
 
-      fireEvent.pointerDown(document.body)
+      try {
+        renderAgentPromptEditor('Review /')
 
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-        ).not.toBeInTheDocument()
-      })
+        await openSlashMenuFromEditor()
+        await user.click(outsideButton)
+
+        await waitFor(() => {
+          expect(
+            screen.queryByRole('dialog', {
+              name: /agentDetail\.configure\.prompt\.insert\.label/i,
+            }),
+          ).not.toBeInTheDocument()
+        })
+      } finally {
+        outsideButton.remove()
+      }
     })
 
     it('should close the slash menu when focus moves outside the prompt editor', async () => {
@@ -942,7 +1056,7 @@ describe('AgentPromptEditor', () => {
       document.body.append(outsideButton)
 
       try {
-        renderAgentPromptEditor('Review/')
+        renderAgentPromptEditor('Review /')
 
         await openSlashMenuFromEditor()
         expect(
@@ -964,7 +1078,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should reopen slash menu when the cursor is positioned after slash', async () => {
-      renderAgentPromptEditor('Review/')
+      renderAgentPromptEditor('Review /')
 
       fireEvent.keyUp(screen.getByRole('textbox'), { key: 'ArrowRight' })
 

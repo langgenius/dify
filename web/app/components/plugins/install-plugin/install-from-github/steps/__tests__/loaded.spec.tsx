@@ -482,6 +482,9 @@ describe('Loaded', () => {
       await waitFor(() => {
         expect(screen.getByText('plugin.installModal.installing')).toBeInTheDocument()
       })
+      expect(
+        screen.getByRole('button', { name: /plugin.installModal.installing/i }),
+      ).toHaveAttribute('aria-disabled', 'true')
 
       resolveInstall!({ all_installed: true, task_id: 'task-1' })
     })

@@ -110,7 +110,7 @@ type PaginationRootState = {
   disabled: boolean
 }
 
-export type PaginationRootProps = Omit<
+type PaginationRootProps = Omit<
   useRender.ComponentProps<'nav', PaginationRootState>,
   'onChange'
 > & {
@@ -122,7 +122,7 @@ export type PaginationRootProps = Omit<
   visiblePageCount?: number
 }
 
-export function PaginationRoot({
+function PaginationRoot({
   page,
   totalPages,
   onPageChange,
@@ -184,11 +184,11 @@ export function PaginationRoot({
   })
 }
 
-export type PaginationNavigationProps = useRender.ComponentProps<'div'>
+type PaginationNavigationProps = useRender.ComponentProps<'div'>
 
-export type PaginationContentProps = useRender.ComponentProps<'div'>
+type PaginationContentProps = useRender.ComponentProps<'div'>
 
-export function PaginationContent({ render, className, ...props }: PaginationContentProps) {
+function PaginationContent({ render, className, ...props }: PaginationContentProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     className: cn(
       'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2',
@@ -203,7 +203,7 @@ export function PaginationContent({ render, className, ...props }: PaginationCon
   })
 }
 
-export function PaginationNavigation({ render, className, ...props }: PaginationNavigationProps) {
+function PaginationNavigation({ render, className, ...props }: PaginationNavigationProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     className: cn(
       'flex shrink-0 items-center gap-0.5 justify-self-start rounded-[10px] bg-background-section-burn p-0.5',
@@ -218,8 +218,14 @@ export function PaginationNavigation({ render, className, ...props }: Pagination
   })
 }
 
-type PaginationButtonProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   children?: React.ReactNode
+  className?: string
+}
+
+type PaginationNextProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+  children?: React.ReactNode
+  className?: string
 }
 
 const paginationArrowButtonClassName = [
@@ -230,12 +236,12 @@ const paginationArrowButtonClassName = [
   'motion-reduce:transition-none',
 ]
 
-export function PaginationPrevious({
+function PaginationPrevious({
   className,
   children,
   'aria-label': ariaLabel,
   ...props
-}: PaginationButtonProps) {
+}: PaginationPreviousProps) {
   const pagination = usePaginationContext('PaginationPrevious')
 
   if (!pagination.hasPages) return null
@@ -260,12 +266,12 @@ export function PaginationPrevious({
   )
 }
 
-export function PaginationNext({
+function PaginationNext({
   className,
   children,
   'aria-label': ariaLabel,
   ...props
-}: PaginationButtonProps) {
+}: PaginationNextProps) {
   const pagination = usePaginationContext('PaginationNext')
 
   if (!pagination.hasPages) return null
@@ -290,12 +296,13 @@ export function PaginationNext({
   )
 }
 
-export type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   inputLabel?: string
   children?: React.ReactNode
+  className?: string
 }
 
-export function PaginationPageJump({
+function PaginationPageJump({
   className,
   inputLabel = 'Page number',
   children,
@@ -402,9 +409,9 @@ export function PaginationPageJump({
   )
 }
 
-export type PaginationPageListProps = useRender.ComponentProps<'ol'>
+type PaginationPageListProps = useRender.ComponentProps<'ol'>
 
-export function PaginationPageList({ render, className, ...props }: PaginationPageListProps) {
+function PaginationPageList({ render, className, ...props }: PaginationPageListProps) {
   const pagination = usePaginationContext('PaginationPageList')
 
   const defaultProps: useRender.ElementProps<'ol'> = {
@@ -427,12 +434,13 @@ export function PaginationPageList({ render, className, ...props }: PaginationPa
   })
 }
 
-export type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   page: number
   children?: React.ReactNode
+  className?: string
 }
 
-export function PaginationPage({
+function PaginationPage({
   page,
   className,
   children,
@@ -465,9 +473,9 @@ export function PaginationPage({
   )
 }
 
-export type PaginationEllipsisProps = useRender.ComponentProps<'span'>
+type PaginationEllipsisProps = useRender.ComponentProps<'span'>
 
-export function PaginationEllipsis({ render, className, ...props }: PaginationEllipsisProps) {
+function PaginationEllipsis({ render, className, ...props }: PaginationEllipsisProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     className: cn(
@@ -484,7 +492,7 @@ export function PaginationEllipsis({ render, className, ...props }: PaginationEl
   })
 }
 
-export type PaginationPageSizeProps<Value extends number = number> = {
+type PaginationPageSizeProps<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
@@ -493,7 +501,7 @@ export type PaginationPageSizeProps<Value extends number = number> = {
   className?: string
 }
 
-export function PaginationPageSize<Value extends number = number>({
+function PaginationPageSize<Value extends number = number>({
   value,
   options,
   onValueChange,
@@ -538,14 +546,14 @@ export function PaginationPageSize<Value extends number = number>({
   )
 }
 
-export type PaginationLabels = {
+type PaginationLabels = {
   previous?: string
   next?: string
   editPageNumber?: (page: number, totalPages: number) => string
   pageNumberInput?: string
 }
 
-export type PaginationPageSizeConfig<Value extends number = number> = {
+type PaginationPageSizeConfig<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
@@ -553,15 +561,12 @@ export type PaginationPageSizeConfig<Value extends number = number> = {
   ariaLabel?: string
 }
 
-export type PaginationProps<Value extends number = number> = Omit<
-  PaginationRootProps,
-  'children'
-> & {
+type PaginationProps<Value extends number = number> = Omit<PaginationRootProps, 'children'> & {
   labels?: PaginationLabels
   pageSize?: PaginationPageSizeConfig<Value>
 }
 
-export function Pagination<Value extends number = number>({
+function Pagination<Value extends number = number>({
   labels,
   pageSize,
   page,
@@ -598,9 +603,9 @@ export function Pagination<Value extends number = number>({
   )
 }
 
-export type PaginationSkeletonProps = useRender.ComponentProps<'div'>
+type PaginationSkeletonProps = useRender.ComponentProps<'div'>
 
-export function PaginationSkeleton({ render, className, ...props }: PaginationSkeletonProps) {
+function PaginationSkeleton({ render, className, ...props }: PaginationSkeletonProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     'aria-hidden': true,
     className: cn(
@@ -634,4 +639,33 @@ export function PaginationSkeleton({ render, className, ...props }: PaginationSk
     render,
     props: mergeProps<'div'>(defaultProps, props),
   })
+}
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationNavigation,
+  PaginationNext,
+  PaginationPage,
+  PaginationPageJump,
+  PaginationPageList,
+  PaginationPageSize,
+  PaginationPrevious,
+  PaginationRoot,
+  PaginationSkeleton,
+}
+export type {
+  PaginationContentProps,
+  PaginationEllipsisProps,
+  PaginationNavigationProps,
+  PaginationNextProps,
+  PaginationPageJumpProps,
+  PaginationPageListProps,
+  PaginationPageProps,
+  PaginationPageSizeProps,
+  PaginationPreviousProps,
+  PaginationProps,
+  PaginationRootProps,
+  PaginationSkeletonProps,
 }

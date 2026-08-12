@@ -97,6 +97,7 @@
   "categorySingle.model": "Model",
   "categorySingle.tool": "Narzędzie",
   "categorySingle.trigger": "Spust",
+  "clearSearch": "Wyczyść {{label}}",
   "debugInfo.title": "Debugowanie",
   "debugInfo.viewDocs": "Wyświetlanie dokumentów",
   "deprecated": "Nieaktualny",

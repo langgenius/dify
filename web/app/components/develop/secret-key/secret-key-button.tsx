@@ -32,15 +32,15 @@ const SecretKeyButton = ({
         <div className="flex size-3.5 items-center justify-center">
           <span className="i-ri-key-2-line size-3.5 text-text-tertiary" />
         </div>
-        <div className={`px-[3px] system-xs-medium text-text-tertiary ${textCls}`}>
+        <div className={`system-xs-medium text-text-tertiary ${textCls}`}>
           {t(($) => $.apiKey, { ns: 'appApi' })}
         </div>
       </Button>
       <SecretKeyModal
         isShow={isVisible}
         onClose={() => setIsVisible(false)}
-        appId={appId}
         canManage={canManage}
+        scope={appId ? { type: 'app', appId } : { type: 'dataset' }}
       />
     </>
   )

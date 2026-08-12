@@ -19,7 +19,7 @@ const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -28,7 +28,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )

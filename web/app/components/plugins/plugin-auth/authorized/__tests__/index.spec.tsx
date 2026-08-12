@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import Authorized from '../index'
 
@@ -81,53 +83,17 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockAppContext.userProfile,
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: mockConsoleState.userProfile,
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockAppContext.userProfile,
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockAppContext.userProfile,
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockAppContext.userProfile,
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: mockAppContext.userProfile,
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 // Mock service/use-triggers
@@ -143,9 +109,17 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
+vi.mock('@/service/use-common', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/use-common')>()
+  return {
+    ...actual,
+    useMembers: () => ({ data: { accounts: [] } }),
+  }
+})
+
 // ==================== Test Utilities ====================
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -156,7 +130,8 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
+  const testQueryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(testQueryClient, mockConsoleState.userProfile)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -183,7 +158,7 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 describe('Authorized Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = [
+    mockConsoleState.workspacePermissionKeys = [
       'credential.use',
       'credential.create',
       'credential.manage',
@@ -206,7 +181,7 @@ describe('Authorized Component', () => {
       expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
-    it('should render with custom trigger when renderTrigger is provided', () => {
+    it('should render a custom trigger from the actual popover state', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
@@ -221,8 +196,11 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('Closed'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('custom-trigger'))
+
+      expect(screen.getByText('Open')).toBeInTheDocument()
     })
 
     it('should show singular authorization text for 1 credential', () => {
@@ -1427,7 +1405,7 @@ describe('Authorized Component', () => {
     it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
-      mockAppContext.workspacePermissionKeys = ['credential.use']
+      mockConsoleState.workspacePermissionKeys = ['credential.use']
 
       render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
         wrapper: createWrapper(),
@@ -1441,7 +1419,7 @@ describe('Authorized Component', () => {
     it('should disable set default when credential.use and credential.manage are missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
-      mockAppContext.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<Authorized pluginPayload={pluginPayload} credentials={credentials} isOpen={true} />, {
         wrapper: createWrapper(),

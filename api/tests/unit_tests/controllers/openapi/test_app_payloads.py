@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
     _EMPTY_PARAMETERS,
@@ -35,10 +36,10 @@ def _fake_app(**overrides):
     return SimpleNamespace(**base)
 
 
-def test_parameters_payload_raises_app_unavailable_when_no_config():
+def test_parameters_payload_raises_app_unavailable_when_no_config(unbound_session: Session):
     app = _fake_app(mode="chat")
     app.app_model_config_with_session = MagicMock(return_value=None)
-    session = MagicMock()
+    session = unbound_session
 
     with pytest.raises(AppUnavailableError):
         parameters_payload(app, session=session)

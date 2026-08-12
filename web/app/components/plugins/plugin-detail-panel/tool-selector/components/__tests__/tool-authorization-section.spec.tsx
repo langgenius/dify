@@ -1,8 +1,9 @@
+import type { PluginPayload } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
-import ToolAuthorizationSection from '../tool-authorization-section'
+import { ToolAuthorizationSection } from '../tool-authorization-section'
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: {
@@ -12,7 +13,7 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
     pluginPayload,
     credentialId,
   }: {
-    pluginPayload: { provider: string; providerType: string }
+    pluginPayload: PluginPayload
     credentialId?: string
   }) => (
     <div data-testid="plugin-auth-in-agent">

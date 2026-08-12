@@ -4,7 +4,7 @@ import type { ReleaseSourceMode } from '../state'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   createReleaseDslFileFieldAtom,

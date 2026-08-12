@@ -278,11 +278,11 @@ export function DeploymentDetailSection({ expand = true }: { expand?: boolean })
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
       {!expand && (
-        <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-[3px]">
+        <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
           <Divider
             type="horizontal"
             bgStyle="solid"
-            className="my-0 h-px w-[27px] bg-divider-subtle"
+            className="my-0 h-px w-6.75 bg-divider-subtle"
           />
         </div>
       )}

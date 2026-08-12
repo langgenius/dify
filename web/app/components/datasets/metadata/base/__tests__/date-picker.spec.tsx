@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import WrappedDatePicker from '../date-picker'
 
 type TriggerArgs = {
@@ -11,16 +11,18 @@ type TriggerArgs = {
 type DatePickerProps = {
   onChange: (value: Date | null) => void
   onClear: () => void
-  renderTrigger: (args: TriggerArgs) => React.ReactNode
+  renderTrigger: (
+    props: React.HTMLAttributes<HTMLDivElement>,
+    state: { open: boolean },
+    args: TriggerArgs,
+  ) => React.ReactNode
   value?: Date
 }
 
 // Mock the base date picker component
 vi.mock('@/app/components/base/date-and-time-picker/date-picker', () => ({
   default: ({ onChange, onClear, renderTrigger, value }: DatePickerProps) => {
-    const trigger = renderTrigger({
-      handleClickTrigger: () => {},
-    })
+    const trigger = renderTrigger({}, { open: false }, { handleClickTrigger: () => {} })
     return (
       <div role="group" aria-label="Date picker">
         {trigger}

@@ -18,19 +18,25 @@ import {
 import { requirePreseededTool } from '../../agent-v2/support/fixtures/tools'
 
 Given('the Agent Builder stable chat model is available', async function (this: DifyWorld) {
-  const stableModel = await requireAgentBuilderStableChatModel(this)
+  const stableModel = await requireAgentBuilderStableChatModel(this, this.getConsoleClient())
 
   this.agentBuilder.fixtures.stableModel = stableModel
 })
 
 Given('the workspace default speech-to-text model is active', async function (this: DifyWorld) {
-  const speechToTextModel = await requireAgentBuilderSpeechToTextModel(this)
+  const speechToTextModel = await requireAgentBuilderSpeechToTextModel(
+    this,
+    this.getConsoleClient(),
+  )
 
   this.agentBuilder.fixtures.speechToTextModel = speechToTextModel
 })
 
 Given('the Agent Builder agent-decision chat model is available', async function (this: DifyWorld) {
-  const agentDecisionModel = await requireAgentBuilderAgentDecisionChatModel(this)
+  const agentDecisionModel = await requireAgentBuilderAgentDecisionChatModel(
+    this,
+    this.getConsoleClient(),
+  )
 
   this.agentBuilder.fixtures.agentDecisionModel = agentDecisionModel
 })
@@ -42,7 +48,7 @@ Given('the Agent v2 runtime backend is available', async function (this: DifyWor
 Given(
   'the Agent Builder preseeded Agent {string} is available',
   async function (this: DifyWorld, resourceName: string) {
-    const resource = await requirePreseededAgent(this, resourceName)
+    const resource = await requirePreseededAgent(this, this.getConsoleClient(), resourceName)
 
     this.agentBuilder.fixtures.preseededResources[resourceName] = resource
   },
@@ -51,7 +57,7 @@ Given(
 Given(
   'the Agent Builder preseeded workflow {string} is available',
   async function (this: DifyWorld, resourceName: string) {
-    const resource = await requirePreseededWorkflow(this, resourceName)
+    const resource = await requirePreseededWorkflow(this, this.getConsoleClient(), resourceName)
 
     this.agentBuilder.fixtures.preseededResources[resourceName] = resource
   },
@@ -60,7 +66,7 @@ Given(
 Given(
   'the Agent Builder preseeded dataset {string} is indexed and ready',
   async function (this: DifyWorld, resourceName: string) {
-    const resource = await requireReadyPreseededDataset(this, resourceName)
+    const resource = await requireReadyPreseededDataset(this, this.getConsoleClient(), resourceName)
 
     this.agentBuilder.fixtures.preseededResources[resourceName] = resource
   },
@@ -69,7 +75,7 @@ Given(
 Given(
   'the Agent Builder preseeded tool {string} is available',
   async function (this: DifyWorld, resourceName: string) {
-    const resource = await requirePreseededTool(this, resourceName)
+    const resource = await requirePreseededTool(this, this.getConsoleClient(), resourceName)
 
     this.agentBuilder.fixtures.preseededResources[resourceName] = resource
   },
@@ -78,7 +84,11 @@ Given(
 Given(
   'the Agent Builder preseeded Agent {string} includes the core fixture configuration',
   async function (this: DifyWorld, agentName: string) {
-    const resource = await requirePreseededFullConfigAgentCoreConfiguration(this, agentName)
+    const resource = await requirePreseededFullConfigAgentCoreConfiguration(
+      this,
+      this.getConsoleClient(),
+      agentName,
+    )
 
     this.agentBuilder.fixtures.preseededResources[`${agentName} / core fixture configuration`] =
       resource
@@ -88,7 +98,11 @@ Given(
 Given(
   'the Agent Builder preseeded Agent {string} includes the tool state fixture configuration',
   async function (this: DifyWorld, agentName: string) {
-    const resource = await requirePreseededToolStatesAgentConfiguration(this, agentName)
+    const resource = await requirePreseededToolStatesAgentConfiguration(
+      this,
+      this.getConsoleClient(),
+      agentName,
+    )
 
     this.agentBuilder.fixtures.preseededResources[
       `${agentName} / tool state fixture configuration`
@@ -99,7 +113,11 @@ Given(
 Given(
   'the Agent Builder preseeded Agent {string} includes the dual retrieval fixture configuration',
   async function (this: DifyWorld, agentName: string) {
-    const resource = await requirePreseededDualRetrievalAgentConfiguration(this, agentName)
+    const resource = await requirePreseededDualRetrievalAgentConfiguration(
+      this,
+      this.getConsoleClient(),
+      agentName,
+    )
 
     this.agentBuilder.fixtures.preseededResources[
       `${agentName} / dual retrieval fixture configuration`
@@ -110,7 +128,12 @@ Given(
 Given(
   'the Agent Builder preseeded Agent {string} is referenced by workflow {string}',
   async function (this: DifyWorld, agentName: string, workflowName: string) {
-    const resource = await requirePreseededAgentWorkflowReference(this, agentName, workflowName)
+    const resource = await requirePreseededAgentWorkflowReference(
+      this,
+      this.getConsoleClient(),
+      agentName,
+      workflowName,
+    )
 
     this.agentBuilder.fixtures.preseededResources[`${agentName} / ${workflowName}`] = resource
   },

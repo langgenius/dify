@@ -47,7 +47,7 @@ const UploadDropzone = ({
       <div
         ref={dropRef}
         className={cn(
-          'relative mb-2 box-border flex min-h-20 max-w-[640px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary',
+          'relative mb-2 box-border flex min-h-20 max-w-160 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary',
           dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
         )}
       >

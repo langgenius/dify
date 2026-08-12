@@ -120,7 +120,7 @@ const Uploader: FC<Props> = ({ file, updateFile, className }) => {
               <span className="font-inter max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">
                 {file.name}
               </span>
-              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+              <div className="font-inter flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
                 <span>PIPELINE</span>
                 <span className="text-text-quaternary">·</span>
                 <span>{formatFileSize(file.size)}</span>

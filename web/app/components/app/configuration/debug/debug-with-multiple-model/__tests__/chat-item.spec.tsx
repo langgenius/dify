@@ -1,12 +1,13 @@
 import type { ModelAndParameter } from '../../types'
 import type { ChatConfig, ChatItem as ChatItemType, OnSend } from '@/app/components/base/chat/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
 
-const mockUseAppContext = vi.fn()
+const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseProviderContext = vi.fn()
 const mockUseFeatures = vi.fn()
@@ -17,6 +18,9 @@ const mockUseEventEmitterContextContext = vi.fn()
 const mockFetchConversationMessages = vi.fn()
 const mockFetchSuggestedQuestions = vi.fn()
 const mockStopChatMessageResponding = vi.fn()
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 let capturedChatProps: {
   config: ChatConfig
@@ -63,6 +67,12 @@ vi.mock('@/service/debug', () => ({
   stopChatMessageResponding: (...args: unknown[]) => mockStopChatMessageResponding(...args),
 }))
 
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
+
 vi.mock('@/app/components/base/chat/utils', () => ({
   getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
 }))
@@ -101,10 +111,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
-
 const createModelAndParameter = (
   overrides: Partial<ModelAndParameter> = {},
 ): ModelAndParameter => ({
@@ -116,7 +122,7 @@ const createModelAndParameter = (
 })
 
 const createDefaultMocks = () => {
-  mockUseAppContext.mockReturnValue({
+  mockConsoleStateReader.mockReturnValue({
     userProfile: { avatar_url: 'http://avatar.url', name: 'Test User' },
   })
 
@@ -341,8 +347,16 @@ describe('ChatItem', () => {
           query: 'Hello',
           inputs: { key: 'value' },
         }),
-        expect.any(Object),
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
       )
+
+      const callbacks = handleSend.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should handle APP_CHAT_WITH_MULTIPLE_MODEL_RESTART event', () => {

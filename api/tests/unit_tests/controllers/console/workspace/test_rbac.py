@@ -24,7 +24,10 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
+from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
+from controllers.console.workspace.rbac import _RolesListQuery
+from enums import DeploymentEdition
 
 
 @pytest.fixture
@@ -35,7 +38,8 @@ def app():
 
 
 def _enabled(enabled: bool):
-    return patch("controllers.console.workspace.rbac.dify_config.ENTERPRISE_ENABLED", enabled)
+    deployment_edition = DeploymentEdition.ENTERPRISE if enabled else DeploymentEdition.COMMUNITY
+    return patch("controllers.console.workspace.rbac.dify_config.DEPLOYMENT_EDITION", deployment_edition)
 
 
 class TestCurrentIds:
@@ -49,6 +53,27 @@ class TestCurrentIds:
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
             mock_user.return_value = (SimpleNamespace(id="acct-1"), "tenant-1")
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
+
+
+class TestMyPermissions:
+    def test_returns_app_deploy_permission(self, app):
+        permissions = rbac_mod.svc.MyPermissionsResponse(
+            app=rbac_mod.svc.ResourcePermissionSnapshot(
+                default_permission_keys=["app.acl.deploy"],
+            )
+        )
+        with (
+            app.test_request_context("/workspaces/current/rbac/my-permissions"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
+                return_value=permissions,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
+
+        assert response["app"]["default_permission_keys"] == ["app.acl.deploy"]
+        mock_get.assert_called_once()
 
 
 class TestAccessMatrixAccountNames:
@@ -174,7 +199,24 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"page": 1, "limit": 2, "include_owner": 1}),
+            )
+
+        owner_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]
+        valid_owner_permission_keys = []
+        for permission_key in owner_permission_keys:
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
+                continue
+            valid_owner_permission_keys.append(permission_key)
+
+        admin_permission_keys = rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]
+        valid_admin_permission_keys = []
+        for permission_key in admin_permission_keys:
+            if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and "billing" in permission_key:
+                continue
+            valid_admin_permission_keys.append(permission_key)
 
         assert response["data"] == [
             {
@@ -185,7 +227,7 @@ class TestPaginationMapping:
                 "name": "owner",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"])),
+                "permission_keys": valid_owner_permission_keys,
                 "role_tag": "owner",
             },
             {
@@ -196,7 +238,7 @@ class TestPaginationMapping:
                 "name": "admin",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"])),
+                "permission_keys": valid_admin_permission_keys,
                 "role_tag": "",
             },
         ]
@@ -215,7 +257,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -227,7 +269,10 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"include_owner": 1}),
+            )
 
         names = [r["name"] for r in response["data"]]
         assert "owner" in names
@@ -239,7 +284,7 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
-            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi(), _RolesListQuery())
 
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
@@ -252,7 +297,10 @@ class TestPaginationMapping:
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+            inspect.unwrap(rbac_mod.RBACRolesApi.get)(
+                rbac_mod.RBACRolesApi(),
+                _RolesListQuery.model_validate({"page": 2, "limit": 50, "reverse": True, "include_owner": 1}),
+            )
 
         _, kwargs = mock_list.call_args
         options = kwargs["options"]

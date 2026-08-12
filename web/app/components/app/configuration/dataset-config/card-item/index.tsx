@@ -74,22 +74,25 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {editable && !readonly && (
           <ActionButton
+            aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
             onClick={(e) => {
               e.stopPropagation()
               setShowSettingsModal(true)
             }}
           >
-            <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
+            <RiEditLine aria-hidden="true" className="size-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         )}
         {!readonly && (
           <ActionButton
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             onClick={() => onRemove(config.id)}
             state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
             <RiDeleteBinLine
+              aria-hidden="true"
               className={cn(
                 'size-4 shrink-0 text-text-tertiary',
                 isDeleting && 'text-text-destructive',
@@ -124,7 +127,7 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>
-            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 {showSettingsModal && (
                   <SettingsModal

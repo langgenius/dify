@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -11,6 +11,7 @@ from pydantic import (
     PositiveFloat,
     PositiveInt,
     computed_field,
+    field_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -265,6 +266,12 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED: bool = Field(
+        description="Whether tenant plugin model providers are cached in Redis. Disable when plugins are installed "
+        "by a system other than this one, which cannot invalidate the cache when a tenant's plugins change.",
+        default=True,
+    )
+
     PLUGIN_MODEL_PROVIDERS_CACHE_TTL: PositiveInt = Field(
         description="TTL in seconds for caching tenant plugin model providers in Redis",
         default=60 * 60 * 24,
@@ -279,6 +286,27 @@ class PluginConfig(BaseSettings):
         description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
         default="",
     )
+
+    @field_validator("PLUGIN_REMOTE_INSTALL_PORT", mode="before")
+    @classmethod
+    def _reject_host_port_shaped_plugin_remote_install_port(cls, v):
+        """Reject ``host:port``-shaped values with an actionable hint.
+
+        ``EXPOSE_PLUGIN_DEBUGGING_PORT`` is overloaded: it feeds both the
+        plugin_daemon ``ports:`` mapping (where ``127.0.0.1:5003`` is valid
+        compose syntax) and this integer app setting advertised in the console.
+        Without this guard a loopback bind spec crashloops the api container
+        with an opaque ``int_parsing`` traceback. See issue #39323.
+        """
+        if isinstance(v, str) and ":" in v.strip():
+            raise ValueError(
+                "PLUGIN_REMOTE_INSTALL_PORT must be a bare port number, got "
+                f"{v!r}. A 'host:port' value usually means "
+                "EXPOSE_PLUGIN_DEBUGGING_PORT was set to a compose publish spec "
+                "like '127.0.0.1:5003'; bind loopback via a "
+                "docker-compose.override.yaml instead of overloading this var."
+            )
+        return v
 
     @property
     def NEW_USER_DEFAULT_PLUGIN_ID_LIST(self) -> list[str]:
@@ -422,6 +450,11 @@ class FileUploadConfig(BaseSettings):
         default=15,
     )
 
+    KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN: NonNegativeInt = Field(
+        description="Maximum allowed file size for knowledge uploads on paid cloud plans in megabytes",
+        default=15,
+    )
+
     UPLOAD_FILE_BATCH_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a single upload batch",
         default=5,
@@ -439,6 +472,11 @@ class FileUploadConfig(BaseSettings):
 
     UPLOAD_AUDIO_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="audio file size limit in Megabytes for uploading files",
+        default=50,
+    )
+
+    UPLOAD_SKILL_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed Skill package size for uploads in megabytes",
         default=50,
     )
 
@@ -772,17 +810,6 @@ class ModelLoadBalanceConfig(BaseSettings):
     )
 
 
-class BillingConfig(BaseSettings):
-    """
-    Configuration for platform billing features
-    """
-
-    BILLING_ENABLED: bool = Field(
-        description="Enable or disable billing functionality",
-        default=False,
-    )
-
-
 class UpdateConfig(BaseSettings):
     """
     Configuration for application update checks
@@ -794,6 +821,41 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class CommunityTelemetryConfig(BaseSettings):
+    """
+    Configuration for anonymous self-hosted community telemetry.
+    """
+
+    DISABLE_TELEMETRY: bool = Field(
+        description="Disable anonymous community telemetry",
+        default=False,
+    )
+    DO_NOT_TRACK: bool = Field(
+        description="Respect the standard do-not-track opt-out signal for telemetry",
+        default=False,
+    )
+    TELEMETRY_ENDPOINT: str = Field(
+        description="Endpoint for anonymous community telemetry events",
+        default="https://otel.dify.ai/v1/events",
+    )
+    TELEMETRY_FALLBACK_ENDPOINT: str = Field(
+        description="Fallback endpoint for anonymous community telemetry events",
+        default="https://otel.dify.cn/v1/events",
+    )
+    TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="HTTP timeout in seconds for anonymous community telemetry requests",
+        default=3,
+    )
+    TELEMETRY_HEARTBEAT_INTERVAL_MINUTES: PositiveInt = Field(
+        description="Celery beat interval in minutes for checking whether heartbeat telemetry is due",
+        default=30,
+    )
+    CI: bool = Field(
+        description="Whether the process is running in CI; telemetry is skipped when true",
+        default=False,
+    )
+
+
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
         # 1000 KiB
@@ -802,7 +864,7 @@ class WorkflowVariableTruncationConfig(BaseSettings):
     )
     WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
         100000,
-        description="maximum length for string to trigger tuncation, measure in number of characters",
+        description="maximum length for string to trigger truncation, measure in number of characters",
     )
     WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
         1000,
@@ -856,9 +918,9 @@ class WorkflowConfig(BaseSettings):
         default=10,
     )
 
-    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
-        description="Queue depth threshold that triggers worker scale up",
-        default=3,
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: NonNegativeInt = Field(
+        description="Pending task threshold that triggers worker scale up",
+        default=0,
     )
 
     GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
@@ -1136,6 +1198,16 @@ class HomepageConfig(BaseSettings):
     ENABLE_LEARN_APP: bool = Field(
         description="Enable Learn App",
         default=True,
+    )
+
+    ENABLE_STEP_BY_STEP_TOUR: bool = Field(
+        description="Enable account-level Step-by-step Tour eligibility checks",
+        default=False,
+    )
+
+    STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT: datetime | None = Field(
+        description="UTC timestamp after which newly initialized accounts are eligible for Step-by-step Tour",
+        default=None,
     )
 
 
@@ -1465,6 +1537,11 @@ class LoginConfig(BaseSettings):
 
 
 class AccountConfig(BaseSettings):
+    ENABLE_CHANGE_EMAIL: bool = Field(
+        description="whether users can change their email address",
+        default=True,
+    )
+
     ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a account deletion token remains valid",
         default=5,
@@ -1533,7 +1610,6 @@ class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
-    BillingConfig,
     CodeExecutionSandboxConfig,
     CreatorsPlatformConfig,
     TriggerConfig,
@@ -1562,6 +1638,7 @@ class FeatureConfig(
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
+    CommunityTelemetryConfig,
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,

@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
@@ -29,6 +30,13 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
@@ -258,6 +266,14 @@ const createDocumentDetail = (overrides?: Record<string, unknown>) => ({
   document_process_rule: null,
   dataset_process_rule: null,
   ...overrides,
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
 })
 
 describe('DocumentDetail', () => {

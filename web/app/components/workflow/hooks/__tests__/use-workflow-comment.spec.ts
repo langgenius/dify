@@ -3,7 +3,8 @@ import type {
   WorkflowCommentList,
 } from '@/app/components/workflow/comment/types'
 import { act, waitFor } from '@testing-library/react'
-import { createTestQueryClient, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import { useWorkflowComment } from '../use-workflow-comment'
@@ -33,7 +34,7 @@ const commentsUpdateState = vi.hoisted(() => ({
 const globalFeatureState = vi.hoisted(() => ({
   enableCollaboration: true,
 }))
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     name: 'Alice',
@@ -54,58 +55,36 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    systemFeatures: {
-      get: () => ({
-        enable_collaboration_mode: globalFeatureState.enableCollaboration,
-      }),
-    },
-    apps: {
-      byAppId: {
-        workflow: {
-          comments: {
-            get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
-            post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
-            byCommentId: {
-              delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
-              get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
-              put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
-              resolve: {
-                post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-              },
-              replies: {
-                post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
-                byReplyId: {
-                  delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
-                  put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+  return {
+    ...actual,
+    consoleClient: {
+      systemFeatures: {
+        get: () => ({
+          enable_collaboration_mode: globalFeatureState.enableCollaboration,
+        }),
+      },
+      apps: {
+        byAppId: {
+          workflow: {
+            comments: {
+              get: (...args: unknown[]) => mockFetchWorkflowComments(...args),
+              post: (...args: unknown[]) => mockCreateWorkflowComment(...args),
+              byCommentId: {
+                delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
+                get: (...args: unknown[]) => mockFetchWorkflowComment(...args),
+                put: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
+                resolve: {
+                  post: (...args: unknown[]) => mockResolveWorkflowComment(...args),
+                },
+                replies: {
+                  post: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
+                  byReplyId: {
+                    delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
+                    put: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+                  },
                 },
               },
             },
@@ -113,15 +92,9 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
-  },
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-      },
-    },
-  },
-}))
+    consoleQuery: actual.consoleQuery,
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
@@ -173,7 +146,8 @@ const baseCommentDetail = (): WorkflowCommentDetail => ({
 })
 
 const createSeededQueryClient = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   seedSystemFeatures(queryClient, {
     enable_collaboration_mode: globalFeatureState.enableCollaboration,
   })
@@ -690,5 +664,69 @@ describe('useWorkflowComment', () => {
     })
 
     expect(store.getState().pendingComment).toBeNull()
+  })
+
+  it('does not overwrite the active comment when a different comment is resolved/refreshed', async () => {
+    const commentA = baseComment()
+    const commentB: WorkflowCommentList = {
+      ...baseComment(),
+      id: 'comment-2',
+      content: 'second',
+      position_x: 50,
+      position_y: 80,
+    }
+    const activeBDetail = { ...baseCommentDetail(), id: commentB.id, content: 'B detail' }
+    // refreshActiveComment(A) — reached via resolving A — fetches A's detail:
+    mockFetchWorkflowComment.mockResolvedValue({
+      ...baseCommentDetail(),
+      id: commentA.id,
+      content: 'A detail (must not clobber B)',
+    })
+    mockResolveWorkflowComment.mockResolvedValue({})
+    mockFetchWorkflowComments.mockResolvedValue({
+      data: [{ ...commentA, resolved: true }, commentB],
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA, commentB],
+        activeCommentId: commentB.id,
+        activeCommentDetail: activeBDetail,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentResolve(commentA.id)
+    })
+
+    // B is still the selected comment; A's fetched detail must not replace it.
+    expect(store.getState().activeCommentId).toBe(commentB.id)
+    expect(store.getState().activeCommentDetail?.id).toBe(commentB.id)
+  })
+
+  it('still refreshes the active comment', async () => {
+    const commentA = baseComment()
+    mockFetchWorkflowComment.mockResolvedValue({
+      ...baseCommentDetail(),
+      id: commentA.id,
+      content: 'refreshed content',
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: { ...baseCommentDetail(), id: commentA.id, content: 'stale content' },
+      },
+    })
+
+    await act(async () => {
+      await result.current.refreshActiveComment(commentA.id)
+    })
+
+    expect(store.getState().activeCommentDetail?.id).toBe(commentA.id)
+    expect(store.getState().activeCommentDetail?.content).toBe('refreshed content')
   })
 })

@@ -12,7 +12,7 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 }))
 
 vi.mock('../tool-trigger', () => ({
-  default: ({ value, provider }: { open?: boolean; value?: unknown; provider?: unknown }) => (
+  ToolTrigger: ({ value, provider }: { open?: boolean; value?: unknown; provider?: unknown }) => (
     <div data-testid="tool-trigger" data-has-value={!!value} data-has-provider={!!provider} />
   ),
 }))
@@ -32,12 +32,12 @@ const defaultProps = {
 }
 
 describe('ToolBaseForm', () => {
-  let ToolBaseForm: (typeof import('../tool-base-form'))['default']
+  let ToolBaseForm: (typeof import('../tool-base-form'))['ToolBaseForm']
 
   beforeEach(async () => {
     vi.clearAllMocks()
     const mod = await import('../tool-base-form')
-    ToolBaseForm = mod.default
+    ToolBaseForm = mod.ToolBaseForm
   })
 
   it('should render tool trigger within tool picker', () => {

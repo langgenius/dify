@@ -10,7 +10,7 @@ type ExecutedActionProps = {
 const ExecutedAction = ({ executedAction }: ExecutedActionProps) => {
   return (
     <div className="flex flex-col gap-y-1 py-1" data-testid="executed-action">
-      <Divider className="mt-1 mb-2 w-[30px]" />
+      <Divider className="mt-1 mb-2 w-7.5" />
       <div className="flex items-center gap-x-1 system-xs-regular text-text-tertiary">
         <div className="i-custom-vender-workflow-trigger-all size-3.5 shrink-0" />
         <Trans

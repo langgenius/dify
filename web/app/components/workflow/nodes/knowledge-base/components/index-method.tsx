@@ -59,7 +59,7 @@ const IndexMethod = ({
           icon={
             <HighQuality
               className={cn(
-                'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
+                'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-orange-orange-500',
                 isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
@@ -77,7 +77,7 @@ const IndexMethod = ({
             icon={
               <Economic
                 className={cn(
-                  'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                  'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
                   isEconomy && 'text-util-colors-indigo-indigo-500',
                 )}
               />

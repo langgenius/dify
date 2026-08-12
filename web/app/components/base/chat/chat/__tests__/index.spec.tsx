@@ -4,6 +4,7 @@ import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { createTheme } from '../../embedded-chatbot/theme/theme'
 import Chat from '../index'
 
 // ─── Why each mock exists ─────────────────────────────────────────────────────
@@ -33,8 +34,8 @@ vi.mock('../answer', () => ({
 }))
 
 vi.mock('../question', () => ({
-  default: ({ item }: { item: ChatItem }) => (
-    <div data-testid="question-item" data-id={item.id}>
+  default: ({ item, theme }: { item: ChatItem; theme?: { primaryColor: string } }) => (
+    <div data-testid="question-item" data-id={item.id} data-theme-color={theme?.primaryColor}>
       {item.content}
     </div>
   ),
@@ -48,6 +49,7 @@ vi.mock('../chat-input-area', () => ({
     footerNotice,
     onBeforeSpeechToText,
     speechToTextTarget,
+    theme,
   }: {
     customPlaceholder?: string
     disabled?: boolean
@@ -55,6 +57,7 @@ vi.mock('../chat-input-area', () => ({
     footerNotice?: string
     onBeforeSpeechToText?: () => Promise<unknown>
     speechToTextTarget?: SpeechToTextTarget
+    theme?: { primaryColor: string }
   }) => (
     <div
       data-testid="chat-input-area"
@@ -70,6 +73,7 @@ vi.mock('../chat-input-area', () => ({
           ? speechToTextTarget.appSourceType
           : speechToTextTarget?.type
       }
+      data-theme-color={theme?.primaryColor}
     >
       {footerNotice}
     </div>
@@ -668,15 +672,14 @@ describe('Chat', () => {
       expect(screen.getByTestId('question-item')).toBeInTheDocument()
     })
 
-    it('should pass theme from themeBuilder to Question', () => {
-      const mockTheme = { chatBubbleColorStyle: 'test' }
-      const themeBuilder = { theme: mockTheme }
+    it('should pass theme to Question', () => {
+      const theme = createTheme('#123456')
 
       renderChat({
-        themeBuilder: themeBuilder as unknown as ChatProps['themeBuilder'],
+        theme,
         chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
       })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
+      expect(screen.getByTestId('question-item')).toHaveAttribute('data-theme-color', '#123456')
     })
 
     it('should pass switchSibling to Question component', () => {
@@ -944,15 +947,14 @@ describe('Chat', () => {
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
     })
 
-    it('should pass theme from themeBuilder to ChatInputArea', () => {
-      const mockTheme = { someThemeProperty: true }
-      const themeBuilder = { theme: mockTheme }
+    it('should pass theme to ChatInputArea', () => {
+      const theme = createTheme('#654321')
 
       renderChat({
         noChatInput: false,
-        themeBuilder: themeBuilder as unknown as ChatProps['themeBuilder'],
+        theme,
       })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-theme-color', '#654321')
     })
   })
 

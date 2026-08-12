@@ -177,6 +177,7 @@ const mockContextValue: ChatContextValue = {
   config: makeChatConfig({ supportFeedback: true }),
   onFeedback: vi.fn().mockResolvedValue(undefined),
   onRegenerate: vi.fn(),
+  showRegenerate: false,
   onAnnotationAdded: vi.fn(),
   onAnnotationEdited: vi.fn(),
   onAnnotationRemoved: vi.fn(),
@@ -197,6 +198,7 @@ vi.mock('react-i18next', async () => {
 })
 
 type OperationProps = {
+  answerActionPosition?: 'auto' | 'below'
   item: ChatItem
   question: string
   index: number
@@ -263,6 +265,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationEdited = vi.fn()
     mockContextValue.onAnnotationRemoved = vi.fn()
     mockContextValue.readonly = false
+    mockContextValue.showRegenerate = false
     mockProviderContext.plan.usage.annotatedResponse = 0
     mockProviderContext.enableBilling = false
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
@@ -284,6 +287,12 @@ describe('Operation', () => {
     it('should hide regenerate button when noChatInput is true', () => {
       renderOperation({ ...baseProps, noChatInput: true })
       expect(screen.queryByRole('button', { name: 'operation.regenerate' })).not.toBeInTheDocument()
+    })
+
+    it('should show regenerate button when explicitly enabled without a chat input', () => {
+      mockContextValue.showRegenerate = true
+      renderOperation({ ...baseProps, noChatInput: true })
+      expect(screen.getByRole('button', { name: 'operation.regenerate' })).toBeInTheDocument()
     })
 
     it('should show TTS button when text_to_speech is enabled', () => {
@@ -716,6 +725,25 @@ describe('Operation', () => {
       })
     })
 
+    it('should keep the feedback dialog and local state unchanged when submission fails', async () => {
+      const user = userEvent.setup()
+      mockContextValue.onFeedback = vi.fn().mockRejectedValue(new Error('submission failed'))
+      renderOperation()
+
+      await user.click(
+        screen.getByRole('button', { name: 'table.header.adminRate: detail.operation.dislike' }),
+      )
+      const textarea = screen.getByRole('textbox', { name: 'feedback.content' })
+      await user.type(textarea, 'Needs work')
+      await user.click(screen.getByRole('button', { name: 'operation.submit' }))
+
+      expect(screen.getByRole('dialog', { name: 'feedback.title' })).toBeInTheDocument()
+      expect(textarea).toHaveValue('Needs work')
+      expect(
+        screen.queryByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should open feedback modal on admin dislike click', async () => {
       const user = userEvent.setup()
       renderOperation()
@@ -725,11 +753,49 @@ describe('Operation', () => {
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
-    it('should show user feedback read-only in admin bar when user has liked', () => {
-      const item = { ...baseItem, feedback: { rating: 'like' as const } }
+    it('should expose user feedback as a non-interactive status in the admin bar', () => {
+      const item = {
+        ...baseItem,
+        feedback: { rating: 'dislike' as const, content: 'Needs work' },
+      }
       renderOperation({ ...baseProps, item })
-      const bar = screen.getByTestId('operation-bar')
-      expect(bar.querySelectorAll('.i-ri-thumb-up-line').length).toBeGreaterThanOrEqual(2)
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.dislike - Needs work',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'table.header.userRate: detail.operation.dislike',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should reflect feedback received from refreshed message props', () => {
+      const { rerender } = renderOperation()
+
+      rerender(
+        <div className="group">
+          <Operation
+            {...baseProps}
+            item={{
+              ...baseItem,
+              feedback: { rating: 'like' },
+              adminFeedback: { rating: 'dislike', content: 'Needs work' },
+            }}
+          />
+        </div>,
+      )
+
+      expect(
+        screen.getByRole('img', {
+          name: 'table.header.userRate: detail.operation.like',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+      ).toBeInTheDocument()
     })
 
     it('should show separator in admin bar when user has feedback', () => {
@@ -842,6 +908,12 @@ describe('Operation', () => {
 
     it('should position bottom when operationWidth >= maxSize', () => {
       renderOperation({ ...baseProps, maxSize: 1 })
+      const bar = screen.getByTestId('operation-bar')
+      expect(bar.style.left).toBeFalsy()
+    })
+
+    it('should position below when requested even if there is room on the right', () => {
+      renderOperation({ ...baseProps, answerActionPosition: 'below', maxSize: 500 })
       const bar = screen.getByTestId('operation-bar')
       expect(bar.style.left).toBeFalsy()
     })

@@ -91,6 +91,7 @@
   "timezone": "Časovni pas",
   "tos": "Pogoji storitve",
   "tosDesc": "Z registracijo se strinjate z našimi",
+  "turnstile.loadError": "Varnostnega preverjanja ni bilo mogoče naložiti.",
   "usePassword": "Uporaba gesla",
   "useVerificationCode": "Uporaba kode za preverjanje",
   "validate": "Potrdi",

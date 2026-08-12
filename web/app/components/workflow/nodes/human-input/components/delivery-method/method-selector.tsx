@@ -10,6 +10,7 @@ import {
   RiMailSendFill,
   RiRobot2Fill,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
@@ -18,8 +19,8 @@ import Badge from '@/app/components/base/badge'
 import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
-import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -32,6 +33,10 @@ type MethodSelectorProps = {
 
 const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const [open, setOpen] = useState(false)
   const humanInputEmailDeliveryEnabled = useProviderContextSelector(
     (s) => s.humanInputEmailDeliveryEnabled,
@@ -71,7 +76,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-1">
             <div
               className={cn(
@@ -109,12 +114,12 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
                 </div>
               )}
               {webAppDeliveryInfo.isTriggerMode && !webAppDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.notAvailableInTriggerMode`], {
                     ns: 'workflow',
                   })}
@@ -160,7 +165,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                 </div>
               </div>
               {emailDeliveryInfo.added && (
-                <div className="absolute top-[13px] right-[12px] system-xs-regular text-text-tertiary">
+                <div className="absolute top-3.25 right-3 system-xs-regular text-text-tertiary">
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.added`], { ns: 'workflow' })}
                 </div>
               )}
@@ -192,7 +197,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -223,7 +228,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
@@ -254,13 +259,13 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
                   })}
                 </div>
               </div>
-              <div className="absolute top-[8px] right-[8px]">
+              <div className="absolute top-2 right-2">
                 <Badge className="h-4">COMING SOON</Badge>
               </div>
             </div>
           </div>
         </div>
-        {!IS_CE_EDITION && (
+        {deploymentEdition === 'CLOUD' && (
           <div className="mt-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex items-center gap-2 px-4 py-3">
               <div

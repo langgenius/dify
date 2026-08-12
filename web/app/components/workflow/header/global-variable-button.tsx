@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 

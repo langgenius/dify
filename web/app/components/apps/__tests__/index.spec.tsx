@@ -1,15 +1,15 @@
-import type { ReactNode } from 'react'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
+import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
-import Apps from '../index'
+import { Apps } from '../index'
 
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
@@ -25,7 +25,6 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 let documentTitleCalls: string[] = []
-let educationInitCalls: number = 0
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
@@ -65,53 +64,15 @@ vi.mock('@/hooks/use-document-title', () => ({
   },
 }))
 
-vi.mock('@/app/education-apply/hooks', () => ({
-  useEducationInit: () => {
-    educationInitCalls++
-  },
+vi.mock('@/app/education/expire-notice', () => ({
+  EducationExpireNotice: () => null,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -141,7 +102,7 @@ vi.mock('../list', () => {
     onCreateLearnDify?: (app: App) => void
     onTryLearnDify?: (params: TryAppSelection) => void
   }) => {
-    const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+    const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
     return React.createElement(
       'div',
       { 'data-testid': 'apps-list' },
@@ -151,7 +112,7 @@ vi.mock('../list', () => {
         {
           'data-testid': 'open-preview',
           onClick: () =>
-            setShowTryAppPanel(true, {
+            openTryAppPanel({
               appId: mockTemplateApp.app_id,
               app: mockTemplateApp,
             }),
@@ -174,7 +135,7 @@ vi.mock('../list', () => {
     )
   }
 
-  return { default: MockList }
+  return { List: MockList }
 })
 
 vi.mock('../../explore/try-app', () => ({
@@ -278,7 +239,7 @@ describe('Apps', () => {
 
   const renderWithClient = (ui: React.ReactElement) => {
     const queryClient = createQueryClient()
-    const wrapper = ({ children }: { children: ReactNode }) => (
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
     return {
@@ -290,7 +251,6 @@ describe('Apps', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     documentTitleCalls = []
-    educationInitCalls = 0
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
@@ -301,6 +261,7 @@ describe('Apps', () => {
       icon_background: '#fff',
       mode: AppModeEnum.CHAT,
       export_data: 'yaml-content',
+      can_trial: true,
     })
   })
 
@@ -338,6 +299,16 @@ describe('Apps', () => {
       await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
 
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should close the template preview', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByTestId('open-preview'))
+      await user.click(await screen.findByTestId('try-app-close'))
+
+      expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
     })
 
     it('should open the create modal from Learn Dify', async () => {

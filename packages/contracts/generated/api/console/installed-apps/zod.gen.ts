@@ -144,7 +144,9 @@ export const zTextToAudioPayload = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * WorkflowRunPayload
@@ -228,18 +230,37 @@ export const zParameters = z.object({
 })
 
 /**
+ * IconType
+ */
+export const zIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponse = z.object({
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
   icon_url: z.string().nullable(),
   id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
@@ -251,7 +272,7 @@ export const zInstalledAppResponse = z.object({
   editable: z.boolean(),
   id: z.string(),
   is_pinned: z.boolean(),
-  last_used_at: z.int().nullish(),
+  last_used_at: z.int().nullable(),
   uninstallable: z.boolean(),
 })
 
@@ -259,7 +280,9 @@ export const zInstalledAppResponse = z.object({
  * InstalledAppListResponse
  */
 export const zInstalledAppListResponse = z.object({
+  has_more: z.boolean(),
   installed_apps: z.array(zInstalledAppResponse),
+  next_cursor: z.string().nullable(),
 })
 
 /**
@@ -428,7 +451,7 @@ export const zFileListInputConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -546,6 +569,42 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
 })
 
 /**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponseWritable = z.object({
+  description: z.string(),
+  icon: z.string().nullable(),
+  icon_background: z.string().nullable(),
+  icon_type: zIconType.nullable(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponseWritable = z.object({
+  app: zInstalledAppInfoResponseWritable,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullable(),
+  uninstallable: z.boolean(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponseWritable = z.object({
+  has_more: z.boolean(),
+  installed_apps: z.array(zInstalledAppResponseWritable),
+  next_cursor: z.string().nullable(),
+})
+
+/**
  * ExploreMessageListItem
  */
 export const zExploreMessageListItemWritable = z.object({
@@ -583,42 +642,11 @@ export const zExploreMessageInfiniteScrollPaginationWritable = z.object({
   limit: z.int(),
 })
 
-/**
- * InstalledAppInfoResponse
- */
-export const zInstalledAppInfoResponseWritable = z.object({
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-})
-
-/**
- * InstalledAppResponse
- */
-export const zInstalledAppResponseWritable = z.object({
-  app: zInstalledAppInfoResponseWritable,
-  app_owner_tenant_id: z.string(),
-  editable: z.boolean(),
-  id: z.string(),
-  is_pinned: z.boolean(),
-  last_used_at: z.int().nullish(),
-  uninstallable: z.boolean(),
-})
-
-/**
- * InstalledAppListResponse
- */
-export const zInstalledAppListResponseWritable = z.object({
-  installed_apps: z.array(zInstalledAppResponseWritable),
-})
-
 export const zGetInstalledAppsQuery = z.object({
   app_id: z.string().optional(),
+  cursor: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(100).optional(),
 })
 
 /**
@@ -641,6 +669,15 @@ export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
  * App uninstalled successfully
  */
 export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
+
+export const zGetInstalledAppsByInstalledAppIdPath = z.object({
+  installed_app_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetInstalledAppsByInstalledAppIdResponse = zInstalledAppResponse
 
 export const zPatchInstalledAppsByInstalledAppIdBody = zInstalledAppUpdatePayload
 

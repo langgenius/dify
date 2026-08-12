@@ -120,7 +120,7 @@ vi.mock('@/app/components/base/loading', () => ({
 
 vi.mock('@/app/components/base/logo/dify-logo', () => ({
   __esModule: true,
-  default: () => <div>dify-logo</div>,
+  DifyLogo: () => <div>dify-logo</div>,
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({

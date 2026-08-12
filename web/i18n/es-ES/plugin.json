@@ -97,6 +97,7 @@
   "categorySingle.model": "Modelo",
   "categorySingle.tool": "Herramienta",
   "categorySingle.trigger": "Disparador",
+  "clearSearch": "Borrar {{label}}",
   "debugInfo.title": "Depuración",
   "debugInfo.viewDocs": "Ver documentos",
   "deprecated": "Obsoleto",

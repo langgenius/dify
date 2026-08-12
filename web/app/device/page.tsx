@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -53,20 +53,22 @@ export default function DevicePage() {
     refetchOnMount: false,
   })
   const account = userResp?.profile
-  const { data: currentWorkspace } = useQuery({
-    ...consoleQuery.workspaces.current.post.queryOptions(),
+  const { data: currentWorkspaceName } = useQuery({
+    ...consoleQuery.workspaces.current.summary.get.queryOptions({
+      select: (workspace) => workspace.name,
+    }),
     enabled: !!account && !profileErr,
     retry: false,
     refetchOnWindowFocus: false,
   })
-  const { data: sys } = useQuery(systemFeaturesQueryOptions())
+  const { data: sys } = useSuspenseQuery(systemFeaturesQueryOptions())
   // Device-flow SSO branch uses external-user (webapp) SSO, not console SSO —
   // backend mints EXTERNAL_SSO tokens via Enterprise's external ACS. Gate on
   // webapp_auth.{enabled, allow_sso} + a configured webapp SSO protocol.
   const ssoAvailable =
-    !!sys?.webapp_auth?.enabled &&
-    !!sys?.webapp_auth?.allow_sso &&
-    (sys?.webapp_auth?.sso_config?.protocol || '') !== ''
+    sys.webapp_auth.enabled &&
+    sys.webapp_auth.allow_sso &&
+    sys.webapp_auth.sso_config.protocol !== null
 
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /
@@ -175,7 +177,7 @@ export default function DevicePage() {
           accountEmail={account?.email}
           accountName={account?.name}
           accountAvatarUrl={account?.avatar_url ?? null}
-          defaultWorkspace={currentWorkspace?.name ?? undefined}
+          defaultWorkspace={currentWorkspaceName ?? undefined}
           onApproved={() => setView({ kind: 'success' })}
           onDenied={() => setView({ kind: 'error_expired' })}
           onError={(e) => setErrMsg(e)}
@@ -191,8 +193,8 @@ export default function DevicePage() {
 
       {view.kind === 'success' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-success-hover">
-            <span className="i-ri-checkbox-circle-line h-[18px] w-[18px] text-util-colors-green-green-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-success-hover">
+            <span className="i-ri-checkbox-circle-line h-4.5 w-4.5 text-util-colors-green-green-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['success.title'])}
@@ -207,8 +209,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_expired' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
-            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorExpired.title'])}
@@ -238,8 +240,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_rate_limited' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
-            <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
+            <span className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorRateLimited.title'])}
@@ -261,8 +263,8 @@ export default function DevicePage() {
 
       {view.kind === 'error_lookup_failed' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-destructive-hover">
-            <span className="i-ri-close-circle-line h-[18px] w-[18px] text-util-colors-red-red-600" />
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-destructive-hover">
+            <span className="i-ri-close-circle-line h-4.5 w-4.5 text-util-colors-red-red-600" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t(($) => $['errorLookupFailed.title'])}
@@ -284,10 +286,10 @@ export default function DevicePage() {
 
       {view.kind === 'error_sso' && (
         <div className="flex flex-col gap-1">
-          <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
+          <div className="mb-2.5 flex h-9.5 w-9.5 items-center justify-center rounded-full bg-state-warning-hover">
             <span
               aria-hidden="true"
-              className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600"
+              className="i-ri-error-warning-line h-4.5 w-4.5 text-util-colors-yellow-yellow-600"
             />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">

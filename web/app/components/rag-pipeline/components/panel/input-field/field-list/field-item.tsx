@@ -62,7 +62,7 @@ const FieldItem = ({ readonly, payload, index, onClickEdit, onRemove }: FieldIte
         )}
         <div
           title={payload.variable}
-          className="max-w-[130px] shrink-0 truncate system-sm-medium text-text-secondary"
+          className="max-w-32.5 shrink-0 truncate system-sm-medium text-text-secondary"
         >
           {payload.variable}
         </div>

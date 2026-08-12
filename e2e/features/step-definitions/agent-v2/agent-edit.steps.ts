@@ -1,9 +1,8 @@
-import type { PostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
+import { zPostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
 import { createE2EResourceName } from '../../../support/naming'
-import { getAgentComposerDraft, getTestAgent, publishAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -19,8 +18,10 @@ import {
   openAgentKnowledgeRetrievalDialog,
 } from './configure-helpers'
 
-const getComposerInheritanceSnapshot = async (agentId: string) => {
-  const draft = await getAgentComposerDraft(agentId)
+const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string) => {
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
   const soul = draft.agent_soul ?? {}
   const model = asRecord(soul.model)
   const prompt = asRecord(soul.prompt)
@@ -30,6 +31,7 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
   return {
+    activeConfigIsPublished: draft.active_config_is_published,
     fileNames: files
       .map((file) => asString(asRecord(file).name))
       .filter(Boolean)
@@ -68,7 +70,11 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
 Given(
   'the preseeded Agent v2 {string} has been published via API',
   async function (this: DifyWorld, agentName: string) {
-    await publishAgent(getPreseededAgent(this, agentName).id)
+    const agentId = getPreseededAgent(this, agentName).id
+    await this.getConsoleClient().agent.byAgentId.publish.post({
+      body: { version_note: 'E2E publish' },
+      params: { agent_id: agentId },
+    })
   },
 )
 
@@ -100,7 +106,7 @@ When(
 
     const copyResponse = await copyResponsePromise
     expect(copyResponse.status()).toBe(201)
-    const copiedAgent = (await copyResponse.json()) as PostAgentByAgentIdCopyResponse
+    const copiedAgent = zPostAgentByAgentIdCopyResponse.parse(await copyResponse.json())
     if (!copiedAgent.id)
       throw new Error('Agent v2 duplicate response did not include a copied Agent ID.')
 
@@ -173,7 +179,7 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
 })
 
 Then(
-  'the duplicated Agent v2 should inherit the full-config fixture from {string}',
+  'the duplicated Agent v2 should inherit the full-config fixture from {string} without inheriting its publication state',
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
@@ -183,18 +189,17 @@ Then(
         'Stable chat model fixture setup must run before asserting the duplicated Agent.',
       )
 
-    const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
-      getTestAgent(sourceAgent.id),
-      getTestAgent(duplicatedAgentId),
-      getComposerInheritanceSnapshot(sourceAgent.id),
-      getComposerInheritanceSnapshot(duplicatedAgentId),
+    const client = this.getConsoleClient()
+    const [duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
+      client.agent.byAgentId.get({ params: { agent_id: duplicatedAgentId } }),
+      getComposerInheritanceSnapshot(this, sourceAgent.id),
+      getComposerInheritanceSnapshot(this, duplicatedAgentId),
     ])
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedDetail.active_config_is_published).toBe(
-      sourceDetail.active_config_is_published,
-    )
+    expect(sourceSnapshot.activeConfigIsPublished).toBe(true)
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(false)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,
@@ -226,7 +231,9 @@ Then(
     await expect
       .poll(
         async () => {
-          const draft = await getAgentComposerDraft(sourceAgent.id)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: sourceAgent.id },
+          })
 
           return asString(asRecord(draft.agent_soul?.prompt).system_prompt)
         },
@@ -241,11 +248,12 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   const toolsSection = page.getByRole('region', { name: 'Tools' })
 
   await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-  await expect(
-    toolsSection.getByRole('button', { exact: true, name: 'Not authorized' }),
-  ).toHaveCount(2)
 
-  const { action: jsonReplaceAction, tool: jsonTool } = await expectProviderToolActionVisible(
+  const {
+    action: jsonReplaceAction,
+    provider: jsonProvider,
+    tool: jsonTool,
+  } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
@@ -263,10 +271,16 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
     }),
   ).toBeVisible()
 
-  await expectProviderToolActionVisible(
+  const { provider: tavilyProvider } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.tavilySearchTool,
   )
+  await expect(
+    tavilyProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toBeVisible()
+  await expect(
+    jsonProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toHaveCount(0)
 })
 
 Then('I should see the Agent v2 dual retrieval fixture settings', async function (this: DifyWorld) {

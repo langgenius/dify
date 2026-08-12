@@ -1,3 +1,4 @@
+import type { PluginPayload } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
@@ -57,7 +58,7 @@ const toolPayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
   providerType: 'builtin',
-}
+} satisfies PluginPayload
 
 describe('use-credential hooks', () => {
   beforeEach(() => {

@@ -8,13 +8,13 @@ type ModelDisplayProps = {
 const ModelDisplay = ({ currentModel, modelId }: ModelDisplayProps) => {
   return currentModel ? (
     <ModelName
-      className="flex grow items-center gap-1 px-1 py-[3px]"
+      className="flex grow items-center gap-1 px-1 py-0.75"
       modelItem={currentModel}
       showMode
       showFeatures
     />
   ) : (
-    <div className="flex grow items-center gap-1 truncate px-1 py-[3px] opacity-50">
+    <div className="flex grow items-center gap-1 truncate px-1 py-0.75 opacity-50">
       <div className="overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled">
         {modelId}
       </div>

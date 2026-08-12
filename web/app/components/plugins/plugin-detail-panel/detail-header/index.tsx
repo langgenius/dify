@@ -209,12 +209,12 @@ const DetailHeader = ({
                 pluginID={plugin_id}
                 currentVersion={version}
                 onSelect={handleVersionSelect}
-                trigger={
+                trigger={(open) => (
                   <Badge
                     className={cn(
                       'mx-1',
-                      versionPicker.isShow && 'bg-state-base-hover',
-                      (versionPicker.isShow || (canUpdatePlugin && isFromMarketplace)) &&
+                      open && 'bg-state-base-hover',
+                      (open || (canUpdatePlugin && isFromMarketplace)) &&
                         'hover:bg-state-base-hover',
                     )}
                     uppercase={false}
@@ -231,7 +231,7 @@ const DetailHeader = ({
                     }
                     hasRedCornerMark={hasNewVersion}
                   />
-                }
+                )}
               />
             )}
 
@@ -310,7 +310,10 @@ const DetailHeader = ({
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
-            <ActionButton onClick={onHide}>
+            <ActionButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onHide}
+            >
               <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>
           </div>
@@ -346,7 +349,7 @@ const DetailHeader = ({
           pluginPayload={{
             provider: provider?.name || '',
             category: AuthCategory.tool,
-            providerType: provider?.type || '',
+            providerType: provider?.type,
             detail,
           }}
         />

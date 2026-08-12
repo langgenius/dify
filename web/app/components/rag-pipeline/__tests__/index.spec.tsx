@@ -9,7 +9,7 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: pipelineId ? { pipeline_id: pipelineId } : undefined }),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-pipeline-init', () => ({
   usePipelineInit: () => pipelineInit,
 }))
 
@@ -50,7 +50,9 @@ vi.mock('../components/rag-pipeline-main', () => ({
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="workflow-default-context">{children}</div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({

@@ -11,37 +11,49 @@ const {
   notifyMock,
   sendCompletionMessageMock,
   sendWorkflowMessageMock,
+  sleepMock,
   stopChatMessageRespondingMock,
   textGenerationResPropsSpy,
 } = vi.hoisted(() => ({
   notifyMock: vi.fn(),
   sendCompletionMessageMock: vi.fn(),
   sendWorkflowMessageMock: vi.fn(),
+  sleepMock: vi.fn(),
   stopChatMessageRespondingMock: vi.fn(),
   textGenerationResPropsSpy: vi.fn(),
 }))
 
 vi.mock('i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('i18next')>()
-  const { createI18nextMock } = await import('@/test/i18n-mock')
 
   return {
     ...actual,
-    ...createI18nextMock(),
+    t: () => '',
+  }
+})
+
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>()
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'operation.stopResponding': 'operation.stopResponding',
+      'warningMessage.timeoutExceeded': 'Translated timeout warning',
+    }),
   }
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  default: {
-    notify: notifyMock,
-  },
+  toast: (...args: unknown[]) => notifyMock(...args),
 }))
 
 vi.mock('@/utils', async () => {
   const actual = await vi.importActual<typeof import('@/utils')>('@/utils')
   return {
     ...actual,
-    sleep: () => new Promise<void>(() => {}),
+    sleep: (...args: Parameters<typeof actual.sleep>) => sleepMock(...args),
   }
 })
 
@@ -120,6 +132,7 @@ const baseProps = {
 describe('Result', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sleepMock.mockImplementation(() => new Promise<void>(() => {}))
     stopChatMessageRespondingMock.mockResolvedValue(undefined)
   })
 
@@ -269,6 +282,77 @@ describe('Result', () => {
       }),
     )
     expect(onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', undefined, true)
+  })
+
+  it('should finish a timed-out workflow and show a translated warning', async () => {
+    let resolveTimeout!: () => void
+    let workflowHandlers: IOtherOptions | null = null
+    sleepMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveTimeout = resolve
+        }),
+    )
+    sendWorkflowMessageMock.mockImplementation(async (_data, handlers) => {
+      workflowHandlers = handlers
+    })
+
+    const onCompleted = vi.fn()
+    const { rerender } = render(<Result {...baseProps} isWorkflow onCompleted={onCompleted} />)
+
+    rerender(<Result {...baseProps} isWorkflow controlSend={1} onCompleted={onCompleted} />)
+
+    await act(async () => {
+      workflowHandlers?.onWorkflowStarted?.({
+        workflow_run_id: 'run-timeout',
+        task_id: 'task-timeout',
+        event: 'workflow_started',
+        data: {
+          id: 'run-timeout',
+          workflow_id: 'wf-1',
+          created_at: 0,
+        },
+      })
+      resolveTimeout()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      workflowHandlers?.onWorkflowFinished?.({
+        task_id: 'task-timeout',
+        workflow_run_id: 'run-timeout',
+        event: 'workflow_finished',
+        data: {
+          id: 'run-timeout',
+          workflow_id: 'wf-1',
+          status: 'succeeded',
+          outputs: { answer: 'Late result' },
+          error: '',
+          elapsed_time: 61,
+          total_tokens: 0,
+          total_steps: 0,
+          created_at: 0,
+          created_by: {
+            id: 'user-1',
+            name: 'User',
+            email: 'user@example.com',
+          },
+          finished_at: 61,
+        },
+      })
+    })
+
+    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workflowProcessData: expect.objectContaining({
+          resultText: '',
+          status: 'succeeded',
+        }),
+      }),
+    )
+    expect(notifyMock).toHaveBeenCalledWith('Translated timeout warning', { type: 'warning' })
+    expect(onCompleted).toHaveBeenCalledWith('', undefined, false)
+    expect(onCompleted).toHaveBeenCalledTimes(1)
   })
 
   it('should render batch task ids for both short and long indexes', () => {

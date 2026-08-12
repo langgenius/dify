@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, render, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_ERROR } from '../../constants'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
@@ -37,10 +38,6 @@ vi.mock('@/utils/format', () => ({
 // Mock i18n config
 vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
-}))
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
 }))
 
 // Mock store functions
@@ -86,9 +83,10 @@ vi.mock('@/service/base', () => ({
 // Import after all mocks are set up
 const { useLocalFileUpload } = await import('../use-local-file-upload')
 
-const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
-}
+const createWrapper = () =>
+  createConsoleQueryWrapper({ systemFeatures: { deployment_edition: 'CLOUD' } }).wrapper
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 describe('useLocalFileUpload', () => {
   beforeEach(() => {

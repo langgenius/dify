@@ -1,27 +1,17 @@
+"""Initialization validation tests with real setup-state persistence in SQLite."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.console import init_validate
 from controllers.console.error import AlreadySetupError, InitValidateFailedError
-
-
-class _SessionStub:
-    def __init__(self, has_setup: bool):
-        self._has_setup = has_setup
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def execute(self, *_args, **_kwargs):
-        return SimpleNamespace(scalar_one_or_none=lambda: Mock() if self._has_setup else None)
+from enums import DeploymentEdition
+from models.model import DifySetup
 
 
 def test_get_init_status_finished(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -37,7 +27,7 @@ def test_get_init_status_not_started(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_validate_init_password_already_setup(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(init_validate.TenantService, "get_tenant_count", lambda *, session: 1)
     app.secret_key = "test-secret"
 
@@ -47,7 +37,7 @@ def test_validate_init_password_already_setup(app: Flask, monkeypatch: pytest.Mo
 
 
 def test_validate_init_password_wrong_password(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(init_validate.TenantService, "get_tenant_count", lambda *, session: 0)
     monkeypatch.setenv("INIT_PASSWORD", "expected")
     app.secret_key = "test-secret"
@@ -59,7 +49,7 @@ def test_validate_init_password_wrong_password(app: Flask, monkeypatch: pytest.M
 
 
 def test_validate_init_password_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(init_validate.TenantService, "get_tenant_count", lambda *, session: 0)
     monkeypatch.setenv("INIT_PASSWORD", "expected")
     app.secret_key = "test-secret"
@@ -71,12 +61,12 @@ def test_validate_init_password_success(app: Flask, monkeypatch: pytest.MonkeyPa
 
 
 def test_get_init_validate_status_not_self_hosted(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     assert init_validate.get_init_validate_status() is True
 
 
 def test_get_init_validate_status_validated_session(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setenv("INIT_PASSWORD", "expected")
     app.secret_key = "test-secret"
 
@@ -85,11 +75,15 @@ def test_get_init_validate_status_validated_session(app: Flask, monkeypatch: pyt
         assert init_validate.get_init_validate_status() is True
 
 
-def test_get_init_validate_status_setup_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+@pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+def test_get_init_validate_status_setup_exists(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setenv("INIT_PASSWORD", "expected")
-    monkeypatch.setattr(init_validate, "Session", lambda *_args, **_kwargs: _SessionStub(True))
-    monkeypatch.setattr(init_validate, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(init_validate, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
+    sqlite_session.add(DifySetup(version="test-version"))
+    sqlite_session.commit()
     app.secret_key = "test-secret"
 
     with app.test_request_context("/console/api/init", method="GET"):
@@ -97,11 +91,13 @@ def test_get_init_validate_status_setup_exists(app: Flask, monkeypatch: pytest.M
         assert init_validate.get_init_validate_status() is True
 
 
-def test_get_init_validate_status_not_validated(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(init_validate.dify_config, "EDITION", "SELF_HOSTED")
+@pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
+def test_get_init_validate_status_not_validated(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    monkeypatch.setattr(init_validate.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setenv("INIT_PASSWORD", "expected")
-    monkeypatch.setattr(init_validate, "Session", lambda *_args, **_kwargs: _SessionStub(False))
-    monkeypatch.setattr(init_validate, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(init_validate, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
     app.secret_key = "test-secret"
 
     with app.test_request_context("/console/api/init", method="GET"):

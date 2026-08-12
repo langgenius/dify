@@ -50,7 +50,7 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       mockState.mockToastCall({ type: 'success', message, ...options }),
@@ -158,14 +158,12 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
 vi.mock('@/app/components/base/action-button', () => ({
   default: ({
     children,
-    onClick,
     state,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
     state?: string
   }) => (
-    <button type="button" data-testid="action-button" data-state={state} onClick={onClick}>
+    <button type="button" data-testid="action-button" data-state={state} {...props}>
       {children}
     </button>
   ),
@@ -581,7 +579,7 @@ describe('Debug', () => {
 
       expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -607,7 +605,14 @@ describe('Debug', () => {
       })
 
       expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
-      fireEvent.click(screen.getAllByTestId('action-button')[1]!)
+      const inputPanelButton = screen.getByRole('button', {
+        name: 'workflow.panel.userInputField',
+      })
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'true')
+
+      fireEvent.click(inputPanelButton)
+
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
@@ -619,7 +624,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -631,7 +636,9 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.queryByTestId('action-button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.refresh' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show formatting confirmation and handle cancel', () => {
@@ -846,10 +853,8 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [
-        unknown,
-        any,
-      ]
+      const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
+        []) as [unknown, any, { onNotifyError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -863,6 +868,12 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+
+      handlers.onNotifyError('Base model not found')
+      expect(mockState.mockToastCall).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Base model not found',
+      })
     })
 
     it('should notify when sending again while a response is in progress', async () => {

@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -12,8 +13,13 @@ import {
   useModelInList,
   usePluginInfo,
 } from '@/service/use-plugins'
-import { CustomConfigurationStatusEnum, ModelTypeEnum } from '../declarations'
-import { useModelModalHandler, useUpdateModelList, useUpdateModelProviders } from '../hooks'
+import { ConfigurationMethodEnum, ModelTypeEnum } from '../declarations'
+import {
+  useLazyModelProviderDetail,
+  useModelModalHandler,
+  useUpdateModelList,
+  useUpdateModelProviders,
+} from '../hooks'
 import ModelIcon from '../model-icon'
 import ConfigurationButton from './configuration-button'
 import ModelDisplay from './model-display'
@@ -46,14 +52,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const updateModelList = useUpdateModelList()
   const { modelProvider, needsConfiguration } = useMemo(() => {
     const modelProvider = modelProviders.find((item) => item.provider === providerName)
-    const needsConfiguration =
-      modelProvider?.custom_configuration.status === CustomConfigurationStatusEnum.noConfigure &&
-      !(
-        modelProvider.system_configuration.enabled === true &&
-        modelProvider.system_configuration.quota_configurations.find(
-          (item) => item.quota_type === modelProvider.system_configuration.current_quota_type,
-        )
-      )
+    const needsConfiguration = modelProvider ? !modelProvider.is_configured : false
     return {
       modelProvider,
       needsConfiguration,
@@ -62,9 +61,21 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   const [installed, setInstalled] = useState(false)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleOpenModal = useModelModalHandler()
+  const { loadProviderDetail, isLoadingProviderDetail } = useLazyModelProviderDetail(
+    providerName ?? '',
+  )
 
   const { data: inModelList = false } = useModelInList(currentProvider, modelId)
   const { data: pluginInfo, isLoading: isPluginLoading } = usePluginInfo(providerName)
+
+  const handleConfigure = async () => {
+    if (!providerName) return
+
+    const providerDetail = await loadProviderDetail()
+    if (!providerDetail) return
+
+    handleOpenModal(providerDetail, ConfigurationMethodEnum.predefinedModel, undefined)
+  }
 
   if (modelId && isPluginLoading) return <Loading />
 
@@ -84,7 +95,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
           />
           <ModelDisplay currentModel={currentModel} modelId={modelId} />
           {needsConfiguration && (
-            <ConfigurationButton modelProvider={modelProvider} handleOpenModal={handleOpenModal} />
+            <ConfigurationButton loading={isLoadingProviderDetail} onConfigure={handleConfigure} />
           )}
           <StatusIndicators
             needsConfiguration={needsConfiguration}
@@ -94,7 +105,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             pluginInfo={pluginInfo}
             t={translateWorkflow}
           />
-          {!installed && !modelProvider && pluginInfo && (
+          {!installed && !modelProvider && pluginInfo?.latest_package_identifier && (
             <InstallPluginButton
               onClick={(e) => e.stopPropagation()}
               size="small"
@@ -111,7 +122,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
                   if (scope?.includes(type)) updateModelList(type)
                 })
                 updateModelProviders()
-                invalidateInstalledPluginList()
+                invalidateInstalledPluginList(PluginCategoryEnum.model)
                 setInstalled(true)
               }}
             />

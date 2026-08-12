@@ -155,7 +155,7 @@ export function DuplicateAgentDialog({
                   aria-label={t(($) => $['roster.duplicateForm.changeIcon'], {
                     name: latestAgent.name,
                   })}
-                  className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={() => setIconPickerOpen(true)}
                 >
                   <AppIcon

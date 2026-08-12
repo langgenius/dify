@@ -97,6 +97,7 @@
   "categorySingle.model": "Модель",
   "categorySingle.tool": "Інструмент",
   "categorySingle.trigger": "Спусковий механізм",
+  "clearSearch": "Очистити {{label}}",
   "debugInfo.title": "Налагодження",
   "debugInfo.viewDocs": "Переглянути документи",
   "deprecated": "Застарілий",

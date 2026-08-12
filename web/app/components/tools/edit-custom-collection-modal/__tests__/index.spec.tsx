@@ -3,7 +3,6 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Plan } from '@/app/components/billing/type'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
 import EditCustomCollectionModal from '../index'
@@ -22,21 +21,17 @@ vi.mock('@/service/tools', () => ({
 const parseParamsSchemaMock = vi.mocked(parseParamsSchema)
 
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+    hasBlockingModalOpen: false,
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),
     setShowPricingModal: mockSetShowPricingModal,
     setShowAnnotationFullModal: vi.fn(),
     setShowModelModal: vi.fn(),
     setShowExternalKnowledgeAPIModal: vi.fn(),
-    setShowModelLoadBalancingModal: vi.fn(),
     setShowOpeningModal: vi.fn(),
     setShowUpdatePluginModal: vi.fn(),
-    setShowEducationExpireNoticeModal: vi.fn(),
-    setShowTriggerEventsLimitModal: vi.fn(),
   }),
 }))
 
@@ -69,7 +64,7 @@ describe('EditCustomCollectionModal', () => {
     })
     mockUseProviderContext.mockReturnValue({
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       enableBilling: false,
       webappCopyrightEnabled: true,

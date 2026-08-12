@@ -1,7 +1,5 @@
-import Apps from '@/app/components/apps'
+import { Apps } from '@/app/components/apps'
 
-const AppList = () => {
+export default function AppsPage() {
   return <Apps />
 }
-
-export default AppList

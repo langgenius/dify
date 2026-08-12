@@ -1,14 +1,13 @@
 import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiAddLine } from '@remixicon/react'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
+import { useNodesReadOnly } from '../../../../hooks/use-workflow'
 
 type AddProps = {
   nodeId: string
@@ -54,20 +53,17 @@ const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddPr
 
     return t(($) => $['panel.selectNextStep'], { ns: 'workflow' })
   }, [isFailBranch, isParallel, t])
-  const renderTrigger = useCallback(
-    (open: boolean) => {
-      return (
-        <div
-          className={`bg-dropzone-bg hover:bg-dropzone-bg-hover relative flex h-9 cursor-pointer items-center rounded-lg border border-dashed border-divider-regular px-2 text-xs text-text-placeholder ${open && 'bg-components-dropzone-bg-alt!'} ${nodesReadOnly && 'cursor-not-allowed!'} `}
-        >
-          <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
-            <RiAddLine className="size-3" />
-          </div>
-          <div className="flex items-center uppercase">{tip}</div>
-        </div>
-      )
-    },
-    [nodesReadOnly, tip],
+  const triggerElement = (
+    <Button
+      variant="ghost"
+      size="large"
+      className="bg-dropzone-bg hover:bg-dropzone-bg-hover relative w-full justify-start rounded-lg border border-dashed border-divider-regular px-2 text-xs text-text-placeholder data-popup-open:bg-components-dropzone-bg-alt!"
+    >
+      <div className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+        <RiAddLine aria-hidden className="size-3" />
+      </div>
+      <div className="flex items-center uppercase">{tip}</div>
+    </Button>
   )
 
   return (
@@ -81,8 +77,8 @@ const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddPr
         prevNodeSourceHandle: sourceHandle,
       }}
       placement="top"
-      offset={0}
-      trigger={renderTrigger}
+      sideOffset={0}
+      trigger={triggerElement}
       popupClassName="w-[328px]!"
       availableBlocksTypes={availableNextBlocks}
     />

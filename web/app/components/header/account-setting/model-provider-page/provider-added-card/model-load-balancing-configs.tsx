@@ -12,6 +12,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
@@ -20,8 +21,8 @@ import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -53,6 +54,10 @@ const ModelLoadBalancingConfigs = ({
   onRemove,
 }: ModelLoadBalancingConfigsProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const providerFormSchemaPredefined =
     configurationMethod === ConfigurationMethodEnum.predefinedModel
   const modelLoadBalancingEnabled = useProviderContextSelector(
@@ -172,7 +177,7 @@ const ModelLoadBalancingConfigs = ({
         onClick={!withSwitch && !draftConfig.enabled ? () => toggleModalBalancing(true) : undefined}
         data-testid="load-balancing-main-panel"
       >
-        <div className="flex items-center gap-2 px-[15px] py-3 select-none">
+        <div className="flex items-center gap-2 px-3.75 py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
             <div className="i-custom-vender-line-financeAndECommerce-balance h-4 w-4" />
           </div>
@@ -301,14 +306,14 @@ const ModelLoadBalancingConfigs = ({
           </div>
         )}
         {draftConfig.enabled && validDraftConfigList.length < 2 && (
-          <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
+          <div className="flex h-8.5 items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
             <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
             {t(($) => $['modelProvider.loadBalancingLeastKeyWarning'], { ns: 'common' })}
           </div>
         )}
       </div>
 
-      {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
+      {!modelLoadBalancingEnabled && deploymentEdition === 'CLOUD' && (
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}>

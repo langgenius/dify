@@ -4,8 +4,8 @@ import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData, AppMeta } from '@/models/share'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as ReactI18next from 'react-i18next'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../context'
 import HeaderInMobile from '../header-in-mobile'
@@ -35,29 +35,6 @@ vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(() => '/'),
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useParams: vi.fn(() => ({})),
-}))
-
-vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: vi.fn(() => ({
-    buildTheme: vi.fn(),
-  })),
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
-// Mock Dialog to avoid Base UI focus/portal behavior in tests
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) => {
-    if (!open) return null
-    return <div data-testid="modal">{children}</div>
-  },
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div role="dialog" data-testid="modal-content">
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 // Sidebar mock removed to use real component

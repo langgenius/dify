@@ -1,6 +1,7 @@
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ModifyRetrievalModal from '../modify-retrieval-modal'
 
@@ -19,17 +20,6 @@ const { mockToast } = vi.hoisted(() => {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-    variant?: string
-  }) => <button onClick={onClick}>{children}</button>,
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { PreviewCardContentProps } from '.'
 import * as React from 'react'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '.'
 
@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Hover- and focus-activated rich link preview built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Keep popup content available on the link destination. A polymorphic action trigger is a Dify application-level extension and is only valid when its click result exposes the same information.',
+          "A visual enhancement for a link that previews its destination, built on Base UI PreviewCard. The popup is unavailable to touch and screen-reader users, so it must remain non-interactive and must not contain unique or essential information unless that information is also available at the linked destination. Use Popover when opening the popup is the trigger's purpose or when its content must be accessible across input modes.",
       },
     },
   },
@@ -33,7 +33,68 @@ type Story = StoryObj<typeof meta>
 // destination. The Wikipedia URL and Unsplash image are the exact assets used
 // in base-ui.com's public docs so the story renders a real preview.
 // https://base-ui.com/react/components/preview-card
-const typographyPreview = createPreviewCardHandle()
+type TypographyPreviewPayload = {
+  title: string
+  description: string
+  image: {
+    src: string
+    alt: string
+  }
+}
+
+const typographyPreviewPayload = {
+  title: 'Typography',
+  description:
+    'Typography is the art and science of arranging type to make written language legible, readable, and visually appealing.',
+  image: {
+    src: 'https://images.unsplash.com/photo-1619615391095-dfa29e1672ef?q=80&w=448&h=300',
+    alt: 'Station Hofplein signage in Rotterdam, Netherlands',
+  },
+} satisfies TypographyPreviewPayload
+
+function LinkPreviewDemo() {
+  const [previewCardHandle] = React.useState(() =>
+    createPreviewCardHandle<TypographyPreviewPayload>(),
+  )
+
+  return (
+    <div className="max-w-md p-6 text-sm leading-6 text-text-secondary">
+      <p>
+        The principles of good{' '}
+        <PreviewCardTrigger
+          handle={previewCardHandle}
+          payload={typographyPreviewPayload}
+          href="https://en.wikipedia.org/wiki/Typography"
+          target="_blank"
+          rel="noreferrer"
+          className={inlineLinkClassName}
+        >
+          typography
+        </PreviewCardTrigger>{' '}
+        remain in the digital age.
+      </p>
+
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload = typographyPreviewPayload }) => (
+          <PreviewCardContent popupClassName="w-[240px] p-2">
+            <div className="flex flex-col gap-2">
+              <img
+                width="224"
+                height="150"
+                className="block max-w-none rounded-md"
+                src={payload.image.src}
+                alt={payload.image.alt}
+              />
+              <p className="m-0 text-xs leading-5 text-text-secondary">
+                <strong className="text-text-primary">{payload.title}</strong> {payload.description}
+              </p>
+            </div>
+          </PreviewCardContent>
+        )}
+      </PreviewCard>
+    </div>
+  )
+}
 
 export const LinkPreview: Story = {
   name: 'Link preview (canonical)',
@@ -45,44 +106,12 @@ export const LinkPreview: Story = {
       },
     },
   },
-  render: () => (
-    <div className="max-w-md p-6 text-sm leading-6 text-text-secondary">
-      <p>
-        The principles of good{' '}
-        <PreviewCardTrigger
-          handle={typographyPreview}
-          href="https://en.wikipedia.org/wiki/Typography"
-          target="_blank"
-          rel="noreferrer"
-          className={inlineLinkClassName}
-        >
-          typography
-        </PreviewCardTrigger>{' '}
-        remain in the digital age.
-      </p>
-
-      <PreviewCard handle={typographyPreview}>
-        <PreviewCardContent popupClassName="w-[240px] p-2">
-          <div className="flex flex-col gap-2">
-            <img
-              width="224"
-              height="150"
-              className="block max-w-none rounded-md"
-              src="https://images.unsplash.com/photo-1619615391095-dfa29e1672ef?q=80&w=448&h=300"
-              alt="Station Hofplein signage in Rotterdam, Netherlands"
-            />
-            <p className="m-0 text-xs leading-5 text-text-secondary">
-              <strong className="text-text-primary">Typography</strong> is the art and science of
-              arranging type to make written language legible, readable, and visually appealing.
-            </p>
-          </div>
-        </PreviewCardContent>
-      </PreviewCard>
-    </div>
-  ),
+  render: () => <LinkPreviewDemo />,
 }
 
-const PLACEMENTS: Placement[] = [
+type PreviewCardPlacement = NonNullable<PreviewCardContentProps['placement']>
+
+const PLACEMENTS: PreviewCardPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -98,7 +127,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<PreviewCardPlacement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -108,7 +137,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >

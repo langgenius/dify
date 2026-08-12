@@ -19,19 +19,20 @@ from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
 
 
-def _make_app(app_id: str = "app-1", tenant_id: str = "tenant-1") -> MagicMock:
-    app = MagicMock(spec=App)
-    app.id = app_id
-    app.tenant_id = tenant_id
-    app.status = "normal"
+def _make_app(app_id: str = "app-1", tenant_id: str = "tenant-1") -> App:
+    app = App(
+        id=app_id,
+        tenant_id=tenant_id,
+        status="normal",
+    )
     return app
 
 
-def _make_app_ref(app: MagicMock) -> AppRef:
+def _make_app_ref(app: App) -> AppRef:
     return AppRef(tenant_id=app.tenant_id, app_id=app.id)
 
 
-def _make_annotation_ref(app: MagicMock, annotation_id: str = "ann-1") -> AnnotationRef:
+def _make_annotation_ref(app: App, annotation_id: str = "ann-1") -> AnnotationRef:
     return AnnotationRef(app=AppRef(tenant_id=app.tenant_id, app_id=app.id), annotation_id=annotation_id)
 
 
@@ -41,35 +42,36 @@ def _make_user(user_id: str = "user-1") -> MagicMock:
     return user
 
 
-def _make_message(message_id: str = "msg-1", app_id: str = "app-1") -> MagicMock:
-    message = MagicMock(spec=Message)
-    message.id = message_id
-    message.app_id = app_id
-    message.conversation_id = "conv-1"
-    message.query = "default-question"
-    message.annotation = None
+def _make_message(message_id: str = "msg-1", app_id: str = "app-1") -> Message:
+    message = Message(
+        id=message_id,
+        app_id=app_id,
+        conversation_id="conv-1",
+        query="default-question",
+    )
     return message
 
 
-def _make_annotation(annotation_id: str = "ann-1", app_id: str = "app-1") -> MagicMock:
-    annotation = MagicMock(spec=MessageAnnotation)
+def _make_annotation(annotation_id: str = "ann-1", app_id: str = "app-1") -> MessageAnnotation:
+    annotation = MessageAnnotation(
+        app_id=app_id,
+        question="",
+        content="",
+        account_id="account-id",
+    )
     annotation.id = annotation_id
-    annotation.app_id = app_id
-    annotation.content = ""
-    annotation.question = ""
-    annotation.question_text = ""
     return annotation
 
 
-def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> MagicMock:
-    setting = MagicMock(spec=AppAnnotationSetting)
+def _make_setting(setting_id: str = "setting-1") -> AppAnnotationSetting:
+    setting = AppAnnotationSetting(
+        app_id="app-id",
+        score_threshold=0.5,
+        collection_binding_id="collection-1",
+        created_user_id="account-id",
+        updated_user_id="account-id",
+    )
     setting.id = setting_id
-    setting.score_threshold = 0.5
-    setting.collection_binding_id = "collection-1"
-    if with_detail:
-        setting.collection_binding_detail = SimpleNamespace(provider_name="provider-a", model_name="model-a")
-    else:
-        setting.collection_binding_detail = None
     return setting
 
 
@@ -188,7 +190,6 @@ class TestAppAnnotationServiceUpInsert:
         tenant_id = "tenant-1"
         app = _make_app()
         message = _make_message(message_id="msg-1", app_id=app.id)
-        message.annotation = None
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
@@ -595,7 +596,7 @@ class TestAppAnnotationServiceDirectManipulation:
         tenant_id = "tenant-1"
         app = _make_app()
         annotation = _make_annotation("ann-1")
-        annotation.question_text = "q1"
+        annotation.question = "q1"
         setting = _make_setting()
 
         with (
@@ -631,8 +632,28 @@ class TestAppAnnotationServiceDirectManipulation:
         tenant_id = "tenant-1"
         app = _make_app()
         annotation = _make_annotation("ann-1")
-        history1 = MagicMock(spec=AppAnnotationHitHistory)
-        history2 = MagicMock(spec=AppAnnotationHitHistory)
+        history1 = AppAnnotationHitHistory(
+            app_id="app-id",
+            annotation_id="annotation-id",
+            source="hit-testing",
+            question="question",
+            account_id="account-id",
+            score=0.0,
+            message_id="message-id",
+            annotation_question="question",
+            annotation_content="content",
+        )
+        history2 = AppAnnotationHitHistory(
+            app_id="app-id",
+            annotation_id="annotation-id",
+            source="hit-testing",
+            question="question",
+            account_id="account-id",
+            score=0.0,
+            message_id="message-id",
+            annotation_question="question",
+            annotation_content="content",
+        )
         setting = _make_setting()
 
         with (
@@ -1183,9 +1204,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         # Arrange
         tenant_id = "tenant-1"
         app = _make_app()
-        setting = _make_setting(with_detail=True)
-        detail = setting.collection_binding_detail
-        setting.collection_binding_detail = None
+        setting = _make_setting()
+        detail = SimpleNamespace(provider_name="provider-a", model_name="model-a")
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
@@ -1224,8 +1244,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         # Arrange
         tenant_id = "tenant-1"
         app = _make_app()
-        setting = _make_setting(with_detail=False)
-        setting.collection_binding_detail = SimpleNamespace(provider_name="wrong", model_name="wrong")
+        setting = _make_setting()
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
@@ -1266,9 +1285,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         tenant_id = "tenant-1"
         current_user = _make_user("user-1")
         app = _make_app()
-        setting = _make_setting(with_detail=True)
-        detail = setting.collection_binding_detail
-        setting.collection_binding_detail = None
+        setting = _make_setting()
+        detail = SimpleNamespace(provider_name="provider-a", model_name="model-a")
         args = {"score_threshold": 0.8}
 
         with (
@@ -1297,8 +1315,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         tenant_id = "tenant-1"
         current_user = _make_user("user-1")
         app = _make_app()
-        setting = _make_setting(with_detail=False)
-        setting.collection_binding_detail = SimpleNamespace(provider_name="wrong", model_name="wrong")
+        setting = _make_setting()
         args = {"score_threshold": 0.7}
 
         with (
@@ -1365,7 +1382,17 @@ class TestAppAnnotationServiceClearAll:
         setting = _make_setting()
         annotation1 = _make_annotation("ann-1")
         annotation2 = _make_annotation("ann-2")
-        history = MagicMock(spec=AppAnnotationHitHistory)
+        history = AppAnnotationHitHistory(
+            app_id="app-id",
+            annotation_id="annotation-id",
+            source="hit-testing",
+            question="question",
+            account_id="account-id",
+            score=0.0,
+            message_id="message-id",
+            annotation_question="question",
+            annotation_content="content",
+        )
 
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),

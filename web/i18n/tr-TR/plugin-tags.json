@@ -1,5 +1,6 @@
 {
   "allTags": "Tüm Etiketler",
+  "clearSelectedTags": "Seçili etiketleri temizle: {{tags}}",
   "searchTags": "Arama Etiketleri",
   "tags.agent": "Aracı",
   "tags.business": "İş",

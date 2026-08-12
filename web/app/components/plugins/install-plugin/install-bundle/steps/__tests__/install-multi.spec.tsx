@@ -8,7 +8,7 @@ import type {
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { PluginCategoryEnum } from '../../../../types'
 import InstallMulti from '../install-multi'
 

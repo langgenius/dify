@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
@@ -23,6 +25,7 @@ from dify_agent.protocol.schemas import (
     RunComposition,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunLayerSpec,
     RunStartedEvent,
     RunSucceededEvent,
@@ -66,7 +69,14 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         ),
-        RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom", reason="shutdown")),
+        RunFailedEvent(
+            run_id="run-1",
+            data=RunFailedEventData(
+                error="boom",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                reason="shutdown",
+            ),
+        ),
         RunCancelledEvent(run_id="run-1", data=RunCancelledEventData(reason="user_cancelled")),
     ]
 
@@ -76,6 +86,31 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
 
         assert decoded.type == event.type
         assert decoded.run_id == event.run_id
+
+
+def test_run_failed_event_error_type_is_optional_and_round_trips() -> None:
+    legacy = RUN_EVENT_ADAPTER.validate_python(
+        {
+            "run_id": "legacy-run",
+            "type": "run_failed",
+            "data": {"error": "legacy failure", "reason": None},
+        }
+    )
+    classified = RunFailedEvent(
+        run_id="classified-run",
+        data=RunFailedEventData(
+            error="run limit reached",
+            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+        ),
+    )
+
+    decoded = RUN_EVENT_ADAPTER.validate_json(RUN_EVENT_ADAPTER.dump_json(classified))
+
+    assert isinstance(legacy, RunFailedEvent)
+    assert legacy.data.error_type is None
+    assert isinstance(decoded, RunFailedEvent)
+    assert decoded.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert protocol_exports.RunFailureType is RunFailureType
 
 
 def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
@@ -427,6 +462,45 @@ def test_run_succeeded_event_round_trips_usage() -> None:
     assert decoded.data.usage.completion_tokens == 5
     assert decoded.data.usage.total_tokens == 8
     assert b'"usage"' in payload
+
+
+def test_run_succeeded_event_round_trips_complete_pricing_usage() -> None:
+    event = RunSucceededEvent(
+        run_id="run-priced-usage",
+        data=RunSucceededEventData(
+            output="done",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000050"),
+                completion_tokens=2,
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000060"),
+                total_tokens=12,
+                total_price=Decimal("0.000110"),
+                currency="USD",
+                latency=0.4,
+                time_to_first_token=0.1,
+                time_to_generate=0.3,
+            ),
+        ),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunSucceededEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_price == Decimal("0.000050")
+    assert decoded.data.usage.completion_price == Decimal("0.000060")
+    assert decoded.data.usage.total_price == Decimal("0.000110")
+    assert decoded.data.usage.currency == "USD"
+    assert decoded.data.usage.latency == 0.4
+    assert decoded.data.usage.time_to_first_token == 0.1
+    assert decoded.data.usage.time_to_generate == 0.3
 
 
 def test_on_exit_accept_layer_overrides() -> None:

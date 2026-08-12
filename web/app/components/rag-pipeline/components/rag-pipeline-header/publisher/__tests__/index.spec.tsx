@@ -1,16 +1,18 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
+vi.mock('@/features/system-features/state', async () => {
+  const { atom } = await import('jotai')
   return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
+    deploymentEditionAtom: atom('CLOUD'),
   }
 })
 
@@ -35,54 +37,6 @@ const triggerHotkey = (hotkey: string) => {
   })
 }
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-      data-variant={variant as string | undefined}
-      className={className as string | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-}))
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as (() => void) | undefined}
-      disabled={disabled as boolean | undefined}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
@@ -99,10 +53,13 @@ vi.mock('@/next/link', () => ({
 
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
@@ -157,67 +114,15 @@ vi.mock('@/context/dataset-detail', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: {
       id: mockCurrentUserId,
     },
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const mockSetShowPricingModal = vi.fn()
@@ -353,6 +258,8 @@ const createQueryClient = () =>
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
@@ -385,7 +292,7 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
+        expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false')
         expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
@@ -937,7 +844,7 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByTestId('alert-dialog-close'))
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
         await waitFor(() => {
           expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
@@ -970,7 +877,7 @@ describe('publisher', () => {
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[360px]')
+        expect(popupDiv.className).toContain('w-90')
       })
 
       it('should display correct width when permission is not allowed', () => {
@@ -978,7 +885,7 @@ describe('publisher', () => {
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
-        expect(popupDiv.className).toContain('w-[400px]')
+        expect(popupDiv.className).toContain('w-100')
       })
 
       it('should display draft updated time when not published', () => {

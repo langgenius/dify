@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
 import CodeEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor'
 import PromptRes from './prompt-res'
 import PromptResInWorkflow from './prompt-res-in-workflow'
@@ -53,13 +53,14 @@ const Result: FC<Props> = ({
         </div>
         <div className="flex items-center space-x-2">
           <Button
+            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
             className="px-2"
             onClick={() => {
               copy(current.modified)
               toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="size-4 text-text-secondary" />
+            <RiClipboardLine aria-hidden="true" className="size-4 text-text-secondary" />
           </Button>
           <Button variant="primary" onClick={onApply}>
             {t(($) => $['generate.apply'], { ns: 'appDebug' })}

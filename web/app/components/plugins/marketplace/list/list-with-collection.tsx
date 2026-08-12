@@ -35,6 +35,7 @@ type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
+  linkToMarketplaceDetail?: boolean
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
@@ -46,13 +47,25 @@ type PluginCardProps = {
   showInstallButton?: boolean
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   isInstalled?: boolean
+  linkToMarketplaceDetail?: boolean
 }
 
-const PluginCard = ({ plugin, showInstallButton, cardRender, isInstalled }: PluginCardProps) => {
+const PluginCard = ({
+  plugin,
+  showInstallButton,
+  cardRender,
+  isInstalled,
+  linkToMarketplaceDetail,
+}: PluginCardProps) => {
   if (cardRender) return cardRender(plugin)
 
   return (
-    <CardWrapper plugin={plugin} showInstallButton={showInstallButton} isInstalled={isInstalled} />
+    <CardWrapper
+      plugin={plugin}
+      showInstallButton={showInstallButton}
+      isInstalled={isInstalled}
+      linkToMarketplaceDetail={linkToMarketplaceDetail}
+    />
   )
 }
 
@@ -60,6 +73,7 @@ const ListWithCollection = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   showInstallButton,
+  linkToMarketplaceDetail,
   cardContainerClassName,
   cardRender,
   onCollectionMoreClick,
@@ -143,10 +157,11 @@ const ListWithCollection = ({
                     >
                       <div className={cn(GRID_CLASS, cardContainerClassName)}>
                         {pageItems.map((plugin) => (
-                          <div key={plugin.plugin_id} className="min-w-0 [&>*]:w-full">
+                          <div key={plugin.plugin_id} className="min-w-0 *:w-full">
                             <PluginCard
                               plugin={plugin}
                               showInstallButton={showInstallButton}
+                              linkToMarketplaceDetail={linkToMarketplaceDetail}
                               cardRender={cardRender}
                               isInstalled={installedPluginIds?.has(plugin.plugin_id)}
                             />
@@ -163,6 +178,7 @@ const ListWithCollection = ({
                       key={plugin.plugin_id}
                       plugin={plugin}
                       showInstallButton={showInstallButton}
+                      linkToMarketplaceDetail={linkToMarketplaceDetail}
                       cardRender={cardRender}
                       isInstalled={installedPluginIds?.has(plugin.plugin_id)}
                     />

@@ -4,8 +4,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
@@ -16,7 +16,7 @@ let mockBranding: { enabled: boolean; workspace_logo: string } = {
   workspace_logo: '',
 }
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { branding: { ...mockBranding } },
   })
 
@@ -83,17 +83,6 @@ vi.mock('../../context', () => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
-}))
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal">{children}</div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal-title">{children}</div>
-  ),
 }))
 
 describe('Sidebar Index', () => {
@@ -181,7 +170,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const collapseButton = within(header).getByRole('button')
+      const collapseButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.collapseSidebar',
+      })
       expect(collapseButton).toBeInTheDocument()
 
       await user.click(collapseButton)
@@ -198,7 +189,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const expandButton = within(header).getByRole('button')
+      const expandButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.expandSidebar',
+      })
       expect(expandButton).toBeInTheDocument()
 
       await user.click(expandButton)

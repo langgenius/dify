@@ -1,22 +1,29 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
-import type { ICurrentWorkspace } from '@/models/common'
-import { act } from '@testing-library/react'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
-import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from '@/context/app-context-defaults'
 import { useProviderContext } from '@/context/provider-context'
-import { updateCurrentWorkspace } from '@/service/common'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
 
 let currentBrandingOverrides: Partial<GetSystemFeaturesResponse['branding']> = {}
-const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
-  renderHookWithSystemFeatures(callback, {
+let customConfig = {
+  replace_webapp_logo: 'https://example.com/replace.png',
+  remove_webapp_brand: false,
+}
+let seedCustomConfig = true
+let customConfigQueryPending = false
+let customConfigQueryError: Error | undefined
+const renderHook = <Result, Props = void>(callback: (props: Props) => Result) => {
+  const queryClient = createConsoleQueryClient()
+  if (seedCustomConfig) queryClient.setQueryData(['custom-config'], customConfig)
+
+  return renderHookWithConsoleQuery(callback, {
     systemFeatures: {
       branding: {
         enabled: true,
@@ -24,7 +31,9 @@ const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
         ...currentBrandingOverrides,
       },
     },
+    queryClient,
   })
+}
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -39,62 +48,70 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   })
   return { mockNotify, mockToast }
 })
-const appContextStateRef = vi.hoisted(() => ({
-  value: undefined as AppContextStateMockState | undefined,
+const consoleStateRef = vi.hoisted(() => ({
+  value: undefined as ConsoleStateFixture | undefined,
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockUpdateCustomConfig = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
-vi.mock('@/service/common', () => ({
-  updateCurrentWorkspace: vi.fn(),
-}))
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const consoleQuery = new Proxy(actual.consoleQuery, {
+    get(target, prop, receiver) {
+      if (prop === 'workspaces') {
+        return new Proxy(target.workspaces, {
+          get(workspacesTarget, workspaceProp, workspaceReceiver) {
+            if (workspaceProp === 'customConfig') {
+              return {
+                get: {
+                  key: () => ['custom-config'],
+                  queryOptions: () => ({
+                    queryKey: ['custom-config'],
+                    queryFn: async () => {
+                      if (customConfigQueryPending) return new Promise<never>(() => {})
+                      if (customConfigQueryError)
+                        return Promise.reject(new Error(customConfigQueryError.message))
+                      return customConfig
+                    },
+                  }),
+                },
+                post: {
+                  mutationOptions: () => ({
+                    mutationFn: (variables: unknown) => mockUpdateCustomConfig(variables),
+                  }),
+                },
+              }
+            }
 
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...appContextStateRef.value,
-    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+            return Reflect.get(workspacesTarget, workspaceProp, workspaceReceiver)
+          },
+        })
+      }
+
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery,
+  }
+})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    ...consoleStateRef.value,
+    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...appContextStateRef.value,
-    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    ...consoleStateRef.value,
+    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...appContextStateRef.value,
-    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...appContextStateRef.value,
-    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...appContextStateRef.value,
-    refreshCurrentWorkspace: appContextStateRef.value?.mutateCurrentWorkspace,
-  }))
-})
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -104,7 +121,6 @@ vi.mock('@/app/components/base/image-uploader/utils', () => ({
   getImageUploadErrorMessage: vi.fn(),
 }))
 
-const mockUpdateCurrentWorkspace = vi.mocked(updateCurrentWorkspace)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockImageUpload = vi.mocked(imageUpload)
 const mockGetImageUploadErrorMessage = vi.mocked(getImageUploadErrorMessage)
@@ -120,10 +136,10 @@ const testUserProfile = {
 
 const createProviderContext = ({
   enableBilling = false,
-  planType = Plan.professional,
+  planType = 'professional',
 }: {
   enableBilling?: boolean
-  planType?: Plan
+  planType?: CloudPlan
 } = {}) => {
   return createMockProviderContextValue({
     enableBilling,
@@ -134,55 +150,39 @@ const createProviderContext = ({
   })
 }
 
-const createAppContextValue = (
-  overrides: Partial<AppContextStateMockState> = {},
-): AppContextStateMockState => {
-  const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
-  const workspaceOverrides: Partial<AppContextStateMockState['currentWorkspace']> =
-    currentWorkspaceOverride ?? {}
-  const currentWorkspace = {
-    ...initialWorkspaceInfo,
-    ...workspaceOverrides,
-    custom_config: {
-      replace_webapp_logo: 'https://example.com/replace.png',
-      remove_webapp_brand: false,
-      ...workspaceOverrides.custom_config,
-    },
-  }
-
+const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): ConsoleStateFixture => {
   return {
     userProfile: testUserProfile,
-    mutateUserProfile: vi.fn(),
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
     workspacePermissionKeys: ['customization.manage'],
-    mutateCurrentWorkspace: vi.fn(),
-    langGeniusVersionInfo: initialLangGeniusVersionInfo,
+    refreshCurrentWorkspace: vi.fn(),
     isLoadingCurrentWorkspace: false,
-    ...restOverrides,
-    currentWorkspace,
+    ...overrides,
   }
 }
 
 describe('useWebAppBrand', () => {
-  let appContextValue: AppContextStateMockState
-  const setAppContextValue = (nextValue: AppContextStateMockState) => {
-    appContextValue = nextValue
-    appContextStateRef.value = nextValue
+  const setConsoleState = (nextValue: ConsoleStateFixture) => {
+    consoleStateRef.value = nextValue
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
 
-    setAppContextValue(createAppContextValue())
+    setConsoleState(createConsoleState())
     currentBrandingOverrides = {}
 
-    mockUpdateCurrentWorkspace.mockResolvedValue(
-      appContextValue.currentWorkspace as ICurrentWorkspace,
-    )
-    mockUseAppContext.mockImplementation(() => appContextValue)
+    customConfig = {
+      replace_webapp_logo: 'https://example.com/replace.png',
+      remove_webapp_brand: false,
+    }
+    seedCustomConfig = true
+    customConfigQueryPending = false
+    customConfigQueryError = undefined
+    mockUpdateCustomConfig.mockResolvedValue(customConfig)
     mockUseProviderContext.mockReturnValue(createProviderContext())
     mockGetImageUploadErrorMessage.mockReturnValue('upload error')
   })
@@ -200,8 +200,8 @@ describe('useWebAppBrand', () => {
     })
 
     it('should disable uploads when customization management permission is missing', () => {
-      setAppContextValue(
-        createAppContextValue({
+      setConsoleState(
+        createConsoleState({
           workspacePermissionKeys: [],
           isCurrentWorkspaceManager: true,
         }),
@@ -214,8 +214,8 @@ describe('useWebAppBrand', () => {
     })
 
     it('should allow uploads for non-manager users with customization management permission', () => {
-      setAppContextValue(
-        createAppContextValue({
+      setConsoleState(
+        createConsoleState({
           workspacePermissionKeys: ['customization.manage'],
           isCurrentWorkspaceManager: false,
         }),
@@ -231,20 +231,10 @@ describe('useWebAppBrand', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.sandbox,
+          planType: 'sandbox',
         }),
       )
-      setAppContextValue(
-        createAppContextValue({
-          currentWorkspace: {
-            ...initialWorkspaceInfo,
-            custom_config: {
-              replace_webapp_logo: 'https://example.com/replace.png',
-              remove_webapp_brand: true,
-            },
-          },
-        }),
-      )
+      customConfig = { ...customConfig, remove_webapp_brand: true }
 
       const { result } = renderHook(() => useWebAppBrand())
 
@@ -261,17 +251,34 @@ describe('useWebAppBrand', () => {
       expect(result.current.workspaceLogo).toBe('')
     })
 
-    it('should fall back to an empty custom logo when custom config is missing', () => {
-      setAppContextValue({
-        ...createAppContextValue(),
-        currentWorkspace: {
-          ...initialWorkspaceInfo,
-        },
-      })
+    it('should fall back to an empty custom logo when the custom config has no logo', () => {
+      customConfig = { replace_webapp_logo: '', remove_webapp_brand: false }
 
       const { result } = renderHook(() => useWebAppBrand())
 
       expect(result.current.webappLogo).toBe('')
+    })
+
+    it('should disable brand edits while the custom config is loading', () => {
+      seedCustomConfig = false
+      customConfigQueryPending = true
+
+      const { result } = renderHook(() => useWebAppBrand())
+
+      expect(result.current.isCustomConfigUnavailable).toBe(true)
+      expect(result.current.uploadDisabled).toBe(true)
+    })
+
+    it('should disable brand edits when the custom config request fails', async () => {
+      seedCustomConfig = false
+      customConfigQueryError = new Error('custom config unavailable')
+
+      const { result } = renderHook(() => useWebAppBrand())
+
+      await waitFor(() => {
+        expect(result.current.isCustomConfigUnavailable).toBe(true)
+      })
+      expect(result.current.uploadDisabled).toBe(true)
     })
   })
 
@@ -369,12 +376,6 @@ describe('useWebAppBrand', () => {
     })
 
     it('should persist the selected logo and reset transient state on apply', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(
-        createAppContextValue({
-          mutateCurrentWorkspace,
-        }),
-      )
       mockImageUpload.mockImplementation(({ onSuccessCallback }) => {
         onSuccessCallback({ id: 'new-logo' })
       })
@@ -394,64 +395,44 @@ describe('useWebAppBrand', () => {
         await result.current.handleApply()
       })
 
-      expect(mockUpdateCurrentWorkspace).toHaveBeenCalledWith({
-        url: '/workspaces/custom-config',
+      expect(mockUpdateCustomConfig).toHaveBeenCalledWith({
         body: {
           remove_webapp_brand: false,
           replace_webapp_logo: 'new-logo',
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
       expect(result.current.fileId).toBe('')
       expect(result.current.imgKey).toBe(previousImgKey + 1)
       dateNowSpy.mockRestore()
     })
 
     it('should restore the default branding configuration', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(
-        createAppContextValue({
-          mutateCurrentWorkspace,
-        }),
-      )
-
       const { result } = renderHook(() => useWebAppBrand())
 
       await act(async () => {
         await result.current.handleRestore()
       })
 
-      expect(mockUpdateCurrentWorkspace).toHaveBeenCalledWith({
-        url: '/workspaces/custom-config',
+      expect(mockUpdateCustomConfig).toHaveBeenCalledWith({
         body: {
           remove_webapp_brand: false,
           replace_webapp_logo: '',
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
     })
 
     it('should persist brand removal changes', async () => {
-      const mutateCurrentWorkspace = vi.fn()
-      setAppContextValue(
-        createAppContextValue({
-          mutateCurrentWorkspace,
-        }),
-      )
-
       const { result } = renderHook(() => useWebAppBrand())
 
       await act(async () => {
         await result.current.handleSwitch(true)
       })
 
-      expect(mockUpdateCurrentWorkspace).toHaveBeenCalledWith({
-        url: '/workspaces/custom-config',
+      expect(mockUpdateCustomConfig).toHaveBeenCalledWith({
         body: {
           remove_webapp_brand: true,
         },
       })
-      expect(mutateCurrentWorkspace).toHaveBeenCalledTimes(1)
     })
 
     it('should clear temporary upload state on cancel', () => {

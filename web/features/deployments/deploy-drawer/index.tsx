@@ -39,7 +39,7 @@ export function DeployDrawer() {
       <DrawerPortal>
         <DrawerBackdrop />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:w-[640px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
+          <DrawerPopup className="data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerCloseButton
               aria-label={t(($) => $['deployDrawer.close'])}
               className="absolute top-4 right-5 size-6 rounded-md"

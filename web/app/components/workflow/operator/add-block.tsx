@@ -1,40 +1,38 @@
-import type { NodeSelectorProps } from '@/app/components/workflow/block-selector/main'
+import type { ReactElement } from 'react'
+import type { BlockSelectorProps } from '@/app/components/workflow/block-selector'
 import type { Node, OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddCircleFill } from '@remixicon/react'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
-import {
-  useAvailableBlocks,
-  useIsChatMode,
-  useNodesMetaData,
-  useNodesReadOnly,
-  usePanelInteractions,
-} from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import { useAvailableBlocks } from '../hooks/use-available-blocks'
+import { useNodesMetaData } from '../hooks/use-nodes-meta-data'
+import { usePanelInteractions } from '../hooks/use-panel-interactions'
+import { useIsChatMode, useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
   getNodesWithSameDefaultDataType,
 } from '../utils'
-import TipPopup from './tip-popup'
 
 type AddBlockProps = {
-  renderTrigger?: (open: boolean) => React.ReactNode
-  renderTriggerAsButtonRoot?: boolean
-  offset?: NodeSelectorProps['offset']
+  renderTrigger?: BlockSelectorProps['trigger']
+  sideOffset?: BlockSelectorProps['sideOffset']
+  alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
   isolateKeyboardEvents?: boolean
 }
+type BlockSelectorTriggerRender = Exclude<NonNullable<BlockSelectorProps['trigger']>, ReactElement>
 const AddBlock = ({
   renderTrigger,
-  renderTriggerAsButtonRoot,
-  offset,
+  sideOffset,
+  alignOffset,
   onClose,
   isolateKeyboardEvents,
 }: AddBlockProps) => {
@@ -87,23 +85,27 @@ const AddBlock = ({
     [store, workflowStore, nodesMetaDataMap],
   )
 
-  const renderTriggerElement = useCallback(
-    (open: boolean) => {
+  const renderTriggerElement = useCallback<BlockSelectorTriggerRender>(
+    (props, state) => {
       return (
-        <TipPopup title={t(($) => $['common.addBlock'], { ns: 'workflow' })}>
-          <div
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-              open && 'bg-state-accent-active text-text-accent',
-            )}
-          >
-            <RiAddCircleFill className="size-4" />
-          </div>
-        </TipPopup>
+        <Button
+          {...props}
+          variant="ghost"
+          size="small"
+          disabled={nodesReadOnly}
+          focusableWhenDisabled
+          className={cn(
+            'size-8 p-0 text-text-tertiary hover:text-text-secondary',
+            'data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
+            state.open && 'bg-state-accent-active text-text-accent',
+            props.className,
+          )}
+        >
+          <span aria-hidden className="i-ri-add-circle-fill size-4" />
+        </Button>
       )
     },
-    [nodesReadOnly, t],
+    [nodesReadOnly],
   )
 
   return (
@@ -113,14 +115,11 @@ const AddBlock = ({
       disabled={nodesReadOnly}
       onSelect={handleSelect}
       placement="right-start"
-      offset={
-        offset ?? {
-          mainAxis: 4,
-          crossAxis: -8,
-        }
-      }
+      sideOffset={sideOffset ?? 4}
+      alignOffset={alignOffset ?? -8}
       trigger={renderTrigger || renderTriggerElement}
-      renderTriggerAsButtonRoot={renderTriggerAsButtonRoot}
+      triggerAriaLabel={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      triggerTooltip={t(($) => $['common.addBlock'], { ns: 'workflow' })}
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}

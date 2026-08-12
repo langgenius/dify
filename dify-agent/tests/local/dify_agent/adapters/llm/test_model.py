@@ -1,6 +1,7 @@
 import json
 import unittest
 from contextlib import asynccontextmanager
+from decimal import Decimal
 from typing import cast
 from unittest.mock import patch
 
@@ -186,6 +187,89 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_request_accumulates_complete_plugin_usage_across_model_rounds(self) -> None:
+        usages = [
+            make_usage(
+                prompt_tokens=10,
+                completion_tokens=2,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000050"),
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000060"),
+                total_price=Decimal("0.000110"),
+                latency=0.4,
+                time_to_first_token=0.1,
+                time_to_generate=0.3,
+            ),
+            make_usage(
+                prompt_tokens=20,
+                completion_tokens=3,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000100"),
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000090"),
+                total_price=Decimal("0.000190"),
+                latency=0.8,
+                time_to_first_token=0.2,
+                time_to_generate=0.6,
+            ),
+        ]
+        request_count = 0
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal request_count
+            usage = usages[request_count]
+            request_count += 1
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="done", tool_calls=[]),
+                        usage=usage,
+                    ),
+                )
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+            _ = await adapter.request(
+                [ModelRequest(parts=[UserPromptPart("first")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("second")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+
+        usage = adapter.accumulated_usage
+        self.assertEqual(request_count, 2)
+        self.assertTrue(events)
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 30)
+        self.assertEqual(usage.completion_tokens, 5)
+        self.assertEqual(usage.total_tokens, 35)
+        self.assertEqual(usage.prompt_price, Decimal("0.000150"))
+        self.assertEqual(usage.completion_price, Decimal("0.000150"))
+        self.assertEqual(usage.total_price, Decimal("0.000300"))
+        self.assertEqual(usage.currency, "USD")
+        self.assertAlmostEqual(usage.latency, 1.2)
+        self.assertEqual(usage.time_to_first_token, 0.2)
+        self.assertEqual(usage.time_to_generate, 0.6)
 
     async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
         messages = [

@@ -1,5 +1,6 @@
 import type { Collection, Tool } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import ToolItem from '../tool-item'
 
@@ -7,8 +8,17 @@ vi.mock('@/i18n-config/language', () => ({ getLanguage: () => 'en_US' }))
 vi.mock(
   '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool',
   () => ({
-    default: ({ onHide }: { onHide: () => void }) => (
-      <div data-testid="tool-detail">
+    default: ({
+      onHide,
+      showReadOnlySettingDetails,
+    }: {
+      onHide: () => void
+      showReadOnlySettingDetails?: boolean
+    }) => (
+      <div
+        data-testid="tool-detail"
+        data-show-readonly-setting-details={showReadOnlySettingDetails}
+      >
         <button onClick={onHide}>Close details</button>
       </div>
     ),
@@ -29,20 +39,31 @@ const tool = {
 } as Tool
 
 describe('ToolItem', () => {
-  it('opens and closes tool details', () => {
+  it('opens and closes tool details from the keyboard', async () => {
+    const user = userEvent.setup()
     render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} />)
 
-    fireEvent.click(screen.getByText('Tool label'))
-    expect(screen.getByTestId('tool-detail')).toBeInTheDocument()
+    const toolButton = screen.getByRole('button', { name: 'Tool label' })
+    toolButton.focus()
+    await user.keyboard('{Enter}')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close details' }))
+    expect(screen.getByTestId('tool-detail')).toBeInTheDocument()
+    expect(screen.getByTestId('tool-detail')).toHaveAttribute(
+      'data-show-readonly-setting-details',
+      'true',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close details' }))
     expect(screen.queryByTestId('tool-detail')).not.toBeInTheDocument()
   })
 
-  it('does not open tool details when disabled', () => {
+  it('does not open tool details when disabled', async () => {
+    const user = userEvent.setup()
     render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} disabled />)
 
-    fireEvent.click(screen.getByText('Tool label'))
+    const toolButton = screen.getByRole('button', { name: 'Tool label' })
+    expect(toolButton).toBeDisabled()
+    await user.click(toolButton)
 
     expect(screen.queryByTestId('tool-detail')).not.toBeInTheDocument()
   })

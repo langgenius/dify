@@ -5,11 +5,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { userProfileIdAtom } from '@/context/account-state'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
@@ -19,6 +24,8 @@ type OperationsDropdownProps = {
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
   openAccessConfig: () => void
+  stepByStepTourHighlightPart?: string
+  stepByStepTourOpen?: boolean
 }
 
 const OperationsDropdown = ({
@@ -27,11 +34,24 @@ const OperationsDropdown = ({
   handleExportPipeline,
   detectIsUsedByApp,
   openAccessConfig,
+  stepByStepTourHighlightPart,
+  stepByStepTourOpen,
 }: OperationsDropdownProps) => {
-  const [open, setOpen] = React.useState(false)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourOpen,
+  })
+  const open = operationsMenu.open
+  const setOpen = operationsMenu.onOpenChange
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
   const datasetACLCapabilities = React.useMemo(
     () =>
       getDatasetACLCapabilities(dataset.permission_keys, {
@@ -76,10 +96,21 @@ const OperationsDropdown = ({
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" popupClassName="min-w-[186px]">
+        <DropdownMenuContent
+          placement="bottom-end"
+          popupClassName="min-w-[186px]"
+          {...getStepByStepTourDropdownMenuContentProps({
+            highlightPart: stepByStepTourHighlightPart,
+            interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+          })}
+        >
           <Operations
             showEdit={datasetACLCapabilities.canEdit}
             showDelete={datasetACLCapabilities.canDelete}

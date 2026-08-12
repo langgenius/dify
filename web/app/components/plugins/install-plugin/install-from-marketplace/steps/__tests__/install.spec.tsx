@@ -1,7 +1,10 @@
+import type { ReactElement } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -64,9 +67,8 @@ const mockStopTaskStatus = vi.fn()
 const mockHandleInstallTaskStart = vi.fn()
 let mockPluginDeclaration: { manifest: { meta: { minimum_dify_version: string } } } | undefined
 let mockCanInstall = true
-const mockAppContextState = vi.hoisted(() => ({
-  langGeniusVersionInfoAtom: Symbol('langGeniusVersionInfoAtom'),
-  langGeniusVersionInfo: { current_version: '1.0.0' as string | null },
+const mockConsoleState = vi.hoisted(() => ({
+  langGeniusVersionInfo: { current_version: '1.0.0' },
 }))
 
 // Mock useCheckInstalled
@@ -78,30 +80,14 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.langGeniusVersionInfoAtom)
-      return mockAppContextState.langGeniusVersionInfo
-
-    throw new Error('Unexpected atom')
-  },
-}))
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo.current_version ?? null,
+    },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // Mock service hooks
 vi.mock('@/service/use-plugins', () => ({
@@ -130,7 +116,7 @@ vi.mock('../../../base/check-task-status', () => ({
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
   default: () => ({
     canInstallPlugin: true,
-    currentDifyVersion: mockAppContextState.langGeniusVersionInfo.current_version,
+    currentDifyVersion: mockConsoleState.langGeniusVersionInfo.current_version,
   }),
 }))
 
@@ -205,7 +191,7 @@ describe('Install Component (steps/install.tsx)', () => {
     mockIsLoading = false
     mockPluginDeclaration = undefined
     mockCanInstall = true
-    mockAppContextState.langGeniusVersionInfo = { current_version: '1.0.0' }
+    mockConsoleState.langGeniusVersionInfo = { current_version: '1.0.0' }
     mockInstallPackageFromMarketPlace.mockResolvedValue({
       all_installed: false,
       task_id: 'task-123',
@@ -319,7 +305,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should not show warning when dify version is compatible', () => {
-      mockAppContextState.langGeniusVersionInfo = { current_version: '2.0.0' }
+      mockConsoleState.langGeniusVersionInfo = { current_version: '2.0.0' }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '1.0.0' } },
       }
@@ -329,7 +315,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should show warning when dify version is incompatible', () => {
-      mockAppContextState.langGeniusVersionInfo = { current_version: '1.0.0' }
+      mockConsoleState.langGeniusVersionInfo = { current_version: '1.0.0' }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '2.0.0' } },
       }
@@ -787,7 +773,7 @@ describe('Install Component (steps/install.tsx)', () => {
     })
 
     it('should handle null current_version in langGeniusVersionInfo', () => {
-      mockAppContextState.langGeniusVersionInfo = { current_version: null as unknown as string }
+      mockConsoleState.langGeniusVersionInfo = { current_version: null as unknown as string }
       mockPluginDeclaration = {
         manifest: { meta: { minimum_dify_version: '1.0.0' } },
       }

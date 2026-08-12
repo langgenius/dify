@@ -90,6 +90,7 @@ function TargetEnvironmentSection() {
       </div>
       {hasEnvironmentOptions ? (
         <RadioGroup<string>
+          aria-label={t(($) => $['createGuide.target.environment'])}
           value={effectiveSelectedEnvironmentId}
           onValueChange={selectEnvironment}
           className="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2"

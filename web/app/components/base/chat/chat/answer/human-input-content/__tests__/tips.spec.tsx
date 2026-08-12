@@ -1,50 +1,19 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import Tips from '../tips'
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     email: 'test@example.com',
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 describe('Tips', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState.userProfile.email = 'test@example.com'
+    mockConsoleState.userProfile.email = 'test@example.com'
   })
 
   it('should render email tip in normal mode', () => {
@@ -56,7 +25,10 @@ describe('Tips', () => {
   })
 
   it('should render email tip in debug mode', () => {
-    render(<Tips showEmailTip={true} isEmailDebugMode={true} showDebugModeTip={false} />)
+    renderWithAccountProfile(
+      <Tips showEmailTip={true} isEmailDebugMode={true} showDebugModeTip={false} />,
+      { accountProfile: mockConsoleState.userProfile },
+    )
 
     expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
     expect(screen.queryByText('workflow.common.humanInputEmailTip')).not.toBeInTheDocument()

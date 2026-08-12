@@ -8,11 +8,12 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import SettingCog from '../../assets/setting-gear-mod.svg'
 import s from '../index.module.css'
@@ -82,6 +83,11 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   onSummaryIndexSettingChange,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
@@ -111,7 +117,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 size-4" />
+            <RiSearchEyeLine className="size-4" />
             {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -121,8 +127,10 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       }
       noHighlight={isInUpload && isNotUploadInEmptyDataset}
     >
-      <div className="flex flex-col gap-y-4">
-        <div className="flex gap-3">
+      <div className="@container/chunkfields flex flex-col gap-y-4">
+        {/* Container query, not a viewport breakpoint: three across at/above a
+            552px container, stacked one-per-row below (see inputs.tsx FormField). */}
+        <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
           <DelimiterInput
             value={segmentIdentifier}
             onChange={(e) => onSegmentIdentifierChange(e.target.value)}
@@ -150,7 +158,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 </span>
               </label>
             ))}
-            {showSummaryIndexSetting && IS_CE_EDITION && (
+            {showSummaryIndexSetting && isNonCloudEdition && (
               <div className="mt-3">
                 <SummaryIndexSetting
                   entry="create-document"
@@ -159,7 +167,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 />
               </div>
             )}
-            {IS_CE_EDITION && (
+            {isNonCloudEdition && (
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />
                 <div className="flex items-center py-0.5">

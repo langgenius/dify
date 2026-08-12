@@ -1,7 +1,6 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
 import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
@@ -97,7 +96,10 @@ Then(
     await expect
       .poll(
         async () => {
-          const env = (await getAgentComposerDraft(agentId)).agent_soul?.env
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const env = draft.agent_soul?.env
           const variable = env?.variables?.find(
             (item) => getEnvVariableKey(item) === agentBuilderFixedInputs.envPlainKey,
           )
@@ -126,7 +128,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -152,7 +154,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -178,7 +180,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
@@ -211,7 +213,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const variables = await getAgentEnvVariables(agentId)
+          const variables = await getAgentEnvVariables(this, agentId)
 
           return {
             importedValue: getAgentEnvVariableValue(

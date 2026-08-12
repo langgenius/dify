@@ -1,10 +1,18 @@
 import type { Plugin } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { expectLoadingButton } from '@/test/button'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum } from '../../types'
 import PluginMutationModal from '../index'
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),

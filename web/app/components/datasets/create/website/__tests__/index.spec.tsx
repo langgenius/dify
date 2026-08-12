@@ -5,9 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Website from '../index'
 
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -16,11 +16,10 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('../index.module.css', () => ({
   default: {
@@ -272,7 +271,7 @@ describe('Website', () => {
       const configButton = screen.getByTestId('no-data-config-button')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })

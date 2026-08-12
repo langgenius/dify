@@ -517,7 +517,6 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
-        patch("core.app.llm.quota.sessionmaker") as mock_sessionmaker,
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -527,7 +526,6 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
         )
 
     mock_deduct_credits.assert_not_called()
-    mock_sessionmaker.assert_not_called()
 
 
 def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> None:
@@ -546,7 +544,6 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
-        patch("core.app.llm.quota.sessionmaker") as mock_sessionmaker,
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -556,7 +553,6 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
         )
 
     mock_deduct_credits.assert_not_called()
-    mock_sessionmaker.assert_not_called()
 
 
 def test_ensure_llm_quota_available_wrapper_warns_and_delegates() -> None:

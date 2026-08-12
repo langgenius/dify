@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
@@ -7,17 +7,18 @@ let mockAppMode = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
 let mockIsRbacEnabled = true
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [] as string[],
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) =>
-  renderWithSystemFeatures(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
+      enable_app_deploy: false,
     },
   })
 
@@ -36,33 +37,16 @@ vi.mock('@/app/components/app/store', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    isCurrentWorkspaceEditor: false,
+  }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
 }))
@@ -199,6 +183,58 @@ describe('AppDetailSection', () => {
       expect(
         screen.queryByRole('link', { name: 'common.appMenus.promptEng' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should render access point navigation using its app route', () => {
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.accessPoint' })).toHaveAttribute(
+        'href',
+        '/app/app-1/access-point',
+      )
+      expect(
+        screen.queryByRole('link', { name: 'common.appMenus.apiAccess' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should render deploy navigation with app deploy ACL regardless of the legacy workspace role', () => {
+      // Arrange
+      mockAppMode = 'workflow'
+      mockAppPermissionKeys = [AppACLPermission.Deploy]
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.deploy' })).toHaveAttribute(
+        'href',
+        '/app/app-1/deploy',
+      )
+    })
+
+    it.each([
+      {
+        label: 'the app is not a workflow app',
+        mode: 'chat',
+        permissionKeys: [AppACLPermission.Deploy],
+      },
+      {
+        label: 'app deploy ACL permission is missing',
+        mode: 'workflow',
+        permissionKeys: [AppACLPermission.Monitor],
+      },
+    ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
+      // Arrange
+      mockAppMode = mode
+      mockAppPermissionKeys = permissionKeys
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.queryByRole('link', { name: 'common.appMenus.deploy' })).not.toBeInTheDocument()
     })
 
     it('should render resource access navigation when app access config permission is granted', () => {

@@ -1,6 +1,5 @@
 'use client'
-import type { CreateApiKeyResponse } from '@/models/app'
-import { XMarkIcon } from '@heroicons/react/20/solid'
+import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -11,7 +10,7 @@ import s from './style.module.css'
 type ISecretKeyGenerateModalProps = {
   isShow: boolean
   onClose: () => void
-  newKey?: CreateApiKeyResponse
+  newKey?: Pick<ApiKeyItem, 'token'>
   className?: string
 }
 
@@ -31,7 +30,7 @@ const SecretKeyGenerateModal = ({
     >
       <DialogContent
         className={cn(
-          'w-full max-w-[480px] overflow-hidden! border-none px-8 text-left align-middle',
+          'w-full max-w-120 overflow-hidden! border-none px-8 text-left align-middle',
           className,
         )}
       >
@@ -40,7 +39,14 @@ const SecretKeyGenerateModal = ({
         </DialogTitle>
 
         <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-          <XMarkIcon className="size-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="cursor-pointer border-none bg-transparent text-text-tertiary"
+            onClick={onClose}
+          >
+            <span aria-hidden className="i-heroicons-x-mark-20-solid size-6" />
+          </button>
         </div>
         <p className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">
           {t(($) => $['apiKeyModal.generateTips'], { ns: 'appApi' })}

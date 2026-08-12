@@ -130,7 +130,7 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
   default: () => <div data-testid="global-variable-panel">global-variable</div>,
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 

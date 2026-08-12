@@ -1,9 +1,11 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -12,9 +14,9 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -60,7 +62,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
@@ -292,7 +297,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                     showBatchModal={showBatchModal}
                     embedding={embedding}
                   />
-                  <Divider type="vertical" className="mx-3! h-[14px]! bg-divider-regular!" />
+                  <Divider type="vertical" className="mx-3! h-3.5! bg-divider-regular!" />
                 </>
               )}
             {documentDetail && (
@@ -313,7 +318,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className="w-[200px]!"
+              className="w-50!"
               canEdit={canEditDocument}
               canDownload={datasetACLCapabilities.canDocumentDownload}
               canDelete={datasetACLCapabilities.canDeleteFile}

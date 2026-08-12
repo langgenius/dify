@@ -23,7 +23,6 @@ import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
 import { forgotPassword } from './forgot-password/orpc.gen'
 import { form } from './form/orpc.gen'
-import { info } from './info/orpc.gen'
 import { init } from './init/orpc.gen'
 import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
@@ -32,6 +31,7 @@ import { logout } from './logout/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
+import { onboarding } from './onboarding/orpc.gen'
 import { ping } from './ping/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
@@ -79,7 +79,6 @@ const communityContract = {
   files,
   forgotPassword,
   form,
-  info,
   init,
   installedApps,
   instructionGenerate,
@@ -88,6 +87,7 @@ const communityContract = {
   notification,
   notion,
   oauth,
+  onboarding,
   ping,
   rag,
   refreshToken,

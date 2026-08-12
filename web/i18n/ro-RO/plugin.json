@@ -97,6 +97,7 @@
   "categorySingle.model": "Model",
   "categorySingle.tool": "Unealtă",
   "categorySingle.trigger": "Declanșator",
+  "clearSearch": "Șterge {{label}}",
   "debugInfo.title": "Depanare",
   "debugInfo.viewDocs": "Vizualizați documentele",
   "deprecated": "Încetat de a mai fi utilizat",

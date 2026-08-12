@@ -172,7 +172,7 @@ export function ReleaseHistoryRows({
     <>
       <ReleaseHistoryMobileRows releaseRows={releaseRows} onReleaseDeleted={onReleaseDeleted} />
       <div className="hidden pc:block">
-        <DetailTable className="min-w-[840px]">
+        <DetailTable className="min-w-210">
           <DetailTableHeader>
             <DetailTableRow>
               <DetailTableHead className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>

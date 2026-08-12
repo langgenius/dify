@@ -24,7 +24,7 @@ function DeploymentErrorDetails({ error }: { error?: EnvironmentDeployment['erro
       <div className="system-xs-medium-uppercase text-text-tertiary">
         {t(($) => $['deployTab.errorMessage'])}
       </div>
-      <div className="mt-1 system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
+      <div className="mt-1 system-sm-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
         {message}
       </div>
       {metadata.length > 0 && (
