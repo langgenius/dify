@@ -639,9 +639,7 @@ class TestWorkspaceRbacGuards:
             ),
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist"
-            ) as mock_replace,
+            patch("controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist") as mock_replace,
         ):
             with pytest.raises(Forbidden):
                 rbac_mod.RBACDatasetWhitelistApi().put(dataset_id="ds-1")
