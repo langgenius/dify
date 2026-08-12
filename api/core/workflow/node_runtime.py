@@ -20,7 +20,7 @@ from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_manager import ModelInstance
+from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -49,6 +49,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
     LLMPollingResult,
+    LLMPollingStatus,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -298,6 +299,27 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
             raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
 
         self._plugin_model_runtime = plugin_model_runtime
+        self._polling_quota_reservation = None
+
+    def _settle_polling_quota(self, polling_result: LLMPollingResult) -> LLMPollingResult:
+        reservation = self._polling_quota_reservation
+        if reservation is None or polling_result.status == LLMPollingStatus.RUNNING:
+            return polling_result
+
+        try:
+            if polling_result.status == LLMPollingStatus.SUCCEEDED:
+                if polling_result.result is None:
+                    raise ValueError("A successful LLM polling result must include a model result.")
+                reservation.commit(polling_result.result.usage)
+            else:
+                reservation.release()
+        except Exception:
+            QuotaManagedModelInstance.release_quota_safely(reservation)
+            raise
+        finally:
+            self._polling_quota_reservation = None
+
+        return polling_result
 
     @override
     def start_llm_polling(
@@ -309,16 +331,30 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
-        return self._plugin_model_runtime.start_llm_polling(
-            provider=self.provider,
-            model=self.model_name,
-            credentials=self._model_instance.credentials,
-            prompt_messages=prompt_messages,
-            model_parameters=dict(model_parameters),
-            tools=tools,
-            stop=stop,
-            json_schema=dict(json_schema) if json_schema is not None else None,
-        )
+        if self._polling_quota_reservation is not None:
+            self._polling_quota_reservation.release()
+            self._polling_quota_reservation = None
+
+        if isinstance(self._model_instance, QuotaManagedModelInstance):
+            self._polling_quota_reservation = self._model_instance.reserve_quota()
+
+        try:
+            polling_result = self._plugin_model_runtime.start_llm_polling(
+                provider=self.provider,
+                model=self.model_name,
+                credentials=self._model_instance.credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=dict(model_parameters),
+                tools=tools,
+                stop=stop,
+                json_schema=dict(json_schema) if json_schema is not None else None,
+            )
+            return self._settle_polling_quota(polling_result)
+        except Exception:
+            if self._polling_quota_reservation is not None:
+                QuotaManagedModelInstance.release_quota_safely(self._polling_quota_reservation)
+                self._polling_quota_reservation = None
+            raise
 
     @override
     def check_llm_polling(
@@ -326,12 +362,13 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         *,
         plugin_state: Mapping[str, JsonValue],
     ) -> LLMPollingResult:
-        return self._plugin_model_runtime.check_llm_polling(
+        polling_result = self._plugin_model_runtime.check_llm_polling(
             provider=self.provider,
             model=self.model_name,
             credentials=self._model_instance.credentials,
             plugin_state=dict(plugin_state),
         )
+        return self._settle_polling_quota(polling_result)
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):

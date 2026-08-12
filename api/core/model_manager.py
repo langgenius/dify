@@ -1,19 +1,19 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
-from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload
+from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
 
 from configs import dify_config
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
-from core.errors.error import ProviderTokenNotInitError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.callbacks.base_callback import Callback
-from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
@@ -442,6 +442,116 @@ class ModelInstance:
         )
 
 
+class QuotaManagedModelInstance(ModelInstance):
+    """A system-hosted LLM instance that owns quota settlement per invocation."""
+
+    def reserve_quota(self):
+        from core.app.llm.quota import reserve_llm_quota_for_model
+
+        return reserve_llm_quota_for_model(
+            tenant_id=self.provider_model_bundle.configuration.tenant_id,
+            provider=self.provider,
+            model=self.model_name,
+        )
+
+    @staticmethod
+    def release_quota_safely(reservation) -> None:
+        try:
+            reservation.release()
+        except Exception:
+            logger.exception("Failed to release LLM quota reservation")
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        stream: Literal[True] = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Generator: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        stream: Literal[False] = False,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        stream: bool = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Union[LLMResult, Generator]: ...
+
+    @override
+    def invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
+        stream: bool = True,
+        callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> Union[LLMResult, Generator]:
+        invoke = super().invoke_llm
+        invoke_kwargs = {
+            "prompt_messages": list(prompt_messages),
+            "model_parameters": model_parameters,
+            "tools": tools,
+            "stop": list(stop) if stop else None,
+            "callbacks": callbacks,
+            "request_metadata": request_metadata,
+        }
+        if stream:
+            return self._invoke_llm_stream(invoke=invoke, invoke_kwargs=invoke_kwargs)
+
+        reservation = self.reserve_quota()
+        try:
+            response = invoke(stream=False, **invoke_kwargs)
+            if isinstance(response, Generator):
+                raise TypeError("Non-streaming LLM invocation returned a generator.")
+            reservation.commit(response.usage)
+            return response
+        finally:
+            self.release_quota_safely(reservation)
+
+    def _invoke_llm_stream(self, *, invoke: Callable[..., Any], invoke_kwargs: dict[str, Any]) -> Generator:
+        reservation = self.reserve_quota()
+        usage: LLMUsage | None = None
+        try:
+            response = invoke(stream=True, **invoke_kwargs)
+            if not isinstance(response, Generator):
+                raise TypeError("Streaming LLM invocation did not return a generator.")
+
+            for chunk in response:
+                chunk_usage = getattr(getattr(chunk, "delta", None), "usage", None)
+                if chunk_usage is not None:
+                    usage = chunk_usage
+                if reservation.commit_before_delivery:
+                    reservation.commit(usage)
+                yield chunk
+
+            if not reservation.commit_before_delivery:
+                reservation.commit(usage)
+        finally:
+            self.release_quota_safely(reservation)
+
+
 class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
@@ -472,6 +582,43 @@ class ModelManager:
     def for_tenant(cls, tenant_id: str, user_id: str | None = None) -> "ModelManager":
         return cls(provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id))
 
+    @staticmethod
+    def _validate_system_model_access(
+        provider_model_bundle: ProviderModelBundle,
+        *,
+        model_type: ModelType,
+        model: str,
+    ) -> None:
+        configuration = provider_model_bundle.configuration
+        if configuration.using_provider_type != ProviderType.SYSTEM:
+            return
+
+        # Hosted allowlists retain the existing comma-separated format. Model names
+        # are matched exactly; model-type-specific entries will be introduced later.
+        quota_configuration = next(
+            (
+                quota
+                for quota in configuration.system_configuration.quota_configurations
+                if quota.quota_type == configuration.system_configuration.current_quota_type
+            ),
+            None,
+        )
+        if quota_configuration is None or not quota_configuration.restrict_models:
+            return
+        if any(restricted_model.model == model for restricted_model in quota_configuration.restrict_models):
+            return
+
+        raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
+
+    @staticmethod
+    def _model_instance_class(provider_model_bundle: ProviderModelBundle, model_type: ModelType) -> type[ModelInstance]:
+        if (
+            model_type == ModelType.LLM
+            and provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM
+        ):
+            return QuotaManagedModelInstance
+        return ModelInstance
+
     def get_model_instance(
         self,
         tenant_id: str,
@@ -493,17 +640,19 @@ class ModelManager:
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
+        self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
+        model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
 
         cred_cache_key = (tenant_id, provider, model_type.value, model)
 
         if cred_cache_key in self._credentials_cache:
-            return ModelInstance(
+            return model_instance_class(
                 provider_model_bundle,
                 model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
             )
 
-        ret = ModelInstance(provider_model_bundle, model)
+        ret = model_instance_class(provider_model_bundle, model)
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
         return ret
