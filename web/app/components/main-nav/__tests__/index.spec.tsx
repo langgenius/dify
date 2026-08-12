@@ -20,7 +20,6 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -493,7 +492,7 @@ const consoleState: MainNavConsoleState = {
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
-    plan: Plan.team,
+    plan: 'team',
     credits: 7500,
     role: 'owner',
   },
@@ -602,7 +601,7 @@ describe('MainNav', () => {
       {
         id: 'workspace-1',
         name: 'Solar Studio',
-        plan: Plan.team,
+        plan: 'team',
         status: 'normal',
         created_at: 0,
         current: true,
@@ -610,7 +609,7 @@ describe('MainNav', () => {
       {
         id: 'workspace-2',
         name: 'Evan Workspace',
-        plan: Plan.sandbox,
+        plan: 'sandbox',
         status: 'normal',
         created_at: 0,
         current: false,
@@ -632,9 +631,8 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: false,
-      isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -667,9 +665,9 @@ describe('MainNav', () => {
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
-    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+    expect(screen.getAllByText('team')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
-      Plan.team,
+      'team',
     )
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
@@ -761,9 +759,8 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: true,
-      isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     } as ProviderContextState)
 
     renderMainNav(defaultMainNavSystemFeatures, {
@@ -774,7 +771,7 @@ describe('MainNav', () => {
 
     expect(await screen.findByText('EDU')).toBeInTheDocument()
     expect(screen.getByText('evan@example.com')).toBeInTheDocument()
-    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+    expect(screen.getAllByText('team')).toHaveLength(1)
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
@@ -1222,7 +1219,7 @@ describe('MainNav', () => {
       ...consoleState,
       currentWorkspace: {
         ...consoleState.currentWorkspace,
-        plan: Plan.sandbox,
+        plan: 'sandbox',
       },
     }
 
@@ -1237,7 +1234,7 @@ describe('MainNav', () => {
       ...consoleState,
       currentWorkspace: {
         ...consoleState.currentWorkspace,
-        plan: Plan.professional,
+        plan: 'professional',
       },
     }
 

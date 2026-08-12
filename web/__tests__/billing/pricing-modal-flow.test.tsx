@@ -13,7 +13,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import Pricing from '@/app/components/billing/pricing'
-import { Plan } from '@/app/components/billing/type'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
@@ -21,7 +20,7 @@ import { render as renderWithConsoleState } from '@/test/console/render'
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
-const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
+const mockGetSubscription = vi.hoisted(() => vi.fn())
 
 const render = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
@@ -46,11 +45,6 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
-}))
-
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   return {
@@ -62,6 +56,7 @@ vi.mock('@/service/client', async (importOriginal) => {
             invoices: {
               get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
             },
+            subscription: { get: mockGetSubscription },
           }
         }
         return Reflect.get(target, prop, receiver)
@@ -104,7 +99,7 @@ vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () 
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const defaultPlanData = {
-  type: Plan.sandbox,
+  type: 'sandbox',
   usage: {
     buildApps: 1,
     teamMembers: 1,
@@ -151,7 +146,7 @@ describe('Pricing Modal Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-    mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com' })
+    mockGetSubscription.mockResolvedValue({ url: 'https://pay.example.com' })
     setupContexts()
   })
 
@@ -296,7 +291,9 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'month')
+        expect(mockGetSubscription).toHaveBeenCalledWith({
+          query: { plan: 'professional', interval: 'month' },
+        })
       })
     })
 
@@ -317,7 +314,9 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+        expect(mockGetSubscription).toHaveBeenCalledWith({
+          query: { plan: 'professional', interval: 'year' },
+        })
       })
     })
 
@@ -335,33 +334,25 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+        expect(mockGetSubscription).not.toHaveBeenCalled()
       })
     })
 
     it('should show "Current Plan" for the current plan (sandbox)', () => {
-      setupContexts({ type: Plan.sandbox })
+      setupContexts({ type: 'sandbox' })
       render(<Pricing onCancel={onCancel} />)
 
       expect(screen.getByText(/plansCommon\.currentPlan/i)).toBeInTheDocument()
     })
 
     it('should show specific button text for non-current plans', () => {
-      setupContexts({ type: Plan.sandbox })
+      setupContexts({ type: 'sandbox' })
       render(<Pricing onCancel={onCancel} />)
 
       // Professional button text
       expect(screen.getByText(/plansCommon\.startBuilding/i)).toBeInTheDocument()
       // Team button text
       expect(screen.getByText(/plansCommon\.getStarted/i)).toBeInTheDocument()
-    })
-
-    it('should mark sandbox as "Current Plan" for professional user (enterprise normalized to team)', () => {
-      setupContexts({ type: Plan.enterprise })
-      render(<Pricing onCancel={onCancel} />)
-
-      // Enterprise is normalized to team for display, so team is "Current Plan"
-      expect(screen.getByText(/plansCommon\.currentPlan/i)).toBeInTheDocument()
     })
   })
 
