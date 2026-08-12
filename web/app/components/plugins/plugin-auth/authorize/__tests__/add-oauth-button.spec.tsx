@@ -109,6 +109,18 @@ describe('AddOAuthButton', () => {
     expect(screen.getByText('Use OAuth')).toBeInTheDocument()
   })
 
+  it('should expose the default trigger to an external overlay owner', () => {
+    renderWithAccountProfile(
+      <AddOAuthButton
+        pluginPayload={basePayload}
+        buttonText="Use OAuth"
+        renderTrigger={({ trigger }) => <div data-testid="external-owner">{trigger}</div>}
+      />,
+    )
+
+    expect(within(screen.getByTestId('external-owner')).getByText('Use OAuth')).toBeInTheDocument()
+  })
+
   it('should open OAuth settings modal when settings icon clicked', () => {
     renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 

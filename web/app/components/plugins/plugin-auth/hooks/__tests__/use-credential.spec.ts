@@ -159,6 +159,12 @@ describe('use-credential hooks', () => {
         `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/client-schema`,
       )
     })
+
+    it('should disable the service query when OAuth data is provided by the caller', () => {
+      renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload, false))
+
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith('')
+    })
   })
 
   describe('useInvalidPluginOAuthClientSchemaHook', () => {

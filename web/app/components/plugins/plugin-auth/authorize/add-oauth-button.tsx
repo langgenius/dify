@@ -34,6 +34,7 @@ export type AddOAuthButtonProps = {
     disabled?: boolean
     isConfigured: boolean
     onClick: () => void
+    trigger: React.ReactNode
   }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
@@ -71,7 +72,7 @@ const AddOAuthButton = ({
     PermissionLevel.onlyMe,
   )
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
-  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
+  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload, !oAuthData)
   const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData) return oAuthData
 
@@ -224,70 +225,71 @@ const AddOAuthButton = ({
     }
   }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
 
+  const trigger = isConfigured ? (
+    <div className={cn('flex w-full', className)}>
+      <Button
+        variant={buttonVariant}
+        className={cn(
+          'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+          buttonLeftClassName,
+        )}
+        disabled={disabled}
+        onClick={openVisibilityModal}
+      >
+        <div className="truncate">{buttonText}</div>
+        {is_oauth_custom_client_enabled && (
+          <Badge
+            className={cn(
+              'mr-0.5',
+              buttonVariant === 'primary' &&
+                'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
+            )}
+          >
+            {t(($) => $['auth.custom'], { ns: 'plugin' })}
+          </Badge>
+        )}
+      </Button>
+      <div
+        className={cn(
+          'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
+          dividerClassName,
+        )}
+      ></div>
+      <Button
+        variant={buttonVariant}
+        aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+        className={cn(
+          'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
+          buttonRightClassName,
+        )}
+        disabled={disabled}
+        onClick={openOAuthSettings}
+      >
+        <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
+      </Button>
+    </div>
+  ) : (
+    <Button
+      variant={buttonVariant}
+      onClick={openVisibilityModal}
+      disabled={disabled}
+      className="w-full"
+    >
+      <span className="i-ri-equalizer-2-line size-4" />
+      {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
+    </Button>
+  )
+
   return (
     <>
-      {renderTrigger?.({
-        disabled,
-        isConfigured,
-        onClick: openVisibilityModal,
-      })}
-      {!renderTrigger && isConfigured && (
-        <div className={cn('flex w-full', className)}>
-          <Button
-            variant={buttonVariant}
-            className={cn(
-              'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
-              buttonLeftClassName,
-            )}
-            disabled={disabled}
-            onClick={openVisibilityModal}
-          >
-            <div className="truncate">{buttonText}</div>
-            {is_oauth_custom_client_enabled && (
-              <Badge
-                className={cn(
-                  'mr-0.5',
-                  buttonVariant === 'primary' &&
-                    'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
-                )}
-              >
-                {t(($) => $['auth.custom'], { ns: 'plugin' })}
-              </Badge>
-            )}
-          </Button>
-          <div
-            className={cn(
-              'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
-              dividerClassName,
-            )}
-          ></div>
-          <Button
-            variant={buttonVariant}
-            aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
-            className={cn(
-              'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
-              buttonRightClassName,
-            )}
-            disabled={disabled}
-            onClick={() => {
-              openOAuthSettings()
-            }}
-          >
-            <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
-          </Button>
-        </div>
-      )}
-      {!renderTrigger && !isConfigured && (
-        <Button
-          variant={buttonVariant}
-          onClick={openVisibilityModal}
-          disabled={disabled}
-          className="w-full"
-        >
-          <span className="i-ri-equalizer-2-line size-4" />
-          {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
-        </Button>
-      )}
+      {renderTrigger
+        ? renderTrigger({
+            disabled,
+            isConfigured,
+            onClick: openVisibilityModal,
+            trigger,
+          })
+        : trigger}
       {isOAuthSettingsMounted && (
         <OAuthClientSettings
           open={isOAuthSettingsOpen}
