@@ -1,7 +1,7 @@
 'use client'
 
 import type { FormEvent } from 'react'
-import type { GoldenQuestionDraft } from './types'
+import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -41,6 +41,7 @@ function errorStatus(error: unknown): number | undefined {
 }
 
 export function GoldenQuestionDialog({
+  evidenceOptions = [],
   error,
   initialValue,
   knowledgeSpaceId,
@@ -50,6 +51,7 @@ export function GoldenQuestionDialog({
   open,
   pending = false,
 }: {
+  evidenceOptions?: readonly GoldenQuestionEvidenceOption[]
   error?: string
   initialValue: GoldenQuestionDraft
   knowledgeSpaceId: string
@@ -113,7 +115,12 @@ export function GoldenQuestionDialog({
     }
   }
 
-  const candidates = matchMutation.data?.candidates ?? []
+  const candidatesByNodeId = new Map<string, GoldenQuestionEvidenceOption>(
+    evidenceOptions.map((candidate) => [candidate.node_id, candidate]),
+  )
+  for (const candidate of matchMutation.data?.candidates ?? [])
+    candidatesByNodeId.set(candidate.node_id, candidate)
+  const candidates = [...candidatesByNodeId.values()]
   const toggleEvidence = (nodeId: string) =>
     setExpectedEvidenceIds((current) =>
       current.includes(nodeId) ? current.filter((id) => id !== nodeId) : [...current, nodeId],
@@ -223,7 +230,7 @@ export function GoldenQuestionDialog({
                     : t(($) => $.unknownError)}
                 </FieldError>
               )}
-              {matchMutation.isSuccess && candidates.length === 0 && (
+              {matchMutation.isSuccess && (matchMutation.data?.candidates.length ?? 0) === 0 && (
                 <p className="mt-2 body-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}
                 </p>
@@ -249,8 +256,12 @@ export function GoldenQuestionDialog({
                         <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
                           {candidate.section_path.join(' / ') ||
                             t(($) => $['newKnowledge.qualityPage.evidence'])}
-                          {' · '}
-                          {Math.round(candidate.score * 100)}%
+                          {candidate.score !== undefined && (
+                            <>
+                              {' · '}
+                              {Math.round(candidate.score * 100)}%
+                            </>
+                          )}
                         </span>
                       </span>
                     </label>

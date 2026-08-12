@@ -30,6 +30,7 @@ const apiMock = vi.hoisted(() => ({
   fetchNextTasks: vi.fn(),
   fetchNextTraces: vi.fn(),
   getTraceEvidence: vi.fn(),
+  matchEvidence: vi.fn(),
   researchDetail: undefined as Record<string, unknown> | undefined,
   researchDetailError: false,
   researchDetailPending: false,
@@ -160,6 +161,11 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           goldenQuestions: {
+            evidenceMatches: {
+              post: {
+                mutationOptions: () => ({ mutationFn: apiMock.matchEvidence }),
+              },
+            },
             get: {
               key: () => ['quality', 'golden'],
             },
@@ -273,6 +279,7 @@ describe('RetrievalTestPage', () => {
     apiMock.documentReferences = {}
     apiMock.evidence = undefined
     apiMock.getTraceEvidence.mockResolvedValue({ data: [] })
+    apiMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
     apiMock.partials = []
     apiMock.traceDetail = undefined
     apiMock.traces = []
@@ -1298,7 +1305,7 @@ describe('RetrievalTestPage', () => {
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
-  it('invalidates the quality list after keeping a golden question', async () => {
+  it('lets the user select retrieved evidence before keeping a golden question', async () => {
     apiMock.traces = [
       {
         completed: true,
@@ -1336,6 +1343,39 @@ describe('RetrievalTestPage', () => {
       }),
     )
 
+    const dialog = await screen.findByRole('dialog', {
+      name: 'dataset.newKnowledge.qualityPage.promoteTitle',
+    })
+    expect(apiMock.createGolden).not.toHaveBeenCalled()
+    expect(
+      within(dialog).getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+    ).toHaveValue('What is useEffect?')
+    await user.click(
+      within(dialog).getByText('useEffect synchronizes a component with an external system.'),
+    )
+    await user.type(
+      within(dialog).getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'The answer must cite the retrieved useEffect evidence.',
+    )
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.promote',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.createGolden).toHaveBeenCalledWith({
+        body: {
+          annotation: 'The answer must cite the retrieved useEffect evidence.',
+          evidence_text: '',
+          expected_evidence_ids: ['chunk-1'],
+          match_policy: 'all',
+          question: 'What is useEffect?',
+          tags: ['retrieval-test'],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
     await waitFor(() =>
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['quality', 'golden'],

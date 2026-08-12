@@ -6,6 +6,7 @@ import type {
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
+import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './quality/types'
 import type {
   RetrievalEvidence,
   RetrievalTestMode,
@@ -27,6 +28,7 @@ import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
+import { GoldenQuestionDialog } from './quality/golden-question-dialog'
 import {
   extractRetrievalEvidence,
   extractStreamError,
@@ -69,11 +71,38 @@ type ComposerDraft = {
 
 type QualityDecision = 'bad-case' | 'golden'
 
+type GoldenQuestionPromotion = {
+  evidenceOptions: GoldenQuestionEvidenceOption[]
+  resultKey: string
+  value: GoldenQuestionDraft
+}
+
 const retrievalTestBadCaseReason = 'retrieval-miss'
 
 const researchStageOrder = ['planning', 'retrieving', 'analyzing', 'generating'] as const
 type ResearchStage = (typeof researchStageOrder)[number]
 const runRetrievalHotkey = 'Mod+Enter' satisfies Hotkey
+
+function goldenQuestionEvidenceOptions(
+  evidence: readonly RetrievalEvidence[],
+): GoldenQuestionEvidenceOption[] {
+  const options = new Map<string, GoldenQuestionEvidenceOption>()
+  for (const item of evidence) {
+    if (!item.chunkId) continue
+    const sectionPath = item.documentName
+      ? item.title === item.documentName
+        ? [item.documentName]
+        : [item.documentName, item.title]
+      : [item.title]
+    options.set(item.chunkId, {
+      node_id: item.chunkId,
+      ...(item.score === undefined ? {} : { score: item.score }),
+      section_path: sectionPath,
+      text: item.text,
+    })
+  }
+  return [...options.values()]
+}
 
 function timeValue(value: number) {
   return value < 10_000_000_000 ? value * 1000 : value
@@ -1065,6 +1094,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [researchExpanded, setResearchExpanded] = useState<Record<string, boolean>>({})
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
+  const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
+  const [goldenPromotionError, setGoldenPromotionError] = useState<string>()
   const [showAll, setShowAll] = useState(false)
   const [selectedCitation, setSelectedCitation] = useState<{
     citationIndex: number
@@ -1546,40 +1577,71 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
 
   const saveQualityDecision = async (decision: QualityDecision) => {
     if (!resultKey || !selectedQuery) return
+    if (decision === 'golden') {
+      setGoldenPromotionError(undefined)
+      setGoldenPromotion({
+        evidenceOptions: goldenQuestionEvidenceOptions(currentEvidence),
+        resultKey,
+        value: {
+          annotation: '',
+          evidenceText: '',
+          expectedEvidenceIds: [],
+          matchPolicy: 'all',
+          question: selectedQuery,
+          tags: ['retrieval-test'],
+        },
+      })
+      return
+    }
     setQualityPendingKey(resultKey)
     try {
-      if (decision === 'bad-case') {
-        if (!selectedTraceId) {
-          toast.error(t(($) => $.unknownError))
-          return
-        }
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
-          body: {
-            reason: retrievalTestBadCaseReason,
-            tags: ['retrieval-test'],
-            trace_id: selectedTraceId,
-          },
-          params: { control_space_id: knowledgeSpaceId },
-        })
-      } else {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
-          body: {
-            annotation: selectedQuery,
-            question: selectedQuery,
-            tags: ['retrieval-test'],
-          },
-          params: { control_space_id: knowledgeSpaceId },
-        })
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
-            input: { params: { control_space_id: knowledgeSpaceId } },
-            type: 'infinite',
-          }),
-        })
+      if (!selectedTraceId) {
+        toast.error(t(($) => $.unknownError))
+        return
       }
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
+        body: {
+          reason: retrievalTestBadCaseReason,
+          tags: ['retrieval-test'],
+          trace_id: selectedTraceId,
+        },
+        params: { control_space_id: knowledgeSpaceId },
+      })
       setQualityDecisions((current) => ({ ...current, [resultKey]: decision }))
     } catch {
       toast.error(t(($) => $.unknownError))
+    } finally {
+      setQualityPendingKey(undefined)
+    }
+  }
+
+  const submitGoldenPromotion = async (draft: GoldenQuestionDraft) => {
+    if (!goldenPromotion) return
+    const promotion = goldenPromotion
+    setGoldenPromotionError(undefined)
+    setQualityPendingKey(promotion.resultKey)
+    try {
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
+        body: {
+          annotation: draft.annotation,
+          evidence_text: draft.evidenceText,
+          expected_evidence_ids: draft.expectedEvidenceIds,
+          match_policy: draft.matchPolicy,
+          question: draft.question,
+          tags: draft.tags,
+        },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+          input: { params: { control_space_id: knowledgeSpaceId } },
+          type: 'infinite',
+        }),
+      })
+      setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
+      setGoldenPromotion(undefined)
+    } catch {
+      setGoldenPromotionError(t(($) => $.unknownError))
     } finally {
       setQualityPendingKey(undefined)
     }
@@ -2057,6 +2119,25 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           )}
         </section>
       </div>
+      {goldenPromotion && (
+        <GoldenQuestionDialog
+          key={goldenPromotion.resultKey}
+          evidenceOptions={goldenPromotion.evidenceOptions}
+          error={goldenPromotionError}
+          initialValue={goldenPromotion.value}
+          knowledgeSpaceId={knowledgeSpaceId}
+          mode="promote"
+          open
+          pending={qualityPendingKey === goldenPromotion.resultKey}
+          onOpenChange={(open) => {
+            if (!open) {
+              setGoldenPromotion(undefined)
+              setGoldenPromotionError(undefined)
+            }
+          }}
+          onSubmit={submitGoldenPromotion}
+        />
+      )}
     </main>
   )
 }
