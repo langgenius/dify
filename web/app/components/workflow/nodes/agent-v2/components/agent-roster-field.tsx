@@ -257,7 +257,7 @@ function AgentRosterDrawer({
                     <Button
                       variant="secondary"
                       size="medium"
-                      className="min-w-0 flex-1 gap-1.5 px-3"
+                      className="min-w-0 flex-1 px-3"
                       loading={isCopyPending}
                       onClick={onMakeCopy}
                     >

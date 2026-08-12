@@ -13,7 +13,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
 
   const triggerElement = (
     <Button variant="primary" className="w-full">
-      <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+      <span aria-hidden className="i-ri-add-line size-4" />
       {t(($) => $['nodes.dataSource.add'], { ns: 'workflow' })}
     </Button>
   )

@@ -59,6 +59,7 @@ function AddAccessSubjectPopover({
     setOpen(nextOpen)
   }, [])
 
+  const addExceptionLabel = t(($) => $['accessRule.addException'], { ns: 'permission' })
   const addLabel = t(($) => $['operation.add'], { ns: 'common' })
   const addedLabel = t(($) => $['operation.added'], { ns: 'common' })
 
@@ -68,7 +69,7 @@ function AddAccessSubjectPopover({
         render={
           <Button variant="primary" size="medium">
             <span className="i-ri-add-line size-3.5" aria-hidden />
-            <span>{addLabel}</span>
+            <span>{addExceptionLabel}</span>
           </Button>
         }
       />

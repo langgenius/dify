@@ -59,7 +59,7 @@ const Add = ({ nodeId, nodeData, sourceHandle, isParallel, isFailBranch }: AddPr
       size="large"
       className="bg-dropzone-bg hover:bg-dropzone-bg-hover relative w-full justify-start rounded-lg border border-dashed border-divider-regular px-2 text-xs text-text-placeholder data-popup-open:bg-components-dropzone-bg-alt!"
     >
-      <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+      <div className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
         <RiAddLine aria-hidden className="size-3" />
       </div>
       <div className="flex items-center uppercase">{tip}</div>

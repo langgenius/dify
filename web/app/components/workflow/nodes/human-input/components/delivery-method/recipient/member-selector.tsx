@@ -39,7 +39,7 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
             className="w-full justify-between data-popup-open:bg-state-accent-hover"
             variant="ghost-accent"
           >
-            <RiContactsBookLine className="mr-1 size-4" />
+            <RiContactsBookLine className="size-4" />
             <div>
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`], {
                 ns: 'workflow',

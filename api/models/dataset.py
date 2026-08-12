@@ -736,7 +736,11 @@ class Document(Base):
                 select(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
                 .where(
-                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                    DatasetMetadata.tenant_id == self.tenant_id,
+                    DatasetMetadata.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.tenant_id == self.tenant_id,
+                    DatasetMetadataBinding.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.document_id == self.id,
                 )
             ).all()
             metadata_list: list[DocMetadataDetailItem] = []
@@ -919,10 +923,10 @@ class DocumentSegment(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    position: Mapped[int]
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    word_count: Mapped[int]
-    tokens: Mapped[int]
+    word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False)
 
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields

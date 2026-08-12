@@ -7,7 +7,7 @@ from uuid import uuid4
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from controllers.console.datasets.data_source import DataSourceNotionListApi
+from controllers.console.datasets.data_source import DataSourceNotionListApi, DataSourceNotionListQuery
 from models import Account
 from models.dataset import Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -78,7 +78,11 @@ def test_notion_page_is_marked_bound_from_persisted_document(
         ),
     ):
         response, status = unwrap(DataSourceNotionListApi().get)(
-            DataSourceNotionListApi(), db_session_with_containers, tenant_id, account
+            DataSourceNotionListApi(),
+            DataSourceNotionListQuery(credential_id="c1", dataset_id=dataset_id),
+            db_session_with_containers,
+            tenant_id,
+            account,
         )
 
     assert status == 200

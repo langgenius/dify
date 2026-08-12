@@ -32,6 +32,7 @@ def test_file_upload_config_returns_console_limits(
     assert response.status_code == 200
     assert response.json == {
         "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
+        "knowledge_file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
         "batch_count_limit": dify_config.UPLOAD_FILE_BATCH_LIMIT,
         "file_upload_limit": dify_config.BATCH_UPLOAD_LIMIT,
         "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,

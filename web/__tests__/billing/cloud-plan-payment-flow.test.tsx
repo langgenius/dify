@@ -16,12 +16,12 @@ import { ALL_PLANS } from '@/app/components/billing/config'
 import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
 import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { Plan } from '@/app/components/billing/type'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockConsoleState: Record<string, unknown> = {}
 const mockFetchSubscriptionUrls = vi.fn()
-const mockInvoices = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
@@ -34,16 +34,6 @@ vi.mock('@/context/workspace-state', async () => {
 // ─── Service mocks ───────────────────────────────────────────────────────────
 vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    billing: {
-      invoices: {
-        get: () => mockInvoices(),
-      },
-    },
-  },
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -78,11 +68,13 @@ const renderCloudPlanItem = ({
   planRange = PlanRange.monthly,
   canPay = true,
 }: RenderCloudPlanItemOptions = {}) => {
+  const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
       <ToastHost timeout={0} />
       <CloudPlanItem currentPlan={currentPlan} plan={plan} planRange={planRange} canPay={canPay} />
     </>,
+    { wrapper },
   )
 }
 
@@ -96,7 +88,6 @@ describe('Cloud Plan Payment Flow', () => {
     toast.dismiss()
     setupConsoleState()
     mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://pay.example.com/checkout' })
-    mockInvoices.mockResolvedValue({ url: 'https://billing.example.com/invoices' })
   })
 
   // ─── 1. Plan Display ────────────────────────────────────────────────────

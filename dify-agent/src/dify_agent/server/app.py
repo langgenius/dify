@@ -8,11 +8,10 @@ runtime. Redis persists run records and per-run event streams with configured
 retention only; it is not used as a job queue. Agenton layers and providers
 stay state-only: they borrow the lifespan-owned clients through the runner and
 receive runtime-backend and Shell settings through provider construction rather
-than reading environment variables themselves. The standard server always mounts the
-HTTP Agent Stub router and additionally starts the optional grpclib Agent Stub
-server when ``DIFY_AGENT_STUB_API_BASE_URL`` uses ``grpc://``. Process-level
-Logfire instrumentation is configured at app construction time and only exports
-remotely when Logfire's default environment configuration provides a token.
+than reading environment variables themselves. The standard server mounts the
+HTTP Agent Stub router. Process-level Logfire instrumentation is configured at
+app construction time and only exports remotely when Logfire's default
+environment configuration provides a token.
 """
 
 from collections.abc import AsyncGenerator
@@ -23,8 +22,6 @@ from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
-from dify_agent.agent_stub.protocol.agent_stub import parse_agent_stub_endpoint
-from dify_agent.agent_stub.server.grpc_runtime import start_agent_stub_grpc_server
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
@@ -34,9 +31,9 @@ from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.workspace_files import create_workspace_files_router
+from dify_agent.server.routes.binding_files import create_binding_files_router
 from dify_agent.server.execution_bindings import ExecutionBindingService
-from dify_agent.server.workspace_files import AgentStubWorkspaceFileUploader, WorkspaceFileService
+from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -48,8 +45,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
-        # Runtime receives only this callable boundary; router and gRPC wiring
-        # keep the concrete token codec on the server side.
+        # Runtime receives only this callable boundary; the HTTP router keeps
+        # the concrete token codec on the server side.
         def issue_agent_stub_token(
             execution_context: DifyExecutionContextLayerConfig,
             *,
@@ -75,15 +72,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
-    workspace_file_service = (
-        WorkspaceFileService(
+    binding_file_service = (
+        BindingFileService(
             execution_bindings=runtime_backend_profile.execution_bindings,
-            upload_max_bytes=resolved_settings.sandbox_file_upload_max_bytes,
-            file_uploader=(
-                AgentStubWorkspaceFileUploader(file_request_handler=agent_stub_file_request_handler)
-                if agent_stub_file_request_handler is not None
-                else None
-            ),
+            agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
+            agent_stub_token_factory=agent_stub_token_factory,
         )
         if runtime_backend_profile is not None
         else None
@@ -120,24 +113,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
         )
-        grpc_server = None
-        if (
-            resolved_settings.agent_stub_api_base_url is not None
-            and parse_agent_stub_endpoint(resolved_settings.agent_stub_api_base_url).is_grpc
-        ):
-            grpc_server = await start_agent_stub_grpc_server(
-                public_url=resolved_settings.agent_stub_api_base_url,
-                bind_address=resolved_settings.agent_stub_grpc_bind_address,
-                token_codec=agent_stub_token_codec,
-                file_request_handler=agent_stub_file_request_handler,
-            )
         state["store"] = store
         state["scheduler"] = scheduler
         try:
             yield
         finally:
-            if grpc_server is not None:
-                await grpc_server.aclose()
             await scheduler.shutdown()
             await dify_api_inner_http_client.aclose()
             await plugin_daemon_http_client.aclose()
@@ -161,7 +141,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     )
     app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
     app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
+    app.include_router(create_binding_files_router(lambda: binding_file_service))
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

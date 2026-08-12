@@ -25,6 +25,23 @@ vp check web/app/components packages/dify-ui/src/button
 vp check --fix web/app/components packages/dify-ui/src/button
 ```
 
+Run only the Web JSX accessibility rules for selected files or directories with
+`lint:a11y`. Quote paths that contain shell metacharacters such as parentheses:
+
+```sh
+pnpm --dir web lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+```
+
+Use dependency mode to resolve an entry file's transitive local imports, including path aliases,
+re-exports, and dynamic imports, and then lint the resulting JSX and TSX files:
+
+```sh
+pnpm --dir web lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+```
+
+This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
+owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
+
 Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
 
 ```sh

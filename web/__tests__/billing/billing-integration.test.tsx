@@ -17,13 +17,18 @@ import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedEducationStatus,
+} from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
-const render = (ui: ReactElement, options: RenderOptions = {}) => {
+const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   const plan = mockProviderCtx.plan as {
     usage: { vectorSpace: number }
@@ -32,8 +37,14 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
   })
+  queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+    url: 'https://billing.example.com',
+  })
+  seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -46,10 +57,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -70,40 +77,12 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-// ─── Service mocks ──────────────────────────────────────────────────────────
-const mockRefetch = vi.fn().mockResolvedValue({ data: 'https://billing.example.com' })
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: mockRefetch,
-  }),
-  useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-}))
-
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ token: 'test-token' }),
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 const mockRouterPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="verify-state-modal" /> : null,
 }))
 
 vi.mock('@/app/components/header/utils/util', () => ({
@@ -130,14 +109,19 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
 const setupProviderContext = (
   planOverrides: PlanOverrides = {},
   extra: Record<string, unknown> = {},
+  educationStatus: Partial<typeof mockEducationStatus> = {},
 ) => {
+  mockEducationStatus = {
+    is_student: false,
+    allow_refresh: false,
+    expire_at: null,
+    ...educationStatus,
+  }
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
     ...extra,
   }
 }
@@ -220,6 +204,21 @@ describe('Billing Page + Plan Integration', () => {
       expect(quotaLabel.tagName).toBe('DT')
       expect(quotaValue.tagName).toBe('DD')
       expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
+    })
+
+    it('should display unknown vector space usage as a placeholder', () => {
+      setupProviderContext({
+        type: Plan.sandbox,
+        usage: { vectorSpace: 0 },
+        total: { vectorSpace: 50 },
+      })
+
+      render(<PlanComp loc="test" />, {}, true)
+
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      expect(quotaValue).toHaveTextContent('--')
+      expect(quotaValue).not.toHaveTextContent('< 50')
     })
 
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
@@ -346,13 +345,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext(
-      { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: false,
-      },
-    )
+    setupProviderContext({ type: Plan.sandbox }, { enableEducationPlan: true })
 
     render(<PlanComp loc="test" />)
 
@@ -362,10 +355,8 @@ describe('Plan Type Display Integration', () => {
   it('should show education discount to managers without billing permission keys', () => {
     setupProviderContext(
       { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
+      { enableEducationPlan: true },
+      { is_student: true },
     )
     setupConsoleState({ isCurrentWorkspaceManager: true, workspacePermissionKeys: [] })
 
@@ -377,10 +368,8 @@ describe('Plan Type Display Integration', () => {
   it('should hide education discount from non-manager members', () => {
     setupProviderContext(
       { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
+      { enableEducationPlan: true },
+      { is_student: true },
     )
     setupConsoleState({
       isCurrentWorkspaceManager: false,

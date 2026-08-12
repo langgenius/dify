@@ -1,10 +1,11 @@
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 export type AppRedirectionTarget = {
   id: string
-  mode: AppModeEnum
+  mode: AppPartial['mode']
   permission_keys?: string[]
   bound_agent_id?: string | null
 }

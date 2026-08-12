@@ -8,12 +8,14 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.console.error import EducationDiscountTemporarilyPausedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
+    EducationApi,
 )
 from models import Account, AccountIntegrate, AccountStatus, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -104,6 +106,27 @@ def _build_change_email_token(
     if phase == AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED:
         return ChangeEmailNewEmailVerifiedToken(**token_kwargs)
     raise AssertionError(f"Unsupported phase for test helper: {phase}")
+
+
+class TestEducationApi:
+    @patch("controllers.console.workspace.account.BillingService.EducationIdentity.activate")
+    def test_post_returns_temporarily_paused_error_without_activating_discount(
+        self, mock_activate: MagicMock, app: Flask
+    ):
+        account = _build_account("student@example.edu")
+
+        with app.test_request_context("/account/education", method="POST", json={}):
+            api = EducationApi()
+            method = inspect.unwrap(api.post)
+            with pytest.raises(EducationDiscountTemporarilyPausedError) as exc_info:
+                method(api, account)
+
+        assert exc_info.value.data == {
+            "code": "education_discount_temporarily_paused",
+            "message": "Education discount temporarily paused, while we upgrade our security measures.",
+            "status": 503,
+        }
+        mock_activate.assert_not_called()
 
 
 class TestChangeEmailSend:

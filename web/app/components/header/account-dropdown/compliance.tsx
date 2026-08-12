@@ -59,10 +59,10 @@ function ComplianceDocActionVisual({
         disabled={isPending}
         loading={isPending}
         aria-hidden
-        className="pointer-events-none flex items-center gap-px"
+        className="pointer-events-none flex items-center"
       >
         <span className="i-ri-arrow-down-circle-line size-3.5 text-components-button-secondary-text-disabled" />
-        <span className="px-0.75 system-xs-medium text-components-button-secondary-text">
+        <span className="system-xs-medium text-components-button-secondary-text">
           {downloadText}
         </span>
       </Button>

@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import pytest
 from pytest_mock import MockerFixture
 
+from enums import CloudPlan
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
@@ -52,8 +53,6 @@ def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixtur
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
 
-    from enums.cloud_plan import CloudPlan
-
     features = SimpleNamespace(
         billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.SANDBOX))
     )
@@ -68,8 +67,6 @@ def test_dispatch_billing_sandbox_uses_default_tenant_queue(mocker: MockerFixtur
 def test_dispatch_billing_non_sandbox_uses_priority_tenant_queue(mocker: MockerFixture, proxy) -> None:
     upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
     send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
-
-    from enums.cloud_plan import CloudPlan
 
     features = SimpleNamespace(
         billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))

@@ -56,7 +56,7 @@ export function InstanceCard({ summary }: { summary: AppInstanceSummary }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <Link
           href={detailHref}
-          className="block min-w-0 rounded-t-xl px-4 pt-4 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="block min-w-0 rounded-t-xl px-4 pt-4 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
           <h3 className="truncate title-md-semi-bold text-text-primary">{appName}</h3>
           {description ? (

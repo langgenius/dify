@@ -12,7 +12,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
@@ -105,6 +105,7 @@ class _BillingQuota(TypedDict):
 class _VectorSpaceQuota(TypedDict):
     size: float
     limit: int
+    usage_unknown: NotRequired[bool]
 
 
 class _KnowledgeRateLimit(TypedDict):

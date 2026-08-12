@@ -52,10 +52,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
   return createVersionStateModuleMock(() => mockConsoleState.current)
@@ -91,15 +87,16 @@ describe('SupportMenu', () => {
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
-  const renderSupportMenu = (onContactUsClick = vi.fn()) => {
+  const renderSupportMenu = () => {
     const { wrapper } = createConsoleQueryWrapper({
+      accountProfile: mockConsoleState.current.userProfile,
       systemFeatures: { deployment_edition: deploymentEdition },
     })
     return render(
       <DropdownMenu open={true} onOpenChange={() => {}}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <SupportMenu onContactUsClick={onContactUsClick} />
+          <SupportMenu />
         </DropdownMenuContent>
       </DropdownMenu>,
       { wrapper },
@@ -107,8 +104,7 @@ describe('SupportMenu', () => {
   }
 
   it('renders contact us before community support entries when Zendesk is configured', () => {
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
     expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
@@ -126,7 +122,6 @@ describe('SupportMenu', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(openZendeskWindow).toHaveBeenCalledWith('CLOUD')
-    expect(onContactUsClick).toHaveBeenCalled()
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
@@ -135,8 +130,7 @@ describe('SupportMenu', () => {
       plan: { type: Plan.sandbox },
     })
 
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass(
@@ -156,7 +150,6 @@ describe('SupportMenu', () => {
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
     expect(openZendeskWindow).not.toHaveBeenCalled()
-    expect(onContactUsClick).toHaveBeenCalled()
   })
 
   it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {

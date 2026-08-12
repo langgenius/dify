@@ -32,7 +32,7 @@ export function AdvancedActions({ isConfirmDisabled, onCancel, onConfirm }: Adva
         {t(($) => $['operation.cancel'], { ns: 'common' })}
       </Button>
       <Button
-        className="flex items-center gap-x-1"
+        className="flex items-center"
         disabled={isConfirmDisabled}
         size="small"
         variant="primary"

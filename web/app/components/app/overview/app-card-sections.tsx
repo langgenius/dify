@@ -373,7 +373,7 @@ export const AppCardOperations = ({
               show={disabled}
             >
               <Button
-                className="min-w-22 rounded-r-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+                className="min-w-22 rounded-r-none px-0 py-0 shadow-none inset-ring-0 backdrop-blur-none hover:bg-components-button-secondary-bg"
                 size="small"
                 variant="secondary"
                 onClick={onClick}
@@ -390,7 +390,7 @@ export const AppCardOperations = ({
             <div aria-hidden="true" className="h-6 w-px shrink-0 bg-divider-regular opacity-100" />
             <Button
               aria-label={launchConfigAction.label}
-              className="w-8 rounded-l-none border-0 p-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
+              className="w-8 rounded-l-none p-0 shadow-none inset-ring-0 backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
               size="small"
               variant="secondary"
               onClick={launchConfigAction.onClick}

@@ -82,7 +82,7 @@ function EnvironmentEmptyState({ canDeploy }: { canDeploy: boolean }) {
             type="button"
             variant="primary"
             size="medium"
-            className="gap-1.5"
+
             onClick={() => openDeployDrawer({ appInstanceId })}
           >
             <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />

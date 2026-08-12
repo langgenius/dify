@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type {
@@ -158,7 +159,13 @@ describe('ModelParameterTrigger', () => {
     })
     mockUseProviderContext.mockReturnValue(
       createMockProviderContextValue({
-        modelProviders: [createModelProvider()],
+        modelProviders: [
+          {
+            ...createModelProvider(),
+            is_configured: true,
+            plugin_id: 'langgenius/openai',
+          } as unknown as ModelProviderSummaryResponse,
+        ],
       }),
     )
     mockUseCredentialPanelState.mockReturnValue({

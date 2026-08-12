@@ -6,7 +6,7 @@ import type { AppSSO } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -14,15 +14,14 @@ import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
 import { fetchAppDetail } from '@/service/apps'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -72,8 +71,10 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const queryClient = useQueryClient()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
@@ -169,13 +170,12 @@ function AppCard({
 
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
       setAppDetail({ ...res })
       setShowAccessControl(false)
     } catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
-  }, [appDetail, queryClient, setAppDetail])
+  }, [appDetail, setAppDetail])
 
   const operationKeys = useMemo(
     () =>

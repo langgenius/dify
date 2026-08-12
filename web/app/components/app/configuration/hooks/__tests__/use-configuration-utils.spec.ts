@@ -64,7 +64,7 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () =>
   }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
     success: (...args: unknown[]) => mockToastSuccess(...args),

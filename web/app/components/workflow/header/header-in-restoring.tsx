@@ -2,13 +2,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
-import { userProfileAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
 import {
   useInvalidAllLastRun,
@@ -32,7 +32,10 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const { plan, enableBilling } = useProviderContext()
   const workflowStore = useWorkflowStore()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const configsMap = useHooksStore((s) => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { deleteAllInspectVars } = workflowStore.getState()
@@ -166,8 +169,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
           disabled={!canRestore}
           variant="primary"
           className={cn(
-            'rounded-lg border border-transparent',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           {t(($) => $['common.restore'], { ns: 'workflow' })}
@@ -175,8 +178,8 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
         <Button
           onClick={handleCancelRestore}
           className={cn(
-            'rounded-lg border border-transparent text-components-button-secondary-accent-text',
-            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            'rounded-lg text-components-button-secondary-accent-text inset-ring-1 inset-ring-transparent',
+            theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
           )}
         >
           <div className="flex items-center gap-x-0.5">

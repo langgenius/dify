@@ -1,7 +1,8 @@
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderHook } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -16,6 +17,11 @@ const mockWorkflowStoreGetState = vi.fn()
 const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
+
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
 
 let appStoreState: {
   appDetail: {
@@ -46,13 +52,6 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({

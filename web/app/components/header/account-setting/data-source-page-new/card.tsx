@@ -108,6 +108,8 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
             alt={providerLabel}
             width={20}
             height={20}
+            loading="lazy"
+            decoding="async"
             className="h-5 w-5 object-contain"
           />
         </div>

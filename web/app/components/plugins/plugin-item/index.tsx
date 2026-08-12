@@ -137,8 +137,12 @@ const PluginItem: FC<Props> = ({
           <div className="flex size-10 items-center justify-center overflow-hidden rounded-xl border border-components-panel-border-subtle">
             <img
               className="size-full"
+              decoding="async"
+              height={40}
+              loading="lazy"
               src={iconSrc}
               alt={`plugin-${plugin_unique_identifier}-logo`}
+              width={40}
             />
           </div>
           <div className="ml-3 w-0 grow">

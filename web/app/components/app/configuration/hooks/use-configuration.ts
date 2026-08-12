@@ -25,6 +25,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
@@ -59,14 +60,15 @@ import {
   DEFAULT_CHAT_PROMPT_CONFIG,
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -129,7 +131,10 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
@@ -160,6 +165,16 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = matched?.[1] || ''
+  const { mutateAsync: updateModelConfig } = useMutation({
+    mutationFn: (params: Parameters<typeof updateAppModelConfig>[0]) =>
+      updateAppModelConfig(params),
+    onSuccess: (_data, _variables, _onMutateResult, context) =>
+      context.client.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: appId } },
+        }),
+      }),
+  })
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -600,7 +615,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
         suggestedQuestionsAfterAnswerConfig,
         t,
         textToSpeechConfig,
-      })(updateAppModelConfig, modelAndParameter, features)
+      })(updateModelConfig, modelAndParameter, features)
     },
     [
       appACLCapabilities.canReleaseAndVersion,
@@ -630,6 +645,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       suggestedQuestionsAfterAnswerConfig,
       t,
       textToSpeechConfig,
+      updateModelConfig,
     ],
   )
 

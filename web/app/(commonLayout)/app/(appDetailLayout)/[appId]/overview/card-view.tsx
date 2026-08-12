@@ -6,28 +6,27 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppCard from '@/app/components/app/overview/app-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { isTriggerNode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -44,7 +43,10 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const queryClient = useQueryClient()
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canEditApp = useMemo(
     () =>
@@ -96,17 +98,14 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     ? buildTriggerModeMessage(t(($) => $['mcp.server.title'], { ns: 'tools' }))
     : null
 
-  const setNeedRefresh = useSetNeedRefreshAppList()
-
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)
     }
-  }, [appId, queryClient, setAppDetail])
+  }, [appId, setAppDetail])
 
   const handleCallbackResult = (
     err: Error | null,
@@ -184,8 +183,11 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         body: params,
       }) as Promise<App>,
     )
-    if (!err) setNeedRefresh('1')
-
+    if (!err) {
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
+    }
     handleCallbackResult(err)
   }
 

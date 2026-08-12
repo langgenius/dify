@@ -1,21 +1,19 @@
 'use client'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useUnmountedRef } from 'ahooks'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useRouter } from '@/next/navigation'
-import { useEducationVerify } from '@/service/use-education'
+import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
@@ -30,6 +28,11 @@ type Props = Readonly<{
   loc: string
 }>
 
+const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+  isAboutToExpire: allow_refresh ?? false,
+  isEducationAccount: is_student ?? false,
+})
+
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -37,12 +40,15 @@ const PlanComp: FC<Props> = ({ loc }) => {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
-  const router = useRouter()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
-    useProviderContext()
-  const isAboutToExpire = allowRefreshEducationVerify
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: educationStatus } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: selectEducationPlanStatus,
+    }),
+  )
+  const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const { type } = plan
   const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
@@ -58,21 +64,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
     return undefined
   })()
 
-  const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  const { mutateAsync, isPending } = useEducationVerify()
-  const unmountedRef = useUnmountedRef()
-  const handleVerify = () => {
-    if (isPending) return
-    mutateAsync()
-      .then((res) => {
-        if (unmountedRef.current) return
-        router.push(`/education-apply?token=${res.token}`)
-      })
-      .catch(() => {
-        setShowModal(true)
-      })
-  }
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
@@ -93,11 +85,10 @@ const PlanComp: FC<Props> = ({ loc }) => {
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <span className="mr-1 i-ri-graduation-cap-line size-4" />
+              <Link className={buttonVariants({ variant: 'ghost' })} href="/education/verify">
+                <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
                 {t(($) => $.toVerified, { ns: 'education' })}
-                {isPending && <Loading className="ml-1 animate-spin-slow" />}
-              </Button>
+              </Link>
             )}
             {isCloudEdition &&
               enableEducationPlan &&
@@ -109,9 +100,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                  <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
             {isCloudEdition && !isEnterprisePlan && (
@@ -163,15 +154,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
           resetInDays={apiRateLimitResetInDays}
         />
       </div>
-      <VerifyStateModal
-        showLink
-        email={userProfileEmail}
-        isShow={showModal}
-        title={t(($) => $.rejectTitle, { ns: 'education' })}
-        content={t(($) => $.rejectContent, { ns: 'education' })}
-        onConfirm={() => setShowModal(false)}
-        onCancel={() => setShowModal(false)}
-      />
     </div>
   )
 }

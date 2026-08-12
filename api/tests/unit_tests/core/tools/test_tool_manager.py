@@ -1083,14 +1083,14 @@ def test_convert_tool_parameters_type_agent_and_workflow_branches():
 
     variable_pool = Mock()
     variable_pool.get.return_value = SimpleNamespace(value="from-variable")
-    variable_pool.convert_template.return_value = SimpleNamespace(text="from-template")
 
-    mixed = ToolManager._convert_tool_parameters_type(
-        parameters=[text_param],
-        variable_pool=variable_pool,
-        tool_configurations={"text": {"type": "mixed", "value": "Hello {{name}}"}},
-        typ="workflow",
-    )
+    with patch("core.tools.tool_manager.convert_template", return_value=SimpleNamespace(text="from-template")):
+        mixed = ToolManager._convert_tool_parameters_type(
+            parameters=[text_param],
+            variable_pool=variable_pool,
+            tool_configurations={"text": {"type": "mixed", "value": "Hello {{name}}"}},
+            typ="workflow",
+        )
     assert mixed == {"text": "from-template"}
 
     variable = ToolManager._convert_tool_parameters_type(

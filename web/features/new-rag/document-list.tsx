@@ -468,7 +468,7 @@ export function DocumentsList({
         ref={resultsContainerRef}
         aria-labelledby="new-knowledge-documents-title"
         aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
-        className="mt-4 overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="mt-4 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         role="region"
         tabIndex={-1}
       >

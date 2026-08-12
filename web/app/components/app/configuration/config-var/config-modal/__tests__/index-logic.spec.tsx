@@ -1,9 +1,9 @@
 /* oxlint-disable typescript/no-explicit-any */
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'

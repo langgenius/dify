@@ -1,6 +1,6 @@
 /* eslint-disable style/multiline-ternary */
 'use client'
-import type { App as AppType } from '@/models/explore'
+import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -17,7 +17,7 @@ import { TypeEnum } from './types'
 
 type Props = Readonly<{
   appId: string
-  app: AppType
+  app: RecommendedAppResponse
   canCreate?: boolean
   categories?: string[]
   createButtonStepByStepTourTarget?: string

@@ -2,11 +2,11 @@
 
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
+import { brandingEnabledAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
 import { accountProfileMetaAtom } from './account-state'
 import { initialLangGeniusVersionInfo } from './app-context-defaults'
 import { getLangGeniusVersionInfo } from './app-context-normalizers'
-import { brandingEnabledAtom } from './system-features-state'
 
 const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(accountProfileMetaAtom)

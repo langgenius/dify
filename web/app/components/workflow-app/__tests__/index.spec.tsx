@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -59,6 +60,11 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(consoleState.userProfile),
+  })
+
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
   getState: () => ({
@@ -85,15 +91,6 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
-    currentWorkspace: consoleState.currentWorkspace,
-    userProfile: consoleState.userProfile,
-    workspacePermissionKeys: consoleState.workspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -185,12 +182,7 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({
-    children,
-  }: {
-    injectWorkflowStoreSliceFn: unknown
-    children: ReactNode
-  }) => <div data-testid="workflow-context-provider">{children}</div>,
+  WorkflowContextProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
@@ -277,7 +269,6 @@ describe('WorkflowApp', () => {
 
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
       'data-nodes',
       JSON.stringify([{ id: 'node-1' }]),

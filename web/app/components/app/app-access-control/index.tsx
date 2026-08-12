@@ -1,16 +1,15 @@
 'use client'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { Subject } from '@/models/access-control'
-import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiBuildingLine, RiGlobalLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode, SubjectType } from '@/models/access-control'
+import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
@@ -19,14 +18,15 @@ import AccessControlItem from './access-control-item'
 import SpecificGroupsOrMembers, { WebAppSSONotEnabledTip } from './specific-groups-or-members'
 
 type AccessControlProps = {
-  app: Pick<App, 'id' | 'access_mode'>
+  app: Pick<AppPartial, 'id' | 'access_mode'>
   onClose: () => void
   onConfirm?: () => void
 }
 
 export default function AccessControl(props: AccessControlProps) {
   const { app, onClose, onConfirm } = props
-  const { id: appId, access_mode: appAccessMode } = app
+  const { id: appId } = app
+  const appAccessMode = isAccessMode(app.access_mode) ? app.access_mode : undefined
   const accessControlOptionsLabelId = useId()
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -109,7 +109,7 @@ export default function AccessControl(props: AccessControlProps) {
           <AccessControlItem type={AccessMode.ORGANIZATION}>
             <div className="flex items-center p-3">
               <div className="flex grow items-center gap-x-2">
-                <RiBuildingLine className="size-4 text-text-primary" />
+                <span aria-hidden className="i-ri-building-line size-4 text-text-primary" />
                 <p className="system-sm-medium text-text-primary">
                   {t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })}
                 </p>
@@ -122,7 +122,7 @@ export default function AccessControl(props: AccessControlProps) {
           <AccessControlItem type={AccessMode.EXTERNAL_MEMBERS}>
             <div className="flex items-center p-3">
               <div className="flex grow items-center gap-x-2">
-                <RiVerifiedBadgeLine className="size-4 text-text-primary" />
+                <span aria-hidden className="i-ri-verified-badge-line size-4 text-text-primary" />
                 <p className="system-sm-medium text-text-primary">
                   {t(($) => $['accessControlDialog.accessItems.external'], { ns: 'app' })}
                 </p>
@@ -132,7 +132,7 @@ export default function AccessControl(props: AccessControlProps) {
           </AccessControlItem>
           <AccessControlItem type={AccessMode.PUBLIC} disabled={publicAccessDisabled}>
             <div className="flex items-center gap-x-2 p-3">
-              <RiGlobalLine className="size-4 text-text-primary" />
+              <span aria-hidden className="i-ri-global-line size-4 text-text-primary" />
               <p className="system-sm-medium text-text-primary">
                 {t(($) => $['accessControlDialog.accessItems.anyone'], { ns: 'app' })}
               </p>

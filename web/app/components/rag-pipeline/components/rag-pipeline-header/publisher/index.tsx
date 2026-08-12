@@ -104,7 +104,7 @@ const Publisher = () => {
           nativeButton
           render={
             <Button className="px-2" variant="primary" disabled={!canPipelineRelease}>
-              <span className="pl-1">{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
+              <span>{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
               <RiArrowDownSLine className="size-4" />
             </Button>
           }

@@ -4,7 +4,6 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormEvent, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
@@ -139,7 +138,7 @@ export function ApiKeyGenerateMenu({
       variant={triggerVariant}
       disabled={disabled}
       onClick={handleOpenCreateDialog}
-      className={cn('gap-1.5', triggerClassName)}
+      className={triggerClassName}
     >
       <span className="i-ri-add-line size-4" aria-hidden="true" />
       {t(($) => $['access.api.newKey'])}

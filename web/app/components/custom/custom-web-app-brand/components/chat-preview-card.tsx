@@ -34,7 +34,7 @@ const ChatPreviewCard = ({
         </div>
         <div className="shrink-0 px-4 py-3">
           <Button variant="secondary-accent" className="w-full justify-center">
-            <span className="mr-1 i-ri-edit-box-line size-4" />
+            <span className="i-ri-edit-box-line size-4" />
             <div className="p-1 opacity-20">
               <div className="h-2 w-23.5 rounded-xs bg-text-accent-light-mode-only"></div>
             </div>

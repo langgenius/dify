@@ -1,10 +1,9 @@
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LangGeniusVersionInfo } from './app-context-types'
-import type { ICurrentWorkspace } from '@/models/common'
-import { initialLangGeniusVersionInfo, initialWorkspaceInfo } from './app-context-defaults'
+import { initialLangGeniusVersionInfo, initialWorkspaceSummary } from './app-context-defaults'
 
-const workspaceRoles = new Set<ICurrentWorkspace['role']>([
+const workspaceRoles = new Set<GetWorkspacesCurrentSummaryResponse['role']>([
   'owner',
   'admin',
   'editor',
@@ -27,44 +26,30 @@ export type ProfileMeta = {
 }
 
 function resolveWorkspaceRole(
-  role: PostWorkspacesCurrentResponse['role'],
-): ICurrentWorkspace['role'] {
-  if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
-    return role as ICurrentWorkspace['role']
+  role: GetWorkspacesCurrentSummaryResponse['role'],
+): GetWorkspacesCurrentSummaryResponse['role'] {
+  if (workspaceRoles.has(role)) return role
 
-  return initialWorkspaceInfo.role
+  return initialWorkspaceSummary.role
 }
 
-export function normalizeCurrentWorkspace(
-  workspace?: PostWorkspacesCurrentResponse,
-): ICurrentWorkspace {
-  if (!workspace) return initialWorkspaceInfo
+export function normalizeCurrentWorkspaceSummary(
+  workspace?: GetWorkspacesCurrentSummaryResponse,
+): GetWorkspacesCurrentSummaryResponse {
+  if (!workspace) return initialWorkspaceSummary
 
   return {
     id: workspace.id,
-    name: workspace.name ?? initialWorkspaceInfo.name,
-    plan: workspace.plan ?? initialWorkspaceInfo.plan,
-    status: workspace.status ?? initialWorkspaceInfo.status,
-    created_at: workspace.created_at ?? initialWorkspaceInfo.created_at,
+    name: workspace.name,
+    plan: workspace.plan,
+    credits: workspace.credits,
     role: resolveWorkspaceRole(workspace.role),
-    providers: initialWorkspaceInfo.providers,
-    trial_credits: workspace.trial_credits ?? initialWorkspaceInfo.trial_credits,
-    trial_credits_used: workspace.trial_credits_used ?? initialWorkspaceInfo.trial_credits_used,
-    trial_credits_exhausted_at:
-      workspace.trial_credits_exhausted_at ?? initialWorkspaceInfo.trial_credits_exhausted_at,
-    next_credit_reset_date:
-      workspace.next_credit_reset_date ?? initialWorkspaceInfo.next_credit_reset_date,
-    trial_end_reason: workspace.trial_end_reason ?? undefined,
-    custom_config: workspace.custom_config
-      ? {
-          remove_webapp_brand: workspace.custom_config.remove_webapp_brand ?? undefined,
-          replace_webapp_logo: workspace.custom_config.replace_webapp_logo ?? undefined,
-        }
-      : undefined,
   }
 }
 
-export function getWorkspaceRoleFlags(currentWorkspace: ICurrentWorkspace): WorkspaceRoleFlags {
+export function getWorkspaceRoleFlags(
+  currentWorkspace: GetWorkspacesCurrentSummaryResponse,
+): WorkspaceRoleFlags {
   return {
     isCurrentWorkspaceManager: ['owner', 'admin'].includes(currentWorkspace.role),
     isCurrentWorkspaceOwner: currentWorkspace.role === 'owner',

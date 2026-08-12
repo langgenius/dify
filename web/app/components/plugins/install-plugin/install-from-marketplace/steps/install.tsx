@@ -180,7 +180,7 @@ const Installed: FC<Props> = ({
         )}
         <Button
           variant="primary"
-          className="flex min-w-18 space-x-0.5"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >

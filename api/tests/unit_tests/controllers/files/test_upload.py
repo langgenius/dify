@@ -1,13 +1,17 @@
 import io
 import types
+from contextlib import contextmanager
 from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import controllers.files.upload as module
 from core.workflow.file_reference import build_file_reference
+from models import Account, TenantAccountJoin
+from models.account import AccountStatus
 
 
 def fake_request(args: dict, file=None):
@@ -15,6 +19,22 @@ def fake_request(args: dict, file=None):
         args=types.SimpleNamespace(to_dict=lambda flat=True: args),
         files={"file": file} if file else {},
     )
+
+
+def _persist_account_memberships(session: Session) -> None:
+    account = Account(name="Tenant member", email="member@example.com", status=AccountStatus.ACTIVE)
+    account.id = "account-1"
+    decoy = Account(name="Other tenant member", email="decoy@example.com", status=AccountStatus.ACTIVE)
+    decoy.id = "account-outside-tenant"
+    session.add_all(
+        [
+            account,
+            decoy,
+            TenantAccountJoin(tenant_id="tenant-1", account_id=account.id),
+            TenantAccountJoin(tenant_id="tenant-other", account_id=decoy.id),
+        ]
+    )
+    session.commit()
 
 
 class DummyUser:
@@ -31,6 +51,16 @@ class DummyFile:
 
     def read(self):
         return self.stream.read()
+
+
+class RecordingStream(io.BytesIO):
+    def __init__(self, content: bytes, events: list[str]):
+        super().__init__(content)
+        self.events = events
+
+    def read(self, *args, **kwargs):
+        self.events.append("file-read")
+        return super().read(*args, **kwargs)
 
 
 class DummyToolFile:
@@ -93,6 +123,138 @@ class TestPluginUploadFileApi:
         tool_file_manager_instance.create_file_by_raw.assert_called_once()
         assert tool_file_manager_instance.create_file_by_raw.call_args.kwargs["conversation_id"] == "conversation-1"
         mock_tool_file_manager.sign_file.assert_called_once_with(tool_file_id="file-id", extension=".docx")
+
+    @patch.object(module, "get_user")
+    @patch.object(module, "ToolFileManager")
+    @pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
+    def test_account_upload_preserves_signed_account_owner(
+        self,
+        mock_tool_file_manager,
+        mock_get_user,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ):
+        _persist_account_memberships(sqlite_session)
+        events: list[str] = []
+        dummy_file = DummyFile(filename="report.pdf", mimetype="application/pdf", content=b"account-owned")
+        dummy_file.stream = RecordingStream(b"account-owned", events)
+
+        @contextmanager
+        def membership_session():
+            events.append("membership-session-enter")
+            try:
+                yield sqlite_session
+            finally:
+                events.append("membership-session-exit")
+
+        monkeypatch.setattr(module.session_factory, "create_session", membership_session)
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "account-1",
+                    "user_from": "account",
+                },
+                file=dummy_file,
+            ),
+        )
+        tool_file_manager = mock_tool_file_manager.return_value
+        tool_file_manager.create_file_by_raw.side_effect = lambda **_kwargs: (
+            events.append("storage-create-file") or DummyToolFile(name="report.pdf", mimetype="application/pdf")
+        )
+        mock_tool_file_manager.sign_file.return_value = "signed-url"
+
+        with patch.object(
+            module,
+            "verify_plugin_file_signature",
+            side_effect=lambda **_kwargs: events.append("signature-verify") or True,
+        ) as verify_signature:
+            api = module.PluginUploadFileApi()
+            result, status_code = unwrap(api.post)(api)
+
+        assert status_code == 201
+        assert result["reference"] == build_file_reference(record_id="file-id")
+        assert events == [
+            "membership-session-enter",
+            "membership-session-exit",
+            "signature-verify",
+            "file-read",
+            "storage-create-file",
+        ]
+        mock_get_user.assert_not_called()
+        verify_signature.assert_called_once_with(
+            filename="report.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-1",
+            user_id="account-1",
+            conversation_id=None,
+            user_from="account",
+            timestamp="123",
+            nonce="abc",
+            sign="sig",
+        )
+        tool_file_manager.create_file_by_raw.assert_called_once_with(
+            user_id="account-1",
+            tenant_id="tenant-1",
+            file_binary=b"account-owned",
+            mimetype="application/pdf",
+            filename="report.pdf",
+            conversation_id=None,
+        )
+
+    @patch.object(module, "verify_plugin_file_signature")
+    @patch.object(module, "get_user")
+    @patch.object(module, "ToolFileManager")
+    @pytest.mark.parametrize("sqlite_session", [(Account, TenantAccountJoin)], indirect=True)
+    def test_account_upload_rejects_owner_outside_tenant(
+        self,
+        mock_tool_file_manager,
+        mock_get_user,
+        mock_verify_signature,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ):
+        _persist_account_memberships(sqlite_session)
+        events: list[str] = []
+
+        @contextmanager
+        def membership_session():
+            events.append("membership-session-enter")
+            try:
+                yield sqlite_session
+            finally:
+                events.append("membership-session-exit")
+
+        monkeypatch.setattr(module.session_factory, "create_session", membership_session)
+        monkeypatch.setattr(
+            module,
+            "request",
+            fake_request(
+                {
+                    "timestamp": "123",
+                    "nonce": "abc",
+                    "sign": "sig",
+                    "tenant_id": "tenant-1",
+                    "user_id": "account-outside-tenant",
+                    "user_from": "account",
+                },
+                file=DummyFile(),
+            ),
+        )
+
+        api = module.PluginUploadFileApi()
+        with pytest.raises(Forbidden):
+            unwrap(api.post)(api)
+
+        assert events == ["membership-session-enter", "membership-session-exit"]
+        mock_get_user.assert_not_called()
+        mock_verify_signature.assert_not_called()
+        mock_tool_file_manager.assert_not_called()
 
     def test_missing_file(self):
         module.request = fake_request(

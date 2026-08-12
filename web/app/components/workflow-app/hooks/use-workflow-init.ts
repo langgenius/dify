@@ -1,13 +1,14 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -61,7 +62,10 @@ export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
   const appDetail = useAppStore((state) => state.appDetail)!
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
@@ -106,7 +110,7 @@ export const useWorkflowInit = () => {
           .filter((env) => env.value_type === 'secret')
           .reduce(
             (acc, env) => {
-              acc[env.id] = env.value
+              if (typeof env.value === 'string') acc[env.id] = env.value
               return acc
             },
             {} as Record<string, string>,
@@ -121,7 +125,10 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     } catch (error: unknown) {
-      const responseError = error as { bodyUsed?: boolean; json?: () => Promise<{ code?: string }> }
+      const responseError = error as {
+        bodyUsed?: boolean
+        json?: () => Promise<{ code?: string }>
+      }
       if (responseError.json && !responseError.bodyUsed && appDetail) {
         responseError.json().then((err) => {
           if (err.code === 'draft_workflow_not_exist') {
@@ -163,7 +170,6 @@ export const useWorkflowInit = () => {
                 features: {
                   retriever_resource: { enabled: true },
                 },
-                environment_variables: [],
                 conversation_variables: [],
               },
             }).then((res) => {

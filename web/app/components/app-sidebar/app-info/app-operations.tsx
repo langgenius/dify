@@ -128,7 +128,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px focus-visible:ring-inset"
+            className="focus-visible:ring-inset"
             disabled={operation.disabled}
             loading={operation.loading}
             tabIndex={-1}
@@ -145,7 +145,7 @@ const AppOperations = ({
           id="more-measure"
           size="small"
           variant="secondary"
-          className="gap-px focus-visible:ring-inset"
+          className="focus-visible:ring-inset"
           tabIndex={-1}
         >
           <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
@@ -161,7 +161,7 @@ const AppOperations = ({
             data-targetid={operation.id}
             size="small"
             variant="secondary"
-            className="gap-px focus-visible:ring-inset"
+            className="focus-visible:ring-inset"
             disabled={operation.disabled}
             loading={operation.loading}
             onClick={operation.onClick}
@@ -178,11 +178,7 @@ const AppOperations = ({
           <DropdownMenu open={showMore} onOpenChange={setShowMore}>
             <DropdownMenuTrigger
               render={
-                <Button
-                  size="small"
-                  variant="secondary"
-                  className="gap-px focus-visible:ring-inset"
-                />
+                <Button size="small" variant="secondary" className="focus-visible:ring-inset" />
               }
             >
               <>

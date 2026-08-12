@@ -1,4 +1,5 @@
 'use client'
+
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type {
   AccessControlAccount,
@@ -23,11 +24,11 @@ import {
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
 import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
@@ -319,11 +320,11 @@ function GroupItem({ group, subject }: GroupItemProps) {
         size="small"
         disabled={isChecked}
         variant="ghost-accent"
-        className="mr-1 flex shrink-0 items-center justify-between px-1.5 py-1"
+        className="mr-1 flex shrink-0 items-center justify-between py-1"
         onPointerDown={(event) => event.preventDefault()}
         onClick={handleExpandClick}
       >
-        <span className="px-0.75">
+        <span>
           {t(($) => $['accessControlDialog.operateGroupAndMember.expand'], { ns: 'app' })}
         </span>
         <RiArrowRightSLine className="size-4" aria-hidden="true" />
@@ -337,7 +338,10 @@ type MemberItemProps = {
   subject: Subject
 }
 function MemberItem({ member, subject }: MemberItemProps) {
-  const currentUser = useAtomValue(userProfileAtom)
+  const { data: currentUser } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { t } = useTranslation()
   return (
     <BaseItem subject={subject} className="pr-3">

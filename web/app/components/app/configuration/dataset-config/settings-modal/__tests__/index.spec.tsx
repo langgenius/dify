@@ -16,6 +16,7 @@ import {
 import { consoleQuery } from '@/service/client'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -29,7 +30,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -203,6 +204,7 @@ const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
     retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],

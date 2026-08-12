@@ -34,10 +34,9 @@ class TestDatasetServiceValidation:
     def test_check_doc_form_allows_matching_or_missing_dataset_doc_form(self, dataset_doc_form, incoming_doc_form):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(doc_form=dataset_doc_form)
         session = MagicMock()
+        session.scalar.return_value = None
 
         DatasetService.check_doc_form(dataset, incoming_doc_form, session=session)
-
-        dataset.get_doc_form.assert_called_once_with(session=session)
 
     def test_check_doc_form_rejects_mismatched_doc_form(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(doc_form="qa_model")
@@ -45,8 +44,6 @@ class TestDatasetServiceValidation:
 
         with pytest.raises(ValueError, match="doc_form is different"):
             DatasetService.check_doc_form(dataset, "text_model", session=session)
-
-        dataset.get_doc_form.assert_called_once_with(session=session)
 
     def test_check_dataset_model_setting_skips_non_high_quality_datasets(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(indexing_technique="economy")

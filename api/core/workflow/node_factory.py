@@ -22,6 +22,11 @@ from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.llm_environment_variable import (
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -63,7 +68,7 @@ from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.variables.segments import ArrayObjectSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
 if TYPE_CHECKING:
@@ -361,6 +366,12 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
+        return DifyNodeFactory(
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
         raw_ctx = run_context.get(DIFY_RUN_CONTEXT_KEY)
@@ -394,6 +405,9 @@ class DifyNodeFactory(NodeFactory):
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
+        if node_type == BuiltinNodeTypes.LLM:
+            resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
+        node: Node | None = None
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
                 "code_executor": self._code_executor,
@@ -412,7 +426,8 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "hitl_callback": self._build_human_input_callback(
-                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
+                    execution_id_getter=lambda: node.execution_id if node is not None else None,
                 ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
@@ -457,13 +472,14 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
-        return node_class(
+        node = node_class(
             node_id=node_id,
             data=constructor_node_data,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
         )
+        return node
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:
@@ -478,6 +494,25 @@ class DifyNodeFactory(NodeFactory):
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
         return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+
+    def _resolve_llm_model_reference(self, node_data: LLMNodeData) -> LLMNodeData:
+        """Resolve an optional shared model selector from the workflow variable pool."""
+
+        model_selector = (node_data.model_extra or {}).get("model_selector")
+        if not should_resolve_llm_model_selector(model_selector):
+            return node_data
+
+        selector = parse_llm_model_selector(model_selector)
+        variable = self.graph_runtime_state.variable_pool.get(selector)
+        if not isinstance(variable, ObjectSegment):
+            raise ValueError(f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable")
+
+        resolved_model = resolve_llm_model_config(
+            node_model=node_data.model,
+            variable_name=selector[1],
+            variable_value=variable.value,
+        )
+        return node_data.model_copy(update={"model": resolved_model})
 
     def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
         if issubclass(node_class, DifyAgentNode):
@@ -525,6 +560,7 @@ class DifyNodeFactory(NodeFactory):
         self,
         *,
         node_data: DifyHumanInputNodeData,
+        execution_id_getter: Callable[[], str | None],
     ) -> DifyHITLCallback:
         return DifyHITLCallback(
             form_repository=self._human_input_runtime.build_form_repository(),
@@ -533,6 +569,7 @@ class DifyNodeFactory(NodeFactory):
             delivery_methods=self._human_input_runtime._resolve_delivery_methods(node_data=node_data),
             display_in_ui=self._human_input_runtime._display_in_ui(node_data=node_data),
             file_reference_factory=self._file_reference_factory,
+            execution_id_getter=execution_id_getter,
         )
 
     def _build_llm_compatible_node_init_kwargs(

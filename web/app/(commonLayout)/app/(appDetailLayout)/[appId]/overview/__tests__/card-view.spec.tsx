@@ -1,7 +1,8 @@
 import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CardView from '../card-view'
 
 const mockAppState = vi.hoisted(() => ({
@@ -17,7 +18,42 @@ const mockUpdateAppSiteStatus = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteConfig = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteAccessToken = vi.hoisted(() => vi.fn())
 const mockFetchAppDetail = vi.hoisted(() => vi.fn())
-const mockSetQueryData = vi.hoisted(() => vi.fn())
+const mockInvalidateQueries = vi.hoisted(() => vi.fn())
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
+      apps: {
+        get: { key: () => ['console', 'apps', 'get'] },
+        starred: { get: { key: () => ['console', 'apps', 'starred', 'get'] } },
+        recent: { get: { key: () => ['console', 'apps', 'recent', 'get'] } },
+      },
+    },
+  }
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof mockAppState) => T): T => selector(mockAppState),
@@ -34,25 +70,6 @@ vi.mock('@/service/apps', () => ({
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
-  return {
-    ...actual,
-    useQueryClient: () => ({
-      setQueryData: mockSetQueryData,
-    }),
-  }
-})
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: mockAppState.appDetail.permission_keys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -188,16 +205,19 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteAccessToken).toHaveBeenCalledWith({
         url: '/apps/app-1/site/access-token-reset',
       })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'starred', 'get'],
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['console', 'apps', 'recent', 'get'],
+      })
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalled()
       })
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetQueryData).toHaveBeenCalledWith(
-        ['apps', 'detail', 'app-1'],
-        expect.objectContaining({
-          site: expect.objectContaining({ title: 'Saved site title' }),
-        }),
-      )
       expect(mockAppState.setAppDetail).toHaveBeenCalledWith(
         expect.objectContaining({
           site: expect.objectContaining({ title: 'Saved site title' }),
