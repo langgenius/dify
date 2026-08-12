@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from types import SimpleNamespace
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -25,8 +23,8 @@ class _Database:
     session: Session
 
 
-def _db_provider() -> ApiToolProvider:
-    bundle = ApiToolBundle(
+def _tool_bundle() -> ApiToolBundle:
+    return ApiToolBundle(
         server_url="https://api.example.com/items",
         method="GET",
         summary="List items",
@@ -35,22 +33,26 @@ def _db_provider() -> ApiToolProvider:
         author="author",
         openapi={"parameters": []},
     )
-    return cast(
-        ApiToolProvider,
-        SimpleNamespace(
-            id="provider-id",
-            tenant_id="tenant-1",
-            name="provider-a",
-            description="desc",
-            icon="icon.svg",
-            user=SimpleNamespace(name="Alice"),
-            tools=[bundle],
-        ),
+
+
+def _db_provider() -> ApiToolProvider:
+    provider = ApiToolProvider(
+        name="provider-a",
+        icon="icon.svg",
+        schema="{}",
+        schema_type_str=ApiProviderSchemaType.OPENAPI,
+        user_id="",
+        tenant_id="tenant-1",
+        description="desc",
+        tools_str=json.dumps([_tool_bundle().model_dump(mode="json")]),
+        credentials_str='{"auth_type":"none"}',
     )
+    provider.id = "provider-id"
+    return provider
 
 
 def _persist_provider(session: Session, *, tenant_id: str, name: str = "provider-a") -> ApiToolProvider:
-    bundle = _db_provider().tools[0]
+    bundle = _tool_bundle()
     provider = ApiToolProvider(
         name=name,
         icon="icon.svg",
