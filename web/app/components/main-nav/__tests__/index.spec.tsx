@@ -3,6 +3,7 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
@@ -12,6 +13,7 @@ import type { Mock } from 'vitest'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -156,8 +158,13 @@ const mockStepByStepTour = vi.hoisted(() => {
     stateQueryKey,
   }
 })
+type MainNavConsoleState = ConsoleStateFixture & {
+  profileMeta: UserProfileWithMeta['meta']
+  versionData: GetVersionResponse
+}
+
 const mockConsoleState = vi.hoisted(() => ({
-  current: undefined as ConsoleStateFixture | undefined,
+  current: undefined as MainNavConsoleState | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -168,10 +175,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -180,11 +183,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
@@ -490,7 +488,7 @@ const mainNavUserProfile = {
   is_password_set: true,
 }
 
-const consoleState: ConsoleStateFixture = {
+const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
   currentWorkspace: {
     id: 'workspace-1',
@@ -504,12 +502,13 @@ const consoleState: ConsoleStateFixture = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '1.0.0',
-    latest_version: '1.0.0',
-    release_notes: '',
+  profileMeta: {
+    currentEnv: 'testing',
+    currentVersion: '1.0.0',
+  },
+  versionData: {
     version: '1.0.0',
+    release_notes: '',
   },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -549,10 +548,19 @@ const renderMainNav = (
       ...(currentConsoleState.userProfile ?? {}),
     },
     meta: {
-      currentVersion: null,
-      currentEnv: null,
+      currentVersion: currentConsoleState.profileMeta.currentVersion,
+      currentEnv: currentConsoleState.profileMeta.currentEnv,
     },
   })
+  const currentVersion = currentConsoleState.profileMeta.currentVersion
+  if (currentVersion) {
+    queryClient.setQueryData(
+      consoleQuery.version.get.queryOptions({
+        input: { query: { current_version: currentVersion } },
+      }).queryKey,
+      currentConsoleState.versionData,
+    )
+  }
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   const store = options.store ?? createStore()
@@ -1128,9 +1136,8 @@ describe('MainNav', () => {
     const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
-      langGeniusVersionInfo: {
-        ...consoleState.langGeniusVersionInfo,
-        latest_version: '1.1.0',
+      versionData: {
+        version: '1.1.0',
         release_notes: 'https://github.com/langgenius/dify/releases/tag/1.1.0',
       },
     }

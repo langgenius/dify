@@ -1,6 +1,5 @@
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
-import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -25,22 +24,12 @@ export type ConsoleStateFixture = {
   knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
-  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
   refreshCurrentWorkspace?: () => void
 }
 
 type ConsoleStateFixtureResolver = () => ConsoleStateFixture
 type JotaiStore = ReturnType<typeof createStore>
-type ConsoleStateOwner = 'account' | 'workspace' | 'permission' | 'systemFeatures' | 'version'
-
-const defaultUserProfile = {
-  id: 'user-1',
-  name: 'User',
-  email: 'user@example.com',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: true,
-}
+type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures'
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
@@ -50,18 +39,6 @@ const defaultCurrentWorkspace = {
   role: 'owner',
 } satisfies GetWorkspacesCurrentSummaryResponse
 
-const defaultLangGeniusVersionInfo = {
-  current_env: 'CLOUD',
-  current_version: '',
-  latest_version: '',
-  version: '',
-  release_notes: '',
-} satisfies LangGeniusVersionInfo
-
-const userProfileAtom = atom(defaultUserProfile)
-const userProfileIdAtom = atom((get) => get(userProfileAtom).id)
-const userProfileEmailAtom = atom((get) => get(userProfileAtom).email)
-const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
@@ -81,9 +58,6 @@ const systemFeaturesAtom = atom(createSystemFeaturesFixture())
 const deploymentEditionAtom = atom((get) => get(systemFeaturesAtom).deployment_edition)
 const brandingEnabledAtom = atom((get) => get(systemFeaturesAtom).branding.enabled)
 
-const langGeniusVersionInfoAtom = atom<LangGeniusVersionInfo>(defaultLangGeniusVersionInfo)
-const langGeniusCurrentVersionAtom = atom((get) => get(langGeniusVersionInfoAtom).current_version)
-
 const consoleStateFixtureResolvers: Partial<
   Record<ConsoleStateOwner, ConsoleStateFixtureResolver>
 > = {}
@@ -100,10 +74,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   if (!resolvers.length) return false
 
   const state = Object.assign({}, ...resolvers.map((resolve) => resolve()))
-  store.set(userProfileAtom, {
-    ...defaultUserProfile,
-    ...state.userProfile,
-  })
   store.set(currentWorkspaceAtom, {
     ...defaultCurrentWorkspace,
     ...state.currentWorkspace,
@@ -126,30 +96,11 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
       },
     }),
   )
-  store.set(langGeniusVersionInfoAtom, {
-    ...defaultLangGeniusVersionInfo,
-    ...state.langGeniusVersionInfo,
-  })
   store.set(refreshCurrentWorkspaceCallbackAtom, {
     callback: state.refreshCurrentWorkspace ?? (() => {}),
   })
 
   return true
-}
-
-export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('account', () => {
-    const state = getState()
-    return {
-      userProfile: state.userProfile,
-    }
-  })
-  return {
-    userProfileAtom,
-    userProfileIdAtom,
-    userProfileEmailAtom,
-    accountProfileMetaAtom,
-  }
 }
 
 export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
@@ -199,15 +150,5 @@ export const createSystemFeaturesStateModuleMock = (getState: ConsoleStateFixtur
   return {
     deploymentEditionAtom,
     brandingEnabledAtom,
-  }
-}
-
-export const createVersionStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('version', () => ({
-    langGeniusVersionInfo: getState().langGeniusVersionInfo,
-  }))
-  return {
-    langGeniusVersionInfoAtom,
-    langGeniusCurrentVersionAtom,
   }
 }
