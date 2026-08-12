@@ -8,8 +8,14 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 
 
+# TODO: Remove this Dify-specific node once graphon exposes a polling finalization hook.
 class DifyLLMNode(LLMNode):
     """Dify-owned LLM node lifecycle extensions."""
+
+    @classmethod
+    @override
+    def version(cls) -> str:
+        return "1"
 
     def __init__(
         self,

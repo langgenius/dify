@@ -12,6 +12,7 @@ from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
+from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
@@ -971,6 +972,44 @@ class TestDifyNodeFactoryCreateNode:
 
         assert node.node_data.structured_output_switch_on is True
         assert node.node_data.structured_output_enabled is True
+
+    def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
+        factory.graph_init_params = SimpleNamespace(
+            workflow_id="workflow-id",
+            graph_config={},
+            run_context={},
+            call_depth=0,
+        )
+        monkeypatch.setattr(
+            factory,
+            "_build_llm_compatible_node_init_kwargs",
+            MagicMock(
+                return_value={
+                    "model_instance": sentinel.model_instance,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    "polling_finalizer": MagicMock(),
+                }
+            ),
+        )
+
+        node = factory.create_node(
+            {
+                "id": "llm-node-id",
+                "data": {
+                    "type": BuiltinNodeTypes.LLM,
+                    "version": "1",
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                },
+            }
+        )
+
+        assert isinstance(node, DifyLLMNode)
+        assert node.version() == "1"
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),
