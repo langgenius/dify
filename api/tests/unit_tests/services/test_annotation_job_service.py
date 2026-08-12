@@ -8,29 +8,30 @@ class _FakeRedis:
         self.values: dict[str, str] = {}
         self.fail_status_write = False
 
-    def get(self, key: str) -> str | None:
-        return self.values.get(key)
+    def get(self, name: str) -> str | None:
+        return self.values.get(name)
 
-    def set(self, key: str, value: str, *, nx: bool = False, ex: int | None = None) -> bool:
+    def set(self, name: str, value: str, *, nx: bool = False, ex: int | None = None) -> bool:
         del ex
-        if self.fail_status_write and key.startswith(("enable_app_annotation_job_", "disable_app_annotation_job_")):
+        if self.fail_status_write and name.startswith(("enable_app_annotation_job_", "disable_app_annotation_job_")):
             raise RuntimeError("redis write failed")
-        if nx and key in self.values:
+        if nx and name in self.values:
             return False
-        self.values[key] = value
+        self.values[name] = value
         return True
 
-    def setex(self, key: str, _ttl: int, value: str) -> bool:
-        self.values[key] = value
+    def setex(self, name: str, time: int, value: str) -> bool:
+        del time
+        self.values[name] = value
         return True
 
-    def delete(self, key: str) -> int:
-        return int(self.values.pop(key, None) is not None)
+    def delete(self, *names: str) -> int:
+        return sum(self.values.pop(name, None) is not None for name in names)
 
-    def compare_and_delete(self, key: str, expected_value: str) -> int:
-        if self.values.get(key) != expected_value:
+    def compare_and_delete(self, name: str, expected_value: str) -> int:
+        if self.values.get(name) != expected_value:
             return 0
-        del self.values[key]
+        del self.values[name]
         return 1
 
 

@@ -16,7 +16,7 @@ class AnnotationReplyJobRedisClient(Protocol):
 
     def setex(self, name: str, time: int, value: str) -> object: ...
 
-    def delete(self, name: str) -> object: ...
+    def delete(self, *names: str) -> object: ...
 
     def compare_and_delete(self, name: str, expected_value: str) -> object: ...
 
@@ -45,7 +45,7 @@ class AnnotationReplyJob:
 
 
 class AnnotationReplyJobCoordinator:
-    def __init__(self, redis_client: AnnotationReplyJobRedisClient):
+    def __init__(self, redis_client: AnnotationReplyJobRedisClient) -> None:
         self._redis_client = redis_client
 
     @staticmethod
