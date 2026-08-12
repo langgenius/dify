@@ -67,6 +67,7 @@ catalog:
   '@hey-api/openapi-ts': 0.98.2
   '@hono/node-server': 2.1.0
   '@iconify-json/heroicons': 1.2.3
+  '@iconify-json/logos': 1.2.12
   '@iconify-json/ri': 1.2.10
   '@lexical/code': 0.47.0
   '@lexical/link': 0.47.0

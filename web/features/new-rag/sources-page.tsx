@@ -52,6 +52,8 @@ import {
   sourceWorkflowFromApi,
   sourceWorkflowStatus,
 } from './source-models'
+import { normalizeSourceProviderName, sourceProviderPresentation } from './source-provider-options'
+import { SourceProviderIcon } from './source-setup-fields'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SourceStatus = Source['status']
@@ -114,32 +116,32 @@ function metadataRecord(metadata: Source['metadata'], key: string) {
     : undefined
 }
 
-function knownSourceProviderName(value: string, providerKind?: string) {
-  const normalized = value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
-  if (normalized.includes('firecrawl')) return 'Firecrawl'
-  if (normalized.includes('jinareader') || normalized === 'jina') return 'Jina Reader'
-  if (normalized.includes('watercrawl')) return 'WaterCrawl'
-  if (normalized.includes('notion')) return 'Notion'
-  if (normalized.includes('googledocs')) return 'Google Docs'
-  if (normalized.includes('googledrive'))
-    return providerKind === 'online-document' ? 'Google Docs' : 'Google Drive'
-  if (normalized.includes('confluence')) return 'Confluence'
-  if (normalized.includes('amazons3') || normalized.includes('awss3')) return 'Amazon S3'
+function sourceProviderType(source: Source, providerKind?: string) {
+  if (source.type === 'web' || providerKind === 'website') return 'websiteCrawl' as const
+  if (providerKind === 'online-document') return 'onlineDocuments' as const
+  if (providerKind === 'online-drive') return 'onlineDrive' as const
   return undefined
 }
 
-function sourceProviderName(source: Source) {
+function sourceProviderDetails(source: Source) {
   const providerKind = metadataString(source.metadata, 'providerKind')
+  const providerType = sourceProviderType(source, providerKind)
   const explicitName = metadataString(source.metadata, 'providerName')
-  if (explicitName) return knownSourceProviderName(explicitName, providerKind) ?? explicitName
+  if (explicitName) {
+    const presentation = sourceProviderPresentation(explicitName, providerType)
+    return {
+      iconClass: presentation?.fallbackIcon,
+      name: presentation?.label ?? explicitName,
+    }
+  }
 
   const providerId = metadataString(source.metadata, 'providerId')
-  if (!providerId) return undefined
-  if (providerId === 'plugin-daemon-website') return 'Firecrawl'
-  if (providerId.toLocaleLowerCase().includes('fakecrawler')) return 'FakeCrawler'
-  const knownName = knownSourceProviderName(providerId, providerKind)
-  if (knownName) return knownName
-  return undefined
+  if (!providerId) return {}
+  const presentation = sourceProviderPresentation(providerId, providerType)
+  if (presentation) return { iconClass: presentation.fallbackIcon, name: presentation.label }
+  if (normalizeSourceProviderName(providerId).includes('fakecrawler'))
+    return { name: 'FakeCrawler' }
+  return {}
 }
 
 function sourceLastSyncAt(source: Source) {
@@ -404,7 +406,8 @@ function SourceRow({
   const [pendingAction, setPendingAction] = useState<SourceAction>()
   const syncWorkflow = source.syncWorkflow
 
-  const providerName = sourceProviderName(source)
+  const provider = sourceProviderDetails(source)
+  const providerName = provider.name
   const providerKind = metadataString(source.metadata, 'providerKind')
   const sourceSyncPolicy = source.syncPolicy
   const syncPolicy = sourceSyncPolicy
@@ -425,23 +428,12 @@ function SourceRow({
       : source.type === 'connector' &&
           (providerKind === 'online-drive' ||
             providerName === 'Google Drive' ||
+            providerName === 'OneDrive' ||
             providerName === 'Amazon S3')
         ? t(($) => $['newKnowledge.onlineDrive'])
         : t(($) => $[`newKnowledge.sourceType.${source.type}`])
   const sourceIcon =
-    source.type === 'web'
-      ? 'i-ri-global-line'
-      : providerName === 'Notion'
-        ? 'i-custom-public-common-notion'
-        : providerName === 'Amazon S3'
-          ? 'i-ri-folder-line'
-          : providerName === 'Google Drive'
-            ? 'i-custom-public-common-google-drive'
-            : providerName === 'Google Docs'
-              ? 'i-ri-file-text-fill text-[#4d8bf5]'
-              : providerName === 'Confluence'
-                ? 'i-custom-public-common-confluence'
-                : 'i-ri-links-line'
+    provider.iconClass ?? (source.type === 'web' ? 'i-ri-global-line' : 'i-ri-links-line')
 
   const runAction = async <Result,>(
     action: SourceAction,
@@ -560,7 +552,7 @@ function SourceRow({
       </td>
       <td className="min-w-0 py-2 pr-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span aria-hidden className={cn('size-4.5 shrink-0 text-text-tertiary', sourceIcon)} />
+          <SourceProviderIcon fallbackIcon={sourceIcon} />
           <div className="min-w-0">
             <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
           </div>

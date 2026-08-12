@@ -35,6 +35,7 @@ import {
 import {
   SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderIcon,
   SourceProviderNotInstalledCard,
   SourceProviderRadioGroup,
   SourceSyncPolicyField,
@@ -434,7 +435,7 @@ export function CreateSourceSetup({
           disabled={disabled}
           layout={sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
           options={providerOptions.map((option) => ({
-            icon: <span aria-hidden className={`${option.fallbackIcon} size-4 shrink-0`} />,
+            icon: <SourceProviderIcon fallbackIcon={option.fallbackIcon} />,
             label: option.label,
             value: option.key,
           }))}
@@ -463,7 +464,7 @@ export function CreateSourceSetup({
         </div>
       ) : providerOption && !providerOption.installed ? (
         <SourceProviderNotInstalledCard
-          icon={<span aria-hidden className={`${providerOption.fallbackIcon} size-4.5`} />}
+          icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} />}
           provider={providerOption.label}
           onInstall={() =>
             globalThis.open(
@@ -482,7 +483,7 @@ export function CreateSourceSetup({
             provider: installedProviderOption.label,
           })}
           disabled={disabled}
-          icon={<span aria-hidden className={`${installedProviderOption.fallbackIcon} size-4.5`} />}
+          icon={<SourceProviderIcon fallbackIcon={installedProviderOption.fallbackIcon} />}
           title={t(($) => $['newKnowledge.providerNotConfigured'], {
             provider: installedProviderOption.label,
           })}

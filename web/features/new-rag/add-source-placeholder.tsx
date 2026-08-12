@@ -39,6 +39,8 @@ import {
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
 } from './routes'
+import { sourceProviderPresentation } from './source-provider-options'
+import { SourceProviderIcon } from './source-setup-fields'
 
 const connectedProviders = {
   onlineDocuments: [
@@ -48,8 +50,8 @@ const connectedProviders = {
   ],
   onlineDrive: [
     { icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },
-    { icon: 'i-ri-cloud-line', label: 'OneDrive' },
-    { icon: 'i-ri-box-3-line', label: 'Amazon S3' },
+    { icon: 'i-logos-microsoft-onedrive', label: 'OneDrive' },
+    { icon: 'i-logos-aws-s3', label: 'Amazon S3' },
   ],
 } as const
 
@@ -210,20 +212,23 @@ export function UnavailableConnectedSourceSetup({
           className="grid grid-cols-1 gap-2 sm:grid-cols-3"
           onValueChange={selectProvider}
         >
-          {providers.map((option) => (
-            <RadioItem<string>
-              key={option.label}
-              value={option.label}
-              className={cn(
-                'flex min-h-9 items-center justify-center gap-2 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
-                'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
-              )}
-            >
-              <span aria-hidden className={`${option.icon} size-4 shrink-0`} />
-              <span className="truncate">{option.label}</span>
-            </RadioItem>
-          ))}
+          {providers.map((option) => {
+            const presentation = sourceProviderPresentation(option.label, sourceType)
+            return (
+              <RadioItem<string>
+                key={option.label}
+                value={option.label}
+                className={cn(
+                  'flex min-h-9 items-center justify-center gap-2 rounded-lg border border-divider-subtle px-3 system-xs-medium text-text-secondary outline-hidden',
+                  'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                  'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
+                )}
+              >
+                <SourceProviderIcon fallbackIcon={presentation?.fallbackIcon ?? option.icon} />
+                <span className="truncate">{option.label}</span>
+              </RadioItem>
+            )
+          })}
         </RadioGroup>
       </Fieldset>
 

@@ -57,6 +57,9 @@ catalogs:
     '@iconify-json/heroicons':
       specifier: 1.2.3
       version: 1.2.3
+    '@iconify-json/logos':
+      specifier: 1.2.12
+      version: 1.2.12
     '@iconify-json/ri':
       specifier: 1.2.10
       version: 1.2.10
@@ -671,6 +674,9 @@ importers:
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
+      '@iconify-json/logos':
+        specifier: 'catalog:'
+        version: 1.2.12
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
@@ -1501,6 +1507,9 @@ importers:
       '@iconify-json/heroicons':
         specifier: 'catalog:'
         version: 1.2.3
+      '@iconify-json/logos':
+        specifier: 'catalog:'
+        version: 1.2.12
       '@iconify-json/ri':
         specifier: 'catalog:'
         version: 1.2.10
@@ -2353,6 +2362,9 @@ packages:
 
   '@iconify-json/heroicons@1.2.3':
     resolution: {integrity: sha512-n+vmCEgTesRsOpp5AB5ILB6srsgsYK+bieoQBNlafvoEhjVXLq8nIGN4B0v/s4DUfa0dOrjwE/cKJgIKdJXOEg==}
+
+  '@iconify-json/logos@1.2.12':
+    resolution: {integrity: sha512-zUi/AoezU2F3L65nPVd2smiU6Y+ZI7RjdVPlGfeAeYbPbZ9kWn7Ucxj+KshmyQRBYwLtKoqAlUyoGgMqWG1T8g==}
 
   '@iconify-json/ri@1.2.10':
     resolution: {integrity: sha512-WWMhoncVVM+Xmu9T5fgu2lhYRrKTEWhKk3Com0KiM111EeEsRLiASjpsFKnC/SrB6covhUp95r2mH8tGxhgd5Q==}
@@ -10126,6 +10138,10 @@ snapshots:
   '@humanwhocodes/retry@0.4.3': {}
 
   '@iconify-json/heroicons@1.2.3':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/logos@1.2.12':
     dependencies:
       '@iconify/types': 2.0.0
 

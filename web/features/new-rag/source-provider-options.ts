@@ -38,7 +38,7 @@ export type SourceProviderOption = InstalledSourceProviderOption | UninstalledSo
 
 const recommendedProviders: RecommendedProvider[] = [
   {
-    aliases: ['firecrawl'],
+    aliases: ['firecrawl', 'plugin-daemon-website', 'plugin-daemon-website-firecrawl'],
     fallbackIcon: 'i-custom-public-common-firecrawl',
     label: 'Firecrawl',
     packageId: 'langgenius/firecrawl_datasource',
@@ -62,7 +62,7 @@ const recommendedProviders: RecommendedProvider[] = [
     sourceType: 'websiteCrawl',
   },
   {
-    aliases: ['notion'],
+    aliases: ['notion', 'notion_datasource'],
     fallbackIcon: 'i-custom-public-common-notion',
     label: 'Notion',
     packageId: 'langgenius/notion_datasource',
@@ -95,15 +95,15 @@ const recommendedProviders: RecommendedProvider[] = [
   },
   {
     aliases: ['onedrive', 'microsoft onedrive'],
-    fallbackIcon: 'i-ri-cloud-line',
+    fallbackIcon: 'i-logos-microsoft-onedrive',
     label: 'OneDrive',
     packageId: 'langgenius/onedrive_datasource',
     providerType: 'online_drive',
     sourceType: 'onlineDrive',
   },
   {
-    aliases: ['amazon s3', 'amazons3', 's3'],
-    fallbackIcon: 'i-ri-box-3-line',
+    aliases: ['amazon s3', 'amazons3', 'aws s3', 's3'],
+    fallbackIcon: 'i-logos-aws-s3',
     label: 'Amazon S3',
     packageId: 'langgenius/aws_s3_storage',
     providerType: 'online_drive',
@@ -113,6 +113,30 @@ const recommendedProviders: RecommendedProvider[] = [
 
 export function normalizeSourceProviderName(value: string) {
   return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+export function sourceProviderPresentation(
+  value: string,
+  sourceType?: NewKnowledgeSourceType,
+): Pick<RecommendedProvider, 'fallbackIcon' | 'label'> | undefined {
+  const normalized = normalizeSourceProviderName(value)
+  if (!normalized) return undefined
+
+  const candidates = sourceType
+    ? recommendedProviders.filter((provider) => provider.sourceType === sourceType)
+    : recommendedProviders
+  const provider =
+    (!sourceType
+      ? candidates.find((candidate) => normalizeSourceProviderName(candidate.label) === normalized)
+      : undefined) ??
+    candidates.find((candidate) =>
+      [candidate.label, candidate.packageId, ...candidate.aliases]
+        .map(normalizeSourceProviderName)
+        .includes(normalized),
+    )
+
+  if (!provider) return undefined
+  return { fallbackIcon: provider.fallbackIcon, label: provider.label }
 }
 
 function providerKey(

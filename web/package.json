@@ -150,6 +150,7 @@
     "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",
     "@iconify-json/heroicons": "catalog:",
+    "@iconify-json/logos": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@langgenius/dev-proxy": "workspace:*",
     "@langgenius/dify-ui": "workspace:*",

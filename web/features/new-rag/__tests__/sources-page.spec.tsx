@@ -1610,6 +1610,31 @@ describe('SourcesPage', () => {
     expect(within(row).queryByText('notion_datasource')).not.toBeInTheDocument()
   })
 
+  it('preserves a custom provider name containing a built-in brand', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                providerKind: 'online-document',
+                providerName: 'Notion Backup',
+              },
+              name: 'Archived workspace',
+              type: 'connector',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Archived workspace/ })
+    expect(within(row).getByText('Notion Backup')).toBeInTheDocument()
+    expect(within(row).queryByText('Notion')).not.toBeInTheDocument()
+  })
+
   it('uses provider kind to distinguish legacy Google Drive sources', () => {
     sourcesQuery.data = {
       pages: [
@@ -1633,6 +1658,29 @@ describe('SourcesPage', () => {
     const row = screen.getByRole('row', { name: /Escalation archive/ })
     expect(within(row).getByText('Google Drive')).toBeInTheDocument()
     expect(within(row).getByText('dataset.newKnowledge.onlineDrive')).toBeInTheDocument()
+  })
+
+  it('restores the OneDrive name, type, and brand icon', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: { providerName: 'microsoft_onedrive' },
+              name: 'Sales enablement',
+              type: 'connector',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const row = screen.getByRole('row', { name: /Sales enablement/ })
+    expect(within(row).getByText('OneDrive')).toBeInTheDocument()
+    expect(within(row).getByText('dataset.newKnowledge.onlineDrive')).toBeInTheDocument()
+    expect(row.querySelector('.i-logos-microsoft-onedrive')).toBeInTheDocument()
   })
 
   it('does not report ordinary source updates as successful syncs', () => {
