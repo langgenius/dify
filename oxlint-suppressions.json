@@ -424,11 +424,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/debug/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/debug/chat-user-input.tsx": {
     "jsx_a11y/no-autofocus": {
       "count": 2

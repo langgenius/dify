@@ -65,17 +65,17 @@ describe('MobileOperationDropdown Component', () => {
     })
   })
 
-  it('applies hover state to ActionButton when open', async () => {
+  it('exposes popup-open state on the trigger', async () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} />)
     const trigger = screen.getByRole('button', { name: 'common.operation.more' })
 
     // closed state
-    expect(trigger).not.toHaveClass('action-btn-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     // open state
     await user.click(trigger)
-    expect(trigger).toHaveClass('action-btn-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 
   it('closes the menu after clicking an action', async () => {

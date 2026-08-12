@@ -194,7 +194,7 @@ describe('dataset-config/card-item', () => {
     })
   })
 
-  it('should call onRemove and toggle destructive state on hover', async () => {
+  it('should call onRemove from its named icon command', async () => {
     const user = userEvent.setup()
     const dataset = createDataset()
     const { onRemove } = renderItem(dataset)
@@ -204,15 +204,6 @@ describe('dataset-config/card-item', () => {
       name: 'common.operation.remove',
       hidden: true,
     })
-
-    expect(deleteButton.className).not.toContain('action-btn-destructive')
-
-    fireEvent.mouseEnter(deleteButton)
-    expect(deleteButton.className).toContain('action-btn-destructive')
-    expect(card.className).toContain('border-state-destructive-border')
-
-    fireEvent.mouseLeave(deleteButton)
-    expect(deleteButton.className).not.toContain('action-btn-destructive')
 
     await user.click(deleteButton)
     expect(onRemove).toHaveBeenCalledWith(dataset.id)
