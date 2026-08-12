@@ -8,17 +8,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './routes'
+import { SyncPolicyField } from './sync-policy-field'
 
 const sourceTypeOptions = [
   { icon: 'i-ri-global-line', iconSize: 'size-4', value: 'websiteCrawl' },
@@ -291,46 +283,34 @@ export function SourceSyncPolicyField({
   triggerClassName?: string
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
-  const { t } = useTranslation('dataset')
-
   return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <Select<NewKnowledgeSourceDraft['syncPolicy']>
-        name="syncPolicy"
-        disabled={disabled}
-        value={draft.syncPolicy}
-        onValueChange={(value) => {
-          if (value) onDraftChange({ ...draft, syncPolicy: value })
-        }}
-      >
-        <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-        <SelectTrigger className={triggerClassName} size={size}>
-          {t(($) =>
-            draft.syncPolicy === 'provider'
-              ? $['newKnowledge.syncPolicyProvider']
-              : draft.syncPolicy === 'daily'
-                ? $['newKnowledge.syncPolicyDaily']
-                : $['newKnowledge.syncPolicyManual'],
-          )}
-        </SelectTrigger>
-        <SelectContent>
-          {availablePolicies.map((policy) => (
-            <SelectItem key={policy} value={policy}>
-              <SelectItemText>
-                {t(($) =>
-                  policy === 'provider'
-                    ? $['newKnowledge.syncPolicyProvider']
-                    : policy === 'daily'
-                      ? $['newKnowledge.syncPolicyDaily']
-                      : $['newKnowledge.syncPolicyManual'],
-                )}
-              </SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <SyncPolicyField
+      availableModes={[
+        ...(availablePolicies.includes('provider') ? (['provider'] as const) : []),
+        ...(availablePolicies.includes('manual') ? (['manual'] as const) : []),
+        ...(availablePolicies.includes('daily') ? (['interval', 'custom'] as const) : []),
+      ]}
+      className={className}
+      disabled={disabled}
+      size={size}
+      triggerClassName={triggerClassName}
+      value={{
+        customIntervalSeconds: draft.customIntervalSeconds,
+        mode:
+          draft.syncPolicy === 'daily'
+            ? 'interval'
+            : draft.syncPolicy === 'custom'
+              ? 'custom'
+              : draft.syncPolicy,
+      }}
+      onChange={(value) =>
+        onDraftChange({
+          ...draft,
+          customIntervalSeconds: value.customIntervalSeconds,
+          syncPolicy: value.mode === 'interval' ? 'daily' : value.mode,
+        })
+      }
+    />
   )
 }
 

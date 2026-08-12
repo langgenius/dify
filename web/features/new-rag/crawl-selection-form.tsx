@@ -7,27 +7,10 @@ import type {
   SourceSyncPolicy as SyncPolicy,
   SourceSyncPolicyBody as SyncPolicyBody,
 } from './source-models'
+import type { SyncPolicyValue } from './sync-policy-field'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import {
-  NumberField,
-  NumberFieldControls,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from '@langgenius/dify-ui/number-field'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,12 +20,11 @@ import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-di
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 import { sourceSyncPolicyFromApi, sourceWorkflowFromApi } from './source-models'
+import { DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS, SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SyncMode = SyncPolicy['mode']
 
-const MIN_CUSTOM_INTERVAL_HOURS = 1
-const MAX_CUSTOM_INTERVAL_HOURS = 720
 export const MAX_SELECTED_PAGES = 200
 const IMPORT_POLL_INTERVAL_MS = 1_000
 const IMPORT_POLL_ATTEMPTS = 120
@@ -127,16 +109,16 @@ function pageSkipReason(page: PreviewPage, rootUrl?: string): PageSkipReason | u
   }
 }
 
-function policyConfiguration(mode: SyncMode, customIntervalHours: number) {
-  if (mode === 'manual') return { enabled: false, mode } as const
-  if (mode === 'custom') {
+function policyConfiguration(value: SyncPolicyValue) {
+  if (value.mode === 'manual') return { enabled: false, mode: value.mode } as const
+  if (value.mode === 'custom') {
     return {
-      customIntervalSeconds: customIntervalHours * 3600,
+      customIntervalSeconds: value.customIntervalSeconds ?? DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
       enabled: true,
-      mode,
+      mode: value.mode,
     } as const
   }
-  return { enabled: true, mode } as const
+  return { enabled: true, mode: value.mode } as const
 }
 
 function policyMatches(policy: SyncPolicy, desired: ReturnType<typeof policyConfiguration>) {
@@ -389,7 +371,6 @@ function ReadyCrawlSelectionForm({
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
-  const customIntervalErrorId = 'crawl-custom-interval-error'
   const pageSkipReasons = useMemo(
     () => new Map(pages.map((page) => [page.pageId, pageSkipReason(page, rootUrl)])),
     [pages, rootUrl],
@@ -410,12 +391,18 @@ function ReadyCrawlSelectionForm({
           .slice(0, MAX_SELECTED_PAGES),
       ),
   )
-  const [syncMode, setSyncMode] = useState<SyncMode>(
-    initialSyncMode ?? (policy.enabled ? policy.mode : 'manual'),
-  )
-  const [customIntervalHours, setCustomIntervalHours] = useState<number | ''>(
-    policy.customIntervalSeconds ? policy.customIntervalSeconds / 3600 : MIN_CUSTOM_INTERVAL_HOURS,
-  )
+  const [syncPolicy, setSyncPolicy] = useState<SyncPolicyValue>(() => {
+    const mode = initialSyncMode ?? (policy.enabled ? policy.mode : 'manual')
+    return {
+      ...(mode === 'custom'
+        ? {
+            customIntervalSeconds:
+              policy.customIntervalSeconds ?? DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
+          }
+        : {}),
+      mode,
+    }
+  })
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [policyUncertain, setPolicyUncertain] = useState(false)
@@ -454,12 +441,7 @@ function ReadyCrawlSelectionForm({
         ),
       ),
   })
-  const customIntervalValid =
-    typeof customIntervalHours === 'number' &&
-    Number.isInteger(customIntervalHours) &&
-    customIntervalHours >= MIN_CUSTOM_INTERVAL_HOURS &&
-    customIntervalHours <= MAX_CUSTOM_INTERVAL_HOURS
-  const canSubmit = selectedPageIds.size > 0 && (syncMode !== 'custom' || customIntervalValid)
+  const canSubmit = selectedPageIds.size > 0
   const formBusy = busy || submitting
   const submissionLocked = formBusy || policyUncertain || selectionUncertain
   const selectionLocked = submissionLocked || workflowUncertain
@@ -496,10 +478,7 @@ function ReadyCrawlSelectionForm({
       setSubmitting(false)
       return
     }
-    const desiredPolicy = policyConfiguration(
-      syncMode,
-      typeof customIntervalHours === 'number' ? customIntervalHours : 0,
-    )
+    const desiredPolicy = policyConfiguration(syncPolicy)
     const sortedPageIds = [...selectedPageIds].sort()
     const fingerprint = JSON.stringify({ pageIds: sortedPageIds, policy: desiredPolicy })
     if (
@@ -626,82 +605,15 @@ function ReadyCrawlSelectionForm({
         selectedPageIds={selectedPageIds}
       />
 
-      <div>
-        <Select<SyncMode>
-          name="syncMode"
-          disabled={selectionLocked}
-          value={syncMode}
-          onValueChange={(value) => {
-            if (!value) return
-            setSyncMode(value)
-            setSubmitError(false)
-          }}
-        >
-          <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-          <SelectTrigger className="sm:w-75.25">
-            {t(($) =>
-              syncMode === 'provider'
-                ? $['newKnowledge.syncPolicyProvider']
-                : syncMode === 'manual'
-                  ? $['newKnowledge.syncPolicyManual']
-                  : syncMode === 'interval'
-                    ? $['newKnowledge.syncPolicyDaily']
-                    : $['newKnowledge.syncPolicyCustom'],
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="provider">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="manual">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="interval">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="custom">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          </SelectContent>
-        </Select>
-        {syncMode === 'custom' && (
-          <Field name="customIntervalHours" invalid={!customIntervalValid} className="mt-3 sm:w-72">
-            <FieldLabel>{t(($) => $['newKnowledge.customIntervalHours'])}</FieldLabel>
-            <NumberField
-              name="customIntervalHours"
-              disabled={selectionLocked}
-              min={MIN_CUSTOM_INTERVAL_HOURS}
-              max={MAX_CUSTOM_INTERVAL_HOURS}
-              step={1}
-              value={customIntervalHours === '' ? null : customIntervalHours}
-              onValueChange={(value) => {
-                setCustomIntervalHours(value ?? '')
-                setSubmitError(false)
-              }}
-            >
-              <NumberFieldGroup>
-                <NumberFieldInput
-                  aria-label={t(($) => $['newKnowledge.customIntervalHours'])}
-                  aria-describedby={!customIntervalValid ? customIntervalErrorId : undefined}
-                />
-                <NumberFieldControls>
-                  <NumberFieldIncrement />
-                  <NumberFieldDecrement />
-                </NumberFieldControls>
-              </NumberFieldGroup>
-            </NumberField>
-            {!customIntervalValid && (
-              <FieldError id={customIntervalErrorId} match>
-                {t(($) => $['newKnowledge.customIntervalInvalid'])}
-              </FieldError>
-            )}
-          </Field>
-        )}
-      </div>
+      <SyncPolicyField
+        disabled={selectionLocked}
+        triggerClassName="sm:w-75.25"
+        value={syncPolicy}
+        onChange={(value) => {
+          setSyncPolicy(value)
+          setSubmitError(false)
+        }}
+      />
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">

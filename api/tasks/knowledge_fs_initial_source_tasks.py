@@ -315,6 +315,14 @@ def _sync_policy_payload(
             expectedRevision=expected_revision,
             expectedSourceVersion=source_version,
         )
+    if payload.sync_policy == "custom":
+        return KnowledgeFSSourceSyncPolicyPayload(
+            customIntervalSeconds=payload.custom_interval_seconds,
+            enabled=True,
+            mode="custom",
+            expectedRevision=expected_revision,
+            expectedSourceVersion=source_version,
+        )
     return KnowledgeFSSourceSyncPolicyPayload(
         enabled=True,
         mode="provider",

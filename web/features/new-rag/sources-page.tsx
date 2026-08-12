@@ -25,14 +25,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import {
-  NumberField,
-  NumberFieldControls,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from '@langgenius/dify-ui/number-field'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -65,6 +57,7 @@ import {
 } from './source-models'
 import { normalizeSourceProviderName, sourceProviderPresentation } from './source-provider-options'
 import { SourceProviderIcon } from './source-setup-fields'
+import { SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type SourceStatus = Source['status']
@@ -477,83 +470,24 @@ function SourceActions({
               onChange={(event) => setNextName(event.target.value)}
             />
             <div className="mt-4">
-              <Select<SourceSyncPolicy['mode']>
-                name={`source-sync-policy-${source.id}`}
+              <SyncPolicyField
                 disabled={pendingAction === 'edit'}
-                value={nextSyncMode}
-                onValueChange={(value) => {
-                  if (value) setNextSyncMode(value)
+                label
+                triggerClassName="w-full"
+                value={{
+                  customIntervalSeconds:
+                    typeof nextCustomIntervalHours === 'number'
+                      ? nextCustomIntervalHours * 3600
+                      : undefined,
+                  mode: nextSyncMode,
                 }}
-              >
-                <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-                <SelectTrigger className="w-full">
-                  {t(($) =>
-                    nextSyncMode === 'provider'
-                      ? $['newKnowledge.syncPolicyProvider']
-                      : nextSyncMode === 'interval'
-                        ? $['newKnowledge.syncPolicyDaily']
-                        : nextSyncMode === 'custom'
-                          ? $['newKnowledge.syncPolicyCustom']
-                          : $['newKnowledge.syncPolicyManual'],
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="provider">
-                    <SelectItemText>
-                      {t(($) => $['newKnowledge.syncPolicyProvider'])}
-                    </SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                  <SelectItem value="interval">
-                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                  <SelectItem value="manual">
-                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                  <SelectItem value="custom">
-                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(value) => {
+                  setNextSyncMode(value.mode)
+                  if (value.customIntervalSeconds)
+                    setNextCustomIntervalHours(value.customIntervalSeconds / 3600)
+                }}
+              />
             </div>
-            {nextSyncMode === 'custom' && (
-              <div className="mt-4">
-                <NumberField
-                  name={`source-custom-interval-${source.id}`}
-                  disabled={pendingAction === 'edit'}
-                  min={MIN_CUSTOM_INTERVAL_HOURS}
-                  max={MAX_CUSTOM_INTERVAL_HOURS}
-                  step={1}
-                  value={nextCustomIntervalHours === '' ? null : nextCustomIntervalHours}
-                  onValueChange={(value) => setNextCustomIntervalHours(value ?? '')}
-                >
-                  <label
-                    className="mb-1.5 block system-sm-medium text-text-secondary"
-                    htmlFor={`source-custom-interval-input-${source.id}`}
-                  >
-                    {t(($) => $['newKnowledge.customIntervalHours'])}
-                  </label>
-                  <NumberFieldGroup>
-                    <NumberFieldInput
-                      id={`source-custom-interval-input-${source.id}`}
-                      aria-invalid={!customIntervalValid}
-                    />
-                    <NumberFieldControls>
-                      <NumberFieldIncrement />
-                      <NumberFieldDecrement />
-                    </NumberFieldControls>
-                  </NumberFieldGroup>
-                </NumberField>
-                {!customIntervalValid && (
-                  <p className="mt-1 system-xs-regular text-text-destructive">
-                    {t(($) => $['newKnowledge.customIntervalInvalid'])}
-                  </p>
-                )}
-              </div>
-            )}
             <div className="mt-6 flex justify-end gap-2">
               <Button
                 disabled={pendingAction === 'edit'}

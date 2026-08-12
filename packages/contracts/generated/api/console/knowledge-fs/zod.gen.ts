@@ -1779,6 +1779,7 @@ export const zKnowledgeFsInitialWebsiteSelectionPayload = z.object({
 export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   crawl_options: zKnowledgeFsInitialWebsiteCrawlOptionsPayload,
   credentialId: z.string().min(1).max(255).nullish(),
+  custom_interval_seconds: z.int().gte(3600).lte(2592000).nullish(),
   datasource: z.string().min(1).max(255).optional().default('crawl'),
   kind: z.literal('website_crawl'),
   name: z.string().min(1).max(200),
@@ -1788,7 +1789,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   providerDisplayName: z.string().min(1).max(255).nullish(),
   root_url: z.string().min(1).max(4096),
   selection: z.array(zKnowledgeFsInitialWebsiteSelectionPayload).min(1).max(200),
-  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
 })
 
 /**
@@ -1809,6 +1810,7 @@ export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
  */
 export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
   credentialId: z.string().min(1).max(255),
+  custom_interval_seconds: z.int().gte(3600).lte(2592000).nullish(),
   datasource: z.string().min(1).max(255),
   kind: z.literal('online_document'),
   name: z.string().min(1).max(200),
@@ -1817,7 +1819,7 @@ export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
-  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
 })
 
 /**
@@ -1845,6 +1847,7 @@ export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
  */
 export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   credentialId: z.string().min(1).max(255),
+  custom_interval_seconds: z.int().gte(3600).lte(2592000).nullish(),
   datasource: z.string().min(1).max(255),
   kind: z.literal('online_drive'),
   name: z.string().min(1).max(200),
@@ -1853,7 +1856,7 @@ export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   selection: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
-  sync_policy: z.enum(['daily', 'manual', 'provider']).optional().default('provider'),
+  sync_policy: z.enum(['custom', 'daily', 'manual', 'provider']).optional().default('provider'),
 })
 
 /**

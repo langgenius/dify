@@ -601,7 +601,7 @@ function ResourceList({
   )
 }
 
-function SyncPolicyField({
+function ConnectedSourceSyncPolicyField({
   draft,
   onDraftChange,
 }: {
@@ -1312,7 +1312,13 @@ function ResourceConfiguration({
           ? ({ enabled: false, mode: 'manual' } as const)
           : draft.syncPolicy === 'daily'
             ? ({ enabled: true, mode: 'interval' } as const)
-            : ({ enabled: true, mode: 'provider' } as const)
+            : draft.syncPolicy === 'custom'
+              ? ({
+                  customIntervalSeconds: draft.customIntervalSeconds,
+                  enabled: true,
+                  mode: 'custom',
+                } as const)
+              : ({ enabled: true, mode: 'provider' } as const)
       let expectedRevision = 0
       try {
         expectedRevision = sourceSyncPolicyFromApi(
@@ -1501,7 +1507,7 @@ function ResourceConfiguration({
             )}
           </section>
           <SourceNameField draft={draft} name="connectedSourceName" onDraftChange={onDraftChange} />
-          <SyncPolicyField draft={draft} onDraftChange={onDraftChange} />
+          <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
         </>
       )}
       {submitError && (
@@ -2027,7 +2033,9 @@ export function ConnectedSourceSetup({
         !providersQuery.isPending &&
         !datasourcePluginsQuery.isPending &&
         !datasourceAuthQuery.isPending &&
-        !loadingConnections && <SyncPolicyField draft={draft} onDraftChange={onDraftChange} />}
+        !loadingConnections && (
+          <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
+        )}
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>

@@ -383,6 +383,9 @@ export function CreateSourceSetup({
         source_url: page.sourceUrl,
         ...(page.title ? { title: page.title } : {}),
       })),
+      ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
+        ? { custom_interval_seconds: draft.customIntervalSeconds }
+        : {}),
       sync_policy: draft.syncPolicy,
     })
   }, [

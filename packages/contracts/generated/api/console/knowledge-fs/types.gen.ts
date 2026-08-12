@@ -1094,6 +1094,7 @@ export type KnowledgeFsModelIntent = {
 export type KnowledgeFsInitialWebsiteSourcePayload = {
   crawl_options: KnowledgeFsInitialWebsiteCrawlOptionsPayload
   credentialId?: string | null
+  custom_interval_seconds?: number | null
   datasource?: string
   kind: 'website_crawl'
   name: string
@@ -1105,11 +1106,12 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
   providerDisplayName?: string | null
   root_url: string
   selection: Array<KnowledgeFsInitialWebsiteSelectionPayload>
-  sync_policy?: 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
 }
 
 export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
   credentialId: string
+  custom_interval_seconds?: number | null
   datasource: string
   kind: 'online_document'
   name: string
@@ -1120,11 +1122,12 @@ export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
   provider: string
   providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
-  sync_policy?: 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
 }
 
 export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   credentialId: string
+  custom_interval_seconds?: number | null
   datasource: string
   kind: 'online_drive'
   name: string
@@ -1135,7 +1138,7 @@ export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   provider: string
   providerDisplayName?: string | null
   selection: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
-  sync_policy?: 'daily' | 'manual' | 'provider'
+  sync_policy?: 'custom' | 'daily' | 'manual' | 'provider'
 }
 
 export type KnowledgeFsRetrievalProfileIntent = {

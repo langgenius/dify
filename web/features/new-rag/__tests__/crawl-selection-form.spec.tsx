@@ -5,7 +5,7 @@ import type {
   SourceWorkflowRun,
 } from '../source-models'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { getInitOptions } from '@/i18n-config/settings'
@@ -440,7 +440,7 @@ describe('CrawlSelectionForm', () => {
     expect(clientMock.selectPages.mock.calls[0]?.[0].body.pageIds).toHaveLength(200)
   })
 
-  it('validates a custom interval and submits policy plus selection exactly once', async () => {
+  it('applies a custom interval and submits policy plus selection exactly once', async () => {
     const selectionRequest = deferred<SourceWorkflowRun>()
     clientMock.selectPages.mockReturnValue(selectionRequest.promise)
     const user = userEvent.setup()
@@ -448,13 +448,19 @@ describe('CrawlSelectionForm', () => {
 
     await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
     await selectSyncPolicy(user, 'custom')
-    const interval = screen.getByRole('textbox', {
-      name: 'dataset.newKnowledge.customIntervalHours',
+    const customInterval = await screen.findByRole('dialog', {
+      name: 'dataset.newKnowledge.syncPolicyCustom',
+    })
+    const interval = within(customInterval).getByRole('textbox', {
+      name: 'dataset.newKnowledge.syncPolicyCustom dataset.newKnowledge.syncPolicyUnit.hours',
     })
     await user.clear(interval)
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
-    expect(interval).toHaveAccessibleDescription('dataset.newKnowledge.customIntervalInvalid')
     await user.type(interval, '6')
+    await user.click(
+      within(customInterval).getByRole('button', {
+        name: 'dataset.newKnowledge.syncPolicyApply',
+      }),
+    )
 
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     await user.dblClick(addSource)

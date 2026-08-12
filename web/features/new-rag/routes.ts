@@ -3,7 +3,7 @@ import { datasourceParameterRecord } from './datasource-parameter-model'
 
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
-type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
+type NewKnowledgeSyncPolicy = 'custom' | 'daily' | 'manual' | 'provider'
 export type NewKnowledgeWebsiteProvider = string
 export type NewKnowledgeOnlineDocumentsProvider = string
 export type NewKnowledgeOnlineDriveProvider = string
@@ -13,6 +13,7 @@ export type NewKnowledgeSourceProvider =
   | NewKnowledgeWebsiteProvider
 
 type NewKnowledgeSourceDraftBase = {
+  customIntervalSeconds?: number
   parameters?: DatasourceParameters
   sourceName: string
   syncPolicy: NewKnowledgeSyncPolicy
@@ -47,6 +48,8 @@ export const NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH = 2048
 const NEW_KNOWLEDGE_PROVIDER_NAME_MAX_LENGTH = 200
 const NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH = 1024
 const NEW_KNOWLEDGE_SOURCE_DRAFT_STORAGE_PREFIX = 'new-knowledge-source-draft:'
+const MIN_CUSTOM_SYNC_INTERVAL_SECONDS = 3_600
+const MAX_CUSTOM_SYNC_INTERVAL_SECONDS = 2_592_000
 
 export function createNewKnowledgeSourceDraft(
   sourceType: NewKnowledgeSourceType,
@@ -129,10 +132,19 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     const draft: unknown = JSON.parse(value)
     if (!draft || typeof draft !== 'object') return undefined
     const candidate = draft as Record<string, unknown>
-    const syncPolicy = ['daily', 'manual', 'provider'].includes(String(candidate.syncPolicy))
+    const syncPolicy = ['custom', 'daily', 'manual', 'provider'].includes(
+      String(candidate.syncPolicy),
+    )
       ? (candidate.syncPolicy as NewKnowledgeSyncPolicy)
       : candidate.syncPolicy === undefined
         ? 'provider'
+        : undefined
+    const customIntervalSeconds =
+      typeof candidate.customIntervalSeconds === 'number' &&
+      Number.isInteger(candidate.customIntervalSeconds) &&
+      candidate.customIntervalSeconds >= MIN_CUSTOM_SYNC_INTERVAL_SECONDS &&
+      candidate.customIntervalSeconds <= MAX_CUSTOM_SYNC_INTERVAL_SECONDS
+        ? candidate.customIntervalSeconds
         : undefined
     const parameters =
       candidate.parameters === undefined ? {} : datasourceParameterRecord(candidate.parameters)
@@ -147,11 +159,13 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
           !candidate.providerKey ||
           candidate.providerKey.length > NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH)) ||
       !syncPolicy ||
+      (syncPolicy === 'custom' && !customIntervalSeconds) ||
       !parameters
     )
       return undefined
     if (candidate.sourceType === 'onlineDocuments') {
       return {
+        ...(syncPolicy === 'custom' ? { customIntervalSeconds } : {}),
         provider: candidate.provider,
         parameters,
         ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
@@ -162,6 +176,7 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     }
     if (candidate.sourceType === 'onlineDrive') {
       return {
+        ...(syncPolicy === 'custom' ? { customIntervalSeconds } : {}),
         provider: candidate.provider,
         parameters,
         ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
@@ -182,6 +197,7 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     )
       return undefined
     return {
+      ...(syncPolicy === 'custom' ? { customIntervalSeconds } : {}),
       includeSubpages: candidate.includeSubpages,
       maxPages: candidate.maxPages,
       parameters,

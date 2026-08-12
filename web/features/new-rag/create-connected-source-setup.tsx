@@ -160,6 +160,9 @@ export function CreateConnectedSourceSetup({
               ]
             : [],
         ),
+        ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
+          ? { custom_interval_seconds: draft.customIntervalSeconds }
+          : {}),
         sync_policy: draft.syncPolicy,
       })
       return
@@ -181,6 +184,9 @@ export function CreateConnectedSourceSetup({
             ]
           : [],
       ),
+      ...(draft.syncPolicy === 'custom' && draft.customIntervalSeconds
+        ? { custom_interval_seconds: draft.customIntervalSeconds }
+        : {}),
       sync_policy: draft.syncPolicy,
     })
   }, [

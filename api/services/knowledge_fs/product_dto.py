@@ -136,6 +136,21 @@ class KnowledgeFSOnlineDriveWorkflowImportItemPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSInitialSyncPolicyPayload(BaseModel):
+    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000)
+    sync_policy: Literal["provider", "daily", "manual", "custom"] = "provider"
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_custom_interval(self) -> KnowledgeFSInitialSyncPolicyPayload:
+        if self.sync_policy == "custom" and self.custom_interval_seconds is None:
+            raise ValueError("custom_interval_seconds is required for a custom sync policy")
+        if self.sync_policy != "custom" and self.custom_interval_seconds is not None:
+            raise ValueError("custom_interval_seconds is only valid for a custom sync policy")
+        return self
+
+
 class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
     credential_id: str = Field(min_length=1, max_length=255, alias="credentialId")
     datasource: str = Field(min_length=1, max_length=255)
@@ -147,7 +162,13 @@ class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
-class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
+class KnowledgeFSInitialDatasourceSourcePayload(
+    KnowledgeFSInitialDatasourceBindingPayload, KnowledgeFSInitialSyncPolicyPayload
+):
+    pass
+
+
+class KnowledgeFSInitialWebsiteSourcePayload(KnowledgeFSInitialSyncPolicyPayload):
     kind: Literal["website_crawl"]
     name: str = Field(min_length=1, max_length=200)
     provider: str = Field(min_length=1, max_length=255)
@@ -159,8 +180,6 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
-    sync_policy: Literal["provider", "daily", "manual"] = "provider"
-
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
     @model_validator(mode="after")
@@ -171,18 +190,16 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
         return self
 
 
-class KnowledgeFSInitialOnlineDocumentSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
+class KnowledgeFSInitialOnlineDocumentSourcePayload(KnowledgeFSInitialDatasourceSourcePayload):
     kind: Literal["online_document"]
     name: str = Field(min_length=1, max_length=200)
     selection: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
-    sync_policy: Literal["provider", "daily", "manual"] = "provider"
 
 
-class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceBindingPayload):
+class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceSourcePayload):
     kind: Literal["online_drive"]
     name: str = Field(min_length=1, max_length=200)
     selection: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
-    sync_policy: Literal["provider", "daily", "manual"] = "provider"
 
 
 class KnowledgeFSInitialSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):

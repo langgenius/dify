@@ -23,15 +23,6 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -40,7 +31,7 @@ import {
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
 } from './routes'
 import { sourceProviderPresentation } from './source-provider-options'
-import { SourceProviderIcon } from './source-setup-fields'
+import { SourceProviderIcon, SourceSyncPolicyField } from './source-setup-fields'
 
 const connectedProviders = {
   onlineDocuments: [
@@ -264,37 +255,7 @@ export function UnavailableConnectedSourceSetup({
             onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           />
         </Field>
-        <Select<NewKnowledgeSourceDraft['syncPolicy']>
-          value={draft.syncPolicy}
-          onValueChange={(value) => {
-            if (value) onDraftChange({ ...draft, syncPolicy: value })
-          }}
-        >
-          <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
-          <SelectTrigger size="large">
-            {t(($) =>
-              draft.syncPolicy === 'provider'
-                ? $['newKnowledge.syncPolicyProvider']
-                : draft.syncPolicy === 'daily'
-                  ? $['newKnowledge.syncPolicyDaily']
-                  : $['newKnowledge.syncPolicyManual'],
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="provider">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyProvider'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="daily">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="manual">
-              <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <SourceSyncPolicyField draft={draft} size="large" onDraftChange={onDraftChange} />
       </div>
 
       <div role="status" className="rounded-lg bg-background-section px-3 py-2">

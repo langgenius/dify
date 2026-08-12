@@ -36,6 +36,7 @@ def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePaylo
                 {"source_url": "https://docs.dify.ai/a", "title": "A"},
                 {"source_url": "https://docs.dify.ai/b", "title": "B"},
             ],
+            **({"custom_interval_seconds": 129_600} if sync_policy == "custom" else {}),
             "sync_policy": sync_policy,
         }
     )
@@ -382,16 +383,18 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
 
 
 @pytest.mark.parametrize(
-    ("sync_policy", "expected_mode", "expected_enabled"),
+    ("sync_policy", "expected_mode", "expected_enabled", "expected_custom_interval_seconds"),
     [
-        ("manual", "manual", False),
-        ("provider", "provider", True),
+        ("custom", "custom", True, 129_600),
+        ("manual", "manual", False, None),
+        ("provider", "provider", True, None),
     ],
 )
 def test_initial_website_source_import_configures_remaining_sync_modes(
     sync_policy: str,
     expected_mode: str,
     expected_enabled: bool,
+    expected_custom_interval_seconds: int | None,
 ) -> None:
     facade = _facade()
     facade.list_source_connections.side_effect = [
@@ -424,6 +427,7 @@ def test_initial_website_source_import_configures_remaining_sync_modes(
     sync_payload = facade.update_source_sync_policy.call_args.kwargs["payload"]
     assert sync_payload.mode == expected_mode
     assert sync_payload.enabled is expected_enabled
+    assert sync_payload.custom_interval_seconds == expected_custom_interval_seconds
     assert sync_payload.expected_revision == 7
     assert sync_payload.expected_source_version == 4
 

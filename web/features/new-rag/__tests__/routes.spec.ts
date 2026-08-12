@@ -94,4 +94,23 @@ describe('New RAG routes', () => {
       syncPolicy: 'provider',
     })
   })
+
+  it('restores a valid custom sync interval and rejects incomplete custom policies', () => {
+    const customDraft = {
+      includeSubpages: true,
+      maxPages: 100,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'custom',
+    }
+
+    expect(
+      parseNewKnowledgeSourceDraft(
+        JSON.stringify({ ...customDraft, customIntervalSeconds: 129_600 }),
+      ),
+    ).toEqual(expect.objectContaining({ customIntervalSeconds: 129_600, syncPolicy: 'custom' }))
+    expect(parseNewKnowledgeSourceDraft(JSON.stringify(customDraft))).toBeUndefined()
+  })
 })
