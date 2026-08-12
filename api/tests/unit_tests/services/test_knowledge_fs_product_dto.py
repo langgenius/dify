@@ -43,6 +43,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRetrievalTestResponse,
     KnowledgeFSScoreThresholdIntent,
     KnowledgeFSSettingsPayload,
+    KnowledgeFSSettingsResponse,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceCredentialTestResponse,
     KnowledgeFSSourceImportFailureResponse,
@@ -59,6 +60,40 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_settings_response_serializes_rerank_plugin_id_with_its_public_alias() -> None:
+    response = KnowledgeFSSettingsResponse.model_validate(
+        {
+            "revision": 1,
+            "configuration_state": "active",
+            "embedding": None,
+            "retrieval": {
+                "default_mode": "fast",
+                "reasoning_model": {
+                    "model": "openrouter/auto",
+                    "plugin_id": "langgenius/openrouter",
+                    "provider": "openrouter",
+                },
+                "rerank": {
+                    "enabled": True,
+                    "model": {
+                        "model": "jina-reranker-v3",
+                        "pluginId": "langgenius/jina",
+                        "provider": "jina",
+                    },
+                },
+                "score_threshold": {"enabled": False, "stage": "rerank", "value": 0.5},
+                "top_k": 10,
+            },
+        }
+    )
+
+    assert response.model_dump(mode="json")["retrieval"]["rerank"]["model"] == {
+        "model": "jina-reranker-v3",
+        "pluginId": "langgenius/jina",
+        "provider": "jina",
+    }
 
 
 def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:

@@ -1048,7 +1048,12 @@ class KnowledgeFSProfileModelSelection(BaseModel):
     plugin_id: str = Field(min_length=1, max_length=256, alias="pluginId")
     provider: str = Field(min_length=1, max_length=256)
 
-    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_alias=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
 
 
 class KnowledgeFSProductRerankProfile(BaseModel):
