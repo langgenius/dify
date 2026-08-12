@@ -77,11 +77,21 @@ class TestWorkflowAppQueueManager:
                 reason="Client response stream closed before app execution completed",
             )
 
+    def test_workflow_app_queue_manager_uses_workflow_max_execution_time(self):
+        manager = WorkflowAppQueueManager(
+            task_id="task",
+            user_id="user",
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_mode="workflow",
+        )
+        with patch("core.app.apps.workflow.app_queue_manager.dify_config.WORKFLOW_MAX_EXECUTION_TIME", 3600):
+            assert manager._listen_timeout == 3600
+
     def test_execution_timeout_aborts_graph_before_stop_event(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
             patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
-            patch("core.app.apps.base_app_queue_manager.dify_config.APP_MAX_EXECUTION_TIME", 0),
+            patch("core.app.apps.workflow.app_queue_manager.dify_config.WORKFLOW_MAX_EXECUTION_TIME", 0),
         ):
             redis_client.get.return_value = None
             manager = WorkflowAppQueueManager(

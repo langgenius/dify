@@ -56,13 +56,17 @@ class AppQueueManager(ABC):
         self._abort_sent = threading.Event()
         self._lifecycle_lock = threading.Lock()
 
+    @property
+    def _listen_timeout(self) -> int:
+        return dify_config.APP_MAX_EXECUTION_TIME
+
     def listen(self):
         """
         Listen to queue
         :return:
         """
-        # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
-        listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
+        # wait for configured execution time seconds to stop listen
+        listen_timeout = self._listen_timeout
         start_time = time.monotonic()
         last_ping_time: int | float = 0
         try:

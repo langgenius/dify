@@ -56,3 +56,9 @@ def test_publish_non_stop_event_no_stop_listen(mocker: MockerFixture):
     non_stop_event = mocker.MagicMock(spec=module.AppQueueEvent)
     manager._publish(non_stop_event, PublishFrom.TASK_PIPELINE)
     manager.stop_listen.assert_not_called()
+
+
+def test_pipeline_queue_manager_uses_workflow_max_execution_time(mocker: MockerFixture):
+    manager = PipelineQueueManager(task_id="t", user_id="u", invoke_from=InvokeFrom.WEB_APP, app_mode="rag")
+    mocker.patch.object(module.dify_config, "WORKFLOW_MAX_EXECUTION_TIME", 3600)
+    assert manager._listen_timeout == 3600
