@@ -2,7 +2,7 @@
 name = "dify-trace-arize-phoenix"
 version = "0.0.1"
 dependencies = [
-    "arize-phoenix-otel==0.16.1",
+    "arize-phoenix-otel==0.17.0",
 ]
 description = "Dify ops tracing provider (Arize / Phoenix)."
 

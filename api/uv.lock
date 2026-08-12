@@ -348,7 +348,7 @@ wheels = [
 
 [[package]]
 name = "arize-phoenix-otel"
-version = "0.16.1"
+version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -360,9 +360,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/97/5aef2776ee17eacb24a82de719312008ca0a16b915415cc9363a9a9b1536/arize_phoenix_otel-0.16.1.tar.gz", hash = "sha256:28ba1d43dcd2dc556f6cac25622c3333e613e2cf1d687832a9ed5ce2c20e17be", size = 20933, upload-time = "2026-05-03T19:07:02.563Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/38/1981649600feda7e2fb7832df12d949af8a0c5e1023d7fb9c0714e749c8b/arize_phoenix_otel-0.17.0.tar.gz", hash = "sha256:4cb57779d07e621c57b756f8f9ac003ae3eacd5c2faeb0d92548ddfa39d28504", size = 28502, upload-time = "2026-08-08T06:34:24.538Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/2e/e495446a8a715d9892a4dbc56e11b18fb6f07a634182babc0b0ac6827d9c/arize_phoenix_otel-0.16.1-py3-none-any.whl", hash = "sha256:eb71f7be8d94e68f5cd82b134f7ea1710fa73374bf0d8d663ce6242332871ff9", size = 18033, upload-time = "2026-05-03T19:07:01.395Z" },
+    { url = "https://files.pythonhosted.org/packages/16/5b/b035287cebd7ef31bba3752f9dfb70da7e04f7fe045bec46eb3a072ba3c8/arize_phoenix_otel-0.17.0-py3-none-any.whl", hash = "sha256:8236b874d850d07dcd3dcbf8730430aef93c5cdb3dcafff5bedcf83fb7c6526e", size = 22333, upload-time = "2026-08-08T06:34:23.467Z" },
 ]
 
 [[package]]
@@ -1298,7 +1298,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-slim", specifier = ">=1.102.0,<2.0.0" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
-    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
+    { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.14.2,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
@@ -1852,7 +1852,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "arize-phoenix-otel", specifier = "==0.16.1" }]
+requires-dist = [{ name = "arize-phoenix-otel", specifier = "==0.17.0" }]
 
 [[package]]
 name = "dify-trace-langfuse"
@@ -1874,7 +1874,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "langsmith", specifier = "==0.10.16" }]
+requires-dist = [{ name = "langsmith", specifier = "==0.10.17" }]
 
 [[package]]
 name = "dify-trace-mlflow"
@@ -1896,7 +1896,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "opik", specifier = "~=2.2.21" }]
+requires-dist = [{ name = "opik", specifier = "~=2.2.23" }]
 
 [[package]]
 name = "dify-trace-tencent"
@@ -3699,7 +3699,7 @@ wheels = [
 
 [[package]]
 name = "langsmith"
-version = "0.10.16"
+version = "0.10.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -3717,9 +3717,9 @@ dependencies = [
     { name = "xxhash" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/f1/ee288a685ae666121a5196575e56886e853b8fde9bbc5b796279cf85b2ba/langsmith-0.10.16.tar.gz", hash = "sha256:7dc5ff6477d50101b4944a985773bf9a3e2a9374e5d71ed2549ada929ca500b2", size = 4797058, upload-time = "2026-08-05T16:59:31.13Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/62/56/73674bd922fe57509c38075d089017d65e02f50d687fd70ee6c0b153d729/langsmith-0.10.17.tar.gz", hash = "sha256:2bf0e69246ef77282ea93e78eb22dad1ec8d8a002d31cbd607d0d6448f9c6458", size = 4798702, upload-time = "2026-08-07T17:23:04.601Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/0b/cf0a51c19f659b40351dab76b4d3f0a3554807966a912111fda3156c96fe/langsmith-0.10.16-py3-none-any.whl", hash = "sha256:f0b3882e0d2d69bda596c7b452a7857943aefb2c531c047677470b0a394cc490", size = 734191, upload-time = "2026-08-05T16:59:28.021Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/e6/e264e87ce79467aa0cc6c5e945e74050d7880394da325b3559cfdb41a186/langsmith-0.10.17-py3-none-any.whl", hash = "sha256:2a1242a0500147ed846ecbd5fe2f41c21b1652f6833b1af0f209231006f67e5e", size = 734484, upload-time = "2026-08-07T17:23:02.598Z" },
 ]
 
 [[package]]
@@ -4586,7 +4586,7 @@ wheels = [
 
 [[package]]
 name = "opik"
-version = "2.2.21"
+version = "2.2.23"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3-stubs", extra = ["bedrock-runtime"] },
@@ -4609,9 +4609,9 @@ dependencies = [
     { name = "uuid6" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/e6/126233e2d932cc2ac0938edfdf7fcab27ef05b98d91ba60bb5199492eaa0/opik-2.2.21.tar.gz", hash = "sha256:add5af135fa1c7fc2b624b1df97f37f79645dfd20ce17945e038aae888df44c5", size = 1209429, upload-time = "2026-08-06T13:16:54.499Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/89/9d2988cae3c1fc4e44d06d6678207d5280a5b589d9307221578cde96e81d/opik-2.2.23.tar.gz", hash = "sha256:a383118c1b2b744c22c76e6b1b91250547a8da6a6f4e5f5b59ad86c73ae847b7", size = 1209934, upload-time = "2026-08-07T09:54:11.868Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/1b/9a0a512ced70361f47cfd9660194f450af59a79c92a1da13c6389e8ffcd4/opik-2.2.21-py3-none-any.whl", hash = "sha256:92bb1c869295d212aad73200a1185ff36871d767c7bb44af8aa2b9825597b4dc", size = 1903296, upload-time = "2026-08-06T13:16:52.625Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/2d/7fbfd16128a70691c2a36ea769289a3ef6eaed8d1a2b6fd6d03457699854/opik-2.2.23-py3-none-any.whl", hash = "sha256:bfc856cbe9299a85ae91edba5361fff3a9ad5a5ceb8e2b69f4ea6e5c17ea44a8", size = 1903564, upload-time = "2026-08-07T09:54:10.01Z" },
 ]
 
 [[package]]
