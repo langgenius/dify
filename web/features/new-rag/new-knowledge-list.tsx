@@ -3,8 +3,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
-import { createParser, useQueryState } from 'nuqs'
+import { createParser, parseAsString, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -31,6 +32,9 @@ import {
 } from './components/new-knowledge-list-states'
 
 const PAGE_SIZE = 30
+const searchParser = parseAsString.withDefault('').withOptions({
+  history: 'replace',
+})
 
 function normalizeCreatorIds(creatorIds: string[]) {
   return [...new Set(creatorIds)]
@@ -89,7 +93,8 @@ export function NewKnowledgeList({
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
   const showFilterBoundary = () => toast.info(filtersUnavailable)
   const createLabel = tCommon(($) => $['operation.create'])
-  const [searchValue, setSearchValue] = useState('')
+  const [searchValue, setSearchValue] = useQueryState('query', searchParser)
+  const debouncedSearchValue = useDebounce(searchValue.trim(), { wait: 300 })
   const [creatorIds, setCreatorIds] = useQueryState('creator_ids', creatorIdsParser)
   const knowledgeSpacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
@@ -98,6 +103,7 @@ export function NewKnowledgeList({
           limit: PAGE_SIZE,
           page: pageParam,
           ...(creatorIds.length > 0 ? { creator_ids: creatorIds } : {}),
+          ...(debouncedSearchValue ? { query: debouncedSearchValue } : {}),
         },
       }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
@@ -105,18 +111,6 @@ export function NewKnowledgeList({
     }),
   )
   const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const normalizedSearchValue = searchValue.trim().toLocaleLowerCase()
-  const visibleKnowledgeSpaces = normalizedSearchValue
-    ? knowledgeSpaces.filter(
-        (knowledgeSpace) =>
-          knowledgeSpace.technical_summary?.name
-            .toLocaleLowerCase()
-            .includes(normalizedSearchValue) ||
-          knowledgeSpace.technical_summary?.description
-            ?.toLocaleLowerCase()
-            .includes(normalizedSearchValue),
-      )
-    : knowledgeSpaces
 
   return (
     <section
@@ -159,7 +153,7 @@ export function NewKnowledgeList({
             <SearchInput
               className="w-full min-w-0 sm:w-50"
               value={searchValue}
-              onValueChange={setSearchValue}
+              onValueChange={(value) => void setSearchValue(value || null)}
             />
           </div>
           {canCreate && (
@@ -201,7 +195,7 @@ export function NewKnowledgeList({
               />
             )}
           </div>
-        ) : normalizedSearchValue && visibleKnowledgeSpaces.length === 0 ? (
+        ) : debouncedSearchValue && knowledgeSpaces.length === 0 ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgePageState
               title={tCommon(($) => $['operation.noSearchResults'], {
@@ -209,7 +203,7 @@ export function NewKnowledgeList({
               })}
               description={searchValue.trim()}
               action={
-                <Button onClick={() => setSearchValue('')}>
+                <Button onClick={() => void setSearchValue(null)}>
                   {tCommon(($) => $['operation.clear'])}
                 </Button>
               }
@@ -230,7 +224,7 @@ export function NewKnowledgeList({
         ) : (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
-              {visibleKnowledgeSpaces.map((knowledgeSpace) => (
+              {knowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}

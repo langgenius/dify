@@ -682,7 +682,7 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
     app = Flask(__name__)
 
-    with app.test_request_context("/?page=2&limit=10&creator_ids=creator-1&creator_ids=creator-2"):
+    with app.test_request_context("/?page=2&limit=10&creator_ids=creator-1&creator_ids=creator-2&query=%20Support%20"):
         result = _invoke(console_resources, "KnowledgeFSSpacesApi", "get")
 
     application.list_spaces.assert_called_once_with(
@@ -691,6 +691,7 @@ def test_console_space_list_preserves_repeated_creator_filters(monkeypatch: pyte
         page=2,
         limit=10,
         creator_ids=["creator-1", "creator-2"],
+        query="Support",
     )
     assert result is _RAW_RESULT
 

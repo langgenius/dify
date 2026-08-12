@@ -138,6 +138,7 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
             page=2,
             limit=25,
             creator_ids=["creator-1", "creator-2"],
+            query="support",
         )
         is listed
     )
@@ -148,6 +149,7 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
         page=2,
         limit=25,
         creator_ids=["creator-1", "creator-2"],
+        query="support",
     )
     product.get_space.assert_called_once_with(
         tenant_id="tenant-1", account_id="account-1", control_space_id="control-1"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from time import perf_counter
 from typing import Literal, NamedTuple
 
@@ -18,6 +19,7 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpaceState,
 )
 from services.knowledge_fs.batch_capability import (
+    MAX_BATCH_SPACE_SUMMARIES,
     KnowledgeFSBatchCapabilityIssuerPort,
     KnowledgeFSBatchSpaceBinding,
 )
@@ -43,9 +45,16 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSTechnicalSummary,
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
-from services.knowledge_fs.product_remote import KnowledgeFSProductRemotePort
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRemotePort,
+)
 
 logger = logging.getLogger(__name__)
+
+_MAX_SEARCH_CANDIDATES = 1_000
+_MAX_PARALLEL_SUMMARY_BATCHES = 4
 
 
 class AuthorizedKnowledgeFSControlSpace(NamedTuple):
@@ -84,6 +93,7 @@ class KnowledgeFSProductService:
         page: int,
         limit: int,
         creator_ids: list[str] | None = None,
+        query: str | None = None,
     ) -> KnowledgeFSSpaceListResponse:
         self.require_product_routes(tenant_id=tenant_id)
         with self._session_maker() as session:
@@ -109,27 +119,58 @@ class KnowledgeFSProductService:
             authorized_candidates = tuple(
                 space for space in candidates if KnowledgeFSProductPermission.READ in effective_permissions[space.id]
             )
-            offset = (page - 1) * limit
-            page_candidates = authorized_candidates[offset : offset + limit + 1]
-            authorized = page_candidates[:limit]
+            session.expunge_all()
+
+        normalized_query = query.strip().casefold() if query and query.strip() else None
+        summary_candidates = authorized_candidates if normalized_query is not None else ()
+        if len(summary_candidates) > _MAX_SEARCH_CANDIDATES:
+            raise KnowledgeFSOperationUnavailableError(
+                "KnowledgeFS space search exceeds the bounded authorized candidate limit"
+            )
+        summaries = self._fetch_summaries(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            bindings=tuple(
+                KnowledgeFSBatchSpaceBinding(space.id, space.knowledge_space_id)
+                for space in summary_candidates
+                if space.state is KnowledgeFSControlSpaceState.ACTIVE and space.knowledge_space_id is not None
+            ),
+            trace_id=str(uuid.uuid4()),
+            parallel=normalized_query is not None,
+            strict=normalized_query is not None,
+        )
+        filtered_candidates = (
+            tuple(
+                space
+                for space in authorized_candidates
+                if _space_matches_query(space, summaries=summaries, query=normalized_query)
+            )
+            if normalized_query is not None
+            else authorized_candidates
+        )
+        offset = (page - 1) * limit
+        page_candidates = filtered_candidates[offset : offset + limit + 1]
+        authorized = page_candidates[:limit]
+
+        if normalized_query is None:
+            summaries = self._fetch_summaries(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                bindings=tuple(
+                    KnowledgeFSBatchSpaceBinding(space.id, space.knowledge_space_id)
+                    for space in authorized
+                    if space.state is KnowledgeFSControlSpaceState.ACTIVE and space.knowledge_space_id is not None
+                ),
+                trace_id=str(uuid.uuid4()),
+            )
+
+        with self._session_maker() as session:
             linked_apps_by_control_space_id = _active_app_counts(
                 session,
                 tenant_id=tenant_id,
                 control_space_ids=tuple(space.id for space in authorized),
             )
-            session.expunge_all()
 
-        active_bindings = tuple(
-            KnowledgeFSBatchSpaceBinding(space.id, space.knowledge_space_id)
-            for space in authorized
-            if space.state is KnowledgeFSControlSpaceState.ACTIVE and space.knowledge_space_id is not None
-        )
-        summaries = self._fetch_summaries(
-            tenant_id=tenant_id,
-            account_id=account_id,
-            bindings=active_bindings,
-            trace_id=str(uuid.uuid4()),
-        )
         return KnowledgeFSSpaceListResponse(
             data=[
                 _list_item(
@@ -250,6 +291,58 @@ class KnowledgeFSProductService:
         account_id: str,
         bindings: tuple[KnowledgeFSBatchSpaceBinding, ...],
         trace_id: str,
+        parallel: bool = False,
+        strict: bool = False,
+    ) -> dict[str, KnowledgeFSTechnicalSummary]:
+        if len(bindings) <= MAX_BATCH_SPACE_SUMMARIES:
+            return self._fetch_summary_batch(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                bindings=bindings,
+                trace_id=trace_id,
+                strict=strict,
+            )
+        batches = tuple(
+            bindings[offset : offset + MAX_BATCH_SPACE_SUMMARIES]
+            for offset in range(0, len(bindings), MAX_BATCH_SPACE_SUMMARIES)
+        )
+        summaries: dict[str, KnowledgeFSTechnicalSummary] = {}
+        if parallel:
+            with ThreadPoolExecutor(max_workers=min(_MAX_PARALLEL_SUMMARY_BATCHES, len(batches))) as executor:
+                futures = tuple(
+                    executor.submit(
+                        self._fetch_summary_batch,
+                        tenant_id=tenant_id,
+                        account_id=account_id,
+                        bindings=batch,
+                        trace_id=str(uuid.uuid4()),
+                        strict=strict,
+                    )
+                    for batch in batches
+                )
+                for future in futures:
+                    summaries.update(future.result())
+            return summaries
+        for batch in batches:
+            summaries.update(
+                self._fetch_summary_batch(
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    bindings=batch,
+                    trace_id=str(uuid.uuid4()),
+                    strict=strict,
+                )
+            )
+        return summaries
+
+    def _fetch_summary_batch(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        bindings: tuple[KnowledgeFSBatchSpaceBinding, ...],
+        trace_id: str,
+        strict: bool,
     ) -> dict[str, KnowledgeFSTechnicalSummary]:
         if not bindings:
             return {}
@@ -269,7 +362,7 @@ class KnowledgeFSProductService:
                 capability_token=capability.token,
                 trace_id=trace_id,
             )
-        except Exception:
+        except Exception as exc:
             self._record_batch_metric(
                 started_at=started_at,
                 missing_spaces=requested_spaces,
@@ -277,6 +370,10 @@ class KnowledgeFSProductService:
                 requested_spaces=requested_spaces,
                 returned_spaces=0,
             )
+            if strict:
+                if isinstance(exc, (KnowledgeFSOperationUnavailableError, KnowledgeFSProductRemoteError)):
+                    raise
+                raise KnowledgeFSProductRemoteError("KnowledgeFS search summaries are unavailable") from exc
             return {}
         requested_ids = frozenset(knowledge_space_ids)
         filtered = {space_id: summary for space_id, summary in summaries.items() if space_id in requested_ids}
@@ -288,6 +385,8 @@ class KnowledgeFSProductService:
             requested_spaces=requested_spaces,
             returned_spaces=len(filtered),
         )
+        if strict and missing_spaces:
+            raise KnowledgeFSProductRemoteError("KnowledgeFS search summaries are incomplete")
         return filtered
 
     def _record_batch_metric(
@@ -323,6 +422,19 @@ def _list_item(
 ) -> KnowledgeFSSpaceListItemResponse:
     response = _space_response(space, summaries=summaries, permission_keys=permission_keys)
     return KnowledgeFSSpaceListItemResponse(**response.model_dump(), linked_apps=linked_apps)
+
+
+def _space_matches_query(
+    space: KnowledgeFSControlSpace,
+    *,
+    summaries: dict[str, KnowledgeFSTechnicalSummary],
+    query: str,
+) -> bool:
+    summary = summaries.get(space.knowledge_space_id or "")
+    values = [space.provisioning_key]
+    if summary is not None:
+        values.extend((summary.name, summary.slug, summary.description or ""))
+    return any(query in value.casefold() for value in values)
 
 
 def _space_response(

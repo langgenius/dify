@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
+import services.knowledge_fs.product_service as product_service_module
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSAppSpaceJoinStatus,
@@ -29,6 +30,7 @@ from services.knowledge_fs.product_dto import KnowledgeFSTechnicalSummary
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 from services.knowledge_fs.product_remote import (
     KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
     KnowledgeFSRemoteJSONRequest,
 )
 from services.knowledge_fs.product_service import KnowledgeFSProductService
@@ -88,8 +90,9 @@ class FakeRBAC:
 
 
 class FakeRemote:
-    def __init__(self, summaries: dict[str, KnowledgeFSTechnicalSummary]):
+    def __init__(self, summaries: dict[str, KnowledgeFSTechnicalSummary], *, fail: bool = False):
         self.summaries = summaries
+        self.fail = fail
         self.batch_calls: list[tuple[str, ...]] = []
         self.json_calls: list[KnowledgeFSRemoteJSONRequest] = []
 
@@ -104,6 +107,8 @@ class FakeRemote:
         _ = (namespace_id, trace_id)
         assert capability_token == "batch-capability"
         self.batch_calls.append(knowledge_space_ids)
+        if self.fail:
+            raise RuntimeError("summary service unavailable")
         return dict(self.summaries)
 
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
@@ -513,6 +518,223 @@ def test_list_filters_by_creator_before_authorization_pagination_and_remote_io(s
     assert set(rbac.batch_calls[0]) == matching_ids
     assert other_creator.id not in rbac.batch_calls[0]
     assert remote.batch_calls == [(response.data[0].knowledge_space_id,)]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_list_filters_by_remote_summary_before_pagination(sqlite_session: Session) -> None:
+    matching_spaces = [
+        _space(
+            visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+            key=f"support-{index}",
+            remote_id=f"space-support-{index}",
+        )
+        for index in range(2)
+    ]
+    nonmatching = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="engineering",
+        remote_id="space-engineering",
+    )
+    sqlite_session.add_all([*matching_spaces, nonmatching])
+    sqlite_session.commit()
+    summaries = {
+        space.knowledge_space_id: KnowledgeFSTechnicalSummary(
+            knowledge_space_id=space.knowledge_space_id,
+            revision=1,
+            name=f"Customer Support {index}",
+            slug=f"customer-support-{index}",
+        )
+        for index, space in enumerate(matching_spaces)
+        if space.knowledge_space_id is not None
+    }
+    summaries["space-engineering"] = KnowledgeFSTechnicalSummary(
+        knowledge_space_id="space-engineering",
+        revision=1,
+        name="Engineering handbook",
+        slug="engineering-handbook",
+    )
+    remote = FakeRemote(summaries)
+    batch_capabilities = FakeBatchCapabilities()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=batch_capabilities,
+        cutover_gate=FakeCutoverGate(),
+        remote=remote,
+        rbac=FakeRBAC(),
+    )
+
+    response = service.list_spaces(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        page=1,
+        limit=1,
+        query="CUSTOMER SUPPORT",
+    )
+
+    assert len(response.data) == 1
+    assert response.data[0].control_space_id in {space.id for space in matching_spaces}
+    assert response.has_more is True
+    assert set(remote.batch_calls[0]) == {
+        "space-support-0",
+        "space-support-1",
+        "space-engineering",
+    }
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_search_surfaces_remote_summary_failure_instead_of_returning_empty(sqlite_session: Session) -> None:
+    space = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="support",
+        remote_id="space-support",
+    )
+    sqlite_session.add(space)
+    sqlite_session.commit()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=FakeCutoverGate(),
+        remote=FakeRemote({}, fail=True),
+        rbac=FakeRBAC(),
+    )
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match="summaries are unavailable"):
+        service.list_spaces(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            page=1,
+            limit=20,
+            query="support",
+        )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_search_rejects_incomplete_remote_summaries(sqlite_session: Session) -> None:
+    space = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="support",
+        remote_id="space-support",
+    )
+    sqlite_session.add(space)
+    sqlite_session.commit()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=FakeCutoverGate(),
+        remote=FakeRemote({}),
+        rbac=FakeRBAC(),
+    )
+
+    with pytest.raises(KnowledgeFSProductRemoteError, match="summaries are incomplete"):
+        service.list_spaces(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            page=1,
+            limit=20,
+            query="support",
+        )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_search_fetches_large_bounded_candidate_sets_in_batches(sqlite_session: Session) -> None:
+    spaces = [
+        _space(
+            visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+            key=f"support-{index}",
+            remote_id=f"space-support-{index}",
+        )
+        for index in range(201)
+    ]
+    sqlite_session.add_all(spaces)
+    sqlite_session.commit()
+    summaries = {
+        space.knowledge_space_id: KnowledgeFSTechnicalSummary(
+            knowledge_space_id=space.knowledge_space_id,
+            revision=1,
+            name=f"Support {index}",
+            slug=f"support-{index}",
+        )
+        for index, space in enumerate(spaces)
+        if space.knowledge_space_id is not None
+    }
+    remote = FakeRemote(summaries)
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=FakeCutoverGate(),
+        remote=remote,
+        rbac=FakeRBAC(),
+    )
+
+    response = service.list_spaces(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        page=1,
+        limit=20,
+        query="support",
+    )
+
+    assert len(response.data) == 20
+    assert response.has_more is True
+    assert sorted(len(batch) for batch in remote.batch_calls) == [1, 100, 100]
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
+def test_search_rejects_candidate_sets_above_the_remote_io_bound(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spaces = [
+        _space(
+            visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+            key=f"support-{index}",
+            remote_id=f"space-support-{index}",
+        )
+        for index in range(2)
+    ]
+    sqlite_session.add_all(spaces)
+    sqlite_session.commit()
+    remote = FakeRemote({})
+    batch_capabilities = FakeBatchCapabilities()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=batch_capabilities,
+        cutover_gate=FakeCutoverGate(),
+        remote=remote,
+        rbac=FakeRBAC(),
+    )
+    monkeypatch.setattr(product_service_module, "_MAX_SEARCH_CANDIDATES", 1)
+
+    with pytest.raises(KnowledgeFSOperationUnavailableError, match="bounded authorized candidate limit"):
+        service.list_spaces(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            page=1,
+            limit=20,
+            query="support",
+        )
+
+    assert batch_capabilities.calls == []
+    assert remote.batch_calls == []
 
 
 @pytest.mark.parametrize(

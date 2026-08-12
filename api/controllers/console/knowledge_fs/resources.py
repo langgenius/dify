@@ -805,6 +805,7 @@ class KnowledgeFSSpacesApi(Resource):
             page=query.page,
             limit=query.limit,
             creator_ids=query.creator_ids,
+            query=query.query,
         )
         return dump_response(KnowledgeFSSpaceListResponse, result)
 

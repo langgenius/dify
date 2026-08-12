@@ -32,6 +32,7 @@ type ListKnowledgeSpacesInfiniteOptions = {
       creator_ids?: string[]
       limit: number
       page: number
+      query?: string
     }
   }
 }
@@ -136,6 +137,7 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
 }))
 const accountStateMock = vi.hoisted(() => ({
   userProfileIdAtom: Symbol('userProfileIdAtom'),
+  userProfileAtom: Symbol('userProfileAtom'),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -202,6 +204,7 @@ vi.mock('jotai', async (importOriginal) => {
       if (atom === systemFeaturesStateMock.knowledgeFsUploadEnabledAtom)
         return systemFeaturesStateMock.knowledgeFsUploadEnabled
       if (atom === accountStateMock.userProfileIdAtom) return 'account-1'
+      if (atom === accountStateMock.userProfileAtom) return { id: 'account-1' }
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
   }
@@ -217,6 +220,7 @@ vi.mock('@/features/system-features/state', () => ({
 
 vi.mock('@/context/account-state', () => ({
   userProfileIdAtom: accountStateMock.userProfileIdAtom,
+  userProfileAtom: accountStateMock.userProfileAtom,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -455,7 +459,7 @@ describe('NewKnowledgeList', () => {
     expect(toastMock.success).toHaveBeenCalledWith('dataset.datasetDeleted')
   })
 
-  it('keeps backend-dependent metadata filters interactive and filters loaded items by search', async () => {
+  it('keeps backend-dependent metadata filters interactive and sends search to the collection API', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -479,7 +483,7 @@ describe('NewKnowledgeList', () => {
       },
     ])
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
     expect(screen.getByText('external API panel')).toBeInTheDocument()
@@ -500,28 +504,24 @@ describe('NewKnowledgeList', () => {
     expect(create).toHaveAttribute('href', '/datasets/new/create')
 
     await user.type(search, 'customer support')
-    expect(screen.getByText('Support knowledge')).toBeInTheDocument()
-    expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
+    await waitFor(() => {
+      const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+      expect(options?.input(1)).toEqual({
+        query: { limit: 30, page: 1, query: 'customer support' },
+      })
+    })
+    expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('query')).toBe('customer support')
   })
 
-  it('shows a search-specific empty state and restores the loaded list when cleared', async () => {
+  it('restores server search from the URL and shows its empty state', async () => {
     const user = userEvent.setup()
-    setResolvedPage([
-      {
-        createdAt: '2026-07-15T00:00:00Z',
-        id: 'space-1',
-        name: 'Support knowledge',
-        revision: 1,
-        slug: 'support-knowledge',
-        tenantId: 'tenant-1',
-        updatedAt: '2026-07-18T00:00:00Z',
-      },
-    ])
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+    setResolvedPage()
+    const { onUrlUpdate } = renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+      searchParams: '?query=no%20matching%20knowledge',
+    })
 
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
-    await user.type(search, 'no matching knowledge')
-
+    expect(search).toHaveValue('no matching knowledge')
     expect(
       screen.getByText('common.operation.noSearchResults:{"content":"dataset.knowledge"}'),
     ).toBeInTheDocument()
@@ -530,7 +530,9 @@ describe('NewKnowledgeList', () => {
 
     await user.click(screen.getByText('common.operation.clear'))
     expect(search).toHaveValue('')
-    expect(screen.getByRole('link', { name: 'Support knowledge' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('query')).toBe(false)
+    })
   })
 
   it('filters the collection by selected creators and clears the filter', async () => {
@@ -783,7 +785,7 @@ describe('NewKnowledgeList', () => {
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps full collection pagination available while local search is active', async () => {
+  it('keeps server collection pagination available while search is active', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -802,6 +804,10 @@ describe('NewKnowledgeList', () => {
 
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
     await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'support')
+    await waitFor(() => {
+      const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+      expect(options?.input(1).query.query).toBe('support')
+    })
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })

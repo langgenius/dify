@@ -18,7 +18,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -1075,18 +1075,28 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     [],
   )
 
-  const tracesQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
+  const tracesQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.get.infiniteOptions({
+      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      initialPageParam: null as string | null,
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        ...(typeof pageParam === 'string' ? { query: { cursor: pageParam } } : {}),
+      }),
     }),
     refetchInterval: localRun?.status === 'running' ? 1000 : false,
   })
-  const researchTasksQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.get.queryOptions({
-      input: { params: { control_space_id: knowledgeSpaceId } },
+  const researchTasksQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.get.infiniteOptions({
+      getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+      initialPageParam: null as string | null,
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        ...(typeof pageParam === 'string' ? { query: { cursor: pageParam } } : {}),
+      }),
     }),
     refetchInterval: (current) => {
-      const persistedTasks = current.state.data?.data ?? []
+      const persistedTasks = current.state.data?.pages.flatMap((page) => page.data) ?? []
       const persistedById = new Map(persistedTasks.map((task) => [task.id, task]))
       const admittedTaskIsActive = Object.values(admittedResearchTasks).some((task) => {
         const persisted = persistedById.get(task.id)
@@ -1103,16 +1113,20 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     const byId = new Map(
       Object.values(admittedResearchTasks).map((task) => [task.id, task] as const),
     )
-    for (const persisted of researchTasksQuery.data?.data ?? []) {
+    for (const persisted of researchTasksQuery.data?.pages.flatMap((page) => page.data) ?? []) {
       const admitted = byId.get(persisted.id)
       if (!admitted || persisted.updated_at >= admitted.updated_at)
         byId.set(persisted.id, persisted)
     }
     return [...byId.values()]
-  }, [admittedResearchTasks, researchTasksQuery.data?.data])
+  }, [admittedResearchTasks, researchTasksQuery.data?.pages])
+  const traces = useMemo(
+    () => tracesQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [tracesQuery.data?.pages],
+  )
   const records = useMemo(
-    () => retrievalTestRecords(tracesQuery.data?.data ?? [], researchTasks),
-    [researchTasks, tracesQuery.data?.data],
+    () => retrievalTestRecords(traces, researchTasks),
+    [researchTasks, traces],
   )
   const localRecord: RetrievalTestRecord | undefined =
     localRun && localRun.status !== 'running'
@@ -1146,22 +1160,44 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const selectedRecord = records.find(
     (record) => record.id === selected?.id && record.kind === selected.kind,
   )
+  const selectedResearchTaskFromHistory =
+    selected?.kind === 'research'
+      ? researchTasks.find((task) => task.id === selected.id)
+      : undefined
+  const needsResearchDetail = selected?.kind === 'research' && !selectedResearchTaskFromHistory
+  const researchDetailQuery = useQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.get.queryOptions({
+      input: needsResearchDetail
+        ? {
+            params: {
+              control_space_id: knowledgeSpaceId,
+              task_id: selected.id,
+            },
+          }
+        : skipToken,
+    }),
+  })
   const selectedFailed =
     (selected?.kind === 'local' && localRun?.status === 'failed') ||
     (selected?.kind === 'trace' && selectedRecord?.status === 'failed')
+  const selectedResearchTask =
+    selected?.kind === 'research'
+      ? (selectedResearchTaskFromHistory ?? researchDetailQuery.data)
+      : undefined
   const selectedHistoryRecord = selected?.kind === 'local' ? undefined : selectedRecord
   const query =
     composerDraft.selectionKey === selectedHistoryKey
       ? composerDraft.query
-      : (selectedHistoryRecord?.query ?? '')
+      : (selectedHistoryRecord?.query ?? selectedResearchTask?.query ?? '')
   const mode =
     composerDraft.selectionKey === selectedHistoryKey
       ? composerDraft.mode
-      : (selectedHistoryRecord?.mode ?? 'fast')
-  const selectedResearchTask =
-    selected?.kind === 'research'
-      ? researchTasks.find((task) => task.id === selected.id)
-      : undefined
+      : (selectedHistoryRecord?.mode ??
+        (selectedResearchTask?.mode === 'research'
+          ? 'research'
+          : selectedResearchTask?.mode === 'deep'
+            ? 'deep'
+            : 'fast'))
   const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
   const selectedResearchActiveRef = useRef(selectedResearchActive)
   useEffect(() => {
@@ -1189,28 +1225,40 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     }),
     enabled: Boolean(selectedTraceId) && !selectedFailed,
   })
-  const traceEvidenceQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.queryOptions({
-      input: {
-        params: {
-          control_space_id: knowledgeSpaceId,
-          trace_id: selectedTraceId ?? '',
-        },
-        query: { limit: 100 },
+  const traceEvidenceQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.infiniteOptions(
+      {
+        getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+        initialPageParam: null as string | null,
+        input: (pageParam) => ({
+          params: {
+            control_space_id: knowledgeSpaceId,
+            trace_id: selectedTraceId ?? '',
+          },
+          query: {
+            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+            limit: 100,
+          },
+        }),
       },
-    }),
+    ),
     enabled: Boolean(selectedTraceId) && !selectedFailed,
   })
-  const researchPartialsQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.partials.get.queryOptions(
+  const researchPartialsQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.partials.get.infiniteOptions(
       {
-        input: {
+        getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+        initialPageParam: null as string | null,
+        input: (pageParam) => ({
           params: {
             control_space_id: knowledgeSpaceId,
             task_id: selectedResearchTask?.id ?? '',
           },
-          query: { limit: 100 },
-        },
+          query: {
+            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+            limit: 100,
+          },
+        }),
       },
     ),
     enabled: Boolean(selectedResearchTask),
@@ -1227,6 +1275,44 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     if (!shouldRefreshResearchPartials(previousTask, selectedResearchTask)) return
     void refetchResearchPartials()
   }, [refetchResearchPartials, selectedResearchTask])
+
+  const {
+    fetchNextPage: fetchNextTraceEvidencePage,
+    hasNextPage: hasNextTraceEvidencePage,
+    isFetchNextPageError: traceEvidencePageFailed,
+    isFetchingNextPage: isFetchingNextTraceEvidencePage,
+  } = traceEvidenceQuery
+  useEffect(() => {
+    if (!hasNextTraceEvidencePage || isFetchingNextTraceEvidencePage || traceEvidencePageFailed)
+      return
+    void fetchNextTraceEvidencePage()
+  }, [
+    fetchNextTraceEvidencePage,
+    hasNextTraceEvidencePage,
+    isFetchingNextTraceEvidencePage,
+    traceEvidencePageFailed,
+  ])
+
+  const {
+    fetchNextPage: fetchNextResearchPartialsPage,
+    hasNextPage: hasNextResearchPartialsPage,
+    isFetchNextPageError: researchPartialsPageFailed,
+    isFetchingNextPage: isFetchingNextResearchPartialsPage,
+  } = researchPartialsQuery
+  useEffect(() => {
+    if (
+      !hasNextResearchPartialsPage ||
+      isFetchingNextResearchPartialsPage ||
+      researchPartialsPageFailed
+    )
+      return
+    void fetchNextResearchPartialsPage()
+  }, [
+    fetchNextResearchPartialsPage,
+    hasNextResearchPartialsPage,
+    isFetchingNextResearchPartialsPage,
+    researchPartialsPageFailed,
+  ])
 
   const selectedResearchTaskId = selectedResearchTask?.id
   useEffect(() => {
@@ -1293,13 +1379,15 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     return () => controller.abort()
   }, [knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, selectedResearchTaskId])
 
-  const historicalEvidence = extractRetrievalEvidence(traceEvidenceQuery.data)
-  const researchEvidence = extractRetrievalEvidence(researchPartialsQuery.data)
+  const traceEvidence = traceEvidenceQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const researchPartials = researchPartialsQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const historicalEvidence = extractRetrievalEvidence(traceEvidence)
+  const researchEvidence = extractRetrievalEvidence(researchPartials)
   const selectedResearchEvents = selectedResearchTask
     ? (researchEvents[selectedResearchTask.id] ?? [])
     : []
   const streamedResearchAnswer = researchTaskAnswerFromEvents(selectedResearchEvents)
-  const persistedResearchAnswer = [...(researchPartialsQuery.data?.data ?? [])]
+  const persistedResearchAnswer = [...researchPartials]
     .sort((left, right) => right.sequence - left.sequence)
     .find((partial) => partial.answer?.trim())
     ?.answer?.trim()
@@ -1352,11 +1440,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const selectedQuery =
     selected?.kind === 'local'
       ? localRun?.query
-      : (selectedRecord?.query ?? traceDetailQuery.data?.query)
+      : (selectedRecord?.query ?? selectedResearchTask?.query ?? traceDetailQuery.data?.query)
   const selectedMode =
     selected?.kind === 'local'
       ? localRun?.mode
-      : (selectedRecord?.mode ?? traceDetailQuery.data?.mode)
+      : (selectedRecord?.mode ?? selectedResearchTask?.mode ?? traceDetailQuery.data?.mode)
   const selectedCreatedAt =
     selected?.kind === 'local'
       ? localRun?.startedAt
@@ -1365,7 +1453,39 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const selectedIsLoading =
     (selected?.kind === 'local' && localRun?.status === 'running') ||
     (selected?.kind === 'trace' && !selectedRecord && traceDetailQuery.isPending) ||
-    (selected?.kind === 'trace' && !selectedFailed && traceEvidenceQuery.isPending)
+    (selected?.kind === 'trace' && !selectedFailed && traceEvidenceQuery.isPending) ||
+    (needsResearchDetail && researchDetailQuery.isPending) ||
+    (selected?.kind === 'research' &&
+      Boolean(selectedResearchTask) &&
+      researchPartialsQuery.isPending)
+  const selectedDataError =
+    (needsResearchDetail && researchDetailQuery.isError) ||
+    (selected?.kind === 'trace' &&
+      !selectedFailed &&
+      (traceDetailQuery.isError ||
+        traceEvidenceQuery.isError ||
+        traceEvidenceQuery.isFetchNextPageError)) ||
+    (selected?.kind === 'research' &&
+      Boolean(selectedResearchTask) &&
+      (researchPartialsQuery.isError || researchPartialsQuery.isFetchNextPageError))
+  const retrySelectedData = () => {
+    if (needsResearchDetail && researchDetailQuery.isError) {
+      void researchDetailQuery.refetch()
+      return
+    }
+    if (selected?.kind === 'trace') {
+      if (traceEvidenceQuery.isFetchNextPageError) void traceEvidenceQuery.fetchNextPage()
+      else if (traceDetailQuery.isError && traceEvidenceQuery.isError)
+        void Promise.all([traceDetailQuery.refetch(), traceEvidenceQuery.refetch()])
+      else if (traceDetailQuery.isError) void traceDetailQuery.refetch()
+      else void traceEvidenceQuery.refetch()
+      return
+    }
+    if (selected?.kind === 'research') {
+      if (researchPartialsQuery.isFetchNextPageError) void researchPartialsQuery.fetchNextPage()
+      else void researchPartialsQuery.refetch()
+    }
+  }
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
   const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
@@ -1506,14 +1626,22 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       const eventData = events.map((event) => event.data)
       const traceId = extractTraceId(eventData)
-      let evidence = extractRetrievalEvidence(eventData)
+      const evidence = extractRetrievalEvidence(eventData)
       if (traceId && evidence.length === 0) {
-        const traceEvidence =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get({
-            params: { control_space_id: knowledgeSpaceId, trace_id: traceId },
-            query: { limit: 100 },
-          })
-        evidence = extractRetrievalEvidence(traceEvidence)
+        const visitedCursors = new Set<string>()
+        let cursor: string | undefined
+        do {
+          const traceEvidence =
+            await consoleClient.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get({
+              params: { control_space_id: knowledgeSpaceId, trace_id: traceId },
+              query: { ...(cursor ? { cursor } : {}), limit: 100 },
+            })
+          evidence.push(...extractRetrievalEvidence(traceEvidence.data))
+          const nextCursor = traceEvidence.next_cursor ?? undefined
+          if (!nextCursor || visitedCursors.has(nextCursor)) break
+          visitedCursors.add(nextCursor)
+          cursor = nextCursor
+        } while (cursor)
       }
       const endedAt = Date.now()
       setLocalRun((current) =>
@@ -1528,7 +1656,10 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           : current,
       )
       const refreshedTraces = await tracesQuery.refetch()
-      if (traceId && refreshedTraces.data?.data.some((trace) => trace.id === traceId))
+      if (
+        traceId &&
+        refreshedTraces.data?.pages.some((page) => page.data.some((trace) => trace.id === traceId))
+      )
         setLocalSelected({ id: traceId, kind: 'trace' })
     } catch (error) {
       if (controller.signal.aborted) return
@@ -1697,6 +1828,23 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                       onClick={() => selectRecord(record)}
                     />
                   ))}
+                  {(tracesQuery.hasNextPage || researchTasksQuery.hasNextPage) && (
+                    <div className="px-3 py-2">
+                      <Button
+                        className="w-full"
+                        disabled={
+                          tracesQuery.isFetchingNextPage || researchTasksQuery.isFetchingNextPage
+                        }
+                        onClick={() => {
+                          if (tracesQuery.hasNextPage) void tracesQuery.fetchNextPage()
+                          if (researchTasksQuery.hasNextPage)
+                            void researchTasksQuery.fetchNextPage()
+                        }}
+                      >
+                        {t(($) => $['newKnowledge.loadMore'])}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="px-3 py-5 body-sm-regular text-text-quaternary">
@@ -1808,8 +1956,16 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                   />
                 )}
 
+                {selectedDataError && (
+                  <FailedResult
+                    description={t(($) => $['newKnowledge.retrievalTest.failedDescription'])}
+                    onRetry={retrySelectedData}
+                  />
+                )}
+
                 {!selectedIsLoading &&
                   !selectedFailed &&
+                  !selectedDataError &&
                   !researchTaskIsActive(selectedResearchTask) &&
                   !researchAnswer &&
                   (selectedHasNoResults || currentEvidence.length === 0) && (
@@ -1878,6 +2034,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
 
               {!selectedIsLoading &&
                 !selectedFailed &&
+                !selectedDataError &&
                 !researchTaskIsActive(selectedResearchTask) &&
                 resultKey && (
                   <QualityActions

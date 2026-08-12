@@ -283,6 +283,7 @@ class KnowledgeFSSpaceUpdatePayload(BaseModel):
 class KnowledgeFSSpaceListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
+    query: str | None = Field(default=None, max_length=255)
     creator_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] | None = Field(
         default=None,
         max_length=100,
@@ -295,6 +296,12 @@ class KnowledgeFSSpaceListQuery(BaseModel):
     @classmethod
     def normalize_creator_ids(cls, value: list[str] | None) -> list[str] | None:
         return value or None
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        normalized = value.strip() if value is not None else ""
+        return normalized or None
 
 
 class KnowledgeFSCursorQuery(BaseModel):

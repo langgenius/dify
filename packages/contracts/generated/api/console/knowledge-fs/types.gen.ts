@@ -1912,6 +1912,7 @@ export type GetKnowledgeFsSpacesData = {
     creator_ids?: Array<string>
     limit?: number
     page?: number
+    query?: string
   }
   url: '/knowledge-fs/spaces'
 }
