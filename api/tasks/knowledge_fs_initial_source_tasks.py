@@ -428,9 +428,10 @@ def start_initial_source_import(
             control_space_id=control_space_id,
             source_id=source_id,
         )
+        error_message = workflow.failure.message if workflow.failure is not None else None
         initial_import = {
             "errorCode": workflow.last_error_code,
-            "errorMessage": workflow.last_error_message,
+            "errorMessage": error_message,
             "state": workflow.state,
             "workflowId": workflow.id,
         }
@@ -459,7 +460,7 @@ def start_initial_source_import(
             extra={
                 "control_space_id": control_space_id,
                 "error_code": workflow.last_error_code,
-                "error_message": workflow.last_error_message,
+                "error_message": error_message,
                 "source_id": source_id,
                 "workflow_id": workflow.id,
                 "workflow_state": workflow.state,

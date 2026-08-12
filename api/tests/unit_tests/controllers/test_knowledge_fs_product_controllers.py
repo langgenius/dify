@@ -10,11 +10,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound, RequestEntityTooLarge, ServiceUnavailable
+from werkzeug.exceptions import Forbidden, ServiceUnavailable
 
 from controllers.common import wraps as common_wraps
 from controllers.console import console_ns
 from controllers.console.knowledge_fs import resources as console_resources
+from controllers.console.knowledge_fs.error import (
+    KnowledgeFSRequestTooLargeHTTPError,
+    KnowledgeFSResourceNotFoundHTTPError,
+)
 from controllers.console.wraps import RBACPermission, RBACResourceScope
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
@@ -262,7 +266,7 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
     permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
     app = Flask(__name__)
 
-    with app.test_request_context(), pytest.raises(NotFound):
+    with app.test_request_context(), pytest.raises(KnowledgeFSResourceNotFoundHTTPError):
         permission_wrapper(
             console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi(),
             control_space_id="foreign-control",
@@ -696,7 +700,7 @@ def test_small_file_console_bff_maps_oversize_to_413() -> None:
     def reject():
         raise KnowledgeFSProductRequestRejectedError(status_code=413)
 
-    with pytest.raises(RequestEntityTooLarge):
+    with pytest.raises(KnowledgeFSRequestTooLargeHTTPError):
         reject()
 
 
@@ -809,7 +813,10 @@ def test_space_create_profile_intent_matches_the_exact_kfs_pending_configuration
                 "retrieval": {
                     "defaultMode": "auto",
                     "reasoningModel": {"pluginId": "plugin", "provider": "provider", "model": "reasoning"},
-                    "rerank": {"enabled": False},
+                    "rerank": {
+                        "enabled": True,
+                        "model": {"pluginId": "plugin", "provider": "provider", "model": "rerank"},
+                    },
                     "scoreThreshold": {"enabled": False, "stage": "mode-final"},
                     "topK": 10,
                 },
@@ -840,7 +847,10 @@ def test_space_create_allows_deferred_model_setup_but_rejects_incomplete_fast_pr
                         "provider": "provider",
                         "model": "reasoning",
                     },
-                    "rerank": {"enabled": False},
+                    "rerank": {
+                        "enabled": True,
+                        "model": {"pluginId": "plugin", "provider": "provider", "model": "rerank"},
+                    },
                     "scoreThreshold": {"enabled": False, "stage": "mode-final"},
                     "topK": 10,
                 },

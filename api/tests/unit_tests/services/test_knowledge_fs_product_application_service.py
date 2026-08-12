@@ -51,7 +51,10 @@ def test_space_creation_rejects_an_uncutover_workspace_before_any_mutation() -> 
             "retrieval": {
                 "defaultMode": "research",
                 "reasoningModel": {"pluginId": "plugin", "provider": "provider", "model": "reasoning"},
-                "rerank": {"enabled": False},
+                "rerank": {
+                    "enabled": True,
+                    "model": {"pluginId": "plugin", "provider": "provider", "model": "rerank"},
+                },
                 "scoreThreshold": {"enabled": False},
                 "topK": 10,
             },

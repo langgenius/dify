@@ -366,9 +366,9 @@ def test_initial_website_source_import_reuses_source_across_pages_and_preserves_
         SimpleNamespace(data=[existing_source], next_cursor=None),
     ]
     facade.import_selected_source_crawl.return_value = SimpleNamespace(
+        failure=SimpleNamespace(message="Source document materialization failed"),
         id="failed-workflow",
         last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
-        last_error_message="Source document materialization failed",
         state="failed",
     )
 
@@ -635,9 +635,9 @@ def test_initial_website_source_import_keeps_polling_existing_running_workflow()
 def test_initial_website_source_import_exposes_failed_source_without_activating_it() -> None:
     facade = _facade()
     facade.get_source_workflow.return_value = SimpleNamespace(
+        failure=SimpleNamespace(message="Source document materialization failed"),
         id="workflow-1",
         last_error_code="SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
-        last_error_message="Source document materialization failed",
         source_id="source-1",
         state="failed",
     )
