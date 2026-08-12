@@ -147,13 +147,13 @@ class AccountProfilePatchPayload(BaseModel):
 
     @field_validator("interface_language")
     @classmethod
-    def validate_language(cls, value: str | None) -> str | None:
-        return supported_language(value) if value is not None else None
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
 
     @field_validator("timezone")
     @classmethod
-    def validate_timezone(cls, value: str | None) -> str | None:
-        return timezone(value) if value is not None else None
+    def validate_timezone(cls, value: str) -> str:
+        return timezone(value)
 
     def to_changes(self) -> AccountProfileChanges:
         return AccountProfileChanges(
