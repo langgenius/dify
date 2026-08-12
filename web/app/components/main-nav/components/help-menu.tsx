@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,15 +36,17 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   currentWorkspaceIdAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -86,8 +88,20 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: profileMeta } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta,
+  })
+  const { data: versionData } = useQuery(
+    consoleQuery.version.get.queryOptions({
+      input: profileMeta.currentVersion
+        ? { query: { current_version: profileMeta.currentVersion } }
+        : skipToken,
+      enabled: !systemFeatures.branding.enabled,
+    }),
+  )
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const langGeniusVersionInfo = getLangGeniusVersionInfo({ meta: profileMeta, versionData })
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()

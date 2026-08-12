@@ -51,7 +51,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -584,7 +584,7 @@ export const zAppListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -753,7 +753,7 @@ export const zGetAppsQuery = z.object({
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
+  workspace_id: z.uuid(),
 })
 
 /**
@@ -789,7 +789,7 @@ export const zGetAppsByAppIdDslPath = z.object({
 
 export const zGetAppsByAppIdDslQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().optional(),
+  workflow_id: z.uuid().optional(),
 })
 
 /**

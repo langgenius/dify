@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "Hapus kunci rahasia ini?",
   "actionMsg.ok": "OKE",
   "apiKey": "Kunci API",
-  "apiKeyModal.apiSecretKey": "Kunci rahasia API",
+  "apiKeyModal.apiSecretKey": "Kunci API",
   "apiKeyModal.apiSecretKeyTips": "Untuk mencegah penyalahgunaan API, lindungi Kunci API Anda. Hindari menggunakannya sebagai teks biasa dalam kode front-end. :)",
   "apiKeyModal.createNewSecretKey": "Membuat kunci Rahasia baru",
   "apiKeyModal.created": "DIBUAT",

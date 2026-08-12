@@ -64,22 +64,6 @@ const WorkflowAppWithAdditionalContext = () => {
     }
   }, [triggersResponse?.data, setTriggerStatuses])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Reset the loaded flag when component unmounts
-      workflowStore.setState({ isWorkflowDataLoaded: false })
-
-      // Cancel any pending debounced sync operations
-      const { debouncedSyncWorkflowDraft } = workflowStore.getState()
-      // The debounced function from lodash has a cancel method
-      const cancellableSyncWorkflowDraft = debouncedSyncWorkflowDraft as
-        | { cancel?: () => void }
-        | undefined
-      cancellableSyncWorkflowDraft?.cancel?.()
-    }
-  }, [workflowStore])
-
   const nodesData = useMemo(() => {
     if (data) {
       const processedNodes = initialNodes(data.graph.nodes, data.graph.edges)

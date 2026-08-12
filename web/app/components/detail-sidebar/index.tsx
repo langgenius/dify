@@ -3,12 +3,12 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { useDetailSidebarMode } from './storage'
 
@@ -44,7 +44,10 @@ export function DetailSidebarFrame({
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
   const detailNavigationExpanded = detailNavigationMode === 'expand'
@@ -60,7 +63,6 @@ export function DetailSidebarFrame({
   const detailNavigationVisibleExpanded =
     detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
   const bottomNavigationExpanded = detailNavigationVisibleExpanded
-  const currentEnv = langGeniusVersionInfo?.current_env
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   function handleToggleDetailNavigation() {
