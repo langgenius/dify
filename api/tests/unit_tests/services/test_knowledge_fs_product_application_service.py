@@ -259,6 +259,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "name": "Dify docs",
             "provider": "firecrawl",
             "datasource": "crawl",
+            "parameters": {},
             "root_url": "https://docs.dify.ai",
             "crawl_options": {"include_subpages": True, "limit": 25},
             "selection": [
@@ -309,6 +310,7 @@ def test_product_application_create_schedules_selected_connector_import() -> Non
         "datasource": "pages",
         "kind": "online_document",
         "name": "Product wiki",
+        "parameters": {},
         "plugin_id": "langgenius/notion_datasource",
         "provider": "notion",
         "selection": [
