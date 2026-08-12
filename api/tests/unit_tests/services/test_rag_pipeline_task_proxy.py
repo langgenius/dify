@@ -415,9 +415,8 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = Mock()
-        mock_upload_file.id = ""  # Empty file ID
-        mock_file_service.upload_text.return_value = mock_upload_file
+        upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("")
+        mock_file_service.upload_text.return_value = upload_file
 
         # Act & Assert
         with pytest.raises(ValueError, match="upload_file_id is empty"):
