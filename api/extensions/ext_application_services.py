@@ -10,13 +10,14 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
@@ -32,6 +33,7 @@ from services.auth.data_source_api_key_auth_gateways import (
     TenantApiKeyAuthCredentialEncryptor,
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -40,6 +42,7 @@ from services.init_validation_service import InitValidationService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -48,11 +51,17 @@ from services.workspace_query_service import WorkspaceQueryService
 _EXTENSION_KEY = "application_services"
 
 
+def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
+    settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
+    return WebAppAccessMode(settings.access_mode)
+
+
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     data_source_api_key_auth: DataSourceApiKeyAuthService
+    webapp_access: WebAppAccessQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
@@ -93,6 +102,11 @@ def build_application_services(
             bindings=data_source_api_key_auth_bindings,
             validator=ProviderApiKeyAuthCredentialValidator(),
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
+        ),
+        webapp_access=WebAppAccessQueryService(
+            access=WebAppAccessQueryRepository(session_factory=database_client),
+            webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
+            access_mode_for_app=_get_enterprise_webapp_access_mode,
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),

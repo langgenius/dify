@@ -1,12 +1,13 @@
 """Tests for application-service dependency wiring."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
@@ -186,3 +187,25 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_adapts_enterprise_webapp_access_mode(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with (
+        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
+            return_value=SimpleNamespace(access_mode="private_all"),
+        ) as get_access_mode,
+    ):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        result = services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+
+    assert result is WebAppAccessMode.PRIVATE_ALL
+    get_access_mode.assert_called_once_with("app-1")
