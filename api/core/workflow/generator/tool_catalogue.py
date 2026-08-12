@@ -17,9 +17,10 @@ bounded. Tools beyond the cap are dropped silently; if quality suffers, the
 fix is a planner-time relevance filter, not a bigger dump.
 """
 
+import json
 import logging
 from operator import itemgetter
-from typing import TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -33,11 +34,14 @@ _MAX_TOOLS = 80
 
 class ToolCatalogueEntry(TypedDict):
     provider_name: str
-    provider_type: str  # "builtin" | "plugin" — what the workflow tool node uses
+    provider_type: str  # "builtin" | "api" | "workflow" | "mcp" — workflow node value
     plugin_id: str  # empty string for hardcoded built-ins
+    plugin_unique_identifier: NotRequired[str]
     tool_name: str
     tool_label: str
     description: str  # one-line LLM-friendly description
+    parameters: NotRequired[list[dict[str, Any]]]
+    output_schema: NotRequired[dict[str, Any]]
 
 
 def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
@@ -53,12 +57,17 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
     for provider in ToolManager.list_builtin_providers(tenant_id):
         provider_name = provider.entity.identity.name
         plugin_id = ""
-        # Hardcoded built-ins return "builtin"; plugin providers return "plugin".
-        # Use the provider's own declared value so the catalogue matches what
-        # ``tool`` workflow nodes need in their ``data.provider_type`` field.
-        provider_type = provider.provider_type.value
+        # The tool-provider domain distinguishes hardcoded providers from
+        # plugin providers ("builtin" vs "plugin"), while workflow tool nodes
+        # deliberately group BOTH under provider_type="builtin". This mirrors
+        # ToolTransformService.builtin_provider_to_user_provider and the web
+        # CollectionType contract; leaking "plugin" here makes generated nodes
+        # invisible to the canvas' installed-tool collection.
+        provider_type = "builtin"
+        plugin_unique_identifier = ""
         if isinstance(provider, PluginToolProviderController):
             plugin_id = provider.plugin_id or ""
+            plugin_unique_identifier = getattr(provider, "plugin_unique_identifier", None) or ""
         elif not isinstance(provider, BuiltinToolProviderController):
             # Unknown provider class — skip rather than guess.
             continue
@@ -82,9 +91,15 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                         provider_name=provider_name,
                         provider_type=provider_type,
                         plugin_id=plugin_id,
+                        plugin_unique_identifier=plugin_unique_identifier,
                         tool_name=tool_name,
                         tool_label=tool_label,
                         description=description,
+                        parameters=[
+                            parameter.model_dump(mode="json")
+                            for parameter in (getattr(tool.entity, "parameters", None) or [])
+                        ],
+                        output_schema=dict(getattr(tool.entity, "output_schema", None) or {}),
                     )
                 )
             except Exception:
@@ -133,6 +148,84 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry]) -> str:
         if desc:
             line += f" — {desc}"
         lines.append(line)
+    return "\n".join(lines)
+
+
+def find_tool_entry(entries: list[ToolCatalogueEntry], provider_name: str, tool_name: str) -> ToolCatalogueEntry | None:
+    """Return one exact installed-tool entry, or ``None`` when unavailable."""
+    provider_name = provider_name.strip()
+    tool_name = tool_name.strip()
+    for entry in entries:
+        if entry["provider_name"] == provider_name and entry["tool_name"] == tool_name:
+            return entry
+    return None
+
+
+def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
+    """Render the exact node identity and parameter contract for one tool.
+
+    The planner sees the compact multi-tool catalogue; a tool node builder only
+    needs the selected entry. Keeping this context focused both reduces tokens
+    and prevents the builder from silently switching to another installed tool.
+    """
+    identity = {
+        "provider_id": entry["provider_name"],
+        "provider_name": entry["provider_name"],
+        "provider_type": entry["provider_type"],
+        "plugin_id": entry.get("plugin_id", ""),
+        "plugin_unique_identifier": entry.get("plugin_unique_identifier", ""),
+        "tool_name": entry["tool_name"],
+        "tool_label": entry["tool_label"] or entry["tool_name"],
+    }
+    lines = [
+        "# Selected installed tool",
+        "",
+        "Copy these identity fields EXACTLY; do not switch tools or invent identifiers:",
+        json.dumps(identity, ensure_ascii=False, separators=(",", ":")),
+    ]
+
+    description = entry.get("description", "").replace("\n", " ").strip()
+    if description:
+        lines.extend(["", f"Capability: {description}"])
+
+    parameters = entry.get("parameters") or []
+    if parameters:
+        lines.extend(
+            [
+                "",
+                "Parameters (form=llm -> tool_parameters; form=form -> tool_configurations):",
+            ]
+        )
+        for parameter in parameters:
+            name = str(parameter.get("name") or "").strip()
+            if not name:
+                continue
+            form = str(parameter.get("form") or "llm")
+            type_ = str(parameter.get("type") or "string")
+            requirement = "required" if parameter.get("required") else "optional"
+            detail = str(parameter.get("llm_description") or "").replace("\n", " ").strip()
+            options = parameter.get("options") or []
+            option_values = [str(option.get("value")) for option in options if isinstance(option, dict)]
+            suffixes = []
+            if option_values:
+                suffixes.append("options=" + json.dumps(option_values, ensure_ascii=False, separators=(",", ":")))
+            if parameter.get("default") is not None:
+                suffixes.append(
+                    "default=" + json.dumps(parameter["default"], ensure_ascii=False, separators=(",", ":"))
+                )
+            if detail:
+                suffixes.append(detail[:160])
+            suffix = " — " + "; ".join(suffixes) if suffixes else ""
+            lines.append(f"- {name}: {type_}, form={form}, {requirement}{suffix}")
+
+    lines.extend(
+        [
+            "",
+            "Use upstream variables for required LLM parameters whenever possible. "
+            "Keep declared defaults for form parameters and omit undeclared parameter names.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 

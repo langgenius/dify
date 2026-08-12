@@ -39,7 +39,16 @@ class TestWorkflowGeneratorService:
         # Arrange
         instance = MagicMock(name="model_instance")
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = instance
-        mock_build_catalogue.return_value = [{"provider_name": "google"}]
+        mock_build_catalogue.return_value = [
+            {
+                "provider_name": "google",
+                "provider_type": "builtin",
+                "plugin_id": "",
+                "tool_name": "search",
+                "tool_label": "Search",
+                "description": "Search.",
+            }
+        ]
         mock_format_catalogue.return_value = "- google/search — Search."
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
@@ -67,6 +76,7 @@ class TestWorkflowGeneratorService:
         assert call_kwargs["instruction"] == "Summarize a URL"
         assert call_kwargs["ideal_output"] == "A 3-sentence summary"
         assert call_kwargs["tool_catalogue_text"] == "- google/search — Search."
+        assert call_kwargs["tool_catalogue_entries"] == mock_build_catalogue.return_value
         assert call_kwargs["model_parameters"] == {"temperature": 0.4}
         assert result["error"] == ""
 

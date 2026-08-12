@@ -27,6 +27,11 @@ class TestPlannerSystemPrompt:
         assert '"mode": "workflow | advanced-chat"' in PLANNER_SYSTEM_PROMPT
         assert "When the ``# Mode`` section says auto, YOU decide" in PLANNER_SYSTEM_PROMPT
 
+    def test_prioritizes_installed_tools_and_requires_structured_selection(self):
+        assert "INSTALLED-TOOL-FIRST" in PLANNER_SYSTEM_PROMPT
+        assert 'you MUST use a "tool" node' in PLANNER_SYSTEM_PROMPT
+        assert '"tool": {"provider_id": "<provider>", "tool_name": "<tool>"}' in PLANNER_SYSTEM_PROMPT
+
 
 class TestFormatIdealOutputSection:
     def test_returns_empty_string_for_blank_input(self):

@@ -8,6 +8,8 @@ from core.workflow.generator.tool_catalogue import (
     _i18n_text,
     _tool_description,
     build_tool_catalogue,
+    find_tool_entry,
+    format_tool_builder_context,
     format_tool_catalogue,
     installed_tool_keys,
 )
@@ -98,6 +100,46 @@ class TestFormatToolCatalogue:
         out = format_tool_catalogue([_entry("p", "t", description="line1\nline2\nline3")])
         assert "\n" not in out.split(" — ", 1)[1]
         assert "line1 line2 line3" in out
+
+
+class TestToolBuilderContext:
+    def test_finds_exact_provider_and_tool_pair(self):
+        entries = [_entry("google", "search"), _entry("google", "maps")]
+
+        assert find_tool_entry(entries, "google", "search") == entries[0]
+        assert find_tool_entry(entries, "google", "missing") is None
+
+    def test_renders_trusted_identity_and_parameter_contract(self):
+        entry = _entry("langgenius/google/google", "search", label="Google Search", description="Search the web.")
+        entry["plugin_id"] = "langgenius/google"
+        entry["plugin_unique_identifier"] = "langgenius/google:1.0@checksum"
+        entry["parameters"] = [
+            {
+                "name": "query",
+                "type": "string",
+                "form": "llm",
+                "required": True,
+                "default": None,
+                "options": [],
+                "llm_description": "The search query.",
+            },
+            {
+                "name": "safe_search",
+                "type": "select",
+                "form": "form",
+                "required": False,
+                "default": "moderate",
+                "options": [{"value": "moderate"}, {"value": "off"}],
+            },
+        ]
+
+        out = format_tool_builder_context(entry)
+
+        assert "Selected installed tool" in out
+        assert '"provider_type":"builtin"' in out
+        assert '"plugin_id":"langgenius/google"' in out
+        assert "query: string, form=llm, required" in out
+        assert 'safe_search: select, form=form, optional — options=["moderate","off"]; default="moderate"' in out
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -277,8 +319,11 @@ class TestBuildToolCatalogue:
             ("time", "current_time"),
         ]
         google = entries[0]
-        assert google["provider_type"] == "plugin"
+        # Plugin-backed tools still use provider_type="builtin" in workflow
+        # nodes; plugin identity lives in plugin_id / unique identifier.
+        assert google["provider_type"] == "builtin"
         assert google["plugin_id"] == "langgenius/google"
+        assert google["plugin_unique_identifier"] == ""
         assert google["tool_label"] == "Google Search"
         assert google["description"] == "Search the web."
         time_entry = entries[1]

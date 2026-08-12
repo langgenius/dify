@@ -19,6 +19,7 @@ from jinja2 import Template
 
 from configs import dify_config
 from core.workflow.generator.runner import WorkflowGenerator
+from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 
 
@@ -1502,6 +1503,84 @@ class TestWorkflowGeneratorEdgeCases:
 
         joined = "\n".join(all_prompts)
         assert joined.count("- google/search — Search.") == 2
+
+    def test_structured_tool_selection_hydrates_trusted_installed_metadata(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "langgenius/google/google",
+                "provider_type": "builtin",
+                "plugin_id": "langgenius/google",
+                "plugin_unique_identifier": "langgenius/google:1.0@checksum",
+                "tool_name": "search",
+                "tool_label": "Google Search",
+                "description": "Search the web.",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "type": "string",
+                        "form": "llm",
+                        "required": True,
+                        "default": None,
+                        "options": [],
+                    },
+                    {
+                        "name": "safe_search",
+                        "type": "select",
+                        "form": "form",
+                        "required": False,
+                        "default": "moderate",
+                        "options": [{"value": "moderate"}],
+                    },
+                ],
+                "output_schema": {"type": "object", "properties": {"text": {"type": "string"}}},
+            },
+        )
+        plan_nodes = [
+            {
+                "id": "node2",
+                "node_type": "tool",
+                "purpose": "Search using langgenius/google/google/search.",
+                "tool": {"provider_id": "langgenius/google/google", "tool_name": "search"},
+            }
+        ]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "hallucinated",
+                            "provider_type": "plugin",
+                            "tool_name": "fake",
+                            "tool_parameters": {"query": {"type": "mixed", "value": "{{#node1.query#}}"}},
+                        },
+                    }
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=[entry],
+        )
+
+        data = graph["nodes"][0]["data"]
+        assert data["provider_id"] == "langgenius/google/google"
+        assert data["provider_type"] == "builtin"
+        assert data["plugin_id"] == "langgenius/google"
+        assert data["tool_name"] == "search"
+        assert data["tool_parameters"]["query"]["value"] == "{{#node1.query#}}"
+        assert data["tool_configurations"]["safe_search"] == {"type": "constant", "value": "moderate"}
+        assert data["paramSchemas"][0]["name"] == "query"
+        assert data["output_schema"]["properties"]["text"]["type"] == "string"
 
     def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):
         # The LLM often returns wildly overlapping positions. The postprocess

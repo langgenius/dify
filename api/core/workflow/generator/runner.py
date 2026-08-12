@@ -53,6 +53,11 @@ from core.workflow.generator.prompts.planner_prompts import (
     format_ideal_output_section,
     format_tool_catalogue_section,
 )
+from core.workflow.generator.tool_catalogue import (
+    ToolCatalogueEntry,
+    find_tool_entry,
+    format_tool_builder_context,
+)
 from core.workflow.generator.types import (
     GraphDict,
     GraphViewportDict,
@@ -305,6 +310,29 @@ def _build_plan_event(
     }
 
 
+def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEntry]) -> ToolCatalogueEntry | None:
+    """Resolve the installed tool selected by one planner node.
+
+    New planner responses carry a structured ``tool`` selector. The purpose
+    fallback keeps older/smaller models useful when they follow the instruction
+    to name ``provider/tool`` but omit the optional object.
+    """
+    tool_selector = node.get("tool")
+    if isinstance(tool_selector, dict):
+        provider_name = str(tool_selector.get("provider_id") or tool_selector.get("provider_name") or "")
+        tool_name = str(tool_selector.get("tool_name") or "")
+        entry = find_tool_entry(entries, provider_name, tool_name)
+        if entry is not None:
+            return entry
+
+    purpose = str(node.get("purpose") or "")
+    for entry in entries:
+        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
+        if re.search(rf"(?<![\w/]){re.escape(identifier)}(?![\w/])", purpose):
+            return entry
+    return None
+
+
 def _stage_error_to_envelope_code(exc: Exception) -> str:
     """Map a stage-typed exception to the result envelope's error code."""
     if isinstance(exc, _StageJSONError):
@@ -336,6 +364,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> WorkflowGenerateResultDict:
@@ -360,6 +389,11 @@ class WorkflowGenerator:
         identifiers instead of inventing names; node builders receive it
         only for tool nodes. An empty string skips the section entirely (useful
         for unit tests).
+
+        ``tool_catalogue_entries`` carries the same catalogue as structured
+        server-owned metadata. Tool builders receive only their selected entry,
+        and graph assembly uses it to hydrate identity and parameter schema
+        fields without trusting the model to reproduce them.
 
         ``installed_tools`` is the structural sibling — a set of
         ``(provider_name, tool_name)`` pairs the validator consults to reject
@@ -391,6 +425,7 @@ class WorkflowGenerator:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         ):
@@ -415,6 +450,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
@@ -438,6 +474,7 @@ class WorkflowGenerator:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         )
@@ -455,6 +492,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
+        tool_catalogue_entries: list[ToolCatalogueEntry] | None = None,
         installed_tools: set[tuple[str, str]] | None = None,
         current_graph: dict[str, Any] | None = None,
     ) -> Iterator[tuple[str, dict[str, Any]]]:
@@ -539,6 +577,7 @@ class WorkflowGenerator:
                 plan_nodes=plan_nodes,
                 plan_edges=plan_edges,
                 tool_catalogue_text=tool_catalogue_text,
+                tool_catalogue_entries=tool_catalogue_entries or [],
                 start_inputs=start_inputs,
                 current_graph=current_graph,
             )
@@ -562,6 +601,11 @@ class WorkflowGenerator:
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
+        cls._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=tool_catalogue_entries or [],
+        )
         graph = cls._postprocess_graph(graph=graph, mode=resolved_mode)
 
         # ``app_name`` / ``icon`` are planner display metadata; both default
@@ -810,6 +854,7 @@ class WorkflowGenerator:
         plan_nodes: list[dict[str, Any]],
         plan_edges: list[dict[str, Any]],
         tool_catalogue_text: str,
+        tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
         current_graph: dict[str, Any] | None,
     ) -> GraphDict:
@@ -853,6 +898,7 @@ class WorkflowGenerator:
                         target_node=node,
                         plan_json=plan_json,
                         tool_catalogue_text=tool_catalogue_text,
+                        tool_catalogue_entries=tool_catalogue_entries,
                         start_inputs=start_inputs,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                     ): str(node.get("id"))
@@ -894,6 +940,7 @@ class WorkflowGenerator:
         target_node: dict[str, Any],
         plan_json: str,
         tool_catalogue_text: str,
+        tool_catalogue_entries: list[ToolCatalogueEntry],
         start_inputs: list[dict[str, Any]],
         existing_node: dict[str, Any] | None,
     ) -> dict[str, Any]:
@@ -912,6 +959,14 @@ class WorkflowGenerator:
                 "# Existing config to preserve unless the instruction changes it\n\n"
                 f"{json.dumps(existing_data, ensure_ascii=False, separators=(',', ':'))}\n\n"
             )
+        tool_catalogue_section = ""
+        if node_type == BuiltinNodeTypes.TOOL:
+            selected_tool = _find_planned_tool_entry(target_node, tool_catalogue_entries)
+            tool_catalogue_section = (
+                format_tool_builder_context(selected_tool)
+                if selected_tool is not None
+                else format_node_tool_catalogue_section(tool_catalogue_text)
+            )
         user_prompt = NODE_BUILDER_USER_PROMPT.format(
             node_id=node_id,
             node_type=node_type,
@@ -921,9 +976,7 @@ class WorkflowGenerator:
             ideal_output_section=format_ideal_output_section(ideal_output),
             mode_section=mode_section,
             model_section=model_section,
-            tool_catalogue_section=(
-                format_node_tool_catalogue_section(tool_catalogue_text) if node_type == BuiltinNodeTypes.TOOL else ""
-            ),
+            tool_catalogue_section=tool_catalogue_section,
             start_inputs_section=(
                 format_start_inputs_section(start_inputs) if node_type == BuiltinNodeTypes.START else ""
             ),
@@ -943,6 +996,84 @@ class WorkflowGenerator:
         if not isinstance(config, dict):
             raise _StageSchemaError(f"Builder {node_id}", "missing 'config' object")
         return cast(dict[str, Any], config)
+
+    @staticmethod
+    def _hydrate_tool_nodes(
+        *,
+        graph: GraphDict,
+        plan_nodes: list[dict[str, Any]],
+        tool_catalogue_entries: list[ToolCatalogueEntry],
+    ) -> None:
+        """Stamp generated tool nodes with trusted installed-tool metadata.
+
+        The model still owns variable bindings, but provider identity, plugin
+        metadata, parameter declarations, output schema, and form defaults are
+        deterministic catalogue data. Hydrating them here prevents a selected
+        installed plugin from becoming an unusable guessed node configuration.
+        """
+        if not tool_catalogue_entries:
+            return
+        planned_by_id = {
+            str(node.get("id") or ""): node
+            for node in plan_nodes
+            if node.get("node_type") == BuiltinNodeTypes.TOOL and node.get("id")
+        }
+        for node in graph.get("nodes") or []:
+            planned = planned_by_id.get(str(node.get("id") or ""))
+            if planned is None:
+                continue
+            data = node.get("data")
+            if not isinstance(data, dict):
+                continue
+            entry = _find_planned_tool_entry(planned, tool_catalogue_entries)
+            if entry is None:
+                entry = find_tool_entry(
+                    tool_catalogue_entries,
+                    str(data.get("provider_id") or data.get("provider_name") or ""),
+                    str(data.get("tool_name") or ""),
+                )
+            if entry is None:
+                continue
+
+            data.update(
+                {
+                    "provider_id": entry["provider_name"],
+                    "provider_name": entry["provider_name"],
+                    "provider_type": entry["provider_type"],
+                    "tool_name": entry["tool_name"],
+                    "tool_label": entry["tool_label"] or entry["tool_name"],
+                    "tool_description": entry.get("description", ""),
+                    "tool_node_version": "2",
+                }
+            )
+            for field in ("plugin_id", "plugin_unique_identifier"):
+                value = entry.get(field, "")
+                if value:
+                    data[field] = value
+                else:
+                    data.pop(field, None)
+
+            parameters = deepcopy(entry.get("parameters") or [])
+            data["paramSchemas"] = parameters
+            data.setdefault(
+                "params",
+                {str(parameter.get("name")): "" for parameter in parameters if parameter.get("name")},
+            )
+            data.setdefault("tool_parameters", {})
+            configurations = data.setdefault("tool_configurations", {})
+            if isinstance(configurations, dict):
+                for parameter in parameters:
+                    if parameter.get("form") != "form" or parameter.get("default") is None:
+                        continue
+                    name = str(parameter.get("name") or "")
+                    if name:
+                        configurations.setdefault(
+                            name,
+                            {"type": "constant", "value": deepcopy(parameter["default"])},
+                        )
+            output_schema = entry.get("output_schema") or {}
+            if output_schema:
+                data["output_schema"] = deepcopy(output_schema)
 
     @classmethod
     def _assemble_parallel_graph(
