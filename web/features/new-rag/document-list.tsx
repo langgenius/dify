@@ -165,7 +165,7 @@ const DocumentRow = memo(
           <Checkbox
             className="flex"
             checked={selected}
-            disabled={selectionDisabled || status === 'disabled'}
+            disabled={selectionDisabled || document.status === 'deleting'}
             aria-describedby={selectionDisabled ? readOnlyReasonId : undefined}
             aria-labelledby={titleId}
             onCheckedChange={() => onSelectedChange(document.id)}
@@ -696,29 +696,35 @@ export function DocumentsList({
 
 export function DocumentBulkActions({
   actionPending,
+  availabilityDisabled,
+  availabilityTargetEnabled,
   downloadDisabled,
   disabled,
   disabledReason,
   onBlurCapture,
   onClear,
-  onDisable,
   onDownload,
   onFocusCapture,
   onRemove,
   onReindex,
+  onUpdateAvailability,
+  reindexDisabled,
   selectedCount,
 }: {
-  actionPending?: 'disable' | 'download' | 'reindex' | 'remove'
+  actionPending?: 'availability' | 'download' | 'reindex' | 'remove'
+  availabilityDisabled: boolean
+  availabilityTargetEnabled: boolean
   disabled: boolean
   disabledReason?: string
   downloadDisabled: boolean
   onBlurCapture: FocusEventHandler<HTMLDivElement>
   onClear: () => void
-  onDisable: () => void
   onDownload: () => void
   onFocusCapture: FocusEventHandler<HTMLDivElement>
   onRemove: () => Promise<boolean>
   onReindex: () => void
+  onUpdateAvailability: () => void
+  reindexDisabled: boolean
   selectedCount: number
 }) {
   const { t } = useTranslation('dataset')
@@ -744,7 +750,7 @@ export function DocumentBulkActions({
             aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
             aria-busy={actionPending === 'reindex'}
             className="shrink-0"
-            disabled={disabled || busy}
+            disabled={disabled || reindexDisabled || busy}
             loading={actionPending === 'reindex'}
             size="small"
             onClick={onReindex}
@@ -775,12 +781,12 @@ export function DocumentBulkActions({
           </Button>
           <Button
             className="shrink-0"
-            disabled={disabled || busy}
+            disabled={disabled || availabilityDisabled || busy}
             size="small"
-            loading={actionPending === 'disable'}
-            onClick={onDisable}
+            loading={actionPending === 'availability'}
+            onClick={onUpdateAvailability}
           >
-            {t(($) => $['newKnowledge.disableSource'])}
+            {t(($) => (availabilityTargetEnabled ? $.enable : $['newKnowledge.disableSource']))}
           </Button>
           <Button
             className="shrink-0"

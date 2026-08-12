@@ -47,8 +47,8 @@ export function documentTitle(document: LogicalDocument) {
   return typeof value === 'string' && value.trim() ? value.trim() : document.title
 }
 
-function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
-  return !document.enabled || document.status === 'deleting' || sourceDisabled
+function documentDisabled(document: LogicalDocument) {
+  return !document.enabled || document.status === 'deleting'
 }
 
 export function newestTaskByDocument(tasks: DocumentProcessingTask[]) {
@@ -70,9 +70,8 @@ export function newestTaskByDocument(tasks: DocumentProcessingTask[]) {
 export function documentDisplayStatus(
   document: LogicalDocument,
   task?: DocumentProcessingTask,
-  sourceDisabled = false,
 ): DocumentDisplayStatus {
-  if (documentDisabled(document, sourceDisabled)) return 'disabled'
+  if (documentDisabled(document)) return 'disabled'
 
   const activeRevision = document.activeRevision ?? document.active?.revision ?? 0
   const taskRepresentsLatestRevision = task && task.documentRevision >= activeRevision

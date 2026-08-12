@@ -741,6 +741,17 @@ describe('DocumentDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('disables re-indexing for an unavailable document', () => {
+    documentQuery.data = logicalDocument({ enabled: false })
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
+    ).toBeDisabled()
+    expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+  })
+
   it('does not construct a chunks request while the document is loading', () => {
     documentQuery.data = undefined
     documentQuery.isPending = true

@@ -1482,6 +1482,7 @@ describe('DocumentsPage', () => {
             }),
             document({ id: 'failed', status: 'failed', title: 'Failed.html' }),
             document({
+              enabled: false,
               id: 'disabled',
               sourceId: 'disabled-source',
               title: 'Disabled.xlsx',
@@ -1527,19 +1528,26 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.lastReadyRevisionHint')).toBeInTheDocument()
   })
 
-  it('treats a document with an unresolved source as unavailable for writes', () => {
+  it('does not derive document availability from disabled or unresolved sources', () => {
     documentsQuery.data = {
-      pages: [{ items: [document({ sourceId: 'missing-source', title: 'Orphaned.pdf' })] }],
+      pages: [
+        {
+          items: [
+            document({ id: 'archived', sourceId: 'disabled-source', title: 'Archived.pdf' }),
+            document({ id: 'orphaned', sourceId: 'missing-source', title: 'Orphaned.pdf' }),
+          ],
+        },
+      ],
     }
-    sourcesQuery.data = { pages: [{ items: [] }] }
+    sourcesQuery.data = {
+      pages: [{ items: [source({ id: 'disabled-source', name: 'Archive', status: 'disabled' })] }],
+    }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.documentStatus.disabled')).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Orphaned.pdf' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getAllByText('dataset.newKnowledge.documentStatus.ready')).toHaveLength(2)
+    expect(screen.getByRole('checkbox', { name: 'Archived.pdf' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'Orphaned.pdf' })).toBeEnabled()
   })
 
   it('renders the designed empty state with an available upload action', () => {
@@ -3125,6 +3133,80 @@ describe('DocumentsPage', () => {
         screen.queryByRole('group', { name: 'dataset.newKnowledge.bulkDocumentActions' }),
       ).not.toBeInTheDocument(),
     )
+  })
+
+  it('re-enables selected disabled documents through the bulk availability API', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ enabled: false, id: 'one', rowVersion: 3, title: 'One.pdf' }),
+            document({ enabled: false, id: 'two', rowVersion: 7, title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    await user.click(within(actions).getByRole('button', { name: 'dataset.enable' }))
+
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRowVersion: 3 },
+          { documentId: 'two', expectedRowVersion: 7 },
+        ],
+        enabled: true,
+      },
+      params: { control_space_id: 'space-1' },
+    })
+  })
+
+  it('does not submit availability updates for more than 100 selected documents', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 101 }, (_, index) =>
+            document({ id: `document-${index}`, title: `Document ${index}.pdf` }),
+          ),
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
+    )
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+    ).toBeDisabled()
+    expect(bulkUpdateLogicalDocumentsMutation).not.toHaveBeenCalled()
+  })
+
+  it('refreshes documents after an availability row-version conflict', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    updateLogicalDocumentMutation.mockRejectedValueOnce({ status: 409 })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    )
+
+    expect(queryClient.invalidateQueries).toHaveBeenCalled()
+    expect(toastMock.warning).toHaveBeenCalledWith('dataset.newKnowledge.taskActionFailed')
   })
 
   it('downloads selected active revisions as a ZIP archive', async () => {

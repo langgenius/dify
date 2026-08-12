@@ -199,6 +199,12 @@ class KnowledgeFSProductService:
             rbac_permissions.get(control_space.id, frozenset()),
         )
         if not local_role_allows(role, permission) or permission not in permission_keys:
+            if (
+                permission is not KnowledgeFSProductPermission.READ
+                and local_role_allows(role, KnowledgeFSProductPermission.READ)
+                and KnowledgeFSProductPermission.READ in permission_keys
+            ):
+                raise PermissionError("KnowledgeFS operation is not allowed")
             raise KnowledgeFSProductNotFoundError("KnowledgeFS space was not found")
         if require_active and (
             control_space.state is not KnowledgeFSControlSpaceState.ACTIVE or control_space.knowledge_space_id is None

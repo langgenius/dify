@@ -396,6 +396,37 @@ def test_detail_conceals_unauthorized_space_without_remote_io(sqlite_session: Se
     [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
     indirect=True,
 )
+def test_visible_read_only_space_rejects_document_writes_as_forbidden(sqlite_session: Session) -> None:
+    visible = _space(
+        visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
+        key="visible-read-only",
+        remote_id="space-visible-read-only",
+    )
+    sqlite_session.add(visible)
+    sqlite_session.commit()
+    service = KnowledgeFSProductService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        batch_capabilities=FakeBatchCapabilities(),
+        cutover_gate=FakeCutoverGate(),
+        remote=FakeRemote({}),
+        rbac=FakeRBAC(),
+    )
+
+    with pytest.raises(PermissionError):
+        service.authorize_control_space(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id=visible.id,
+            permission=KnowledgeFSProductPermission.DOCUMENT_WRITE,
+            require_active=True,
+        )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace, KnowledgeFSControlSpacePermission, AppKnowledgeFSSpaceJoin)],
+    indirect=True,
+)
 def test_list_applies_rbac_before_pagination(sqlite_session: Session) -> None:
     spaces = [
         _space(

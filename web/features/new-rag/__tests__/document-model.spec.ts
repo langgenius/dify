@@ -103,9 +103,8 @@ describe('new Knowledge document model', () => {
     )
   })
 
-  it('maps document availability, source availability, and deletion to the disabled state', () => {
+  it('maps only document availability and deletion to the disabled state', () => {
     expect(documentDisplayStatus(document({ enabled: false }))).toBe('disabled')
-    expect(documentDisplayStatus(document(), undefined, true)).toBe('disabled')
     expect(documentDisplayStatus(document({ status: 'deleting' }))).toBe('disabled')
   })
 

@@ -269,6 +269,7 @@ export function DocumentDetailPage({
           isFetchingNextTaskPage ||
           isLookingUpTask ||
           lookupExhausted ||
+          !document.enabled ||
           document.status === 'deleting' ||
           Boolean(tasksError)
         }

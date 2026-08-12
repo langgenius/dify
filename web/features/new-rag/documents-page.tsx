@@ -73,7 +73,7 @@ import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const TASK_PAGE_SIZE = 100
-const KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_DOCUMENTS = 100
+const KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
@@ -341,7 +341,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     ReadonlyMap<File, KnowledgeFsUploadPhase>
   >(() => new Map())
   const [bulkActionPending, setBulkActionPending] = useState<
-    'disable' | 'download' | 'reindex' | 'remove' | undefined
+    'availability' | 'download' | 'reindex' | 'remove' | undefined
   >()
   const [pendingDocumentAction, setPendingDocumentAction] = useState<
     { action: DocumentAction; documentId: string } | undefined
@@ -675,11 +675,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const canAutoFetchSourcePage = Boolean(
     hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
-  const disabledSourceIds = useMemo(
-    () =>
-      new Set(sources.filter((source) => source.status === 'disabled').map((source) => source.id)),
-    [sources],
-  )
   const baseTaskByIdRef = useRef(baseTaskById)
   useLayoutEffect(() => {
     baseTaskByIdRef.current = baseTaskById
@@ -783,29 +778,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       new Map(
         documents.map((document) => [
           document.id,
-          documentDisplayStatus(
-            document,
-            taskByDocument.get(document.id),
-            Boolean(
-              document.sourceId &&
-              (disabledSourceIds.has(document.sourceId) ||
-                (!hasNextSourcePage &&
-                  !sourcesQuery.error &&
-                  !sourcesQuery.isFetchNextPageError &&
-                  !sourceNames.has(document.sourceId))),
-            ),
-          ),
+          documentDisplayStatus(document, taskByDocument.get(document.id)),
         ]),
       ),
-    [
-      disabledSourceIds,
-      documents,
-      hasNextSourcePage,
-      sourceNames,
-      sourcesQuery.error,
-      sourcesQuery.isFetchNextPageError,
-      taskByDocument,
-    ],
+    [documents, taskByDocument],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const statusFilterActive = filter !== 'all'
@@ -813,10 +789,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     () =>
       new Set(
         documents
-          .filter((document) => documentStatuses.get(document.id) !== 'disabled')
+          .filter((document) => document.status !== 'deleting')
           .map((document) => document.id),
       ),
-    [documents, documentStatuses],
+    [documents],
   )
   const validSelectedDocumentIds = useMemo(
     () =>
@@ -825,18 +801,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [availableDocumentIds, selectedDocumentIds],
   )
+  const selectedDocuments = useMemo(
+    () => documents.filter((document) => validSelectedDocumentIds.has(document.id)),
+    [documents, validSelectedDocumentIds],
+  )
+  const availabilityTargetEnabled =
+    selectedDocuments.length > 0 && selectedDocuments.every((document) => !document.enabled)
+  const availabilityDisabled =
+    selectedDocuments.length !== validSelectedDocumentIds.size ||
+    selectedDocuments.length > KNOWLEDGE_FS_BATCH_DOCUMENT_MAX_DOCUMENTS
+  const selectedDocumentsIncludeDisabled = selectedDocuments.some((document) => !document.enabled)
   const downloadableSelectedDocumentIds = useMemo(() => {
-    const selectedDocuments = documents.filter((document) =>
-      validSelectedDocumentIds.has(document.id),
-    )
-    if (
-      selectedDocuments.length !== validSelectedDocumentIds.size ||
-      selectedDocuments.length > KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_DOCUMENTS ||
-      selectedDocuments.some((document) => !document.active)
-    )
-      return []
+    if (availabilityDisabled || selectedDocuments.some((document) => !document.active)) return []
     return selectedDocuments.map((document) => document.id)
-  }, [documents, validSelectedDocumentIds])
+  }, [availabilityDisabled, selectedDocuments])
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return documents.filter((document) => {
@@ -940,7 +918,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               ? t(($) => $['newKnowledge.partialDocumentResults'])
               : undefined
   const selectableFilteredDocuments = filteredDocuments.filter(
-    (document) => documentStatuses.get(document.id) !== 'disabled',
+    (document) => document.status !== 'deleting',
   )
   const attentionTasks = drawerTasks.filter(taskNeedsAttention)
   const hasTaskError = attentionTasks.some(
@@ -1982,7 +1960,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return true
       } catch (error) {
         if (responseStatus(error) === 403) handleWritePermissionDenied()
-        else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+        else if (responseStatus(error) === 409) {
+          refreshDocuments()
+          toast.warning(t(($) => $['newKnowledge.taskActionFailed']))
+        } else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
         return false
       } finally {
         documentActionPendingRef.current = false
@@ -1992,20 +1973,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [canWrite, documents, handleWritePermissionDenied, knowledgeSpaceId, refreshDocuments, t],
   )
 
-  const handleDisableDocuments = useCallback(async () => {
+  const handleUpdateDocumentsAvailability = useCallback(async () => {
     if (
       !canWrite ||
       selectionDisabled ||
       !validSelectedDocumentIds.size ||
+      availabilityDisabled ||
       bulkActionPendingRef.current
     )
       return
-    const selectedDocuments = documents.filter((document) =>
-      validSelectedDocumentIds.has(document.id),
-    )
     if (!selectedDocuments.length) return
     bulkActionPendingRef.current = true
-    setBulkActionPending('disable')
+    setBulkActionPending('availability')
     try {
       const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
         {
@@ -2014,7 +1993,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               documentId: document.id,
               expectedRowVersion: document.rowVersion,
             })),
-            enabled: false,
+            enabled: availabilityTargetEnabled,
           },
           params: { control_space_id: knowledgeSpaceId },
         },
@@ -2034,10 +2013,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
   }, [
     canWrite,
-    documents,
+    availabilityDisabled,
+    availabilityTargetEnabled,
     handleWritePermissionDenied,
     knowledgeSpaceId,
     refreshDocuments,
+    selectedDocuments,
     selectionDisabled,
     t,
     validSelectedDocumentIds,
@@ -2916,11 +2897,12 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       {bulkActionsVisible && (
         <DocumentBulkActions
           actionPending={bulkActionPending}
+          availabilityDisabled={availabilityDisabled}
+          availabilityTargetEnabled={availabilityTargetEnabled}
           disabled={selectionDisabled}
           disabledReason={reindexUnavailableReason}
           downloadDisabled={!canDownload || !downloadableSelectedDocumentIds.length}
           onClear={() => setSelectedDocumentIds(new Set())}
-          onDisable={() => void handleDisableDocuments()}
           onDownload={() => void handleDownloadDocuments()}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null))
@@ -2931,6 +2913,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           }}
           onReindex={() => void handleReindexDocuments()}
           onRemove={handleRemoveDocuments}
+          onUpdateAvailability={() => void handleUpdateDocumentsAvailability()}
+          reindexDisabled={selectedDocumentsIncludeDisabled}
           selectedCount={validSelectedDocumentIds.size}
         />
       )}
