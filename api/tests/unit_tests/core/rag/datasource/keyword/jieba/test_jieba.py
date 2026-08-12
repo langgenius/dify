@@ -368,8 +368,12 @@ def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
 
-    first_segment = SimpleNamespace(index_node_id="node-1", content="first content", keywords=None)
-    second_segment = SimpleNamespace(index_node_id="node-2", content="second content", keywords=None)
+    first_segment = _segment(index_node_id="node-1")
+    first_segment.content = "first content"
+    first_segment.keywords = None
+    second_segment = _segment(index_node_id="node-2")
+    second_segment.content = "second content"
+    second_segment.keywords = None
 
     keyword.multi_create_segment_keywords(
         [
