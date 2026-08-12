@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -54,13 +55,16 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
 from models import Account, Document, DocumentSegment, UploadFile
-from models.dataset import DocumentPipelineExecutionLog
+from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -660,6 +664,21 @@ class DatasetInitApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+
+        if dify_config.RBAC_ENABLED:
+            dataset.permission = DatasetPermissionEnum.ALL_TEAM
+        else:
+            dataset.permission = DatasetPermissionEnum.ONLY_ME
+        session.flush()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return dump_response(
             DatasetAndDocumentResponse,
