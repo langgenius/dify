@@ -206,6 +206,10 @@ async function fillValidForm() {
   return user
 }
 
+async function openCrawlOptions(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((nextResolve) => {
@@ -529,6 +533,7 @@ describe('WebsiteCrawlPreview', () => {
     async (invalidLimit) => {
       render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
       const user = await fillValidForm()
+      await openCrawlOptions(user)
       const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
       await user.clear(pageLimit)
       await user.type(pageLimit, invalidLimit)
@@ -547,6 +552,7 @@ describe('WebsiteCrawlPreview', () => {
   it.each([1, 200])('submits the exact valid page limit %s', async (validLimit) => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
+    await openCrawlOptions(user)
     const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, String(validLimit))
@@ -562,6 +568,7 @@ describe('WebsiteCrawlPreview', () => {
   it('preserves a replacement crawl page limit after clearing the input', async () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
+    await openCrawlOptions(user)
     const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, '50')
@@ -1029,7 +1036,9 @@ describe('WebsiteCrawlPreview', () => {
       query: { cursor: 'final-page-2', limit: 200 },
     })
     expect(
-      screen.getAllByRole('checkbox').map((checkbox) => checkbox.getAttribute('aria-label')),
+      screen
+        .getAllByRole('checkbox', { name: /^(New first|Two|Updated one|Three)$/ })
+        .map((checkbox) => checkbox.getAttribute('aria-label')),
     ).toEqual(['New first', 'Two', 'Updated one', 'Three'])
     expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked()
     expect(

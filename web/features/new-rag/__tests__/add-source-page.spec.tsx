@@ -676,6 +676,7 @@ describe('AddSourcePage', () => {
   })
 
   it('restores a website draft handed off by the creation flow', async () => {
+    const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }
 
     render(
@@ -699,8 +700,9 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
       'Dify docs',
     )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
     expect(
-      screen.getByRole('switch', { name: 'dataset.newKnowledge.includeSubpages' }),
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
     ).not.toBeChecked()
     expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
       25,

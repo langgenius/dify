@@ -18,7 +18,7 @@ import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { useDataSourceList } from '@/service/use-pipeline'
 import { CrawlPreviewPageSelection } from './crawl-selection-form'
 import { CreateConnectedSourceSetup } from './create-connected-source-setup'
-import { DatasourceParameterForm } from './datasource-parameter-form'
+import { WebsiteDatasourceParameterForm } from './datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
   datasourceParameterDefaults,
@@ -493,15 +493,16 @@ export function CreateSourceSetup({
         />
       ) : draft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
         <div className="space-y-4">
-          <SourceNameField
-            disabled={disabled}
-            draft={draft}
-            labelClassName="py-0.5"
-            preventSubmitOnEnter
-            size="large"
-            onDraftChange={updateDraft}
-          />
-          <DatasourceParameterForm
+          <WebsiteDatasourceParameterForm
+            additionalPrimaryField={
+              <SourceNameField
+                disabled={disabled}
+                draft={draft}
+                preventSubmitOnEnter
+                size="large"
+                onDraftChange={updateDraft}
+              />
+            }
             disabled={disabled || crawlState === 'running'}
             parameters={parameters}
             schemas={parameterSchemas}

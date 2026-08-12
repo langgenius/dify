@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { CrawlSelectionForm } from './crawl-selection-form'
-import { DatasourceParameterForm } from './datasource-parameter-form'
+import { WebsiteDatasourceParameterForm } from './datasource-parameter-form'
 import {
   datasourceIncludeSubpages,
   datasourceParameterDefaults,
@@ -1326,30 +1326,31 @@ export function WebsiteCrawlPreview({
       </p>
       <Form onFormSubmit={handleSubmit}>
         <Fieldset disabled={locked} className="space-y-4">
-          <DatasourceParameterForm
+          <WebsiteDatasourceParameterForm
+            additionalPrimaryField={
+              <Field name="sourceName" className="gap-1.5">
+                <FieldLabel>
+                  {t(($) => $['newKnowledge.sourceName'])}
+                  <span className="ml-0.5 text-text-destructive">*</span>
+                </FieldLabel>
+                <FieldControl
+                  ref={sourceNameInputRef}
+                  type="text"
+                  autoComplete="off"
+                  required
+                  maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
+                  value={sourceName}
+                  placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+                  size="large"
+                  onValueChange={setSourceName}
+                />
+              </Field>
+            }
             disabled={locked}
             parameters={parameters}
             schemas={parameterSchemas}
             onChange={setParameters}
           />
-          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
-            <Field name="sourceName" className="gap-1.5">
-              <FieldLabel>
-                {t(($) => $['newKnowledge.sourceName'])}
-                <span className="ml-0.5 text-text-destructive">*</span>
-              </FieldLabel>
-              <FieldControl
-                ref={sourceNameInputRef}
-                type="text"
-                autoComplete="off"
-                required
-                maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
-                value={sourceName}
-                placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                onValueChange={setSourceName}
-              />
-            </Field>
-          </div>
         </Fieldset>
 
         {!showSuccess && (

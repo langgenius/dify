@@ -1,10 +1,15 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type {
   DatasourceParameters,
   DatasourceParameterSchema,
   DatasourceParameterValue,
 } from './datasource-parameter-model'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   Field,
   FieldControl,
@@ -24,7 +29,11 @@ import {
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { invalidDatasourceParameters, localizedDatasourceText } from './datasource-parameter-model'
+import {
+  datasourceParameterDefaults,
+  invalidDatasourceParameters,
+  localizedDatasourceText,
+} from './datasource-parameter-model'
 
 function ParameterLabel({ label, required }: { label: string; required: boolean }) {
   return (
@@ -40,20 +49,27 @@ function ParameterLabel({ label, required }: { label: string; required: boolean 
 }
 
 function DatasourceParameterField({
+  booleanControl = 'switch',
   disabled,
   parameter,
+  showDescription = true,
   value,
   onChange,
 }: {
+  booleanControl?: 'checkbox' | 'switch'
   disabled: boolean
   parameter: DatasourceParameterSchema
+  showDescription?: boolean
   value: DatasourceParameterValue | undefined
   onChange: (value: DatasourceParameterValue | undefined) => void
 }) {
   const { i18n, t } = useTranslation('dataset')
   const generatedId = useId()
   const [numberDraft, setNumberDraft] = useState<string>()
-  const description = localizedDatasourceText(parameter.description, i18n.language, '')
+  const [touched, setTouched] = useState(false)
+  const description = showDescription
+    ? localizedDatasourceText(parameter.description, i18n.language, '')
+    : ''
   const descriptionId = description ? `${generatedId}-description` : undefined
   const errorId = `${generatedId}-error`
   const label =
@@ -73,7 +89,8 @@ function DatasourceParameterField({
       ...(value === undefined ? {} : { [parameter.name]: value }),
     }).length,
   )
-  const error = invalid
+  const showError = touched && invalid
+  const error = showError
     ? parameter.name === 'url' && typeof value === 'string' && value
       ? t(($) => $['newKnowledge.invalidRootUrl'])
       : parameter.labelTranslationKey === 'newKnowledge.maxPages' &&
@@ -92,7 +109,7 @@ function DatasourceParameterField({
 
   if (parameter.type === 'unsupported')
     return (
-      <Field name={parameter.name} className="gap-1.5" invalid>
+      <Field name={parameter.name} className="gap-1.5" invalid={showError}>
         <FieldLabel>
           <ParameterLabel label={label} required={parameter.required} />
         </FieldLabel>
@@ -100,22 +117,76 @@ function DatasourceParameterField({
       </Field>
     )
 
-  if (parameter.type === 'boolean')
+  if (parameter.type === 'boolean' && booleanControl === 'checkbox')
     return (
-      <Field name={parameter.name} className="gap-1.5" invalid={invalid}>
-        <div className="flex min-h-8 items-center justify-between gap-3">
-          <FieldLabel htmlFor={generatedId}>
-            <ParameterLabel label={label} required={parameter.required} />
-          </FieldLabel>
-          <Switch
+      <Field name={parameter.name} className="gap-1.5" invalid={showError}>
+        <FieldLabel
+          htmlFor={generatedId}
+          className={cn(
+            'flex cursor-pointer items-start gap-2 py-0 font-normal',
+            disabled && 'cursor-not-allowed',
+          )}
+        >
+          <Checkbox
             id={generatedId}
+            className="mt-0.5"
             checked={value === true}
             disabled={disabled}
             aria-describedby={describedBy}
-            onCheckedChange={(checked) => onChange(checked)}
+            onCheckedChange={(checked) => {
+              setTouched(true)
+              onChange(checked)
+            }}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block system-xs-medium text-text-primary">
+              <ParameterLabel label={label} required={parameter.required} />
+            </span>
+            {description && (
+              <span id={descriptionId} className="mt-0.5 block body-xs-regular text-text-tertiary">
+                {description}
+              </span>
+            )}
+          </span>
+        </FieldLabel>
+        {error && (
+          <FieldError id={errorId} match>
+            {error}
+          </FieldError>
+        )}
+      </Field>
+    )
+
+  if (parameter.type === 'boolean')
+    return (
+      <Field
+        name={parameter.name}
+        className="gap-1.5 rounded-xl border border-divider-subtle bg-background-default px-3 py-2.5"
+        invalid={showError}
+      >
+        <div className="flex min-h-8 items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <FieldLabel htmlFor={generatedId}>
+              <ParameterLabel label={label} required={parameter.required} />
+            </FieldLabel>
+            {description && (
+              <FieldDescription id={descriptionId} className="mt-0.5 py-0 break-words">
+                {description}
+              </FieldDescription>
+            )}
+          </div>
+          <Switch
+            id={generatedId}
+            className="mt-0.5"
+            checked={value === true}
+            disabled={disabled}
+            aria-describedby={describedBy}
+            onCheckedChange={(checked) => {
+              setTouched(true)
+              onChange(checked)
+            }}
           />
         </div>
-        {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
         {error && (
           <FieldError id={errorId} match>
             {error}
@@ -127,13 +198,16 @@ function DatasourceParameterField({
   if (parameter.type === 'select') {
     const selectedValue = typeof value === 'string' ? value : null
     return (
-      <Field name={parameter.name} className="gap-1.5" invalid={invalid}>
+      <Field name={parameter.name} className="gap-1.5" invalid={showError}>
         <Select<string | null>
           name={parameter.name}
           disabled={disabled}
           required={parameter.required}
           value={selectedValue}
-          onValueChange={(nextValue) => onChange(nextValue ?? undefined)}
+          onValueChange={(nextValue) => {
+            setTouched(true)
+            onChange(nextValue ?? undefined)
+          }}
         >
           <SelectLabel>
             <ParameterLabel label={label} required={parameter.required} />
@@ -175,7 +249,7 @@ function DatasourceParameterField({
   }
 
   return (
-    <Field name={parameter.name} className="gap-1.5" invalid={invalid}>
+    <Field name={parameter.name} className="gap-1.5" invalid={showError}>
       <FieldLabel>
         <ParameterLabel label={label} required={parameter.required} />
       </FieldLabel>
@@ -206,6 +280,7 @@ function DatasourceParameterField({
               : String(value)
         }
         onValueChange={(nextValue) => {
+          setTouched(true)
           if (parameter.type === 'number') {
             setNumberDraft(nextValue)
             const number = Number(nextValue)
@@ -215,8 +290,8 @@ function DatasourceParameterField({
           onChange(nextValue || undefined)
         }}
         onBlur={() => {
-          if (parameter.type !== 'number' || numberDraft === undefined) return
-          setNumberDraft(undefined)
+          setTouched(true)
+          if (parameter.type === 'number' && numberDraft !== undefined) setNumberDraft(undefined)
         }}
       />
       {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
@@ -230,11 +305,15 @@ function DatasourceParameterField({
 }
 
 export function DatasourceParameterForm({
+  className,
+  columns = 2,
   disabled = false,
   parameters,
   schemas,
   onChange,
 }: {
+  className?: string
+  columns?: 1 | 2
   disabled?: boolean
   parameters: DatasourceParameters
   schemas: DatasourceParameterSchema[]
@@ -243,7 +322,13 @@ export function DatasourceParameterForm({
   if (!schemas.length) return null
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div
+      className={cn(
+        'grid grid-cols-1 items-start gap-3',
+        columns === 2 && 'sm:grid-cols-2',
+        className,
+      )}
+    >
       {schemas.map((parameter) => (
         <DatasourceParameterField
           key={parameter.name}
@@ -258,6 +343,109 @@ export function DatasourceParameterForm({
           }}
         />
       ))}
+    </div>
+  )
+}
+
+export function WebsiteDatasourceParameterForm({
+  additionalPrimaryField,
+  disabled = false,
+  parameters,
+  schemas,
+  onChange,
+}: {
+  additionalPrimaryField?: ReactNode
+  disabled?: boolean
+  parameters: DatasourceParameters
+  schemas: DatasourceParameterSchema[]
+  onChange: (parameters: DatasourceParameters) => void
+}) {
+  const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const primarySchemas = schemas.filter((schema) => schema.required)
+  const optionSchemas = schemas.filter((schema) => !schema.required)
+  const resetOptions = () => {
+    const next = { ...parameters }
+    optionSchemas.forEach((schema) => delete next[schema.name])
+    onChange({ ...next, ...datasourceParameterDefaults(optionSchemas) })
+  }
+
+  if (!schemas.length) return null
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
+        {additionalPrimaryField}
+        {primarySchemas.map((parameter) => (
+          <DatasourceParameterField
+            key={parameter.name}
+            disabled={disabled}
+            parameter={parameter}
+            showDescription={false}
+            value={parameters[parameter.name]}
+            onChange={(value) => {
+              const next = { ...parameters }
+              if (value === undefined) delete next[parameter.name]
+              else next[parameter.name] = value
+              onChange(next)
+            }}
+          />
+        ))}
+      </div>
+      {optionSchemas.length > 0 && (
+        <Collapsible
+          open={optionsOpen}
+          className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default"
+          onOpenChange={setOptionsOpen}
+        >
+          <div className="flex h-10 items-center">
+            <CollapsibleTrigger className="h-full min-w-0 flex-1 justify-start rounded-none px-2.5">
+              <span
+                aria-hidden
+                className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
+              />
+              <span className="truncate">{t(($) => $['newKnowledge.crawlOptions'])}</span>
+              {!optionsOpen && (
+                <span aria-hidden className="ml-auto shrink-0 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.usingDefaults'])}
+                </span>
+              )}
+            </CollapsibleTrigger>
+            {optionsOpen && (
+              <Button
+                className="mr-2"
+                disabled={disabled}
+                size="small"
+                variant="tertiary"
+                onClick={resetOptions}
+              >
+                {tCommon(($) => $['operation.reset'])}
+              </Button>
+            )}
+          </div>
+          <CollapsiblePanel>
+            <div className="grid grid-cols-1 items-start gap-x-3 gap-y-4 border-t border-divider-subtle bg-background-default p-3 sm:grid-cols-2">
+              {optionSchemas.map((parameter) => (
+                <DatasourceParameterField
+                  key={parameter.name}
+                  booleanControl="checkbox"
+                  disabled={disabled}
+                  parameter={parameter}
+                  showDescription={parameter.type === 'boolean'}
+                  value={parameters[parameter.name]}
+                  onChange={(value) => {
+                    const next = { ...parameters }
+                    if (value === undefined) delete next[parameter.name]
+                    else next[parameter.name] = value
+                    onChange(next)
+                  }}
+                />
+              ))}
+            </div>
+          </CollapsiblePanel>
+        </Collapsible>
+      )}
     </div>
   )
 }

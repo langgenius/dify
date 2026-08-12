@@ -3,7 +3,10 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { render } from '@/test/console/render'
-import { DatasourceParameterForm } from '../datasource-parameter-form'
+import {
+  DatasourceParameterForm,
+  WebsiteDatasourceParameterForm,
+} from '../datasource-parameter-form'
 import {
   datasourceParameterDefaults,
   websiteDatasourceParameterSchemas,
@@ -79,6 +82,20 @@ function LegacyWebsiteParameterForm() {
   )
 }
 
+function GroupedWebsiteParameterForm() {
+  const schemas = websiteDatasourceParameterSchemas({ parameters: [] } as never)
+  const [parameters, setParameters] = useState<DatasourceParameters>(() =>
+    datasourceParameterDefaults(schemas),
+  )
+  return (
+    <WebsiteDatasourceParameterForm
+      parameters={parameters}
+      schemas={schemas}
+      onChange={setParameters}
+    />
+  )
+}
+
 describe('DatasourceParameterForm', () => {
   it('keeps an out-of-range numeric value visible and reports it as invalid', async () => {
     const user = userEvent.setup()
@@ -98,12 +115,47 @@ describe('DatasourceParameterForm', () => {
     render(<UrlParameterForm />)
 
     const input = screen.getByRole('textbox', { name: 'Root URL' })
+    expect(input).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByText('dataset.newKnowledge.invalidRootUrl')).not.toBeInTheDocument()
+
     await user.type(input, 'ftp://example.com')
     await user.tab()
 
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAccessibleDescription('dataset.newKnowledge.invalidRootUrl')
     expect(screen.getByText('dataset.newKnowledge.invalidRootUrl')).toBeInTheDocument()
+  })
+
+  it('groups website options and resets edits to provider defaults', async () => {
+    const user = userEvent.setup()
+    render(<GroupedWebsiteParameterForm />)
+
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toBeVisible()
+    const crawlOptions = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlOptions',
+    })
+    expect(crawlOptions).toHaveAttribute('aria-expanded', 'false')
+    expect(crawlOptions).toHaveTextContent('dataset.newKnowledge.usingDefaults')
+    expect(
+      screen.queryByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.reset' })).not.toBeInTheDocument()
+
+    await user.click(crawlOptions)
+    const includeSubpages = screen.getByRole('checkbox', {
+      name: 'dataset.newKnowledge.includeSubpages',
+    })
+    const resetButton = screen.getByRole('button', { name: 'common.operation.reset' })
+    expect(includeSubpages).toBeChecked()
+    expect(resetButton).toBeEnabled()
+    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toBeVisible()
+
+    await user.click(includeSubpages)
+    expect(includeSubpages).not.toBeChecked()
+    expect(resetButton).toBeEnabled()
+
+    await user.click(resetButton)
+    expect(includeSubpages).toBeChecked()
   })
 
   it('allows decimal input using the declaration precision', async () => {
