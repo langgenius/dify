@@ -79,12 +79,13 @@ class ToolLabelManager:
         :return: list of tool labels (str)
         """
 
-        if isinstance(controller, ApiToolProviderController | WorkflowToolProviderController):
-            provider_id = controller.provider_id
-        elif isinstance(controller, BuiltinToolProviderController):
-            return controller.tool_labels
-        else:
-            raise ValueError("Unsupported tool type")
+        match controller:
+            case ApiToolProviderController() | WorkflowToolProviderController():
+                provider_id = controller.provider_id
+            case BuiltinToolProviderController():
+                return controller.tool_labels
+            case _:
+                raise ValueError("Unsupported tool type")
         stmt = select(ToolLabelBinding.label_name).where(
             ToolLabelBinding.tool_id == provider_id,
             ToolLabelBinding.tool_type == controller.provider_type,

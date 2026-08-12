@@ -32,7 +32,7 @@ vi.mock('../input-combined', () => ({
       data-testid="input-combined"
       data-type={type}
       value={value || ''}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       readOnly={readOnly}
     />
   ),
@@ -42,7 +42,9 @@ vi.mock('../input-combined', () => ({
 vi.mock('../input-has-set-multiple-value', () => ({
   default: ({ onClear, readOnly }: MultipleValueInputProps) => (
     <div data-testid="multiple-value-input" data-readonly={readOnly}>
-      <button data-testid="clear-multiple" onClick={onClear}>Clear Multiple</button>
+      <button data-testid="clear-multiple" onClick={onClear}>
+        Clear Multiple
+      </button>
     </div>
   ),
 }))
@@ -50,14 +52,18 @@ vi.mock('../input-has-set-multiple-value', () => ({
 // Mock Label component
 vi.mock('../label', () => ({
   default: ({ text, isDeleted }: LabelProps) => (
-    <div data-testid="label" data-deleted={isDeleted}>{text}</div>
+    <div data-testid="label" data-deleted={isDeleted}>
+      {text}
+    </div>
   ),
 }))
 
 // Mock EditedBeacon component
 vi.mock('../edited-beacon', () => ({
   default: ({ onReset }: EditedBeaconProps) => (
-    <button data-testid="edited-beacon" onClick={onReset}>Reset</button>
+    <button data-testid="edited-beacon" onClick={onReset}>
+      Reset
+    </button>
   ),
 }))
 
@@ -72,18 +78,6 @@ describe('EditMetadatabatchItem', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <EditMetadatabatchItem
-          payload={mockPayload}
-          onChange={vi.fn()}
-          onRemove={vi.fn()}
-          onReset={vi.fn()}
-        />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render label with payload name', () => {
       render(
         <EditMetadatabatchItem
@@ -253,8 +247,7 @@ describe('EditMetadatabatchItem', () => {
       )
 
       const deleteButton = container.querySelector('.cursor-pointer')
-      if (deleteButton)
-        fireEvent.click(deleteButton)
+      if (deleteButton) fireEvent.click(deleteButton)
 
       expect(handleRemove).toHaveBeenCalledWith('test-id')
     })

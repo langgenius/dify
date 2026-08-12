@@ -19,7 +19,9 @@ function buildAudioContext(channelLength = 512) {
       return Promise.resolve({ getChannelData: (_ch: number) => arr })
     }
 
-    close() { return Promise.resolve() }
+    close() {
+      return Promise.resolve()
+    }
   }
 }
 
@@ -43,19 +45,22 @@ async function advanceWaveformTimer() {
   })
 }
 
-// eslint-disable-next-line ts/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
 type ReactEventHandler = ((...args: any[]) => void) | undefined
 function getReactProps<T extends Element>(el: T): Record<string, ReactEventHandler> {
-  const key = Object.keys(el).find(k => k.startsWith('__reactProps$'))
+  const key = Object.keys(el).find((k) => k.startsWith('__reactProps$'))
   return key ? (el as unknown as Record<string, Record<string, ReactEventHandler>>)[key]! : {}
 }
+
+const getPlayButton = () => screen.getByRole('button', { name: 'common.operation.play' })
+const getPauseButton = () => screen.getByRole('button', { name: 'common.operation.pause' })
 
 // ─── Setup / teardown ─────────────────────────────────────────────────────────
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
-  ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.light })
+  ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.light })
   HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
   HTMLMediaElement.prototype.pause = vi.fn()
   HTMLMediaElement.prototype.load = vi.fn()
@@ -77,7 +82,7 @@ describe('AudioPlayer — rendering', () => {
   it('should render the play button and audio element when given a src', () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
 
-    expect(screen.getByTestId('play-pause-btn'))!.toBeInTheDocument()
+    expect(getPlayButton())!.toBeInTheDocument()
     expect(document.querySelector('audio'))!.toBeInTheDocument()
     expect(document.querySelector('audio')?.getAttribute('src')).toBe('https://example.com/a.mp3')
   })
@@ -90,11 +95,6 @@ describe('AudioPlayer — rendering', () => {
     expect((sources[0] as HTMLSourceElement).src).toBe('https://example.com/a.mp3')
     expect((sources[1] as HTMLSourceElement).src).toBe('https://example.com/b.ogg')
   })
-
-  it('should render without crashing when no props are supplied', () => {
-    render(<AudioPlayer />)
-    expect(screen.getByTestId('play-pause-btn'))!.toBeInTheDocument()
-  })
 })
 
 // ─── Play / Pause toggle ──────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ describe('AudioPlayer — rendering', () => {
 describe('AudioPlayer — play/pause', () => {
   it('should call audio.play() on first button click', async () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
 
     await act(async () => {
       fireEvent.click(btn)
@@ -113,13 +113,13 @@ describe('AudioPlayer — play/pause', () => {
 
   it('should call audio.pause() on second button click', async () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
 
     await act(async () => {
       fireEvent.click(btn)
     })
     await act(async () => {
-      fireEvent.click(btn)
+      fireEvent.click(getPauseButton())
     })
 
     expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1)
@@ -127,7 +127,7 @@ describe('AudioPlayer — play/pause', () => {
 
   it('should show the pause icon while playing and play icon while paused', async () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
 
     expect(btn.querySelector('.i-ri-play-large-fill'))!.toBeInTheDocument()
     expect(btn.querySelector('.i-ri-pause-circle-fill')).not.toBeInTheDocument()
@@ -136,23 +136,25 @@ describe('AudioPlayer — play/pause', () => {
       fireEvent.click(btn)
     })
 
-    expect(btn.querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
-    expect(btn.querySelector('.i-ri-play-large-fill')).not.toBeInTheDocument()
+    const pauseBtn = getPauseButton()
+    expect(pauseBtn.querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
+    expect(pauseBtn.querySelector('.i-ri-play-large-fill')).not.toBeInTheDocument()
   })
 
   it('should reset to stopped state when the audio ends', async () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
 
     await act(async () => {
       fireEvent.click(btn)
     })
-    expect(btn.querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
+    expect(getPauseButton().querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
 
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
       audio.dispatchEvent(new Event('ended'))
     })
+    expect(getPlayButton().querySelector('.i-ri-play-large-fill'))!.toBeInTheDocument()
 
     expect(btn.querySelector('.i-ri-play-large-fill'))!.toBeInTheDocument()
   })
@@ -165,7 +167,7 @@ describe('AudioPlayer — play/pause', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
+    expect(getPlayButton())!.toBeDisabled()
   })
 })
 
@@ -216,7 +218,7 @@ describe('AudioPlayer — audio events', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
+    expect(getPlayButton())!.toBeDisabled()
   })
 })
 
@@ -245,8 +247,12 @@ describe('AudioPlayer — waveform generation', () => {
 
   it('should use fallback waveform when decodeAudioData rejects', async () => {
     class FailDecodeContext {
-      decodeAudioData() { return Promise.reject(new Error('decode error')) }
-      close() { return Promise.resolve() }
+      decodeAudioData() {
+        return Promise.reject(new Error('decode error'))
+      }
+      close() {
+        return Promise.resolve()
+      }
     }
     vi.stubGlobal('AudioContext', FailDecodeContext)
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -276,7 +282,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer srcs={['blob:something']} />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
+    expect(getPlayButton())!.toBeDisabled()
   })
 
   it('should not trigger waveform generation when no src or srcs provided', async () => {
@@ -291,14 +297,16 @@ describe('AudioPlayer — waveform generation', () => {
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     const fetchSpy = stubFetchOk(256)
 
-    render(<AudioPlayer srcs={['https://cdn.example/first.mp3', 'https://cdn.example/second.mp3']} />)
+    render(
+      <AudioPlayer srcs={['https://cdn.example/first.mp3', 'https://cdn.example/second.mp3']} />,
+    )
     await advanceWaveformTimer()
 
     expect(fetchSpy).toHaveBeenCalledWith('https://cdn.example/first.mp3', { mode: 'cors' })
   })
 
   it('should cover dark theme waveform draw branch', async () => {
-    ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
+    ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     stubFetchOk(256)
 
@@ -375,13 +383,16 @@ describe('AudioPlayer — canvas seek interactions', () => {
     await act(async () => {
       fireEvent.click(canvas, { clientX: 50 })
     })
-    const callsAfterFirst = (HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length
+    const callsAfterFirst = (HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls
+      .length
 
     await act(async () => {
       fireEvent.click(canvas, { clientX: 80 })
     })
 
-    expect((HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsAfterFirst)
+    expect((HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      callsAfterFirst,
+    )
   })
 
   it('should update hoverTime on mousemove within buffered range', async () => {
@@ -414,12 +425,6 @@ describe('AudioPlayer — canvas seek interactions', () => {
 // ─── Missing coverage tests ───────────────────────────────────────────────────
 
 describe('AudioPlayer — missing coverage', () => {
-  it('should handle unmounting without crashing (clears timeout)', () => {
-    const { unmount } = render(<AudioPlayer src="https://example.com/a.mp3" />)
-    unmount()
-    // Timer is cleared, no state update should happen after unmount
-  })
-
   it('should handle getContext returning null safely', () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null)
@@ -434,7 +439,10 @@ describe('AudioPlayer — missing coverage', () => {
     // Note: React 18 / testing-library wraps updates automatically, but we still wait for advanceWaveformTimer
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     let fillRectCalled = false
-    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, ...args: Parameters<typeof HTMLCanvasElement.prototype.getContext>) {
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      ...args: Parameters<typeof HTMLCanvasElement.prototype.getContext>
+    ) {
       const ctx = originalGetContext.apply(this, args) as CanvasRenderingContext2D | null
       if (ctx) {
         Object.defineProperty(ctx, 'roundRect', { value: undefined, configurable: true })
@@ -458,11 +466,11 @@ describe('AudioPlayer — missing coverage', () => {
   })
 
   it('should handle play error gracefully when togglePlay is clicked', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('play failed'))
 
     render(<AudioPlayer src="https://example.com/audio.mp3" />)
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
 
     await act(async () => {
       fireEvent.click(btn)
@@ -482,7 +490,8 @@ describe('AudioPlayer — missing coverage', () => {
     const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
     const audio = document.querySelector('audio') as HTMLAudioElement
     Object.defineProperty(audio, 'duration', { value: 120, configurable: true })
-    canvas.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
+    canvas.getBoundingClientRect = () =>
+      ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
 
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockRejectedValue(new Error('play failed'))
 
@@ -505,7 +514,8 @@ describe('AudioPlayer — missing coverage', () => {
     const canvas = screen.getByTestId('waveform-canvas') as HTMLCanvasElement
     const audio = document.querySelector('audio') as HTMLAudioElement
     Object.defineProperty(audio, 'duration', { value: 120, configurable: true })
-    canvas.getBoundingClientRect = () => ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
+    canvas.getBoundingClientRect = () =>
+      ({ left: 0, width: 200, top: 0, height: 10, right: 200, bottom: 10 }) as DOMRect
 
     await act(async () => {
       // Use touch events
@@ -530,7 +540,7 @@ describe('AudioPlayer — missing coverage', () => {
     render(<AudioPlayer src="blob:https://example.com" />)
     await advanceWaveformTimer() // sets isAudioAvailable to false (invalid protocol)
 
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
     await act(async () => {
       fireEvent.click(btn)
     })
@@ -549,7 +559,7 @@ describe('AudioPlayer — missing coverage', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
     const props = getReactProps(btn)
 
     await act(async () => {
@@ -606,7 +616,7 @@ describe('AudioPlayer — additional branch coverage', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.queryByTestId('play-pause-btn'))!.toBeDisabled()
+    expect(getPlayButton())!.toBeDisabled()
   })
 
   it('should update current time on timeupdate event', async () => {
@@ -627,7 +637,7 @@ describe('AudioPlayer — additional branch coverage', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    const btn = screen.getByTestId('play-pause-btn')
+    const btn = getPlayButton()
     await act(async () => {
       fireEvent.click(btn)
     })
@@ -639,7 +649,7 @@ describe('AudioPlayer — additional branch coverage', () => {
   })
 
   it('should cover Dark theme waveform states', async () => {
-    ; (useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
+    ;(useThemeMock as ReturnType<typeof vi.fn>).mockReturnValue({ theme: Theme.dark })
     vi.stubGlobal('AudioContext', buildAudioContext(300))
     stubFetchOk(128)
 

@@ -9,7 +9,7 @@ const mockTracingPanel = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: (props: { title: ReactNode, value: unknown }) => {
+  default: (props: { title: ReactNode; value: unknown }) => {
     mockCodeEditor(props)
     return (
       <section data-testid="code-editor">
@@ -22,7 +22,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
 
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   __esModule: true,
-  default: (props: { list: NodeTracing[], className?: string }) => {
+  default: (props: { list: NodeTracing[]; className?: string }) => {
     mockTracingPanel(props)
     return <div data-testid="tracing-panel">{props.list.length}</div>
   },
@@ -87,8 +87,7 @@ describe('LoopResultPanel', () => {
 
     expect(screen.getByText('1.20s')).toBeInTheDocument()
     const expandArrow = container.querySelector('.transition-transform.duration-200')
-    if (!expandArrow)
-      throw new Error('Expected loop expand arrow to be rendered')
+    if (!expandArrow) throw new Error('Expected loop expand arrow to be rendered')
     expect(expandArrow).not.toHaveClass('rotate-90')
 
     fireEvent.click(screen.getByText('workflow.singleRun.loop 1'))
@@ -96,12 +95,16 @@ describe('LoopResultPanel', () => {
     expect(expandArrow).toHaveClass('rotate-90')
     expect(screen.getByTestId('code-editor')).toHaveTextContent('{"item":"alpha"}')
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('1')
-    expect(mockCodeEditor).toHaveBeenCalledWith(expect.objectContaining({
-      value: loopVariableMap[0],
-    }))
-    expect(mockTracingPanel).toHaveBeenCalledWith(expect.objectContaining({
-      list: [expect.objectContaining({ title: 'Loop Step 1' })],
-    }))
+    expect(mockCodeEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: loopVariableMap[0],
+      }),
+    )
+    expect(mockTracingPanel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        list: [expect.objectContaining({ title: 'Loop Step 1' })],
+      }),
+    )
 
     fireEvent.click(screen.getByText('workflow.singleRun.back'))
 
@@ -116,16 +119,18 @@ describe('LoopResultPanel', () => {
 
       render(
         <LoopResultPanel
-          list={[[
-            createNodeTracing('loop-2-step-1', {
-              execution_metadata: {
-                total_tokens: 0,
-                total_price: 0,
-                currency: 'USD',
-                loop_index: 2,
-              },
-            }),
-          ]]}
+          list={[
+            [
+              createNodeTracing('loop-2-step-1', {
+                execution_metadata: {
+                  total_tokens: 0,
+                  total_price: 0,
+                  currency: 'USD',
+                  loop_index: 2,
+                },
+              }),
+            ],
+          ]}
           onBack={vi.fn()}
           loopVariableMap={loopVariableMap}
         />,
@@ -134,9 +139,11 @@ describe('LoopResultPanel', () => {
       fireEvent.click(screen.getByText('workflow.singleRun.loop 1'))
 
       expect(screen.getByTestId('code-editor')).toHaveTextContent('{"item":"alpha"}')
-      expect(mockCodeEditor).toHaveBeenCalledWith(expect.objectContaining({
-        value: loopVariableMap[2],
-      }))
+      expect(mockCodeEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: loopVariableMap[2],
+        }),
+      )
     })
 
     it('should read loop variables by parallel run id when available', () => {
@@ -146,17 +153,19 @@ describe('LoopResultPanel', () => {
 
       render(
         <LoopResultPanel
-          list={[[
-            createNodeTracing('parallel-step-1', {
-              execution_metadata: {
-                total_tokens: 0,
-                total_price: 0,
-                currency: 'USD',
-                loop_index: 0,
-                parallel_mode_run_id: 'parallel-1',
-              },
-            }),
-          ]]}
+          list={[
+            [
+              createNodeTracing('parallel-step-1', {
+                execution_metadata: {
+                  total_tokens: 0,
+                  total_price: 0,
+                  currency: 'USD',
+                  loop_index: 0,
+                  parallel_mode_run_id: 'parallel-1',
+                },
+              }),
+            ],
+          ]}
           onBack={vi.fn()}
           loopVariableMap={loopVariableMap}
         />,
@@ -165,9 +174,11 @@ describe('LoopResultPanel', () => {
       fireEvent.click(screen.getByText('workflow.singleRun.loop 1'))
 
       expect(screen.getByTestId('code-editor')).toHaveTextContent('{"item":"beta"}')
-      expect(mockCodeEditor).toHaveBeenCalledWith(expect.objectContaining({
-        value: loopVariableMap['parallel-1'],
-      }))
+      expect(mockCodeEditor).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: loopVariableMap['parallel-1'],
+        }),
+      )
     })
   })
 })

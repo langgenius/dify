@@ -8,14 +8,20 @@ This module tests the mail sending functionality including:
 - Error handling and logging
 """
 
+import logging
 import smtplib
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from python_http_client.exceptions import ForbiddenError, UnauthorizedError
 
 from configs import dify_config
 from configs.feature import TemplateMode
-from libs.email_i18n import EmailType
+from extensions.ext_mail import Mail
+from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
+from libs.sendgrid import SendGridClient
+from libs.smtp import SMTPClient
+from services.entities.feature_entities import BrandingModel
 from tasks.mail_inner_task import _render_template_with_strategy, send_inner_email_task
 from tasks.mail_register_task import (
     send_email_register_mail_task,
@@ -130,8 +136,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_tls_ssl(self, mock_smtp_ssl):
         """Test SMTP send with TLS using SMTP_SSL."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -160,8 +164,6 @@ class TestSMTPIntegration:
     def test_smtp_send_with_opportunistic_tls(self, mock_smtp):
         """Test SMTP send with opportunistic TLS (STARTTLS)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -192,8 +194,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_tls(self, mock_smtp):
         """Test SMTP send without TLS encryption."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -222,8 +222,6 @@ class TestSMTPIntegration:
     def test_smtp_send_without_authentication(self, mock_smtp):
         """Test SMTP send without authentication (empty credentials)."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -251,8 +249,6 @@ class TestSMTPIntegration:
     def test_smtp_send_authentication_failure(self, mock_smtp_ssl):
         """Test SMTP send handles authentication failure."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.login.side_effect = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
@@ -279,8 +275,6 @@ class TestSMTPIntegration:
     def test_smtp_send_timeout_error(self, mock_smtp_ssl):
         """Test SMTP send handles timeout errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = TimeoutError("Connection timeout")
 
         client = SMTPClient(
@@ -303,8 +297,6 @@ class TestSMTPIntegration:
     def test_smtp_send_connection_refused(self, mock_smtp_ssl):
         """Test SMTP send handles connection refused errors."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_smtp_ssl.side_effect = ConnectionRefusedError("Connection refused")
 
         client = SMTPClient(
@@ -327,8 +319,6 @@ class TestSMTPIntegration:
     def test_smtp_send_ensures_cleanup_on_error(self, mock_smtp_ssl):
         """Test SMTP send ensures cleanup even when errors occur."""
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
         mock_server.sendmail.side_effect = smtplib.SMTPException("Send failed")
@@ -371,8 +361,7 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_success(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_success(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that successful mail sends are logged properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -380,7 +369,8 @@ class TestMailTaskRetryLogic:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
         mock_service.send_email.assert_called_once_with(
@@ -390,12 +380,14 @@ class TestMailTaskRetryLogic:
             template_context={"to": "test@example.com", "code": "123456"},
         )
         # Verify logging calls
-        assert mock_logger.info.call_count == 2  # Start and success logs
+        log_messages = [record.getMessage() for record in caplog.records]
+        assert len(log_messages) == 2  # Start and success logs
+        assert "Start email register mail to test@example.com" in log_messages[0]
+        assert "Send email register mail to test@example.com succeeded" in log_messages[1]
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_failure(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_failure(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that failed mail sends are logged with exception details."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -404,10 +396,13 @@ class TestMailTaskRetryLogic:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.ERROR, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
-        mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", "test@example.com")
+        assert "Send email register mail to test@example.com failed" in caplog.text
+        assert len(caplog.records) == 1
+        assert caplog.records[0].exc_info is not None
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
@@ -574,8 +569,9 @@ class TestInnerEmailTask:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
-    @patch("tasks.mail_inner_task.logger")
-    def test_inner_email_task_logs_failure(self, mock_logger, mock_render, mock_mail, mock_email_service):
+    def test_inner_email_task_logs_failure(
+        self, mock_render, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test inner email task logs failures properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -587,10 +583,13 @@ class TestInnerEmailTask:
         to_list = ["user@example.com"]
 
         # Act
-        send_inner_email_task(to=to_list, subject="Test", body="Body", substitutions={})
+        with caplog.at_level(logging.ERROR, logger="tasks.mail_inner_task"):
+            send_inner_email_task(to=to_list, subject="Test", body="Body", substitutions={})
 
         # Assert
-        mock_logger.exception.assert_called_once()
+        assert "Send enterprise mail to ['user@example.com'] failed" in caplog.text
+        assert len(caplog.records) == 1
+        assert caplog.records[0].exc_info is not None
 
 
 class TestSendGridIntegration:
@@ -600,8 +599,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_success(self, mock_sg_client):
         """Test SendGrid client sends email successfully."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_response = MagicMock()
@@ -623,8 +620,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_missing_recipient(self, mock_sg_client):
         """Test SendGrid client raises error when recipient is missing."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         client = SendGridClient(sendgrid_api_key="test_api_key", _from="noreply@example.com")
 
         mail_data = {"to": "", "subject": "Test Subject", "html": "<p>Test Content</p>"}
@@ -637,10 +632,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_unauthorized_error(self, mock_sg_client):
         """Test SendGrid client handles unauthorized errors."""
         # Arrange
-        from python_http_client.exceptions import UnauthorizedError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = UnauthorizedError(
@@ -659,10 +650,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_forbidden_error(self, mock_sg_client):
         """Test SendGrid client handles forbidden errors."""
         # Arrange
-        from python_http_client.exceptions import ForbiddenError
-
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = ForbiddenError(MagicMock(status_code=403), "Forbidden")
@@ -679,8 +666,6 @@ class TestSendGridIntegration:
     def test_sendgrid_send_timeout_error(self, mock_sg_client):
         """Test SendGrid client handles timeout errors."""
         # Arrange
-        from libs.sendgrid import SendGridClient
-
         mock_client_instance = MagicMock()
         mock_sg_client.return_value = mock_client_instance
         mock_client_instance.client.mail.send.post.side_effect = TimeoutError("Request timeout")
@@ -701,8 +686,6 @@ class TestMailExtension:
     def test_mail_init_smtp_configuration(self, mock_config):
         """Test mail extension initializes SMTP client correctly."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = "smtp.example.com"
         mock_config.SMTP_PORT = 465
@@ -726,8 +709,6 @@ class TestMailExtension:
     def test_mail_init_without_mail_type(self, mock_config):
         """Test mail extension skips initialization when MAIL_TYPE is not set."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = None
 
         mail = Mail()
@@ -743,8 +724,6 @@ class TestMailExtension:
     def test_mail_send_validates_parameters(self, mock_config):
         """Test mail send validates required parameters."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mail._client = MagicMock()
         mail._default_send_from = "noreply@example.com"
@@ -765,8 +744,6 @@ class TestMailExtension:
     def test_mail_send_uses_default_from(self, mock_config):
         """Test mail send uses default from address when not provided."""
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -790,9 +767,6 @@ class TestEmailI18nService:
     def test_email_service_sends_with_branding(self, mock_renderer_class, mock_branding_class, mock_sender_class):
         """Test email service sends email with branding support."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService, EmailLanguage, EmailTemplate, EmailType
-        from services.feature_service import BrandingModel
-
         mock_renderer = MagicMock()
         mock_renderer.render_template.return_value = "<html>Rendered content</html>"
         mock_renderer_class.return_value = mock_renderer
@@ -838,8 +812,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_single_recipient(self, mock_sender_class):
         """Test email service sends raw email to single recipient."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -862,8 +834,6 @@ class TestEmailI18nService:
     def test_email_service_send_raw_email_multiple_recipients(self, mock_sender_class):
         """Test email service sends raw email to multiple recipients."""
         # Arrange
-        from libs.email_i18n import EmailI18nConfig, EmailI18nService
-
         mock_sender = MagicMock()
         mock_sender_class.return_value = mock_sender
 
@@ -890,9 +860,10 @@ class TestPerformanceAndTiming:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
     @patch("tasks.mail_register_task.time")
-    def test_mail_task_tracks_execution_time(self, mock_time, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_tracks_execution_time(
+        self, mock_time, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test that mail tasks track and log execution time."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -903,13 +874,14 @@ class TestPerformanceAndTiming:
         mock_time.perf_counter.side_effect = [100.0, 100.5]  # 0.5 second execution
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
         assert mock_time.perf_counter.call_count == 2
         # Verify latency is logged
-        success_log_call = mock_logger.info.call_args_list[1]
-        assert "latency" in str(success_log_call)
+        assert len(caplog.records) == 2
+        assert "latency: 0.5" in caplog.records[1].getMessage()
 
 
 class TestEdgeCasesAndErrorHandling:
@@ -929,8 +901,6 @@ class TestEdgeCasesAndErrorHandling:
         configuration parameters are not provided.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = None  # Missing required parameter
         mock_config.SMTP_PORT = 465
@@ -951,8 +921,6 @@ class TestEdgeCasesAndErrorHandling:
         This test ensures the configuration is validated properly.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "smtp"
         mock_config.SMTP_SERVER = "smtp.example.com"
         mock_config.SMTP_PORT = 587
@@ -975,8 +943,6 @@ class TestEdgeCasesAndErrorHandling:
         are accepted and invalid types are rejected.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "unsupported_provider"
 
         mail = Mail()
@@ -995,8 +961,6 @@ class TestEdgeCasesAndErrorHandling:
         emails with empty subjects without crashing.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1028,8 +992,6 @@ class TestEdgeCasesAndErrorHandling:
         subject lines and email bodies.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1129,8 +1091,6 @@ class TestResendIntegration:
         and the client is initialized.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = "re_test_api_key"
         mock_config.RESEND_API_URL = None
@@ -1171,8 +1131,6 @@ class TestResendIntegration:
         This test ensures custom URLs are properly configured.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = "re_test_api_key"
         mock_config.RESEND_API_URL = "https://custom-resend.example.com"
@@ -1212,8 +1170,6 @@ class TestResendIntegration:
         proper validation of required configuration.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mock_config.MAIL_TYPE = "resend"
         mock_config.RESEND_API_KEY = None  # Missing API key
 
@@ -1321,8 +1277,6 @@ class TestEmailValidation:
         this test documents the current behavior.
         """
         # Arrange
-        from extensions.ext_mail import Mail
-
         mail = Mail()
         mock_client = MagicMock()
         mail._client = mock_client
@@ -1352,8 +1306,6 @@ class TestSMTPEdgeCases:
         or extensive formatting. This test ensures they're handled.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1389,8 +1341,6 @@ class TestSMTPEdgeCases:
         recipient per call. This test documents that behavior.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp_ssl.return_value = mock_server
 
@@ -1422,8 +1372,6 @@ class TestSMTPEdgeCases:
         whitespace to avoid authentication with blank credentials.
         """
         # Arrange
-        from libs.smtp import SMTPClient
-
         mock_server = MagicMock()
         mock_smtp.return_value = mock_server
 
@@ -1457,8 +1405,9 @@ class TestLoggingAndMonitoring:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_recipient_information(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_recipient_information(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that mail tasks log recipient information for audit trails.
 
@@ -1471,17 +1420,18 @@ class TestLoggingAndMonitoring:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="audit@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="audit@example.com", code="123456")
 
         # Assert
         # Check that recipient is logged in start message
-        start_log_call = mock_logger.info.call_args_list[0]
-        assert "audit@example.com" in str(start_log_call)
+        assert "audit@example.com" in caplog.records[0].getMessage()
 
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
-    @patch("tasks.mail_inner_task.logger")
-    def test_inner_email_task_logs_subject_for_tracking(self, mock_logger, mock_mail, mock_email_service):
+    def test_inner_email_task_logs_subject_for_tracking(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that inner email task logs subject for tracking purposes.
 
@@ -1494,11 +1444,11 @@ class TestLoggingAndMonitoring:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_inner_email_task(
-            to=["user@example.com"], subject="Important Notification", body="<p>Body</p>", substitutions={}
-        )
+        with caplog.at_level(logging.INFO, logger="tasks.mail_inner_task"):
+            send_inner_email_task(
+                to=["user@example.com"], subject="Important Notification", body="<p>Body</p>", substitutions={}
+            )
 
         # Assert
         # Check that subject is logged
-        start_log_call = mock_logger.info.call_args_list[0]
-        assert "Important Notification" in str(start_log_call)
+        assert "Important Notification" in caplog.records[0].getMessage()

@@ -13,12 +13,13 @@ vi.mock('../../../common/image-list', () => ({
   default: () => <div data-testid="image-list" />,
 }))
 
-const makeRecord = (id: string, source: string, created_at: number, content = 'query text') => ({
-  id,
-  source,
-  created_at,
-  queries: [{ content, content_type: 'text_query', file_info: null }],
-}) as unknown as HitTestingRecord
+const makeRecord = (id: string, source: string, created_at: number, content = 'query text') =>
+  ({
+    id,
+    source,
+    created_at,
+    queries: [{ content, content_type: 'text_query', file_info: null }],
+  }) as unknown as HitTestingRecord
 
 describe('Records', () => {
   const mockOnClick = vi.fn()
@@ -35,10 +36,7 @@ describe('Records', () => {
   })
 
   it('should render records', () => {
-    const records = [
-      makeRecord('1', 'app', 1000),
-      makeRecord('2', 'hit_testing', 2000),
-    ]
+    const records = [makeRecord('1', 'app', 1000), makeRecord('2', 'hit_testing', 2000)]
     render(<Records records={records} onClickRecord={mockOnClick} />)
     expect(screen.getAllByText('query text')).toHaveLength(2)
   })
@@ -64,10 +62,7 @@ describe('Records', () => {
   })
 
   it('should toggle sort order on time header click', () => {
-    const records = [
-      makeRecord('1', 'app', 1000, 'early'),
-      makeRecord('2', 'app', 3000, 'late'),
-    ]
+    const records = [makeRecord('1', 'app', 1000, 'early'), makeRecord('2', 'app', 3000, 'late')]
     render(<Records records={records} onClickRecord={mockOnClick} />)
 
     // Default: desc, so late first
@@ -80,15 +75,27 @@ describe('Records', () => {
   })
 
   it('should render image list for image queries', () => {
-    const records = [{
-      id: '1',
-      source: 'app',
-      created_at: 1000,
-      queries: [
-        { content: '', content_type: 'text_query', file_info: null },
-        { content: '', content_type: 'image_query', file_info: { name: 'img.png', mime_type: 'image/png', source_url: 'url', size: 100, extension: 'png' } },
-      ],
-    }] as unknown as HitTestingRecord[]
+    const records = [
+      {
+        id: '1',
+        source: 'app',
+        created_at: 1000,
+        queries: [
+          { content: '', content_type: 'text_query', file_info: null },
+          {
+            content: '',
+            content_type: 'image_query',
+            file_info: {
+              name: 'img.png',
+              mime_type: 'image/png',
+              source_url: 'url',
+              size: 100,
+              extension: 'png',
+            },
+          },
+        ],
+      },
+    ] as unknown as HitTestingRecord[]
     render(<Records records={records} onClickRecord={mockOnClick} />)
     expect(screen.getByTestId('image-list')).toBeInTheDocument()
   })

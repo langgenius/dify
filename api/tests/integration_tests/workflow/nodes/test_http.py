@@ -11,7 +11,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.graph import Graph
 from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
@@ -55,7 +55,7 @@ def init_http_node(config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -76,7 +76,7 @@ def init_http_node(config: dict):
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
-        config=HttpRequestNodeData.model_validate(config["data"]),
+        data=HttpRequestNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
@@ -193,7 +193,6 @@ def test_custom_authorization_header(setup_http_mock):
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
     from core.workflow.system_variables import build_system_variables
-    from graphon.enums import BuiltinNodeTypes
     from graphon.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
@@ -204,7 +203,7 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     from graphon.runtime import VariablePool
 
     # Create variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="test", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -702,7 +701,7 @@ def test_nested_object_variable_selector(setup_http_mock):
     )
 
     # Create independent variable pool for this test only
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -724,7 +723,7 @@ def test_nested_object_variable_selector(setup_http_mock):
 
     node = HttpRequestNode(
         node_id=str(uuid.uuid4()),
-        config=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
+        data=HttpRequestNodeData.model_validate(graph_config["nodes"][1]["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,

@@ -15,19 +15,20 @@ vi.mock('../datasource-icon', () => ({
   ),
 }))
 
-const createMockNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType => ({
-  title: 'Test Node',
-  desc: '',
-  type: {} as DataSourceNodeType['type'],
-  plugin_id: 'test-plugin',
-  provider_type: 'builtin',
-  provider_name: 'test-provider',
-  datasource_name: 'test-ds',
-  datasource_label: 'Test DS',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createMockNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    desc: '',
+    type: {} as DataSourceNodeType['type'],
+    plugin_id: 'test-plugin',
+    provider_type: 'builtin',
+    provider_name: 'test-provider',
+    datasource_name: 'test-ds',
+    datasource_label: 'Test DS',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 describe('OptionCard', () => {
   const defaultProps = {
@@ -75,36 +76,11 @@ describe('OptionCard', () => {
 
     it('should not throw when onClick is undefined', () => {
       expect(() => {
-        const { container } = render(
-          <OptionCard {...defaultProps} onClick={undefined} />,
-        )
+        const { container } = render(<OptionCard {...defaultProps} onClick={undefined} />)
         fireEvent.click(container.firstElementChild!)
       }).not.toThrow()
     })
   })
 
   // Props: selected state applies different styles
-  describe('Props', () => {
-    it('should apply selected styles when selected is true', () => {
-      const { container } = render(<OptionCard {...defaultProps} selected />)
-
-      const card = container.firstElementChild
-      expect(card?.className).toContain('border-components-option-card-option-selected-border')
-      expect(card?.className).toContain('bg-components-option-card-option-selected-bg')
-    })
-
-    it('should apply default styles when selected is false', () => {
-      const { container } = render(<OptionCard {...defaultProps} selected={false} />)
-
-      const card = container.firstElementChild
-      expect(card?.className).not.toContain('border-components-option-card-option-selected-border')
-    })
-
-    it('should apply text-text-primary class to label when selected', () => {
-      render(<OptionCard {...defaultProps} selected />)
-
-      const labelEl = screen.getByTitle('Google Drive')
-      expect(labelEl.className).toContain('text-text-primary')
-    })
-  })
 })

@@ -28,7 +28,7 @@ def _build_fake_elasticsearch_modules():
 
 
 @pytest.fixture
-def elasticsearch_ja_module(monkeypatch):
+def elasticsearch_ja_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_elasticsearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -39,7 +39,7 @@ def elasticsearch_ja_module(monkeypatch):
     return importlib.reload(ja_module)
 
 
-def test_create_collection_cache_hit(elasticsearch_ja_module, monkeypatch):
+def test_create_collection_cache_hit(elasticsearch_ja_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -57,7 +57,7 @@ def test_create_collection_cache_hit(elasticsearch_ja_module, monkeypatch):
     elasticsearch_ja_module.redis_client.set.assert_not_called()
 
 
-def test_create_collection_create_and_exists_paths(elasticsearch_ja_module, monkeypatch):
+def test_create_collection_create_and_exists_paths(elasticsearch_ja_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -87,7 +87,7 @@ def test_create_collection_create_and_exists_paths(elasticsearch_ja_module, monk
     elasticsearch_ja_module.redis_client.set.assert_called_once()
 
 
-def test_ja_factory_uses_existing_or_generated_collection(elasticsearch_ja_module, monkeypatch):
+def test_ja_factory_uses_existing_or_generated_collection(elasticsearch_ja_module, monkeypatch: pytest.MonkeyPatch):
     factory = elasticsearch_ja_module.ElasticSearchJaVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

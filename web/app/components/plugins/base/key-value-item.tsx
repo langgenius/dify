@@ -1,34 +1,30 @@
 'use client'
-import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiClipboardLine,
-} from '@remixicon/react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
-import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
-import Tooltip from '../../base/tooltip'
 
-type Props = {
+type Props = Readonly<{
   label: string
   labelWidthClassName?: string
   value: string
   maskedValue?: string
   valueMaxWidthClassName?: string
-}
+}>
 
-const KeyValueItem: FC<Props> = ({
+function KeyValueItem({
   label,
   labelWidthClassName = 'w-10',
   value,
   maskedValue,
   valueMaxWidthClassName = 'max-w-[162px]',
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
+  const labelId = useId()
   const handleCopy = useCallback(() => {
     copy(value)
     setIsCopied(true)
@@ -45,23 +41,57 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
+  const copiedLabel = t(($) => $['operation.copied'], { ns: 'common' })
+  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' })
+  const copyButtonLabel = `${copyLabel}: ${label}`
+  const copyStatus = `${copiedLabel}: ${label}`
+  const tooltipLabel = isCopied ? copiedLabel : copyLabel
 
   return (
-    <div className="flex items-center gap-1">
-      <span className={cn('flex flex-col items-start justify-center system-xs-medium text-text-tertiary', labelWidthClassName)}>{label}</span>
+    <div role="group" aria-labelledby={labelId} className="flex items-center gap-1">
+      <span
+        id={labelId}
+        className={cn(
+          'flex flex-col items-start justify-center system-xs-medium text-text-tertiary',
+          labelWidthClassName,
+        )}
+      >
+        {label}
+      </span>
       <div className="flex items-center justify-center gap-0.5">
-        <span className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}>
+        <span
+          className={cn(valueMaxWidthClassName, 'truncate system-xs-medium text-text-secondary')}
+        >
           {maskedValue || value}
         </span>
-        <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">
-          <ActionButton onClick={handleCopy}>
-            <CopyIcon className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-          </ActionButton>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                aria-label={copyButtonLabel}
+                className="size-6 p-0"
+                onClick={handleCopy}
+              >
+                {isCopied ? (
+                  <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary"
+                  />
+                )}
+              </Button>
+            }
+          />
+          <TooltipContent placement="top">{tooltipLabel}</TooltipContent>
         </Tooltip>
       </div>
+      <span role="status" aria-atomic="true" className="sr-only">
+        {isCopied ? copyStatus : ''}
+      </span>
     </div>
   )
 }
 
-export default React.memo(KeyValueItem)
+export default KeyValueItem

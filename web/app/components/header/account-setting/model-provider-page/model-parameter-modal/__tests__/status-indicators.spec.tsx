@@ -1,25 +1,39 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import StatusIndicators from '../status-indicators'
 
 let installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+const mockUseInstalledPluginList = vi.fn((_options: unknown) => ({
+  data: { plugins: installedPlugins },
+}))
 
 vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins: installedPlugins } }),
+  useInstalledPluginList: (options: unknown) => mockUseInstalledPluginList(options),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
-  SwitchPluginVersion: ({ uniqueIdentifier }: { uniqueIdentifier: string }) => <div>{`SwitchVersion:${uniqueIdentifier}`}</div>,
+  SwitchPluginVersion: ({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
+    <div>{`SwitchVersion:${uniqueIdentifier}`}</div>
+  ),
 }))
 
-const t = (key: string) => key
+const t = withSelectorKey((key: string) => key, 'workflow')
 
 describe('StatusIndicators', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
+    mockUseInstalledPluginList.mockReturnValue({ data: { plugins: installedPlugins } })
   })
+
+  const getPopoverTrigger = (name: string) => {
+    const trigger = screen.getByRole('button', { name })
+    expect(trigger).toBeInTheDocument()
+    return trigger
+  }
 
   it('should render nothing when model is available and enabled', () => {
     const { container } = render(
@@ -33,11 +47,15 @@ describe('StatusIndicators', () => {
       />,
     )
     expect(container).toBeEmptyDOMElement()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
   })
 
   it('should render deprecated tooltip when provider model is disabled and in model list', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={true}
@@ -47,17 +65,21 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getPopoverTrigger('nodes.agent.modelSelectorTooltips.deprecated'))
 
-    expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
+    expect(
+      await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated'),
+    ).toBeInTheDocument()
   })
 
   it('should render model-not-support tooltip when disabled model is not in model list and has no pluginInfo', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={true}
@@ -67,10 +89,12 @@ describe('StatusIndicators', () => {
         t={t}
       />,
     )
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getPopoverTrigger('nodes.agent.modelNotSupport.title'))
 
     expect(await screen.findByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
   })
@@ -88,6 +112,10 @@ describe('StatusIndicators', () => {
     )
 
     expect(screen.getByText('SwitchVersion:demo@1.0.0')).toBeInTheDocument()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: true,
+    })
   })
 
   it('should render nothing when needsConfiguration is true even with disabled and modelProvider', () => {
@@ -102,6 +130,10 @@ describe('StatusIndicators', () => {
       />,
     )
     expect(container).toBeEmptyDOMElement()
+    expect(mockUseInstalledPluginList).toHaveBeenLastCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
   })
 
   it('should render SwitchVersion with empty identifier when plugin is not in installed list', () => {
@@ -123,7 +155,7 @@ describe('StatusIndicators', () => {
 
   it('should render marketplace warning tooltip when provider is unavailable', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={false}
@@ -134,9 +166,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getPopoverTrigger('nodes.agent.modelNotInMarketplace.title'))
 
     expect(await screen.findByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
   })

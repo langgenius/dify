@@ -1,3 +1,5 @@
+from typing import override
+
 """Tencent APM tracing with idempotent client cleanup."""
 
 import inspect
@@ -56,22 +58,24 @@ class TencentDataTrace(BaseTraceInstance):
             metrics_export_interval_sec=5,
         )
 
+    @override
     def trace(self, trace_info: BaseTraceInfo) -> None:
         """Main tracing entry point - coordinates different trace types."""
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            pass
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            pass
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                pass
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                pass
 
     def api_check(self) -> bool:
         return self.trace_client.api_check()
@@ -248,18 +252,9 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-                current_tenant = session.scalar(
-                    select(TenantAccountJoin)
-                    .where(TenantAccountJoin.account_id == service_account.id, TenantAccountJoin.current.is_(True))
-                    .limit(1)
-                )
-                if not current_tenant:
-                    raise ValueError(f"Current tenant not found for account {service_account.id}")
-
-                service_account.set_tenant_id(current_tenant.tenant_id)
-
             repository = SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=session_maker,
+                tenant_id=app.tenant_id,
                 user=service_account,
                 app_id=trace_info.metadata.get("app_id"),
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

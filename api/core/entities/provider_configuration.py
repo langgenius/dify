@@ -6,11 +6,12 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
-from sqlalchemy import func, select
+from sqlalchemy import String, func, literal, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import BindParameter
 
 from constants import HIDDEN_VALUE
 from core.entities import PluginCredentialType
@@ -22,8 +23,11 @@ from core.entities.provider_entities import (
     SystemConfigurationStatus,
 )
 from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
-from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
+from core.helper.model_provider_cache import (
+    ProviderCredentialsCache,
+    ProviderCredentialsCacheType,
+)
+from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -33,7 +37,7 @@ from graphon.model_runtime.entities.provider_entities import (
 )
 from graphon.model_runtime.model_providers.base.ai_model import AIModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.model_runtime.runtime import ModelRuntime
+from graphon.model_runtime.protocols.runtime import ModelRuntime
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.enums import CredentialSourceType
@@ -54,6 +58,29 @@ logger = logging.getLogger(__name__)
 original_provider_configurate_methods: dict[str, list[ConfigurateMethod]] = {}
 
 
+def _model_type_db_values(model_type: ModelType) -> tuple[str, ...]:
+    """Return DB values that may represent ``model_type`` after pre-1.15 upgrades.
+
+    SQL equality against the canonical value misses unmigrated rows, so legacy
+    lookups need to match both the current and provider-native spellings.
+    """
+    values = [model_type.value]
+    origin = model_type.to_origin_model_type()
+    if origin not in values:
+        values.append(origin)
+    return tuple(values)
+
+
+def _model_type_db_literals(model_type: ModelType) -> tuple[BindParameter[str], ...]:
+    """Return string-typed literals for legacy-aware model type filters.
+
+    ``EnumText`` rejects legacy spellings during normal binding so they cannot
+    be written back. Explicit string literals bypass that bind processor only
+    for compatibility lookups of rows that predate the canonical enum values.
+    """
+    return tuple(literal(value, type_=String) for value in _model_type_db_values(model_type))
+
+
 class ProviderConfiguration(BaseModel):
     """
     Provider configuration entity for managing model provider settings.
@@ -69,6 +96,11 @@ class ProviderConfiguration(BaseModel):
     nested schema and model lookups reuse the caller scope that was already
     resolved by the composition layer.
 
+    The ``provider`` field already contains the resolved provider schema that
+    was used to build this configuration. Reuse that schema for nested model
+    lookups instead of refetching the full provider catalog from the runtime on
+    every request-scoped lookup.
+
     TODO: lots of logic in a BaseModel entity should be separated, the exceptions should be classified
     """
 
@@ -83,15 +115,19 @@ class ProviderConfiguration(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     _bound_model_runtime: ModelRuntime | None = PrivateAttr(default=None)
+    _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
+    _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
 
     @model_validator(mode="after")
     def _(self):
+        self._original_provider_configurate_methods = tuple(self.provider.configurate_methods)
+
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             if (
                 any(
                     len(quota_configuration.restrict_models) > 0
@@ -105,12 +141,42 @@ class ProviderConfiguration(BaseModel):
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
+        self._cached_provider_schema = self.provider
+
+    def _get_original_provider_configurate_methods(self) -> list[ConfigurateMethod]:
+        return list(self._original_provider_configurate_methods)
+
+    def _get_provider_schema(self, *, model_provider_factory: ModelProviderFactory | None = None) -> ProviderEntity:
+        """Resolve the provider schema lazily while preserving bound-runtime reuse."""
+        if self._cached_provider_schema is None:
+            if self.provider.models:
+                self._cached_provider_schema = self.provider
+            else:
+                provider_factory = model_provider_factory or self.get_model_provider_factory()
+                self._cached_provider_schema = provider_factory.get_provider_schema(provider=self.provider.provider)
+
+        return self._cached_provider_schema
+
+    def _get_model_runtime(self) -> ModelRuntime:
+        """Return the runtime aligned with this request-scoped configuration."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime
+
+    def _get_runtime_and_provider_factory(self) -> tuple[ModelRuntime, ModelProviderFactory]:
+        """Resolve a provider factory that stays aligned with the runtime used by the caller."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime, ModelProviderFactory(runtime=self._bound_model_runtime)
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime, model_assembly.model_provider_factory
 
     def get_model_provider_factory(self) -> ModelProviderFactory:
         """Return a provider factory that preserves any request-bound runtime."""
-        if self._bound_model_runtime is not None:
-            return ModelProviderFactory(model_runtime=self._bound_model_runtime)
-        return create_plugin_model_provider_factory(tenant_id=self.tenant_id)
+        _, model_provider_factory = self._get_runtime_and_provider_factory()
+        return model_provider_factory
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> dict[str, Any] | None:
         """
@@ -146,7 +212,6 @@ class ProviderConfiguration(BaseModel):
                         and restrict_model.base_model_name
                     ):
                         copy_credentials["base_model_name"] = restrict_model.base_model_name
-
             return copy_credentials
         else:
             credentials = None
@@ -164,9 +229,9 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                check_credential_policy_compliance(
+                runtime_check_credential_policy_compliance(
                     credential_id=current_credential_id,
                     provider=self.provider.provider,
                     credential_type=PluginCredentialType.MODEL,
@@ -175,14 +240,13 @@ class ProviderConfiguration(BaseModel):
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        from core.helper.credential_utils import check_credential_policy_compliance
+                        from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                        check_credential_policy_compliance(
+                        runtime_check_credential_policy_compliance(
                             credential_id=credential_configuration.credential_id,
                             provider=self.provider.provider,
                             credential_type=PluginCredentialType.MODEL,
                         )
-
             return credentials
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
@@ -436,6 +500,39 @@ class ProviderConfiguration(BaseModel):
             provider_names.append(model_provider_id.provider_name)
         return provider_names
 
+    def _invalidate_provider_configuration_cache(
+        self,
+        *,
+        provider_models: bool = False,
+        preferred_model_providers: bool = False,
+        provider_model_settings: bool = False,
+        provider_model_credentials: bool = False,
+        provider_credentials: bool = False,
+        provider_load_balancing_configs: bool = False,
+    ) -> None:
+        """Invalidate tenant-scoped provider snapshots after committing configuration writes."""
+        from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+
+        sources: list[ProviderConfigurationCacheSource] = []
+        if provider_models:
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODELS)
+        if preferred_model_providers:
+            sources.append(ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS)
+        if provider_model_settings:
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODEL_SETTINGS)
+        if provider_model_credentials:
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODEL_CREDENTIALS)
+        if provider_credentials:
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS)
+        if provider_load_balancing_configs:
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS)
+
+        if not sources:
+            logger.warning("No provider configuration cache source selected for invalidation")
+            return
+
+        ProviderManager.invalidate_configurations_cache(self.tenant_id, sources=sources)
+
     def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
         """
         Add custom provider credentials.
@@ -452,6 +549,7 @@ class ProviderConfiguration(BaseModel):
 
         credentials = self.validate_provider_credentials(credentials=credentials)
 
+        preferred_model_providers_changed = False
         with Session(db.engine) as session:
             provider_record = self._get_provider_record(session)
             try:
@@ -481,7 +579,9 @@ class ProviderConfiguration(BaseModel):
                     )
                     provider_model_credentials_cache.delete()
 
-                    self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                    preferred_model_providers_changed = self.switch_preferred_provider_type(
+                        provider_type=ProviderType.CUSTOM, session=session
+                    )
                 else:
                     provider_record.is_valid = True
 
@@ -496,12 +596,18 @@ class ProviderConfiguration(BaseModel):
                         )
                         provider_model_credentials_cache.delete()
 
-                        self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                        preferred_model_providers_changed = self.switch_preferred_provider_type(
+                            provider_type=ProviderType.CUSTOM, session=session
+                        )
 
                 session.commit()
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            preferred_model_providers=preferred_model_providers_changed,
+            provider_credentials=True,
+        )
 
     def update_provider_credential(
         self,
@@ -525,6 +631,7 @@ class ProviderConfiguration(BaseModel):
 
         credentials = self.validate_provider_credentials(credentials=credentials, credential_id=credential_id)
 
+        load_balancing_configs_changed = False
         with Session(db.engine) as session:
             provider_record = self._get_provider_record(session)
             stmt = select(ProviderCredential).where(
@@ -551,7 +658,7 @@ class ProviderConfiguration(BaseModel):
                     )
                     provider_model_credentials_cache.delete()
 
-                self._update_load_balancing_configs_with_credential(
+                load_balancing_configs_changed = self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
                     credential_record=credential_record,
                     credential_source=CredentialSourceType.PROVIDER,
@@ -560,6 +667,10 @@ class ProviderConfiguration(BaseModel):
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            provider_credentials=True,
+            provider_load_balancing_configs=load_balancing_configs_changed,
+        )
 
     def _update_load_balancing_configs_with_credential(
         self,
@@ -567,7 +678,7 @@ class ProviderConfiguration(BaseModel):
         credential_record: ProviderCredential | ProviderModelCredential,
         credential_source: str,
         session: Session,
-    ):
+    ) -> bool:
         """
         Update load balancing configurations that reference the given credential_id.
 
@@ -588,7 +699,7 @@ class ProviderConfiguration(BaseModel):
         load_balancing_configs = session.execute(stmt).scalars().all()
 
         if not load_balancing_configs:
-            return
+            return False
 
         # Update each load balancing config with the new credentials
         for lb_config in load_balancing_configs:
@@ -606,6 +717,7 @@ class ProviderConfiguration(BaseModel):
             lb_credentials_cache.delete()
 
         session.commit()
+        return True
 
     def delete_provider_credential(self, credential_id: str):
         """
@@ -614,6 +726,8 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
+        preferred_model_providers_changed = False
+        load_balancing_configs_changed = False
         with Session(db.engine) as session:
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
@@ -634,6 +748,7 @@ class ProviderConfiguration(BaseModel):
                 LoadBalancingModelConfig.credential_source_type == CredentialSourceType.PROVIDER,
             )
             lb_configs_using_credential = session.execute(lb_stmt).scalars().all()
+            load_balancing_configs_changed = bool(lb_configs_using_credential)
             try:
                 for lb_config in lb_configs_using_credential:
                     lb_credentials_cache = ProviderCredentialsCache(
@@ -666,7 +781,9 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.PROVIDER,
                     )
                     provider_model_credentials_cache.delete()
-                    self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
+                    preferred_model_providers_changed = self.switch_preferred_provider_type(
+                        provider_type=ProviderType.SYSTEM, session=session
+                    )
                 elif provider_record and provider_record.credential_id == credential_id:
                     provider_record.credential_id = None
                     provider_record.updated_at = naive_utc_now()
@@ -677,12 +794,19 @@ class ProviderConfiguration(BaseModel):
                         cache_type=ProviderCredentialsCacheType.PROVIDER,
                     )
                     provider_model_credentials_cache.delete()
-                    self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
+                    preferred_model_providers_changed = self.switch_preferred_provider_type(
+                        provider_type=ProviderType.SYSTEM, session=session
+                    )
 
                 session.commit()
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            preferred_model_providers=preferred_model_providers_changed,
+            provider_credentials=True,
+            provider_load_balancing_configs=load_balancing_configs_changed,
+        )
 
     def switch_active_provider_credential(self, credential_id: str):
         """
@@ -691,6 +815,7 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
+        preferred_model_providers_changed = False
         with Session(db.engine) as session:
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
@@ -716,10 +841,14 @@ class ProviderConfiguration(BaseModel):
                     cache_type=ProviderCredentialsCacheType.PROVIDER,
                 )
                 provider_model_credentials_cache.delete()
-                self.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
+                preferred_model_providers_changed = self.switch_preferred_provider_type(
+                    ProviderType.CUSTOM, session=session
+                )
             except Exception:
                 session.rollback()
                 raise
+        if preferred_model_providers_changed:
+            self._invalidate_provider_configuration_cache(preferred_model_providers=True)
 
     def _get_custom_model_record(
         self,
@@ -741,7 +870,7 @@ class ProviderConfiguration(BaseModel):
             ProviderModel.tenant_id == self.tenant_id,
             ProviderModel.provider_name.in_(provider_names),
             ProviderModel.model_name == model,
-            ProviderModel.model_type == model_type,
+            ProviderModel.model_type.in_(_model_type_db_literals(model_type)),
         )
 
         return session.execute(stmt).scalar_one_or_none()
@@ -766,7 +895,7 @@ class ProviderConfiguration(BaseModel):
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                ProviderModelCredential.model_type.in_(_model_type_db_literals(model_type)),
             )
 
             credential_record = session.execute(stmt).scalar_one_or_none()
@@ -980,6 +1109,10 @@ class ProviderConfiguration(BaseModel):
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            provider_models=True,
+            provider_model_credentials=True,
+        )
 
     def update_custom_model_credential(
         self,
@@ -1016,6 +1149,7 @@ class ProviderConfiguration(BaseModel):
             credential_id=credential_id,
         )
 
+        load_balancing_configs_changed = False
         with Session(db.engine) as session:
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
 
@@ -1045,7 +1179,7 @@ class ProviderConfiguration(BaseModel):
                     )
                     provider_model_credentials_cache.delete()
 
-                self._update_load_balancing_configs_with_credential(
+                load_balancing_configs_changed = self._update_load_balancing_configs_with_credential(
                     credential_id=credential_id,
                     credential_record=credential_record,
                     credential_source=CredentialSourceType.CUSTOM_MODEL,
@@ -1054,6 +1188,11 @@ class ProviderConfiguration(BaseModel):
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            provider_models=True,
+            provider_model_credentials=True,
+            provider_load_balancing_configs=load_balancing_configs_changed,
+        )
 
     def delete_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
@@ -1062,17 +1201,28 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
+        load_balancing_configs_changed = False
         with Session(db.engine) as session:
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
                 ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
-                ProviderModelCredential.model_type == model_type,
+                ProviderModelCredential.model_type.in_(_model_type_db_literals(model_type)),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
-                raise ValueError("Credential record not found.")
+                fallback_stmt = select(ProviderModelCredential).where(
+                    ProviderModelCredential.id == credential_id,
+                    ProviderModelCredential.tenant_id == self.tenant_id,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                )
+                credential_record = session.execute(fallback_stmt).scalar_one_or_none()
+                if not credential_record:
+                    raise ValueError("Credential record not found.")
+
+                model = credential_record.model_name
+                model_type = ModelType(credential_record.model_type)
 
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
@@ -1081,6 +1231,7 @@ class ProviderConfiguration(BaseModel):
                 LoadBalancingModelConfig.credential_source_type == CredentialSourceType.CUSTOM_MODEL,
             )
             lb_configs_using_credential = session.execute(lb_stmt).scalars().all()
+            load_balancing_configs_changed = bool(lb_configs_using_credential)
 
             try:
                 for lb_config in lb_configs_using_credential:
@@ -1101,10 +1252,16 @@ class ProviderConfiguration(BaseModel):
                     ProviderModelCredential.tenant_id == self.tenant_id,
                     ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                     ProviderModelCredential.model_name == model,
-                    ProviderModelCredential.model_type == model_type,
+                    ProviderModelCredential.model_type.in_(_model_type_db_literals(model_type)),
                 )
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
+
+                model_credentials_cache_identity_id: str | None = None
+                if provider_model_record and (
+                    available_credentials_count <= 1 or provider_model_record.credential_id == credential_id
+                ):
+                    model_credentials_cache_identity_id = provider_model_record.id
 
                 if provider_model_record and available_credentials_count <= 1:
                     # If all credentials are deleted, delete the custom model record
@@ -1112,10 +1269,12 @@ class ProviderConfiguration(BaseModel):
                 elif provider_model_record and provider_model_record.credential_id == credential_id:
                     provider_model_record.credential_id = None
                     provider_model_record.updated_at = naive_utc_now()
+
+                if model_credentials_cache_identity_id:
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
-                        identity_id=provider_model_record.id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                        identity_id=model_credentials_cache_identity_id,
+                        cache_type=ProviderCredentialsCacheType.MODEL,
                     )
                     provider_model_credentials_cache.delete()
 
@@ -1124,6 +1283,11 @@ class ProviderConfiguration(BaseModel):
             except Exception:
                 session.rollback()
                 raise
+        self._invalidate_provider_configuration_cache(
+            provider_models=True,
+            provider_model_credentials=True,
+            provider_load_balancing_configs=load_balancing_configs_changed,
+        )
 
     def add_model_credential_to_model(self, model_type: ModelType, model: str, credential_id: str):
         """
@@ -1176,6 +1340,7 @@ class ProviderConfiguration(BaseModel):
 
             session.add(provider_model_record)
             session.commit()
+        self._invalidate_provider_configuration_cache(provider_models=True)
 
     def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
@@ -1214,6 +1379,7 @@ class ProviderConfiguration(BaseModel):
                 cache_type=ProviderCredentialsCacheType.MODEL,
             )
             provider_model_credentials_cache.delete()
+        self._invalidate_provider_configuration_cache(provider_models=True)
 
     def delete_custom_model(self, model_type: ModelType, model: str):
         """
@@ -1222,6 +1388,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+        provider_models_changed = False
         with Session(db.engine) as session:
             # get provider model
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
@@ -1230,6 +1397,7 @@ class ProviderConfiguration(BaseModel):
             if provider_model_record:
                 session.delete(provider_model_record)
                 session.commit()
+                provider_models_changed = True
 
                 provider_model_credentials_cache = ProviderCredentialsCache(
                     tenant_id=self.tenant_id,
@@ -1238,6 +1406,8 @@ class ProviderConfiguration(BaseModel):
                 )
 
                 provider_model_credentials_cache.delete()
+        if provider_models_changed:
+            self._invalidate_provider_configuration_cache(provider_models=True)
 
     def _get_provider_model_setting(
         self, model_type: ModelType, model: str, session: Session
@@ -1248,7 +1418,7 @@ class ProviderConfiguration(BaseModel):
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
             ProviderModelSetting.provider_name.in_(self._get_provider_names()),
-            ProviderModelSetting.model_type == model_type,
+            ProviderModelSetting.model_type.in_(_model_type_db_literals(model_type)),
             ProviderModelSetting.model_name == model,
         )
         return session.execute(stmt).scalars().first()
@@ -1277,6 +1447,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+        self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1303,6 +1474,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+        self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1355,6 +1527,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+        self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1382,6 +1555,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+        self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1392,35 +1566,44 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
+        if self._bound_model_runtime is not None:
+            model_runtime = self._bound_model_runtime
+        else:
+            model_runtime, _ = self._get_runtime_and_provider_factory()
 
-        # Get model instance of LLM
-        return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
+        provider_schema = self._cached_provider_schema or self.provider
+
+        return create_model_type_instance(
+            runtime=model_runtime,
+            provider_schema=provider_schema,
+            model_type=model_type,
+        )
 
     def get_model_schema(
         self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
     ) -> AIModelEntity | None:
-        """
-        Get model schema
-        """
-        model_provider_factory = self.get_model_provider_factory()
-        return model_provider_factory.get_model_schema(
-            provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
+        """Get model schema with the request-bound runtime and canonical provider id."""
+        model_runtime = self._get_model_runtime()
+        return model_runtime.get_model_schema(
+            provider=self.provider.provider,
+            model_type=model_type,
+            model=model,
+            credentials=credentials or {},
         )
 
-    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
+    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None) -> bool:
         """
         Switch preferred provider type.
         :param provider_type:
         :return:
         """
         if provider_type == self.preferred_provider_type:
-            return
+            return False
 
         if provider_type == ProviderType.SYSTEM and not self.system_configuration.enabled:
-            return
+            return False
 
-        def _switch(s: Session):
+        def _switch(s: Session) -> bool:
             stmt = select(TenantPreferredModelProvider).where(
                 TenantPreferredModelProvider.tenant_id == self.tenant_id,
                 TenantPreferredModelProvider.provider_name.in_(self._get_provider_names()),
@@ -1437,12 +1620,16 @@ class ProviderConfiguration(BaseModel):
                 )
                 s.add(preferred_model_provider)
             s.commit()
+            return True
 
         if session:
             return _switch(session)
         else:
             with Session(db.engine) as session:
-                return _switch(session)
+                changed = _switch(session)
+            if changed:
+                self._invalidate_provider_configuration_cache(preferred_model_providers=True)
+            return changed
 
     def extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """
@@ -1505,8 +1692,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
-        provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
+        provider_schema = self._get_provider_schema()
 
         model_types: list[ModelType] = []
         if model_type:
@@ -1521,7 +1707,10 @@ class ProviderConfiguration(BaseModel):
 
         if self.using_provider_type == ProviderType.SYSTEM:
             provider_models = self._get_system_provider_models(
-                model_types=model_types, provider_schema=provider_schema, model_setting_map=model_setting_map
+                model_types=model_types,
+                provider_schema=provider_schema,
+                model_setting_map=model_setting_map,
+                model=model,
             )
         else:
             provider_models = self._get_custom_provider_models(
@@ -1563,6 +1752,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get system provider models.
@@ -1576,6 +1766,8 @@ class ProviderConfiguration(BaseModel):
         for model_type in model_types:
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE
@@ -1598,13 +1790,9 @@ class ProviderConfiguration(BaseModel):
                     )
                 )
 
-        if self.provider.provider not in original_provider_configurate_methods:
-            original_provider_configurate_methods[self.provider.provider] = []
-            for configurate_method in provider_schema.configurate_methods:
-                original_provider_configurate_methods[self.provider.provider].append(configurate_method)
-
+        original_configurate_methods = self._get_original_provider_configurate_methods()
         should_use_custom_model = False
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             should_use_custom_model = True
 
         for quota_configuration in self.system_configuration.quota_configurations:
@@ -1616,11 +1804,12 @@ class ProviderConfiguration(BaseModel):
                 break
 
             if should_use_custom_model:
-                if original_provider_configurate_methods[self.provider.provider] == [
-                    ConfigurateMethod.CUSTOMIZABLE_MODEL
-                ]:
+                if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
                     # only customizable model
                     for restrict_model in restrict_models:
+                        if model and restrict_model.model != model:
+                            continue
+
                         copy_credentials = (
                             self.system_configuration.credentials.copy()
                             if self.system_configuration.credentials
@@ -1670,11 +1859,11 @@ class ProviderConfiguration(BaseModel):
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
-            for model in provider_models:
-                if model.model_type == ModelType.LLM and model.model not in restrict_model_names:
-                    model.status = ModelStatus.NO_PERMISSION
+            for provider_model in provider_models:
+                if provider_model.model_type == ModelType.LLM and provider_model.model not in restrict_model_names:
+                    provider_model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
-                    model.status = ModelStatus.QUOTA_EXCEEDED
+                    provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
 
@@ -1699,12 +1888,21 @@ class ProviderConfiguration(BaseModel):
         if self.custom_configuration.provider:
             credentials = self.custom_configuration.provider.credentials
 
+        requested_predefined_model = False
+        if model:
+            requested_predefined_model = any(
+                predefined_model.model_type in model_types and predefined_model.model == model
+                for predefined_model in provider_schema.models
+            )
+
         for model_type in model_types:
             if model_type not in self.provider.supported_model_types:
                 continue
 
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if requested_predefined_model and model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
@@ -1879,6 +2077,7 @@ class ProviderConfigurations(BaseModel):
             key = str(ModelProviderID(key))
         return key in self.configurations
 
+    @override
     def __iter__(self):
         # Return an iterator of (key, value) tuples to match BaseModel's __iter__
         yield from self.configurations.items()

@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Registros de acciones",
   "circularInvocationTip": "Hay una invocación circular de herramientas/nodos en el flujo de trabajo actual.",
   "detail": "DETALLE",
   "input": "ENTRADA",
@@ -10,7 +9,6 @@
   "meta.time": "Tiempo transcurrido",
   "meta.title": "METADATOS",
   "meta.tokens": "Total de tokens",
-  "meta.version": "Versión",
   "result": "RESULTADO",
   "resultEmpty.link": "panel de detalle",
   "resultEmpty.tipLeft": "por favor ve al ",

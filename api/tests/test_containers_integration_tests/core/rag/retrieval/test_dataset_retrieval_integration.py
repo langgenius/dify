@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -15,7 +16,7 @@ from tests.test_containers_integration_tests.helpers import generate_valid_passw
 
 class TestGetAvailableDatasetsIntegration:
     def test_returns_datasets_with_available_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -26,8 +27,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset
@@ -77,7 +79,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].name == dataset.name
 
     def test_filters_out_datasets_with_only_archived_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -87,8 +89,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -130,7 +133,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_only_disabled_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -140,8 +143,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -183,7 +187,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_filters_out_datasets_with_non_completed_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -193,8 +197,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -236,7 +241,7 @@ class TestGetAvailableDatasetsIntegration:
         assert len(result) == 0
 
     def test_includes_external_datasets_without_documents(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test that external datasets are returned even with no available documents.
@@ -256,8 +261,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -280,7 +286,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].id == dataset.id
         assert result[0].provider == "external"
 
-    def test_filters_by_tenant_id(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_filters_by_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
         # Arrange
         fake = Faker()
 
@@ -290,8 +296,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account1, name=fake.company(), session=db_session_with_containers
+        )
         tenant1 = account1.current_tenant
 
         account2 = AccountService.create_account(
@@ -299,8 +308,11 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(
+            account2, name=fake.company(), session=db_session_with_containers
+        )
         tenant2 = account2.current_tenant
 
         # Create dataset for tenant1
@@ -356,7 +368,7 @@ class TestGetAvailableDatasetsIntegration:
         assert result[0].tenant_id == tenant1.id
 
     def test_returns_empty_list_when_no_datasets_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -366,8 +378,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Don't create any datasets
@@ -379,7 +392,9 @@ class TestGetAvailableDatasetsIntegration:
         # Assert
         assert result == []
 
-    def test_returns_only_requested_dataset_ids(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_returns_only_requested_dataset_ids(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         # Arrange
         fake = Faker()
 
@@ -388,8 +403,9 @@ class TestGetAvailableDatasetsIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create multiple datasets
@@ -439,7 +455,7 @@ class TestGetAvailableDatasetsIntegration:
 
 class TestKnowledgeRetrievalIntegration:
     def test_knowledge_retrieval_with_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -449,8 +465,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -501,13 +518,13 @@ class TestKnowledgeRetrievalIntegration:
             with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
                 with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
                     # Act
-                    result = dataset_retrieval.knowledge_retrieval(request)
+                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
                     # Assert
                     assert isinstance(result, list)
 
     def test_knowledge_retrieval_no_available_datasets(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -517,8 +534,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create dataset but no documents
@@ -549,13 +567,13 @@ class TestKnowledgeRetrievalIntegration:
         # Mock rate limit check
         with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
             # Act
-            result = dataset_retrieval.knowledge_retrieval(request)
+            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
             # Assert
             assert result == []
 
     def test_knowledge_retrieval_rate_limit_exceeded(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         # Arrange
         fake = Faker()
@@ -565,8 +583,9 @@ class TestKnowledgeRetrievalIntegration:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         dataset = Dataset(
@@ -601,7 +620,7 @@ class TestKnowledgeRetrievalIntegration:
         ):
             # Act & Assert
             with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(request)
+                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 
 @pytest.fixture

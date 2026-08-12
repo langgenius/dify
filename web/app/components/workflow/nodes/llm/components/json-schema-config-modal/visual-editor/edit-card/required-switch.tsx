@@ -8,15 +8,14 @@ type RequiredSwitchProps = {
   toggleRequired: () => void
 }
 
-const RequiredSwitch: FC<RequiredSwitchProps> = ({
-  defaultValue,
-  toggleRequired,
-}) => {
+const RequiredSwitch: FC<RequiredSwitchProps> = ({ defaultValue, toggleRequired }) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center gap-x-1 rounded-[5px] border border-divider-subtle bg-background-default-lighter px-1.5 py-1">
-      <span className="system-2xs-medium-uppercase text-text-secondary">{t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}</span>
+      <span className="system-2xs-medium-uppercase text-text-secondary">
+        {t(($) => $['nodes.llm.jsonSchema.required'], { ns: 'workflow' })}
+      </span>
       <Switch size="xs" checked={defaultValue} onCheckedChange={toggleRequired} />
     </div>
   )

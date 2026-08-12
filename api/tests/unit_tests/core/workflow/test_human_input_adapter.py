@@ -18,12 +18,12 @@ from core.workflow.human_input_adapter import (
 )
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime import VariablePool
 
 
 def test_email_delivery_config_helpers_render_and_sanitize_text() -> None:
-    variable_pool = SimpleNamespace(
-        convert_template=lambda body: SimpleNamespace(text=body.replace("{{#node.value#}}", "42"))
-    )
+    variable_pool = VariablePool()
+    variable_pool.add(["node", "value"], "42")
 
     rendered = EmailDeliveryConfig.render_body_template(
         body="Open {{#url#}} and use {{#node.value#}}",
@@ -166,6 +166,71 @@ def test_adapt_node_data_for_graph_migrates_legacy_tool_configurations() -> None
     }
 
 
+def test_adapt_node_data_for_graph_preserves_model_selector_top_level_configurations() -> None:
+    normalized = adapt_node_data_for_graph(
+        {
+            "type": BuiltinNodeTypes.TOOL,
+            "tool_configurations": {
+                "vision_llm_model": {
+                    "type": "constant",
+                    "value": "",
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-vl-plus",
+                    "model_type": "llm",
+                    "mode": "chat",
+                },
+            },
+        }
+    )
+
+    assert normalized["tool_configurations"] == {}
+    assert normalized["tool_parameters"] == {
+        "vision_llm_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+                "mode": "chat",
+            },
+        }
+    }
+
+
+def test_adapt_node_data_for_graph_flattens_constant_model_selector_value() -> None:
+    normalized = adapt_node_data_for_graph(
+        {
+            "type": BuiltinNodeTypes.TOOL,
+            "tool_configurations": {
+                "tts_model": {
+                    "type": "constant",
+                    "value": {
+                        "provider": "langgenius/tongyi/tongyi",
+                        "model": "qwen3-tts-flash",
+                        "model_type": "tts",
+                        "language": "Chinese",
+                        "voice": "Cherry",
+                    },
+                },
+            },
+        }
+    )
+
+    assert normalized["tool_configurations"] == {}
+    assert normalized["tool_parameters"] == {
+        "tts_model": {
+            "type": "constant",
+            "value": {
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-tts-flash",
+                "model_type": "tts",
+                "language": "Chinese",
+                "voice": "Cherry",
+            },
+        }
+    }
+
+
 def test_adapt_node_config_for_graph_rewrites_nested_node_data() -> None:
     normalized = adapt_node_config_for_graph(
         {
@@ -267,7 +332,9 @@ def test_email_delivery_method_extracts_variable_selectors() -> None:
     assert method.extract_variable_selectors() == [["start", "name"]]
 
 
-def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors(monkeypatch) -> None:
+def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     method = EmailDeliveryMethod(
         enabled=True,
         config=EmailDeliveryConfig(

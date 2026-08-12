@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -50,20 +50,24 @@ class TestAppModelConfigService:
         mock_agent_validate = mock_config_managers["agent"]
         mock_completion_validate = mock_config_managers["completion"]
 
-        result = AppModelConfigService.validate_configuration(tenant_id=tenant_id, config=config, app_mode=app_mode)
+        session = MagicMock()
+
+        result = AppModelConfigService.validate_configuration(
+            tenant_id=tenant_id, config=config, app_mode=app_mode, session=session
+        )
 
         assert result == {"manager": selected_manager}
 
         if selected_manager == "chat":
-            mock_chat_validate.assert_called_once_with(tenant_id, config)
+            mock_chat_validate.assert_called_once_with(tenant_id, config, session)
             mock_agent_validate.assert_not_called()
             mock_completion_validate.assert_not_called()
         elif selected_manager == "agent":
-            mock_agent_validate.assert_called_once_with(tenant_id, config)
+            mock_agent_validate.assert_called_once_with(tenant_id, config, session)
             mock_chat_validate.assert_not_called()
             mock_completion_validate.assert_not_called()
         else:
-            mock_completion_validate.assert_called_once_with(tenant_id, config)
+            mock_completion_validate.assert_called_once_with(tenant_id, config, session)
             mock_chat_validate.assert_not_called()
             mock_agent_validate.assert_not_called()
 
@@ -81,6 +85,7 @@ class TestAppModelConfigService:
                 tenant_id=tenant_id,
                 config=config,
                 app_mode=AppMode.WORKFLOW,
+                session=MagicMock(),
             )
 
         mock_chat_validate.assert_not_called()

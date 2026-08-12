@@ -8,7 +8,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Copy-to-clipboard button that shows instant feedback and a tooltip. Includes the original ActionButton wrapper and the newer ghost-button variant.',
+        component:
+          'Copy-to-clipboard button that shows instant feedback and a tooltip. Includes the original ActionButton wrapper and the newer ghost-button variant.',
       },
     },
   },
@@ -27,7 +28,9 @@ const CopyDemo = ({ content }: { content: string }) => {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <span>Client ID:</span>
-        <span className="rounded-sm bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-primary">{value}</span>
+        <span className="rounded-sm bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-primary">
+          {value}
+        </span>
         <CopyFeedback content={value} />
       </div>
       <div className="flex items-center gap-2 text-sm text-text-secondary">
@@ -39,7 +42,7 @@ const CopyDemo = ({ content }: { content: string }) => {
 }
 
 export const Playground: Story = {
-  render: args => <CopyDemo content={args.content} />,
+  render: (args) => <CopyDemo content={args.content} />,
   parameters: {
     docs: {
       source: {

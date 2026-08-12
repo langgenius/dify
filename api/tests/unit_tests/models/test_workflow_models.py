@@ -45,7 +45,7 @@ class TestWorkflowModelValidation:
         workflow = Workflow.new(
             tenant_id=tenant_id,
             app_id=app_id,
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=graph,
             features=features,
@@ -58,7 +58,7 @@ class TestWorkflowModelValidation:
         # Assert
         assert workflow.tenant_id == tenant_id
         assert workflow.app_id == app_id
-        assert workflow.type == WorkflowType.WORKFLOW.value
+        assert workflow.type == WorkflowType.WORKFLOW
         assert workflow.version == "draft"
         assert workflow.graph == graph
         assert workflow.created_by == created_by
@@ -68,7 +68,7 @@ class TestWorkflowModelValidation:
     def test_workflow_type_enum_values(self):
         """Test WorkflowType enum values."""
         # Assert
-        assert WorkflowType.WORKFLOW.value == "workflow"
+        assert WorkflowType.WORKFLOW == "workflow"
         assert WorkflowType.CHAT.value == "chat"
         assert WorkflowType.RAG_PIPELINE.value == "rag-pipeline"
 
@@ -89,7 +89,7 @@ class TestWorkflowModelValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_data),
             features="{}",
@@ -114,7 +114,7 @@ class TestWorkflowModelValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph="{}",
             features=json.dumps(features_data),
@@ -138,7 +138,7 @@ class TestWorkflowModelValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="v1.0",
             graph="{}",
             features="{}",
@@ -176,11 +176,11 @@ class TestWorkflowRunStateTransitions:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             version="draft",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
         )
 
@@ -188,9 +188,9 @@ class TestWorkflowRunStateTransitions:
         assert workflow_run.tenant_id == tenant_id
         assert workflow_run.app_id == app_id
         assert workflow_run.workflow_id == workflow_id
-        assert workflow_run.type == WorkflowType.WORKFLOW.value
-        assert workflow_run.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value
-        assert workflow_run.status == WorkflowExecutionStatus.RUNNING.value
+        assert workflow_run.type == WorkflowType.WORKFLOW
+        assert workflow_run.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING
+        assert workflow_run.status == WorkflowExecutionStatus.RUNNING
         assert workflow_run.created_by == created_by
 
     def test_workflow_run_state_transition_running_to_succeeded(self):
@@ -200,21 +200,21 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.END_USER.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=str(uuid4()),
         )
 
         # Act
-        workflow_run.status = WorkflowExecutionStatus.SUCCEEDED.value
+        workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
         workflow_run.finished_at = datetime.now(UTC)
         workflow_run.elapsed_time = 2.5
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.SUCCEEDED.value
+        assert workflow_run.status == WorkflowExecutionStatus.SUCCEEDED
         assert workflow_run.finished_at is not None
         assert workflow_run.elapsed_time == 2.5
 
@@ -225,21 +225,21 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
         # Act
-        workflow_run.status = WorkflowExecutionStatus.FAILED.value
+        workflow_run.status = WorkflowExecutionStatus.FAILED
         workflow_run.error = "Node execution failed: Invalid input"
         workflow_run.finished_at = datetime.now(UTC)
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.FAILED.value
+        assert workflow_run.status == WorkflowExecutionStatus.FAILED
         assert workflow_run.error == "Node execution failed: Invalid input"
         assert workflow_run.finished_at is not None
 
@@ -250,20 +250,20 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             version="draft",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
         # Act
-        workflow_run.status = WorkflowExecutionStatus.STOPPED.value
+        workflow_run.status = WorkflowExecutionStatus.STOPPED
         workflow_run.finished_at = datetime.now(UTC)
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.STOPPED.value
+        assert workflow_run.status == WorkflowExecutionStatus.STOPPED
         assert workflow_run.finished_at is not None
 
     def test_workflow_run_state_transition_running_to_paused(self):
@@ -273,19 +273,19 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.END_USER.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=str(uuid4()),
         )
 
         # Act
-        workflow_run.status = WorkflowExecutionStatus.PAUSED.value
+        workflow_run.status = WorkflowExecutionStatus.PAUSED
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.PAUSED.value
+        assert workflow_run.status == WorkflowExecutionStatus.PAUSED
         assert workflow_run.finished_at is None  # Not finished when paused
 
     def test_workflow_run_state_transition_paused_to_running(self):
@@ -295,19 +295,19 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.PAUSED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.PAUSED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
         # Act
-        workflow_run.status = WorkflowExecutionStatus.RUNNING.value
+        workflow_run.status = WorkflowExecutionStatus.RUNNING
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.RUNNING.value
+        assert workflow_run.status == WorkflowExecutionStatus.RUNNING
 
     def test_workflow_run_with_partial_succeeded_status(self):
         """Test workflow run with partial-succeeded status."""
@@ -316,17 +316,17 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             exceptions_count=2,
         )
 
         # Assert
-        assert workflow_run.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value
+        assert workflow_run.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED
         assert workflow_run.exceptions_count == 2
 
     def test_workflow_run_with_inputs_and_outputs(self):
@@ -340,11 +340,11 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.END_USER.value,
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=str(uuid4()),
             inputs=json.dumps(inputs),
             outputs=json.dumps(outputs),
@@ -362,11 +362,11 @@ class TestWorkflowRunStateTransitions:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
             version="draft",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             graph=json.dumps(graph),
         )
@@ -391,11 +391,11 @@ class TestWorkflowRunStateTransitions:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
             total_tokens=1500,
             total_steps=5,
@@ -410,7 +410,7 @@ class TestWorkflowRunStateTransitions:
         assert result["tenant_id"] == tenant_id
         assert result["app_id"] == app_id
         assert result["workflow_id"] == workflow_id
-        assert result["status"] == WorkflowExecutionStatus.SUCCEEDED.value
+        assert result["status"] == WorkflowExecutionStatus.SUCCEEDED
         assert result["total_tokens"] == 1500
         assert result["total_steps"] == 5
 
@@ -422,18 +422,18 @@ class TestWorkflowRunStateTransitions:
             "tenant_id": str(uuid4()),
             "app_id": str(uuid4()),
             "workflow_id": str(uuid4()),
-            "type": WorkflowType.WORKFLOW.value,
-            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN.value,
+            "type": WorkflowType.WORKFLOW,
+            "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
             "version": "v1.0",
             "graph": {"nodes": [], "edges": []},
             "inputs": {"query": "test"},
-            "status": WorkflowExecutionStatus.SUCCEEDED.value,
+            "status": WorkflowExecutionStatus.SUCCEEDED,
             "outputs": {"result": "success"},
             "error": None,
             "elapsed_time": 3.5,
             "total_tokens": 2000,
             "total_steps": 10,
-            "created_by_role": CreatorUserRole.ACCOUNT.value,
+            "created_by_role": CreatorUserRole.ACCOUNT,
             "created_by": str(uuid4()),
             "created_at": datetime.now(UTC),
             "finished_at": datetime.now(UTC),
@@ -446,7 +446,7 @@ class TestWorkflowRunStateTransitions:
         # Assert
         assert workflow_run.id == data["id"]
         assert workflow_run.workflow_id == data["workflow_id"]
-        assert workflow_run.status == WorkflowExecutionStatus.SUCCEEDED.value
+        assert workflow_run.status == WorkflowExecutionStatus.SUCCEEDED
         assert workflow_run.total_tokens == 2000
 
 
@@ -467,14 +467,14 @@ class TestNodeExecutionRelationships:
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run_id,
             index=1,
             node_id="start",
             node_type=BuiltinNodeTypes.START,
             title="Start Node",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
         )
 
@@ -498,15 +498,15 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=2,
             predecessor_node_id=predecessor_node_id,
             node_id=current_node_id,
             node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
-            status=WorkflowNodeExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
@@ -528,8 +528,8 @@ class TestNodeExecutionRelationships:
             node_id="llm_test",
             node_type=BuiltinNodeTypes.LLM,
             title="Test LLM",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
@@ -549,14 +549,14 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="llm_1",
             node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             inputs=json.dumps(inputs),
             outputs=json.dumps(outputs),
@@ -575,24 +575,24 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="code_1",
             node_type=BuiltinNodeTypes.CODE,
             title="Code Node",
-            status=WorkflowNodeExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
         # Act - transition to succeeded
-        node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+        node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
         node_execution.elapsed_time = 1.2
         node_execution.finished_at = datetime.now(UTC)
 
         # Assert
-        assert node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED.value
+        assert node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert node_execution.elapsed_time == 1.2
         assert node_execution.finished_at is not None
 
@@ -606,20 +606,20 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=3,
             node_id="code_1",
             node_type=BuiltinNodeTypes.CODE,
             title="Code Node",
-            status=WorkflowNodeExecutionStatus.FAILED.value,
+            status=WorkflowNodeExecutionStatus.FAILED,
             error=error_message,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
         )
 
         # Assert
-        assert node_execution.status == WorkflowNodeExecutionStatus.FAILED.value
+        assert node_execution.status == WorkflowNodeExecutionStatus.FAILED
         assert node_execution.error == error_message
 
     def test_node_execution_with_metadata(self):
@@ -637,14 +637,14 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="llm_1",
             node_type=BuiltinNodeTypes.LLM,
             title="LLM Node",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             execution_metadata=json.dumps(metadata),
         )
@@ -660,14 +660,14 @@ class TestNodeExecutionRelationships:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
             node_type=BuiltinNodeTypes.START,
             title="Start",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             execution_metadata=None,
         )
@@ -696,14 +696,14 @@ class TestNodeExecutionRelationships:
                 tenant_id=str(uuid4()),
                 app_id=str(uuid4()),
                 workflow_id=str(uuid4()),
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 workflow_run_id=str(uuid4()),
                 index=1,
                 node_id=f"{node_type}_1",
                 node_type=node_type,
                 title=title,
-                status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                created_by_role=CreatorUserRole.ACCOUNT.value,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=str(uuid4()),
             )
 
@@ -734,7 +734,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_config),
             features="{}",
@@ -761,7 +761,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_config),
             features="{}",
@@ -802,7 +802,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_config),
             features="{}",
@@ -835,11 +835,11 @@ class TestGraphConfigurationValidation:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             graph=json.dumps(original_graph),
         )
@@ -872,7 +872,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_config),
             features="{}",
@@ -912,7 +912,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(graph_config),
             features="{}",
@@ -933,7 +933,7 @@ class TestGraphConfigurationValidation:
         workflow = Workflow.new(
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=None,
             features="{}",
@@ -956,11 +956,11 @@ class TestGraphConfigurationValidation:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             inputs=None,
         )
@@ -978,11 +978,11 @@ class TestGraphConfigurationValidation:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            type=WorkflowType.WORKFLOW.value,
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN.value,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="v1.0",
-            status=WorkflowExecutionStatus.RUNNING.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             outputs=None,
         )
@@ -1000,14 +1000,14 @@ class TestGraphConfigurationValidation:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
             node_type=BuiltinNodeTypes.START,
             title="Start",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             inputs=None,
         )
@@ -1025,14 +1025,14 @@ class TestGraphConfigurationValidation:
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=str(uuid4()),
             index=1,
             node_id="start",
             node_type=BuiltinNodeTypes.START,
             title="Start",
-            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=str(uuid4()),
             outputs=None,
         )

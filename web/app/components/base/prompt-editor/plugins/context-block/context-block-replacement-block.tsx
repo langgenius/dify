@@ -3,17 +3,10 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { mergeRegister } from '@lexical/utils'
 import { noop } from 'es-toolkit/function'
 import { $applyNodeReplacement } from 'lexical'
-import {
-  memo,
-  useCallback,
-  useEffect,
-} from 'react'
+import { memo, useCallback, useEffect } from 'react'
 import { CONTEXT_PLACEHOLDER_TEXT } from '../../constants'
 import { decoratorTransform } from '../../utils'
-import {
-  $createContextBlockNode,
-  ContextBlockNode,
-} from '../context-block/node'
+import { $createContextBlockNode, ContextBlockNode } from '../context-block/node'
 import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(CONTEXT_PLACEHOLDER_TEXT)
@@ -32,16 +25,14 @@ const ContextBlockReplacementBlock = ({
   }, [editor])
 
   const createContextBlockNode = useCallback((): ContextBlockNode => {
-    if (onInsert)
-      onInsert()
+    if (onInsert) onInsert()
     return $applyNodeReplacement($createContextBlockNode(datasets, onAddContext, canNotAddContext))
   }, [datasets, onAddContext, onInsert, canNotAddContext])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
-    if (matchArr === null)
-      return null
+    if (matchArr === null) return null
 
     const startOffset = matchArr.index
     const endOffset = startOffset + CONTEXT_PLACEHOLDER_TEXT.length
@@ -54,7 +45,9 @@ const ContextBlockReplacementBlock = ({
   useEffect(() => {
     REGEX.lastIndex = 0
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createContextBlockNode)),
+      editor.registerNodeTransform(CustomTextNode, (textNode) =>
+        decoratorTransform(textNode, getMatch, createContextBlockNode),
+      ),
     )
   }, [])
 

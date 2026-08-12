@@ -4,16 +4,27 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useCallback, useMemo, useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import {
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+} from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasourceType } from '@/models/pipeline'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
 import {
@@ -31,25 +42,51 @@ import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
-  const plan = useProviderContextSelector(state => state.plan)
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const router = useRouter()
+  const plan = useProviderContextSelector((state) => state.plan)
+  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
+  const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
+  const pipelineId = dataset?.pipeline_id
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const dataSourceStore = useDataSourceStore()
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const shouldRedirectToDocuments =
+    !!dataset && !isLoadingWorkspacePermissionKeys && !canAddDocumentsToDataset
 
   // Core state
   const [datasource, setDatasource] = useState<Datasource>()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
+  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
+    undefined,
+  )
   const [batchId, setBatchId] = useState('')
   const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
 
   // Data fetching
-  const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
+  const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(
+    pipelineId || '',
+  )
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-  }, [fileUploadConfigResponse])
+  const fileUploadConfig = useMemo(
+    () => ({
+      ...fileUploadConfigResponse,
+      file_size_limit:
+        fileUploadConfigResponse?.knowledge_file_size_limit ??
+        fileUploadConfigResponse?.file_size_limit ??
+        15,
+      batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    }),
+    [fileUploadConfigResponse],
+  )
 
   // Steps management
   const {
@@ -60,12 +97,7 @@ const CreateFormPipeline = () => {
   } = useAddDocumentsSteps()
 
   // Datasource-specific hooks
-  const {
-    localFileList,
-    allFileLoaded,
-    currentLocalFile,
-    hidePreviewLocalFile,
-  } = useLocalFile()
+  const { localFileList, allFileLoaded, currentLocalFile, hidePreviewLocalFile } = useLocalFile()
 
   const {
     currentWorkspace,
@@ -76,12 +108,8 @@ const CreateFormPipeline = () => {
     clearOnlineDocumentData,
   } = useOnlineDocument()
 
-  const {
-    websitePages,
-    currentWebsite,
-    hideWebsitePreview,
-    clearWebsiteCrawlData,
-  } = useWebsiteCrawl()
+  const { websitePages, currentWebsite, hideWebsitePreview, clearWebsiteCrawlData } =
+    useWebsiteCrawl()
 
   const {
     onlineDriveFileList,
@@ -91,8 +119,28 @@ const CreateFormPipeline = () => {
   } = useOnlineDrive()
 
   // Computed values
-  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+  const shouldCheckVectorSpace =
+    enableBilling &&
+    (allFileLoaded ||
+      onlineDocuments.length > 0 ||
+      websitePages.length > 0 ||
+      selectedFileIds.length > 0)
+  const {
+    data: vectorSpace,
+    isFetching: isFetchingVectorSpacePlan,
+    refetch: refetchVectorSpace,
+  } = useQuery(
+    consoleQuery.features.vectorSpace.get.queryOptions({ enabled: shouldCheckVectorSpace }),
+  )
+  const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
+  const isVectorSpaceUnavailable =
+    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
+  const isVectorSpaceFull =
+    !!vectorSpace &&
+    !vectorSpace.usage_unknown &&
+    vectorSpace.limit > 0 &&
+    vectorSpace.size >= vectorSpace.limit
+  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
 
   // UI state
   const {
@@ -112,16 +160,17 @@ const CreateFormPipeline = () => {
     selectedFileIdsLength: selectedFileIds.length,
     onlineDriveFileList,
     isVectorSpaceFull,
+    isCheckingVectorSpace: isCheckingVectorSpace || isVectorSpaceUnavailable,
     enableBilling,
     currentWorkspacePagesLength: currentWorkspace?.pages.length ?? 0,
     fileUploadConfig,
   })
 
   // Plan upgrade modal
-  const [isShowPlanUpgradeModal, {
-    setTrue: showPlanUpgradeModal,
-    setFalse: hidePlanUpgradeModal,
-  }] = useBoolean(false)
+  const [
+    isShowPlanUpgradeModal,
+    { setTrue: showPlanUpgradeModal, setFalse: hidePlanUpgradeModal },
+  ] = useBoolean(false)
 
   // Next step with batch upload check
   const handleNextStep = useCallback(() => {
@@ -139,7 +188,16 @@ const CreateFormPipeline = () => {
       }
     }
     doHandleNextStep()
-  }, [datasourceType, doHandleNextStep, localFileList.length, onlineDocuments.length, selectedFileIds.length, showPlanUpgradeModal, supportBatchUpload, websitePages.length])
+  }, [
+    datasourceType,
+    doHandleNextStep,
+    localFileList.length,
+    onlineDocuments.length,
+    selectedFileIds.length,
+    showPlanUpgradeModal,
+    supportBatchUpload,
+    websitePages.length,
+  ])
 
   // Datasource actions
   const {
@@ -172,18 +230,25 @@ const CreateFormPipeline = () => {
     clearWebsiteCrawlData,
     clearOnlineDriveData,
     setDatasource,
+    canProcess: canAddDocumentsToDataset,
   })
 
-  if (isFetchingPipelineInfo)
-    return <Loading type="app" />
+  useEffect(() => {
+    if (shouldRedirectToDocuments && dataset?.id)
+      router.replace(`/datasets/${dataset.id}/documents`)
+  }, [dataset, router, shouldRedirectToDocuments])
+
+  if (isFetchingPipelineInfo) return <Loading type="app" />
+
+  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments) return <Loading type="app" />
 
   return (
-    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
+    <div className="relative flex h-[calc(100vh-56px)] w-full min-w-5xl overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
+            title={t(($) => $['addDocuments.title'], { ns: 'datasetPipeline' })}
             currentStep={currentStep}
           />
           <div className="grow overflow-y-auto">
@@ -193,8 +258,9 @@ const CreateFormPipeline = () => {
                 datasourceType={datasourceType}
                 pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
-                localFileListLength={localFileList.length}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}
+                isShowVectorSpaceUnavailable={isVectorSpaceUnavailable}
+                isRetryingVectorSpace={isFetchingVectorSpacePlan}
                 showSelect={showSelect}
                 totalOptions={totalOptions}
                 selectedOptions={selectedOptions}
@@ -203,6 +269,7 @@ const CreateFormPipeline = () => {
                 onSelectDataSource={handleSwitchDataSource}
                 onCredentialChange={handleCredentialChange}
                 onSelectAll={handleSelectAll}
+                onRetryVectorSpace={() => void refetchVectorSpace()}
                 onNextStep={handleNextStep}
               />
             )}
@@ -217,12 +284,7 @@ const CreateFormPipeline = () => {
                 onBack={handleBackStep}
               />
             )}
-            {currentStep === 3 && (
-              <StepThreeContent
-                batchId={batchId}
-                documents={documents}
-              />
-            )}
+            {currentStep === 3 && <StepThreeContent batchId={batchId} documents={documents} />}
           </div>
         </div>
       </div>
@@ -262,8 +324,8 @@ const CreateFormPipeline = () => {
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+          title={t(($) => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t(($) => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
         />
       )}
     </div>

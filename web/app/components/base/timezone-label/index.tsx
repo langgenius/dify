@@ -29,16 +29,9 @@ type TimezoneLabelProps = {
  * // Custom styling
  * <TimezoneLabel timezone="Europe/London" className="text-xs font-bold" />
  */
-const TimezoneLabel: React.FC<TimezoneLabelProps> = ({
-  timezone,
-  className,
-  inline = false,
-}) => {
+const TimezoneLabel: React.FC<TimezoneLabelProps> = ({ timezone, className, inline = false }) => {
   // Memoize offset calculation to avoid redundant computations
-  const offsetStr = useMemo(
-    () => convertTimezoneToOffsetStr(timezone),
-    [timezone],
-  )
+  const offsetStr = useMemo(() => convertTimezoneToOffsetStr(timezone), [timezone])
 
   return (
     <span
@@ -48,7 +41,6 @@ const TimezoneLabel: React.FC<TimezoneLabelProps> = ({
         className,
       )}
       title={`Timezone: ${timezone} (${offsetStr})`}
-      data-testid="timezone-label"
     >
       {offsetStr}
     </span>

@@ -11,10 +11,20 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import Item from '../index'
 
 vi.mock('../../settings-modal', () => ({
-  default: ({ onSave, onCancel, currentDataset }: { currentDataset: DataSet, onCancel: () => void, onSave: (newDataset: DataSet) => void }) => (
+  default: ({
+    onSave,
+    onCancel,
+    currentDataset,
+  }: {
+    currentDataset: DataSet
+    onCancel: () => void
+    onSave: (newDataset: DataSet) => void
+  }) => (
     <div>
       <div>Mock settings modal</div>
-      <button onClick={() => onSave({ ...currentDataset, name: 'Updated dataset' })}>Save changes</button>
+      <button onClick={() => onSave({ ...currentDataset, name: 'Updated dataset' })}>
+        Save changes
+      </button>
       <button onClick={onCancel}>Close</button>
     </div>
   ),
@@ -45,12 +55,7 @@ const baseRetrievalConfig: RetrievalConfig = {
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const {
-    retrieval_model,
-    retrieval_model_dict,
-    icon_info,
-    ...restOverrides
-  } = overrides
+  const { retrieval_model, retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
     ...baseRetrievalConfig,
@@ -68,9 +73,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     icon_url: '',
   }
 
-  const resolvedIconInfo = ('icon_info' in overrides)
-    ? icon_info
-    : defaultIconInfo
+  const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
 
   return {
     id: 'dataset-id',
@@ -125,14 +128,7 @@ const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof
   const onSave = vi.fn()
   const onRemove = vi.fn()
 
-  render(
-    <Item
-      config={config}
-      onSave={onSave}
-      onRemove={onRemove}
-      {...props}
-    />,
-  )
+  render(<Item config={config} onSave={onSave} onRemove={onRemove} {...props} />)
 
   return { onSave, onRemove }
 }
@@ -155,12 +151,24 @@ describe('dataset-config/card-item', () => {
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const actionButtons = within(card).getAllByRole('button', { hidden: true })
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    const removeButton = within(card).getByRole('button', {
+      name: 'common.operation.remove',
+      hidden: true,
+    })
 
     expect(screen.getByText(dataset.name))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search'))!.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'dataset.indexingTechnique.high_quality · dataset.indexingMethod.semantic_search',
+      ),
+    )!.toBeInTheDocument()
     expect(screen.getByText('dataset.externalTag'))!.toBeInTheDocument()
-    expect(actionButtons).toHaveLength(2)
+    expect(editButton).toBeInTheDocument()
+    expect(removeButton).toBeInTheDocument()
   })
 
   it('should open settings drawer from edit action and close after saving', async () => {
@@ -169,8 +177,11 @@ describe('dataset-config/card-item', () => {
     const { onSave } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton!)
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    await user.click(editButton)
 
     expect(await screen.findByText('Mock settings modal'))!.toBeInTheDocument()
     fireEvent.click(await screen.findByText('Save changes'))
@@ -189,8 +200,10 @@ describe('dataset-config/card-item', () => {
     const { onRemove } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const buttons = within(card).getAllByRole('button', { hidden: true })
-    const deleteButton = buttons.at(-1)!
+    const deleteButton = within(card).getByRole('button', {
+      name: 'common.operation.remove',
+      hidden: true,
+    })
 
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
@@ -225,13 +238,20 @@ describe('dataset-config/card-item', () => {
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton!)
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    await user.click(editButton)
     expect(screen.getByText('Mock settings modal'))!.toBeInTheDocument()
 
-    const overlay = [...document.querySelectorAll('[class]')]
-      .find(element => element.className.toString().includes('bg-black/30'))
+    const overlay = [...document.querySelectorAll('[class]')].find(
+      (element) =>
+        element instanceof HTMLElement &&
+        element.classList.contains('bg-background-overlay') &&
+        !element.classList.contains('bg-transparent'),
+    )
 
-    expect(overlay)!.toBeInTheDocument()
+    expect(overlay).toBeInTheDocument()
   })
 })

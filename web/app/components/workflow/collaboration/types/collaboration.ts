@@ -1,7 +1,3 @@
-import type { Viewport } from 'reactflow'
-import type { ConversationVariable, Edge, EnvironmentVariable, Node } from '../../types'
-import type { Features } from '@/app/components/base/features/types'
-
 export type OnlineUser = {
   user_id: string
   username: string
@@ -22,7 +18,7 @@ export type NodePanelPresenceUser = {
   avatar?: string | null
 }
 
-export type NodePanelPresenceInfo = NodePanelPresenceUser & {
+type NodePanelPresenceInfo = NodePanelPresenceUser & {
   clientId: string
   timestamp: number
 }
@@ -39,22 +35,22 @@ export type CollaborationState = {
   error?: string
 }
 
-export type CollaborationEventType
-  = | 'mouse_move'
-    | 'vars_and_features_update'
-    | 'sync_request'
-    | 'app_state_update'
-    | 'app_meta_update'
-    | 'mcp_server_update'
-    | 'workflow_update'
-    | 'comments_update'
-    | 'node_panel_presence'
-    | 'app_publish_update'
-    | 'graph_resync_request'
-    | 'workflow_restore_request'
-    | 'workflow_restore_intent'
-    | 'workflow_restore_complete'
-    | 'workflow_history_action'
+type CollaborationEventType =
+  | 'mouse_move'
+  | 'vars_and_features_update'
+  | 'sync_request'
+  | 'app_state_update'
+  | 'app_meta_update'
+  | 'mcp_server_update'
+  | 'workflow_update'
+  | 'comments_update'
+  | 'node_panel_presence'
+  | 'app_publish_update'
+  | 'graph_resync_request'
+  | 'workflow_restore_intent'
+  | 'workflow_restore_complete'
+  | 'workflow_history_action'
+  | 'graph_view_state'
 
 export type CollaborationUpdate = {
   type: CollaborationEventType
@@ -63,19 +59,24 @@ export type CollaborationUpdate = {
   timestamp: number
 }
 
-export type RestoreRequestData = {
-  versionId: string
-  versionName?: string
-  initiatorUserId: string
-  initiatorName: string
-  graphData: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  features?: Features
-  environmentVariables?: EnvironmentVariable[]
-  conversationVariables?: ConversationVariable[]
+export type WorkflowSyncResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type WorkflowSyncAcknowledgement =
+  | ({ success: true } & WorkflowSyncResult)
+  | { success: false; error?: string }
+
+export type WorkflowSyncRequest = {
+  requestId?: string
+  acknowledge: (result: WorkflowSyncAcknowledgement) => void
+}
+
+export type GraphReloadRequest = {
+  generation: number
+  token: number
+  attempt: number
 }
 
 export type RestoreIntentData = {

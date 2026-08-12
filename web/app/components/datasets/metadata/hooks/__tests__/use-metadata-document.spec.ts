@@ -141,13 +141,13 @@ describe('useMetadataDocument', () => {
 
     it('should return list without built-in items', () => {
       const { result } = renderHook(() => useMetadataDocument(defaultProps))
-      const hasBuiltIn = result.current.list.some(item => item.id === 'built-in')
+      const hasBuiltIn = result.current.list.some((item) => item.id === 'built-in')
       expect(hasBuiltIn).toBe(false)
     })
 
     it('should return builtList with only built-in items', () => {
       const { result } = renderHook(() => useMetadataDocument(defaultProps))
-      const allBuiltIn = result.current.builtList.every(item => item.id === 'built-in')
+      const allBuiltIn = result.current.builtList.every((item) => item.id === 'built-in')
       expect(allBuiltIn).toBe(true)
     })
 
@@ -347,13 +347,10 @@ describe('useMetadataDocument', () => {
       const { result } = renderHook(() => useMetadataDocument(defaultProps))
 
       // Find language field in originInfo
-      const languageField = result.current.originInfo.find(
-        item => item.name === 'Language',
-      )
+      const languageField = result.current.originInfo.find((item) => item.name === 'Language')
 
       // If language field exists and docDetail has language 'en', value should be 'English'
-      if (languageField)
-        expect(languageField.value).toBe('English')
+      if (languageField) expect(languageField.value).toBe('English')
     })
 
     it('should return dash for empty field values', () => {
@@ -372,9 +369,7 @@ describe('useMetadataDocument', () => {
       )
 
       // Check if there's any field with '-' value (meaning empty)
-      const hasEmptyField = result.current.originInfo.some(
-        item => item.value === '-',
-      )
+      const hasEmptyField = result.current.originInfo.some((item) => item.value === '-')
       // language field should return '-' since it's not set
       expect(hasEmptyField).toBe(true)
     })
@@ -384,13 +379,10 @@ describe('useMetadataDocument', () => {
       const { result } = renderHook(() => useMetadataDocument(defaultProps))
 
       // The data_source_type field is a text field, not select
-      const sourceTypeField = result.current.originInfo.find(
-        item => item.name === 'Source Type',
-      )
+      const sourceTypeField = result.current.originInfo.find((item) => item.name === 'Source Type')
 
       // It should return the raw value since it's not a select type
-      if (sourceTypeField)
-        expect(sourceTypeField.value).toBe('upload_file')
+      if (sourceTypeField) expect(sourceTypeField.value).toBe('upload_file')
     })
   })
 
@@ -412,12 +404,11 @@ describe('useMetadataDocument', () => {
 
       // Find hit_count field which has a render function
       const hitCountField = result.current.technicalParameters.find(
-        item => item.name === 'Hit Count',
+        (item) => item.name === 'Hit Count',
       )
 
       // The render function should format as "val/segmentCount"
-      if (hitCountField)
-        expect(hitCountField.value).toBe('50/10')
+      if (hitCountField) expect(hitCountField.value).toBe('50/10')
     })
 
     it('should return raw value when no render function', () => {
@@ -425,11 +416,10 @@ describe('useMetadataDocument', () => {
 
       // Find word_count field which has no render function
       const wordCountField = result.current.technicalParameters.find(
-        item => item.name === 'Word Count',
+        (item) => item.name === 'Word Count',
       )
 
-      if (wordCountField)
-        expect(wordCountField.value).toBe(100)
+      if (wordCountField) expect(wordCountField.value).toBe(100)
     })
 
     it('should handle fields with render function and undefined segment_count', () => {
@@ -449,12 +439,11 @@ describe('useMetadataDocument', () => {
       )
 
       const hitCountField = result.current.technicalParameters.find(
-        item => item.name === 'Hit Count',
+        (item) => item.name === 'Hit Count',
       )
 
       // Should use 0 as default for segment_count
-      if (hitCountField)
-        expect(hitCountField.value).toBe('25/0')
+      if (hitCountField) expect(hitCountField.value).toBe('25/0')
     })
 
     it('should return dash for null/undefined values', () => {
@@ -473,12 +462,9 @@ describe('useMetadataDocument', () => {
       )
 
       // 0 should still be shown, but empty string should show '-'
-      const sourceTypeField = result.current.originInfo.find(
-        item => item.name === 'Source Type',
-      )
+      const sourceTypeField = result.current.originInfo.find((item) => item.name === 'Source Type')
 
-      if (sourceTypeField)
-        expect(sourceTypeField.value).toBe('-')
+      if (sourceTypeField) expect(sourceTypeField.value).toBe('-')
     })
 
     it('should handle 0 value correctly (not treated as empty)', () => {
@@ -498,11 +484,10 @@ describe('useMetadataDocument', () => {
 
       // word_count of 0 should still show 0, not '-'
       const wordCountField = result.current.technicalParameters.find(
-        item => item.name === 'Word Count',
+        (item) => item.name === 'Word Count',
       )
 
-      if (wordCountField)
-        expect(wordCountField.value).toBe(0)
+      if (wordCountField) expect(wordCountField.value).toBe(0)
     })
   })
 
@@ -519,10 +504,9 @@ describe('useMetadataDocument', () => {
     })
 
     it('should handle different datasetIds', () => {
-      const { result, rerender } = renderHook(
-        props => useMetadataDocument(props),
-        { initialProps: defaultProps },
-      )
+      const { result, rerender } = renderHook((props) => useMetadataDocument(props), {
+        initialProps: defaultProps,
+      })
 
       expect(result.current).toBeDefined()
 
@@ -550,18 +534,14 @@ describe('useMetadataDocument', () => {
       )
 
       // Language should be mapped
-      const languageField = result.current.originInfo.find(
-        item => item.name === 'Language',
-      )
-      if (languageField)
-        expect(languageField.value).toBe('Chinese')
+      const languageField = result.current.originInfo.find((item) => item.name === 'Language')
+      if (languageField) expect(languageField.value).toBe('Chinese')
 
       // Hit count should be rendered
       const hitCountField = result.current.technicalParameters.find(
-        item => item.name === 'Hit Count',
+        (item) => item.name === 'Hit Count',
       )
-      if (hitCountField)
-        expect(hitCountField.value).toBe('100/20')
+      if (hitCountField) expect(hitCountField.value).toBe('100/20')
     })
 
     it('should handle unknown language', () => {
@@ -581,9 +561,7 @@ describe('useMetadataDocument', () => {
       )
 
       // Unknown language should return undefined from the map
-      const languageField = result.current.originInfo.find(
-        item => item.name === 'Language',
-      )
+      const languageField = result.current.originInfo.find((item) => item.name === 'Language')
       // When language is not in map, it returns undefined
       expect(languageField?.value).toBeUndefined()
     })

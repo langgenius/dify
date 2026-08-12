@@ -11,9 +11,7 @@ describe('recent-store', () => {
     })
 
     it('parses stored items from localStorage', () => {
-      const items = [
-        { id: 'app-1', title: 'App 1', path: '/app/1', originalType: 'app' as const },
-      ]
+      const items = [{ id: 'app-1', title: 'App 1', path: '/app/1', originalType: 'app' as const }]
       localStorage.setItem('goto-anything:recent', JSON.stringify(items))
 
       expect(getRecentItems()).toEqual(items)
@@ -41,7 +39,7 @@ describe('recent-store', () => {
       addRecentItem({ id: 'b', title: 'B', path: '/b', originalType: 'knowledge' })
 
       const stored = getRecentItems()
-      expect(stored.map(i => i.id)).toEqual(['b', 'a'])
+      expect(stored.map((i) => i.id)).toEqual(['b', 'a'])
     })
 
     it('deduplicates by id, moving the existing entry to the front', () => {
@@ -50,7 +48,7 @@ describe('recent-store', () => {
       addRecentItem({ id: 'a', title: 'A updated', path: '/a', originalType: 'app' })
 
       const stored = getRecentItems()
-      expect(stored.map(i => i.id)).toEqual(['a', 'b'])
+      expect(stored.map((i) => i.id)).toEqual(['a', 'b'])
       expect(stored[0]!.title).toBe('A updated')
     })
 

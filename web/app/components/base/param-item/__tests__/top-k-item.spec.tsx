@@ -19,20 +19,24 @@ describe('TopKItem', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.top_k')
+  const getSlider = () =>
+    screen.getByLabelText('appDebug.datasetConfig.top_k', {
+      selector: 'input[type="range"]',
+    })
 
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<TopKItem {...defaultProps} />)
 
-      expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.datasetConfig.top_k', { selector: 'span' }),
+      ).toBeInTheDocument()
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<TopKItem {...defaultProps} />)
+      render(<TopKItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
@@ -44,12 +48,6 @@ describe('TopKItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<TopKItem {...defaultProps} className="custom-cls" />)
-
-      expect(container.firstChild).toHaveClass('custom-cls')
-    })
-
     it('should disable controls when enable is false', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 

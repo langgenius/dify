@@ -21,13 +21,13 @@ class TestLangSmithConfig:
     def test_missing_required_fields(self):
         """Test that required fields are enforced"""
         with pytest.raises(ValidationError):
-            LangSmithConfig()
+            LangSmithConfig.model_validate({})
 
         with pytest.raises(ValidationError):
-            LangSmithConfig(api_key="key")
+            LangSmithConfig.model_validate({"api_key": "key"})
 
         with pytest.raises(ValidationError):
-            LangSmithConfig(project="project")
+            LangSmithConfig.model_validate({"project": "project"})
 
     def test_endpoint_validation_https_only(self):
         """Test endpoint validation only allows HTTPS"""

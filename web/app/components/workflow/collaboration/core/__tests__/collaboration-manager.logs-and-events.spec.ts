@@ -1,11 +1,12 @@
 import type { LoroMap } from 'loro-crdt'
-import type { OnlineUser, RestoreRequestData } from '../../types/collaboration'
+import type { OnlineUser } from '../../types/collaboration'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
   getState: () => {
@@ -34,6 +35,7 @@ type CollaborationManagerInternals = {
   leaderId: string | null
   isLeader: boolean
   graphViewActive: boolean | null
+  crdtTrusted: boolean
   pendingInitialSync: boolean
   onlineUsers: OnlineUser[]
   graphImportLogs: unknown[]
@@ -67,25 +69,15 @@ const createEdge = (id: string, source: string, target: string): Edge => ({
   },
 })
 
-const createRestoreRequestData = (): RestoreRequestData => ({
-  versionId: 'version-1',
-  versionName: 'Version One',
-  initiatorUserId: 'user-1',
-  initiatorName: 'Alice',
-  graphData: {
-    nodes: [createNode('n-restore')],
-    edges: [],
-    viewport: { x: 1, y: 2, zoom: 0.5 },
-  },
-})
-
 const setupManagerWithDoc = () => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 
@@ -104,20 +96,22 @@ describe('CollaborationManager logs and event helpers', () => {
 
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => [{
-          ...node,
-          data: {
-            ...node.data,
-            selected: true,
+        getNodes: () => [
+          {
+            ...node,
+            data: {
+              ...node.data,
+              selected: true,
+            },
           },
-        }],
+        ],
         setNodes: vi.fn(),
         getEdges: () => [edge],
         setEdges: vi.fn(),
       }),
     }
 
-    const graphPayloads: Array<{ nodes: Node[], edges: Edge[] }> = []
+    const graphPayloads: Array<{ nodes: Node[]; edges: Edge[] }> = []
     manager.onGraphImport((graph) => {
       graphPayloads.push(graph)
     })
@@ -126,8 +120,7 @@ describe('CollaborationManager logs and event helpers', () => {
 
     expect(graphPayloads).toHaveLength(1)
     const payload = graphPayloads[0]
-    if (!payload)
-      throw new Error('graph import payload should exist')
+    if (!payload) throw new Error('graph import payload should exist')
     expect(payload.nodes).toHaveLength(1)
     expect(payload.edges).toHaveLength(1)
     expect(payload.nodes[0]?.data.selected).toBe(true)
@@ -175,8 +168,13 @@ describe('CollaborationManager logs and event helpers', () => {
 
     manager.setNodes(oldNodes, nextNodes, 'test:partial-note-update')
 
-    expect(manager.getNodes().map(node => node.id).sort()).toEqual(['n-note', 'n-start'])
-    expect(manager.getEdges().map(currentEdge => currentEdge.id)).toEqual(['e-start-note'])
+    expect(
+      manager
+        .getNodes()
+        .map((node) => node.id)
+        .sort(),
+    ).toEqual(['n-note', 'n-start'])
+    expect(manager.getEdges().map((currentEdge) => currentEdge.id)).toEqual(['e-start-note'])
   })
 
   it('clearGraphImportLog clears logs and pending import snapshot', () => {
@@ -225,11 +223,12 @@ describe('CollaborationManager logs and event helpers', () => {
     const anchor = document.createElement('a')
     const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(() => {})
     const originalCreateElement = document.createElement.bind(document)
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string): HTMLElement => {
-      if (tagName === 'a')
-        return anchor
-      return originalCreateElement(tagName)
-    })
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string): HTMLElement => {
+        if (tagName === 'a') return anchor
+        return originalCreateElement(tagName)
+      })
 
     manager.downloadGraphImportLog()
 
@@ -248,8 +247,8 @@ describe('CollaborationManager logs and event helpers', () => {
         setNodesAnomalyCount: number
         syncDiagnosticCount: number
         onlineUsersCount: number
-        crdtCounts: { nodes: number, edges: number }
-        reactFlowCounts: { nodes: number, edges: number }
+        crdtCounts: { nodes: number; edges: number }
+        reactFlowCounts: { nodes: number; edges: number }
       }
     }
 
@@ -267,15 +266,16 @@ describe('CollaborationManager logs and event helpers', () => {
 
   it('emits collaboration events only when current app is connected', () => {
     const { manager, internals } = setupManagerWithDoc()
-    const sendSpy = vi.spyOn(
-      manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
-      'sendCollaborationEvent',
-    ).mockImplementation(() => {})
+    const sendSpy = vi
+      .spyOn(
+        manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
+        'sendCollaborationEvent',
+      )
+      .mockImplementation(() => {})
     const isConnectedSpy = vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
 
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('undo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     manager.emitRestoreIntent({
       versionId: 'version-1',
       versionName: 'Version One',
@@ -289,13 +289,11 @@ describe('CollaborationManager logs and event helpers', () => {
 
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('undo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     expect(sendSpy).not.toHaveBeenCalled()
 
     isConnectedSpy.mockReturnValue(true)
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('redo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     manager.emitRestoreIntent({
       versionId: 'version-2',
       initiatorUserId: 'u-2',
@@ -303,13 +301,10 @@ describe('CollaborationManager logs and event helpers', () => {
     })
     manager.emitRestoreComplete({ versionId: 'version-2', success: false, error: 'failed' })
 
-    const eventTypes = sendSpy.mock.calls.map(call => (
-      (call[0] as { type: string }).type
-    ))
+    const eventTypes = sendSpy.mock.calls.map((call) => (call[0] as { type: string }).type)
     expect(eventTypes).toEqual([
       'comments_update',
       'workflow_history_action',
-      'workflow_restore_request',
       'workflow_restore_intent',
       'workflow_restore_complete',
     ])
@@ -351,12 +346,14 @@ describe('CollaborationManager logs and event helpers', () => {
     }
     internals.undoManager = undoManager
 
-    const rafSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
-      callback(0)
-      return 1
-    })
+    const rafSpy = vi
+      .spyOn(globalThis, 'requestAnimationFrame')
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0)
+        return 1
+      })
 
-    const historyStates: Array<{ canUndo: boolean, canRedo: boolean }> = []
+    const historyStates: Array<{ canUndo: boolean; canRedo: boolean }> = []
     manager.onUndoRedoStateChange((state) => {
       historyStates.push(state)
     })

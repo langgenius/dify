@@ -232,28 +232,29 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         return
 
     graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+    response_stream_filter = resumption_context.get_response_stream_filter()
 
     with session_factory() as session:
         workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
         if workflow is None:
             raise WorkflowNotFoundError(
-                "Workflow not found: workflow_run_id=%s, workflow_id=%s", workflow_run.id, workflow_run.workflow_id
+                f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
             )
         user = _get_user(session, workflow_run)
         app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:
-            raise _AppNotFoundError(
-                "App not found: app_id=%s, workflow_run_id=%s", workflow_run.app_id, workflow_run.id
-            )
+            raise _AppNotFoundError(f"App not found: app_id={workflow_run.app_id}, workflow_run_id={workflow_run.id}")
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -296,6 +297,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         workflow_node_execution_repository=workflow_node_execution_repository,
         graph_engine_layers=graph_engine_layers,
         pause_state_config=pause_config,
+        response_stream_filter=response_stream_filter,
     )
     workflow_run_repo.delete_workflow_pause(pause_entity)
 
@@ -314,7 +316,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 

@@ -9,7 +9,7 @@ vi.mock('@/app/components/base/chat/chat/loading-anim', () => ({
 
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileList: ({ files }: { files: FileEntity[] }) => (
-    <div data-testid="file-list">{files.map(file => file.name).join(', ')}</div>
+    <div data-testid="file-list">{files.map((file) => file.name).join(', ')}</div>
   ),
 }))
 
@@ -18,8 +18,10 @@ vi.mock('@/app/components/base/markdown', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/status-container', () => ({
-  default: ({ status, children }: { status: string, children?: React.ReactNode }) => (
-    <div data-status={status} data-testid="status-container">{children}</div>
+  default: ({ status, children }: { status: string; children?: React.ReactNode }) => (
+    <div data-status={status} data-testid="status-container">
+      {children}
+    </div>
   ),
 }))
 
@@ -43,7 +45,7 @@ describe('ResultText', () => {
 
     expect(screen.getByText('runLog.resultEmpty.title')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('runLog.resultEmpty.link'))
+    fireEvent.click(screen.getByRole('button', { name: 'runLog.resultEmpty.link' }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
   })

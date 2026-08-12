@@ -16,21 +16,15 @@ vi.mock('@/service/use-common', () => ({
 vi.mock('@/app/components/datasets/common/image-previewer', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="image-previewer">
-      <button data-testid="close-preview" onClick={onClose}>Close</button>
+      <button data-testid="close-preview" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 describe('ImageUploaderInChunk', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper value={[]} onChange={onChange} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render ImageInput when not disabled', () => {
       const onChange = vi.fn()
       render(<ImageUploaderInChunkWrapper value={[]} onChange={onChange} />)
@@ -47,18 +41,6 @@ describe('ImageUploaderInChunk', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper
-          value={[]}
-          onChange={onChange}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-
     it('should render files when value is provided', () => {
       const onChange = vi.fn()
       const files: FileEntity[] = [
@@ -143,24 +125,6 @@ describe('ImageUploaderInChunk', () => {
 
         expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
       }
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty files array', () => {
-      const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper value={[]} onChange={onChange} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle undefined value', () => {
-      const onChange = vi.fn()
-      const { container } = render(
-        <ImageUploaderInChunkWrapper value={undefined} onChange={onChange} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 })

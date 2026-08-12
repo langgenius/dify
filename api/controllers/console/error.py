@@ -58,6 +58,12 @@ class WorkspacesLimitExceeded(BaseHTTPException):
     code = 400
 
 
+class SeatsLimitExceeded(BaseHTTPException):
+    error_code = "limit_exceeded"
+    description = "Unable to create account because the licensed seats limit was exceeded"
+    code = 400
+
+
 class AccountBannedError(BaseHTTPException):
     error_code = "account_banned"
     description = "Account is banned."
@@ -101,6 +107,12 @@ class EducationActivateLimitError(BaseHTTPException):
     error_code = "education_activate_limit"
     description = "Rate limit exceeded"
     code = 429
+
+
+class EducationDiscountTemporarilyPausedError(BaseHTTPException):
+    error_code = "education_discount_temporarily_paused"
+    description = "Education discount temporarily paused, while we upgrade our security measures."
+    code = 503
 
 
 class ComplianceRateLimitError(BaseHTTPException):

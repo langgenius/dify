@@ -1,35 +1,53 @@
+"""Unit tests for Aliyun trace utility transformations and database lookups."""
+
 import json
+from collections.abc import Mapping
+from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pytest
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
+    GEN_AI_OPERATION_NAME,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
+    GEN_AI_TOOL_CALL_ARGUMENTS,
+    GEN_AI_TOOL_NAME,
+    GEN_AI_TOOL_TYPE,
     GEN_AI_USER_ID,
     INPUT_VALUE,
+    OPERATION_NAME_EXECUTE_TOOL,
     OUTPUT_VALUE,
+    TOOL_TYPE_DATASTORE,
+    TOOL_TYPE_EXTENSION,
+    TOOL_TYPE_FUNCTION,
 )
 from dify_trace_aliyun.utils import (
     create_common_span_attributes,
+    create_gen_ai_tool_attributes,
     create_links_from_trace_id,
     create_status_from_error,
     extract_retrieval_documents,
+    extract_tool_description,
     format_input_messages,
     format_output_messages,
     format_retrieval_documents,
     get_user_id_from_message_data,
     get_workflow_node_status,
+    map_gen_ai_tool_type,
     serialize_json_data,
 )
 from opentelemetry.trace import Link, StatusCode
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionStatus
 from models import EndUser
+from models.enums import EndUserType
 
 
-def test_get_user_id_from_message_data_no_end_user(monkeypatch):
+def test_get_user_id_from_message_data_no_end_user(monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = None
@@ -37,35 +55,40 @@ def test_get_user_id_from_message_data_no_end_user(monkeypatch):
     assert get_user_id_from_message_data(message_data) == "account_id"
 
 
-def test_get_user_id_from_message_data_with_end_user(monkeypatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_get_user_id_from_message_data_with_end_user(monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session) -> None:
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
 
-    end_user_data = MagicMock(spec=EndUser)
-    end_user_data.session_id = "session_id"
-
-    mock_session = MagicMock()
-    mock_session.get.return_value = end_user_data
+    end_user_data = EndUser(
+        id="end_user_id",
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type=EndUserType.BROWSER,
+        session_id="session_id",
+    )
+    sqlite3_session.add(end_user_data)
+    sqlite3_session.commit()
 
     from dify_trace_aliyun.utils import db
 
-    monkeypatch.setattr(db, "session", mock_session)
+    monkeypatch.setattr(db, "session", sqlite3_session)
 
     assert get_user_id_from_message_data(message_data) == "session_id"
 
 
-def test_get_user_id_from_message_data_end_user_not_found(monkeypatch):
+@pytest.mark.parametrize("sqlite3_session", [(EndUser,)], indirect=True)
+def test_get_user_id_from_message_data_end_user_not_found(
+    monkeypatch: pytest.MonkeyPatch, sqlite3_session: Session
+) -> None:
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
 
-    mock_session = MagicMock()
-    mock_session.get.return_value = None
-
     from dify_trace_aliyun.utils import db
 
-    monkeypatch.setattr(db, "session", mock_session)
+    monkeypatch.setattr(db, "session", sqlite3_session)
 
     assert get_user_id_from_message_data(message_data) == "account_id"
 
@@ -109,7 +132,7 @@ def test_get_workflow_node_status():
     assert status.status_code == StatusCode.UNSET
 
 
-def test_create_links_from_trace_id(monkeypatch):
+def test_create_links_from_trace_id(monkeypatch: pytest.MonkeyPatch):
     # Mock create_link
     mock_link = MagicMock(spec=Link)
     import dify_trace_aliyun.data_exporter.traceclient
@@ -170,7 +193,7 @@ def test_create_common_span_attributes():
 
 def test_format_retrieval_documents():
     # Not a list
-    assert format_retrieval_documents("not a list") == []
+    assert format_retrieval_documents(cast(list[object], "not a list")) == []
 
     # Valid list
     docs = [
@@ -211,7 +234,7 @@ def test_format_retrieval_documents():
 
 def test_format_input_messages():
     # Not a dict
-    assert format_input_messages(None) == serialize_json_data([])
+    assert format_input_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No prompts
     assert format_input_messages({}) == serialize_json_data([])
@@ -244,7 +267,7 @@ def test_format_input_messages():
 
 def test_format_output_messages():
     # Not a dict
-    assert format_output_messages(None) == serialize_json_data([])
+    assert format_output_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No text
     assert format_output_messages({"finish_reason": "stop"}) == serialize_json_data([])
@@ -267,3 +290,29 @@ def test_format_output_messages():
     # Exception path
     # Trigger exception in serialize_json_data by passing non-serializable
     assert format_output_messages({"text": MagicMock()}) == serialize_json_data([])
+
+
+def test_map_gen_ai_tool_type():
+    assert map_gen_ai_tool_type("dataset-retrieval") == TOOL_TYPE_DATASTORE
+    assert map_gen_ai_tool_type("extension") == TOOL_TYPE_EXTENSION
+    assert map_gen_ai_tool_type("builtin") == TOOL_TYPE_FUNCTION
+    assert map_gen_ai_tool_type(None) == TOOL_TYPE_FUNCTION
+
+
+def test_extract_tool_description():
+    assert extract_tool_description({"description": "d"}) == "d"
+    assert extract_tool_description({"tool_description": "td"}) == "td"
+    assert extract_tool_description({"other": 1}) == ""
+    assert extract_tool_description(None) == ""
+
+
+def test_create_gen_ai_tool_attributes():
+    attrs = create_gen_ai_tool_attributes(
+        tool_name="search",
+        tool_type=TOOL_TYPE_DATASTORE,
+        tool_call_arguments='{"q": 1}',
+    )
+    assert attrs[GEN_AI_OPERATION_NAME] == OPERATION_NAME_EXECUTE_TOOL
+    assert attrs[GEN_AI_TOOL_NAME] == "search"
+    assert attrs[GEN_AI_TOOL_TYPE] == TOOL_TYPE_DATASTORE
+    assert attrs[GEN_AI_TOOL_CALL_ARGUMENTS] == '{"q": 1}'

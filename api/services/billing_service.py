@@ -7,12 +7,12 @@ from typing import Any, Literal, NotRequired, TypedDict
 import httpx
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
-from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 _http_client: httpx.Client = get_pooled_http_client(
     "billing:default",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=5.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
 
 
@@ -32,6 +35,68 @@ class SubscriptionPlan(TypedDict):
     expiration_date: int
 
 
+class QuotaReserveResult(TypedDict):
+    reservation_id: str
+    available: int
+    reserved: int
+
+
+class QuotaCommitResult(TypedDict):
+    available: int
+    reserved: int
+    refunded: int
+
+
+class QuotaReleaseResult(TypedDict):
+    available: int
+    reserved: int
+    released: int
+
+
+class QuotaBalanceResult(TypedDict):
+    available: int
+    reserved: int
+    quota: int
+    usage: int
+    exhausted_at: NotRequired[int]
+
+
+class QuotaConsumeCappedResult(TypedDict):
+    deducted: int
+    available: int
+    reserved: int
+    quota: int
+    usage: int
+
+
+_quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
+_quota_commit_adapter = TypeAdapter(QuotaCommitResult)
+_quota_release_adapter = TypeAdapter(QuotaReleaseResult)
+_quota_balance_adapter = TypeAdapter(QuotaBalanceResult)
+_quota_consume_capped_adapter = TypeAdapter(QuotaConsumeCappedResult)
+
+
+class _TenantFeatureQuota(TypedDict):
+    usage: int
+    limit: int
+    reset_date: NotRequired[int]
+
+
+class TenantFeatureQuotaInfo(TypedDict):
+    """Response of /quota/info.
+
+    NOTE (hj24):
+    - Same convention as BillingInfo: billing may return int fields as str,
+      always keep non-strict mode to auto-coerce.
+    """
+
+    trigger_event: _TenantFeatureQuota
+    api_rate_limit: _TenantFeatureQuota
+
+
+_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
+
+
 class _BillingQuota(TypedDict):
     size: int
     limit: int
@@ -40,6 +105,7 @@ class _BillingQuota(TypedDict):
 class _VectorSpaceQuota(TypedDict):
     size: float
     limit: int
+    usage_unknown: NotRequired[bool]
 
 
 class _KnowledgeRateLimit(TypedDict):
@@ -72,7 +138,7 @@ class BillingInfo(TypedDict):
     subscription: _BillingSubscription
     members: _BillingQuota
     apps: _BillingQuota
-    vector_space: _VectorSpaceQuota
+    vector_space: NotRequired[_VectorSpaceQuota]
     knowledge_rate_limit: _KnowledgeRateLimit
     documents_upload_quota: _BillingQuota
     annotation_quota_limit: _BillingQuota
@@ -84,6 +150,7 @@ class BillingInfo(TypedDict):
 
 
 _billing_info_adapter = TypeAdapter(BillingInfo)
+_vector_space_quota_adapter = TypeAdapter(_VectorSpaceQuota)
 
 
 class KnowledgeRateLimitDict(TypedDict):
@@ -131,6 +198,7 @@ class DismissNotificationDict(TypedDict):
 
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
+    quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
 
     compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
@@ -141,18 +209,136 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
-    def get_info(cls, tenant_id: str) -> BillingInfo:
+    def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
+        if exclude_vector_space:
+            params["exclude_vector_space"] = "true"
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
+        if exclude_vector_space and billing_info.get("vector_space") is None:
+            # Unset proto message fields can be serialized as null; the light billing contract treats it as absent.
+            billing_info.pop("vector_space", None)
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod
-    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+    def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:
         params = {"tenant_id": tenant_id}
+        if bypass_cache:
+            params["bypass_cache"] = "true"
+        return _vector_space_quota_adapter.validate_python(
+            cls._send_request("GET", "/subscription/vector-space", params=params)
+        )
 
+    @classmethod
+    def invalidate_vector_space_cache(cls, tenant_id: str) -> None:
+        cls.get_vector_space(tenant_id, bypass_cache=True)
+
+    @classmethod
+    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        """Deprecated: Use get_quota_info instead."""
+        params = {"tenant_id": tenant_id}
         usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
         return usage_info
+
+    @classmethod
+    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
+        params = {"tenant_id": tenant_id}
+        return _tenant_feature_quota_info_adapter.validate_python(
+            cls._send_quota_request("GET", "/quota/info", params=params)
+        )
+
+    @classmethod
+    def quota_reserve(
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        request_id: str,
+        amount: int = 1,
+        meta: dict | None = None,
+        bucket: str = "",
+    ) -> QuotaReserveResult:
+        """Reserve quota before task execution."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "request_id": request_id,
+            "amount": amount,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        if meta:
+            payload["meta"] = meta
+        return _quota_reserve_adapter.validate_python(cls._send_quota_request("POST", "/quota/reserve", json=payload))
+
+    @classmethod
+    def quota_commit(
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        reservation_id: str,
+        actual_amount: int,
+        meta: dict | None = None,
+        bucket: str = "",
+    ) -> QuotaCommitResult:
+        """Commit a reservation with actual consumption."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+            "actual_amount": actual_amount,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        if meta:
+            payload["meta"] = meta
+        return _quota_commit_adapter.validate_python(cls._send_quota_request("POST", "/quota/commit", json=payload))
+
+    @classmethod
+    def quota_release(
+        cls, tenant_id: str, feature_key: str, reservation_id: str, bucket: str = ""
+    ) -> QuotaReleaseResult:
+        """Release a reservation (cancel, return frozen quota)."""
+        payload = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        return _quota_release_adapter.validate_python(cls._send_quota_request("POST", "/quota/release", json=payload))
+
+    @classmethod
+    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> QuotaBalanceResult:
+        """Get quota balance for a feature bucket."""
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        if bucket:
+            params["bucket"] = bucket
+        return _quota_balance_adapter.validate_python(cls._send_quota_request("GET", "/quota/balance", params=params))
+
+    @classmethod
+    def quota_consume_capped(
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        request_id: str,
+        amount: int,
+        meta: dict | None = None,
+        bucket: str = "",
+    ) -> QuotaConsumeCappedResult:
+        """Consume up to the available quota and return the actual deducted amount."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "request_id": request_id,
+            "amount": amount,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        if meta:
+            payload["meta"] = meta
+        return _quota_consume_capped_adapter.validate_python(
+            cls._send_quota_request("POST", "/quota/consume-capped", json=payload)
+        )
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:
@@ -226,16 +412,29 @@ class BillingService:
         return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
 
     @classmethod
+    def _send_quota_request(
+        cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None
+    ):
+        return cls._send_request(method, endpoint, json=json, params=params, base_url=cls.quota_base_url)
+
+    @classmethod
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None):
+    def _send_request(
+        cls,
+        method: Literal["GET", "POST", "DELETE", "PUT"],
+        endpoint: str,
+        json=None,
+        params=None,
+        base_url: str | None = None,
+    ):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
-        url = f"{cls.base_url}{endpoint}"
+        url = f"{base_url or cls.base_url}{endpoint}"
         response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
@@ -254,10 +453,10 @@ class BillingService:
         return response.json()
 
     @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account):
+    def is_tenant_owner_or_admin(current_user: Account, *, session: Session):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = db.session.scalar(
+        join: TenantAccountJoin | None = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)

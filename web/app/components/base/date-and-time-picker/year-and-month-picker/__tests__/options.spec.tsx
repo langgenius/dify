@@ -6,7 +6,9 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
 })
 
-const createOptionsProps = (overrides: Partial<YearAndMonthPickerOptionsProps> = {}): YearAndMonthPickerOptionsProps => ({
+const createOptionsProps = (
+  overrides: Partial<YearAndMonthPickerOptionsProps> = {},
+): YearAndMonthPickerOptionsProps => ({
   selectedMonth: 5,
   selectedYear: 2024,
   handleMonthSelect: vi.fn(),

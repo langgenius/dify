@@ -1,12 +1,12 @@
-# Cucumber Best Practices For Dify E2E
+# Cucumber Best Practices
 
-Use this reference when writing or reviewing Gherkin scenarios, step definitions, parameter expressions, and step reuse in Dify's `e2e/` suite.
+Use this reference when writing or reviewing Gherkin scenarios, step definitions, parameter expressions, and step reuse.
 
 Official sources:
 
-- https://cucumber.io/docs/guides/10-minute-tutorial/
-- https://cucumber.io/docs/cucumber/step-definitions/
-- https://cucumber.io/docs/cucumber/cucumber-expressions/
+- https://cucumber.io/docs/guides/10-minute-tutorial
+- https://cucumber.io/docs/cucumber/step-definitions
+- https://cucumber.io/docs/cucumber/cucumber-expressions
 
 ## What Matters Most
 
@@ -24,11 +24,7 @@ Apply it like this:
 
 A scenario should usually prove one workflow or business outcome. If a scenario wanders across several unrelated behaviors, split it.
 
-In Dify's suite, this means:
-
-- one capability-focused scenario per feature path
-- no long setup chains when existing bootstrap or reusable steps already cover them
-- no hidden dependency on another scenario's side effects
+Keep each scenario centered on one coherent outcome. Avoid hidden dependencies on another scenario's side effects, and keep unavoidable setup outside the behavior narrative unless the precondition matters to the specification.
 
 ### 3. Reuse steps, but only when behavior really matches
 
@@ -39,12 +35,15 @@ Prefer reuse when:
 - the user action is genuinely the same
 - the expected outcome is genuinely the same
 - the wording stays natural across features
+- the parameter is a real product domain value such as a named surface, mode, resource, or status
 
 Write a new step when:
 
 - the behavior is materially different
 - reusing the old wording would make the scenario misleading
 - a supposedly generic step would become an implementation-detail wrapper
+
+Do not optimize for a low step count by making vague steps. Optimize for a small set of truthful, domain-owned steps.
 
 ### 4. Prefer Cucumber Expressions
 
@@ -59,30 +58,17 @@ Common examples:
 
 Keep expressions readable. If a step needs complicated parsing logic, first ask whether the scenario wording should be simpler.
 
+Use regex for a bounded natural-language alternative only when it keeps Gherkin readable, for example `/(Web app|Backend service API)/`. Avoid broad regexes that accept unowned language.
+
 ### 5. Keep step definitions thin and meaningful
 
 Step definitions are glue between Gherkin and automation, not a second abstraction language.
 
-For Dify:
-
-- type `this` as `DifyWorld`
-- use `async function`
-- keep each step to one user-visible action or assertion
-- rely on `DifyWorld` and existing support code for shared context
-- avoid leaking cross-scenario state
+Keep each step to one user-visible action or assertion. In JavaScript and TypeScript, use `async function` when the step reads Cucumber World state because Cucumber binds `this`; do not leak state across scenarios through module globals.
 
 ### 6. Use tags intentionally
 
-Tags should communicate run scope or session semantics, not become ad hoc metadata.
-
-In Dify's current suite:
-
-- capability tags group related scenarios
-- `@unauthenticated` changes session behavior
-- `@authenticated` is descriptive/selective, not a behavior switch by itself
-- `@fresh` belongs to reset/full-install flows only
-
-If a proposed tag implies behavior, verify that hooks or runner configuration actually implement it.
+Tags should communicate selection or execution intent, not become ad hoc metadata. A tag does not change runtime behavior unless configuration or hooks implement it.
 
 ## Review Questions
 

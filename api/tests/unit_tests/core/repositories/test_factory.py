@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
@@ -21,6 +21,17 @@ from libs.module_loading import import_string
 from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+RESOURCE_TENANT_ID = "resource-tenant-id"
+
+
+@pytest.fixture
+def sqlite_session_factory(sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Return a real session factory bound to the test's isolated SQLite engine."""
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    with factory() as session:
+        assert session.get_bind() is sqlite_engine
+    return factory
 
 
 class TestRepositoryFactory:
@@ -51,15 +62,14 @@ class TestRepositoryFactory:
             import_string("invalidpath")
         assert "doesn't look like a module path" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_execution_repository_success(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_execution_repository_success(self, mock_config, sqlite_session_factory):
         """Test successful WorkflowExecutionRepository creation."""
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        # Create mock dependencies
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=Account)
+        # Create non-database dependencies
+        mock_user = Account(name="Test Account", email="test@example.com")
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
@@ -71,7 +81,8 @@ class TestRepositoryFactory:
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -79,39 +90,39 @@ class TestRepositoryFactory:
 
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_execution_repository_import_error(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_execution_repository_import_error(self, mock_config, sqlite_session_factory):
         """Test WorkflowExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "invalid.module.InvalidClass"
 
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
 
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_execution_repository(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             )
         assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_execution_repository_instantiation_error(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_execution_repository_instantiation_error(self, mock_config, sqlite_session_factory):
         """Test WorkflowExecutionRepository creation with instantiation error."""
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
 
         # Create a mock repository class that raises exception on instantiation
         mock_repository_class = MagicMock()
@@ -121,22 +132,22 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_execution_repository(
-                    session_factory=mock_session_factory,
+                    session_factory=sqlite_session_factory,
+                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 )
             assert "Failed to create WorkflowExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_node_execution_repository_success(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_node_execution_repository_success(self, mock_config, sqlite_session_factory):
         """Test successful WorkflowNodeExecutionRepository creation."""
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        # Create mock dependencies
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=EndUser)
+        # Create non-database dependencies
+        mock_user = EndUser()
         app_id = "test-app-id"
         triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
 
@@ -148,7 +159,8 @@ class TestRepositoryFactory:
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -156,39 +168,39 @@ class TestRepositoryFactory:
 
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
             assert result is mock_repository_instance
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_node_execution_repository_import_error(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_node_execution_repository_import_error(self, mock_config, sqlite_session_factory):
         """Test WorkflowNodeExecutionRepository creation with import error."""
         # Setup mock configuration with invalid class path
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "invalid.module.InvalidClass"
 
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=EndUser)
+        mock_user = EndUser()
 
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                session_factory=mock_session_factory,
+                session_factory=sqlite_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
             )
         assert "Failed to create WorkflowNodeExecutionRepository" in str(exc_info.value)
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_workflow_node_execution_repository_instantiation_error(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_workflow_node_execution_repository_instantiation_error(self, mock_config, sqlite_session_factory):
         """Test WorkflowNodeExecutionRepository creation with instantiation error."""
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        mock_session_factory = MagicMock(spec=sessionmaker)
-        mock_user = MagicMock(spec=EndUser)
+        mock_user = EndUser()
 
         # Create a mock repository class that raises exception on instantiation
         mock_repository_class = MagicMock()
@@ -198,7 +210,8 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-                    session_factory=mock_session_factory,
+                    session_factory=sqlite_session_factory,
+                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -211,15 +224,14 @@ class TestRepositoryFactory:
         error = RepositoryImportError(error_message)
         assert str(error) == error_message
 
-    @patch("core.repositories.factory.dify_config", autospec=True)
-    def test_create_with_engine_instead_of_sessionmaker(self, mock_config):
+    @patch("core.repositories.factory.dify_config")
+    def test_create_with_engine_instead_of_sessionmaker(self, mock_config, sqlite_engine: Engine):
         """Test repository creation with Engine instead of sessionmaker."""
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        # Create mock dependencies using Engine instead of sessionmaker
-        mock_engine = MagicMock(spec=Engine)
-        mock_user = MagicMock(spec=Account)
+        # Pass the real Engine directly instead of wrapping it in sessionmaker
+        mock_user = Account(name="Test Account", email="test@example.com")
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
@@ -231,7 +243,8 @@ class TestRepositoryFactory:
         # Mock import_string
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
-                session_factory=mock_engine,  # Using Engine instead of sessionmaker
+                session_factory=sqlite_engine,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -239,7 +252,8 @@ class TestRepositoryFactory:
 
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
-                session_factory=mock_engine,
+                session_factory=sqlite_engine,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,

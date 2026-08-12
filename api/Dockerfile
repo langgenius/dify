@@ -17,20 +17,22 @@ FROM base AS packages
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
           # basic environment
-          g++ \
+          git g++ \
           # for building gmpy2
           libmpfr-dev libmpc-dev
 
 # Install Python dependencies (workspace members under providers/vdb/)
-COPY pyproject.toml uv.lock ./
-COPY providers ./providers
-RUN uv sync --locked --no-dev
+COPY api/pyproject.toml api/uv.lock ./
+COPY api/providers ./providers
+COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
+COPY dify-agent/src /app/dify-agent/src
+# Trust the checked-in lock during image builds; local path sources are copied from the repository context.
+RUN uv sync --frozen --no-dev --no-editable
 
 # production stage
 FROM base AS production
 
 ENV FLASK_APP=app.py
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL=http://127.0.0.1:3000
@@ -96,9 +98,9 @@ ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
-    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
+    && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
+    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('taggers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
@@ -107,10 +109,10 @@ RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
 # Copy source code
-COPY --chown=dify:dify . /app/api/
+COPY --chown=dify:dify api /app/api/
 
 # Prepare entrypoint script
-COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
+COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
 
 
 ARG COMMIT_SHA

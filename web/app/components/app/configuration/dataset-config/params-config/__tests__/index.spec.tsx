@@ -1,9 +1,9 @@
 import type { MockedFunction, MockInstance } from 'vitest'
 import type { DatasetConfigs } from '@/models/debug'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -13,37 +13,6 @@ import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import ParamsConfig from '../index'
 
-vi.mock('@headlessui/react', () => ({
-  Dialog: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div role="dialog" className={className}>
-      {children}
-    </div>
-  ),
-  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-    <div className={className} {...props}>
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-    <div className={className} {...props}>
-      {children}
-    </div>
-  ),
-  Transition: ({ show, children }: { show: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Switch: ({ checked, onChange, children, ...props }: { checked: boolean, onChange?: (value: boolean) => void, children?: React.ReactNode }) => (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange?.(!checked)}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
   useCurrentProviderAndModel: vi.fn(),
@@ -51,8 +20,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string, model: string }
-    onSelect?: (model: { provider: string, model: string }) => void
+    defaultModel?: { provider: string; model: string }
+    onSelect?: (model: { provider: string; model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
@@ -69,12 +38,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   }
 })
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: () => <div data-testid="model-parameter-modal" />,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div data-testid="model-parameter-modal" />,
+  }),
+)
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
+  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
+    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
+  >
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
+  typeof useCurrentProviderAndModel
+>
 let toastErrorSpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
@@ -120,20 +97,10 @@ const renderParamsConfig = ({
       },
     } as unknown as React.ComponentProps<typeof ConfigContext.Provider>['value']
 
-    return (
-      <ConfigContext.Provider value={contextValue}>
-        {children}
-      </ConfigContext.Provider>
-    )
+    return <ConfigContext.Provider value={contextValue}>{children}</ConfigContext.Provider>
   }
 
-  return render(
-    <ParamsConfig
-      disabled={disabled}
-      selectedDatasets={[]}
-    />,
-    { wrapper: Wrapper },
-  )
+  return render(<ParamsConfig disabled={disabled} selectedDatasets={[]} />, { wrapper: Wrapper })
 }
 
 describe('dataset-config/params-config', () => {
@@ -223,7 +190,9 @@ describe('dataset-config/params-config', () => {
         expect(topKInput)!.toHaveValue('5')
       })
 
-      const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
+      const cancelButton = await dialogScope.findByRole('button', {
+        name: 'common.operation.cancel',
+      })
       await user.click(cancelButton)
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

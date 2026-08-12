@@ -26,6 +26,7 @@ type GenerationActionGroupsProps = {
   currentTab: string
   depth: number
   feedback?: FeedbackType
+  hideLogAction?: boolean
   isError: boolean
   isInWebApp: boolean
   isResponding?: boolean
@@ -49,6 +50,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   currentTab,
   depth,
   feedback,
+  hideLogAction,
   isError,
   isInWebApp,
   isResponding,
@@ -71,70 +73,72 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
 
   return (
     <>
-      {!isInWebApp && (appSourceType !== AppSourceTypeEnum.installedApp) && !isResponding && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
-          <ActionButton
-            aria-label={t('operation.log', { ns: 'common' })}
-            disabled={isError || !messageId}
-            title={t('operation.log', { ns: 'common' })}
-            onClick={onOpenLogModal}
-          >
-            <RiFileList3Line className="h-4 w-4" />
-          </ActionButton>
-        </div>
-      )}
+      {!hideLogAction &&
+        !isInWebApp &&
+        appSourceType !== AppSourceTypeEnum.installedApp &&
+        !isResponding && (
+          <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+            <ActionButton
+              aria-label={t(($) => $['operation.log'], { ns: 'common' })}
+              disabled={isError || !messageId}
+              title={t(($) => $['operation.log'], { ns: 'common' })}
+              onClick={onOpenLogModal}
+            >
+              <RiFileList3Line className="size-4" />
+            </ActionButton>
+          </div>
+        )}
       <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
         {moreLikeThis && !isTryApp && (
           <ActionButton
-            aria-label={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
-            state={depth === MAX_GENERATION_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default}
+            aria-label={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
+            state={
+              depth === MAX_GENERATION_DEPTH
+                ? ActionButtonState.Disabled
+                : ActionButtonState.Default
+            }
             disabled={depth === MAX_GENERATION_DEPTH}
-            title={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
+            title={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
             onClick={onMoreLikeThis}
           >
-            <RiSparklingLine className="h-4 w-4" />
+            <RiSparklingLine className="size-4" />
           </ActionButton>
         )}
-        {isShowTextToSpeech && !isTryApp && (
-          <NewAudioButton
-            id={messageId!}
-            voice={voice}
-          />
-        )}
+        {isShowTextToSpeech && !isTryApp && <NewAudioButton id={messageId!} voice={voice} />}
         {showCopyAction && (
           <ActionButton
-            aria-label={t('operation.copy', { ns: 'common' })}
+            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
             disabled={isError || !messageId}
-            title={t('operation.copy', { ns: 'common' })}
+            title={t(($) => $['operation.copy'], { ns: 'common' })}
             onClick={() => {
               const copyContent = getCopyContent({ content, isWorkflow, workflowProcessData })
-              if (typeof copyContent === 'string')
-                copy(copyContent)
-              else
-                copy(JSON.stringify(copyContent))
-              toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
+              if (typeof copyContent === 'string') copy(copyContent)
+              else copy(JSON.stringify(copyContent))
+              toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="h-4 w-4" />
+            <RiClipboardLine className="size-4" />
           </ActionButton>
         )}
         {isInWebApp && isError && (
           <ActionButton
-            aria-label={t('generation.batchFailed.retry', { ns: 'share' })}
-            title={t('generation.batchFailed.retry', { ns: 'share' })}
+            aria-label={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
+            title={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
             onClick={onRetry}
           >
-            <RiResetLeftLine className="h-4 w-4" />
+            <RiResetLeftLine className="size-4" />
           </ActionButton>
         )}
         {isInWebApp && !isWorkflow && !isTryApp && (
           <ActionButton
-            aria-label={t('operation.save', { ns: 'common' })}
+            aria-label={t(($) => $['operation.save'], { ns: 'common' })}
             disabled={isError || !messageId}
-            title={t('operation.save', { ns: 'common' })}
-            onClick={() => { onSave?.(messageId as string) }}
+            title={t(($) => $['operation.save'], { ns: 'common' })}
+            onClick={() => {
+              onSave?.(messageId as string)
+            }}
           >
-            <RiBookmark3Line className="h-4 w-4" />
+            <RiBookmark3Line className="size-4" />
           </ActionButton>
         )}
       </div>
@@ -143,39 +147,39 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
           {!feedback?.rating && (
             <>
               <ActionButton
-                aria-label={t('operation.agree', { ns: 'appDebug' })}
-                title={t('operation.agree', { ns: 'appDebug' })}
+                aria-label={t(($) => $['operation.agree'], { ns: 'appDebug' })}
+                title={t(($) => $['operation.agree'], { ns: 'appDebug' })}
                 onClick={() => onFeedback?.({ rating: 'like' })}
               >
-                <RiThumbUpLine className="h-4 w-4" />
+                <RiThumbUpLine className="size-4" />
               </ActionButton>
               <ActionButton
-                aria-label={t('operation.disagree', { ns: 'appDebug' })}
-                title={t('operation.disagree', { ns: 'appDebug' })}
+                aria-label={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
+                title={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
                 onClick={() => onFeedback?.({ rating: 'dislike' })}
               >
-                <RiThumbDownLine className="h-4 w-4" />
+                <RiThumbDownLine className="size-4" />
               </ActionButton>
             </>
           )}
           {feedback?.rating === 'like' && (
             <ActionButton
-              aria-label={t('operation.cancelAgree', { ns: 'appDebug' })}
+              aria-label={t(($) => $['operation.cancelAgree'], { ns: 'appDebug' })}
               state={ActionButtonState.Active}
-              title={t('operation.cancelAgree', { ns: 'appDebug' })}
+              title={t(($) => $['operation.cancelAgree'], { ns: 'appDebug' })}
               onClick={() => onFeedback?.({ rating: null })}
             >
-              <RiThumbUpLine className="h-4 w-4" />
+              <RiThumbUpLine className="size-4" />
             </ActionButton>
           )}
           {feedback?.rating === 'dislike' && (
             <ActionButton
-              aria-label={t('operation.cancelDisagree', { ns: 'appDebug' })}
+              aria-label={t(($) => $['operation.cancelDisagree'], { ns: 'appDebug' })}
               state={ActionButtonState.Destructive}
-              title={t('operation.cancelDisagree', { ns: 'appDebug' })}
+              title={t(($) => $['operation.cancelDisagree'], { ns: 'appDebug' })}
               onClick={() => onFeedback?.({ rating: null })}
             >
-              <RiThumbDownLine className="h-4 w-4" />
+              <RiThumbDownLine className="size-4" />
             </ActionButton>
           )}
         </div>

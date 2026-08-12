@@ -12,8 +12,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
+from controllers.inner_api.plugin import plugin as plugin_module
 from controllers.inner_api.plugin.plugin import (
+    PluginDownloadFileRequestApi,
     PluginFetchAppInfoApi,
     PluginInvokeAppApi,
     PluginInvokeEncryptApi,
@@ -30,6 +33,8 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTTSApi,
     PluginUploadFileRequestApi,
 )
+from core.workflow.file_reference import build_file_reference
+from models import Tenant
 
 
 def _extract_raw_post(cls):
@@ -258,11 +263,12 @@ class TestPluginUploadFileRequestApi:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
-    @patch("controllers.inner_api.plugin.plugin.get_signed_file_url_for_plugin")
-    def test_post_returns_signed_url(self, mock_get_url, api_instance, app: Flask):
+    @patch("controllers.inner_api.plugin.plugin.get_signed_file_uri_for_plugin")
+    def test_post_returns_signed_url(self, mock_get_uri, api_instance, app: Flask, monkeypatch: pytest.MonkeyPatch):
         """Test that post() generates a signed URL and returns it"""
         # Arrange
-        mock_get_url.return_value = "https://storage.example.com/signed-upload-url"
+        mock_get_uri.return_value = "/files/upload/for-plugin?sign=1"
+        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-id"
         mock_user = MagicMock()
@@ -270,16 +276,100 @@ class TestPluginUploadFileRequestApi:
         mock_payload = MagicMock()
         mock_payload.filename = "test.pdf"
         mock_payload.mimetype = "application/pdf"
+        mock_payload.conversation_id = "conversation-id"
 
         # Act
         raw_post = _extract_raw_post(PluginUploadFileRequestApi)
         result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
 
         # Assert
-        mock_get_url.assert_called_once_with(
-            filename="test.pdf", mimetype="application/pdf", tenant_id="tenant-id", user_id="user-id"
+        mock_get_uri.assert_called_once_with(
+            filename="test.pdf",
+            mimetype="application/pdf",
+            tenant_id="tenant-id",
+            user_id="user-id",
+            conversation_id="conversation-id",
         )
-        assert result["data"]["url"] == "https://storage.example.com/signed-upload-url"
+        assert result["data"]["url"] == "http://api:5001/files/upload/for-plugin?sign=1"
+
+
+class TestPluginDownloadFileRequestApi:
+    """Test PluginDownloadFileRequestApi endpoint structure and handler logic"""
+
+    @pytest.fixture
+    def api_instance(self):
+        return PluginDownloadFileRequestApi()
+
+    def test_has_post_method(self, api_instance):
+        assert hasattr(api_instance, "post")
+        assert callable(api_instance.post)
+
+    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+    @pytest.mark.parametrize(
+        ("for_external", "expected_url"),
+        [
+            (True, "https://files.example.com/files/tools/report.pdf?sign=1"),
+            (False, "http://api:5001/files/tools/report.pdf?sign=1"),
+        ],
+    )
+    @patch("controllers.inner_api.plugin.plugin.FileRequestService")
+    def test_post_returns_signed_download_url(
+        self,
+        mock_service_cls,
+        api_instance,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        for_external: bool,
+        expected_url: str,
+    ):
+        tenant = Tenant(
+            name="Plugin Tenant",
+            encrypt_public_key=None,
+            plan="basic",
+            custom_config=None,
+        )
+        tenant.id = "49a99e46-bc2c-4885-91fa-47615f6192b5"
+        sqlite_session.add(tenant)
+        sqlite_session.commit()
+        monkeypatch.setattr(plugin_module.db, "session", sqlite_session)
+        mock_service = mock_service_cls.return_value
+        mock_service.request_download.return_value = MagicMock(
+            filename="report.pdf",
+            mime_type="application/pdf",
+            size=123,
+            download_uri="/files/tools/report.pdf?sign=1",
+        )
+        monkeypatch.setattr(plugin_module.dify_config, "FILES_URL", "https://files.example.com")
+        monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
+        mock_payload = MagicMock()
+        mock_payload.tenant_id = tenant.id
+        mock_payload.user_id = "user-id"
+        mock_payload.user_from = "account"
+        mock_payload.invoke_from = "debugger"
+        mock_payload.for_external = for_external
+        reference = build_file_reference(record_id="tool-file-1")
+        mock_payload.file.model_dump.return_value = {
+            "transfer_method": "tool_file",
+            "reference": reference,
+        }
+
+        raw_post = _extract_raw_post(PluginDownloadFileRequestApi)
+        result = raw_post(api_instance, payload=mock_payload)
+
+        mock_service.request_download.assert_called_once_with(
+            tenant_id=tenant.id,
+            user_id="user-id",
+            user_from="account",
+            invoke_from="debugger",
+            file_mapping={"transfer_method": "tool_file", "reference": reference},
+        )
+        assert result["data"] == {
+            "filename": "report.pdf",
+            "mime_type": "application/pdf",
+            "size": 123,
+            "download_url": expected_url,
+        }
 
 
 class TestPluginFetchAppInfoApi:

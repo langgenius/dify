@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.nodes.knowledge_retrieval.entities import (
@@ -46,7 +47,7 @@ def mock_graph_init_params():
 @pytest.fixture
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
@@ -56,7 +57,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_rag_retrieval(mocker):
+def mock_rag_retrieval(mocker: MockerFixture):
     """Create mock RAGRetrievalProtocol."""
     mock_retrieval = Mock(spec=RAGRetrievalProtocol)
     mock_retrieval.knowledge_retrieval.return_value = []
@@ -117,7 +118,7 @@ class TestKnowledgeRetrievalNode:
         # Act
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -146,7 +147,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -205,7 +206,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -249,7 +250,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -285,7 +286,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -320,7 +321,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -361,7 +362,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -400,7 +401,7 @@ class TestKnowledgeRetrievalNode:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -481,13 +482,13 @@ class TestFetchDatasetRetriever:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert len(results) == 1
@@ -518,13 +519,13 @@ class TestFetchDatasetRetriever:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=sample_node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=sample_node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -573,13 +574,13 @@ class TestFetchDatasetRetriever:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         # Act
-        results, usage = node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        results, usage = node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert
         assert isinstance(results, list)
@@ -621,7 +622,7 @@ class TestFetchDatasetRetriever:
 
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -682,7 +683,7 @@ class TestFetchDatasetRetriever:
         config = {"id": node_id, "data": node_data.model_dump()}
         node = KnowledgeRetrievalNode(
             node_id=node_id,
-            config=KnowledgeRetrievalNodeData.model_validate(config["data"]),
+            data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -691,7 +692,7 @@ class TestFetchDatasetRetriever:
         mock_rag_retrieval.llm_usage = LLMUsage.empty_usage()
 
         # Act
-        node._fetch_dataset_retriever(node_data=node_data, variables=variables)
+        node._fetch_dataset_retriever(Mock(), node_data=node_data, variables=variables)
 
         # Assert the passed request has resolved value
         call_args = mock_rag_retrieval.knowledge_retrieval.call_args

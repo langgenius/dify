@@ -41,8 +41,8 @@ describe('Label', () => {
     const tooltipText = 'Test Tooltip'
     render(<Label {...defaultProps} tooltip={tooltipText} />)
 
-    await user.hover(screen.getByTestId('test-input-tooltip'))
-    expect(screen.getByText(tooltipText)).toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: tooltipText }))
+    expect(await screen.findByText(tooltipText)).toBeInTheDocument()
   })
 
   it('should hide optional text when required is true', () => {

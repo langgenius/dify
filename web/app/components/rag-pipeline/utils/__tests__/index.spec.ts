@@ -23,7 +23,17 @@ vi.mock('@/app/components/workflow/note-node/types', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({ id, type, data, position }: { id: string, type?: string, data: object, position: { x: number, y: number } }) => ({
+  generateNewNode: ({
+    id,
+    type,
+    data,
+    position,
+  }: {
+    id: string
+    type?: string
+    data: object
+    position: { x: number; y: number }
+  }) => ({
     newNode: { id, type: type || 'custom', data, position },
   }),
 }))

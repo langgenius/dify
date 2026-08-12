@@ -129,3 +129,34 @@ def test_builtin_tool_summary_short_and_long_content_paths():
 
     assert result
     assert "S" in result
+
+
+def test_builtin_tool_summary_does_not_duplicate_lines_when_merging_chunks():
+    """Each line must be placed into exactly one summarization chunk.
+
+    The chunk-merge loop used two adjacent, non-mutually-exclusive ``if`` blocks, so a
+    line that fit the character budget was concatenated onto the current chunk AND then
+    appended a second time. That duplicated content in the text sent to the model.
+    """
+    tool = _build_tool()
+
+    captured_chunks: list[str] = []
+
+    def _record_invoke(user_id, prompt_messages, stop):
+        captured_chunks.append(prompt_messages[-1].content)
+        return SimpleNamespace(message=SimpleNamespace(content="S"))
+
+    content = "\n".join(["a" * 20, "b" * 20, "c" * 20])
+
+    with patch.object(_BuiltinDummyTool, "get_max_tokens", return_value=100):
+        with patch.object(
+            _BuiltinDummyTool,
+            "get_prompt_tokens",
+            side_effect=lambda prompt_messages: len(prompt_messages[-1].content),
+        ):
+            with patch.object(_BuiltinDummyTool, "invoke_model", side_effect=_record_invoke):
+                tool.summary(user_id="u1", content=content)
+
+    combined = "".join(captured_chunks)
+    for line in ("a" * 20, "b" * 20, "c" * 20):
+        assert combined.count(line) == 1, f"line was sent to the model {combined.count(line)} times, expected 1"

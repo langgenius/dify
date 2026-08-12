@@ -10,11 +10,13 @@ vi.mock('@/app/components/workflow/block-selector/utils', () => ({
 }))
 
 let mockDataSourceListReturn: {
-  data: Array<{
-    plugin_id: string
-    provider: string
-    declaration: { identity: { icon: string, author: string } }
-  }> | undefined
+  data:
+    | Array<{
+        plugin_id: string
+        provider: string
+        declaration: { identity: { icon: string; author: string } }
+      }>
+    | undefined
   isSuccess: boolean
 }
 
@@ -26,19 +28,20 @@ vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-const createMockDataSourceNode = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-  plugin_id: 'plugin-abc',
-  provider_type: 'builtin',
-  provider_name: 'web-scraper',
-  datasource_name: 'scraper',
-  datasource_label: 'Web Scraper',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  title: 'DataSource',
-  desc: '',
-  type: '' as DataSourceNodeType['type'],
-  ...overrides,
-} as DataSourceNodeType)
+const createMockDataSourceNode = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+  ({
+    plugin_id: 'plugin-abc',
+    provider_type: 'builtin',
+    provider_name: 'web-scraper',
+    datasource_name: 'scraper',
+    datasource_label: 'Web Scraper',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    title: 'DataSource',
+    desc: '',
+    type: '' as DataSourceNodeType['type'],
+    ...overrides,
+  }) as DataSourceNodeType
 
 describe('useDatasourceIcon', () => {
   beforeEach(() => {
@@ -52,9 +55,7 @@ describe('useDatasourceIcon', () => {
     it('should return undefined when data is not loaded (isSuccess false)', () => {
       mockDataSourceListReturn = { data: undefined, isSuccess: false }
 
-      const { result } = renderHook(() =>
-        useDatasourceIcon(createMockDataSourceNode()),
-      )
+      const { result } = renderHook(() => useDatasourceIcon(createMockDataSourceNode()))
 
       expect(result.current).toBeUndefined()
     })
@@ -74,10 +75,12 @@ describe('useDatasourceIcon', () => {
         ],
         isSuccess: true,
       }
-      mockTransformDataSourceToTool.mockImplementation((item: { plugin_id: string, declaration: { identity: { icon: string } } }) => ({
-        plugin_id: item.plugin_id,
-        icon: item.declaration.identity.icon,
-      }))
+      mockTransformDataSourceToTool.mockImplementation(
+        (item: { plugin_id: string; declaration: { identity: { icon: string } } }) => ({
+          plugin_id: item.plugin_id,
+          icon: item.declaration.identity.icon,
+        }),
+      )
 
       const { result } = renderHook(() =>
         useDatasourceIcon(createMockDataSourceNode({ plugin_id: 'plugin-abc' })),
@@ -97,10 +100,12 @@ describe('useDatasourceIcon', () => {
         ],
         isSuccess: true,
       }
-      mockTransformDataSourceToTool.mockImplementation((item: { plugin_id: string, declaration: { identity: { icon: string } } }) => ({
-        plugin_id: item.plugin_id,
-        icon: item.declaration.identity.icon,
-      }))
+      mockTransformDataSourceToTool.mockImplementation(
+        (item: { plugin_id: string; declaration: { identity: { icon: string } } }) => ({
+          plugin_id: item.plugin_id,
+          icon: item.declaration.identity.icon,
+        }),
+      )
 
       const { result } = renderHook(() =>
         useDatasourceIcon(createMockDataSourceNode({ plugin_id: 'plugin-abc' })),
@@ -125,10 +130,12 @@ describe('useDatasourceIcon', () => {
         ],
         isSuccess: true,
       }
-      mockTransformDataSourceToTool.mockImplementation((item: { plugin_id: string, declaration: { identity: { icon: string } } }) => ({
-        plugin_id: item.plugin_id,
-        icon: item.declaration.identity.icon,
-      }))
+      mockTransformDataSourceToTool.mockImplementation(
+        (item: { plugin_id: string; declaration: { identity: { icon: string } } }) => ({
+          plugin_id: item.plugin_id,
+          icon: item.declaration.identity.icon,
+        }),
+      )
 
       const { result } = renderHook(() =>
         useDatasourceIcon(createMockDataSourceNode({ plugin_id: 'plugin-abc' })),

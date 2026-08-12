@@ -1,4 +1,4 @@
-from mimetypes import guess_extension
+from typing import Literal
 
 from flask import request
 from flask_restx import Resource
@@ -7,9 +7,12 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 import services
+from core.db.session_factory import session_factory
 from core.tools.signature import verify_plugin_file_signature
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_file_manager import ToolFileManager, resolve_extension
+from core.workflow.file_reference import build_file_reference
 from fields.file_fields import FileResponse
+from services.account_service import TenantService
 
 from ..common.errors import (
     FileTooLargeError,
@@ -20,8 +23,6 @@ from ..console.wraps import setup_required
 from ..files import files_ns
 from ..inner_api.plugin.wraps import get_user
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class PluginUploadQuery(BaseModel):
     timestamp: str = Field(..., description="Unix timestamp for signature verification")
@@ -29,11 +30,12 @@ class PluginUploadQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str | None = Field(default=None, description="User identifier")
+    user_from: Literal["account", "end-user"] | None = Field(default=None, description="User identity type")
+    conversation_id: str | None = Field(default=None, description="Conversation identifier")
 
 
-files_ns.schema_model(
-    PluginUploadQuery.__name__, PluginUploadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(files_ns, PluginUploadQuery)
+
 
 register_schema_models(files_ns, FileResponse)
 
@@ -61,7 +63,8 @@ class PluginUploadFileApi(Resource):
         The file must be accompanied by valid timestamp, nonce, and signature parameters.
 
         Returns:
-            dict: File metadata including ID, URLs, and properties
+            dict: File metadata including ID, canonical ``reference`` for
+                output-file reconstruction, URLs, and properties
             int: HTTP status code (201 for success)
 
         Raises:
@@ -69,7 +72,7 @@ class PluginUploadFileApi(Resource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))
 
         file = request.files.get("file")
         if file is None:
@@ -79,8 +82,20 @@ class PluginUploadFileApi(Resource):
         nonce = args.nonce
         sign = args.sign
         tenant_id = args.tenant_id
-        user_id = args.user_id
-        user = get_user(tenant_id, user_id)
+        if args.user_from == "account":
+            if args.user_id is None:
+                raise Forbidden("Invalid request.")
+            with session_factory.create_session() as session:
+                is_tenant_member = TenantService.account_belongs_to_tenant(
+                    args.user_id,
+                    tenant_id,
+                    session=session,
+                )
+            if not is_tenant_member:
+                raise Forbidden("Invalid request.")
+            owner_id = args.user_id
+        else:
+            owner_id = get_user(tenant_id, args.user_id).id
 
         filename = file.filename
         mimetype = file.mimetype
@@ -92,7 +107,9 @@ class PluginUploadFileApi(Resource):
             filename=filename,
             mimetype=mimetype,
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=owner_id,
+            conversation_id=args.conversation_id,
+            user_from=args.user_from,
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
@@ -101,20 +118,21 @@ class PluginUploadFileApi(Resource):
 
         try:
             tool_file = ToolFileManager().create_file_by_raw(
-                user_id=user.id,
+                user_id=owner_id,
                 tenant_id=tenant_id,
-                file_binary=file.read(),
+                file_binary=file.stream.read(),
                 mimetype=mimetype,
                 filename=filename,
-                conversation_id=None,
+                conversation_id=args.conversation_id,
             )
 
-            extension = guess_extension(tool_file.mimetype) or ".bin"
+            extension = resolve_extension(filename=tool_file.name, mimetype=tool_file.mimetype)
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
 
             # Create a dictionary with all the necessary attributes
             result = FileResponse(
                 id=tool_file.id,
+                reference=build_file_reference(record_id=tool_file.id),
                 name=tool_file.name,
                 size=tool_file.size,
                 extension=extension,

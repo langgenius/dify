@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,6 +22,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
 from enterprise.telemetry.entities import (
     EnterpriseTelemetryCounter,
     EnterpriseTelemetryEvent,
@@ -297,43 +299,43 @@ def test_init_succeeds_with_valid_exporter(mock_exporter):
 
 
 class TestSafePayloadValue:
-    def test_string_passthrough(self, trace_handler):
+    def test_string_passthrough(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._safe_payload_value("hello") == "hello"
 
-    def test_dict_passthrough(self, trace_handler):
+    def test_dict_passthrough(self, trace_handler: EnterpriseOtelTrace):
         d = {"key": "val"}
         assert trace_handler._safe_payload_value(d) == d
 
-    def test_list_passthrough(self, trace_handler):
+    def test_list_passthrough(self, trace_handler: EnterpriseOtelTrace):
         lst = [1, 2, 3]
         assert trace_handler._safe_payload_value(lst) == lst
 
-    def test_none_returns_none(self, trace_handler):
+    def test_none_returns_none(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._safe_payload_value(None) is None
 
-    def test_int_returns_none(self, trace_handler):
+    def test_int_returns_none(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._safe_payload_value(42) is None
 
-    def test_bool_returns_none(self, trace_handler):
+    def test_bool_returns_none(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._safe_payload_value(True) is None
 
 
 class TestMaybeJson:
-    def test_none_returns_none(self, trace_handler):
+    def test_none_returns_none(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._maybe_json(None) is None
 
-    def test_string_passthrough(self, trace_handler):
+    def test_string_passthrough(self, trace_handler: EnterpriseOtelTrace):
         assert trace_handler._maybe_json("hello") == "hello"
 
-    def test_dict_serialised(self, trace_handler):
+    def test_dict_serialised(self, trace_handler: EnterpriseOtelTrace):
         result = trace_handler._maybe_json({"a": 1})
         assert result == json.dumps({"a": 1})
 
-    def test_list_serialised(self, trace_handler):
+    def test_list_serialised(self, trace_handler: EnterpriseOtelTrace):
         result = trace_handler._maybe_json([1, 2])
         assert result == "[1, 2]"
 
-    def test_non_serialisable_falls_back_to_str(self, trace_handler):
+    def test_non_serialisable_falls_back_to_str(self, trace_handler: EnterpriseOtelTrace):
         class Unserializable:
             def __repr__(self):
                 return "Unserializable()"
@@ -344,22 +346,22 @@ class TestMaybeJson:
 
 
 class TestContentOrRef:
-    def test_returns_content_when_include_content_true(self, trace_handler, mock_exporter):
+    def test_returns_content_when_include_content_true(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         result = trace_handler._content_or_ref("actual content", "ref:x=1")
         assert result == "actual content"
 
-    def test_returns_ref_when_include_content_false(self, trace_handler, mock_exporter):
+    def test_returns_ref_when_include_content_false(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         result = trace_handler._content_or_ref("actual content", "ref:x=1")
         assert result == "ref:x=1"
 
-    def test_dict_serialised_when_include_content_true(self, trace_handler, mock_exporter):
+    def test_dict_serialised_when_include_content_true(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         result = trace_handler._content_or_ref({"key": "val"}, "ref:x=1")
         assert result == json.dumps({"key": "val"})
 
-    def test_none_returns_none_when_include_content_true(self, trace_handler, mock_exporter):
+    def test_none_returns_none_when_include_content_true(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         result = trace_handler._content_or_ref(None, "ref:x=1")
         assert result is None
@@ -371,67 +373,67 @@ class TestContentOrRef:
 
 
 class TestTraceDispatcher:
-    def test_dispatches_workflow_trace(self, trace_handler):
+    def test_dispatches_workflow_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_workflow_trace") as mock_method:
             info = make_workflow_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_message_trace(self, trace_handler):
+    def test_dispatches_message_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_message_trace") as mock_method:
             info = make_message_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_tool_trace(self, trace_handler):
+    def test_dispatches_tool_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_tool_trace") as mock_method:
             info = make_tool_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_draft_node_execution_trace(self, trace_handler):
+    def test_dispatches_draft_node_execution_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_draft_node_execution_trace") as mock_method:
             info = make_draft_node_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_node_execution_trace(self, trace_handler):
+    def test_dispatches_node_execution_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_node_execution_trace") as mock_method:
             info = make_node_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_moderation_trace(self, trace_handler):
+    def test_dispatches_moderation_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_moderation_trace") as mock_method:
             info = make_moderation_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_suggested_question_trace(self, trace_handler):
+    def test_dispatches_suggested_question_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_suggested_question_trace") as mock_method:
             info = make_suggested_question_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_dataset_retrieval_trace(self, trace_handler):
+    def test_dispatches_dataset_retrieval_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_dataset_retrieval_trace") as mock_method:
             info = make_dataset_retrieval_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_generate_name_trace(self, trace_handler):
+    def test_dispatches_generate_name_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_generate_name_trace") as mock_method:
             info = make_generate_name_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_dispatches_prompt_generation_trace(self, trace_handler):
+    def test_dispatches_prompt_generation_trace(self, trace_handler: EnterpriseOtelTrace):
         with patch.object(trace_handler, "_prompt_generation_trace") as mock_method:
             info = make_prompt_generation_info()
             trace_handler.trace(info)
             mock_method.assert_called_once_with(info)
 
-    def test_draft_node_dispatched_before_node(self, trace_handler):
+    def test_draft_node_dispatched_before_node(self, trace_handler: EnterpriseOtelTrace):
         """DraftNodeExecutionTrace is a subclass of WorkflowNodeTraceInfo;
         it must be dispatched to _draft_node_execution_trace, not _node_execution_trace."""
         with (
@@ -450,7 +452,7 @@ class TestTraceDispatcher:
 
 
 class TestWorkflowTrace:
-    def test_emits_correct_span_attributes(self, trace_handler, mock_exporter):
+    def test_emits_correct_span_attributes(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             info = make_workflow_info()
             trace_handler._workflow_trace(info)
@@ -465,7 +467,7 @@ class TestWorkflowTrace:
         assert attrs["dify.workflow.status"] == "succeeded"
         assert attrs["gen_ai.usage.total_tokens"] == 100
 
-    def test_span_timing_passed_correctly(self, trace_handler, mock_exporter):
+    def test_span_timing_passed_correctly(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info()
             trace_handler._workflow_trace(info)
@@ -474,15 +476,26 @@ class TestWorkflowTrace:
         assert span_call[1]["start_time"] == _T0
         assert span_call[1]["end_time"] == _T1
 
-    def test_emits_companion_log_with_event_name(self, trace_handler, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+    def test_emits_companion_log_with_event_name(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        caplog: pytest.LogCaptureFixture,
+    ):
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._workflow_trace(make_workflow_info())
 
-        mock_log.assert_called_once()
-        assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetryEvent.WORKFLOW_RUN
-        assert mock_log.call_args[1]["tenant_id"] == "tenant-abc"
+        records = [record for record in caplog.records if record.name == "dify.telemetry"]
 
-    def test_companion_log_includes_content_when_enabled(self, trace_handler, mock_exporter):
+        assert len(records) == 1
+        record = records[0]
+
+        attrs = cast(dict[str, Any], record.__dict__["attributes"])
+
+        assert attrs["dify.event.name"] == EnterpriseTelemetryEvent.WORKFLOW_RUN
+        assert attrs["dify.event.signal"] == "span_detail"
+        assert record.__dict__["tenant_id"] == "tenant-abc"
+
+    def test_companion_log_includes_content_when_enabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._workflow_trace(make_workflow_info())
@@ -491,7 +504,7 @@ class TestWorkflowTrace:
         assert log_attrs["dify.workflow.inputs"] == json.dumps({"query": "hello"})
         assert log_attrs["dify.workflow.outputs"] == json.dumps({"answer": "world"})
 
-    def test_companion_log_uses_ref_when_content_disabled(self, trace_handler, mock_exporter):
+    def test_companion_log_uses_ref_when_content_disabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._workflow_trace(make_workflow_info())
@@ -500,7 +513,7 @@ class TestWorkflowTrace:
         assert log_attrs["dify.workflow.inputs"].startswith("ref:workflow_run_id=")
         assert log_attrs["dify.workflow.outputs"].startswith("ref:workflow_run_id=")
 
-    def test_increments_token_counter(self, trace_handler, mock_exporter):
+    def test_increments_token_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._workflow_trace(make_workflow_info())
 
@@ -510,7 +523,7 @@ class TestWorkflowTrace:
         assert len(token_calls) == 1
         assert token_calls[0][0][1] == 100
 
-    def test_increments_input_and_output_token_counters(self, trace_handler, mock_exporter):
+    def test_increments_input_and_output_token_counters(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._workflow_trace(make_workflow_info())
 
@@ -519,7 +532,7 @@ class TestWorkflowTrace:
         assert EnterpriseTelemetryCounter.INPUT_TOKENS in counter_names
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
-    def test_no_input_token_counter_when_prompt_tokens_zero(self, trace_handler, mock_exporter):
+    def test_no_input_token_counter_when_prompt_tokens_zero(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(prompt_tokens=0)
             trace_handler._workflow_trace(info)
@@ -528,7 +541,7 @@ class TestWorkflowTrace:
         counter_names = [c[0][0] for c in all_calls]
         assert EnterpriseTelemetryCounter.INPUT_TOKENS not in counter_names
 
-    def test_records_workflow_duration_histogram(self, trace_handler, mock_exporter):
+    def test_records_workflow_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._workflow_trace(make_workflow_info())
 
@@ -537,7 +550,9 @@ class TestWorkflowTrace:
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.WORKFLOW_DURATION
         assert hist_call[0][1] == pytest.approx(5.0)
 
-    def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(self, trace_handler, mock_exporter):
+    def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=7.3)
             trace_handler._workflow_trace(info)
@@ -545,7 +560,7 @@ class TestWorkflowTrace:
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][1] == pytest.approx(7.3)
 
-    def test_duration_defaults_to_zero_when_no_timing(self, trace_handler, mock_exporter):
+    def test_duration_defaults_to_zero_when_no_timing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=0)
             trace_handler._workflow_trace(info)
@@ -553,7 +568,7 @@ class TestWorkflowTrace:
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][1] == pytest.approx(0.0)
 
-    def test_error_path_increments_error_counter(self, trace_handler, mock_exporter):
+    def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(error="Something went wrong", workflow_run_status="failed")
             trace_handler._workflow_trace(info)
@@ -563,7 +578,7 @@ class TestWorkflowTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_no_error_counter_on_success(self, trace_handler, mock_exporter):
+    def test_no_error_counter_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._workflow_trace(make_workflow_info())
 
@@ -572,7 +587,7 @@ class TestWorkflowTrace:
         ]
         assert len(error_calls) == 0
 
-    def test_parent_trace_context_injected_into_span_attrs(self, trace_handler, mock_exporter):
+    def test_parent_trace_context_injected_into_span_attrs(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(
                 metadata={
@@ -601,14 +616,14 @@ class TestWorkflowTrace:
 
 
 class TestNodeExecutionTrace:
-    def test_emits_span_with_node_execution_span_name(self, trace_handler, mock_exporter):
+    def test_emits_span_with_node_execution_span_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info())
 
         span_call = mock_exporter.export_span.call_args
         assert span_call[0][0] == EnterpriseTelemetrySpan.NODE_EXECUTION
 
-    def test_span_contains_core_node_attributes(self, trace_handler, mock_exporter):
+    def test_span_contains_core_node_attributes(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info())
 
@@ -620,7 +635,7 @@ class TestNodeExecutionTrace:
         assert attrs["gen_ai.request.model"] == "gpt-4"
         assert attrs["gen_ai.provider.name"] == "openai"
 
-    def test_increments_token_counters_when_tokens_present(self, trace_handler, mock_exporter):
+    def test_increments_token_counters_when_tokens_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info())
 
@@ -629,7 +644,7 @@ class TestNodeExecutionTrace:
         assert EnterpriseTelemetryCounter.INPUT_TOKENS in counter_names
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
-    def test_no_token_counters_when_total_tokens_zero(self, trace_handler, mock_exporter):
+    def test_no_token_counters_when_total_tokens_zero(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info(total_tokens=0))
 
@@ -637,7 +652,7 @@ class TestNodeExecutionTrace:
         assert EnterpriseTelemetryCounter.TOKENS not in counter_names
         assert EnterpriseTelemetryCounter.INPUT_TOKENS not in counter_names
 
-    def test_records_node_duration_histogram(self, trace_handler, mock_exporter):
+    def test_records_node_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info())
 
@@ -645,7 +660,7 @@ class TestNodeExecutionTrace:
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.NODE_DURATION
         assert hist_call[0][1] == pytest.approx(2.5)
 
-    def test_error_path_increments_error_counter(self, trace_handler, mock_exporter):
+    def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._node_execution_trace(make_node_info(error="Node failed", status="failed"))
 
@@ -654,14 +669,16 @@ class TestNodeExecutionTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_emits_companion_log_with_span_name_as_event(self, trace_handler, mock_exporter):
+    def test_emits_companion_log_with_span_name_as_event(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._node_execution_trace(make_node_info())
 
         mock_log.assert_called_once()
         assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetrySpan.NODE_EXECUTION.value
 
-    def test_plugin_name_added_to_duration_labels_for_tool_node(self, trace_handler, mock_exporter):
+    def test_plugin_name_added_to_duration_labels_for_tool_node(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_node_info(
                 node_type="tool",
@@ -677,7 +694,7 @@ class TestNodeExecutionTrace:
         duration_labels = hist_call[0][2]
         assert duration_labels.get("plugin_name") == "my-plugin"
 
-    def test_plugin_name_not_added_for_non_tool_node(self, trace_handler, mock_exporter):
+    def test_plugin_name_not_added_for_non_tool_node(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_node_info(
                 node_type="llm",
@@ -693,7 +710,9 @@ class TestNodeExecutionTrace:
         duration_labels = hist_call[0][2]
         assert "plugin_name" not in duration_labels
 
-    def test_companion_log_inputs_use_ref_when_content_disabled(self, trace_handler, mock_exporter):
+    def test_companion_log_inputs_use_ref_when_content_disabled(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._node_execution_trace(
@@ -711,14 +730,14 @@ class TestNodeExecutionTrace:
 
 
 class TestDraftNodeExecutionTrace:
-    def test_uses_draft_span_name(self, trace_handler, mock_exporter):
+    def test_uses_draft_span_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             trace_handler._draft_node_execution_trace(make_draft_node_info())
 
         span_call = mock_exporter.export_span.call_args
         assert span_call[0][0] == EnterpriseTelemetrySpan.DRAFT_NODE_EXECUTION
 
-    def test_correlation_id_is_node_execution_id(self, trace_handler, mock_exporter):
+    def test_correlation_id_is_node_execution_id(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_draft_node_info()
             trace_handler._draft_node_execution_trace(info)
@@ -726,7 +745,7 @@ class TestDraftNodeExecutionTrace:
         span_call = mock_exporter.export_span.call_args
         assert span_call[1]["correlation_id"] == "ne-draft-001"
 
-    def test_trace_correlation_override_is_workflow_run_id(self, trace_handler, mock_exporter):
+    def test_trace_correlation_override_is_workflow_run_id(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_draft_node_info()
             trace_handler._draft_node_execution_trace(info)
@@ -734,7 +753,7 @@ class TestDraftNodeExecutionTrace:
         span_call = mock_exporter.export_span.call_args
         assert span_call[1]["trace_correlation_override"] == "run-draft-001"
 
-    def test_companion_log_uses_draft_span_name(self, trace_handler, mock_exporter):
+    def test_companion_log_uses_draft_span_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._draft_node_execution_trace(make_draft_node_info())
 
@@ -747,34 +766,36 @@ class TestDraftNodeExecutionTrace:
 
 
 class TestMessageTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._message_trace(make_message_info())
 
         mock_emit.assert_called_once()
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.MESSAGE_RUN
 
-    def test_emits_correct_tenant_and_user(self, trace_handler, mock_exporter):
+    def test_emits_correct_tenant_and_user(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._message_trace(make_message_info())
 
         assert mock_emit.call_args[1]["tenant_id"] == "tenant-abc"
 
-    def test_duration_computed_from_timestamps(self, trace_handler, mock_exporter):
+    def test_duration_computed_from_timestamps(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._message_trace(make_message_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.message.duration"] == pytest.approx(5.0)
 
-    def test_no_duration_when_timestamps_missing(self, trace_handler, mock_exporter):
+    def test_no_duration_when_timestamps_missing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._message_trace(make_message_info(start_time=None, end_time=None))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert "dify.message.duration" not in attrs
 
-    def test_records_duration_histogram_when_timestamps_present(self, trace_handler, mock_exporter):
+    def test_records_duration_histogram_when_timestamps_present(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info())
 
@@ -786,14 +807,14 @@ class TestMessageTrace:
         assert len(hist_calls) == 1
         assert hist_calls[0][0][1] == pytest.approx(5.0)
 
-    def test_no_duration_histogram_when_timestamps_missing(self, trace_handler, mock_exporter):
+    def test_no_duration_histogram_when_timestamps_missing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info(start_time=None, end_time=None))
 
         hist_names = [c[0][0] for c in mock_exporter.record_histogram.call_args_list]
         assert EnterpriseTelemetryHistogram.MESSAGE_DURATION not in hist_names
 
-    def test_records_ttft_histogram_when_present(self, trace_handler, mock_exporter):
+    def test_records_ttft_histogram_when_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info(gen_ai_server_time_to_first_token=0.42))
 
@@ -805,14 +826,14 @@ class TestMessageTrace:
         assert len(ttft_calls) == 1
         assert ttft_calls[0][0][1] == pytest.approx(0.42)
 
-    def test_no_ttft_histogram_when_not_present(self, trace_handler, mock_exporter):
+    def test_no_ttft_histogram_when_not_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info(gen_ai_server_time_to_first_token=None))
 
         hist_names = [c[0][0] for c in mock_exporter.record_histogram.call_args_list]
         assert EnterpriseTelemetryHistogram.MESSAGE_TTFT not in hist_names
 
-    def test_increments_token_counters(self, trace_handler, mock_exporter):
+    def test_increments_token_counters(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info())
 
@@ -821,7 +842,7 @@ class TestMessageTrace:
         assert EnterpriseTelemetryCounter.INPUT_TOKENS in counter_names
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
-    def test_error_path_increments_error_counter(self, trace_handler, mock_exporter):
+    def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info(error="LLM failed"))
 
@@ -830,7 +851,7 @@ class TestMessageTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._message_trace(make_message_info())
@@ -846,27 +867,27 @@ class TestMessageTrace:
 
 
 class TestToolTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._tool_trace(make_tool_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.TOOL_EXECUTION
 
-    def test_status_is_succeeded_on_success(self, trace_handler, mock_exporter):
+    def test_status_is_succeeded_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._tool_trace(make_tool_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.tool.status"] == "succeeded"
 
-    def test_status_is_failed_on_error(self, trace_handler, mock_exporter):
+    def test_status_is_failed_on_error(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._tool_trace(make_tool_info(error="Tool error"))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.tool.status"] == "failed"
 
-    def test_records_tool_duration_histogram(self, trace_handler, mock_exporter):
+    def test_records_tool_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._tool_trace(make_tool_info())
 
@@ -874,7 +895,7 @@ class TestToolTrace:
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.TOOL_DURATION
         assert hist_call[0][1] == pytest.approx(1.5)
 
-    def test_error_increments_error_counter(self, trace_handler, mock_exporter):
+    def test_error_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._tool_trace(make_tool_info(error="Tool crashed"))
 
@@ -883,7 +904,7 @@ class TestToolTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._tool_trace(make_tool_info())
@@ -892,7 +913,7 @@ class TestToolTrace:
         assert attrs["dify.tool.inputs"].startswith("ref:message_id=")
         assert attrs["dify.tool.outputs"].startswith("ref:message_id=")
 
-    def test_inputs_present_when_include_content_true(self, trace_handler, mock_exporter):
+    def test_inputs_present_when_include_content_true(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._tool_trace(make_tool_info())
@@ -901,7 +922,7 @@ class TestToolTrace:
         assert attrs["dify.tool.inputs"] == json.dumps({"query": "test"})
         assert attrs["dify.tool.outputs"] == "search results"
 
-    def test_increments_requests_counter(self, trace_handler, mock_exporter):
+    def test_increments_requests_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._tool_trace(make_tool_info())
 
@@ -918,27 +939,27 @@ class TestToolTrace:
 
 
 class TestModerationTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._moderation_trace(make_moderation_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.MODERATION_CHECK
 
-    def test_flagged_true_sets_attribute(self, trace_handler, mock_exporter):
+    def test_flagged_true_sets_attribute(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._moderation_trace(make_moderation_info(flagged=True))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.moderation.flagged"] is True
 
-    def test_flagged_false_sets_attribute(self, trace_handler, mock_exporter):
+    def test_flagged_false_sets_attribute(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._moderation_trace(make_moderation_info(flagged=False))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.moderation.flagged"] is False
 
-    def test_query_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_query_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._moderation_trace(make_moderation_info())
@@ -946,7 +967,7 @@ class TestModerationTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.moderation.query"].startswith("ref:message_id=")
 
-    def test_query_present_when_include_content_true(self, trace_handler, mock_exporter):
+    def test_query_present_when_include_content_true(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = True
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._moderation_trace(make_moderation_info())
@@ -954,7 +975,7 @@ class TestModerationTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.moderation.query"] == "is this ok?"
 
-    def test_increments_requests_counter(self, trace_handler, mock_exporter):
+    def test_increments_requests_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._moderation_trace(make_moderation_info())
 
@@ -971,48 +992,48 @@ class TestModerationTrace:
 
 
 class TestSuggestedQuestionTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.SUGGESTED_QUESTION_GENERATION
 
-    def test_duration_computed_from_timestamps(self, trace_handler, mock_exporter):
+    def test_duration_computed_from_timestamps(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.duration"] == pytest.approx(5.0)
 
-    def test_duration_is_none_when_timestamps_missing(self, trace_handler, mock_exporter):
+    def test_duration_is_none_when_timestamps_missing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info(start_time=None, end_time=None))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.duration"] is None
 
-    def test_status_is_failed_when_error_present(self, trace_handler, mock_exporter):
+    def test_status_is_failed_when_error_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info(error="Generation failed"))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.status"] == "failed"
 
-    def test_status_falls_back_to_succeeded_when_no_error(self, trace_handler, mock_exporter):
+    def test_status_falls_back_to_succeeded_when_no_error(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info(status=None, error=None))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.status"] == "succeeded"
 
-    def test_question_count_attribute(self, trace_handler, mock_exporter):
+    def test_question_count_attribute(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.count"] == 2
 
-    def test_questions_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_questions_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._suggested_question_trace(make_suggested_question_info())
@@ -1020,7 +1041,7 @@ class TestSuggestedQuestionTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.suggested_question.questions"].startswith("ref:message_id=")
 
-    def test_increments_requests_counter(self, trace_handler, mock_exporter):
+    def test_increments_requests_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._suggested_question_trace(make_suggested_question_info())
 
@@ -1037,48 +1058,48 @@ class TestSuggestedQuestionTrace:
 
 
 class TestDatasetRetrievalTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.DATASET_RETRIEVAL
 
-    def test_document_count_attribute(self, trace_handler, mock_exporter):
+    def test_document_count_attribute(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.retrieval.document_count"] == 1
 
-    def test_dataset_ids_extracted(self, trace_handler, mock_exporter):
+    def test_dataset_ids_extracted(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert "ds-001" in attrs["dify.dataset.id"]
 
-    def test_empty_documents_has_zero_count(self, trace_handler, mock_exporter):
+    def test_empty_documents_has_zero_count(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info(documents=[]))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.retrieval.document_count"] == 0
 
-    def test_status_succeeded_when_no_error(self, trace_handler, mock_exporter):
+    def test_status_succeeded_when_no_error(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.retrieval.status"] == "succeeded"
 
-    def test_status_failed_when_error_present(self, trace_handler, mock_exporter):
+    def test_status_failed_when_error_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info(error="DB error"))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.retrieval.status"] == "failed"
 
-    def test_embedding_model_attributes_set_when_present(self, trace_handler, mock_exporter):
+    def test_embedding_model_attributes_set_when_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
@@ -1086,7 +1107,7 @@ class TestDatasetRetrievalTrace:
         assert "dify.dataset.embedding_providers" in attrs
         assert "dify.dataset.embedding_models" in attrs
 
-    def test_no_embedding_model_attributes_when_not_provided(self, trace_handler, mock_exporter):
+    def test_no_embedding_model_attributes_when_not_provided(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(
                 make_dataset_retrieval_info(metadata={"app_id": "app-001", "tenant_id": "tenant-abc"})
@@ -1096,7 +1117,7 @@ class TestDatasetRetrievalTrace:
         assert "dify.dataset.embedding_providers" not in attrs
         assert "dify.dataset.embedding_models" not in attrs
 
-    def test_rerank_attributes_set_when_present(self, trace_handler, mock_exporter):
+    def test_rerank_attributes_set_when_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(
                 make_dataset_retrieval_info(
@@ -1113,7 +1134,7 @@ class TestDatasetRetrievalTrace:
         assert attrs["dify.retrieval.rerank_provider"] == "cohere"
         assert attrs["dify.retrieval.rerank_model"] == "rerank-english"
 
-    def test_no_rerank_attributes_when_not_present(self, trace_handler, mock_exporter):
+    def test_no_rerank_attributes_when_not_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(
                 make_dataset_retrieval_info(metadata={"app_id": "app-001", "tenant_id": "tenant-abc"})
@@ -1123,7 +1144,7 @@ class TestDatasetRetrievalTrace:
         assert "dify.retrieval.rerank_provider" not in attrs
         assert "dify.retrieval.rerank_model" not in attrs
 
-    def test_dataset_retrieval_counter_incremented_per_dataset(self, trace_handler, mock_exporter):
+    def test_dataset_retrieval_counter_incremented_per_dataset(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
 
@@ -1135,7 +1156,7 @@ class TestDatasetRetrievalTrace:
         assert len(ds_calls) == 1
         assert ds_calls[0][0][2]["dataset_id"] == "ds-001"
 
-    def test_no_dataset_retrieval_counter_when_no_documents(self, trace_handler, mock_exporter):
+    def test_no_dataset_retrieval_counter_when_no_documents(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info(documents=[]))
 
@@ -1146,7 +1167,7 @@ class TestDatasetRetrievalTrace:
         ]
         assert len(ds_calls) == 0
 
-    def test_query_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_query_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._dataset_retrieval_trace(make_dataset_retrieval_info())
@@ -1161,34 +1182,34 @@ class TestDatasetRetrievalTrace:
 
 
 class TestGenerateNameTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(make_generate_name_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.GENERATE_NAME_EXECUTION
 
-    def test_duration_computed_from_timestamps(self, trace_handler, mock_exporter):
+    def test_duration_computed_from_timestamps(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(make_generate_name_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.generate_name.duration"] == pytest.approx(5.0)
 
-    def test_no_duration_when_timestamps_missing(self, trace_handler, mock_exporter):
+    def test_no_duration_when_timestamps_missing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(make_generate_name_info(start_time=None, end_time=None))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.generate_name.duration"] is None
 
-    def test_status_succeeded_on_success(self, trace_handler, mock_exporter):
+    def test_status_succeeded_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(make_generate_name_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.generate_name.status"] == "succeeded"
 
-    def test_status_failed_when_metadata_has_error(self, trace_handler, mock_exporter):
+    def test_status_failed_when_metadata_has_error(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(
                 make_generate_name_info(
@@ -1203,7 +1224,7 @@ class TestGenerateNameTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.generate_name.status"] == "failed"
 
-    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_inputs_and_outputs_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._generate_name_trace(make_generate_name_info())
@@ -1212,7 +1233,7 @@ class TestGenerateNameTrace:
         assert attrs["dify.generate_name.inputs"].startswith("ref:conversation_id=")
         assert attrs["dify.generate_name.outputs"].startswith("ref:conversation_id=")
 
-    def test_increments_requests_counter(self, trace_handler, mock_exporter):
+    def test_increments_requests_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._generate_name_trace(make_generate_name_info())
 
@@ -1229,27 +1250,27 @@ class TestGenerateNameTrace:
 
 
 class TestPromptGenerationTrace:
-    def test_emits_event_with_correct_name(self, trace_handler, mock_exporter):
+    def test_emits_event_with_correct_name(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 
         assert mock_emit.call_args[1]["event_name"] == EnterpriseTelemetryEvent.PROMPT_GENERATION_EXECUTION
 
-    def test_status_succeeded_on_success(self, trace_handler, mock_exporter):
+    def test_status_succeeded_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.prompt_generation.status"] == "succeeded"
 
-    def test_status_failed_when_error_present(self, trace_handler, mock_exporter):
+    def test_status_failed_when_error_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info(error="Generation error"))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.prompt_generation.status"] == "failed"
 
-    def test_token_counters_incremented(self, trace_handler, mock_exporter):
+    def test_token_counters_incremented(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 
@@ -1258,7 +1279,7 @@ class TestPromptGenerationTrace:
         assert EnterpriseTelemetryCounter.INPUT_TOKENS in counter_names
         assert EnterpriseTelemetryCounter.OUTPUT_TOKENS in counter_names
 
-    def test_records_duration_histogram(self, trace_handler, mock_exporter):
+    def test_records_duration_histogram(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 
@@ -1270,7 +1291,7 @@ class TestPromptGenerationTrace:
         assert len(hist_calls) == 1
         assert hist_calls[0][0][1] == pytest.approx(3.2)
 
-    def test_total_price_attribute_set_when_present(self, trace_handler, mock_exporter):
+    def test_total_price_attribute_set_when_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info(total_price=0.05, currency="USD"))
 
@@ -1278,14 +1299,14 @@ class TestPromptGenerationTrace:
         assert attrs["dify.prompt_generation.total_price"] == pytest.approx(0.05)
         assert attrs["dify.prompt_generation.currency"] == "USD"
 
-    def test_no_total_price_attribute_when_none(self, trace_handler, mock_exporter):
+    def test_no_total_price_attribute_when_none(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info(total_price=None))
 
         attrs = mock_emit.call_args[1]["attributes"]
         assert "dify.prompt_generation.total_price" not in attrs
 
-    def test_error_increments_error_counter(self, trace_handler, mock_exporter):
+    def test_error_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._prompt_generation_trace(make_prompt_generation_info(error="Prompt failed"))
 
@@ -1294,7 +1315,7 @@ class TestPromptGenerationTrace:
         ]
         assert len(error_calls) == 1
 
-    def test_no_error_counter_on_success(self, trace_handler, mock_exporter):
+    def test_no_error_counter_on_success(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 
@@ -1303,7 +1324,7 @@ class TestPromptGenerationTrace:
         ]
         assert len(error_calls) == 0
 
-    def test_instruction_gated_by_include_content(self, trace_handler, mock_exporter):
+    def test_instruction_gated_by_include_content(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
@@ -1311,7 +1332,7 @@ class TestPromptGenerationTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert attrs["dify.prompt_generation.instruction"].startswith("ref:trace_id=")
 
-    def test_operation_type_label_used_in_token_counters(self, trace_handler, mock_exporter):
+    def test_operation_type_label_used_in_token_counters(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._prompt_generation_trace(make_prompt_generation_info(operation_type="code_generate"))
 
@@ -1321,7 +1342,7 @@ class TestPromptGenerationTrace:
         assert len(token_calls) == 1
         assert token_calls[0][0][2]["operation_type"] == "code_generate"
 
-    def test_emits_correct_tenant_id(self, trace_handler, mock_exporter):
+    def test_emits_correct_tenant_id(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:
             trace_handler._prompt_generation_trace(make_prompt_generation_info())
 

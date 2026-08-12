@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import Tag from '.'
 
-const COLORS: Array<NonNullable<React.ComponentProps<typeof Tag>['color']>> = ['green', 'yellow', 'red', 'gray']
+const COLORS: Array<NonNullable<React.ComponentProps<typeof Tag>['color']>> = [
+  'green',
+  'yellow',
+  'red',
+  'gray',
+]
 
 const TagGallery = ({
   bordered = false,
@@ -14,12 +19,17 @@ const TagGallery = ({
     <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
       <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Tag variants</div>
       <div className="grid grid-cols-2 gap-3">
-        {COLORS.map(color => (
-          <div key={color} className="flex flex-col items-start gap-2 rounded-xl border border-transparent px-3 py-2 hover:border-divider-subtle hover:bg-background-default-subtle">
+        {COLORS.map((color) => (
+          <div
+            key={color}
+            className="flex flex-col items-start gap-2 rounded-xl border border-transparent px-3 py-2 hover:border-divider-subtle hover:bg-background-default-subtle"
+          >
             <Tag color={color} bordered={bordered} hideBg={hideBg}>
               {color.charAt(0).toUpperCase() + color.slice(1)}
             </Tag>
-            <span className="text-[11px] tracking-[0.16em] text-text-quaternary uppercase">{color}</span>
+            <span className="text-[11px] tracking-[0.16em] text-text-quaternary uppercase">
+              {color}
+            </span>
           </div>
         ))}
       </div>
@@ -34,7 +44,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Color-coded label component. Toggle borders or remove background to fit dark/light surfaces.',
+        component:
+          'Color-coded label component. Toggle borders or remove background to fit dark/light surfaces.',
       },
     },
   },

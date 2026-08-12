@@ -1,4 +1,4 @@
-from .channel import BroadcastChannel
+from .pubsub_channel import BroadcastChannel
 from .sharded_channel import ShardedRedisBroadcastChannel
 
 __all__ = ["BroadcastChannel", "ShardedRedisBroadcastChannel"]

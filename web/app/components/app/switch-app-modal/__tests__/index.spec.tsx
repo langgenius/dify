@@ -1,10 +1,10 @@
-import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -20,25 +20,23 @@ vi.mock('@/next/navigation', () => ({
 
 // Use real store - global zustand mock will auto-reset between tests
 
-const mockSwitchApp = vi.fn()
-const mockDeleteApp = vi.fn()
-vi.mock('@/service/apps', () => ({
-  switchApp: (...args: unknown[]) => mockSwitchApp(...args),
-  deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
-}))
+const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
+const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
+const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
 
-let mockIsEditor = true
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsEditor,
-    userProfile: {
-      email: 'user@example.com',
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
+  return {
+    ...actual,
+    useMutation: () => {
+      const mutationIndex = mockMutationState.hookIndex++ % 2
+      return {
+        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
+      }
     },
-    langGeniusVersionInfo: {
-      current_version: '1.0.0',
-    },
-  }),
-}))
+  }
+})
 
 let mockEnableBilling = false
 let mockPlan = {
@@ -84,19 +82,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({ onSelect, onClose }: {
-    onSelect: (payload: { type: 'image', url: string, fileId: string }) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="app-icon-picker">
-      <button onClick={() => onSelect({ type: 'image', url: 'https://example.com/icon.png', fileId: 'file-id-1' })}>select-app-icon</button>
-      <button onClick={onClose}>close-app-icon-picker</button>
-    </div>
-  ),
-}))
-
-const createMockApp = (overrides: Partial<App> = {}): App => ({
+const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'app-123',
   name: 'Demo App',
   description: 'Demo description',
@@ -107,22 +93,10 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_url: null,
   use_icon_as_answer_icon: false,
   mode: AppModeEnum.COMPLETION,
-  enable_site: true,
-  enable_api: true,
-  api_rpm: 60,
-  api_rph: 3600,
-  is_demo: false,
-  model_config: {} as App['model_config'],
-  app_model_config: {} as App['app_model_config'],
   created_at: Date.now(),
   updated_at: Date.now(),
-  site: {
-    access_token: 'token',
-    app_base_url: 'https://example.com',
-  } as App['site'],
-  api_base_url: 'https://api.example.com',
   tags: [],
-  access_mode: 'public_access' as App['access_mode'],
+  access_mode: 'public_access',
   ...overrides,
 })
 
@@ -135,10 +109,14 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -147,25 +125,16 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
   const onClose = vi.fn()
-  const onSuccess = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal
-      show
-      appDetail={appDetail}
-      onClose={onClose}
-      onSuccess={onSuccess}
-      {...overrides}
-    />,
-
+    <SwitchAppModal show appDetail={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
     ...utils,
     notify: toastMocks.notify,
     onClose,
-    onSuccess,
     appDetail,
   }
 }
@@ -175,15 +144,15 @@ const setAppDetailSpy = vi.fn()
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSwitchApp.mockReset()
-    mockDeleteApp.mockReset()
+    mockMutationState.hookIndex = 0
+    mockConvertToWorkflow.mockReset()
+    mockDeleteOriginalApp.mockReset()
     // Spy on setAppDetail
     const originalSetAppDetail = useAppStore.getState().setAppDetail
     setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
       originalSetAppDetail(...args)
     })
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
       type: Plan.sandbox,
@@ -217,6 +186,9 @@ describe('SwitchAppModal', () => {
       // Assert
       expect(screen.getByText('app.switch')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Demo App(copy)')).toBeInTheDocument()
+      expect(
+        document.querySelector('.i-custom-vender-solid-alertsAndFeedback-alert-triangle'),
+      ).toBeInTheDocument()
     })
 
     it('should not render modal content when show is false', () => {
@@ -273,28 +245,40 @@ describe('SwitchAppModal', () => {
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
+    it('should call onClose when close button is clicked', async () => {
+      const user = userEvent.setup()
+      const { onClose } = renderComponent()
+
+      await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail, notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
+      const { appDetail, notify, onClose } = renderComponent()
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-001',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       // Assert
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith({
-          appID: appDetail.id,
-          name: 'Demo App(copy)',
-          icon_type: 'emoji',
-          icon: '🚀',
-          icon_background: '#FFEAD5',
+        expect(mockConvertToWorkflow).toHaveBeenCalledWith({
+          params: { app_id: appDetail.id },
+          body: {
+            name: 'Demo App(copy)',
+            icon_type: 'emoji',
+            icon: '🚀',
+            icon_background: '#FFEAD5',
+          },
         })
-        expect(onSuccess).toHaveBeenCalledTimes(1)
         expect(onClose).toHaveBeenCalledTimes(1)
         expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
@@ -303,21 +287,34 @@ describe('SwitchAppModal', () => {
     it('should update the icon through the picker before switching apps', async () => {
       const user = userEvent.setup()
       const { appDetail } = renderComponent()
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-003' })
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-003',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
 
-      await user.click(screen.getByText('select-app-icon'))
+      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       await waitFor(() => {
-        expect(mockSwitchApp).toHaveBeenCalledWith(expect.objectContaining({
-          appID: appDetail.id,
-          icon_type: 'image',
-          icon: 'file-id-1',
-          icon_background: undefined,
-        }))
+        expect(mockConvertToWorkflow).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: { app_id: appDetail.id },
+            body: expect.objectContaining({
+              icon_type: 'emoji',
+              icon: '🚀',
+              icon_background: '#E4FBCC',
+            }),
+          }),
+        )
       })
     })
 
@@ -326,15 +323,22 @@ describe('SwitchAppModal', () => {
       renderComponent()
 
       await user.click(screen.getByText('open-icon-picker'))
-      expect(screen.getByTestId('app-icon-picker')).toBeInTheDocument()
-      await user.click(screen.getByText('close-app-icon-picker'))
-      expect(screen.queryByTestId('app-icon-picker')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      })
+      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(screen.queryByRole('button', { name: 'common.operation.confirm' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.confirm' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
@@ -351,7 +355,10 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       // Arrange
       const { appDetail } = renderComponent({ inAppDetail: true })
-      mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-002' })
+      mockConvertToWorkflow.mockResolvedValueOnce({
+        new_app_id: 'new-app-002',
+        permission_keys: ['app.acl.view_layout'],
+      })
 
       // Act
       await user.click(screen.getByText('app.removeOriginal'))
@@ -361,7 +368,9 @@ describe('SwitchAppModal', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockDeleteApp).toHaveBeenCalledWith(appDetail.id)
+        expect(mockDeleteOriginalApp).toHaveBeenCalledWith({
+          params: { app_id: appDetail.id },
+        })
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
@@ -371,18 +380,20 @@ describe('SwitchAppModal', () => {
     it('should notify error when switch app fails', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { notify, onClose, onSuccess } = renderComponent()
-      mockSwitchApp.mockRejectedValueOnce(new Error('fail'))
+      const { notify, onClose } = renderComponent()
+      mockConvertToWorkflow.mockRejectedValueOnce(new Error('fail'))
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
       // Assert
       await waitFor(() => {
-        expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
+        expect(notify).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'app.newApp.appCreateFailed',
+        })
       })
       expect(onClose).not.toHaveBeenCalled()
-      expect(onSuccess).not.toHaveBeenCalled()
     })
   })
 })

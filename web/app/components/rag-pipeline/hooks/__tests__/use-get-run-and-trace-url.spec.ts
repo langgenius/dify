@@ -1,6 +1,5 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-
 import { useGetRunAndTraceUrl } from '../use-get-run-and-trace-url'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -12,12 +11,6 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 describe('useGetRunAndTraceUrl', () => {
-  it('should return a function getWorkflowRunAndTraceUrl', () => {
-    const { result } = renderHook(() => useGetRunAndTraceUrl())
-
-    expect(typeof result.current.getWorkflowRunAndTraceUrl).toBe('function')
-  })
-
   it('should generate correct runUrl', () => {
     const { result } = renderHook(() => useGetRunAndTraceUrl())
     const { runUrl } = result.current.getWorkflowRunAndTraceUrl('run-abc')

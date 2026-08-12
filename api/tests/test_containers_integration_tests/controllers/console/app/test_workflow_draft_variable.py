@@ -168,6 +168,7 @@ def test_node_variable_collection_get_success(
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
     node_variable = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_123")
+    node_variable_id = node_variable.id
     _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_456", name="other")
 
     response = test_client_with_containers.get(
@@ -178,7 +179,7 @@ def test_node_variable_collection_get_success(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
-    assert [item["id"] for item in payload["items"]] == [node_variable.id]
+    assert [item["id"] for item in payload["items"]] == [node_variable_id]
 
 
 def test_node_variable_collection_get_invalid_node_id(
@@ -377,6 +378,7 @@ def test_system_variable_collection_get(
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
     variable = _create_system_variable(db_session_with_containers, app.id, account.id)
+    variable_id = variable.id
 
     response = test_client_with_containers.get(
         f"/console/api/apps/{app.id}/workflows/draft/system-variables",
@@ -386,7 +388,7 @@ def test_system_variable_collection_get(
     assert response.status_code == 200
     payload = response.get_json()
     assert payload is not None
-    assert [item["id"] for item in payload["items"]] == [variable.id]
+    assert [item["id"] for item in payload["items"]] == [variable_id]
 
 
 def test_environment_variable_collection_get(

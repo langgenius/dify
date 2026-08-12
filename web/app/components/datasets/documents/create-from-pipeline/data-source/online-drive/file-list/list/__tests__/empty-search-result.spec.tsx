@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EmptySearchResult from '../empty-search-result'
 
 vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
-  SearchMenu: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="search-icon" {...props} />,
+  SearchMenu: (props: React.SVGProps<SVGSVGElement>) => (
+    <svg data-testid="search-icon" {...props} />
+  ),
 }))
 
 describe('EmptySearchResult', () => {

@@ -10,13 +10,9 @@ export type IAppDetail = {
 
 const AppDetail: FC<IAppDetail> = ({ children }) => {
   const { t } = useTranslation()
-  useDocumentTitle(t('menus.appDetail', { ns: 'common' }))
+  useDocumentTitle(t(($) => $['menus.appDetail'], { ns: 'common' }))
 
-  return (
-    <>
-      {children}
-    </>
-  )
+  return <>{children}</>
 }
 
 export default React.memo(AppDetail)

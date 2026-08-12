@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { VarType } from '@/app/components/workflow/types'
-import {
-  HTTP_BODY_VARIABLE_TYPES,
-  isSupportedHttpBodyVariable,
-} from './supported-body-vars'
+import { HTTP_BODY_VARIABLE_TYPES, isSupportedHttpBodyVariable } from './supported-body-vars'
 
 describe('HTTP body variable support', () => {
   it('should include structured variables in the selector', () => {

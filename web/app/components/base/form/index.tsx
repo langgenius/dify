@@ -1,6 +1,5 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form'
 import CheckboxField from './components/field/checkbox'
-import CustomSelectField from './components/field/custom-select'
 import FileTypesField from './components/field/file-types'
 import FileUploaderField from './components/field/file-uploader'
 import InputTypeSelectField from './components/field/input-type-select'
@@ -14,8 +13,7 @@ import UploadMethodField from './components/field/upload-method'
 import VariableOrConstantInputField from './components/field/variable-selector'
 import Actions from './components/form/actions'
 
-const { fieldContext, useFieldContext, formContext, useFormContext }
-  = createFormHookContexts()
+const { fieldContext, useFieldContext, formContext, useFormContext } = createFormHookContexts()
 
 export { formContext, useFieldContext, useFormContext }
 
@@ -26,7 +24,6 @@ export const { useAppForm, withForm } = createFormHook({
     NumberInputField,
     CheckboxField,
     SelectField,
-    CustomSelectField,
     OptionsField,
     InputTypeSelectField,
     FileTypesField,

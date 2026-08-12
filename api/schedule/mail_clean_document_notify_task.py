@@ -8,7 +8,7 @@ from sqlalchemy import select
 import app
 from configs import dify_config
 from core.db.session_factory import session_factory
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
 from models import Account, Tenant, TenantAccountJoin
@@ -45,7 +45,7 @@ def mail_clean_document_notify_task():
                 dataset_auto_disable_logs_map[dataset_auto_disable_log.tenant_id].append(dataset_auto_disable_log)
             url = f"{dify_config.CONSOLE_WEB_URL}/datasets"
             for tenant_id, tenant_dataset_auto_disable_logs in dataset_auto_disable_logs_map.items():
-                features = FeatureService.get_features(tenant_id)
+                features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
                 plan = features.billing.subscription.plan
                 if plan != CloudPlan.SANDBOX:
                     knowledge_details = []

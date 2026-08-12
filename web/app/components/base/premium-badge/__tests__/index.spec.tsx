@@ -1,46 +1,22 @@
 import { render, screen } from '@testing-library/react'
-import PremiumBadge from '../index'
+import userEvent from '@testing-library/user-event'
+import PremiumBadge, { PremiumBadgeButton } from '../index'
 
 describe('PremiumBadge', () => {
-  it('renders with default props', () => {
+  it('renders informational content without button semantics', () => {
     render(<PremiumBadge>Premium</PremiumBadge>)
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('premium-badge-m')
-    expect(badge).toHaveClass('premium-badge-blue')
+
+    expect(screen.getByText('Premium')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('renders with custom size and color', () => {
-    render(
-      <PremiumBadge size="s" color="indigo">
-        Premium
-      </PremiumBadge>,
-    )
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('premium-badge-s')
-    expect(badge).toHaveClass('premium-badge-indigo')
-  })
+  it('exposes interactive content as a button', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    render(<PremiumBadgeButton onClick={onClick}>Upgrade</PremiumBadgeButton>)
 
-  it('applies allowHover class when allowHover is true', () => {
-    render(
-      <PremiumBadge allowHover>
-        Premium
-      </PremiumBadge>,
-    )
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('pb-allow-hover')
-  })
+    await user.click(screen.getByRole('button', { name: 'Upgrade' }))
 
-  it('applies custom styles', () => {
-    render(
-      <PremiumBadge styleCss={{ backgroundColor: 'red' }}>
-        Premium
-      </PremiumBadge>,
-    )
-    const badge = screen.getByText('Premium')
-    expect(badge).toBeInTheDocument()
-    expect(badge).toHaveStyle('background-color: red')
+    expect(onClick).toHaveBeenCalledOnce()
   })
 })

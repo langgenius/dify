@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui)
+const render = (ui: ReactElement) => renderWithConsoleQuery(ui)
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -29,7 +30,9 @@ const mockLogin = vi.mocked(login)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
-  mockFetchInitValidateStatus.mockResolvedValue({ status: 'finished' } as InitValidateStatusResponse)
+  mockFetchInitValidateStatus.mockResolvedValue({
+    status: 'finished',
+  } as InitValidateStatusResponse)
 }
 
 describe('InstallForm', () => {
@@ -42,6 +45,7 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
   })
 
@@ -59,13 +63,15 @@ describe('InstallForm', () => {
     expect(mockSetup).not.toHaveBeenCalled()
   })
 
-  it('should submit and redirect to apps on successful login', async () => {
+  it('should submit and redirect to the console root on successful login', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
     mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -80,7 +86,7 @@ describe('InstallForm', () => {
           email: 'admin@example.com',
           name: 'Admin',
           password: 'Password123',
-          language: 'en',
+          language: 'en-US',
         },
       })
     })
@@ -96,17 +102,24 @@ describe('InstallForm', () => {
     })
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/')
     })
   })
 
   it('should redirect to sign in when login fails', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'fail', data: 'error', code: 'login_failed', message: 'login failed' } as any)
+    mockLogin.mockResolvedValue({
+      result: 'fail',
+      data: 'error',
+      code: 'login_failed',
+      message: 'login failed',
+    } as any)
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -127,7 +140,9 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -135,7 +150,7 @@ describe('InstallForm', () => {
     fireEvent.click(button)
 
     await waitFor(() => {
-      expect(button).toBeDisabled()
+      expectLoadingButton(button)
     })
 
     fireEvent.click(button)
@@ -154,7 +169,6 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     await waitFor(() => {
-      expect(localStorage.setItem).toHaveBeenCalledWith('setup_status', 'finished')
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
   })

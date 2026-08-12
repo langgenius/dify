@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from flask import Flask
@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
+from enums import DeploymentEdition
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import AppMode
@@ -32,19 +33,18 @@ def _make_app(mode: AppMode) -> SimpleNamespace:
 
 def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app_model: SimpleNamespace) -> None:
     # Skip setup and auth guardrails
-    monkeypatch.setattr("configs.dify_config.EDITION", "CLOUD")
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.delenv("INIT_PASSWORD", raising=False)
 
     # Avoid hitting the database when resolving the app model
-    monkeypatch.setattr(app_wraps, "_load_app_model", lambda _app_id: app_model)
+    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
 
 
 @dataclass
@@ -95,6 +95,7 @@ def test_human_input_preview_delegates_to_service(
         account=account,
         node_id="node-42",
         inputs={"topic": "tech"},
+        session=ANY,
     )
 
 
@@ -145,6 +146,7 @@ def test_human_input_submit_forwards_payload(app: Flask, monkeypatch: pytest.Mon
         form_inputs={"answer": "42"},
         inputs={"#node-1.result#": "LLM output"},
         action="approve",
+        session=ANY,
     )
 
 
@@ -194,6 +196,7 @@ def test_human_input_delivery_test_calls_service(
         node_id="node-7",
         delivery_method_id="delivery-123",
         inputs={},
+        session=ANY,
     )
 
 

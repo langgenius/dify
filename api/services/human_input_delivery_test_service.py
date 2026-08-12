@@ -119,10 +119,11 @@ class HumanInputDeliveryTestService:
 
 class EmailDeliveryTestHandler:
     def __init__(self, session_factory: sessionmaker | Engine | None = None) -> None:
-        if session_factory is None:
-            session_factory = sessionmaker(bind=db.engine)
-        elif isinstance(session_factory, Engine):
-            session_factory = sessionmaker(bind=session_factory)
+        match session_factory:
+            case None:
+                session_factory = sessionmaker(bind=db.engine)
+            case Engine():
+                session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
 
     def supports(self, method: DeliveryChannelConfig) -> bool:
@@ -136,7 +137,7 @@ class EmailDeliveryTestHandler:
     ) -> DeliveryTestResult:
         if not isinstance(method, EmailDeliveryMethod):
             raise DeliveryTestUnsupportedError("Delivery method does not support test send.")
-        features = FeatureService.get_features(context.tenant_id)
+        features = FeatureService.get_features(context.tenant_id, exclude_vector_space=True)
         if not features.human_input_email_delivery_enabled:
             raise DeliveryTestError("Email delivery is not available for current plan.")
         if not mail.is_inited():
@@ -179,11 +180,12 @@ class EmailDeliveryTestHandler:
         emails: list[str] = []
         bound_reference_ids: list[str] = []
         for recipient in recipients.items:
-            if isinstance(recipient, MemberRecipient):
-                bound_reference_ids.append(recipient.reference_id)
-            elif isinstance(recipient, ExternalRecipient):
-                if recipient.email:
-                    emails.append(recipient.email)
+            match recipient:
+                case MemberRecipient():
+                    bound_reference_ids.append(recipient.reference_id)
+                case ExternalRecipient():
+                    if recipient.email:
+                        emails.append(recipient.email)
 
         if recipients.include_bound_group:
             bound_reference_ids = []

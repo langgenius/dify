@@ -15,8 +15,7 @@ const extractFileId = (url: string) => {
   return match ? match[1] : null
 }
 const getIcon = (data?: ToolWithProvider): AppIconSelection => {
-  if (!data)
-    return DEFAULT_ICON as AppIconSelection
+  if (!data) return DEFAULT_ICON as AppIconSelection
   if (typeof data.icon === 'string')
     return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as AppIconSelection
   return {
@@ -26,14 +25,17 @@ const getIcon = (data?: ToolWithProvider): AppIconSelection => {
   } as unknown as AppIconSelection
 }
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
-  return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value }))
+  return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({
+    id: uuid(),
+    key,
+    value,
+  }))
 }
 export const isValidUrl = (string: string) => {
   try {
     const url = new URL(string)
     return url.protocol === 'http:' || url.protocol === 'https:'
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -54,6 +56,7 @@ type MCPModalFormState = {
   isDynamicRegistration: boolean
   clientID: string
   credentials: string
+  forwardUserIdentity: boolean
 }
 type MCPModalFormActions = {
   setUrl: (url: string) => void
@@ -68,6 +71,7 @@ type MCPModalFormActions = {
   setIsDynamicRegistration: (value: boolean) => void
   setClientID: (id: string) => void
   setCredentials: (credentials: string) => void
+  setForwardUserIdentity: (value: boolean) => void
   handleUrlBlur: (url: string) => Promise<void>
   resetIcon: () => void
 }
@@ -91,49 +95,54 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = useState(() => data?.server_identifier || '')
   const [timeout, setMcpTimeout] = useState(() => data?.configuration?.timeout || 30)
-  const [sseReadTimeout, setSseReadTimeout] = useState(() => data?.configuration?.sse_read_timeout || 300)
+  const [sseReadTimeout, setSseReadTimeout] = useState(
+    () => data?.configuration?.sse_read_timeout || 300,
+  )
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   // Auth state
   const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
-  const [isDynamicRegistration, setIsDynamicRegistration] = useState(() => isCreate ? true : (data?.is_dynamic_registration ?? true))
+  const [isDynamicRegistration, setIsDynamicRegistration] = useState(() =>
+    isCreate ? true : (data?.is_dynamic_registration ?? true),
+  )
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
-  const handleUrlBlur = useCallback(async (urlValue: string) => {
-    if (data)
-      return
-    if (!isValidUrl(urlValue))
-      return
-    const domain = getDomain(urlValue)
-    const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
-    setIsFetchingIcon(true)
-    try {
-      const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
-      setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
-    }
-    catch (e) {
-      let errorMessage = 'Failed to fetch remote icon'
-      if (e instanceof Response) {
-        try {
-          const errorData = await e.json()
-          if (errorData?.code)
-            errorMessage = `Upload failed: ${errorData.code}`
+  // M3 — user-identity forwarding. The UI toggle is true iff the persisted
+  // identity_mode is anything other than "off" — currently just "idp_token".
+  const [forwardUserIdentity, setForwardUserIdentity] = useState(
+    () => (data?.identity_mode ?? 'off') !== 'off',
+  )
+  const handleUrlBlur = useCallback(
+    async (urlValue: string) => {
+      if (data) return
+      if (!isValidUrl(urlValue)) return
+      const domain = getDomain(urlValue)
+      const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+      setIsFetchingIcon(true)
+      try {
+        const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
+        setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
+      } catch (e) {
+        let errorMessage = 'Failed to fetch remote icon'
+        if (e instanceof Response) {
+          try {
+            const errorData = await e.json()
+            if (errorData?.code) errorMessage = `Upload failed: ${errorData.code}`
+          } catch {
+            // Ignore JSON parsing errors
+          }
+        } else if (e instanceof Error) {
+          errorMessage = e.message
         }
-        catch {
-          // Ignore JSON parsing errors
-        }
+        console.error('Failed to fetch remote icon:', e)
+        toast.warning(errorMessage)
+      } finally {
+        setIsFetchingIcon(false)
       }
-      else if (e instanceof Error) {
-        errorMessage = e.message
-      }
-      console.error('Failed to fetch remote icon:', e)
-      toast.warning(errorMessage)
-    }
-    finally {
-      setIsFetchingIcon(false)
-    }
-  }, [data])
+    },
+    [data],
+  )
   const resetIcon = useCallback(() => {
     setAppIcon(getIcon(data))
   }, [data])
@@ -163,6 +172,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       isDynamicRegistration,
       clientID,
       credentials,
+      forwardUserIdentity,
     } satisfies MCPModalFormState,
     // Actions
     actions: {
@@ -178,6 +188,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       setIsDynamicRegistration,
       setClientID,
       setCredentials,
+      setForwardUserIdentity,
       handleUrlBlur,
       resetIcon,
     } satisfies MCPModalFormActions,

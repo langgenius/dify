@@ -172,7 +172,7 @@ Translation is handled automatically by Claude Code GitHub Actions. When changes
    - **DELETE**: Removed keys that need to be deleted from other languages
 1. Runs `i18n:check` to verify the initial sync status.
 1. Translates missing/updated keys while preserving placeholders (`{{var}}`, `${var}`, `<tag>`) and removes deleted keys.
-1. Runs `lint:fix` to sort JSON keys and `i18n:check` again to ensure everything is synchronized.
+1. Runs `vp fmt` on edited locale files and `i18n:check` again to ensure everything is synchronized.
 1. Creates a PR with the translations.
 
 ### Manual Trigger

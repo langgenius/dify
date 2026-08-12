@@ -26,6 +26,8 @@ export enum FormTypeEnum {
   object = 'object',
   array = 'array',
   dynamicSelect = 'dynamic-select',
+  date = 'date',
+  dateRange = 'date-range',
 }
 
 export type FormOption = {
@@ -68,6 +70,7 @@ export enum ModelFeatureEnum {
   video = 'video',
   document = 'document',
   audio = 'audio',
+  polling = 'polling',
   StructuredOutput = 'structured-output',
 }
 
@@ -92,7 +95,7 @@ export enum CustomConfigurationStatusEnum {
   noConfigure = 'no-configure',
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -121,11 +124,24 @@ export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
     type: string
   }
 }
-export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number, max?: number, placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[], placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & {
+  min?: number
+  max?: number
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & {
+  options: FormOption[]
+  placeholder?: TypeWithI18N
+}
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
-export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
-export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
+export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & {
+  placeholder?: TypeWithI18N
+}
+export type CredentialFormSchema =
+  | CredentialFormSchemaTextInput
+  | CredentialFormSchemaSelect
+  | CredentialFormSchemaRadio
+  | CredentialFormSchemaSecretInput
 
 export type ModelItem = {
   model: string
@@ -155,7 +171,7 @@ export enum QuotaUnitEnum {
   times = 'times',
 }
 
-export type QuotaConfiguration = {
+type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
   quota_unit: QuotaUnitEnum
   quota_limit: number
@@ -247,6 +263,7 @@ export type DefaultModelResponse = {
 export type DefaultModel = {
   provider: string
   model: string
+  plugin_id?: string
 }
 
 export type CustomConfigurationModelFixedFields = {
@@ -302,6 +319,14 @@ export type ModelCredential = {
   available_credentials: Credential[]
   current_credential_id?: string
   current_credential_name?: string
+}
+
+export type ModelCredentialPayload = {
+  credentials: Record<string, unknown>
+  model: string
+  model_type: ModelTypeEnum
+  name?: string
+  credential_id?: string
 }
 
 export enum ModelModalModeEnum {

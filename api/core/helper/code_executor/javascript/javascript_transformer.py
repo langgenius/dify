@@ -1,10 +1,12 @@
 from textwrap import dedent
+from typing import override
 
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 
 class NodeJsTemplateTransformer(TemplateTransformer):
     @classmethod
+    @override
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""            {cls._code_placeholder}
 

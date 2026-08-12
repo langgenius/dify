@@ -7,6 +7,7 @@ from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, Que
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 
 
 def _build_converter():
@@ -61,6 +62,37 @@ def test_human_input_form_filled_stream_response_contains_rendered_content():
     assert resp.data.node_title == "Human Input"
     assert resp.data.rendered_content.startswith("# Title")
     assert resp.data.action_id == "Approve"
+
+
+def test_human_input_form_filled_stream_response_serializes_submitted_data():
+    converter = _build_converter()
+    converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    queue_event = QueueHumanInputFormFilledEvent(
+        node_execution_id="exec-1",
+        node_id="node-1",
+        node_type="human-input",
+        node_title="Human Input",
+        rendered_content="# Title\nvalue",
+        action_id="Approve",
+        action_text="Approve",
+        submitted_data={
+            "decision": StringSegment(value="approve"),
+            "comment": StringSegment(value="looks good"),
+        },
+    )
+
+    resp = converter.human_input_form_filled_to_stream_response(event=queue_event, task_id="task-1")
+
+    assert resp.data.submitted_data == {
+        "decision": "approve",
+        "comment": "looks good",
+    }
 
 
 def test_human_input_form_timeout_stream_response_contains_timeout_metadata():

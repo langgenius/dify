@@ -212,7 +212,7 @@ describe('image-uploader utils', () => {
   })
 
   describe('traverseFileEntry', () => {
-    type MockFile = { name: string, relativePath?: string }
+    type MockFile = { name: string; relativePath?: string }
     type FileCallback = (file: MockFile) => void
     type EntriesCallback = (entries: FileSystemEntry[]) => void
 
@@ -302,8 +302,7 @@ describe('image-uploader utils', () => {
             if (readCount === 0) {
               readCount++
               callback([mockFileEntry1, mockFileEntry2])
-            }
-            else {
+            } else {
               callback([])
             }
           },

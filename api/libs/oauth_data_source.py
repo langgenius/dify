@@ -1,5 +1,5 @@
 import urllib.parse
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, override
 
 import httpx
 from flask_login import current_user
@@ -64,6 +64,7 @@ class NotionOAuth(OAuthDataSource):
     _NOTION_BLOCK_SEARCH = "https://api.notion.com/v1/blocks"
     _NOTION_BOT_USER = "https://api.notion.com/v1/users/me"
 
+    @override
     def get_authorization_url(self) -> str:
         params = {
             "client_id": self.client_id,
@@ -73,6 +74,7 @@ class NotionOAuth(OAuthDataSource):
         }
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
+    @override
     def get_access_token(self, code: str) -> None:
         data = {"code": code, "grant_type": "authorization_code", "redirect_uri": self.redirect_uri}
         headers = {"Accept": "application/json"}

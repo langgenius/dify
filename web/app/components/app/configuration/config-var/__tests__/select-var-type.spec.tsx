@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SelectVarType from '../select-var-type'
 
 describe('SelectVarType', () => {
-  it('should open the menu and return the selected variable type', () => {
+  it('should open the menu and return the selected variable type', async () => {
     const onChange = vi.fn()
 
     render(<SelectVarType onChange={onChange} />)
@@ -11,6 +11,8 @@ describe('SelectVarType', () => {
     fireEvent.click(screen.getByText('appDebug.variableConfig.checkbox'))
 
     expect(onChange).toHaveBeenCalledWith('checkbox')
-    expect(screen.queryByText('appDebug.variableConfig.checkbox')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('appDebug.variableConfig.checkbox')).not.toBeInTheDocument()
+    })
   })
 })

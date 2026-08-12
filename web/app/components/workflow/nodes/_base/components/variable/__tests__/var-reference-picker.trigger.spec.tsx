@@ -1,8 +1,5 @@
 import type { ComponentProps } from 'react'
-import {
-  Popover,
-  PopoverContent,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '../../../../tool/types'
@@ -52,9 +49,7 @@ const renderWithPopover = (
 
   render(
     <Popover onOpenChange={onOpenChange}>
-      <VarReferencePickerTrigger
-        {...createProps(overrides)}
-      />
+      <VarReferencePickerTrigger {...createProps(overrides)} />
       <PopoverContent popupClassName="border-none bg-transparent p-0 shadow-none">
         <div>picker-content</div>
       </PopoverContent>
@@ -96,7 +91,7 @@ describe('VarReferencePickerTrigger', () => {
     fireEvent.click(screen.getByText('Source Node'), { ctrlKey: true })
     expect(handleVariableJump).toHaveBeenCalledWith('node-a')
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-clear'))
+    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
     expect(handleClearVar).toHaveBeenCalledTimes(1)
   })
 
@@ -131,7 +126,7 @@ describe('VarReferencePickerTrigger', () => {
       varName: 'answer',
     })
 
-    expect(screen.getByTestId('add-button'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.add' }))!.toBeInTheDocument()
   })
 
   it('should stay inert in readonly mode and show value type placeholder badge', () => {

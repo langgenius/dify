@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -61,6 +62,34 @@ def _create_node_execution(
 
 
 class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
+    def test_load_full_process_data_returns_inline_mapping(self, db_session_with_containers: Session) -> None:
+        execution = WorkflowNodeExecutionModel(
+            process_data='{"request": "inline"}',
+            offload_data=[],
+        )
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
+
+        assert repository.load_full_process_data(execution) == {"request": "inline"}
+
+    def test_load_full_process_data_reads_offload(
+        self,
+        db_session_with_containers: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        execution = WorkflowNodeExecutionModel(process_data="{}", offload_data=[])
+        monkeypatch.setattr(
+            WorkflowNodeExecutionModel,
+            "load_full_process_data",
+            lambda _self, _session, _storage: {"__dify_retry_history": [{"retry_index": 1}]},
+        )
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
+
+        assert repository.load_full_process_data(execution) == {"__dify_retry_history": [{"retry_index": 1}]}
+
     def test_get_executions_by_workflow_run_keeps_paused_records(self, db_session_with_containers: Session) -> None:
         tenant_id = str(uuid4())
         app_id = str(uuid4())

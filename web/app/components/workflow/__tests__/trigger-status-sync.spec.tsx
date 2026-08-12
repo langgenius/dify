@@ -8,8 +8,8 @@ import { useTriggerStatusStore } from '../store/trigger-status'
 import { isTriggerNode } from '../types'
 
 // Mock the isTriggerNode function while preserving BlockEnum
-vi.mock('../types', async importOriginal => ({
-  ...await importOriginal<typeof import('../types')>(),
+vi.mock('../types', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../types')>()),
   isTriggerNode: vi.fn(),
 }))
 
@@ -20,15 +20,15 @@ const TestTriggerNode: React.FC<{
   nodeId: string
   nodeType: string
 }> = ({ nodeId, nodeType }) => {
-  const triggerStatus = useTriggerStatusStore(state =>
-    mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
+  const triggerStatus = useTriggerStatusStore((state) =>
+    mockIsTriggerNode(nodeType as BlockEnum)
+      ? state.triggerStatuses[nodeId] || 'disabled'
+      : 'enabled',
   )
 
   return (
     <div data-testid={`node-${nodeId}`} data-status={triggerStatus}>
-      Status:
-      {' '}
-      {triggerStatus}
+      Status: {triggerStatus}
     </div>
   )
 }
@@ -48,25 +48,21 @@ const TestTriggerController: React.FC = () => {
 
   return (
     <div>
-      <button
-        data-testid="toggle-node-1"
-        onClick={() => handleToggle('node-1', true)}
-      >
+      <button data-testid="toggle-node-1" onClick={() => handleToggle('node-1', true)}>
         Enable Node 1
       </button>
-      <button
-        data-testid="toggle-node-2"
-        onClick={() => handleToggle('node-2', false)}
-      >
+      <button data-testid="toggle-node-2" onClick={() => handleToggle('node-2', false)}>
         Disable Node 2
       </button>
       <button
         data-testid="batch-update"
-        onClick={() => handleBatchUpdate({
-          'node-1': 'disabled',
-          'node-2': 'enabled',
-          'node-3': 'enabled',
-        })}
+        onClick={() =>
+          handleBatchUpdate({
+            'node-1': 'disabled',
+            'node-2': 'enabled',
+            'node-3': 'enabled',
+          })
+        }
       >
         Batch Update
       </button>
@@ -276,21 +272,24 @@ describe('Trigger Status Synchronization Integration', () => {
       nodeId: string
       nodeType: string
     }> = ({ nodeId, nodeType }) => {
-      const triggerStatusSelector = useCallback((state: { triggerStatuses: Record<string, string> }) =>
-        mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled', [nodeId, nodeType])
+      const triggerStatusSelector = useCallback(
+        (state: { triggerStatuses: Record<string, string> }) =>
+          mockIsTriggerNode(nodeType as BlockEnum)
+            ? state.triggerStatuses[nodeId] || 'disabled'
+            : 'enabled',
+        [nodeId, nodeType],
+      )
       const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
 
       return (
         <div data-testid={`optimized-node-${nodeId}`} data-status={triggerStatus}>
-          Status:
-          {' '}
-          {triggerStatus}
+          Status: {triggerStatus}
         </div>
       )
     }
 
     it('should work correctly with optimized selector using useCallback', () => {
-      mockIsTriggerNode.mockImplementation(nodeType => nodeType === 'trigger-webhook')
+      mockIsTriggerNode.mockImplementation((nodeType) => nodeType === 'trigger-webhook')
 
       const { getByTestId } = render(
         <>
@@ -315,12 +314,14 @@ describe('Trigger Status Synchronization Integration', () => {
     })
 
     it('should handle selector dependency changes correctly', () => {
-      mockIsTriggerNode.mockImplementation(nodeType => nodeType === 'trigger-webhook')
+      mockIsTriggerNode.mockImplementation((nodeType) => nodeType === 'trigger-webhook')
 
       const TestComponent: React.FC<{ nodeType: string }> = ({ nodeType }) => {
         const triggerStatusSelector = useCallback(
           (state: { triggerStatuses: Record<string, string> }) =>
-            mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
+            mockIsTriggerNode(nodeType as BlockEnum)
+              ? state.triggerStatuses['test-node'] || 'disabled'
+              : 'enabled',
           [nodeType],
         )
         const status = useTriggerStatusStore(triggerStatusSelector)

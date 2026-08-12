@@ -18,7 +18,7 @@ const mockPlugins = [
 ]
 
 vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[], enabled: boolean }) => ({
+  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[]; enabled: boolean }) => ({
     data: enabled && pluginIds.length > 0 ? { plugins: mockPlugins } : undefined,
     isLoading: false,
     error: null,
@@ -31,10 +31,12 @@ describe('useCheckInstalled', () => {
   })
 
   it('should return installed info when enabled and has plugin IDs', () => {
-    const { result } = renderHook(() => useCheckInstalled({
-      pluginIds: ['plugin-1', 'plugin-2'],
-      enabled: true,
-    }))
+    const { result } = renderHook(() =>
+      useCheckInstalled({
+        pluginIds: ['plugin-1', 'plugin-2'],
+        enabled: true,
+      }),
+    )
 
     expect(result.current.installedInfo).toBeDefined()
     expect(result.current.installedInfo?.['plugin-1']).toEqual({
@@ -50,28 +52,34 @@ describe('useCheckInstalled', () => {
   })
 
   it('should return undefined installedInfo when disabled', () => {
-    const { result } = renderHook(() => useCheckInstalled({
-      pluginIds: ['plugin-1'],
-      enabled: false,
-    }))
+    const { result } = renderHook(() =>
+      useCheckInstalled({
+        pluginIds: ['plugin-1'],
+        enabled: false,
+      }),
+    )
 
     expect(result.current.installedInfo).toBeUndefined()
   })
 
   it('should return undefined installedInfo with empty plugin IDs', () => {
-    const { result } = renderHook(() => useCheckInstalled({
-      pluginIds: [],
-      enabled: true,
-    }))
+    const { result } = renderHook(() =>
+      useCheckInstalled({
+        pluginIds: [],
+        enabled: true,
+      }),
+    )
 
     expect(result.current.installedInfo).toBeUndefined()
   })
 
   it('should return isLoading and error states', () => {
-    const { result } = renderHook(() => useCheckInstalled({
-      pluginIds: ['plugin-1'],
-      enabled: true,
-    }))
+    const { result } = renderHook(() =>
+      useCheckInstalled({
+        pluginIds: ['plugin-1'],
+        enabled: true,
+      }),
+    )
 
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()

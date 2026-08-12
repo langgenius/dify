@@ -15,22 +15,13 @@ vi.mock('@/service/tools', () => ({
 }))
 
 vi.mock('../../../utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) => (schemas as Record<string, unknown>[]).map(s => ({
-    ...s,
-    variable: s.name,
-    show_on: [],
-  })),
+  toolCredentialToFormSchemas: (schemas: unknown[]) =>
+    (schemas as Record<string, unknown>[]).map((s) => ({
+      ...s,
+      variable: s.name,
+      show_on: [],
+    })),
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
-}))
-
-vi.mock('@/app/components/base/drawer-plus', () => ({
-  default: ({ body, title, onHide }: { body: React.ReactNode, title: string, onHide: () => void }) => (
-    <div data-testid="drawer">
-      <span data-testid="drawer-title">{title}</span>
-      <button data-testid="drawer-close" onClick={onHide}>Close</button>
-      {body}
-    </div>
-  ),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -38,12 +29,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ value, onChange }: { value: Record<string, string>, onChange: (v: Record<string, string>) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: Record<string, string>
+    onChange: (v: Record<string, string>) => void
+  }) => (
     <div data-testid="form">
       <input
         data-testid="form-input"
         value={value.api_key || ''}
-        onChange={e => onChange({ ...value, api_key: e.target.value })}
+        onChange={(e) => onChange({ ...value, api_key: e.target.value })}
       />
     </div>
   ),
@@ -104,7 +101,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByTestId('drawer-title')).toHaveTextContent('tools.auth.setupModalTitle')
+    expect(screen.getByText('tools.auth.setupModalTitle')).toBeInTheDocument()
   })
 
   it('calls onCancel when cancel button is clicked', async () => {

@@ -32,7 +32,7 @@ class TestConstants:
 class TestCreateSSRFProxyMCPHTTPClient:
     """Test create_ssrf_proxy_mcp_http_client function."""
 
-    @patch("core.mcp.utils.dify_config", autospec=True)
+    @patch("core.mcp.utils.dify_config")
     def test_create_client_with_all_url_proxy(self, mock_config):
         """Test client creation with SSRF_PROXY_ALL_URL configured."""
         mock_config.SSRF_PROXY_ALL_URL = "http://proxy.example.com:8080"
@@ -50,7 +50,7 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config", autospec=True)
+    @patch("core.mcp.utils.dify_config")
     def test_create_client_with_http_https_proxies(self, mock_config):
         """Test client creation with separate HTTP/HTTPS proxies."""
         mock_config.SSRF_PROXY_ALL_URL = None
@@ -66,7 +66,7 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config", autospec=True)
+    @patch("core.mcp.utils.dify_config")
     def test_create_client_without_proxy(self, mock_config):
         """Test client creation without proxy configuration."""
         mock_config.SSRF_PROXY_ALL_URL = None
@@ -88,7 +88,7 @@ class TestCreateSSRFProxyMCPHTTPClient:
         # Clean up
         client.close()
 
-    @patch("core.mcp.utils.dify_config", autospec=True)
+    @patch("core.mcp.utils.dify_config")
     def test_create_client_default_params(self, mock_config):
         """Test client creation with default parameters."""
         mock_config.SSRF_PROXY_ALL_URL = None
@@ -140,7 +140,7 @@ class TestSSRFProxySSEConnect:
 
     @patch("core.mcp.utils.connect_sse", autospec=True)
     @patch("core.mcp.utils.create_ssrf_proxy_mcp_http_client", autospec=True)
-    @patch("core.mcp.utils.dify_config", autospec=True)
+    @patch("core.mcp.utils.dify_config")
     def test_sse_connect_without_client(self, mock_config, mock_create_client, mock_connect_sse):
         """Test SSE connection without pre-configured client."""
         # Setup config

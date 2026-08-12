@@ -3,32 +3,33 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
-from models.model import AppMode
+from models.model import App, AppMode
 
 
 class ConversationVariablesQuery(BaseModel):
     conversation_id: str = Field(..., description="Conversation ID to filter variables")
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -65,7 +66,7 @@ class ConversationVariableResponse(ResponseModel):
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class PaginatedConversationVariableResponse(ResponseModel):
@@ -89,7 +90,7 @@ class ConversationVariablesApi(Resource):
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ConversationVariablesQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @console_ns.response(
         200,
         "Conversation variables retrieved successfully",
@@ -98,16 +99,17 @@ class ConversationVariablesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    def get(self, app_model):
-        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @model_validate(ConversationVariablesQuery)
+    def get(self, req_data: ConversationVariablesQuery, app_model: App):
 
         stmt = (
             select(ConversationVariable)
             .where(ConversationVariable.app_id == app_model.id)
             .order_by(ConversationVariable.created_at)
         )
-        stmt = stmt.where(ConversationVariable.conversation_id == args.conversation_id)
+        stmt = stmt.where(ConversationVariable.conversation_id == req_data.conversation_id)
 
         # NOTE: This is a temporary solution to avoid performance issues.
         page = 1
@@ -117,7 +119,8 @@ class ConversationVariablesApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             rows = session.scalars(stmt).all()
 
-        response = PaginatedConversationVariableResponse.model_validate(
+        return dump_response(
+            PaginatedConversationVariableResponse,
             {
                 "page": page,
                 "limit": page_size,
@@ -133,6 +136,5 @@ class ConversationVariablesApi(Resource):
                     )
                     for row in rows
                 ],
-            }
+            },
         )
-        return response.model_dump(mode="json")

@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, override
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -79,9 +79,11 @@ class LindormVectorStore(BaseVector):
         self._using_ugc = using_ugc
         self.kwargs = kwargs
 
+    @override
     def get_type(self) -> str:
         return VectorType.LINDORM
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)
@@ -90,6 +92,7 @@ class LindormVectorStore(BaseVector):
     def refresh(self):
         self._client.indices.refresh(index=self._collection_name)
 
+    @override
     def add_texts(
         self,
         documents: list[Document],
@@ -110,7 +113,7 @@ class LindormVectorStore(BaseVector):
         )
         def _bulk_with_retry(actions):
             try:
-                response = self._client.bulk(actions, timeout=timeout)
+                response = self._client.bulk(body=actions, timeout=timeout)
                 if response["errors"]:
                     error_items = [item for item in response["items"] if "error" in item["index"]]
                     error_msg = f"Bulk indexing had {len(error_items)} errors"
@@ -156,6 +159,7 @@ class LindormVectorStore(BaseVector):
                 logger.exception("Failed to process batch %s", batch_num + 1)
                 raise
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         query: dict[str, Any] = {
             "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
@@ -168,11 +172,13 @@ class LindormVectorStore(BaseVector):
         else:
             return None
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self.delete_by_ids(ids)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         """Delete documents by their IDs in batch.
 
@@ -219,12 +225,13 @@ class LindormVectorStore(BaseVector):
                     else:
                         logger.exception("Error deleting document: %s", error)
 
+    @override
     def delete(self):
         if self._using_ugc:
             routing_filter_query = {
                 "query": {"bool": {"must": [{"term": {f"{ROUTING_FIELD}.keyword": self._routing}}]}}
             }
-            self._client.delete_by_query(self._collection_name, body=routing_filter_query)
+            self._client.delete_by_query(index=self._collection_name, body=routing_filter_query)
             self.refresh()
         else:
             if self._client.indices.exists(index=self._collection_name):
@@ -233,6 +240,7 @@ class LindormVectorStore(BaseVector):
             else:
                 logger.warning("Index '%s' does not exist. No deletion performed.", self._collection_name)
 
+    @override
     def text_exists(self, id: str) -> bool:
         try:
             params: dict[str, Any] = {}
@@ -243,6 +251,7 @@ class LindormVectorStore(BaseVector):
         except:
             return False
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         if not isinstance(query_vector, list):
             raise ValueError("query_vector should be a list of floats")
@@ -305,6 +314,7 @@ class LindormVectorStore(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         filters = []
@@ -377,6 +387,7 @@ class LindormVectorStore(BaseVector):
 
 
 class LindormVectorStoreFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
         lindorm_config = LindormVectorStoreConfig(
             hosts=dify_config.LINDORM_URL,

@@ -12,12 +12,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 
 
 @pytest.fixture
-def mock_action_class(mocker):
+def mock_action_class(mocker: MockerFixture):
     mock_action = MagicMock()
     mocker.patch(
         "core.agent.output_parser.cot_output_parser.AgentScratchpadUnit.Action",

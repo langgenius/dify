@@ -94,4 +94,4 @@ class TestSavedMessageApi:
             result, status = SavedMessageApi().delete(_completion_app(), _end_user(), msg_id)
 
         assert status == 204
-        assert result["result"] == "success"
+        assert result == ""

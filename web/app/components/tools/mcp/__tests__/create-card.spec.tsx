@@ -1,9 +1,12 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import NewMCPCard from '../create-card'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
+import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
 const mockCreateMCP = vi.fn().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
@@ -18,18 +21,20 @@ vi.mock('@/service/use-tools', () => ({
 // Mock the MCP Modal
 type MockMCPModalProps = {
   show: boolean
-  onConfirm: (info: { name: string, server_url: string }) => void
+  onConfirm: (info: { name: string; server_url: string }) => void
   onHide: () => void
 }
 
 vi.mock('../modal', () => ({
   default: ({ show, onConfirm, onHide }: MockMCPModalProps) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="mcp-modal">
         <span>tools.mcp.modal.title</span>
-        <button data-testid="confirm-btn" onClick={() => onConfirm({ name: 'Test MCP', server_url: 'https://test.com' })}>
+        <button
+          data-testid="confirm-btn"
+          onClick={() => onConfirm({ name: 'Test MCP', server_url: 'https://test.com' })}
+        >
           Confirm
         </button>
         <button data-testid="close-btn" onClick={onHide}>
@@ -40,16 +45,17 @@ vi.mock('../modal', () => ({
   },
 }))
 
-// Mutable workspace manager state
-let mockIsCurrentWorkspaceManager = true
-
-// Mock the app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    isCurrentWorkspaceEditor: true,
-  }),
+const mockConsoleState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['mcp.manage'] as string[],
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 // Mock the plugins service
 vi.mock('@/service/use-plugins', () => ({
@@ -70,15 +76,7 @@ vi.mock('@/service/common', () => ({
 
 describe('NewMCPCard', () => {
   const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
+    return createConsoleQueryWrapper().wrapper
   }
 
   const defaultProps = {
@@ -87,15 +85,10 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockIsCurrentWorkspaceManager = true
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
-    })
-
     it('should render card title', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
@@ -106,10 +99,25 @@ describe('NewMCPCard', () => {
       expect(screen.getByText('tools.mcp.create.cardLink')).toBeInTheDocument()
     })
 
-    it('should render add icon', () => {
+    it('should render toolbar button', () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(
+        screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('should expose the tour target on the toolbar add action only', () => {
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd)
+
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      const svgElements = document.querySelectorAll('svg')
-      expect(svgElements.length).toBeGreaterThan(0)
+
+      expect(document.querySelectorAll(selector)).toHaveLength(0)
+
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(document.querySelectorAll(selector)).toHaveLength(1)
+      expect(document.querySelector(selector)).toHaveTextContent('tools.mcp.create.cardTitle')
     })
   })
 
@@ -136,31 +144,33 @@ describe('NewMCPCard', () => {
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
+
+    it('should open modal when toolbar button is clicked', async () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('tools.mcp.modal.title')).toBeInTheDocument()
+      })
+    })
   })
 
-  describe('Non-Manager User', () => {
-    it('should not render card when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+  describe('mcp.manage Permission', () => {
+    it('should not render card when user lacks mcp.manage', () => {
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
-  })
 
-  describe('Styling', () => {
-    it('should have correct card structure', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
+    it('should not render toolbar button when user lacks mcp.manage', () => {
+      mockConsoleState.workspacePermissionKeys = []
 
-      const card = document.querySelector('.rounded-xl')
-      expect(card).toBeInTheDocument()
-    })
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
-    it('should have clickable cursor style', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = document.querySelector('.cursor-pointer')
-      expect(card).toBeInTheDocument()
+      expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
   })
 

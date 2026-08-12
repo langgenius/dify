@@ -12,7 +12,7 @@ import { useLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
 import NoData from './no-data'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   nodeId: string
   canSingleRun: boolean
@@ -23,7 +23,8 @@ type Props = {
   onSingleRunClicked: () => void
   singleRunResult?: NodeTracing
   isPaused?: boolean
-} & Partial<ResultPanelProps>
+}> &
+  Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
   appId: _appId,
@@ -38,38 +39,52 @@ const LastRun: FC<Props> = ({
   isPaused,
   ...otherResultPanelProps
 }) => {
-  const configsMap = useHooksStore(s => s.configsMap)
+  const configsMap = useHooksStore((s) => s.configsMap)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
   // hide page and return to page would lost the oneStepRunRunningStatus
-  const [hidePageOneStepFinishedStatus, setHidePageOneStepFinishedStatus] = React.useState<NodeRunningStatus | null>(null)
+  const [hidePageOneStepFinishedStatus, setHidePageOneStepFinishedStatus] =
+    React.useState<NodeRunningStatus | null>(null)
   const [pageHasHide, setPageHasHide] = useState(false)
   const [pageShowed, setPageShowed] = useState(false)
 
-  const hidePageOneStepRunFinished = [NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(hidePageOneStepFinishedStatus!)
-  const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed || (pageHasHide && hidePageOneStepRunFinished)
-  const { data: lastRunResult, isFetching, error } = useLastRun(configsMap?.flowType || FlowType.appFlow, configsMap?.flowId || '', nodeId, canRunLastRun)
+  const hidePageOneStepRunFinished = [
+    NodeRunningStatus.Succeeded,
+    NodeRunningStatus.Failed,
+  ].includes(hidePageOneStepFinishedStatus!)
+  const canRunLastRun =
+    !isRunAfterSingleRun ||
+    isOneStepRunSucceed ||
+    isOneStepRunFailed ||
+    (pageHasHide && hidePageOneStepRunFinished)
+  const {
+    data: lastRunResult,
+    isFetching,
+    error,
+  } = useLastRun(
+    configsMap?.flowType || FlowType.appFlow,
+    configsMap?.flowId || '',
+    nodeId,
+    canRunLastRun,
+  )
   const isRunning = useMemo(() => {
-    if (isPaused)
-      return false
+    if (isPaused) return false
 
-    if (!isRunAfterSingleRun)
-      return isFetching
-    return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+    if (!isRunAfterSingleRun) return isFetching
+    return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(
+      oneStepRunRunningStatus!,
+    )
   }, [isFetching, isPaused, isRunAfterSingleRun, oneStepRunRunningStatus])
 
   const noLastRun = (error as any)?.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
 
   const resolvedStatus = useMemo(() => {
-    if (isPaused)
-      return NodeRunningStatus.Stopped
+    if (isPaused) return NodeRunningStatus.Stopped
 
-    if (oneStepRunRunningStatus === NodeRunningStatus.Stopped)
-      return NodeRunningStatus.Stopped
+    if (oneStepRunRunningStatus === NodeRunningStatus.Stopped) return NodeRunningStatus.Stopped
 
-    if (oneStepRunRunningStatus === NodeRunningStatus.Listening)
-      return NodeRunningStatus.Listening
+    if (oneStepRunRunningStatus === NodeRunningStatus.Listening) return NodeRunningStatus.Listening
 
     return (runResult as any).status || otherResultPanelProps.status
   }, [isPaused, oneStepRunRunningStatus, runResult, otherResultPanelProps.status])
@@ -80,7 +95,11 @@ const LastRun: FC<Props> = ({
     setHidePageOneStepFinishedStatus(null)
   }, [])
   useEffect(() => {
-    if (pageShowed && hidePageOneStepFinishedStatus && (!oneStepRunRunningStatus || oneStepRunRunningStatus === NodeRunningStatus.NotStart)) {
+    if (
+      pageShowed &&
+      hidePageOneStepFinishedStatus &&
+      (!oneStepRunRunningStatus || oneStepRunRunningStatus === NodeRunningStatus.NotStart)
+    ) {
       updateNodeRunningStatus(hidePageOneStepFinishedStatus)
       resetHidePageStatus()
     }
@@ -96,10 +115,8 @@ const LastRun: FC<Props> = ({
   }, [nodeId])
 
   const handlePageVisibilityChange = useCallback(() => {
-    if (document.visibilityState === 'hidden')
-      setPageHasHide(true)
-    else
-      setPageShowed(true)
+    if (document.visibilityState === 'hidden') setPageHasHide(true)
+    else setPageShowed(true)
   }, [])
   useEffect(() => {
     document.addEventListener('visibilitychange', handlePageVisibilityChange)
@@ -117,22 +134,24 @@ const LastRun: FC<Props> = ({
     )
   }
 
-  if (isRunning)
-    return <ResultPanel status="running" showSteps={false} />
+  if (isRunning) return <ResultPanel status="running" showSteps={false} />
   if (!isPaused && (noLastRun || !runResult)) {
-    return (
-      <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
-    )
+    return <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
   }
 
   return (
     <div>
       <ResultPanel
-        {...runResult as any}
+        {...(runResult as any)}
         {...otherResultPanelProps}
         status={resolvedStatus}
-        total_tokens={(runResult as any)?.execution_metadata?.total_tokens || otherResultPanelProps?.total_tokens}
-        created_by={(runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by}
+        total_tokens={
+          (runResult as any)?.execution_metadata?.total_tokens ||
+          otherResultPanelProps?.total_tokens
+        }
+        created_by={
+          (runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by
+        }
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
       />

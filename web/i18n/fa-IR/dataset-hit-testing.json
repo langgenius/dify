@@ -10,7 +10,6 @@
   "imageUploader.tip": "تصاویر را آپلود کنید یا رها کنید (حداکثر {{batchCount}} تصویر، هر کدام {{size}} مگابایت)",
   "imageUploader.tooltip": "آپلود تصاویر (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)",
   "input.countWarning": "تا ۲۰۰ کاراکتر.",
-  "input.indexWarning": "فقط دانش با کیفیت بالا.",
   "input.placeholder": "لطفاً یک متن وارد کنید، یک جمله کوتاه خبری توصیه می‌شود.",
   "input.testing": "در حال آزمون",
   "input.title": "متن منبع",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "محتوای پرس‌وجو",
   "table.header.source": "منبع",
   "table.header.time": "زمان",
-  "title": "آزمون بازیابی",
-  "viewChart": "مشاهده نمودار بُرداری",
-  "viewDetail": "نمایش جزئیات"
+  "title": "آزمون بازیابی"
 }

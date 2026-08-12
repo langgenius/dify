@@ -2,8 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-
-import { usePipelineStartRun } from '../use-pipeline-start-run'
+import { usePipelineStartRunByCanEdit } from '../use-pipeline-start-run'
 
 const mockWorkflowStoreGetState = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
@@ -15,23 +14,26 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),
 }))
 
 const mockDoSyncWorkflowDraft = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
-  useNodesSyncDraft: () => ({
+vi.mock('../use-nodes-sync-draft', () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('../use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: vi.fn(),
   }),
 }))
 
-describe('usePipelineStartRun', () => {
+describe('usePipelineStartRunByCanEdit', () => {
   const mockSetIsPreparingDataSource = vi.fn()
   const mockSetShowEnvPanel = vi.fn()
   const mockSetShowDebugAndPreviewPanel = vi.fn()
@@ -57,14 +59,14 @@ describe('usePipelineStartRun', () => {
 
   describe('hook initialization', () => {
     it('should return handleStartWorkflowRun function', () => {
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       expect(result.current.handleStartWorkflowRun).toBeDefined()
       expect(typeof result.current.handleStartWorkflowRun).toBe('function')
     })
 
     it('should return handleWorkflowStartRunInWorkflow function', () => {
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       expect(result.current.handleWorkflowStartRunInWorkflow).toBeDefined()
       expect(typeof result.current.handleWorkflowStartRunInWorkflow).toBe('function')
@@ -84,7 +86,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         await result.current.handleWorkflowStartRunInWorkflow()
@@ -105,7 +107,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         await result.current.handleWorkflowStartRunInWorkflow()
@@ -127,7 +129,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         await result.current.handleWorkflowStartRunInWorkflow()
@@ -147,7 +149,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         await result.current.handleWorkflowStartRunInWorkflow()
@@ -168,7 +170,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         await result.current.handleWorkflowStartRunInWorkflow()
@@ -189,7 +191,7 @@ describe('usePipelineStartRun', () => {
         setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
       })
 
-      const { result } = renderHook(() => usePipelineStartRun())
+      const { result } = renderHook(() => usePipelineStartRunByCanEdit(true))
 
       await act(async () => {
         result.current.handleStartWorkflowRun()

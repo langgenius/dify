@@ -8,31 +8,28 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
-const AgentLogNavMore = ({
-  options,
-  onShowAgentOrToolLog,
-}: AgentLogNavMoreProps) => {
+const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <Button
-            className="h-6 w-6"
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className="size-6"
             variant="ghost-accent"
           />
-        )}
+        }
       >
-        <RiMoreLine className="h-4 w-4" />
+        <RiMoreLine className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-start"
@@ -40,17 +37,15 @@ const AgentLogNavMore = ({
         alignOffset={-54}
         popupClassName="w-[136px] p-1"
       >
-        {
-          options.map(option => (
-            <DropdownMenuItem
-              key={option.message_id}
-              className="system-md-regular"
-              onClick={() => onShowAgentOrToolLog(option)}
-            >
-              {option.label}
-            </DropdownMenuItem>
-          ))
-        }
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.message_id}
+            className="system-md-regular"
+            onClick={() => onShowAgentOrToolLog(option)}
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

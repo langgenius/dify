@@ -1,14 +1,23 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import CommentsPanel from '../index'
 
 const mockHandleCommentIconClick = vi.hoisted(() => vi.fn())
-const mockLoadComments = vi.hoisted(() => vi.fn())
+const mockHandleCommentResolve = vi.hoisted(() => vi.fn())
 const mockSetActiveCommentId = vi.hoisted(() => vi.fn())
 const mockSetControlMode = vi.hoisted(() => vi.fn())
 const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
-const mockResolveWorkflowComment = vi.hoisted(() => vi.fn())
-const mockEmitCommentsUpdate = vi.hoisted(() => vi.fn())
+const mockConsoleState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+}))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const commentFixtures: WorkflowCommentList[] = [
   {
@@ -53,13 +62,6 @@ const storeState = {
   activeCommentId: null as string | null,
   showResolvedComments: true,
 }
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
@@ -70,51 +72,28 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    userProfile: { id: 'user-1' },
-  }),
-}))
-
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) => selector({
-    activeCommentId: storeState.activeCommentId,
-    setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
-    setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
-    showResolvedComments: storeState.showResolvedComments,
-    setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
-  }),
+  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
+    selector({
+      activeCommentId: storeState.activeCommentId,
+      setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
+      setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
+      showResolvedComments: storeState.showResolvedComments,
+      setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
+    }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
+vi.mock('../../../hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({
     comments: commentFixtures,
     loading: false,
-    loadComments: (...args: unknown[]) => mockLoadComments(...args),
     handleCommentIconClick: (...args: unknown[]) => mockHandleCommentIconClick(...args),
+    handleCommentResolve: (...args: unknown[]) => mockHandleCommentResolve(...args),
   }),
-}))
-
-vi.mock('@/service/workflow-comment', () => ({
-  resolveWorkflowComment: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    emitCommentsUpdate: (...args: unknown[]) => mockEmitCommentsUpdate(...args),
-  },
 }))
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: () => <div data-testid="user-avatar-list" />,
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" data-testid="show-resolved-switch" onClick={() => onCheckedChange(!checked)}>
-      toggle
-    </button>
-  ),
 }))
 
 describe('CommentsPanel', () => {
@@ -122,8 +101,7 @@ describe('CommentsPanel', () => {
     vi.clearAllMocks()
     storeState.activeCommentId = null
     storeState.showResolvedComments = true
-    mockResolveWorkflowComment.mockResolvedValue({})
-    mockLoadComments.mockResolvedValue(undefined)
+    mockHandleCommentResolve.mockResolvedValue(undefined)
   })
 
   it('filters comments and selects a thread', () => {
@@ -143,15 +121,13 @@ describe('CommentsPanel', () => {
 
   it('resolves a comment and syncs list refresh', async () => {
     const { container } = render(<CommentsPanel />)
-    const resolveIcons = container.querySelectorAll('.h-4.w-4.cursor-pointer.text-text-tertiary')
+    const resolveIcons = container.querySelectorAll('.size-4.cursor-pointer.text-text-tertiary')
     expect(resolveIcons.length).toBeGreaterThan(0)
 
     fireEvent.click(resolveIcons[0]!)
 
     await waitFor(() => {
-      expect(mockResolveWorkflowComment).toHaveBeenCalledWith('app-1', 'c-1')
-      expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
-      expect(mockLoadComments).toHaveBeenCalled()
+      expect(mockHandleCommentResolve).toHaveBeenCalledWith('c-1')
       expect(mockSetActiveCommentId).toHaveBeenCalledWith('c-1')
     })
   })
@@ -160,7 +136,7 @@ describe('CommentsPanel', () => {
     render(<CommentsPanel />)
 
     fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByTestId('show-resolved-switch'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)
   })

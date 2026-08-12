@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Textarea from '@/app/components/base/textarea'
 
 export type AdvancedOptionsType = {
   enum: string
@@ -14,21 +14,21 @@ type AdvancedOptionsProps = {
   onChange: (options: AdvancedOptionsType) => void
 }
 
-const AdvancedOptions: FC<AdvancedOptionsProps> = ({
-  onChange,
-  options,
-}) => {
+const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
   const { t } = useTranslation()
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
 
-  const handleEnumChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEnumValue(e.target.value)
+  const handleEnumChange = useCallback((value: string) => {
+    setEnumValue(value)
   }, [])
 
-  const handleEnumBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-    onChange({ enum: e.target.value })
-  }, [onChange])
+  const handleEnumBlur = useCallback(
+    (e: React.FocusEvent<HTMLTextAreaElement>) => {
+      onChange({ enum: e.target.value })
+    },
+    [onChange],
+  )
 
   // const handleToggleAdvancedOptions = useCallback(() => {
   //   setShowAdvancedOptions(prev => !prev)
@@ -40,7 +40,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
       <div className="flex flex-col gap-y-1 px-2 py-1.5">
         <div className="flex w-full items-center gap-x-2">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('nodes.llm.jsonSchema.stringValidations', { ns: 'workflow' })}
+            {t(($) => $['nodes.llm.jsonSchema.stringValidations'], { ns: 'workflow' })}
           </span>
           <div className="grow">
             <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />
@@ -48,13 +48,14 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         </div>
         <div className="flex flex-col">
           <div className="flex h-6 items-center system-xs-medium text-text-secondary">
-            Enum
+            {t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
           </div>
           <Textarea
+            aria-label={t(($) => $['nodes.llm.jsonSchema.enum'], { ns: 'workflow' })}
             size="small"
             className="min-h-6"
             value={enumValue}
-            onChange={handleEnumChange}
+            onValueChange={handleEnumChange}
             onBlur={handleEnumBlur}
             placeholder="abcd, 1, 1.5, etc."
           />
@@ -68,7 +69,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         >
           <RiArrowDownDoubleLine className='h-3 w-3 text-text-tertiary' />
           <span className='system-xs-regular text-text-tertiary'>
-            {t('workflow.nodes.llm.jsonSchema.showAdvancedOptions')}
+            {t($ => $['nodes.llm.jsonSchema.showAdvancedOptions'], { ns: 'workflow' })}
           </span>
         </button>
       )} */}

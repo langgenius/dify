@@ -8,10 +8,10 @@ class EnterpriseFeatureConfig(BaseSettings):
     **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     """
 
-    ENTERPRISE_ENABLED: bool = Field(
-        description="Enable or disable enterprise-level features."
-        "Before using, please contact business@dify.ai by email to inquire about licensing matters.",
-        default=False,
+    WEBAPP_PUBLIC_ACCESS_ENABLED: bool = Field(
+        description="Whether admins are allowed to set a webapp's access mode to public (anyone with the link, "
+        "no auth). Disable in security-sensitive on-prem deployments.",
+        default=True,
     )
 
     CAN_REPLACE_LOGO: bool = Field(
@@ -19,8 +19,31 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    ENABLE_LICENSE_EXPIRY_NOTICE: bool = Field(
+        description="Show the license expiry countdown badge in the console when the license is expiring. "
+        "Disable to hide the badge; license status and all enforcement remain unaffected.",
+        default=True,
+    )
+
     ENTERPRISE_REQUEST_TIMEOUT: int = Field(
         ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )
+
+    ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK: bool = Field(
+        default=False,
+        description="If disabled, credential policy check is only performed when saving workflows."
+        "This helps gain runtime performance by trading off consistency.",
+    )
+
+    RBAC_ENABLED: bool = Field(
+        description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
+        default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
     )
 
 
@@ -30,7 +53,7 @@ class EnterpriseTelemetryConfig(BaseSettings):
     """
 
     ENTERPRISE_TELEMETRY_ENABLED: bool = Field(
-        description="Enable enterprise telemetry collection (also requires ENTERPRISE_ENABLED=true).",
+        description="Enable enterprise telemetry collection for enterprise deployments.",
         default=False,
     )
 

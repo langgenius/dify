@@ -1,175 +1,175 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ValidationError } from "../errors/dify-error";
-import { DifyClient } from "./base";
-import { createHttpClientWithSpies } from "../../tests/test-utils";
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createHttpClientWithSpies } from '../../tests/test-utils'
+import { ValidationError } from '../errors/dify-error'
+import { DifyClient } from './base'
 
-describe("DifyClient base", () => {
+describe('DifyClient base', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-  });
+    vi.restoreAllMocks()
+  })
 
-  it("getRoot calls root endpoint", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('getRoot calls root endpoint', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    await dify.getRoot();
+    await dify.getRoot()
 
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/",
-    });
-  });
+      method: 'GET',
+      path: '/',
+    })
+  })
 
-  it("getApplicationParameters includes optional user", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('getApplicationParameters includes optional user', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    await dify.getApplicationParameters();
+    await dify.getApplicationParameters()
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/parameters",
+      method: 'GET',
+      path: '/parameters',
       query: undefined,
-    });
+    })
 
-    await dify.getApplicationParameters("user-1");
+    await dify.getApplicationParameters('user-1')
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/parameters",
-      query: { user: "user-1" },
-    });
-  });
+      method: 'GET',
+      path: '/parameters',
+      query: { user: 'user-1' },
+    })
+  })
 
-  it("getMeta includes optional user", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('getMeta includes optional user', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    await dify.getMeta("user-1");
+    await dify.getMeta('user-1')
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/meta",
-      query: { user: "user-1" },
-    });
-  });
+      method: 'GET',
+      path: '/meta',
+      query: { user: 'user-1' },
+    })
+  })
 
-  it("getInfo and getSite support optional user", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('getInfo and getSite support optional user', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    await dify.getInfo();
-    await dify.getSite("user");
+    await dify.getInfo()
+    await dify.getSite('user')
 
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/info",
+      method: 'GET',
+      path: '/info',
       query: undefined,
-    });
+    })
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/site",
-      query: { user: "user" },
-    });
-  });
+      method: 'GET',
+      path: '/site',
+      query: { user: 'user' },
+    })
+  })
 
-  it("messageFeedback builds payload from request object", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('messageFeedback builds payload from request object', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
     await dify.messageFeedback({
-      messageId: "msg",
-      user: "user",
-      rating: "like",
-      content: "good",
-    });
+      messageId: 'msg',
+      user: 'user',
+      rating: 'like',
+      content: 'good',
+    })
 
     expect(request).toHaveBeenCalledWith({
-      method: "POST",
-      path: "/messages/msg/feedbacks",
-      data: { user: "user", rating: "like", content: "good" },
-    });
-  });
+      method: 'POST',
+      path: '/messages/msg/feedbacks',
+      data: { user: 'user', rating: 'like', content: 'good' },
+    })
+  })
 
-  it("fileUpload appends user to form data", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
-    const form = { append: vi.fn(), getHeaders: () => ({}) };
+  it('fileUpload appends user to form data', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
+    const form = { append: vi.fn(), getHeaders: () => ({}) }
 
-    await dify.fileUpload(form, "user");
+    await dify.fileUpload(form, 'user')
 
-    expect(form.append).toHaveBeenCalledWith("user", "user");
+    expect(form.append).toHaveBeenCalledWith('user', 'user')
     expect(request).toHaveBeenCalledWith({
-      method: "POST",
-      path: "/files/upload",
+      method: 'POST',
+      path: '/files/upload',
       data: form,
-    });
-  });
+    })
+  })
 
-  it("filePreview uses bytes response", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('filePreview uses bytes response', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    await dify.filePreview("file", "user", true);
+    await dify.filePreview('file', 'user', true)
 
     expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/files/file/preview",
-      query: { user: "user", as_attachment: "true" },
-      responseType: "bytes",
-    });
-  });
+      method: 'GET',
+      path: '/files/file/preview',
+      query: { user: 'user', as_attachment: 'true' },
+      responseType: 'bytes',
+    })
+  })
 
-  it("audioToText appends user and sends form", async () => {
-    const { client, request } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
-    const form = { append: vi.fn(), getHeaders: () => ({}) };
+  it('audioToText appends user and sends form', async () => {
+    const { client, request } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
+    const form = { append: vi.fn(), getHeaders: () => ({}) }
 
-    await dify.audioToText(form, "user");
+    await dify.audioToText(form, 'user')
 
-    expect(form.append).toHaveBeenCalledWith("user", "user");
+    expect(form.append).toHaveBeenCalledWith('user', 'user')
     expect(request).toHaveBeenCalledWith({
-      method: "POST",
-      path: "/audio-to-text",
+      method: 'POST',
+      path: '/audio-to-text',
       data: form,
-    });
-  });
+    })
+  })
 
-  it("textToAudio supports streaming and message id", async () => {
-    const { client, request, requestBinaryStream } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('textToAudio supports streaming and message id', async () => {
+    const { client, request, requestBinaryStream } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
     await dify.textToAudio({
-      user: "user",
-      message_id: "msg",
+      user: 'user',
+      message_id: 'msg',
       streaming: true,
-    });
+    })
 
     expect(requestBinaryStream).toHaveBeenCalledWith({
-      method: "POST",
-      path: "/text-to-audio",
+      method: 'POST',
+      path: '/text-to-audio',
       data: {
-        user: "user",
-        message_id: "msg",
+        user: 'user',
+        message_id: 'msg',
         streaming: true,
       },
-    });
+    })
 
-    await dify.textToAudio("hello", "user", false, "voice");
+    await dify.textToAudio('hello', 'user', false, 'voice')
     expect(request).toHaveBeenCalledWith({
-      method: "POST",
-      path: "/text-to-audio",
+      method: 'POST',
+      path: '/text-to-audio',
       data: {
-        text: "hello",
-        user: "user",
+        text: 'hello',
+        user: 'user',
         streaming: false,
-        voice: "voice",
+        voice: 'voice',
       },
-      responseType: "bytes",
-    });
-  });
+      responseType: 'bytes',
+    })
+  })
 
-  it("textToAudio requires text or message id", () => {
-    const { client } = createHttpClientWithSpies();
-    const dify = new DifyClient(client);
+  it('textToAudio requires text or message id', () => {
+    const { client } = createHttpClientWithSpies()
+    const dify = new DifyClient(client)
 
-    expect(() => dify.textToAudio({ user: "user" })).toThrow(ValidationError);
-  });
-});
+    expect(() => dify.textToAudio({ user: 'user' })).toThrow(ValidationError)
+  })
+})

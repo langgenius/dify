@@ -8,7 +8,6 @@
 
 ### Do not query other tables inside `@property`
 - Category: [maintainability, performance]
-- Severity: critical
 - Description: A model `@property` must not open sessions or query other tables. This hides dependencies across models, tightly couples schema objects to data access, and can cause N+1 query explosions when iterating collections.
 - Suggested fix:
   - Keep model properties pure and local to already-loaded fields.
@@ -41,7 +40,6 @@
 
 ### Prefer including `tenant_id` in model definitions
 - Category: maintainability
-- Severity: suggestion
 - Description: In multi-tenant domains, include `tenant_id` in schema definitions whenever the entity belongs to tenant-owned data. This improves data isolation safety and keeps future partitioning/sharding strategies practical as data volume grows.
 - Suggested fix:
   - Add a `tenant_id` column and ensure related unique/index constraints include tenant dimension when applicable.
@@ -70,7 +68,6 @@
 
 ### Detect and avoid duplicate/redundant indexes
 - Category: performance
-- Severity: suggestion
 - Description: Review index definitions for leftmost-prefix redundancy. For example, index `(a, b, c)` can safely cover most lookups for `(a, b)`. Keeping both may increase write overhead and can mislead the optimizer into suboptimal execution plans.
 - Suggested fix:
   - Before adding an index, compare against existing composite indexes by leftmost-prefix rules.
@@ -94,7 +91,6 @@
 
 ### Avoid PostgreSQL-only dialect usage in models; wrap in `models.types`
 - Category: maintainability
-- Severity: critical
 - Description: Model/schema definitions should avoid PostgreSQL-only constructs directly in business models. When database-specific behavior is required, encapsulate it in `api/models/types.py` using both PostgreSQL and MySQL dialect implementations, then consume that abstraction from model code.
 - Suggested fix:
   - Do not directly place dialect-only types/operators in model columns when a portable wrapper can be used.
@@ -122,7 +118,6 @@
 
 ### Guard migration incompatibilities with dialect checks and shared types
 - Category: maintainability
-- Severity: critical
 - Description: Migration scripts under `api/migrations/versions/` must account for PostgreSQL/MySQL incompatibilities explicitly. For dialect-sensitive DDL or defaults, branch on the active dialect (for example, `conn.dialect.name == "postgresql"`), and prefer reusable compatibility abstractions from `models.types` where applicable.
 - Suggested fix:
   - In migration upgrades/downgrades, bind connection and branch by dialect for incompatible SQL fragments.

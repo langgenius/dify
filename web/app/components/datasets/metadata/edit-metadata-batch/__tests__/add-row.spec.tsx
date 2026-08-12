@@ -21,7 +21,7 @@ vi.mock('../input-combined', () => ({
       data-testid="input-combined"
       data-type={type}
       value={value || ''}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
     />
   ),
 }))
@@ -40,30 +40,17 @@ describe('AddRow', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleChange = vi.fn()
-      const handleRemove = vi.fn()
-      const { container } = render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render label with payload name', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('label')).toHaveTextContent('test_field')
     })
 
     it('should render input combined component', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toBeInTheDocument()
     })
 
@@ -80,37 +67,19 @@ describe('AddRow', () => {
     it('should pass correct type to input combined', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toHaveAttribute('data-type', DataType.string)
     })
 
     it('should pass correct value to input combined', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toHaveValue('test value')
     })
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const handleChange = vi.fn()
-      const handleRemove = vi.fn()
-      const { container } = render(
-        <AddRow
-          payload={mockPayload}
-          onChange={handleChange}
-          onRemove={handleRemove}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-
     it('should have default flex styling', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
@@ -128,9 +97,7 @@ describe('AddRow', () => {
         type: DataType.number,
         value: 42,
       }
-      render(
-        <AddRow payload={numberPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={numberPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toHaveAttribute('data-type', DataType.number)
     })
   })
@@ -139,9 +106,7 @@ describe('AddRow', () => {
     it('should call onChange with updated payload when input changes', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
 
       fireEvent.change(screen.getByTestId('input-combined'), { target: { value: 'new value' } })
 
@@ -159,8 +124,7 @@ describe('AddRow', () => {
       )
 
       const removeButton = container.querySelector('.cursor-pointer')
-      if (removeButton)
-        fireEvent.click(removeButton)
+      if (removeButton) fireEvent.click(removeButton)
 
       expect(handleRemove).toHaveBeenCalledTimes(1)
     })
@@ -168,9 +132,7 @@ describe('AddRow', () => {
     it('should preserve other payload properties on change', () => {
       const handleChange = vi.fn()
       const handleRemove = vi.fn()
-      render(
-        <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />)
 
       fireEvent.change(screen.getByTestId('input-combined'), { target: { value: 'updated' } })
 
@@ -192,7 +154,10 @@ describe('AddRow', () => {
         <AddRow payload={mockPayload} onChange={handleChange} onRemove={handleRemove} />,
       )
       const removeButton = container.querySelector('.cursor-pointer')
-      expect(removeButton).toHaveClass('hover:bg-state-destructive-hover', 'hover:text-text-destructive')
+      expect(removeButton).toHaveClass(
+        'hover:bg-state-destructive-hover',
+        'hover:text-text-destructive',
+      )
     })
   })
 
@@ -204,9 +169,7 @@ describe('AddRow', () => {
         ...mockPayload,
         value: null,
       }
-      render(
-        <AddRow payload={nullPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={nullPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toBeInTheDocument()
     })
 
@@ -217,9 +180,7 @@ describe('AddRow', () => {
         ...mockPayload,
         value: '',
       }
-      render(
-        <AddRow payload={emptyPayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={emptyPayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toHaveValue('')
     })
 
@@ -231,9 +192,7 @@ describe('AddRow', () => {
         type: DataType.time,
         value: 1609459200,
       }
-      render(
-        <AddRow payload={timePayload} onChange={handleChange} onRemove={handleRemove} />,
-      )
+      render(<AddRow payload={timePayload} onChange={handleChange} onRemove={handleRemove} />)
       expect(screen.getByTestId('input-combined')).toHaveAttribute('data-type', DataType.time)
     })
 

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="conversation")
 def delete_conversation_related_data(conversation_id: str):
     """
-    Delete related data conversation in correct order from datatbase to respect foreign key constraints
+    Delete related data conversation in correct order from database to respect foreign key constraints
 
     Args:
         conversation_id: conversation Id

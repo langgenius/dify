@@ -45,7 +45,7 @@ def init_code_node(code_config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -66,7 +66,7 @@ def init_code_node(code_config: dict):
 
     node = CodeNode(
         node_id=str(uuid.uuid4()),
-        config=CodeNodeData.model_validate(code_config["data"]),
+        data=CodeNodeData.model_validate(code_config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         code_executor=node_factory._code_executor,

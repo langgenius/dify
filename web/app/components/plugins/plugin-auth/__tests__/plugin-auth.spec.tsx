@@ -1,20 +1,17 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory } from '../types'
 
 const mockUsePluginAuth = vi.fn()
-vi.mock('../hooks/use-plugin-auth', () => ({
-  usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
+const mockSetSettingsDestination = vi.fn()
+const mockConsoleState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
-vi.mock('../authorize', () => ({
-  default: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
-    <div data-testid="authorize">
-      Authorize:
-      {pluginPayload.provider}
-    </div>
-  ),
+vi.mock('../hooks/use-plugin-auth', () => ({
+  usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
 }))
 
 vi.mock('../authorized', () => ({
@@ -26,6 +23,18 @@ vi.mock('../authorized', () => ({
   ),
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
+
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
+
 const defaultPayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
@@ -34,6 +43,11 @@ const defaultPayload = {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConsoleState.workspacePermissionKeys = [
+      'credential.use',
+      'credential.create',
+      'credential.manage',
+    ]
   })
 
   afterEach(() => {
@@ -46,13 +60,13 @@ describe('PluginAuth', () => {
       canOAuth: false,
       canApiKey: true,
       credentials: [],
-      disabled: false,
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(screen.getByTestId('authorize')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
@@ -62,7 +76,6 @@ describe('PluginAuth', () => {
       canOAuth: true,
       canApiKey: true,
       credentials: [{ id: '1', name: 'key', is_default: true, provider: 'test' }],
-      disabled: false,
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
@@ -78,7 +91,6 @@ describe('PluginAuth', () => {
       canOAuth: false,
       canApiKey: true,
       credentials: [{ id: '1', name: 'key', is_default: true, provider: 'test' }],
-      disabled: false,
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
@@ -92,48 +104,87 @@ describe('PluginAuth', () => {
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
-  it('renders with className wrapper when not authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      disabled: false,
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(<PluginAuth pluginPayload={defaultPayload} className="custom-class" />)
-    expect(container.innerHTML).toContain('custom-class')
-  })
-
-  it('does not render className wrapper when authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      disabled: false,
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    const { container } = render(<PluginAuth pluginPayload={defaultPayload} className="custom-class" />)
-    expect(container.innerHTML).not.toContain('custom-class')
-  })
-
   it('passes pluginPayload.provider to usePluginAuth', () => {
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,
       canOAuth: false,
       canApiKey: false,
       credentials: [],
-      disabled: false,
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
+  })
+
+  it('renders permission hint and disables authorization configuration when credential.create is missing', () => {
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
+    expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }),
+    ).toBeInTheDocument()
+  })
+
+  it('opens members settings when permission hint action is clicked', () => {
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
+
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('members')
+  })
+
+  it('does not render permission hint for datasource authorization', () => {
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={{ ...defaultPayload, category: AuthCategory.datasource }} />)
+
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
+  })
+
+  it('does not render permission hint when custom credentials are unavailable', () => {
+    mockConsoleState.workspacePermissionKeys = ['credential.use']
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: true,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
   })
 })

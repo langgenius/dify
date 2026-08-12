@@ -7,7 +7,7 @@ from models.model import AppMode
 
 class TestWorkflowAppConfigManager:
     def test_get_app_config(self):
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         workflow = SimpleNamespace(id="wf-1", features_dict={})
 
         with (

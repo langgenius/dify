@@ -33,9 +33,13 @@ describe('AudioBtn', () => {
 
   const getAudioCallback = () => {
     const lastCall = mockGetAudioPlayer.mock.calls[mockGetAudioPlayer.mock.calls.length - 1]
-    const callback = lastCall?.find((arg: unknown) => typeof arg === 'function') as ((event: string) => void) | undefined
+    const callback = lastCall?.find((arg: unknown) => typeof arg === 'function') as
+      | ((event: string) => void)
+      | undefined
     if (!callback)
-      throw new Error('Audio callback not found - ensure mockGetAudioPlayer was called with a callback argument')
+      throw new Error(
+        'Audio callback not found - ensure mockGetAudioPlayer was called with a callback argument',
+      )
     return callback
   }
 
@@ -49,13 +53,13 @@ describe('AudioBtn', () => {
       playAudio: mockPlayAudio,
       pauseAudio: mockPauseAudio,
     })
-    ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({})
-    ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/')
+    ;(useParams as ReturnType<typeof vi.fn>).mockReturnValue({})
+    ;(usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/')
   })
 
   describe('URL Routing', () => {
     it('should generate public URL when token is present', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ token: 'test-token' })
+      ;(useParams as ReturnType<typeof vi.fn>).mockReturnValue({ token: 'test-token' })
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -66,8 +70,8 @@ describe('AudioBtn', () => {
     })
 
     it('should generate app URL when appId is present', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '123' })
-      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/apps/123/chat')
+      ;(useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '123' })
+      ;(usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/apps/123/chat')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
@@ -78,8 +82,8 @@ describe('AudioBtn', () => {
     })
 
     it('should generate installed app URL correctly', async () => {
-      ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '456' })
-      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/explore/installed/app')
+      ;(useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '456' })
+      ;(usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/installed/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())

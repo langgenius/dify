@@ -3,10 +3,8 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
-  createEmptyAppValue,
   createFilterVar,
   createPickerProps,
-  createReasoningFormContext,
   getFieldFlags,
   getFieldTitle,
   getVarKindType,
@@ -24,10 +22,14 @@ describe('reasoning-config-form helpers', () => {
     expect(getVarKindType(FormTypeEnum.files)).toBe(VarKindType.variable)
     expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.textInput)).toBe(VarKindType.mixed)
+    expect(getVarKindType(FormTypeEnum.date)).toBe(VarKindType.constant)
+    expect(getVarKindType(FormTypeEnum.dateRange)).toBe(VarKindType.constant)
     expect(getVarKindType(FormTypeEnum.dynamicSelect)).toBeUndefined()
 
     expect(resolveTargetVarType(FormTypeEnum.textInput)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.textNumber)).toBe(VarType.number)
+    expect(resolveTargetVarType(FormTypeEnum.date)).toBe(VarType.string)
+    expect(resolveTargetVarType(FormTypeEnum.dateRange)).toBe(VarType.string)
     expect(resolveTargetVarType(FormTypeEnum.files)).toBe(VarType.arrayFile)
     expect(resolveTargetVarType(FormTypeEnum.file)).toBe(VarType.file)
     expect(resolveTargetVarType(FormTypeEnum.checkbox)).toBe(VarType.boolean)
@@ -46,6 +48,26 @@ describe('reasoning-config-form helpers', () => {
     expect(fileFilter?.({ type: VarType.arrayFile } as never)).toBe(true)
   })
 
+  it('creates variable filters for date fields', () => {
+    const dateFilter = createPickerProps({
+      type: FormTypeEnum.date,
+      value: {},
+      language: 'en_US',
+      schema: { type: FormTypeEnum.date } as never,
+    }).filterVar
+    expect(dateFilter?.({ type: VarType.string } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.number } as never)).toBe(true)
+    expect(dateFilter?.({ type: VarType.file } as never)).toBe(false)
+    expect(
+      createPickerProps({
+        type: FormTypeEnum.dateRange,
+        value: {},
+        language: 'en_US',
+        schema: { type: FormTypeEnum.dateRange } as never,
+      }).filterVar,
+    ).toBeUndefined()
+  })
+
   it('filters select options based on show_on conditions', () => {
     const options = [
       {
@@ -60,18 +82,28 @@ describe('reasoning-config-form helpers', () => {
       },
     ]
 
-    expect(getVisibleSelectOptions(options as never, {
-      mode: { value: { value: 'advanced' } },
-    }, 'en_US')).toEqual([
+    expect(
+      getVisibleSelectOptions(
+        options as never,
+        {
+          mode: { value: { value: 'advanced' } },
+        },
+        'en_US',
+      ),
+    ).toEqual([
       { value: 'one', name: 'One' },
       { value: 'two', name: 'Two' },
     ])
 
-    expect(getVisibleSelectOptions(options as never, {
-      mode: { value: { value: 'basic' } },
-    }, 'en_US')).toEqual([
-      { value: 'one', name: 'One' },
-    ])
+    expect(
+      getVisibleSelectOptions(
+        options as never,
+        {
+          mode: { value: { value: 'basic' } },
+        },
+        'en_US',
+      ),
+    ).toEqual([{ value: 'one', name: 'One' }])
   })
 
   it('updates reasoning values for auto, constant, variable, and merged states', () => {
@@ -135,47 +167,56 @@ describe('reasoning-config-form helpers', () => {
   })
 
   it('derives field flags and picker props from schema types', () => {
-    expect(getFieldFlags(FormTypeEnum.object, { type: VarKindType.constant })).toEqual(expect.objectContaining({
-      isObject: true,
-      isShowJSONEditor: true,
-      showTypeSwitch: true,
-      isConstant: true,
-    }))
+    expect(getFieldFlags(FormTypeEnum.object, { type: VarKindType.constant })).toEqual(
+      expect.objectContaining({
+        isObject: true,
+        isShowJSONEditor: true,
+        showTypeSwitch: true,
+        isConstant: true,
+      }),
+    )
 
-    expect(createPickerProps({
-      type: FormTypeEnum.select,
-      value: {},
-      language: 'en_US',
-      schema: {
-        options: [
-          {
-            value: 'one',
-            label: { en_US: 'One', zh_Hans: 'One' },
-            show_on: [],
-          },
-        ],
-      } as never,
-    })).toEqual(expect.objectContaining({
-      targetVarType: VarType.string,
-      selectItems: [{ value: 'one', name: 'One' }],
-    }))
+    expect(getFieldFlags(FormTypeEnum.date)).toEqual(
+      expect.objectContaining({
+        isDate: true,
+        isDateRange: false,
+        isString: false,
+        showTypeSwitch: true,
+      }),
+    )
+    expect(getFieldFlags(FormTypeEnum.dateRange)).toEqual(
+      expect.objectContaining({
+        isDate: false,
+        isDateRange: true,
+        isString: false,
+        showTypeSwitch: false,
+      }),
+    )
+
+    expect(
+      createPickerProps({
+        type: FormTypeEnum.select,
+        value: {},
+        language: 'en_US',
+        schema: {
+          options: [
+            {
+              value: 'one',
+              label: { en_US: 'One', zh_Hans: 'One' },
+              show_on: [],
+            },
+          ],
+        } as never,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        targetVarType: VarType.string,
+        selectItems: [{ value: 'one', name: 'One' }],
+      }),
+    )
   })
 
-  it('provides label helpers and empty defaults', () => {
+  it('provides label helpers', () => {
     expect(getFieldTitle({ en_US: 'Prompt', zh_Hans: 'Prompt' }, 'en_US')).toBe('Prompt')
-    expect(createEmptyAppValue()).toEqual({
-      app_id: '',
-      inputs: {},
-      files: [],
-    })
-    expect(createReasoningFormContext({
-      availableNodes: [{ id: 'node-1' }] as never,
-      nodeId: 'node-current',
-      nodeOutputVars: [{ nodeId: 'node-1' }] as never,
-    })).toEqual({
-      availableNodes: [{ id: 'node-1' }],
-      nodeId: 'node-current',
-      nodeOutputVars: [{ nodeId: 'node-1' }],
-    })
   })
 })

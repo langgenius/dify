@@ -21,27 +21,25 @@ vi.mock('../object-child-tree-panel/picker', () => ({
 }))
 
 vi.mock('../manage-input-field', () => ({
-  default: ({ onManage }: { onManage: () => void }) => <button onClick={onManage}>manage-input</button>,
+  default: ({ onManage }: { onManage: () => void }) => (
+    <button onClick={onManage}>manage-input</button>
+  ),
 }))
 
 describe('VarReferenceVars', () => {
   const createVars = (vars: NodeOutPutVar[]) => vars
 
-  const baseVars = createVars([{
-    title: 'Node A',
-    nodeId: 'node-a',
-    vars: [{ variable: 'valid_name', type: VarType.string }],
-  }])
+  const baseVars = createVars([
+    {
+      title: 'Node A',
+      nodeId: 'node-a',
+      vars: [{ variable: 'valid_name', type: VarType.string }],
+    },
+  ])
 
   it('should filter vars through the search box and call onClose on escape', () => {
     const onClose = vi.fn()
-    render(
-      <VarReferenceVars
-        vars={baseVars}
-        onChange={vi.fn()}
-        onClose={onClose}
-      />,
-    )
+    render(<VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} />)
 
     fireEvent.change(screen.getByPlaceholderText('workflow.common.searchVar'), {
       target: { value: 'valid' },
@@ -52,21 +50,60 @@ describe('VarReferenceVars', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('should call onChange when a variable item is chosen', () => {
+  it('should select the first visible variable by default and support arrow navigation in slash mode', () => {
     const onChange = vi.fn()
 
     render(
       <VarReferenceVars
-        vars={baseVars}
+        hideSearch
+        vars={createVars([
+          {
+            title: 'Node A',
+            nodeId: 'node-a',
+            vars: [
+              { variable: 'first_value', type: VarType.string },
+              { variable: 'second_value', type: VarType.string },
+            ],
+          },
+        ])}
         onChange={onChange}
       />,
     )
 
+    const firstItem = screen.getByText('first_value').closest('[data-selected]')
+    const secondItem = screen.getByText('second_value').closest('[data-selected]')
+
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    expect(secondItem).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+
+    expect(firstItem).toHaveAttribute('data-selected', 'false')
+    expect(secondItem).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-a', 'second_value'],
+      expect.objectContaining({
+        variable: 'second_value',
+      }),
+    )
+  })
+
+  it('should call onChange when a variable item is chosen', () => {
+    const onChange = vi.fn()
+
+    render(<VarReferenceVars vars={baseVars} onChange={onChange} />)
+
     fireEvent.click(screen.getByText('valid_name'))
 
-    expect(onChange).toHaveBeenCalledWith(['node-a', 'valid_name'], expect.objectContaining({
-      variable: 'valid_name',
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-a', 'valid_name'],
+      expect.objectContaining({
+        variable: 'valid_name',
+      }),
+    )
   })
 
   it('should render empty state and manage input action', () => {
@@ -166,10 +203,79 @@ describe('VarReferenceVars', () => {
     fireEvent.click(screen.getByText('current'))
     fireEvent.click(screen.getByText('asset'))
 
-    expect(onChange).toHaveBeenNthCalledWith(1, ['env', 'API_KEY'], expect.objectContaining({ variable: 'env.API_KEY' }))
-    expect(onChange).toHaveBeenNthCalledWith(2, ['conversation', 'user_name'], expect.objectContaining({ variable: 'conversation.user_name' }))
-    expect(onChange).toHaveBeenNthCalledWith(3, ['node-special', 'current'], expect.objectContaining({ variable: 'current' }))
-    expect(onChange).toHaveBeenNthCalledWith(4, ['node-special', 'asset'], expect.objectContaining({ variable: 'asset' }))
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      ['env', 'API_KEY'],
+      expect.objectContaining({ variable: 'env.API_KEY' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      ['conversation', 'user_name'],
+      expect.objectContaining({ variable: 'conversation.user_name' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      ['node-special', 'current'],
+      expect.objectContaining({ variable: 'current' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      4,
+      ['node-special', 'asset'],
+      expect.objectContaining({ variable: 'asset' }),
+    )
+  })
+
+  it('should resolve selectors for special variables and file support from keyboard selection', () => {
+    const onChange = vi.fn()
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        isSupportFileVar
+        vars={createVars([
+          {
+            title: 'Specials',
+            nodeId: 'node-special',
+            vars: [
+              { variable: 'env.API_KEY', type: VarType.string },
+              { variable: 'conversation.user_name', type: VarType.string, des: 'User name' },
+              { variable: 'current', type: VarType.string },
+              { variable: 'asset', type: VarType.file },
+            ],
+          },
+        ])}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document, { key: 'Enter' })
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      ['env', 'API_KEY'],
+      expect.objectContaining({ variable: 'env.API_KEY' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      ['conversation', 'user_name'],
+      expect.objectContaining({ variable: 'conversation.user_name' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      ['node-special', 'current'],
+      expect.objectContaining({ variable: 'current' }),
+    )
+    expect(onChange).toHaveBeenNthCalledWith(
+      4,
+      ['node-special', 'asset'],
+      expect.objectContaining({ variable: 'asset' }),
+    )
   })
 
   it('should render object vars and select them by node path', () => {
@@ -182,11 +288,13 @@ describe('VarReferenceVars', () => {
           {
             title: 'Object vars',
             nodeId: 'node-obj',
-            vars: [{
-              variable: 'payload',
-              type: VarType.object,
-              children: [{ variable: 'child', type: VarType.string }],
-            }],
+            vars: [
+              {
+                variable: 'payload',
+                type: VarType.object,
+                children: [{ variable: 'child', type: VarType.string }],
+              },
+            ],
           },
         ])}
         onChange={onChange}
@@ -194,9 +302,12 @@ describe('VarReferenceVars', () => {
     )
 
     fireEvent.click(screen.getByText('payload'))
-    expect(onChange).toHaveBeenCalledWith(['node-obj', 'payload'], expect.objectContaining({
-      variable: 'payload',
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      ['node-obj', 'payload'],
+      expect.objectContaining({
+        variable: 'payload',
+      }),
+    )
   })
 
   it('should filter by externally controlled search text and match child variables', () => {
@@ -208,14 +319,17 @@ describe('VarReferenceVars', () => {
           {
             title: 'Object vars',
             nodeId: 'node-obj',
-            vars: [{
-              variable: 'payload',
-              type: VarType.object,
-              children: [{ variable: 'child_name', type: VarType.string }],
-            }, {
-              variable: 'other_value',
-              type: VarType.string,
-            }],
+            vars: [
+              {
+                variable: 'payload',
+                type: VarType.object,
+                children: [{ variable: 'child_name', type: VarType.string }],
+              },
+              {
+                variable: 'other_value',
+                type: VarType.string,
+              },
+            ],
           },
         ])}
         onChange={vi.fn()}
@@ -249,6 +363,28 @@ describe('VarReferenceVars', () => {
     expect(onBlur).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByText('asset'))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('should ignore file vars when file support is disabled during keyboard selection', () => {
+    const onChange = vi.fn()
+
+    render(
+      <VarReferenceVars
+        hideSearch
+        vars={createVars([
+          {
+            title: 'Files',
+            nodeId: 'node-files',
+            vars: [{ variable: 'asset', type: VarType.file }],
+          },
+        ])}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
     expect(onChange).not.toHaveBeenCalled()
   })
 })

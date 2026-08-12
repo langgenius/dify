@@ -1,17 +1,25 @@
-from unittest.mock import MagicMock, patch
+from inspect import unwrap
+from unittest.mock import ANY, patch
+
+import pytest
+from flask import Flask
+from pydantic import ValidationError
 
 import controllers.console.explore.recommended_app as module
+from controllers.console.explore.recommended_app import RecommendedAppsQuery
+from models import Account
 from models.model import AppMode, IconType
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def make_account(interface_language: str | None) -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = "account-1"
+    account.interface_language = interface_language
+    return account
 
 
 class TestRecommendedAppListApi:
-    def test_get_with_language_param(self, app):
+    def test_get_with_language_param(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -19,19 +27,18 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "en-US"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, RecommendedAppsQuery(language="en-US"), make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("en-US")
+        service_mock.assert_called_once_with("en-US", session=ANY)
         assert result == result_data
 
-    def test_get_fallback_to_user_language(self, app):
+    def test_get_fallback_to_user_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -39,19 +46,18 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "invalid"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("fr-FR")
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
-    def test_get_fallback_to_default_language(self, app):
+    def test_get_fallback_to_default_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -59,25 +65,70 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", MagicMock(interface_language=None)),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, RecommendedAppsQuery(), make_account(None))
 
-        service_mock.assert_called_once_with(module.languages[0])
+        service_mock.assert_called_once_with(module.languages[0], session=ANY)
+        assert result == result_data
+
+
+class TestLearnDifyAppListApi:
+    def test_get_with_language_param(self, app: Flask):
+        api = module.LearnDifyAppListApi()
+        method = unwrap(api.get)
+
+        result_data = {"recommended_apps": []}
+
+        with (
+            app.test_request_context("/", query_string={"language": "en-US"}),
+            patch.object(
+                module.RecommendedAppService,
+                "get_learn_dify_apps",
+                return_value=result_data,
+            ) as service_mock,
+        ):
+            result = method(api, RecommendedAppsQuery(language="en-US"), make_account("fr-FR"))
+
+        service_mock.assert_called_once_with("en-US", session=ANY)
+        assert result == result_data
+
+    def test_get_fallback_to_user_language(self, app: Flask):
+        api = module.LearnDifyAppListApi()
+        method = unwrap(api.get)
+
+        result_data = {"recommended_apps": []}
+
+        with (
+            app.test_request_context("/", query_string={"language": "invalid"}),
+            patch.object(
+                module.RecommendedAppService,
+                "get_learn_dify_apps",
+                return_value=result_data,
+            ) as service_mock,
+        ):
+            result = method(api, RecommendedAppsQuery(), make_account("fr-FR"))
+
+        service_mock.assert_called_once_with("fr-FR", session=ANY)
         assert result == result_data
 
 
 class TestRecommendedAppApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.RecommendedAppApi()
         method = unwrap(api.get)
 
-        result_data = {"id": "app1"}
+        result_data = {
+            "id": "app1",
+            "name": "App",
+            "mode": "chat",
+            "export_data": "{}",
+            "can_trial": False,
+        }
 
         with (
             app.test_request_context("/"),
@@ -89,8 +140,8 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
-        assert result == result_data
+        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111", session=ANY)
+        assert result == {**result_data, "icon": None, "icon_background": None}
 
 
 class TestRecommendedAppResponseModels:
@@ -124,7 +175,7 @@ class TestRecommendedAppResponseModels:
                         },
                         "app_id": "app-1",
                         "description": "desc",
-                        "category": "cat",
+                        "categories": ["cat", "other"],
                         "position": 1,
                         "is_listed": True,
                         "can_trial": False,
@@ -135,4 +186,36 @@ class TestRecommendedAppResponseModels:
         ).model_dump(mode="json")
 
         assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
         assert response["categories"] == ["cat"]
+
+    def test_learn_dify_app_list_response_serialization(self):
+        response = module.LearnDifyAppListResponse.model_validate(
+            {
+                "recommended_apps": [
+                    {
+                        "app": {
+                            "id": "app-1",
+                            "name": "App",
+                            "mode": "chat",
+                            "icon": "icon.png",
+                            "icon_type": "emoji",
+                            "icon_background": "#fff",
+                        },
+                        "app_id": "app-1",
+                        "description": "desc",
+                        "categories": ["Workflow"],
+                        "position": 1,
+                        "is_listed": True,
+                        "can_trial": False,
+                    }
+                ],
+            }
+        ).model_dump(mode="json")
+
+        assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["Workflow"]
+
+    def test_recommended_app_response_requires_can_trial(self):
+        with pytest.raises(ValidationError):
+            module.RecommendedAppResponse.model_validate({"app_id": "app-1"})

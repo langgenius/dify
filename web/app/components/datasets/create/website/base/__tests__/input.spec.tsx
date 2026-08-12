@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import Input from '../input'
+import Input from '../text-input'
 
 describe('WebsiteInput', () => {
   const onChange = vi.fn()

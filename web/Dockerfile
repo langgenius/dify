@@ -1,5 +1,5 @@
 # base image
-FROM node:22-alpine AS base
+FROM node:22.22.1-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -41,6 +41,7 @@ COPY . .
 
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV pnpm_config_verify_deps_before_run=false
 RUN pnpm build && pnpm build:vinext
 
 
@@ -48,7 +49,6 @@ RUN pnpm build && pnpm build:vinext
 FROM base AS production
 
 ENV NODE_ENV=production
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001

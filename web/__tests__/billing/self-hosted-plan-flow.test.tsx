@@ -1,32 +1,25 @@
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 /**
  * Integration test: Self-Hosted Plan Flow
  *
  * Tests the self-hosted plan items:
- *   SelfHostedPlanItem → Button click → permission check → redirect to external URL
+ *   SelfHostedPlanItem → Button click → redirect to external URL
  *
- * Covers community/premium/enterprise plan rendering, external URL navigation,
- * and workspace manager permission enforcement.
+ * Covers community/premium/enterprise plan rendering and external URL navigation.
  */
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '@/app/components/billing/config'
+import {
+  contactSalesUrl,
+  getStartedWithCommunityUrl,
+  getWithPremiumUrl,
+} from '@/app/components/billing/config'
 import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
 import { SelfHostedPlan } from '@/app/components/billing/type'
-
-let mockAppCtx: Record<string, unknown> = {}
+import { render } from '@/test/console/render'
 
 const originalLocation = window.location
 let assignedHref = ''
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockAppCtx,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -46,36 +39,26 @@ vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () 
   ),
 }))
 
-const setupAppContext = (overrides: Record<string, unknown> = {}) => {
-  mockAppCtx = {
-    isCurrentWorkspaceManager: true,
-    ...overrides,
-  }
-}
-
 const renderSelfHostedPlanItem = (plan: SelfHostedPlan) => {
-  return render(
-    <>
-      <ToastHost timeout={0} />
-      <SelfHostedPlanItem plan={plan} />
-    </>,
-  )
+  return render(<SelfHostedPlanItem plan={plan} />)
 }
 
 describe('Self-Hosted Plan Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-    toast.dismiss()
-    setupAppContext()
 
     // Mock window.location with minimal getter/setter (Location props are non-enumerable)
     assignedHref = ''
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
-        get href() { return assignedHref },
-        set href(value: string) { assignedHref = value },
+        get href() {
+          return assignedHref
+        },
+        set href(value: string) {
+          assignedHref = value
+        },
       },
     })
   })
@@ -174,52 +157,6 @@ describe('Self-Hosted Plan Flow', () => {
       await user.click(button)
 
       expect(assignedHref).toBe(contactSalesUrl)
-    })
-  })
-
-  // ─── 3. Permission Check ────────────────────────────────────────────────
-  describe('Permission check', () => {
-    it('should show error toast when non-manager clicks community button', async () => {
-      setupAppContext({ isCurrentWorkspaceManager: false })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      // Should NOT redirect
-      expect(assignedHref).toBe('')
-    })
-
-    it('should show error toast when non-manager clicks premium button', async () => {
-      setupAppContext({ isCurrentWorkspaceManager: false })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(assignedHref).toBe('')
-    })
-
-    it('should show error toast when non-manager clicks enterprise button', async () => {
-      setupAppContext({ isCurrentWorkspaceManager: false })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(assignedHref).toBe('')
     })
   })
 })

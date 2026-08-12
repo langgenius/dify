@@ -52,7 +52,7 @@ def create_webhook_node(
 
     node = TriggerWebhookNode(
         node_id="webhook-node-1",
-        config=webhook_data,
+        data=webhook_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

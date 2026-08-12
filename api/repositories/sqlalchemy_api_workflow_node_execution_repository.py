@@ -6,14 +6,15 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Protocol, cast
+from typing import Any, Protocol, cast, override
 
 from sqlalchemy import asc, delete, desc, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 from repositories.api_workflow_node_execution_repository import (
@@ -65,6 +66,13 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         """
         self._session_maker = session_maker
 
+    @override
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Load Process Data from external storage when the execution was offloaded."""
+        with self._session_maker() as session:
+            return execution.load_full_process_data(session, storage)
+
+    @override
     def get_node_last_execution(
         self,
         tenant_id: str,
@@ -106,6 +114,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.scalar(stmt)
 
+    @override
     def get_executions_by_workflow_run(
         self,
         tenant_id: str,
@@ -136,6 +145,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
 
+    @override
     def get_execution_snapshots_by_workflow_run(
         self,
         tenant_id: str,
@@ -210,6 +220,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             loop_id=str(loop_id) if loop_id else None,
         )
 
+    @override
     def get_execution_by_id(
         self,
         execution_id: str,
@@ -242,6 +253,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.scalar(stmt)
 
+    @override
     def delete_expired_executions(
         self,
         tenant_id: str,
@@ -289,6 +301,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return total_deleted
 
+    @override
     def delete_executions_by_app(
         self,
         tenant_id: str,
@@ -336,6 +349,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return total_deleted
 
+    @override
     def get_expired_executions_batch(
         self,
         tenant_id: str,
@@ -365,6 +379,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
 
+    @override
     def delete_executions_by_ids(
         self,
         execution_ids: Sequence[str],
@@ -387,6 +402,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session.commit()
             return result.rowcount
 
+    @override
     def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Delete node executions (and offloads) for the given workflow runs using workflow_run_id.
@@ -420,6 +436,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return node_executions_deleted, offloads_deleted
 
+    @override
     def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Count node executions (and offloads) for the given workflow runs using workflow_run_id.
@@ -456,6 +473,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
+    @override
     def get_offloads_by_execution_ids(
         self,
         session: Session,

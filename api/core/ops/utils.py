@@ -34,22 +34,24 @@ def measure_time():
     try:
         yield timing_info
     finally:
+        # pyrefly: ignore [bad-assignment]
         timing_info["end"] = datetime.now()
 
 
 def replace_text_with_content(data):
-    if isinstance(data, dict):
-        new_data = {}
-        for key, value in data.items():
-            if key == "text":
-                new_data["content"] = value
-            else:
-                new_data[key] = replace_text_with_content(value)
-        return new_data
-    elif isinstance(data, list):
-        return [replace_text_with_content(item) for item in data]
-    else:
-        return data
+    match data:
+        case dict():
+            new_data = {}
+            for key, value in data.items():
+                if key == "text":
+                    new_data["content"] = value
+                else:
+                    new_data[key] = replace_text_with_content(value)
+            return new_data
+        case list():
+            return [replace_text_with_content(item) for item in data]
+        case _:
+            return data
 
 
 def generate_dotted_order(run_id: str, start_time: Union[str, datetime], parent_dotted_order: str | None = None) -> str:

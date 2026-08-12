@@ -15,12 +15,13 @@ export const DebugWithMultipleModelContextProvider = ({
   checkCanSend,
 }: DebugWithMultipleModelContextProviderProps) => {
   return (
-    <DebugWithMultipleModelContext.Provider value={{
-      onMultipleModelConfigsChange,
-      multipleModelConfigs,
-      onDebugWithMultipleModelChange,
-      checkCanSend,
-    }}
+    <DebugWithMultipleModelContext.Provider
+      value={{
+        onMultipleModelConfigsChange,
+        multipleModelConfigs,
+        onDebugWithMultipleModelChange,
+        checkCanSend,
+      }}
     >
       {children}
     </DebugWithMultipleModelContext.Provider>

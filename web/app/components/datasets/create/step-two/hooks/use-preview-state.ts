@@ -1,5 +1,10 @@
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, DocumentItem, FullDocumentDetail } from '@/models/datasets'
+import type {
+  CrawlResultItem,
+  CustomFile,
+  DocumentItem,
+  FullDocumentDetail,
+} from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
@@ -13,34 +18,21 @@ type UsePreviewStateOptions = {
 }
 
 export const usePreviewState = (options: UsePreviewStateOptions) => {
-  const {
-    dataSourceType,
-    files,
-    notionPages,
-    websitePages,
-    documentDetail,
-    datasetId,
-  } = options
+  const { dataSourceType, files, notionPages, websitePages, documentDetail, datasetId } = options
 
   // File preview state
   const [previewFile, setPreviewFile] = useState<DocumentItem>(
-    (datasetId && documentDetail)
-      ? documentDetail.file
-      : files[0],
+    datasetId && documentDetail ? documentDetail.file : files[0],
   )
 
   // Notion page preview state
   const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(
-    (datasetId && documentDetail)
-      ? documentDetail.notion_page
-      : notionPages[0],
+    datasetId && documentDetail ? documentDetail.notion_page : notionPages[0],
   )
 
   // Website page preview state
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(
-    (datasetId && documentDetail)
-      ? documentDetail.website_page
-      : websitePages[0],
+    datasetId && documentDetail ? documentDetail.website_page : websitePages[0],
   )
 
   // Get preview items for document picker based on data source type
@@ -49,14 +41,14 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
       return files as Array<Required<CustomFile>>
     }
     if (dataSourceType === DataSourceType.NOTION) {
-      return notionPages.map(page => ({
+      return notionPages.map((page) => ({
         id: page.page_id,
         name: page.page_name,
         extension: 'md',
       }))
     }
     if (dataSourceType === DataSourceType.WEB) {
-      return websitePages.map(page => ({
+      return websitePages.map((page) => ({
         id: page.source_url,
         name: page.title,
         extension: 'md',
@@ -88,21 +80,20 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   }, [dataSourceType, previewFile, previewNotionPage, previewWebsitePage])
 
   // Handle preview change
-  const handlePreviewChange = useCallback((selected: { id: string, name: string }) => {
-    if (dataSourceType === DataSourceType.FILE) {
-      setPreviewFile(selected as DocumentItem)
-    }
-    else if (dataSourceType === DataSourceType.NOTION) {
-      const selectedPage = notionPages.find(page => page.page_id === selected.id)
-      if (selectedPage)
-        setPreviewNotionPage(selectedPage)
-    }
-    else if (dataSourceType === DataSourceType.WEB) {
-      const selectedPage = websitePages.find(page => page.source_url === selected.id)
-      if (selectedPage)
-        setPreviewWebsitePage(selectedPage)
-    }
-  }, [dataSourceType, notionPages, websitePages])
+  const handlePreviewChange = useCallback(
+    (selected: { id: string; name: string }) => {
+      if (dataSourceType === DataSourceType.FILE) {
+        setPreviewFile(selected as DocumentItem)
+      } else if (dataSourceType === DataSourceType.NOTION) {
+        const selectedPage = notionPages.find((page) => page.page_id === selected.id)
+        if (selectedPage) setPreviewNotionPage(selectedPage)
+      } else if (dataSourceType === DataSourceType.WEB) {
+        const selectedPage = websitePages.find((page) => page.source_url === selected.id)
+        if (selectedPage) setPreviewWebsitePage(selectedPage)
+      }
+    },
+    [dataSourceType, notionPages, websitePages],
+  )
 
   return {
     // File preview

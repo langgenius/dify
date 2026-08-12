@@ -1,11 +1,9 @@
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../index'
 
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
-  <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
-    {ui}
-  </div>,
-)
+const renderWithSafeViewport = (ui: React.ReactNode) =>
+  render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
 
 describe('TooltipContent', () => {
   describe('Placement and offsets', () => {
@@ -19,9 +17,15 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-side', 'top')
-      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveAttribute('data-align', 'center')
-      await expect.element(screen.getByRole('tooltip', { name: 'default tooltip' })).toHaveTextContent('Tooltip body')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'default tooltip' }))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'default tooltip' }))
+        .toHaveAttribute('data-align', 'center')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'default tooltip' }))
+        .toHaveTextContent('Tooltip body')
     })
 
     it('should apply custom placement when placement props are provided', async () => {
@@ -40,9 +44,15 @@ describe('TooltipContent', () => {
         </Tooltip>,
       )
 
-      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveAttribute('data-align', 'start')
-      await expect.element(screen.getByRole('tooltip', { name: 'custom tooltip' })).toHaveTextContent('Custom tooltip body')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'custom tooltip' }))
+        .toHaveAttribute('data-side', 'bottom')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'custom tooltip' }))
+        .toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('tooltip', { name: 'custom tooltip' }))
+        .toHaveTextContent('Custom tooltip body')
     })
   })
 

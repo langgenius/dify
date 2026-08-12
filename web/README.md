@@ -56,6 +56,8 @@ pnpm -C web run dev
 # or if you are using vinext which provides a better development experience
 pnpm -C web run dev:vinext
 # (optional) start the dev proxy server so that you can use online API in development
+# edit web/dev-proxy.config.ts to choose proxy paths
+# edit web/.env.local to override DEV_PROXY_TARGET, DEV_PROXY_ENTERPRISE_TARGET, DEV_PROXY_HOST, or DEV_PROXY_PORT
 pnpm -C web run dev:proxy
 ```
 
@@ -114,7 +116,7 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
+**📖 Frontend Testing Guide**: See [web/docs/test.md] for the canonical testing policy and workflow.
 
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
@@ -124,29 +126,17 @@ We use [Vitest] and [React Testing Library] for Unit Testing.
 Run test:
 
 ```bash
-pnpm -C web test
+cd web
+vp test run
 ```
 
-> [!NOTE]
-> Our test is not fully stable yet, and we are actively working on improving it.
-> If you encounter test failures only in CI but not locally, please feel free to ignore them and report the issue to us.
-> You can try to re-run the test in CI, and it may pass successfully.
+If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
 ### Example Code
 
 If you are not familiar with writing tests, refer to:
 
 - [index.spec.tsx] - Component test example
-
-### Analyze Component Complexity
-
-Before writing tests, use the script to analyze component complexity:
-
-```bash
-pnpm analyze-component app/components/your-component/index.tsx
-```
-
-This will help you determine the testing strategy. See [web/testing/testing.md] for details.
 
 ## Documentation
 
@@ -165,7 +155,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/radio/__tests__/index.spec.tsx
+[index.spec.tsx]: ./app/components/base/action-button/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
 [web/docs/test.md]: ./docs/test.md

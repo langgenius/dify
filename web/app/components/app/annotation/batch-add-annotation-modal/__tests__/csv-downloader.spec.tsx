@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { Mock } from 'vitest'
 import type { Locale } from '@/i18n-config'
 import { render, screen } from '@testing-library/react'
@@ -6,6 +6,10 @@ import * as React from 'react'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import CSVDownload from '../csv-downloader'
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
+}))
 
 const downloaderProps: any[] = []
 
@@ -17,10 +21,6 @@ vi.mock('react-papaparse', () => ({
     },
     Type: { Link: 'link' },
   })),
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
 }))
 
 const renderWithLocale = (locale: Locale) => {

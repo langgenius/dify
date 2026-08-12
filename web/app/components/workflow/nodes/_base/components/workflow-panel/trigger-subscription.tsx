@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { cn } from '@langgenius/dify-ui/cn'
-import { CreateButtonType, CreateSubscriptionButton } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create'
+import { CreateSubscriptionButton } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create'
+import { CreateButtonType } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create/types'
 import { SubscriptionSelectorEntry } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
 import { useSubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list/use-subscription-list'
 
@@ -11,7 +12,11 @@ type TriggerSubscriptionProps = {
   children: React.ReactNode
 }
 
-export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({ subscriptionIdSelected, onSubscriptionChange, children }) => {
+export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({
+  subscriptionIdSelected,
+  onSubscriptionChange,
+  children,
+}) => {
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
 

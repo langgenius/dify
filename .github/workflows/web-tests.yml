@@ -9,16 +9,10 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    runs-on: ubuntu-latest
-    env:
-      VITEST_COVERAGE_SCOPE: app-components
+    runs-on: depot-ubuntu-24.04-4
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -39,7 +33,7 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Run tests
-        run: vp test run --reporter=blob --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
+        run: vp test run --reporter=blob --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -54,7 +48,7 @@ jobs:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
     needs: [test]
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -64,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -83,7 +77,7 @@ jobs:
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           directory: web/coverage
           flags: web
@@ -92,7 +86,8 @@ jobs:
 
   dify-ui-test:
     name: dify-ui Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -102,24 +97,60 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
       - name: Install Chromium for Browser Mode
-        run: vp exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui tests
-        run: vp test run --coverage --silent=passed-only
+        run: vp test run --project unit --coverage --silent=passed-only
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           directory: packages/dify-ui/coverage
           flags: dify-ui
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+  dify-ui-storybook-test:
+    name: dify-ui Storybook Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run dify-ui Storybook tests
+        run: vp run test:storybook

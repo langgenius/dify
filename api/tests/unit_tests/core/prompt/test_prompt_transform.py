@@ -209,7 +209,7 @@ class TestPromptTransform:
         assert result == ["only"]
         memory.get_history_prompt_messages.assert_called_with(max_token_limit=10, message_limit=None)
 
-    def test_append_chat_histories_extends_prompt_messages(self, monkeypatch):
+    def test_append_chat_histories_extends_prompt_messages(self, monkeypatch: pytest.MonkeyPatch):
         transform = PromptTransform()
         memory = MagicMock()
         memory_config = SimpleNamespace(window=SimpleNamespace(enabled=False, size=None))

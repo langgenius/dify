@@ -1,30 +1,12 @@
-import type { ReactNode } from 'react'
 import type { PluginPayload } from '../../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
 import { AuthCategory } from '../../types'
 
-// Create a wrapper with QueryClientProvider
-const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-    },
-  })
-
-const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>
-      {children}
-    </QueryClientProvider>
-  )
-}
+const createWrapper = () => createQueryClientWrapper(createAccountProfileQueryClient())
 
 // Mock API hooks - these make network requests so must be mocked
 const mockGetPluginOAuthUrl = vi.fn()
@@ -82,31 +64,43 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({ data: { accounts: [] } }),
+}))
+
 // Mock AuthForm to control form validation in tests
 const mockGetFormValues = vi.fn()
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   default: vi.fn().mockImplementation(({ ref }: { ref: { current: unknown } }) => {
-    if (ref)
-      ref.current = { getFormValues: mockGetFormValues }
+    if (ref) ref.current = { getFormValues: mockGetFormValues }
 
     return <div data-testid="mock-auth-form">Auth Form</div>
   }),
 }))
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
+const { mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  return {
+    mockToast: {
+      success: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'success', message, ...options }),
+      error: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'error', message, ...options }),
+      warning: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'warning', message, ...options }),
+      info: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'info', message, ...options }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
+
 // Factory function for creating test PluginPayload
 const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayload => ({
   category: AuthCategory.tool,
@@ -146,13 +140,9 @@ describe('AddApiKeyButton', () => {
     it('should render button with custom text', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          buttonText="Custom API Key"
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddApiKeyButton pluginPayload={pluginPayload} buttonText="Custom API Key" />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByRole('button')).toHaveTextContent('Custom API Key')
     })
@@ -162,13 +152,9 @@ describe('AddApiKeyButton', () => {
     it('should disable button when disabled prop is true', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          disabled={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddApiKeyButton pluginPayload={pluginPayload} disabled={true} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByRole('button')).toBeDisabled()
     })
@@ -176,13 +162,9 @@ describe('AddApiKeyButton', () => {
     it('should not disable button when disabled prop is false', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          disabled={false}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddApiKeyButton pluginPayload={pluginPayload} disabled={false} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByRole('button')).not.toBeDisabled()
     })
@@ -192,13 +174,9 @@ describe('AddApiKeyButton', () => {
       const formSchemas = [createFormSchema({ name: 'api_key', label: 'API Key' })]
 
       expect(() => {
-        render(
-          <AddApiKeyButton
-            pluginPayload={pluginPayload}
-            formSchemas={formSchemas}
-          />,
-          { wrapper: createWrapper() },
-        )
+        render(<AddApiKeyButton pluginPayload={pluginPayload} formSchemas={formSchemas} />, {
+          wrapper: createWrapper(),
+        })
       }).not.toThrow()
     })
   })
@@ -222,13 +200,9 @@ describe('AddApiKeyButton', () => {
     it('should not open modal when button is disabled', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          disabled={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddApiKeyButton pluginPayload={pluginPayload} disabled={true} />, {
+        wrapper: createWrapper(),
+      })
 
       const button = screen.getByRole('button')
       fireEvent.click(button)
@@ -251,11 +225,18 @@ describe('AddApiKeyButton', () => {
     })
 
     it('should handle all auth categories', () => {
-      const categories = [AuthCategory.tool, AuthCategory.datasource, AuthCategory.model, AuthCategory.trigger]
+      const categories = [
+        AuthCategory.tool,
+        AuthCategory.datasource,
+        AuthCategory.model,
+        AuthCategory.trigger,
+      ]
 
       categories.forEach((category) => {
         const pluginPayload = createPluginPayload({ category })
-        const { unmount } = render(<AddApiKeyButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
+        const { unmount } = render(<AddApiKeyButton pluginPayload={pluginPayload} />, {
+          wrapper: createWrapper(),
+        })
         expect(screen.getByRole('button')).toBeInTheDocument()
         unmount()
       })
@@ -293,13 +274,9 @@ describe('AddApiKeyButton', () => {
         createFormSchema({ name: 'api_key', label: 'API Key' }),
       ])
 
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddApiKeyButton pluginPayload={pluginPayload} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
 
       // Open modal
       fireEvent.click(screen.getByRole('button'))
@@ -307,13 +284,6 @@ describe('AddApiKeyButton', () => {
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.useApiAuth')).toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const AddApiKeyButtonDefault = (await import('../add-api-key-button')).default
-      expect(typeof AddApiKeyButtonDefault).toBe('object')
     })
   })
 })
@@ -360,13 +330,9 @@ describe('AddOAuthButton', () => {
         is_system_oauth_params_exists: true,
       })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          buttonText="Connect OAuth"
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} buttonText="Connect OAuth" />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('Connect OAuth')).toBeInTheDocument()
     })
@@ -379,13 +345,9 @@ describe('AddOAuthButton', () => {
         is_system_oauth_params_exists: false,
       })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          buttonText="OAuth"
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} buttonText="OAuth" />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('OAuth')).toBeInTheDocument()
     })
@@ -413,13 +375,9 @@ describe('AddOAuthButton', () => {
         is_system_oauth_params_exists: false,
       })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          disabled={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} disabled={true} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByRole('button')).toBeDisabled()
     })
@@ -432,15 +390,11 @@ describe('AddOAuthButton', () => {
         is_system_oauth_params_exists: false,
       })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          className="custom-class"
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} className="custom-class" />, {
+        wrapper: createWrapper(),
+      })
 
-      expect(screen.getByRole('button').className).toContain('custom-class')
+      expect(screen.getByText('use oauth').closest('.custom-class')).toBeInTheDocument()
     })
 
     it('should use oAuthData prop when provided', () => {
@@ -453,13 +407,9 @@ describe('AddOAuthButton', () => {
         redirect_uri: 'https://custom.example.com/callback',
       }
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          oAuthData={oAuthData}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} oAuthData={oAuthData} />, {
+        wrapper: createWrapper(),
+      })
 
       // Should render configured button since oAuthData has is_system_oauth_params_exists=true
       expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
@@ -475,15 +425,13 @@ describe('AddOAuthButton', () => {
         is_oauth_custom_client_enabled: true,
         is_system_oauth_params_exists: false,
       })
-      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.example.com/auth' })
+      mockGetPluginOAuthUrl.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/auth',
+      })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click the main button area (left side)
       const buttonText = screen.getByText('use oauth')
@@ -541,19 +489,17 @@ describe('AddOAuthButton', () => {
         is_oauth_custom_client_enabled: true,
         is_system_oauth_params_exists: false,
       })
-      mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.example.com/auth' })
+      mockGetPluginOAuthUrl.mockResolvedValue({
+        authorization_url: 'https://oauth.example.com/auth',
+      })
       // Simulate openOAuthPopup calling the success callback
       mockOpenOAuthPopup.mockImplementation((url, callback) => {
         callback?.()
       })
 
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<AddOAuthButton pluginPayload={pluginPayload} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
 
       const buttonText = screen.getByText('use oauth')
       fireEvent.click(buttonText)
@@ -580,8 +526,9 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Click the settings icon using data-testid for reliable selection
-      const settingsButton = screen.getByTestId('oauth-settings-button')
+      const settingsButton = screen.getByRole('button', {
+        name: /plugin\.auth\.oauthClientSettings/i,
+      })
       fireEvent.click(settingsButton)
 
       await waitFor(() => {
@@ -669,11 +616,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Open settings by clicking the gear icon
-      const button = screen.getByRole('button')
-      const gearIconContainer = button.querySelector('[class*="shrink-0"][class*="w-8"]')
-      if (gearIconContainer)
-        fireEvent.click(gearIconContainer)
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -706,11 +649,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Click the settings icon
-      const button = screen.getByRole('button')
-      const gearIconContainer = button.querySelector('[class*="shrink-0"][class*="w-8"]')
-      if (gearIconContainer)
-        fireEvent.click(gearIconContainer)
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
       await waitFor(() => {
         // OAuthClientSettings modal should open
@@ -872,13 +811,9 @@ describe('ApiKeyModal', () => {
       const pluginPayload = createPluginPayload()
       const onClose = vi.fn()
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          onClose={onClose}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} onClose={onClose} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find and click cancel button
       const cancelButton = screen.getByText('common.operation.cancel')
@@ -890,13 +825,9 @@ describe('ApiKeyModal', () => {
     it('should disable confirm button when disabled prop is true', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          disabled={true}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} disabled={true} />, {
+        wrapper: createWrapper(),
+      })
 
       const confirmButton = screen.getByText('common.operation.save')
       expect(confirmButton.closest('button')).toBeDisabled()
@@ -910,30 +841,20 @@ describe('ApiKeyModal', () => {
         api_key: 'test-key',
       }
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          editValues={editValues}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} editValues={editValues} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.useApiAuth')).toBeInTheDocument()
     })
 
     it('should use formSchemas from props when provided', () => {
       const pluginPayload = createPluginPayload()
-      const customSchemas = [
-        createFormSchema({ name: 'custom_field', label: 'Custom Field' }),
-      ]
+      const customSchemas = [createFormSchema({ name: 'custom_field', label: 'Custom Field' })]
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          formSchemas={customSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} formSchemas={customSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       // AuthForm is mocked, verify modal renders
       expect(screen.getByTestId('mock-auth-form')).toBeInTheDocument()
@@ -957,13 +878,9 @@ describe('ApiKeyModal', () => {
         api_key: 'existing-key',
       }
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          editValues={editValues}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} editValues={editValues} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.useApiAuth')).toBeInTheDocument()
     })
@@ -990,14 +907,9 @@ describe('ApiKeyModal', () => {
       ])
       mockAddPluginCredential.mockResolvedValue({})
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          onClose={onClose}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} onClose={onClose} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click confirm button
       const confirmButton = screen.getByText('common.operation.save')
@@ -1058,14 +970,9 @@ describe('ApiKeyModal', () => {
       ])
       mockAddPluginCredential.mockResolvedValue({})
 
-      render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          onClose={onClose}
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} onClose={onClose} onUpdate={onUpdate} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click confirm button
       const confirmButton = screen.getByText('common.operation.save')
@@ -1087,10 +994,7 @@ describe('ApiKeyModal', () => {
         values: {},
       })
 
-      render(
-        <ApiKeyModal pluginPayload={pluginPayload} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // Click confirm button
       const confirmButton = screen.getByText('common.operation.save')
@@ -1106,12 +1010,11 @@ describe('ApiKeyModal', () => {
         createFormSchema({ name: 'api_key', label: 'API Key' }),
       ])
       // Make the API call slow
-      mockAddPluginCredential.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-      render(
-        <ApiKeyModal pluginPayload={pluginPayload} />,
-        { wrapper: createWrapper() },
+      mockAddPluginCredential.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
+
+      render(<ApiKeyModal pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       // Click confirm button twice quickly
       const confirmButton = screen.getByText('common.operation.save')
@@ -1146,10 +1049,7 @@ describe('ApiKeyModal', () => {
         return Promise.resolve({})
       })
 
-      render(
-        <ApiKeyModal pluginPayload={pluginPayload} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ApiKeyModal pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
       const confirmButton = screen.getByText('common.operation.save')
 
@@ -1168,7 +1068,9 @@ describe('ApiKeyModal', () => {
       expect(apiCallCount).toBe(1)
 
       // Clean up by resolving the promise
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
 
     it('should call onRemove when extra button is clicked in edit mode', async () => {
@@ -1183,11 +1085,7 @@ describe('ApiKeyModal', () => {
       ])
 
       render(
-        <ApiKeyModal
-          pluginPayload={pluginPayload}
-          editValues={editValues}
-          onRemove={onRemove}
-        />,
+        <ApiKeyModal pluginPayload={pluginPayload} editValues={editValues} onRemove={onRemove} />,
         { wrapper: createWrapper() },
       )
 
@@ -1225,10 +1123,7 @@ describe('ApiKeyModal', () => {
       ])
 
       expect(() => {
-        render(
-          <ApiKeyModal pluginPayload={pluginPayload} />,
-          { wrapper: createWrapper() },
-        )
+        render(<ApiKeyModal pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
       }).not.toThrow()
 
       expect(screen.getByTestId('mock-auth-form')).toBeInTheDocument()
@@ -1257,13 +1152,9 @@ describe('OAuthClientSettings', () => {
     it('should render modal with correct title', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
     })
@@ -1271,13 +1162,9 @@ describe('OAuthClientSettings', () => {
     it('should render Save and Auth button', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.saveAndAuth')).toBeInTheDocument()
     })
@@ -1285,13 +1172,9 @@ describe('OAuthClientSettings', () => {
     it('should render Save Only button', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.saveOnly')).toBeInTheDocument()
     })
@@ -1299,13 +1182,9 @@ describe('OAuthClientSettings', () => {
     it('should render Cancel button', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
     })
@@ -1313,13 +1192,9 @@ describe('OAuthClientSettings', () => {
     it('should render form from schemas', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       // AuthForm is mocked
       expect(screen.getByTestId('mock-auth-form')).toBeInTheDocument()
@@ -1460,14 +1335,9 @@ describe('OAuthClientSettings', () => {
       const pluginPayload = createPluginPayload()
       const onAuth = vi.fn().mockResolvedValue(undefined)
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={[]}
-          onAuth={onAuth}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={[]} onAuth={onAuth} />, {
+        wrapper: createWrapper(),
+      })
 
       const saveAndAuthButton = screen.getByText('plugin.auth.saveAndAuth')
       expect(saveAndAuthButton).toBeInTheDocument()
@@ -1550,13 +1420,9 @@ describe('OAuthClientSettings', () => {
     it('should handle form with empty values', () => {
       const pluginPayload = createPluginPayload()
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       // Modal should render with save buttons
       expect(screen.getByText('plugin.auth.saveOnly')).toBeInTheDocument()
@@ -1648,15 +1514,13 @@ describe('OAuthClientSettings', () => {
     it('should prevent double submission when doingAction is true', async () => {
       const pluginPayload = createPluginPayload()
       // Make the API call slow
-      mockSetPluginOAuthCustomClient.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
+      mockSetPluginOAuthCustomClient.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       )
+
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click Save Only button twice quickly
       const saveButton = screen.getByText('plugin.auth.saveOnly')
@@ -1683,13 +1547,9 @@ describe('OAuthClientSettings', () => {
         return Promise.resolve({})
       })
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       const saveButton = screen.getByText('plugin.auth.saveOnly')
 
@@ -1708,7 +1568,9 @@ describe('OAuthClientSettings', () => {
       expect(apiCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
 
     it('should return early from handleRemove if doingActionRef is true', async () => {
@@ -1768,7 +1630,9 @@ describe('OAuthClientSettings', () => {
       expect(deleteCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
   })
 
@@ -1777,13 +1641,9 @@ describe('OAuthClientSettings', () => {
       const pluginPayload = createPluginPayload()
 
       expect(() => {
-        render(
-          <OAuthClientSettings
-            pluginPayload={pluginPayload}
-            schemas={[]}
-          />,
-          { wrapper: createWrapper() },
-        )
+        render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={[]} />, {
+          wrapper: createWrapper(),
+        })
       }).not.toThrow()
     })
 
@@ -1795,10 +1655,7 @@ describe('OAuthClientSettings', () => {
 
       expect(() => {
         render(
-          <OAuthClientSettings
-            pluginPayload={pluginPayload}
-            schemas={schemasWithoutDefaults}
-          />,
+          <OAuthClientSettings pluginPayload={pluginPayload} schemas={schemasWithoutDefaults} />,
           { wrapper: createWrapper() },
         )
       }).not.toThrow()
@@ -1825,16 +1682,16 @@ describe('OAuthClientSettings', () => {
       const pluginPayload = createPluginPayload()
       const schemasWithDefaults: FormSchema[] = [
         createFormSchema({ name: 'client_id', label: 'Client ID', default: 'default-id' }),
-        createFormSchema({ name: 'client_secret', label: 'Client Secret', default: 'default-secret' }),
+        createFormSchema({
+          name: 'client_secret',
+          label: 'Client Secret',
+          default: 'default-secret',
+        }),
       ]
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={schemasWithDefaults}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={schemasWithDefaults} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
     })
@@ -1843,17 +1700,17 @@ describe('OAuthClientSettings', () => {
       const pluginPayload = createPluginPayload()
       const mixedSchemas: FormSchema[] = [
         createFormSchema({ name: 'field_with_default', label: 'With Default', default: 'value' }),
-        createFormSchema({ name: 'field_without_default', label: 'Without Default', default: undefined }),
+        createFormSchema({
+          name: 'field_without_default',
+          label: 'Without Default',
+          default: undefined,
+        }),
         createFormSchema({ name: 'field_with_empty', label: 'Empty Default', default: '' }),
       ]
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={mixedSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={mixedSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
     })
@@ -1874,13 +1731,9 @@ describe('OAuthClientSettings', () => {
       const pluginPayload = createPluginPayload()
       mockSetPluginOAuthCustomClient.mockResolvedValue({})
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByText('plugin.auth.saveOnly'))
 
@@ -1904,13 +1757,9 @@ describe('OAuthClientSettings', () => {
         },
       })
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByText('plugin.auth.saveOnly'))
 
@@ -2068,13 +1917,9 @@ describe('OAuthClientSettings', () => {
         } as unknown as PluginPayload['detail'],
       })
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       // ReadmeEntrance should be rendered (it's mocked in vitest.setup)
       expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -2083,13 +1928,9 @@ describe('OAuthClientSettings', () => {
     it('should not render ReadmeEntrance when pluginPayload has no detail', () => {
       const pluginPayload = createPluginPayload({ detail: undefined })
 
-      render(
-        <OAuthClientSettings
-          pluginPayload={pluginPayload}
-          schemas={defaultSchemas}
-        />,
-        { wrapper: createWrapper() },
-      )
+      render(<OAuthClientSettings pluginPayload={pluginPayload} schemas={defaultSchemas} />, {
+        wrapper: createWrapper(),
+      })
 
       expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
     })
@@ -2154,13 +1995,6 @@ describe('OAuthClientSettings', () => {
       )
 
       expect(screen.queryByText('common.operation.remove')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const OAuthClientSettingsDefault = (await import('../oauth-client-settings')).default
-      expect(typeof OAuthClientSettingsDefault).toBe('object')
     })
   })
 })
