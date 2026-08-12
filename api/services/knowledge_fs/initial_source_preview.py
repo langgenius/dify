@@ -108,11 +108,11 @@ class KnowledgeFSInitialSourcePreviewService:
                 provider_type=website_runtime.datasource_provider_type(),
             ):
                 _raise_if_canceled(is_canceled)
-                for page in website_message.result.web_info_list or []:
-                    pages_by_url[page.source_url] = KnowledgeFSInitialSourcePreviewPageResponse(
-                        description=page.description or None,
-                        source_url=page.source_url,
-                        title=page.title or None,
+                for website_page in website_message.result.web_info_list or []:
+                    pages_by_url[website_page.source_url] = KnowledgeFSInitialSourcePreviewPageResponse(
+                        description=website_page.description or None,
+                        source_url=website_page.source_url,
+                        title=website_page.title or None,
                     )
                     if len(pages_by_url) >= _MAX_PREVIEW_ITEMS:
                         return KnowledgeFSInitialSourcePreviewResponse(
@@ -133,14 +133,16 @@ class KnowledgeFSInitialSourcePreviewService:
             ):
                 for workspace in document_message.result:
                     workspace_id = workspace.workspace_id or payload.provider
-                    for page in workspace.pages:
+                    for document_page in workspace.pages:
                         documents.append(
                             KnowledgeFSInitialSourcePreviewDocumentResponse(
-                                last_edited_time=page.last_edited_time,
-                                name=page.page_name,
-                                page_id=page.page_id,
-                                provider_item_id=json.dumps([workspace_id, page.page_id], separators=(",", ":")),
-                                type=page.type,
+                                last_edited_time=document_page.last_edited_time,
+                                name=document_page.page_name,
+                                page_id=document_page.page_id,
+                                provider_item_id=json.dumps(
+                                    [workspace_id, document_page.page_id], separators=(",", ":")
+                                ),
+                                type=document_page.type,
                                 workspace_id=workspace_id,
                                 workspace_name=workspace.workspace_name,
                             )
