@@ -1507,7 +1507,6 @@ function ResourceConfiguration({
             )}
           </section>
           <SourceNameField draft={draft} name="connectedSourceName" onDraftChange={onDraftChange} />
-          <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
         </>
       )}
       {submitError && (
@@ -1875,6 +1874,7 @@ export function ConnectedSourceSetup({
           globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
         }
       />
+      <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {providersQuery.isPending ||
       datasourcePluginsQuery.isPending ||
       datasourceAuthQuery.isPending ||
@@ -2025,17 +2025,6 @@ export function ConnectedSourceSetup({
           }
         />
       )}
-      {!connection &&
-        Boolean(installedProviderOption) &&
-        provider?.available &&
-        !provisioningConnection &&
-        !queryError &&
-        !providersQuery.isPending &&
-        !datasourcePluginsQuery.isPending &&
-        !datasourceAuthQuery.isPending &&
-        !loadingConnections && (
-          <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
-        )}
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={onExit}>

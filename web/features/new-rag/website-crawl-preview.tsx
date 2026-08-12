@@ -4,6 +4,7 @@ import type { DatasourceParameters } from './datasource-parameter-model'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
 import type { InstalledSourceProviderOption } from './source-provider-options'
+import type { SyncPolicyValue } from './sync-policy-field'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -51,6 +52,14 @@ type CrawlConfiguration = {
   parameters: DatasourceParameters
   rootUrl?: string
   uri: string
+}
+
+function initialSyncPolicyValue(draft?: NewKnowledgeWebsiteSourceDraft): SyncPolicyValue {
+  const mode = draft?.syncPolicy === 'daily' ? 'interval' : (draft?.syncPolicy ?? 'provider')
+  return {
+    ...(mode === 'custom' ? { customIntervalSeconds: draft?.customIntervalSeconds } : {}),
+    mode,
+  }
 }
 
 type PreviewDraft = {
@@ -472,6 +481,8 @@ export function WebsiteCrawlPreview({
     return initialParameters
   })
   const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
+  const initialSyncPolicyRef = useRef(initialSyncPolicyValue(initialDraft))
+  const syncPolicy = initialSyncPolicyValue(initialDraft)
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
@@ -641,7 +652,10 @@ export function WebsiteCrawlPreview({
   const runId = run?.id
   const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
   const dirty = Boolean(
-    sourceName || run || JSON.stringify(parameters) !== JSON.stringify(defaultParameters),
+    sourceName ||
+    run ||
+    JSON.stringify(parameters) !== JSON.stringify(defaultParameters) ||
+    JSON.stringify(syncPolicy) !== JSON.stringify(initialSyncPolicyRef.current),
   )
   const host = normalizedURL?.host ?? providerName
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
@@ -1448,7 +1462,9 @@ export function WebsiteCrawlPreview({
             pages={pages}
             rootUrl={configuration.rootUrl}
             run={run}
+            showSyncPolicyField={false}
             source={draftRef.current.source}
+            syncPolicyValue={syncPolicy}
             workflowUncertain={workflowUncertain}
           />
         )}

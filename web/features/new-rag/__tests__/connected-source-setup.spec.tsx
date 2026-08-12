@@ -580,6 +580,14 @@ describe('ConnectedSourceSetup', () => {
     vi.unstubAllGlobals()
   })
 
+  it('keeps the sync policy available while provider data is loading', () => {
+    clientMock.listProviders.mockReturnValue(new Promise(() => undefined))
+
+    renderSetup()
+
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
+  })
+
   it('shows the Notion connection card and opens the provider package when no credential exists', async () => {
     const user = userEvent.setup()
     const view = renderSetup()

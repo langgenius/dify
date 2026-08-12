@@ -771,6 +771,7 @@ describe('AddSourcePage', () => {
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
 
     await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
     expect(screen.getByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()

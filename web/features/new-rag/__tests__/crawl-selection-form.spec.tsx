@@ -4,6 +4,7 @@ import type {
   SourceSyncPolicy,
   SourceWorkflowRun,
 } from '../source-models'
+import type { SyncPolicyValue } from '../sync-policy-field'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -238,6 +239,7 @@ function renderSelectionForm(
   initialSyncMode?: 'custom' | 'interval' | 'manual' | 'provider',
   initialSelectedPageIds?: readonly string[],
   onInteractionLockChange = vi.fn(),
+  syncPolicyValue?: SyncPolicyValue,
 ) {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
@@ -263,7 +265,9 @@ function renderSelectionForm(
         pages={previewPages}
         rootUrl="https://docs.dify.ai/"
         run={run}
+        showSyncPolicyField={!syncPolicyValue}
         source={source}
+        syncPolicyValue={syncPolicyValue}
         workflowUncertain={workflowUncertain}
       />
     </QueryClientProvider>,
@@ -343,6 +347,34 @@ describe('CrawlSelectionForm', () => {
     expect(
       await screen.findByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
     ).toHaveTextContent('dataset.newKnowledge.syncPolicyManual')
+  })
+
+  it('submits a sync policy configured before the crawl review', async () => {
+    clientMock.updatePolicy.mockResolvedValue(
+      policy({ enabled: false, mode: 'manual', revision: 3 }),
+    )
+    const user = userEvent.setup()
+    renderSelectionForm(vi.fn(), false, () => false, pages, undefined, undefined, vi.fn(), {
+      mode: 'manual',
+    })
+
+    expect(
+      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() =>
+      expect(clientMock.updatePolicy).toHaveBeenCalledWith({
+        body: {
+          enabled: false,
+          expectedRevision: 2,
+          expectedSourceVersion: 3,
+          mode: 'manual',
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
   })
 
   it('selects only valid same-domain pages and exposes an indeterminate select-all state', async () => {

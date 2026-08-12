@@ -340,7 +340,9 @@ function ReadyCrawlSelectionForm({
   policy,
   rootUrl,
   run,
+  showSyncPolicyField,
   source,
+  syncPolicyValue,
   workflowUncertain,
 }: {
   busy: boolean
@@ -359,7 +361,9 @@ function ReadyCrawlSelectionForm({
   policy: SyncPolicy
   rootUrl?: string
   run: SourceWorkflowRun
+  showSyncPolicyField: boolean
   source: Source
+  syncPolicyValue?: SyncPolicyValue
   workflowUncertain: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -391,7 +395,7 @@ function ReadyCrawlSelectionForm({
           .slice(0, MAX_SELECTED_PAGES),
       ),
   )
-  const [syncPolicy, setSyncPolicy] = useState<SyncPolicyValue>(() => {
+  const [localSyncPolicy, setLocalSyncPolicy] = useState<SyncPolicyValue>(() => {
     const mode = initialSyncMode ?? (policy.enabled ? policy.mode : 'manual')
     return {
       ...(mode === 'custom'
@@ -403,6 +407,7 @@ function ReadyCrawlSelectionForm({
       mode,
     }
   })
+  const syncPolicy = syncPolicyValue ?? localSyncPolicy
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [policyUncertain, setPolicyUncertain] = useState(false)
@@ -605,15 +610,17 @@ function ReadyCrawlSelectionForm({
         selectedPageIds={selectedPageIds}
       />
 
-      <SyncPolicyField
-        disabled={selectionLocked}
-        triggerClassName="sm:w-75.25"
-        value={syncPolicy}
-        onChange={(value) => {
-          setSyncPolicy(value)
-          setSubmitError(false)
-        }}
-      />
+      {showSyncPolicyField && (
+        <SyncPolicyField
+          disabled={selectionLocked}
+          triggerClassName="sm:w-75.25"
+          value={syncPolicy}
+          onChange={(value) => {
+            setLocalSyncPolicy(value)
+            setSubmitError(false)
+          }}
+        />
+      )}
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
@@ -664,7 +671,9 @@ export function CrawlSelectionForm({
   pages,
   rootUrl,
   run,
+  showSyncPolicyField = true,
   source,
+  syncPolicyValue,
   workflowUncertain = false,
 }: {
   busy?: boolean
@@ -682,7 +691,9 @@ export function CrawlSelectionForm({
   pages: PreviewPage[]
   rootUrl?: string
   run: SourceWorkflowRun
+  showSyncPolicyField?: boolean
   source: Source
+  syncPolicyValue?: SyncPolicyValue
   workflowUncertain?: boolean
 }) {
   const { t } = useTranslation('dataset')
@@ -762,7 +773,9 @@ export function CrawlSelectionForm({
       policy={policy}
       rootUrl={rootUrl}
       run={run}
+      showSyncPolicyField={showSyncPolicyField}
       source={source}
+      syncPolicyValue={syncPolicyValue}
       workflowUncertain={workflowUncertain}
     />
   )

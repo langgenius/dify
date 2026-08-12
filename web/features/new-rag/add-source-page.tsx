@@ -51,6 +51,7 @@ import {
   SourceProviderIcon,
   SourceProviderNotInstalledCard,
   SourceProviderSelector,
+  SourceSyncPolicyField,
   SourceTypeSelector,
 } from './source-setup-fields'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
@@ -1290,6 +1291,12 @@ export function AddSourcePage({
                     rootUrl: '',
                   })
                 }}
+              />
+              <SourceSyncPolicyField
+                className="w-full sm:w-75.25"
+                draft={sourceDraft}
+                size="medium"
+                onDraftChange={updateSourceDraft}
               />
               {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
