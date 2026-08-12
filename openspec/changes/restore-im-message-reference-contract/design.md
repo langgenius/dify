@@ -87,11 +87,11 @@ Reference codec 不应为了填充 tenant、team、corp、app、client、bot 或
 
 ### 5. Opacity does not introduce a security envelope
 
-共享 contract 要求 lossless round trip、strict parsing、versioning 和 compatibility validation。初始 codec 只做普通序列化，不添加 encryption、MAC、signature、nonce、IV 或其他随机化/安全 envelope。没有 cryptographic authenticity 时，codec 可以检测 malformed 和 incompatible values，却不能承诺识别一个违反 caller contract、但重新编码为完全有效 payload 的恶意合成值。
+共享 contract 要求 lossless round trip、strict parsing、versioning 和 compatibility validation。初始 codec 只做普通序列化，不添加 encryption、MAC、signature、nonce、IV 或其他随机化/安全 envelope。
 
-因此 `MessageLocator` 必须保留在受信任的 application/persistence boundary 内，不能仅凭 locator 授权用户操作。如果未来需要完整性或机密性保护，应单独提出 change，明确 threat model、key lifecycle、rotation 和 stored-version migration，而不是在本修复中隐式加入。
+`MessageLocator` 必须保留在受信任的 application/persistence boundary 内；跨越 security boundary 的用法不受支持。本 change 不定义通过 signing、encryption 或额外 authorization checks 扩展该支持范围的机制。
 
-选择这一边界是为了修复 persistence contract，而不把一个内部 locator 扩展成新的 security token protocol。
+选择这一边界是为了修复 persistence contract，而不把内部 locator 扩展成 security protocol。
 
 ### 6. Tests enforce the codec law with property-based testing
 
@@ -104,9 +104,8 @@ PBT 不替代 example-based tests。Missing/extra `v`/`p`、default-derived disc
 ## Risks / Trade-offs
 
 - [Internal Python runtime shape is breaking] → 在同一 release 中原子更新公共类型、五个 adapter 和所有 callers/tests；不保留 dual object/string path。
-- [A minimal reference cannot pre-reject every cross-credential value] → reference 只负责定位 upstream message，不承担 adapter identity 或 authorization；Provider rejection 继续映射为现有 safe failure taxonomy。
 - [Encoded strings may be longer than current scalar locators] → reference 只用于内部 persistence/queueing，各 Provider 应控制编码开销并增加合理长度边界测试。
-- [Plain payloads do not detect malicious valid synthesis] → 明确 reference 不是 authorization token；保持 trusted internal boundary，安全需求另立 change，不在 codec 中隐式加入 nonce、encryption、signature、MAC 或全局 secret。
+- [Locator crosses a security boundary] → 该用法不受支持；调用方必须将 locator 保留在 trusted application/persistence boundary 内，codec 不增加 cryptographic envelope。
 - [Future codec evolution can invalidate stored values] → 每个 codec携带 explicit version；decoder 对 unknown version fail closed，任何格式迁移必须先支持读取旧版本，再切换写入版本。
 - [Dirty branch already contains Feishu/Lark and Teams codec edits] → 实施时基于当时工作树合并，不覆盖相邻 card-event work；本 proposal只规定最终行为。
 

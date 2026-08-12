@@ -196,12 +196,12 @@ Slack, Feishu/Lark, and Microsoft Teams MUST call the corresponding private mode
 - **THEN** it MUST apply the canonical outcome mapping
 - **AND** it MUST NOT select or synthesize another locator
 
-### Requirement: MessageLocator MUST NOT act as an authorization credential
-Applications MUST establish authorization independently of `MessageLocator`. Structural validation need not distinguish an adapter-issued locator from a syntactically valid synthesized value. MessageLocator construction SHOULD NOT contain encryption or signing process. The initial codecs MUST NOT add a MAC, nonce, initialization vector, random padding, credential, secret, encryption material, or other randomized security envelope.
+### Requirement: MessageLocator MUST remain within its supported trust boundary
+Use of `MessageLocator` across a security boundary is not supported. MessageLocator construction SHOULD NOT contain encryption or signing process. The initial codecs MUST NOT add a MAC, nonce, initialization vector, random padding, credential, secret, encryption material, or other randomized security envelope.
 
-#### Scenario: An untrusted principal supplies a locator-like string
-- **WHEN** an external principal supplies an arbitrary locator-like value
-- **THEN** the locator alone MUST NOT authorize Provider mutation
+#### Scenario: A MessageLocator would cross a security boundary
+- **WHEN** an application would pass a `MessageLocator` across a security boundary
+- **THEN** this usage is not supported
 
 ### Requirement: Every Provider codec MUST have property-based coverage
 Slack, Feishu/Lark, DingTalk, WeCom, and Microsoft Teams MUST each use property-based testing for the canonical codec law. Generators MUST produce semantically valid payloads across meaningful boundaries of every field in the canonical schema. The property MUST observe decoded-model equality, not equality between separately encoded locator strings. Malformed and invalid locators MUST remain example-based tests.
