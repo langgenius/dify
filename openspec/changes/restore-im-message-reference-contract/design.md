@@ -43,7 +43,7 @@
 
 该定义前必须逐字保留指定注释，使 persistence、opacity 和 security non-goals 在公共 API 定义处可见。
 
-Provider-specific reference classes、public parse API 和 public locator fields 全部移除。每个 concrete Provider 使用自己的私有 Pydantic payload model；payload model 和 encode/decode helpers 都保持模块私有。
+Provider-specific reference classes、public parse API 和 public locator fields 全部移除。每个 concrete Provider 使用自己的私有 Pydantic payload model。
 
 选择该方案是因为 persistence boundary 需要语言无关的 scalar representation，而 `NewType` 不增加 runtime wrapper、serialization hook 或 module/class identity。备选方案是保留 marker base class并为每个 subclass 实现 serialization；该方案仍迫使 caller 或 persistence mapper认识 private class，且 rollback/import path/pickle compatibility 难以长期维护，因此拒绝。
 
@@ -51,7 +51,7 @@ Provider-specific reference classes、public parse API 和 public locator fields
 
 每个 concrete adapter 在自己的模块内定义一个私有 Pydantic payload model，并配置 `ConfigDict(frozen=True, extra="forbid", strict=True)`。Model 的 `v` 与 `p` 都是无默认值的 required fields，必须显式出现在 serialized JSON 中；`v` 使用 `Literal[1]`，`p` 直接使用现有 `IMProvider` 成员的 `Literal` 约束。其他成员只允许 scalar/enum-like values，不允许 sequence、mapping 或嵌套 container，因此顶层 frozen 足以覆盖完整 payload 的 immutable 语义。每个字段都有紧邻其声明的 English meaning comment，其中 `v` 和 `p` 分别固定使用 `# version of the locator` 与 `# provider of the locator`。每个 Provider-specific field 还必须逐字保留 delta spec 已确定的 authoritative Provider documentation URL；Feishu/Lark 的共享 `message_id` 同时保留两个官方门户 URL。
 
-Encoder 先通过 private model 构造并验证 payload，再序列化为 JSON bytes，最后编码为 URL-safe Base64。Decoder 使用 strict URL-safe Base64 decoding，拒绝非 URL-safe alphabet、malformed padding 和非法长度，然后直接用同一 private Pydantic model 验证 decoded JSON。Decoder 不对 decoded bytes 做 Base64 re-encoding。正确性约束仅为 `decode(encode(private_payload)) == private_payload`。相同 payload 的多次编码不要求产生相同 locator string，因为 JSON 表示稳定性不是当前行为所依赖的性质。初始实现不添加 nonce、IV、随机 padding、加密、签名或 MAC。
+每个 private payload model 自身暴露 `encode(self) -> str` 与 `decode(cls, value: str) -> Self`。`encode()` 独占 model-to-JSON-to-URL-safe-Base64 转换；`decode()` 独占反向转换与 Pydantic validation。Adapter 和其他 helpers 只能调用这两个方法，不得实现或复制该转换逻辑。`decode()` 不对 decoded bytes 做 Base64 re-encoding。正确性约束仅为 `payload.decode(payload.encode()) == payload`。相同 payload 的多次编码不要求产生相同 locator string，因为 JSON 表示稳定性不是当前行为所依赖的性质。初始实现不添加 nonce、IV、随机 padding、加密、签名或 MAC。
 
 初始 Provider 的 required private payload fields 为：
 
@@ -71,9 +71,9 @@ Encoded reference 不得包含 bot token、app secret、client secret、signing 
 
 ### 3. Reference structure is validated before replacement I/O
 
-Slack、Feishu/Lark 和 Microsoft Teams 的 `replace_with_static` 先执行 strict decoding 与 locator validation，再发起 Provider mutation。Decode 或 validation 失败统一返回 `ReplacementErrorKind.INVALID_REFERENCE`，且不得进行 Provider I/O。
+Slack、Feishu/Lark 和 Microsoft Teams 的 `replace_with_static` 必须先调用对应 private model 的 `decode()`，再发起 Provider mutation。Decode 失败统一返回 `ReplacementErrorKind.INVALID_REFERENCE`，且不得进行 Provider I/O。
 
-Validation 比较 Provider discriminator，并验证所有 upstream locator fields 的完整性与 Provider-specific route safety，例如 Microsoft Teams trusted service URL。Reference structurally valid但目标 Provider message 已不存在或 Provider 不再允许 replacement 时，继续使用 `STALE_REFERENCE`；无法确认 mutation outcome 时继续使用 `UNKNOWN`。
+Private model validation 负责 upstream locator fields 的完整性与 Provider-specific route safety，例如 Microsoft Teams trusted service URL。Feishu/Lark adapter 还必须比较 `payload.p == self._provider`。Reference structurally valid但目标 Provider message 已不存在或 Provider 不再允许 replacement 时，继续使用 `STALE_REFERENCE`；无法确认 mutation outcome 时继续使用 `UNKNOWN`。
 
 该顺序保护 wrong-provider、incomplete-locator 和 malformed-reference 不触发 mutation。它不授权 caller synthesize reference；caller 仍必须只存储并原样返回 send result。Adapter identity 和授权应由调用路径与当前 credentials 决定，不通过复制 identity facts 到 locator 中实现。
 
@@ -97,7 +97,7 @@ Reference codec 不应为了填充 tenant、team、corp、app、client、bot 或
 
 公共 contract tests 断言 `MessageLocator.__supertype__ is str`，且 `MessageLocator(stored_value)` 的 runtime type 是 `str`，`MessageReference` 不再是公共 export，`MessageAccepted` 只有 `.locator` 而没有 `.reference`。每个 Provider 的 black-box tests 将 send result 的 locator 作为普通字符串写入 JSON/text representation，再只用恢复后的字符串和重新创建的 adapter执行适用操作。
 
-五个 Provider codec 都使用 property-based testing 验证同一条最强性质：`decode(encode(private_payload)) == private_payload`。各 Provider 的 generator 只生成符合自身字段约束的有效 private Pydantic payload model，并覆盖每个 encoded field 的有意义边界；失败时由测试框架 shrink 为可复现的最小语义反例。observable 是解码后的 Pydantic model 相等，不是 encoded string 相等。
+五个 Provider codec 都使用 property-based testing 验证同一条最强性质：`payload.decode(payload.encode()) == payload`。各 Provider 的 generator 只生成符合自身字段约束的有效 private Pydantic payload model，并覆盖每个 encoded field 的有意义边界；失败时由测试框架 shrink 为可复现的最小语义反例。observable 是解码后的 Pydantic model 相等，不是 encoded string 相等。
 
 PBT 不替代 example-based tests。Missing/extra `v`/`p`、default-derived discriminator、wrong Provider、unknown version、invalid alphabet、malformed padding、invalid Base64 length、malformed JSON、strict Pydantic validation、exact field-comment and authoritative-URL retention、secret absence、exact payload shape、applicable exact replacement 和历史回归仍使用具名示例测试。旧的 pickle、deepcopy、private-field 和 `isinstance(private_locator)` assertions 删除，避免继续把 implementation accident 固化为 contract。
 
@@ -114,8 +114,8 @@ PBT 不替代 example-based tests。Missing/extra `v`/`p`、default-derived disc
 
 1. 先添加 failing contract/provider tests，证明 runtime string shape、scalar persistence round trip和 replacement pre-I/O validation。
 2. 将公共类型重命名为 `MessageLocator = NewType("MessageLocator", str)`，逐字保留指定注释，并同步 review stub 与 active `define-im-provider-adapter-contracts` 中已经漂移的 locator 文字。
-3. 逐 Provider实现或收口 private versioned codec，并让 send直接返回 `MessageLocator(encoded_string)`。
-4. 更新 Slack、Feishu/Lark 和 Microsoft Teams replacement，移除 private class checks，改为 decode + locator validation。
+3. 让每个 Provider-private model 实现唯一的 `encode()`/`decode()` 转换边界，并让 send 返回 `MessageLocator(payload.encode())`。
+4. 更新 Slack、Feishu/Lark 和 Microsoft Teams replacement，移除 private class checks，改为调用 private model 的 `decode()`；Feishu/Lark 随后比较 `payload.p == self._provider`。
 5. 删除 private reference classes和 pickle/deepcopy tests，运行 focused unit tests、lint、type check与 OpenSpec strict validation。
 6. 由于该功能尚未形成可依赖的 production stored private-object format，不提供 data migration。部署必须使 contract与五个 adapter保持同一版本；rollback只能在新的 string references尚未被持久 consumer使用前整体回退。
 

@@ -5,14 +5,14 @@
 ## What Changes
 
 - **BREAKING (internal)**：将公共类型从 `MessageReference` 重命名为 `MessageLocator`，并定义为 `NewType("MessageLocator", str)`；不保留旧名称 alias，调用方只能持久化并原样返回字符串，不再接收或构造 Provider-private locator objects。
-- 为 Slack、Feishu/Lark、DingTalk、WeCom 和 Microsoft Teams 建立 Provider-owned、versioned、lossless opaque locator codec；private Pydantic payload 使用 `strict=True`、显式 `v`/`p`、现有 `IMProvider`、JSON 和 URL-safe Base64。
+- 为 Slack、Feishu/Lark、DingTalk、WeCom 和 Microsoft Teams 建立 Provider-owned、versioned、lossless opaque locator codec；private Pydantic payload 使用 `strict=True`、显式 `v`/`p`、现有 `IMProvider`，并由 model 自身的 `encode()`/`decode()` 独占 JSON 与 URL-safe Base64 转换。
 - 将 `MessageAccepted.reference` 字段重命名为 `MessageAccepted.locator`，不保留兼容 property；要求每个成功 send 只在获得完整 exact-message locator 后返回 `MessageAccepted`。
 - 要求每个 locator 只保存 version、Provider discriminator 和上游后续操作必需的最小 message locator，不复制 tenant/application identity 或本地 message kind。
 - 要求每个 Provider-private Pydantic payload model 顶层 immutable、禁止 extra fields、显式 versioned，并且只包含 scalar/enum-like fields，不包含 sequence 或 mapping members。
 - 固定各 Provider 的 exact private payload fields、字段注释和 authoritative Provider documentation URLs；Feishu/Lark 共用 `_FeishuLarkLocatorPayload` wire shape，保留两个官方门户 URL，并在 decode 后校验 `p` 与当前 adapter provider 一致。
 - 要求 decoder 拒绝非法 URL-safe Base64 alphabet、malformed padding 和 invalid length。
 - 要求 Dynamic Card replacement 从 opaque string 重新解码，并在 Provider I/O 前拒绝 malformed、unknown-version、wrong-provider 或 incomplete-locator references。
-- 要求五个 Provider 都用 property-based testing 验证 private locator codec 的 `decode(encode(locator)) == locator`，同时用真实的 string/storage round-trip 测试替换 pickle、deepcopy、private-class 和 `isinstance` 测试，并覆盖 adapter recreation 与模拟 process boundary。
+- 要求五个 Provider 都用 property-based testing 验证 private model codec 的 `payload.decode(payload.encode()) == payload`，同时用真实的 string/storage round-trip 测试替换 pickle、deepcopy、private-class 和 `isinstance` 测试，并覆盖 adapter recreation 与模拟 process boundary。
 - 保持 locator payload 对调用方不透明；初始 codec 只做普通 versioned serialization，不添加 nonce、IV、加密、签名、MAC 或其他安全 envelope。共享边界仍假设 caller 不解析、修改或合成 locator。
 
 ## Capabilities
