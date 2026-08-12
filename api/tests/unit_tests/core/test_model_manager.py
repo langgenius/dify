@@ -209,6 +209,72 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
     reservation.release.assert_called_once_with()
 
 
+def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="gpt-4", model_type=ModelType.LLM)],
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+    usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 12})
+    chunks = [
+        LLMResultChunk(
+            model="gpt-4",
+            prompt_messages=[],
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="hello")),
+        ),
+        LLMResultChunk(
+            model="gpt-4",
+            prompt_messages=[],
+            delta=LLMResultChunkDelta(index=1, message=AssistantPromptMessage(content=" world"), usage=usage),
+        ),
+    ]
+    reservation = MagicMock(commit_before_delivery=False)
+    events: list[str] = []
+    reservation.commit.side_effect = lambda _usage: events.append("commit")
+
+    def provider_stream():
+        for index, chunk in enumerate(chunks):
+            events.append(f"provider-{index}")
+            yield chunk
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()),
+    ):
+        response = model_instance.invoke_llm(prompt_messages=[], stream=True)
+        assert next(response) is chunks[0]
+        events.append("delivered")
+        assert list(response) == [chunks[1]]
+
+    assert events == ["provider-0", "provider-1", "commit", "delivered"]
+    reservation.commit.assert_called_once_with(usage)
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="gpt-4", model_type=ModelType.LLM)],
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+    chunk = LLMResultChunk(
+        model="gpt-4",
+        prompt_messages=[],
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="hello")),
+    )
+    reservation = MagicMock(commit_before_delivery=False)
+    reservation.commit.side_effect = ValueError("terminal usage is required")
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        pytest.raises(ValueError, match="terminal usage is required"),
+    ):
+        next(model_instance.invoke_llm(prompt_messages=[], stream=True))
+
+    reservation.release.assert_called_once_with()
+
+
 def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):
     # initialize redis client
     redis_client.initialize(redis.Redis())

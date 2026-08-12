@@ -538,16 +538,24 @@ class QuotaManagedModelInstance(ModelInstance):
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
 
+            if reservation.commit_before_delivery:
+                for chunk in response:
+                    chunk_usage = getattr(getattr(chunk, "delta", None), "usage", None)
+                    if chunk_usage is not None:
+                        usage = chunk_usage
+                    reservation.commit(usage)
+                    yield chunk
+                return
+
+            buffered_chunks = []
             for chunk in response:
                 chunk_usage = getattr(getattr(chunk, "delta", None), "usage", None)
                 if chunk_usage is not None:
                     usage = chunk_usage
-                if reservation.commit_before_delivery:
-                    reservation.commit(usage)
-                yield chunk
+                buffered_chunks.append(chunk)
 
-            if not reservation.commit_before_delivery:
-                reservation.commit(usage)
+            reservation.commit(usage)
+            yield from buffered_chunks
         finally:
             self.release_quota_safely(reservation)
 
