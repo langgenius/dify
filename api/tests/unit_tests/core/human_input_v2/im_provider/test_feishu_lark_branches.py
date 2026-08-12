@@ -256,21 +256,28 @@ def test_signature_accepts_timezone_aware_received_at() -> None:
                 ParagraphInput("duplicate", None),
             )
         ),
-        _intent(
-            blocks=(ParagraphInput("comment", None), MarkdownText("After input")),
-        ),
         _intent(actions=(ResolvedFormAction("approve", "Approve", ButtonStyle.GHOST),)),
     ],
 )
 def test_card_assessment_rejects_every_lossy_shape(intent: ResolvedForm) -> None:
-    assert adapter_module._card_unrepresentable_reason(intent, IMProvider.FEISHU) is not None
+    assert adapter_module._MSFeishuLarkCardCodec().assess(intent).representable is False
 
 
 def test_headerless_resolved_paragraph_renders_without_default() -> None:
     intent = _intent(blocks=(ParagraphInput("comment", None),))
-    card = adapter_module._render_dynamic_card(intent, CorrelationToken("opaque-correlation-token"))
+    card = adapter_module._MSFeishuLarkCardCodec().encode(intent, CorrelationToken("opaque-correlation-token"))
     assert "header" not in card
-    assert "default_value" not in card["body"]["elements"][-1]["elements"][0]
+    body = card["body"]
+    assert isinstance(body, dict)
+    body_elements = body["elements"]
+    assert isinstance(body_elements, list)
+    form = body_elements[0]
+    assert isinstance(form, dict)
+    form_elements = form["elements"]
+    assert isinstance(form_elements, list)
+    paragraph = form_elements[0]
+    assert isinstance(paragraph, dict)
+    assert "default_value" not in paragraph
 
 
 def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatch: pytest.MonkeyPatch) -> None:

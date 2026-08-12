@@ -7,6 +7,8 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 
 import pytest
+from lark_oapi.api.im.v1.model.p2_im_message_receive_v1 import P2ImMessageReceiveV1
+from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
@@ -22,6 +24,10 @@ from core.human_input_v2.im_provider import (
     IMStreamStartError,
     IMStreamStopError,
 )
+
+_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_CARD_ACTION_TRIGGER_OBJECT_TYPE = "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
+_MESSAGE_RECEIVE_OBJECT_TYPE = "lark_oapi.api.im.v1.model.p2_im_message_receive_v1.P2ImMessageReceiveV1"
 
 
 class _UnusedGateway:
@@ -89,7 +95,7 @@ class _FailingConsumer:
 class _FakeStreamClient:
     def __init__(
         self,
-        callback: Callable[[Mapping[str, object], Callable[[], None]], None],
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         trace: list[str],
         *,
         start_error: Exception | None = None,
@@ -117,13 +123,37 @@ class _FakeStreamClient:
             if ack_error is not None:
                 raise ack_error
 
-        self._callback(event, ack)
+        self._callback(_sdk_transport_envelope(event), ack)
+
+
+class _DispatcherStreamClient:
+    def __init__(
+        self,
+        credentials: FeishuIMIntegrationCredentials,
+        domain: str,
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
+        payload: bytes,
+    ) -> None:
+        self._channel = adapter_module._SynchronousEventChannel(
+            credentials=credentials,
+            domain=domain,
+            callback=callback,
+        )
+        self._payload = payload
+        self.dispatch_returned = False
+
+    def start(self) -> None:
+        self._channel._build_dispatcher()._do_without_validation(self._payload)
+        self.dispatch_returned = True
+
+    def stop(self) -> None:
+        return None
 
 
 class _BlockingCloseStreamClient(_FakeStreamClient):
     def __init__(
         self,
-        callback: Callable[[Mapping[str, object], Callable[[], None]], None],
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         trace: list[str],
     ) -> None:
         super().__init__(callback, trace)
@@ -141,7 +171,7 @@ class _BlockingCloseStreamClient(_FakeStreamClient):
 class _BlockingFailingCloseStreamClient(_BlockingCloseStreamClient):
     def __init__(
         self,
-        callback: Callable[[Mapping[str, object], Callable[[], None]], None],
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         trace: list[str],
         sensitive_marker: str,
     ) -> None:
@@ -160,7 +190,7 @@ class _BlockingFailingCloseStreamClient(_BlockingCloseStreamClient):
 class _BlockingStartStreamClient(_FakeStreamClient):
     def __init__(
         self,
-        callback: Callable[[Mapping[str, object], Callable[[], None]], None],
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         trace: list[str],
     ) -> None:
         super().__init__(callback, trace)
@@ -185,7 +215,7 @@ class _DeferredWireAckStreamClient(_FakeStreamClient):
 
     def __init__(
         self,
-        callback: Callable[[Mapping[str, object], Callable[[], None]], None],
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         trace: list[str],
     ) -> None:
         super().__init__(callback, trace)
@@ -202,7 +232,7 @@ class _DeferredWireAckStreamClient(_FakeStreamClient):
             acknowledged = True
             self._trace.append("ack-decided")
 
-        self._callback(event, decide_ack)
+        self._callback(_sdk_transport_envelope(event), decide_ack)
         self.callback_returned.set()
         assert self.release_ack_write.wait(timeout=2)
         if acknowledged:
@@ -235,6 +265,52 @@ def _event_payload(*, create_time: str = "1785981600000") -> Mapping[str, object
             "preserved": [1, None, True],
         },
     }
+
+
+def _message_event_payload() -> Mapping[str, object]:
+    return {
+        "schema": "2.0",
+        "header": {
+            "event_id": "evt_sanitized_message",
+            "event_type": "im.message.receive_v1",
+            "create_time": "1785981600000",
+            "tenant_key": "tenant_sanitized",
+        },
+        "event": {
+            "sender": {
+                "sender_id": {"union_id": "union_sanitized"},
+                "sender_type": "user",
+                "tenant_key": "tenant_sanitized",
+            },
+            "message": {
+                "message_id": "message_sanitized",
+                "message_type": "text",
+                "content": '{"text":"sanitized"}',
+            },
+        },
+    }
+
+
+def _sdk_transport_envelope(event: Mapping[str, object]) -> adapter_module._SDKEventEnvelope:
+    header = event["header"]
+    assert isinstance(header, Mapping)
+    event_id = header["event_id"]
+    event_type = header["event_type"]
+    create_time = header["create_time"]
+    tenant_key = header["tenant_key"]
+    assert isinstance(event_id, str)
+    assert isinstance(event_type, str)
+    assert isinstance(create_time, str)
+    assert isinstance(tenant_key, str)
+    return adapter_module._SDKEventEnvelope(
+        native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
+        object_type=_CARD_ACTION_TRIGGER_OBJECT_TYPE,
+        provider_tenant_id=tenant_key,
+        event_id=event_id,
+        event_type=event_type,
+        occurred_at=adapter_module._webhook_occurred_at(create_time),
+        is_card_action=True,
+    )
 
 
 def _adapter(
@@ -397,7 +473,7 @@ def test_official_stream_client_start_returns_after_channel_readiness(
 
 
 def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary() -> None:
-    observed: list[Mapping[str, object]] = []
+    observed: list[adapter_module._SDKEventEnvelope] = []
     credentials = FeishuIMIntegrationCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
@@ -406,7 +482,7 @@ def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary()
         encrypt_key="sanitized-encrypt-key",
     )
 
-    def accept(event: Mapping[str, object], acknowledge: Callable[[], None]) -> None:
+    def accept(event: adapter_module._SDKEventEnvelope, acknowledge: Callable[[], None]) -> None:
         observed.append(event)
         acknowledge()
 
@@ -420,26 +496,28 @@ def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary()
 
     response = dispatcher._do_without_validation(payload)
 
-    assert observed == [
-        {
-            "schema": "2.0",
-            "header": {
-                "event_id": "evt_sanitized_event",
-                "create_time": "1785981600000",
-                "event_type": "card.action.trigger",
-                "tenant_key": "tenant_sanitized",
-            },
-            "event": {
-                "action": {
-                    "name": "approve",
-                    "value": {
-                        "action_id": "approve",
-                        "correlation_token": "opaque-correlation-token",
-                    },
-                }
-            },
-        }
-    ]
+    assert len(observed) == 1
+    observed_envelope = observed[0]
+    assert observed_envelope.object_type == _CARD_ACTION_TRIGGER_OBJECT_TYPE
+    native_payload = observed_envelope.native_payload
+    assert json.loads(native_payload) == {
+        "schema": "2.0",
+        "header": {
+            "event_id": "evt_sanitized_event",
+            "create_time": "1785981600000",
+            "event_type": "card.action.trigger",
+            "tenant_key": "tenant_sanitized",
+        },
+        "event": {
+            "action": {
+                "name": "approve",
+                "value": {
+                    "action_id": "approve",
+                    "correlation_token": "opaque-correlation-token",
+                },
+            }
+        },
+    }
     assert response is not None
 
     rejecting_channel = adapter_module._SynchronousEventChannel(
@@ -449,6 +527,106 @@ def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary()
     )
     with pytest.raises(RuntimeError, match="responsibility was not accepted"):
         rejecting_channel._build_dispatcher()._do_without_validation(payload)
+
+
+def test_sdk_event_envelope_preserves_native_payload_without_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    native_payload = ' { "schema": "2.0", "schema": "2.0" } '
+    sdk_event = P2CardActionTrigger(_event_payload())
+
+    monkeypatch.setattr(adapter_module.lark.JSON, "marshal", lambda _event: native_payload)
+
+    def fail_on_parse(_serialized: str) -> object:
+        raise AssertionError("transport wrapper parsed the SDK native payload")
+
+    monkeypatch.setattr(adapter_module.json, "loads", fail_on_parse)
+
+    assert adapter_module._sdk_event_envelope(sdk_event) == adapter_module._SDKEventEnvelope(
+        native_payload=native_payload,
+        object_type=_CARD_ACTION_TRIGGER_OBJECT_TYPE,
+        provider_tenant_id="tenant_sanitized",
+        event_id="evt_sanitized_event",
+        event_type="card.action.trigger",
+        occurred_at=datetime(2026, 8, 6, 2, 0),
+        is_card_action=True,
+    )
+
+
+def test_card_dispatcher_preserves_native_payload_without_event_stream_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload_mapping = _event_payload()
+    payload = json.dumps(payload_mapping, ensure_ascii=False, separators=(",", ":")).encode()
+    expected_native_payload = adapter_module.lark.JSON.marshal(P2CardActionTrigger(payload_mapping))
+    assert isinstance(expected_native_payload, str)
+    clients: list[_DispatcherStreamClient] = []
+
+    def create_client(credentials, domain: str, callback):
+        client = _DispatcherStreamClient(credentials, domain, callback, payload)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(adapter_module, "_create_sdk_stream_client", create_client)
+
+    def fail_on_native_payload_parse(_payload: bytes) -> dict[str, object]:
+        raise AssertionError("event stream parsed the SDK native payload")
+
+    monkeypatch.setattr(adapter_module, "_decode_json_object", fail_on_native_payload_parse)
+    consumer = _RecordingConsumer([])
+    adapter = _adapter(monkeypatch, IMProvider.FEISHU)
+    stream = adapter.create_stream_handler(consumer)
+
+    try:
+        stream.start()
+        stream.stop()
+    finally:
+        adapter.close()
+
+    assert clients[0].dispatch_returned is True
+    assert len(consumer.events) == 1
+    persisted_envelope = json.loads(consumer.events[0].payload)
+    stream_payload = persisted_envelope[_STREAM_PAYLOAD_KEY]
+    assert isinstance(stream_payload, dict)
+    assert stream_payload == {
+        "native_payload": expected_native_payload,
+        "object_type": _CARD_ACTION_TRIGGER_OBJECT_TYPE,
+    }
+
+
+def test_message_dispatcher_delivers_and_acks_without_card_wrapper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload_mapping = _message_event_payload()
+    payload = json.dumps(payload_mapping, ensure_ascii=False, separators=(",", ":")).encode()
+    expected_native_payload = adapter_module.lark.JSON.marshal(P2ImMessageReceiveV1(payload_mapping))
+    assert isinstance(expected_native_payload, str)
+    clients: list[_DispatcherStreamClient] = []
+
+    def create_client(credentials, domain: str, callback):
+        client = _DispatcherStreamClient(credentials, domain, callback, payload)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(adapter_module, "_create_sdk_stream_client", create_client)
+    consumer = _RecordingConsumer([])
+    adapter = _adapter(monkeypatch, IMProvider.FEISHU)
+    stream = adapter.create_stream_handler(consumer)
+
+    try:
+        stream.start()
+        stream.stop()
+    finally:
+        adapter.close()
+
+    assert clients[0].dispatch_returned is True
+    assert len(consumer.events) == 1
+    event = consumer.events[0]
+    assert event.provider_tenant_id == "tenant_sanitized"
+    assert event.event_id == "evt_sanitized_message"
+    assert event.event_type == "im.message.receive_v1"
+    assert event.payload == expected_native_payload
+    assert _STREAM_PAYLOAD_KEY not in event.payload
 
 
 def test_private_sdk_write_seam_tracks_wire_ack_completion() -> None:
@@ -519,7 +697,13 @@ def test_accepted_event_is_consumed_once_then_acked(monkeypatch: pytest.MonkeyPa
     assert len(consumer.events) == 1
     assert consumer.events[0].provider is IMProvider.FEISHU
     assert consumer.events[0].provider_tenant_id == "tenant_sanitized"
-    assert '"preserved":[1,null,true]' in consumer.events[0].payload
+    persisted_envelope = json.loads(consumer.events[0].payload)
+    stream_payload = persisted_envelope[_STREAM_PAYLOAD_KEY]
+    assert isinstance(stream_payload, dict)
+    persisted_native_payload = stream_payload["native_payload"]
+    assert isinstance(persisted_native_payload, str)
+    persisted_callback = json.loads(persisted_native_payload)
+    assert persisted_callback["event"]["preserved"] == [1, None, True]
     stream.stop()
 
 
@@ -614,7 +798,16 @@ def test_malformed_callback_is_contained_and_stream_remains_usable(monkeypatch: 
     stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(consumer)
     stream.start()
 
-    clients[0].emit({"malformed": True})
+    malformed_event = adapter_module._SDKEventEnvelope(
+        native_payload="{}",
+        object_type="unexpected.sdk.Event",
+        provider_tenant_id="tenant_sanitized",
+        event_id=None,
+        event_type="card.action.trigger",
+        occurred_at=None,
+        is_card_action=True,
+    )
+    clients[0]._callback(malformed_event, lambda: trace.append("ack"))
     clients[0].emit(_event_payload())
     stream.stop()
 

@@ -23,19 +23,20 @@ from concurrent.futures import Future
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Literal, Protocol, override, runtime_checkable
+from typing import ClassVar, Literal, Never, Protocol, override, runtime_checkable
 from urllib.parse import parse_qs, urlsplit
 
 import lark_oapi as lark
 from cryptography.hazmat.primitives import padding as symmetric_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from lark_oapi.api import contact, im, tenant
+from lark_oapi.api.im.v1.model.p2_im_message_receive_v1 import P2ImMessageReceiveV1
 from lark_oapi.channel import FeishuChannel, TransportConfig
-from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTriggerResponse
+from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
 from lark_oapi.ws import client as sdk_ws_client_module
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError, field_validator
 from websockets.asyncio.client import ClientConnection
 
 from configs import dify_config
@@ -54,6 +55,10 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMCardEvent,
+    IMCardEventDecoder,
+    IMCardEventDecodeResult,
+    IMCardEventDecodingError,
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
@@ -69,6 +74,7 @@ from core.human_input_v2.im_provider import (
     ReplacementError,
     ReplacementErrorKind,
     StaticCardIntent,
+    UnrecognizedIMEvent,
     WebhookRequest,
     WebhookResponse,
 )
@@ -104,6 +110,9 @@ _MICROSECONDS_PER_SECOND = 1_000_000
 _MILLISECOND_TIMESTAMP_DIGITS = 13
 _MICROSECOND_TIMESTAMP_DIGITS = 16
 _COMMONMARK_PARSER = MarkdownIt("commonmark", {"html": False})
+_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
+_AUTHENTICATED_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_CARD_ACTION_TRIGGER_OBJECT_TYPE = "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
@@ -165,7 +174,18 @@ class _SDKGateway(Protocol):
     def patch_message(self, message_id: str, content: str) -> Mapping[str, object]: ...
 
 
-type _StreamDeliveryCallback = Callable[[Mapping[str, object], Callable[[], None]], None]
+@dataclass(frozen=True, slots=True)
+class _SDKEventEnvelope:
+    native_payload: str
+    object_type: str
+    provider_tenant_id: str
+    event_id: str | None
+    event_type: str | None
+    occurred_at: datetime | None
+    is_card_action: bool
+
+
+type _StreamDeliveryCallback = Callable[[_SDKEventEnvelope, Callable[[], None]], None]
 
 
 @runtime_checkable
@@ -523,14 +543,14 @@ class _SynchronousEventChannel(FeishuChannel):
             .build()
         )
 
-    def _on_message(self, event: object) -> None:
+    def _on_message(self, event: P2ImMessageReceiveV1) -> None:
         self._dispatch(event)
 
-    def _on_card_action(self, event: object) -> P2CardActionTriggerResponse:
+    def _on_card_action(self, event: P2CardActionTrigger) -> P2CardActionTriggerResponse:
         self._dispatch(event)
         return P2CardActionTriggerResponse({})
 
-    def _dispatch(self, event: object) -> None:
+    def _dispatch(self, event: P2CardActionTrigger | P2ImMessageReceiveV1) -> None:
         if self._wire_ack_tracking_enabled:
             self._wire_ack_hook_installed.wait()
             delivery = threading.Event()
@@ -544,7 +564,7 @@ class _SynchronousEventChannel(FeishuChannel):
             nonlocal acknowledged
             acknowledged = True
 
-        self._dify_callback(_sdk_event_mapping(event), acknowledge)
+        self._dify_callback(_sdk_event_envelope(event), acknowledge)
         if not acknowledged:
             raise RuntimeError("event responsibility was not accepted")
 
@@ -732,104 +752,372 @@ class _WebhookEventEnvelope(_ExternalResponseModel):
     header: _WebhookEventHeader
 
 
-class _ProviderCardModel(BaseModel):
-    """Strict serialization boundary for the Provider-confirmed card shape."""
+_FEISHU_LARK_DIFY_ACTION_MARKER = "__dify.human_input.action"
 
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        hide_input_in_errors=True,
-        populate_by_name=True,
+
+@dataclass(frozen=True, slots=True)
+class _MSFeishuLarkCardCodec(IMCardEventDecoder):
+    """Own the credential-free Feishu/Lark card wire contract."""
+
+    _FORM_NAME = "__dify.human_input"
+    _CALLBACK_EVENT_TYPE = "card.action.trigger"
+    _CALLBACK_SCHEMA_VERSION = 1
+    _MAX_CARD_SIZE_BYTES = 30 * 1024
+    _SUPPORTED_PROVIDERS = frozenset((IMProvider.FEISHU, IMProvider.LARK))
+    _SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
+    _ACTION_MARKER = _FEISHU_LARK_DIFY_ACTION_MARKER
+    _JSON_OBJECT_ADAPTER: ClassVar[TypeAdapter[dict[str, JsonValue]]] = TypeAdapter(
+        dict[str, JsonValue],
+        config=ConfigDict(strict=True, allow_inf_nan=False),
     )
 
+    class _CallbackModel(BaseModel):
+        model_config = ConfigDict(
+            allow_inf_nan=False,
+            extra="ignore",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
 
-class _CardPlainText(_ProviderCardModel):
-    tag: Literal["plain_text"] = "plain_text"
-    content: str
+    class _CallbackHeader(_CallbackModel):
+        event_type: Literal["card.action.trigger"]
+
+    class _CallbackOperator(_CallbackModel):
+        union_id: str = Field(min_length=1)
+
+        @field_validator("union_id")
+        @classmethod
+        def _require_non_blank_union_id(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback union identifier is empty.")
+            return value
+
+    class _ButtonMetadata(BaseModel):
+        model_config = ConfigDict(
+            extra="forbid",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
+
+        version: Literal[1]
+        action_id: str = Field(min_length=1)
+        correlation_token: str
+
+        @field_validator("action_id")
+        @classmethod
+        def _require_non_blank_action_id(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback action identifier is empty.")
+            return value
+
+    class _ButtonValue(BaseModel):
+        model_config = ConfigDict(
+            extra="forbid",
+            frozen=True,
+            hide_input_in_errors=True,
+            strict=True,
+        )
+
+        # Mypy requires a literal alias for Pydantic's dataclass transform.
+        dify_action: _MSFeishuLarkCardCodec._ButtonMetadata = Field(alias="__dify.human_input.action")
+
+    class _CallbackAction(_CallbackModel):
+        tag: Literal["button"]
+        name: str = Field(min_length=1)
+        value: _MSFeishuLarkCardCodec._ButtonValue
+        form_value: dict[str, JsonValue]
+
+        @field_validator("name")
+        @classmethod
+        def _require_non_blank_action_name(cls, value: str) -> str:
+            if not value.strip():
+                raise ValueError("Feishu/Lark callback action name is empty.")
+            return value
+
+    class _CallbackEvent(_CallbackModel):
+        operator: _MSFeishuLarkCardCodec._CallbackOperator
+        action: _MSFeishuLarkCardCodec._CallbackAction
+
+    class _SubmissionCallback(_CallbackModel):
+        schema_version: Literal["2.0"] = Field(alias="schema")
+        header: _MSFeishuLarkCardCodec._CallbackHeader
+        event: _MSFeishuLarkCardCodec._CallbackEvent
+
+    def assess(self, intent: ResolvedForm) -> CardAssessment:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            return CardAssessment(False, reason)
+        return CardAssessment(True)
+
+    def encode(
+        self,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> Mapping[str, JsonValue]:
+        reason = self._unrepresentable_reason(intent)
+        if reason is not None:
+            raise DynamicCardMessagingError(reason)
+        card = self._render_card(intent, correlation_token)
+        if self._serialized_card_size(card) > self._MAX_CARD_SIZE_BYTES:
+            raise DynamicCardMessagingError("Feishu/Lark cannot preserve a card beyond the Provider payload limit.")
+        return card
+
+    @override
+    def decode(self, event: AuthenticatedIMEvent) -> IMCardEventDecodeResult:
+        if event.provider not in self._SUPPORTED_PROVIDERS or event.event_type != self._CALLBACK_EVENT_TYPE:
+            return UnrecognizedIMEvent()
+
+        transport_envelope = self._decode_json_object(event.payload)
+        if transport_envelope is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event payload is invalid.")
+        serialized_callback = self._unwrap_transport_envelope(transport_envelope)
+        if serialized_callback is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event envelope is invalid.")
+        callback = self._decode_json_object(serialized_callback)
+        if callback is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event payload is invalid.")
+        action_value = self._recognition_action_value(callback)
+        if action_value is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        if self._ACTION_MARKER not in action_value:
+            return UnrecognizedIMEvent()
+
+        submission = self._validate_submission(callback)
+        if submission is None:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        metadata = submission.event.action.value.dify_action
+        if submission.event.action.name != metadata.action_id:
+            raise IMCardEventDecodingError("Feishu/Lark card event schema is invalid.")
+        return IMCardEvent(
+            provider_user_id=ProviderUserId(submission.event.operator.union_id),
+            action_id=metadata.action_id,
+            inputs=submission.event.action.form_value,
+            correlation_token=CorrelationToken(metadata.correlation_token),
+        )
+
+    @classmethod
+    def _decode_json_object(cls, serialized_callback: str) -> dict[str, JsonValue] | None:
+        try:
+            decoded_callback: JsonValue = json.loads(
+                serialized_callback,
+                parse_constant=cls._reject_non_standard_json_constant,
+            )
+        except (json.JSONDecodeError, ValueError, RecursionError):
+            return None
+        try:
+            return cls._JSON_OBJECT_ADAPTER.validate_python(decoded_callback, strict=True)
+        except ValidationError:
+            return None
+
+    @classmethod
+    def _unwrap_transport_envelope(cls, envelope: dict[str, JsonValue]) -> str | None:
+        if set(envelope) == {_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY}:
+            webhook = envelope[_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY]
+            if not isinstance(webhook, dict) or set(webhook) != {"encrypted", "native_payload"}:
+                return None
+            encrypted = webhook["encrypted"]
+            native_payload = webhook["native_payload"]
+            if not isinstance(encrypted, bool) or not isinstance(native_payload, str):
+                return None
+            return native_payload
+        if set(envelope) == {_AUTHENTICATED_STREAM_PAYLOAD_KEY}:
+            stream = envelope[_AUTHENTICATED_STREAM_PAYLOAD_KEY]
+            if not isinstance(stream, dict) or set(stream) != {"native_payload", "object_type"}:
+                return None
+            native_payload = stream["native_payload"]
+            object_type = stream["object_type"]
+            if not isinstance(native_payload, str) or object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
+                return None
+            return native_payload
+        return None
+
+    @classmethod
+    def _recognition_action_value(cls, callback: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
+        if callback.get("schema") != "2.0":
+            return None
+        header = callback.get("header")
+        callback_event = callback.get("event")
+        if not isinstance(header, dict) or header.get("event_type") != cls._CALLBACK_EVENT_TYPE:
+            return None
+        if not isinstance(callback_event, dict):
+            return None
+        action = callback_event.get("action")
+        if not isinstance(action, dict):
+            return None
+        action_value = action.get("value")
+        if not isinstance(action_value, dict):
+            return {}
+        return action_value
+
+    @classmethod
+    def _validate_submission(cls, callback: dict[str, JsonValue]) -> _SubmissionCallback | None:
+        try:
+            return cls._SubmissionCallback.model_validate(callback)
+        except ValidationError:
+            return None
+
+    @classmethod
+    def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
+        if not intent.blocks and not intent.user_actions:
+            return "Feishu/Lark cannot preserve an empty card."
+
+        input_names: set[str] = set()
+        for block in intent.blocks:
+            match block:
+                case MarkdownText(text=text):
+                    if not text:
+                        return "Feishu/Lark cannot preserve an empty Markdown block."
+                    continue
+                case FileInput() | FileListInput():
+                    return "Feishu/Lark cards cannot represent file inputs."
+                case ParagraphInput(output_variable_name=input_name):
+                    pass
+                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                    if not options or any(not option for option in options):
+                        return "Feishu/Lark cannot preserve one select option."
+                    if len(options) != len(set(options)):
+                        return "Feishu/Lark cannot preserve duplicate select options."
+                    if default_value is not None and default_value not in options:
+                        return "Feishu/Lark cannot preserve one select input default."
+            if input_name in input_names:
+                return "Feishu/Lark cannot preserve duplicate card input identifiers."
+            input_names.add(input_name)
+
+        if any(action.button_style not in cls._SUPPORTED_ACTION_STYLES for action in intent.user_actions):
+            return "Feishu/Lark cannot preserve one card action style."
+        assessment_card = cls._render_card(intent, CorrelationToken(""))
+        if cls._serialized_card_size(assessment_card) > cls._MAX_CARD_SIZE_BYTES:
+            return "Feishu/Lark cannot preserve a card beyond the Provider payload limit."
+        return None
+
+    @classmethod
+    def _render_card(
+        cls,
+        intent: ResolvedForm,
+        correlation_token: CorrelationToken,
+    ) -> dict[str, JsonValue]:
+        rendered_elements: list[JsonValue] = []
+        for block in intent.blocks:
+            if isinstance(block, MarkdownText):
+                rendered_elements.append({"tag": "markdown", "content": block.text})
+                continue
+            placeholder: dict[str, JsonValue] = {
+                "tag": "plain_text",
+                "content": block.output_variable_name,
+            }
+            if isinstance(block, ParagraphInput):
+                input_element: dict[str, JsonValue] = {
+                    "tag": "input",
+                    "name": block.output_variable_name,
+                    "input_type": "multiline_text",
+                    "width": "fill",
+                    "required": True,
+                    "label": placeholder,
+                    "placeholder": placeholder,
+                }
+                if block.default_value is not None:
+                    input_element["default_value"] = block.default_value
+                rendered_elements.append(input_element)
+                continue
+            if isinstance(block, SelectInput):
+                select_element: dict[str, JsonValue] = {
+                    "tag": "select_static",
+                    "name": block.output_variable_name,
+                    "required": True,
+                    "placeholder": placeholder,
+                    "options": [
+                        {
+                            "text": {"tag": "plain_text", "content": option},
+                            "value": option,
+                        }
+                        for option in block.options
+                    ],
+                }
+                if block.default_value is not None:
+                    select_element["initial_option"] = block.default_value
+                rendered_elements.append(select_element)
+                continue
+            raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
+
+        if intent.user_actions:
+            columns: list[JsonValue] = []
+            for action in intent.user_actions:
+                if action.button_style is ButtonStyle.PRIMARY:
+                    button_type = "primary_filled"
+                elif action.button_style is ButtonStyle.ACCENT:
+                    button_type = "danger_filled"
+                else:
+                    button_type = "default"
+                columns.append(
+                    {
+                        "tag": "column",
+                        "width": "auto",
+                        "elements": [
+                            {
+                                "tag": "button",
+                                "name": action.id,
+                                "type": button_type,
+                                "text": {"tag": "plain_text", "content": action.title},
+                                "form_action_type": "submit",
+                                "behaviors": [
+                                    {
+                                        "type": "callback",
+                                        "value": {
+                                            cls._ACTION_MARKER: {
+                                                "version": cls._CALLBACK_SCHEMA_VERSION,
+                                                "action_id": action.id,
+                                                "correlation_token": str(correlation_token),
+                                            }
+                                        },
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                )
+            rendered_elements.append(
+                {
+                    "tag": "column_set",
+                    "flex_mode": "none",
+                    "horizontal_spacing": "8px",
+                    "horizontal_align": "left",
+                    "columns": columns,
+                }
+            )
+
+        requires_form = any(not isinstance(block, MarkdownText) for block in intent.blocks) or bool(intent.user_actions)
+        body_elements: list[JsonValue]
+        if requires_form:
+            body_elements = [{"tag": "form", "name": cls._FORM_NAME, "elements": rendered_elements}]
+        else:
+            body_elements = rendered_elements
+        card: dict[str, JsonValue] = {
+            "schema": "2.0",
+            "config": {"update_multi": True},
+            "body": {"direction": "vertical", "elements": body_elements},
+        }
+        if intent.title is not None:
+            card["header"] = {"title": {"tag": "plain_text", "content": intent.title}}
+        return card
+
+    @staticmethod
+    def _serialized_card_size(card: Mapping[str, JsonValue]) -> int:
+        serialized_card = json.dumps(
+            card,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+        return len(serialized_card.encode())
+
+    @staticmethod
+    def _reject_non_standard_json_constant(_serialized_constant: str) -> Never:
+        raise ValueError("non-standard JSON constant")
 
 
-class _CardMarkdown(_ProviderCardModel):
-    tag: Literal["markdown"] = "markdown"
-    content: str
-
-
-class _CardInput(_ProviderCardModel):
-    tag: Literal["input"] = "input"
-    name: str
-    required: Literal[True] = True
-    label: _CardPlainText
-    placeholder: _CardPlainText
-    default_value: str | None = None
-
-
-class _CardOption(_ProviderCardModel):
-    text: _CardPlainText
-    value: str
-
-
-class _CardSelect(_ProviderCardModel):
-    tag: Literal["select_static"] = "select_static"
-    name: str
-    required: Literal[True] = True
-    placeholder: _CardPlainText
-    options: list[_CardOption]
-    initial_option: str | None = None
-
-
-class _CardCallbackMetadata(_ProviderCardModel):
-    correlation_token: str
-
-
-class _CardCallbackValue(_ProviderCardModel):
-    action_id: str
-    value: str
-    metadata: _CardCallbackMetadata
-
-
-class _CardCallbackBehavior(_ProviderCardModel):
-    type: Literal["callback"] = "callback"
-    value: _CardCallbackValue
-
-
-class _CardButton(_ProviderCardModel):
-    tag: Literal["button"] = "button"
-    name: str
-    type: Literal["default", "primary", "danger"]
-    text: _CardPlainText
-    form_action_type: Literal["submit"] = "submit"
-    behaviors: list[_CardCallbackBehavior]
-
-
-type _CardFormElement = _CardInput | _CardSelect | _CardButton
-
-
-class _CardForm(_ProviderCardModel):
-    tag: Literal["form"] = "form"
-    name: Literal["dify_human_input"] = "dify_human_input"
-    elements: list[_CardFormElement]
-
-
-type _CardBodyElement = _CardMarkdown | _CardForm
-
-
-class _CardBody(_ProviderCardModel):
-    direction: Literal["vertical"] = "vertical"
-    elements: list[_CardBodyElement]
-
-
-class _CardConfig(_ProviderCardModel):
-    update_multi: Literal[True] = True
-
-
-class _CardHeader(_ProviderCardModel):
-    title: _CardPlainText
-
-
-class _DynamicCard(_ProviderCardModel):
-    schema_version: Literal["2.0"] = Field(default="2.0", alias="schema")
-    config: _CardConfig
-    header: _CardHeader | None = None
-    body: _CardBody
+_MS_FEISHU_LARK_CARD_CODEC = _MSFeishuLarkCardCodec()
 
 
 class _ReferencePayload(BaseModel):
@@ -974,8 +1262,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
 
     @override
     def assess(self, intent: ResolvedForm) -> CardAssessment:
-        reason = _card_unrepresentable_reason(intent, self._provider)
-        return CardAssessment(reason is None, reason)
+        return _MS_FEISHU_LARK_CARD_CODEC.assess(intent)
 
     @override
     def send_card(
@@ -984,10 +1271,8 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
         intent: ResolvedForm,
         correlation_token: CorrelationToken,
     ) -> MessageSendingResult:
-        reason = _card_unrepresentable_reason(intent, self._provider)
-        if reason is not None:
-            raise DynamicCardMessagingError(reason)
-        content = json.dumps(_render_dynamic_card(intent, correlation_token), ensure_ascii=False, separators=(",", ":"))
+        encoded_card = _MS_FEISHU_LARK_CARD_CODEC.encode(intent, correlation_token)
+        content = json.dumps(encoded_card, ensure_ascii=False, separators=(",", ":"))
         failure = MessageSendingError(f"{_provider_name(self._provider)} card acceptance could not be confirmed.")
         try:
             signing_secret = _reference_signing_secret()
@@ -1129,14 +1414,14 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
         authenticated = self._authenticate_and_decode(request)
         if authenticated is None:
             return _webhook_response(401, {"code": 1})
-        decoded, replay_identity, decrypted = authenticated
+        decoded, replay_identity, encrypted, native_payload = authenticated
 
         if decoded.get("type") == "url_verification":
             try:
                 challenge = _WebhookChallenge.model_validate(decoded)
             except ValidationError:
                 return _webhook_response(400, {"code": 1})
-            if not self._challenge_is_authenticated(challenge.token, decrypted=decrypted):
+            if not self._challenge_is_authenticated(challenge.token, decrypted=encrypted):
                 return _webhook_response(401, {"code": 1})
             return _webhook_response(200, {"challenge": challenge.challenge})
 
@@ -1153,10 +1438,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return _webhook_response(503, {"code": 1})
         if provider_tenant_id != envelope.header.tenant_key:
             return _webhook_response(401, {"code": 1})
-        try:
-            serialized_payload = json.dumps(decoded, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        except (TypeError, ValueError):
-            return _webhook_response(400, {"code": 1})
+        serialized_payload = _authenticated_webhook_payload(native_payload, encrypted=encrypted)
         event = AuthenticatedIMEvent(
             provider=self._provider,
             provider_tenant_id=provider_tenant_id,
@@ -1180,31 +1462,39 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return _webhook_response(503, {"code": 1})
         return _webhook_response(200, {"code": 0})
 
-    def _authenticate_and_decode(self, request: WebhookRequest) -> tuple[dict[str, object], bytes | None, bool] | None:
+    def _authenticate_and_decode(
+        self,
+        request: WebhookRequest,
+    ) -> tuple[dict[str, object], bytes | None, bool, str] | None:
+        # Authentication must parse Provider JSON for challenge, token, signature,
+        # and tenant checks. The separate native string is never reconstructed;
+        # it is persisted exactly so only the codec normalizes card callback facts.
         if self._verification_token is None and self._encrypt_key is None:
             return None
         try:
             outer = _decode_json_object(request.body)
             encrypted = outer.get("encrypt")
             if encrypted is None:
+                native_payload = request.body.decode()
                 decoded = outer
             else:
                 if self._encrypt_key is None:
                     return None
                 envelope = _EncryptedWebhookEnvelope.model_validate(outer)
                 plaintext = _decrypt_webhook_payload(envelope.encrypt, self._encrypt_key)
+                native_payload = plaintext.decode()
                 decoded = _decode_json_object(plaintext)
         except (ValueError, ValidationError, UnicodeDecodeError, binascii.Error):
             return None
         # The official SDK authenticates URL verification with the body token and requires signatures only for events.
         if decoded.get("type") == "url_verification":
-            return decoded, None, encrypted is not None
+            return decoded, None, encrypted is not None, native_payload
         replay_identity = None
         if self._encrypt_key is not None:
             replay_identity = _valid_webhook_signature(request, self._encrypt_key)
             if replay_identity is None:
                 return None
-        return decoded, replay_identity, encrypted is not None
+        return decoded, replay_identity, encrypted is not None, native_payload
 
     def _claim_delivery(self, replay_identity: bytes) -> bool:
         now = time.monotonic()
@@ -1362,25 +1652,27 @@ class _FeishuLarkEventStream:
         if self._close_failed:
             raise IMStreamStopError(f"The {_provider_name(self._provider)} event stream could not be stopped.")
 
-    def _handle_delivery(self, sdk_event: Mapping[str, object], acknowledge: Callable[[], None]) -> None:
+    def _handle_delivery(self, sdk_event: _SDKEventEnvelope, acknowledge: Callable[[], None]) -> None:
         with self._condition:
             if not self._accepting_callbacks or self._state not in {"starting", "running"}:
                 return
             self._in_flight_callbacks += 1
         try:
-            envelope = _WebhookEventEnvelope.model_validate(sdk_event)
-            serialized_payload = json.dumps(
-                dict(sdk_event),
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
-            )
+            if sdk_event.is_card_action:
+                if sdk_event.object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
+                    raise ValueError("SDK card event type is unsupported")
+                serialized_payload = _authenticated_stream_payload(
+                    sdk_event.native_payload,
+                    object_type=sdk_event.object_type,
+                )
+            else:
+                serialized_payload = sdk_event.native_payload
             event = AuthenticatedIMEvent(
                 provider=self._provider,
-                provider_tenant_id=envelope.header.tenant_key,
-                event_id=_optional_string(envelope.header.event_id),
-                event_type=_optional_string(envelope.header.event_type),
-                occurred_at=_webhook_occurred_at(envelope.header.create_time),
+                provider_tenant_id=sdk_event.provider_tenant_id,
+                event_id=sdk_event.event_id,
+                event_type=sdk_event.event_type,
+                occurred_at=sdk_event.occurred_at,
                 received_at=datetime.now(tz=UTC).replace(tzinfo=None),
                 payload=serialized_payload,
             )
@@ -1412,6 +1704,10 @@ class _FeishuLarkIMProviderAdapter:
         self._messaging = _FeishuLarkMessaging(self._gateway, credentials, provider)
         self._dynamic_card_messaging = _FeishuLarkDynamicCardMessaging(self._gateway, credentials, provider)
         self._closed = False
+
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder:
+        return _MS_FEISHU_LARK_CARD_CODEC
 
     @property
     def provider(self) -> IMProvider:
@@ -1662,106 +1958,6 @@ def _department_identity(department: _DirectoryDepartment) -> _DepartmentIdentit
     return None
 
 
-def _card_unrepresentable_reason(intent: ResolvedForm, provider: IMProvider) -> str | None:
-    provider_name = _provider_name(provider)
-    if not intent.blocks and not intent.user_actions:
-        return f"{provider_name} cannot preserve an empty card."
-    input_names: set[str] = set()
-    form_started = False
-    for block in intent.blocks:
-        match block:
-            case MarkdownText(text=text):
-                if not text:
-                    return f"{provider_name} cannot preserve an empty Markdown block."
-                if form_started:
-                    return f"{provider_name} cannot preserve Markdown after form inputs."
-                continue
-            case FileInput() | FileListInput():
-                return f"{provider_name} cards cannot represent file inputs."
-            case ParagraphInput(output_variable_name=input_name):
-                form_started = True
-            case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
-                form_started = True
-                if not options or any(not option for option in options):
-                    return f"{provider_name} cannot preserve one select option."
-                if len(options) != len(set(options)):
-                    return f"{provider_name} cannot preserve duplicate select options."
-                if default_value is not None and default_value not in options:
-                    return f"{provider_name} cannot preserve one select input default."
-        if input_name in input_names:
-            return f"{provider_name} cannot preserve duplicate card input identifiers."
-        input_names.add(input_name)
-    if any(
-        action.button_style not in {ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT}
-        for action in intent.user_actions
-    ):
-        return f"{provider_name} cannot preserve one card action style."
-    return None
-
-
-def _render_dynamic_card(
-    intent: ResolvedForm,
-    correlation_token: CorrelationToken,
-) -> dict[str, object]:
-    body_elements: list[_CardBodyElement] = []
-    form_elements: list[_CardFormElement] = []
-    for block in intent.blocks:
-        if isinstance(block, MarkdownText):
-            body_elements.append(_CardMarkdown(content=block.text))
-            continue
-        placeholder = _CardPlainText(content=block.output_variable_name)
-        if isinstance(block, ParagraphInput):
-            element: _CardFormElement = _CardInput(
-                name=block.output_variable_name,
-                label=_CardPlainText(content=block.output_variable_name),
-                placeholder=placeholder,
-                default_value=block.default_value,
-            )
-        elif isinstance(block, SelectInput):
-            element = _CardSelect(
-                name=block.output_variable_name,
-                placeholder=placeholder,
-                options=[_CardOption(text=_CardPlainText(content=option), value=option) for option in block.options],
-                initial_option=block.default_value,
-            )
-        else:
-            raise DynamicCardMessagingError("Feishu/Lark cards cannot represent file inputs.")
-        form_elements.append(element)
-    for action in intent.user_actions:
-        button_type: Literal["default", "primary", "danger"]
-        if action.button_style is ButtonStyle.PRIMARY:
-            button_type = "primary"
-        elif action.button_style is ButtonStyle.ACCENT:
-            button_type = "danger"
-        else:
-            button_type = "default"
-        form_elements.append(
-            _CardButton(
-                name=action.id,
-                type=button_type,
-                text=_CardPlainText(content=action.title),
-                behaviors=[
-                    _CardCallbackBehavior(
-                        value=_CardCallbackValue(
-                            action_id=action.id,
-                            value=action.id,
-                            metadata=_CardCallbackMetadata(correlation_token=str(correlation_token)),
-                        )
-                    )
-                ],
-            )
-        )
-    if form_elements:
-        body_elements.append(_CardForm(elements=form_elements))
-    header = _CardHeader(title=_CardPlainText(content=intent.title)) if intent.title is not None else None
-    card = _DynamicCard(
-        config=_CardConfig(),
-        header=header,
-        body=_CardBody(elements=body_elements),
-    )
-    return card.model_dump(mode="json", by_alias=True, exclude_none=True)
-
-
 def _encode_reference(
     *,
     provider: IMProvider,
@@ -1836,6 +2032,65 @@ def _sdk_event_mapping(event: object) -> Mapping[str, object]:
     if not isinstance(decoded, dict) or any(not isinstance(key, str) for key in decoded):
         raise ValueError("SDK event is not a JSON object")
     return decoded
+
+
+def _sdk_event_envelope(event: P2CardActionTrigger | P2ImMessageReceiveV1) -> _SDKEventEnvelope:
+    serialized = lark.JSON.marshal(event)
+    if serialized is None:
+        raise ValueError("SDK event is empty")
+    header = event.header
+    if header is None:
+        raise ValueError("SDK event header is empty")
+    provider_tenant_id = _optional_string(header.tenant_key)
+    if provider_tenant_id is None:
+        raise ValueError("SDK event tenant identifier is empty")
+    is_card_action = isinstance(event, P2CardActionTrigger)
+    if not is_card_action and not isinstance(event, P2ImMessageReceiveV1):
+        raise ValueError("SDK event type is unsupported")
+    object_type = f"{type(event).__module__}.{type(event).__qualname__}"
+    if is_card_action and object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
+        raise ValueError("SDK card event type is unsupported")
+    return _SDKEventEnvelope(
+        native_payload=serialized,
+        object_type=object_type,
+        provider_tenant_id=provider_tenant_id,
+        event_id=_optional_string(header.event_id),
+        event_type=_optional_string(header.event_type),
+        occurred_at=_webhook_occurred_at(header.create_time),
+        is_card_action=is_card_action,
+    )
+
+
+def _authenticated_webhook_payload(native_payload: str, *, encrypted: bool) -> str:
+    # The wrapper persists transport provenance while leaving the authenticated
+    # decrypted Provider JSON byte-for-byte unchanged for codec-owned parsing.
+    return json.dumps(
+        {
+            _AUTHENTICATED_WEBHOOK_PAYLOAD_KEY: {
+                "encrypted": encrypted,
+                "native_payload": native_payload,
+            }
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _authenticated_stream_payload(native_payload: str, *, object_type: str) -> str:
+    # The SDK object type and exact marshal output are transport evidence; only
+    # the codec may parse the nested callback into transport-neutral facts.
+    return json.dumps(
+        {
+            _AUTHENTICATED_STREAM_PAYLOAD_KEY: {
+                "native_payload": native_payload,
+                "object_type": object_type,
+            }
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def _provider_name(provider: IMProvider) -> str:

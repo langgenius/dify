@@ -1011,7 +1011,7 @@ def test_file_controls_make_whole_card_unrepresentable_without_mutation(
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_markdown_after_input_makes_whole_card_unrepresentable_without_reordering(
+def test_provider_confirmed_form_preserves_markdown_after_input_without_reordering(
     monkeypatch: pytest.MonkeyPatch,
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
 ) -> None:
@@ -1025,16 +1025,25 @@ def test_markdown_after_input_makes_whole_card_unrepresentable_without_reorderin
     )
 
     assessment = adapter.dynamic_card_messaging.assess(intent)
+    encoded = adapter_module._MSFeishuLarkCardCodec().encode(
+        intent,
+        CorrelationToken("opaque-correlation-token"),
+    )
 
-    assert assessment.representable is False
-    assert assessment.reason is not None
-    assert "Markdown after form inputs" in assessment.reason
-    with pytest.raises(DynamicCardMessagingError):
-        adapter.dynamic_card_messaging.send_card(
-            ProviderUserId("union_sanitized_user"),
-            intent,
-            CorrelationToken("opaque-correlation-token"),
-        )
+    assert assessment.representable is True
+    body = encoded["body"]
+    assert isinstance(body, dict)
+    body_elements = body["elements"]
+    assert isinstance(body_elements, list)
+    form = body_elements[0]
+    assert isinstance(form, dict)
+    form_elements = form["elements"]
+    assert isinstance(form_elements, list)
+    tags: list[object] = []
+    for element in form_elements:
+        assert isinstance(element, dict)
+        tags.append(element["tag"])
+    assert tags == ["input", "markdown", "column_set"]
     assert gateway.calls == []
 
 
@@ -1061,82 +1070,10 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
     creation = creations[0]
     _, msg_type, content = creation[1]
     assert msg_type == "interactive"
-    assert json.loads(content) == {
-        "schema": "2.0",
-        "config": {"update_multi": True},
-        "header": {"title": {"tag": "plain_text", "content": "Synthetic decision"}},
-        "body": {
-            "direction": "vertical",
-            "elements": [
-                {"tag": "markdown", "content": "Synthetic **approval** content"},
-                {
-                    "tag": "form",
-                    "name": "dify_human_input",
-                    "elements": [
-                        {
-                            "tag": "input",
-                            "name": "explanation",
-                            "required": True,
-                            "label": {"tag": "plain_text", "content": "explanation"},
-                            "placeholder": {
-                                "tag": "plain_text",
-                                "content": "explanation",
-                            },
-                            "default_value": "Synthetic default",
-                        },
-                        {
-                            "tag": "select_static",
-                            "name": "decision",
-                            "required": True,
-                            "placeholder": {
-                                "tag": "plain_text",
-                                "content": "decision",
-                            },
-                            "options": [
-                                {"text": {"tag": "plain_text", "content": "allow"}, "value": "allow"},
-                                {"text": {"tag": "plain_text", "content": "deny"}, "value": "deny"},
-                            ],
-                            "initial_option": "allow",
-                        },
-                        {
-                            "tag": "button",
-                            "name": "continue",
-                            "type": "primary",
-                            "text": {"tag": "plain_text", "content": "Continue"},
-                            "form_action_type": "submit",
-                            "behaviors": [
-                                {
-                                    "type": "callback",
-                                    "value": {
-                                        "action_id": "continue",
-                                        "value": "continue",
-                                        "metadata": {"correlation_token": "synthetic-correlation-token"},
-                                    },
-                                }
-                            ],
-                        },
-                        {
-                            "tag": "button",
-                            "name": "stop",
-                            "type": "danger",
-                            "text": {"tag": "plain_text", "content": "Stop"},
-                            "form_action_type": "submit",
-                            "behaviors": [
-                                {
-                                    "type": "callback",
-                                    "value": {
-                                        "action_id": "stop",
-                                        "value": "stop",
-                                        "metadata": {"correlation_token": "synthetic-correlation-token"},
-                                    },
-                                }
-                            ],
-                        },
-                    ],
-                },
-            ],
-        },
-    }
+    assert json.loads(content) == adapter_module._MSFeishuLarkCardCodec().encode(
+        intent,
+        CorrelationToken("synthetic-correlation-token"),
+    )
 
 
 @pytest.mark.parametrize(

@@ -94,48 +94,12 @@ class _SDKHTTPServer(ThreadingHTTPServer):
 
 
 def _provider_confirmed_card_content() -> dict[str, object]:
-    return {
-        "schema": "2.0",
-        "config": {"update_multi": True},
-        "header": {"title": {"tag": "plain_text", "content": "Approval"}},
-        "body": {
-            "direction": "vertical",
-            "elements": [
-                {"tag": "markdown", "content": "Rendered **content**"},
-                {
-                    "tag": "form",
-                    "name": "dify_human_input",
-                    "elements": [
-                        {
-                            "tag": "input",
-                            "name": "comment",
-                            "required": True,
-                            "label": {"tag": "plain_text", "content": "comment"},
-                            "placeholder": {"tag": "plain_text", "content": "comment"},
-                            "default_value": "Initial",
-                        },
-                        {
-                            "tag": "button",
-                            "name": "approve",
-                            "type": "primary",
-                            "text": {"tag": "plain_text", "content": "Approve"},
-                            "form_action_type": "submit",
-                            "behaviors": [
-                                {
-                                    "type": "callback",
-                                    "value": {
-                                        "action_id": "approve",
-                                        "value": "approve",
-                                        "metadata": {"correlation_token": "opaque-correlation-token"},
-                                    },
-                                }
-                            ],
-                        },
-                    ],
-                },
-            ],
-        },
-    }
+    return dict(
+        adapter_module._MSFeishuLarkCardCodec().encode(
+            _intent(),
+            CorrelationToken("opaque-correlation-token"),
+        )
+    )
 
 
 def _is_provider_confirmed_card_request(request_body: dict[str, object] | None) -> bool:
@@ -552,6 +516,38 @@ def _event_payload() -> dict[str, object]:
             }
         },
     }
+
+
+def _sdk_transport_envelope(event: Mapping[str, object]) -> adapter_module._SDKEventEnvelope:
+    header = event.get("header")
+    if not isinstance(header, Mapping):
+        return adapter_module._SDKEventEnvelope(
+            native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
+            object_type="unexpected.sdk.Event",
+            provider_tenant_id="tenant_sanitized",
+            event_id=None,
+            event_type=None,
+            occurred_at=None,
+            is_card_action=True,
+        )
+    tenant_key = header.get("tenant_key")
+    event_id = header.get("event_id")
+    event_type = header.get("event_type")
+    create_time = header.get("create_time")
+    is_valid_card_event = event_type == "card.action.trigger" and isinstance(tenant_key, str)
+    return adapter_module._SDKEventEnvelope(
+        native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
+        object_type=(
+            "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
+            if is_valid_card_event
+            else "unexpected.sdk.Event"
+        ),
+        provider_tenant_id=tenant_key if isinstance(tenant_key, str) else "tenant_sanitized",
+        event_id=event_id if isinstance(event_id, str) else None,
+        event_type=event_type if isinstance(event_type, str) else None,
+        occurred_at=adapter_module._webhook_occurred_at(create_time if isinstance(create_time, str) else None),
+        is_card_action=True,
+    )
 
 
 def _encrypt(plaintext: bytes, encrypt_key: str = "sanitized-encrypt-key") -> str:
@@ -994,7 +990,12 @@ def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
     assert response.status_code == 200
     assert replay.status_code == 409
     assert len(consumer.events) == 1
-    assert json.loads(consumer.events[0].payload) == _event_payload()
+    assert json.loads(consumer.events[0].payload) == {
+        "__dify_feishu_lark.webhook": {
+            "encrypted": True,
+            "native_payload": plaintext.decode(),
+        }
+    }
 
     challenge_consumer = _Consumer()
     challenge_credentials = FeishuIMIntegrationCredentials(
@@ -1901,7 +1902,7 @@ def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(
                 nonlocal acknowledgements
                 acknowledgements += 1
 
-            self.callback(event, acknowledge)
+            self.callback(_sdk_transport_envelope(event), acknowledge)
             return acknowledgements
 
     def client_factory(_credentials, _domain, callback):

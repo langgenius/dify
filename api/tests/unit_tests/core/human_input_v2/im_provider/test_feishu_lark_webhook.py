@@ -193,7 +193,13 @@ def test_authenticated_plaintext_event_preserves_complete_payload_and_acks_after
     assert event.provider_tenant_id == "tenant_sanitized"
     assert event.event_id == "evt_sanitized_event"
     assert event.event_type == "card.action.trigger"
-    assert json.loads(event.payload) == json.loads(body)
+    transport_envelope = json.loads(event.payload)
+    assert transport_envelope == {
+        "__dify_feishu_lark.webhook": {
+            "encrypted": False,
+            "native_payload": body.decode(),
+        }
+    }
 
 
 @pytest.mark.parametrize(
@@ -254,15 +260,25 @@ def test_encrypted_event_authenticates_exact_envelope_and_exposes_only_plaintext
     gateway = _Gateway(["tenant_sanitized"])
     consumer = _Consumer()
     handler = _adapter(monkeypatch, IMProvider.FEISHU, gateway).create_webhook_handler(consumer)
-    plaintext = _event_body()
+    plaintext = json.dumps(json.loads(_event_body()), ensure_ascii=False, indent=2).encode()
+    assert b"\n" in plaintext
     body = json.dumps({"encrypt": _encrypt(plaintext)}, separators=(",", ":")).encode()
 
     response = handler.handle(_signed_request(body))
 
     assert response.status_code == 200
     assert len(consumer.events) == 1
-    assert json.loads(consumer.events[0].payload) == json.loads(plaintext)
-    assert "encrypt" not in json.loads(consumer.events[0].payload)
+    transport_envelope = json.loads(consumer.events[0].payload)
+    assert transport_envelope == {
+        "__dify_feishu_lark.webhook": {
+            "encrypted": True,
+            "native_payload": plaintext.decode(),
+        }
+    }
+    webhook_payload = transport_envelope["__dify_feishu_lark.webhook"]
+    assert isinstance(webhook_payload, dict)
+    assert webhook_payload["native_payload"] == plaintext.decode()
+    assert "encrypt" not in transport_envelope
 
 
 def test_signed_event_treats_timestamp_as_opaque_signature_material(
