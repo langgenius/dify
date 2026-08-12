@@ -3,6 +3,7 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
@@ -12,6 +13,7 @@ import type { Mock } from 'vitest'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -156,8 +158,13 @@ const mockStepByStepTour = vi.hoisted(() => {
     stateQueryKey,
   }
 })
+type MainNavConsoleState = ConsoleStateFixture & {
+  profileMeta: UserProfileWithMeta['meta']
+  versionData: GetVersionResponse
+}
+
 const mockConsoleState = vi.hoisted(() => ({
-  current: undefined as ConsoleStateFixture | undefined,
+  current: undefined as MainNavConsoleState | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -168,10 +175,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -180,11 +183,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
@@ -490,9 +488,8 @@ const mainNavUserProfile = {
   is_password_set: true,
 }
 
-const consoleState: ConsoleStateFixture = {
+const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -505,14 +502,13 @@ const consoleState: ConsoleStateFixture = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '1.0.0',
-    latest_version: '1.0.0',
-    release_date: '',
-    release_notes: '',
+  profileMeta: {
+    currentEnv: 'testing',
+    currentVersion: '1.0.0',
+  },
+  versionData: {
     version: '1.0.0',
-    can_auto_update: false,
+    release_notes: '',
   },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -552,10 +548,19 @@ const renderMainNav = (
       ...(currentConsoleState.userProfile ?? {}),
     },
     meta: {
-      currentVersion: null,
-      currentEnv: null,
+      currentVersion: currentConsoleState.profileMeta.currentVersion,
+      currentEnv: currentConsoleState.profileMeta.currentEnv,
     },
   })
+  const currentVersion = currentConsoleState.profileMeta.currentVersion
+  if (currentVersion) {
+    queryClient.setQueryData(
+      consoleQuery.version.get.queryOptions({
+        input: { query: { current_version: currentVersion } },
+      }).queryKey,
+      currentConsoleState.versionData,
+    )
+  }
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   const store = options.store ?? createStore()
@@ -717,20 +722,8 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders deployments in primary navigation when app deploy is enabled', () => {
+  it('hides deployments in primary navigation when app deploy is enabled', () => {
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
-
-    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
-    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
-  })
-
-  it('hides deployments in primary navigation when app deploy is disabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
 
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
@@ -914,10 +907,9 @@ describe('MainNav', () => {
       expect(
         screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute(
-        'href',
-        '/deployments',
-      )
+      expect(
+        screen.queryByRole('link', { name: /common.menus.deployments/ }),
+      ).not.toBeInTheDocument()
     },
   )
 
@@ -971,22 +963,6 @@ describe('MainNav', () => {
 
     expect(homeLink).toHaveClass(activeGradientMaskClassName)
     expect(homeLink).toHaveClass(activeStackingClassName)
-  })
-
-  it('keeps Home active on the legacy explore apps route only', () => {
-    mockPathname = '/explore/apps'
-
-    const { rerender } = renderMainNav()
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink).toHaveAttribute('aria-current', 'page')
-
-    mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
-
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
-      'aria-current',
-    )
   })
 
   it('opens goto anything from the search button', async () => {
@@ -1160,9 +1136,8 @@ describe('MainNav', () => {
     const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
-      langGeniusVersionInfo: {
-        ...consoleState.langGeniusVersionInfo,
-        latest_version: '1.1.0',
+      versionData: {
+        version: '1.1.0',
         release_notes: 'https://github.com/langgenius/dify/releases/tag/1.1.0',
       },
     }

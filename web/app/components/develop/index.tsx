@@ -1,11 +1,13 @@
 'use client'
+
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import ApiServer from '@/app/components/develop/ApiServer'
 import Doc from '@/app/components/develop/doc'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type IDevelopMainProps = {
@@ -14,7 +16,10 @@ type IDevelopMainProps = {
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
   const appDetail = useAppStore((state) => state.appDetail)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,

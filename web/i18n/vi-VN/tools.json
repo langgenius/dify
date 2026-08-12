@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Mục đích và ràng buộc của tham số",
   "mcp.server.modal.parametersTip": "Thêm mô tả cho từng tham số để giúp LLM hiểu mục đích và ràng buộc.",
   "mcp.server.publishTip": "Ứng dụng chưa xuất bản. Vui lòng xuất bản ứng dụng trước.",
-  "mcp.server.reGen": "Tạo lại URL máy chủ?",
+  "mcp.server.reGen": "Tạo lại URL máy chủ? URL hiện tại sẽ ngừng hoạt động ngay lập tức.",
   "mcp.server.title": "Máy chủ MCP",
   "mcp.server.url": "URL Máy chủ",
   "mcp.toolItem.noDescription": "Không có mô tả",

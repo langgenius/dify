@@ -8,14 +8,14 @@ import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useAtomValue } from 'jotai'
 import { Suspense, use, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,
@@ -141,14 +141,15 @@ const EmbeddedContent = ({
   )
   const latestResolvedIframeUrlRef = useRef('')
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
   const theme = createTheme(
     siteInfo?.chat_color_theme ?? null,
     siteInfo?.chat_color_theme_inverted ?? false,
   )
-  const isTestEnv =
-    langGeniusVersionInfo.current_env === 'TESTING' ||
-    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const isTestEnv = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   const handleHiddenInputValueChange = (variable: string, value: WorkflowLaunchInputValue) => {
     const nextHiddenInputValues = {

@@ -8,9 +8,9 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
 
 export type CredentialPermission =
@@ -28,7 +28,10 @@ const optionClassName =
 
 const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const isOnlyMe = permission === PermissionLevel.onlyMe
   const isAllTeamMembers = permission === PermissionLevel.allTeamMembers
   const permissionLabel = t(($) => $['auth.whoCanUse'], { ns: 'plugin' })

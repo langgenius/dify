@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import HitTestingPage from '../index'
@@ -116,11 +117,6 @@ vi.mock('@/context/dataset-detail', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -307,6 +303,7 @@ const createConsoleQueryClient = () =>
 
 const TestWrapper = ({ children }: { children: ReactNode }) => {
   const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }
 

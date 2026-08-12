@@ -38,8 +38,7 @@ from controllers.console.workspace.workspace import (
     WorkspacePermissionApi,
     WorkspacePermissionResponse,
 )
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
@@ -71,16 +70,12 @@ def workspace_plan_dependencies(monkeypatch: pytest.MonkeyPatch) -> tuple[MagicM
 def configure_workspace_plans(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    enterprise_enabled: bool = False,
-    billing_enabled: bool = True,
     edition: DeploymentEdition = DeploymentEdition.CLOUD,
 ) -> None:
     monkeypatch.setattr(
         workspace_plan_gateway,
         "dify_config",
         SimpleNamespace(
-            ENTERPRISE_ENABLED=enterprise_enabled,
-            BILLING_ENABLED=billing_enabled,
             DEPLOYMENT_EDITION=edition,
         ),
     )
@@ -275,7 +270,6 @@ class TestDeploymentWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            billing_enabled=False,
             edition=DeploymentEdition.COMMUNITY,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
@@ -294,8 +288,6 @@ class TestDeploymentWorkspacePlanGateway:
     ) -> None:
         configure_workspace_plans(
             monkeypatch,
-            enterprise_enabled=True,
-            billing_enabled=False,
             edition=DeploymentEdition.ENTERPRISE,
         )
         get_plan_bulk, get_features = workspace_plan_dependencies
@@ -649,9 +641,8 @@ class TestWorkspaceInfoApi:
                 ),
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            session.commit.side_effect = lambda: events.append("commit")
+            session = workspace_session()
+            event.listen(session, "after_commit", lambda _session: events.append("commit"))
             result = method(api, session, "t1")
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]

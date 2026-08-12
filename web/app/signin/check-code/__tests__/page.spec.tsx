@@ -1,9 +1,10 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { emailLoginWithCode } from '@/service/common'
+import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
@@ -17,12 +18,49 @@ const serviceBaseMocks = vi.hoisted(() => ({
   get: vi.fn(),
 }))
 
+type ScriptProps = {
+  id: string
+  src: string
+  onReady?: () => void
+  onError?: () => void
+}
+
+type TurnstileOptions = {
+  callback: (token: string) => void
+}
+
+const turnstileMocks = vi.hoisted(() => ({
+  deploymentEdition: 'COMMUNITY' as DeploymentEdition,
+  remove: vi.fn(),
+  render: vi.fn(),
+  scriptProps: undefined as ScriptProps | undefined,
+  siteKey: '',
+}))
+
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
+  get TURNSTILE_SITE_KEY() {
+    return turnstileMocks.siteKey
+  },
+}))
+
+vi.mock('@/app/components/signin/countdown', () => ({
+  default: ({ onResend, resendDisabled }: { onResend?: () => void; resendDisabled?: boolean }) => (
+    <button type="button" disabled={resendDisabled} onClick={onResend}>
+      resend-code
+    </button>
+  ),
+}))
+
+vi.mock('@/next/script', () => ({
+  default: (props: ScriptProps) => {
+    turnstileMocks.scriptProps = props
+    return null
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -56,8 +94,20 @@ function createQueryClient() {
       },
     },
   })
-  seedSystemFeatures(queryClient)
+  seedSystemFeatures(queryClient, {
+    deployment_edition: turnstileMocks.deploymentEdition,
+  })
   return queryClient
+}
+
+function installTurnstileApi() {
+  Object.defineProperty(window, 'turnstile', {
+    configurable: true,
+    value: {
+      remove: turnstileMocks.remove,
+      render: turnstileMocks.render,
+    },
+  })
 }
 
 const accountProfile: GetAccountProfileResponse = {
@@ -84,6 +134,25 @@ describe('CheckCode', () => {
       redirect_url: '/apps',
       token: 'email-login-token',
     })
+    turnstileMocks.deploymentEdition = 'COMMUNITY'
+    turnstileMocks.scriptProps = undefined
+    turnstileMocks.siteKey = ''
+    turnstileMocks.render.mockImplementation(
+      (container: HTMLElement, options: TurnstileOptions) => {
+        const widgetId = `widget-${turnstileMocks.render.mock.calls.length}`
+        const verifyButton = document.createElement('button')
+        verifyButton.type = 'button'
+        verifyButton.dataset.widgetId = widgetId
+        verifyButton.textContent = 'verify-turnstile'
+        verifyButton.addEventListener('click', () => options.callback('fresh-turnstile-token'))
+        container.appendChild(verifyButton)
+        return widgetId
+      },
+    )
+    turnstileMocks.remove.mockImplementation((widgetId: string) => {
+      document.querySelector(`[data-widget-id="${widgetId}"]`)?.remove()
+    })
+    installTurnstileApi()
     vi.mocked(emailLoginWithCode).mockResolvedValue({ result: 'success' })
   })
 
@@ -101,6 +170,136 @@ describe('CheckCode', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
     expect(document.title).toBe('login.checkCode.checkYourEmail - Dify')
+  })
+
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Space', ' '],
+  ])('supports going back with the %s key', async (_, key) => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const backButton = screen.getByRole('button', { name: 'login.back' })
+    expect(backButton).toHaveProperty('tabIndex', 0)
+    backButton.focus()
+    expect(backButton).toHaveFocus()
+    await user.keyboard(key)
+
+    expect(navigationMocks.back).toHaveBeenCalledOnce()
+  })
+
+  it('uses a fresh Turnstile token for each Cloud resend', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    expect(resendButton).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+
+    await user.click(resendButton)
+
+    expect(resendButton).toBeDisabled()
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile' }))
+
+    await waitFor(() => {
+      expect(sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.any(String),
+        'fresh-turnstile-token',
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps Turnstile script-error recovery available during a Cloud resend', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+    Object.defineProperty(window, 'turnstile', {
+      configurable: true,
+      value: undefined,
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    await user.click(resendButton)
+    const initialScriptSrc = turnstileMocks.scriptProps?.src
+
+    act(() => {
+      turnstileMocks.scriptProps?.onError?.()
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('login.turnstile.loadError')
+    expect(resendButton).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(turnstileMocks.scriptProps?.src).not.toBe(initialScriptSrc)
+
+    installTurnstileApi()
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile' }))
+
+    await waitFor(() => {
+      expect(sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.any(String),
+        'fresh-turnstile-token',
+      )
+    })
+  })
+
+  it('does not require Turnstile outside Cloud based on the site key alone', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    turnstileMocks.siteKey = 'site-key-not-used-outside-cloud'
+    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    expect(resendButton).toBeEnabled()
+    await user.click(resendButton)
+
+    expect(sendEMailLoginCode).toHaveBeenCalledWith(
+      'user@example.com',
+      expect.any(String),
+      undefined,
+    )
   })
 
   describe('Post-login profile bootstrap', () => {
