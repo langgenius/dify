@@ -1,4 +1,4 @@
-export type DocumentProcessingPriority = 'standard' | 'priority' | 'top-priority'
+type DocumentProcessingPriority = 'standard' | 'priority' | 'top-priority'
 
 export type PlanInfo = {
   level: number
