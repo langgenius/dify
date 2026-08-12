@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -11,6 +11,7 @@ from flask import Flask
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import AgentNotPublishedError, AppUnavailableError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from enums import WebAppAccessMode
 
 
 # ---------------------------------------------------------------------------
@@ -130,52 +131,17 @@ class TestAppMeta:
 # AppAccessMode
 # ---------------------------------------------------------------------------
 class TestAppAccessMode:
-    @patch("controllers.web.app.FeatureService.get_system_features")
-    def test_returns_public_when_webapp_auth_disabled(self, mock_features: MagicMock, app: Flask) -> None:
-        mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
+    @patch("controllers.web.app.application_services")
+    def test_delegates_validated_app_references(self, application_services: MagicMock, app: Flask) -> None:
+        webapp_access = MagicMock()
+        webapp_access.get_access_mode.return_value = WebAppAccessMode.SSO_VERIFIED
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
 
-        with app.test_request_context("/webapp/access-mode?appId=app-1"):
+        with app.test_request_context("/webapp/access-mode?appId=app-1&appCode=code-1"):
             result = AppAccessMode().get()
 
-        assert result == {"accessMode": "public"}
-
-    @patch("controllers.web.app.EnterpriseService.WebAppAuth.get_app_access_mode_by_id")
-    @patch("controllers.web.app.FeatureService.get_system_features")
-    def test_returns_access_mode_with_app_id(
-        self, mock_features: MagicMock, mock_access: MagicMock, app: Flask
-    ) -> None:
-        mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-        mock_access.return_value = SimpleNamespace(access_mode="internal")
-
-        with app.test_request_context("/webapp/access-mode?appId=app-1"):
-            result = AppAccessMode().get()
-
-        assert result == {"accessMode": "internal"}
-        mock_access.assert_called_once_with("app-1")
-
-    @patch("controllers.web.app.AppService.get_app_id_by_code", return_value="resolved-id")
-    @patch("controllers.web.app.EnterpriseService.WebAppAuth.get_app_access_mode_by_id")
-    @patch("controllers.web.app.FeatureService.get_system_features")
-    def test_resolves_app_code_to_id(
-        self, mock_features: MagicMock, mock_access: MagicMock, mock_resolve: MagicMock, app: Flask
-    ) -> None:
-        mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-        mock_access.return_value = SimpleNamespace(access_mode="external")
-
-        with app.test_request_context("/webapp/access-mode?appCode=code1"):
-            result = AppAccessMode().get()
-
-        mock_resolve.assert_called_once_with("code1", session=ANY)
-        mock_access.assert_called_once_with("resolved-id")
-        assert result == {"accessMode": "external"}
-
-    @patch("controllers.web.app.FeatureService.get_system_features")
-    def test_raises_when_no_app_id_or_code(self, mock_features: MagicMock, app: Flask) -> None:
-        mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
-
-        with app.test_request_context("/webapp/access-mode"):
-            with pytest.raises(ValueError, match="appId or appCode"):
-                AppAccessMode().get()
+        assert result == {"accessMode": "sso_verified"}
+        webapp_access.get_access_mode.assert_called_once_with(app_id="app-1", app_code="code-1")
 
 
 # ---------------------------------------------------------------------------

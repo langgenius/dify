@@ -1,9 +1,10 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 
@@ -56,3 +57,24 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_adapts_enterprise_webapp_access_mode(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with (
+        patch("extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True),
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
+            return_value=SimpleNamespace(access_mode="private_all"),
+        ) as get_access_mode,
+    ):
+        services = build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        result = services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
+
+    assert result is WebAppAccessMode.PRIVATE_ALL
+    get_access_mode.assert_called_once_with("app-1")

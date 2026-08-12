@@ -9,10 +9,13 @@ from werkzeug.exceptions import Unauthorized
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
 from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
+from controllers.common.fields import AccessModeResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser, load_annotation_reply_config
@@ -53,7 +56,7 @@ register_response_schema_models(
     web_ns,
     fields.Parameters,
     AppMetaResponse,
-    fields.AccessModeResponse,
+    AccessModeResponse,
     fields.BooleanResultResponse,
 )
 
@@ -146,25 +149,15 @@ class AppAccessMode(Resource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[fields.AccessModeResponse.__name__])
+    @web_ns.response(200, "Success", web_ns.models[AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
-
-        features = FeatureService.get_system_features()
-        if not features.webapp_auth.enabled:
-            return {"accessMode": "public"}
-
-        app_id = args.app_id
-        if args.app_code:
-            app_id = AppService.get_app_id_by_code(args.app_code, session=db.session())
-
-        if not app_id:
-            raise ValueError("appId or appCode must be provided")
-
-        res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-
-        return {"accessMode": res.access_mode}
+        access_mode = application_services().webapp_access.get_access_mode(
+            app_id=args.app_id,
+            app_code=args.app_code,
+        )
+        return dump_response(AccessModeResponse, {"access_mode": access_mode})
 
 
 @web_ns.route("/webapp/permission")
