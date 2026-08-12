@@ -12,16 +12,19 @@ import VersionInfoModal from '@/app/components/app/app-publisher/version-info-mo
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useDeleteWorkflow,
   useInvalidAllLastRun,
+  useInvalidateAppWorkflow,
   useResetWorkflowVersionHistory,
   useRestoreWorkflow,
   useUpdateWorkflow,
   useWorkflowVersionHistory,
 } from '@/service/use-workflow'
+import { FlowType } from '@/types/common'
 import { useHooksStore } from '../../hooks-store'
 import { useDSL } from '../../hooks/use-DSL'
 import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
@@ -80,6 +83,7 @@ export const VersionHistoryPanel = ({
   const configsMap = useHooksStore((s) => s.configsMap)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation()
 
@@ -137,6 +141,13 @@ export const VersionHistoryPanel = ({
 
   const handleClickActionMenuItem = useCallback(
     (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+      if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
+        toast.error(
+          t(($) => $['versionHistory.action.deleteDeployedVersionError'], { ns: 'workflow' }),
+        )
+        return
+      }
+
       setOperatedItem(item)
       switch (operation) {
         case VersionHistoryContextMenuOptions.restore:
@@ -190,7 +201,10 @@ export const VersionHistoryPanel = ({
           await import('../../collaboration/core/collaboration-manager')
         collaborationManager.emitRestoreIntent({
           versionId: item.id,
-          versionName: item.marked_name,
+          versionName: getWorkflowVersionName(
+            item,
+            t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+          ),
           initiatorUserId: userProfile.id,
           initiatorName: userProfile.name,
         })
@@ -198,7 +212,7 @@ export const VersionHistoryPanel = ({
         console.error('Failed to emit restore intent:', error)
       }
     },
-    [userProfile.id, userProfile.name],
+    [t, userProfile.id, userProfile.name],
   )
 
   const emitRestoreComplete = useCallback(
@@ -318,7 +332,12 @@ export const VersionHistoryPanel = ({
           onSuccess: () => {
             setEditModalOpen(false)
             toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflow' }))
-            resetWorkflowVersionHistory()
+            if (
+              id === latestVersionId &&
+              configsMap?.flowType === FlowType.appFlow &&
+              configsMap.flowId
+            )
+              invalidateAppWorkflow(configsMap.flowId)
           },
           onError: () => {
             toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflow' }))
@@ -329,7 +348,15 @@ export const VersionHistoryPanel = ({
         },
       )
     },
-    [t, updateWorkflow, resetWorkflowVersionHistory, updateVersionUrl],
+    [
+      configsMap?.flowId,
+      configsMap?.flowType,
+      invalidateAppWorkflow,
+      latestVersionId,
+      t,
+      updateWorkflow,
+      updateVersionUrl,
+    ],
   )
 
   return (

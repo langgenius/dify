@@ -7,6 +7,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
@@ -75,14 +76,17 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
       const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
       collaborationManager.emitRestoreIntent({
         versionId: currentVersion.id,
-        versionName: currentVersion.marked_name,
+        versionName: getWorkflowVersionName(
+          currentVersion,
+          t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+        ),
         initiatorUserId: userProfile.id,
         initiatorName: userProfile.name,
       })
     } catch (error) {
       console.error('Failed to emit restore intent:', error)
     }
-  }, [canEmitCollaborationEvents, currentVersion, userProfile.id, userProfile.name])
+  }, [canEmitCollaborationEvents, currentVersion, t, userProfile.id, userProfile.name])
 
   const emitRestoreComplete = useCallback(
     async (success: boolean, errorMessage?: string) => {

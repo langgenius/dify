@@ -58,6 +58,27 @@ describe('PublishWithMultipleModel', () => {
     expect(screen.queryByText(/(?:^|\.)publishAs(?=$|:)/)).not.toBeInTheDocument()
   })
 
+  it('should disable the trigger when publishing is unavailable', () => {
+    render(
+      <PublishWithMultipleModel
+        disabled
+        multipleModelConfigs={[
+          {
+            id: 'config-1',
+            provider: 'openai',
+            model: 'gpt-4o',
+            parameters: {},
+          },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }),
+    ).toBeDisabled()
+  })
+
   it('should open matching model options and call onSelect', () => {
     const handleSelect = vi.fn()
     const modelConfig = {

@@ -22097,6 +22097,7 @@ Query parameters for listing snippet published workflows.
 | updated_at | integer |  | Yes |
 | updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
+| version_number | integer |  | No |
 
 #### StarredAppListQuery
 
@@ -24112,6 +24113,7 @@ tenant's default model. The underlying generator never raises — an empty
 | updated_at | integer |  | Yes |
 | updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
+| version_number | integer |  | No |
 
 #### WorkflowRestoreResponse
 

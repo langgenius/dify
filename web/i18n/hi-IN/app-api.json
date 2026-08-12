@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "इस गुप्त कुंजी को हटाएं?",
   "actionMsg.ok": "ठीक",
   "apiKey": "एपीआई कुंजी",
-  "apiKeyModal.apiSecretKey": "एपीआई गुप्त कुंजी",
+  "apiKeyModal.apiSecretKey": "एपीआई कुंजी",
   "apiKeyModal.apiSecretKeyTips": "एपीआई का दुरुपयोग रोकने के लिए, अपनी एपीआई कुंजी की सुरक्षा करें। फ्रंट-एंड कोड में इसे सादे पाठ के रूप में उपयोग करने से बचें। :)",
   "apiKeyModal.createNewSecretKey": "नई गुप्त कुंजी बनाएँ",
   "apiKeyModal.created": "बनाई गई",
