@@ -688,7 +688,7 @@ class TestDifyNodeFactoryCreateNode:
                 },
             }
         )
-        wrapped_model_instance = sentinel.wrapped_model_instance
+        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
@@ -717,6 +717,7 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
+        assert kwargs["polling_finalizer"] is wrapped_model_instance.finalize_llm_polling
 
     def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
         node_data = LLMNodeData.model_validate(

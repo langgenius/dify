@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
 from pydantic import JsonValue
 from sqlalchemy import select
@@ -87,6 +87,33 @@ from .human_input_adapter import (
     parse_human_input_delivery_methods,
 )
 from .system_variables import SystemVariableKey, get_system_text
+
+
+class PollingLLMRuntimeProtocol(Protocol):
+    """Runtime capability required by the workflow polling adapter."""
+
+    def start_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: dict[str, Any] | None,
+    ) -> LLMPollingResult: ...
+
+    def check_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        plugin_state: dict[str, JsonValue],
+    ) -> LLMPollingResult: ...
+
 
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
@@ -282,24 +309,25 @@ class DifyPreparedLLM(LLMProtocol):
     def is_structured_output_parse_error(self, error: Exception) -> bool:
         return isinstance(error, OutputParserError)
 
+    def finalize_llm_polling(self) -> None:
+        """Finalize resources held by a polling invocation, if any."""
+
 
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
     def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
-        from core.plugin.impl.model_runtime import PluginModelRuntime
-
         super().__init__(model_instance, request_metadata=request_metadata)
-        model_type_instance = model_instance.model_type_instance
-        if not isinstance(model_type_instance, LargeLanguageModel):
-            raise TypeError("Polling wrapper requires a large-language-model instance.")
-
-        plugin_model_runtime = model_type_instance.model_runtime
-        if not isinstance(plugin_model_runtime, PluginModelRuntime):
-            raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
-
-        self._plugin_model_runtime = plugin_model_runtime
+        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
         self._polling_quota_reservation = None
+
+    @override
+    def finalize_llm_polling(self) -> None:
+        reservation = self._polling_quota_reservation
+        self._polling_quota_reservation = None
+        if reservation is not None:
+            QuotaManagedModelInstance.release_quota_safely(reservation)
 
     def _settle_polling_quota(self, polling_result: LLMPollingResult) -> LLMPollingResult:
         reservation = self._polling_quota_reservation
@@ -331,15 +359,13 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
-        if self._polling_quota_reservation is not None:
-            self._polling_quota_reservation.release()
-            self._polling_quota_reservation = None
+        self.finalize_llm_polling()
 
         if isinstance(self._model_instance, QuotaManagedModelInstance):
             self._polling_quota_reservation = self._model_instance.reserve_quota()
 
         try:
-            polling_result = self._plugin_model_runtime.start_llm_polling(
+            polling_result = self._polling_runtime.start_llm_polling(
                 provider=self.provider,
                 model=self.model_name,
                 credentials=self._model_instance.credentials,
@@ -351,9 +377,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
             )
             return self._settle_polling_quota(polling_result)
         except Exception:
-            if self._polling_quota_reservation is not None:
-                QuotaManagedModelInstance.release_quota_safely(self._polling_quota_reservation)
-                self._polling_quota_reservation = None
+            self.finalize_llm_polling()
             raise
 
     @override
@@ -362,13 +386,17 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         *,
         plugin_state: Mapping[str, JsonValue],
     ) -> LLMPollingResult:
-        polling_result = self._plugin_model_runtime.check_llm_polling(
-            provider=self.provider,
-            model=self.model_name,
-            credentials=self._model_instance.credentials,
-            plugin_state=dict(plugin_state),
-        )
-        return self._settle_polling_quota(polling_result)
+        try:
+            polling_result = self._polling_runtime.check_llm_polling(
+                provider=self.provider,
+                model=self.model_name,
+                credentials=self._model_instance.credentials,
+                plugin_state=dict(plugin_state),
+            )
+            return self._settle_polling_quota(polling_result)
+        except Exception:
+            self.finalize_llm_polling()
+            raise
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):

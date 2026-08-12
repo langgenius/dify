@@ -443,6 +443,67 @@ def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() ->
     assert model_instance.reserve_quota.call_count == 2
 
 
+def test_dify_prepared_polling_llm_releases_reservation_when_finalized() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.finalize_llm_polling()
+    prepared.finalize_llm_polling()
+
+    reservation.release.assert_called_once_with()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_check_fails() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(side_effect=RuntimeError("polling failed")),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+
+    with pytest.raises(RuntimeError, match="polling failed"):
+        prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.release.assert_called_once_with()
+
+
 def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
     llm_result = node_runtime.LLMResult(
         model="gpt-4o-mini",
