@@ -26,16 +26,14 @@ const getCreatorCenterUrl = (marketplaceUrlPrefix: string) => {
   try {
     const marketplaceUrl = new URL(marketplaceUrlPrefix)
     const [service, ...domain] = marketplaceUrl.hostname.split('.')
-    if (!service?.startsWith('marketplace') || domain.length === 0)
-      return PUBLIC_CREATOR_CENTER_URL
+    if (!service?.startsWith('marketplace') || domain.length === 0) return PUBLIC_CREATOR_CENTER_URL
 
     marketplaceUrl.hostname = [service.replace(/^marketplace/, 'creators'), ...domain].join('.')
     marketplaceUrl.pathname = '/'
     marketplaceUrl.search = ''
     marketplaceUrl.hash = ''
     return marketplaceUrl.toString()
-  }
-  catch {
+  } catch {
     return PUBLIC_CREATOR_CENTER_URL
   }
 }
