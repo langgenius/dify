@@ -767,6 +767,7 @@ describe('AgentSkills', () => {
 
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('should open the workspace skill tag filter and show skill tags', async () => {
@@ -1085,9 +1086,7 @@ describe('AgentSkills', () => {
         },
       })
     })
-    expect(toast.success).toHaveBeenCalledWith(
-      'agentV2.agentDetail.configure.skills.workspaceSelector.removeSuccess',
-    )
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('should open workspace skill details in a new tab from the row menu', async () => {
