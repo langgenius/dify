@@ -6,6 +6,8 @@ import { NextRouteStateBridge } from '@/app/components/next-route-state'
 import { CommonLayoutGlobalMounts } from './global-mounts'
 import { ConsoleContextProviders, ConsoleRuntimeProviders } from './providers'
 
+export const instant = false
+
 export default async function Layout({
   children,
   detailSidebar,

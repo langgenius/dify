@@ -14,6 +14,7 @@ import {
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
+import { connection } from '@/next/server'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -29,7 +30,11 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+export const instant = false
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await connection()
+
   const datasetMap = getDatasetMap()
   const queryClient = getSystemFeaturesQueryClient()
   const systemFeaturesQuery = systemFeaturesServerQueryOptions()

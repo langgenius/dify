@@ -6,58 +6,61 @@ import {
   systemFeaturesServerQueryOptions,
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
+import { cacheLife } from '@/next/cache'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
 import { HomeContent } from './home-content/home-content'
-import { HomeShell } from './home-shell'
-import { HomeSkeleton } from './home-skeleton'
+import { HomePageSkeleton } from './home-skeleton'
 
-export async function HomePage() {
-  const homeQueryClient = getQueryClient()
-  const [locale, context] = await Promise.all([
+export function HomePage() {
+  return (
+    <Suspense fallback={<HomePageSkeleton />}>
+      <HomeData />
+    </Suspense>
+  )
+}
+
+async function HomeData() {
+  'use cache: private'
+  cacheLife('minutes')
+
+  const queryClient = getQueryClient()
+  const [locale, context, systemFeatures] = await Promise.all([
     getLocaleOnServer(),
     getServerConsoleClientContext(),
+    getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions()),
   ])
 
-  void homeQueryClient.prefetchQuery(
-    serverConsoleQuery.explore.apps.get.queryOptions({
-      context,
-      input: { query: { language: locale } },
-    }),
-  )
-  void homeQueryClient.prefetchQuery(
-    serverConsoleQuery.apps.recent.get.queryOptions({
-      context,
-      input: { query: { limit: 8 } },
-    }),
-  )
-
-  const enableExploreBanner = (
-    await getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions())
-  ).enable_explore_banner
-  if (enableExploreBanner) {
-    void homeQueryClient.prefetchQuery(
-      serverConsoleQuery.explore.banners.get.queryOptions({
+  const homeQueryPromises = [
+    queryClient.prefetchQuery(
+      serverConsoleQuery.explore.apps.get.queryOptions({
         context,
         input: { query: { language: locale } },
       }),
+    ),
+    queryClient.prefetchQuery(
+      serverConsoleQuery.apps.recent.get.queryOptions({
+        context,
+        input: { query: { limit: 8 } },
+      }),
+    ),
+  ]
+
+  if (systemFeatures.enable_explore_banner) {
+    homeQueryPromises.push(
+      queryClient.prefetchQuery(
+        serverConsoleQuery.explore.banners.get.queryOptions({
+          context,
+          input: { query: { language: locale } },
+        }),
+      ),
     )
   }
 
-  const dehydratedState = dehydrate(homeQueryClient)
+  await Promise.all(homeQueryPromises)
 
   return (
-    <HydrationBoundary state={dehydratedState}>
-      <Suspense
-        fallback={
-          <HomeShell>
-            <div className="flex flex-1 flex-col overflow-y-auto">
-              <HomeSkeleton showBanner={enableExploreBanner} />
-            </div>
-          </HomeShell>
-        }
-      >
-        <HomeContent />
-      </Suspense>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <HomeContent />
     </HydrationBoundary>
   )
 }

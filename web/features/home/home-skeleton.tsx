@@ -1,7 +1,10 @@
 'use client'
 
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { HomeShell } from './home-shell'
 
 function HomeTemplateCardSkeleton() {
   return (
@@ -115,5 +118,17 @@ export function HomeSkeleton({ showBanner }: { showBanner: boolean }) {
         <HomeTemplatesSkeletonBody />
       </div>
     </div>
+  )
+}
+
+export function HomePageSkeleton() {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+
+  return (
+    <HomeShell>
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        <HomeSkeleton showBanner={systemFeatures.enable_explore_banner} />
+      </div>
+    </HomeShell>
   )
 }
