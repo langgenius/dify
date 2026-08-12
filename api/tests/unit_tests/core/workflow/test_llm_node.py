@@ -1,14 +1,17 @@
+from collections.abc import Generator
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock, sentinel
 
 import pytest
 
 from core.workflow.llm_node import DifyLLMNode
 from graphon.nodes.llm.node import LLMNode
+from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 
 
 def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    def invoke(*args, **kwargs):
+    def invoke(*args: object, **kwargs: object) -> Generator[object, None, None]:
         _ = args, kwargs
         yield sentinel.event
         yield sentinel.unconsumed
@@ -19,7 +22,7 @@ def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: p
     node._polling_finalizer = finalizer
 
     events = node._invoke_llm_with_polling(
-        polling_model=SimpleNamespace(),
+        polling_model=cast(LLMPollingCapableProtocol, SimpleNamespace()),
         prompt_messages=[],
         stop=None,
     )
@@ -31,7 +34,7 @@ def test_dify_llm_node_finalizes_polling_when_generator_is_closed(monkeypatch: p
 
 
 def test_dify_llm_node_finalizes_polling_when_polling_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    def invoke(*args, **kwargs):
+    def invoke(*args: object, **kwargs: object) -> Generator[object, None, None]:
         _ = args, kwargs
         yield sentinel.event
         raise RuntimeError("polling failed")
@@ -41,7 +44,7 @@ def test_dify_llm_node_finalizes_polling_when_polling_fails(monkeypatch: pytest.
     node = object.__new__(DifyLLMNode)
     node._polling_finalizer = finalizer
     events = node._invoke_llm_with_polling(
-        polling_model=SimpleNamespace(),
+        polling_model=cast(LLMPollingCapableProtocol, SimpleNamespace()),
         prompt_messages=[],
         stop=None,
     )
