@@ -22,6 +22,17 @@ function responseStatus(error: unknown) {
   }
 }
 
+const knowledgeSpacePageTitle = (
+  pathname: string,
+  t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+) => {
+  if (pathname.includes('/sources/new')) return t(($) => $['newKnowledge.addSource'])
+  if (pathname.includes('/sources')) return t(($) => $['newKnowledge.sources'])
+  if (pathname.includes('/documents')) return t(($) => $['newKnowledge.documents'])
+
+  return t(($) => $.knowledge)
+}
+
 export function KnowledgeSpaceShell({
   children,
   knowledgeSpaceId,
@@ -43,7 +54,8 @@ export function KnowledgeSpaceShell({
       return failureCount < 3
     },
   })
-  useDocumentTitle(knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge))
+  const pageTitle = knowledgeSpacePageTitle(pathname, t)
+  useDocumentTitle(`${pageTitle} · ${knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge)}`)
 
   if (knowledgeSpaceQuery.isPending)
     return (

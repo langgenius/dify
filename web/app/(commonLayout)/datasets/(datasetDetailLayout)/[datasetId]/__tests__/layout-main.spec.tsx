@@ -42,10 +42,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 const mockUseRouter = mockNavigation.useRouter
 const mockUsePathname = mockNavigation.usePathname
 const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
@@ -53,10 +49,47 @@ const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     mockIsRbacEnabled = true
     mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
     mockUseRouter.mockReturnValue({
       replace: mockReplace,
+    })
+  })
+
+  describe('Document title', () => {
+    it.each([
+      ['/datasets/dataset-1/documents', 'common.datasetMenus.documents'],
+      ['/datasets/dataset-1/documents/document-1/settings', 'common.datasetMenus.documents'],
+      ['/datasets/dataset-1/pipeline', 'common.datasetMenus.pipeline'],
+      ['/datasets/dataset-1/hitTesting', 'common.datasetMenus.hitTesting'],
+      ['/datasets/dataset-1/settings', 'common.datasetMenus.settings'],
+      ['/datasets/dataset-1/access-config', 'common.settings.resourceAccess'],
+      ['/datasets/dataset-1/api', 'common.appMenus.apiAccess'],
+    ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
+      mockUsePathname.mockReturnValue(pathname)
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: Object.values(DatasetACLPermission),
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Knowledge page content</div>
+        </DatasetDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(document.title).toBe(`${pageTitle} · Dataset 1 - Dify`)
+      })
     })
   })
 

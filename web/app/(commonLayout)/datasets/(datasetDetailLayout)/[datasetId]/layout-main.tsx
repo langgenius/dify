@@ -38,6 +38,20 @@ const shouldRedirectToDatasetList = (error: unknown) => {
   return status === 403 || status === 404
 }
 
+const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (pathname.includes('/documents'))
+    return t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
+  if (pathname.endsWith('/hitTesting'))
+    return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
+  if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+  if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
+
+  return t(($) => $['menus.datasets'], { ns: 'common' })
+}
+
 const getDatasetRedirectionPath = (
   dataset: DataSet,
   datasetACLCapabilities: ReturnType<typeof getDatasetACLCapabilities>,
@@ -101,8 +115,11 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     !isCheckingRouteAccess &&
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
       (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
+  const pageTitle = datasetDetailPageTitle(pathname, t)
 
-  useDocumentTitle(datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' }))
+  useDocumentTitle(
+    `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`,
+  )
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')
