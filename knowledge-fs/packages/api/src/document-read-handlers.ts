@@ -24,8 +24,15 @@ import { DocumentOutlineResponseSchema } from "./document-response-schemas";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { ParseArtifactRepository } from "./parse-artifact-repository";
+import type { ProjectionSetPublicationMemberRepository } from "./projection-publication-member-repository";
+import type { ProjectionSetPublicationRepository } from "./projection-publication-repository";
 
-import type { DocumentAsset, DocumentMultimodalManifest, PlatformAdapter } from "@knowledge/core";
+import type {
+  DocumentAsset,
+  DocumentMultimodalManifest,
+  DocumentOutline,
+  PlatformAdapter,
+} from "@knowledge/core";
 
 export interface RegisterDocumentReadHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
@@ -36,6 +43,10 @@ export interface RegisterDocumentReadHandlersOptions {
   readonly multimodalManifests: DocumentMultimodalManifestRepository;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly outlines: DocumentOutlineRepository;
+  readonly publicationMembers?:
+    | Pick<ProjectionSetPublicationMemberRepository, "getDocumentComponent">
+    | undefined;
+  readonly publications?: Pick<ProjectionSetPublicationRepository, "getPublished"> | undefined;
   readonly spaces: KnowledgeSpaceRepository;
   /** Max bytes served from the multimodal asset route before returning 413. */
   readonly assetMaxReadBytes?: number | undefined;
@@ -63,6 +74,8 @@ export function registerDocumentReadHandlers({
   multimodalManifests,
   objectStorage,
   outlines,
+  publicationMembers,
+  publications,
   spaces,
 }: RegisterDocumentReadHandlersOptions): void {
   app.openapi(listDocumentAssetsRoute, async (context) => {
@@ -224,9 +237,12 @@ export function registerDocumentReadHandlers({
       return context.json({ error: "Document outline not found" }, 404);
     }
 
-    const outline = await outlines.getByDocumentVersion({
-      documentAssetId: asset.id,
-      version: asset.version,
+    const outline = await resolveReadableDocumentOutline({
+      asset,
+      outlines,
+      publicationMembers,
+      publications,
+      tenantId: subject.tenantId,
     });
 
     if (!outline) {
@@ -439,6 +455,53 @@ async function buildReadableDocumentMultimodalManifest({
 
   // Lazily backfill documents compiled before durable manifest persistence was introduced.
   return multimodalManifests.upsert(deterministicManifest);
+}
+
+async function resolveReadableDocumentOutline({
+  asset,
+  outlines,
+  publicationMembers,
+  publications,
+  tenantId,
+}: {
+  readonly asset: DocumentAsset;
+  readonly outlines: DocumentOutlineRepository;
+  readonly publicationMembers?:
+    | Pick<ProjectionSetPublicationMemberRepository, "getDocumentComponent">
+    | undefined;
+  readonly publications?: Pick<ProjectionSetPublicationRepository, "getPublished"> | undefined;
+  readonly tenantId: string;
+}): Promise<DocumentOutline | null> {
+  if (publicationMembers && publications) {
+    const published = await publications.getPublished({
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId,
+    });
+    if (published) {
+      const member = await publicationMembers.getDocumentComponent({
+        componentType: "document-outline",
+        documentAssetId: asset.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        publicationId: published.id,
+        tenantId,
+      });
+      if (member) {
+        const outline = await outlines.getByDocumentVersion({
+          documentAssetId: asset.id,
+          publicationGenerationId: member.generationId,
+          version: asset.version,
+        });
+
+        return outline?.id === member.componentKey ? outline : null;
+      }
+    }
+  }
+
+  // Compatibility for documents compiled before immutable publication generations were added.
+  return outlines.getByDocumentVersion({
+    documentAssetId: asset.id,
+    version: asset.version,
+  });
 }
 
 function isTenantKnowledgeSpaceObjectKey({

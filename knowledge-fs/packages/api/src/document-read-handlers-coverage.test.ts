@@ -1,11 +1,14 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { ParseArtifactSchema } from "@knowledge/core";
+import { DocumentOutlineSchema, ParseArtifactSchema } from "@knowledge/core";
 import type { ParserAdapter } from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
 import {
   createInMemoryDocumentAssetRepository,
+  createInMemoryDocumentOutlineRepository,
   createInMemoryKnowledgeSpaceRepository,
+  createInMemoryProjectionSetPublicationMemberRepository,
+  createInMemoryProjectionSetPublicationRepository,
   createKnowledgeGateway,
   createStaticAuthVerifier,
 } from "./index";
@@ -18,6 +21,10 @@ const artifactId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
 const bareDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99";
 const unknownSpaceId = "00000000-0000-4000-8000-00000000dead";
 const unknownDocumentId = "00000000-0000-4000-8000-00000000beef";
+const publishedOutlineId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d10";
+const publicationGenerationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11";
+const publicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d12";
+const publicationFingerprint = `projection-set-sha256:${"d".repeat(64)}`;
 const maxAssetReadBytes = 25 * 1024 * 1024;
 
 const assetPrefix = `tenant-1/spaces/${spaceId}/documents/${documentId}/assets`;
@@ -139,12 +146,22 @@ function createAdapterWithStorageOverrides() {
 
 interface TestHarness {
   app: ReturnType<typeof createKnowledgeGateway>;
+  documentOutlines: ReturnType<typeof createInMemoryDocumentOutlineRepository>;
   itemIdByElement: Map<string, string>;
+  publicationMembers: ReturnType<typeof createInMemoryProjectionSetPublicationMemberRepository>;
+  publications: ReturnType<typeof createInMemoryProjectionSetPublicationRepository>;
 }
 
 async function createHarness(options: { enhance?: boolean } = {}): Promise<TestHarness> {
   const { adapter, baseAdapter } = createAdapterWithStorageOverrides();
   const documentAssets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
+  const documentOutlines = createInMemoryDocumentOutlineRepository({ maxOutlines: 10 });
+  const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+  const publicationMembers = createInMemoryProjectionSetPublicationMemberRepository({
+    maxListLimit: 20,
+    maxMembers: 100,
+    publications,
+  });
   const enhancerCalls: string[] = [];
   const app = createKnowledgeGateway({
     adapter,
@@ -163,12 +180,15 @@ async function createHarness(options: { enhance?: boolean } = {}): Promise<TestH
         }
       : {}),
     generateDocumentAssetId: () => documentId,
+    documentOutlines,
     knowledgeSpaces: createInMemoryKnowledgeSpaceRepository({
       generateId: () => spaceId,
       maxListLimit: 10,
       maxSpaces: 10,
     }),
     parser: createFixtureParser(),
+    projectionSetPublicationMembers: publicationMembers,
+    projectionSetPublications: publications,
   });
 
   const createSpace = await app.request("/knowledge-spaces", {
@@ -226,7 +246,7 @@ async function createHarness(options: { enhance?: boolean } = {}): Promise<TestH
     expect(enhancerCalls).toContain(documentId);
   }
 
-  return { app, itemIdByElement };
+  return { app, documentOutlines, itemIdByElement, publicationMembers, publications };
 }
 
 function assetUrl(itemId: string, variant?: string) {
@@ -286,6 +306,74 @@ describe("document read handlers coverage", () => {
     expect(asset.status).toBe(404);
     await expect(asset.json()).resolves.toEqual({
       error: "Document multimodal item asset not found",
+    });
+  });
+
+  it("returns the outline owned by the current published generation", async () => {
+    const { app, documentOutlines, publicationMembers, publications } = await createHarness();
+    const outline = await documentOutlines.create(
+      DocumentOutlineSchema.parse({
+        artifactHash: "d".repeat(64),
+        createdAt: "2026-08-12T09:00:00.000Z",
+        documentAssetId: bareDocumentId,
+        id: publishedOutlineId,
+        knowledgeSpaceId: spaceId,
+        metadata: {},
+        nodes: [
+          {
+            id: "published-outline-node",
+            level: 1,
+            metadata: {},
+            title: "Published outline",
+            tocSource: "native-toc",
+          },
+        ],
+        outlineVersion: "v1",
+        parseArtifactId: artifactId,
+        publicationGenerationId,
+        version: 1,
+      }),
+    );
+    await publications.createCandidate({
+      createdAt: "2026-08-12T09:00:01.000Z",
+      fingerprint: publicationFingerprint,
+      id: publicationId,
+      knowledgeSpaceId: spaceId,
+      projectionVersion: 1,
+      tenantId: "tenant-1",
+    });
+    await publicationMembers.replaceDocumentComponents({
+      candidateFingerprint: publicationFingerprint,
+      components: [
+        {
+          componentKey: outline.id,
+          componentType: "document-outline",
+          generationId: publicationGenerationId,
+        },
+      ],
+      createdAt: "2026-08-12T09:00:02.000Z",
+      documentAssetId: bareDocumentId,
+      expectedHeadRevision: 0,
+      knowledgeSpaceId: spaceId,
+      tenantId: "tenant-1",
+    });
+    await publications.publish({
+      expectedHeadRevision: 0,
+      fingerprint: publicationFingerprint,
+      knowledgeSpaceId: spaceId,
+      tenantId: "tenant-1",
+      updatedAt: "2026-08-12T09:00:03.000Z",
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${spaceId}/documents/${bareDocumentId}/outline`,
+      { headers: bearer(readToken) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: publishedOutlineId,
+      nodes: [{ title: "Published outline" }],
     });
   });
 

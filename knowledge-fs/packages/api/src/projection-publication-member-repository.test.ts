@@ -39,6 +39,54 @@ const componentE = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f05";
 const componentF = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f06";
 
 describe("in-memory projection publication member repository", () => {
+  it("resolves a document-owned outline without loading the publication snapshot", async () => {
+    const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+    const members = createInMemoryProjectionSetPublicationMemberRepository({
+      maxListLimit: 20,
+      maxMembers: 100,
+      publications,
+    });
+    await publications.createCandidate(candidate(fingerprintA, publicationIdA));
+    await members.replaceDocumentComponents({
+      ...mutation(fingerprintA, 0),
+      components: [
+        {
+          componentKey: componentA,
+          componentType: "document-outline",
+          generationId: generationA,
+        },
+        {
+          componentKey: componentB,
+          componentType: "multimodal-manifest",
+          generationId: generationA,
+        },
+      ],
+      documentAssetId: documentIdA,
+    });
+
+    await expect(
+      members.getDocumentComponent({
+        componentType: "document-outline",
+        documentAssetId: documentIdA,
+        knowledgeSpaceId,
+        publicationId: publicationIdA,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({
+      componentKey: componentA,
+      generationId: generationA,
+    });
+    await expect(
+      members.getDocumentComponent({
+        componentType: "document-outline",
+        documentAssetId: documentIdB,
+        knowledgeSpaceId,
+        publicationId: publicationIdA,
+        tenantId,
+      }),
+    ).resolves.toBeNull();
+  });
+
   it("checks a bounded set of component keys without loading the publication", async () => {
     const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
     const members = createInMemoryProjectionSetPublicationMemberRepository({

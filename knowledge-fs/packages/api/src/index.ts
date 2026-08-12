@@ -785,6 +785,7 @@ export function createKnowledgeGateway({
   parseArtifacts,
   parser,
   projections,
+  projectionSetPublicationMembers,
   publishedGraph,
   runtimeSnapshotResolver,
   projectionSetPublications,
@@ -1744,6 +1745,10 @@ export function createKnowledgeGateway({
     multimodalManifests: multimodalManifestRepository,
     objectStorage: adapter.objectStorage,
     outlines: outlineRepository,
+    ...(projectionSetPublicationMembers
+      ? { publicationMembers: projectionSetPublicationMembers }
+      : {}),
+    ...(projectionSetPublications ? { publications: projectionSetPublications } : {}),
     spaces,
   });
 

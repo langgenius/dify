@@ -104,6 +104,14 @@ export interface FilterProjectionSetPublicationMemberKeysInput {
   readonly tenantId: string;
 }
 
+export interface ProjectionSetPublicationDocumentComponentLookupInput {
+  readonly componentType: "document-outline" | "multimodal-manifest";
+  readonly documentAssetId: string;
+  readonly knowledgeSpaceId: string;
+  readonly publicationId: string;
+  readonly tenantId: string;
+}
+
 /**
  * Rebuilds an attempt-exclusive candidate from the current published snapshot and one document's
  * complete component set. Implementations must treat this as one logical mutation: inherited
@@ -130,6 +138,10 @@ export interface ProjectionSetPublicationMemberRepository {
   filterComponentKeys(
     input: FilterProjectionSetPublicationMemberKeysInput,
   ): Promise<readonly string[]>;
+  /** Resolves a singleton document-owned component without loading the full publication snapshot. */
+  getDocumentComponent(
+    input: ProjectionSetPublicationDocumentComponentLookupInput,
+  ): Promise<ProjectionSetPublicationMember | null>;
   inheritFromPublished(input: InheritProjectionSetPublicationMembersInput): Promise<number>;
   listByFingerprint(
     input: ProjectionSetPublicationLookupInput,
@@ -170,6 +182,14 @@ export class ProjectionSetPublicationMemberListLimitExceededError extends Error 
 export class ProjectionSetPublicationMemberBatchSizeExceededError extends Error {
   constructor(maxBatchSize: number) {
     super(`Projection set publication member batch exceeds maxBatchSize=${maxBatchSize}`);
+  }
+}
+
+export class ProjectionSetPublicationDocumentComponentConflictError extends Error {
+  constructor(input: ProjectionSetPublicationDocumentComponentLookupInput) {
+    super(
+      `Projection set publication=${input.publicationId} document=${input.documentAssetId} has multiple ${input.componentType} components`,
+    );
   }
 }
 
@@ -360,6 +380,22 @@ export function createInMemoryProjectionSetPublicationMemberRepository({
       }
 
       return normalized.componentKeys.filter((componentKey) => allowed.has(componentKey));
+    },
+    getDocumentComponent: async (input) => {
+      const normalized = normalizeDocumentComponentLookup(input);
+      const matches = sortedMembers(members.values()).filter(
+        (member) =>
+          member.tenantId === normalized.tenantId &&
+          member.knowledgeSpaceId === normalized.knowledgeSpaceId &&
+          member.publicationId === normalized.publicationId &&
+          member.documentAssetId === normalized.documentAssetId &&
+          member.componentType === normalized.componentType,
+      );
+      if (matches.length > 1) {
+        throw new ProjectionSetPublicationDocumentComponentConflictError(normalized);
+      }
+
+      return matches[0] ? cloneMember(matches[0]) : null;
     },
     inheritFromPublished: async (input) => {
       const normalized = normalizeCandidateMutation(input);
@@ -618,6 +654,45 @@ export function createDatabaseProjectionSetPublicationMemberRepository({
       );
 
       return normalized.componentKeys.filter((componentKey) => allowed.has(componentKey));
+    },
+    getDocumentComponent: async (input) => {
+      const normalized = normalizeDocumentComponentLookup(input);
+      const result = await database.execute({
+        maxRows: 2,
+        operation: "select",
+        params: [
+          normalized.tenantId,
+          normalized.knowledgeSpaceId,
+          normalized.publicationId,
+          normalized.documentAssetId,
+          normalized.componentType,
+        ],
+        sql: `SELECT * FROM ${quoteDatabaseIdentifier(
+          database,
+          memberTableName,
+        )} WHERE ${quoteDatabaseIdentifier(database, "tenant_id")} = ${databasePlaceholder(
+          database,
+          1,
+        )} AND ${quoteDatabaseIdentifier(
+          database,
+          "knowledge_space_id",
+        )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
+          database,
+          "publication_id",
+        )} = ${databasePlaceholder(database, 3)} AND ${quoteDatabaseIdentifier(
+          database,
+          "document_asset_id",
+        )} = ${databasePlaceholder(database, 4)} AND ${quoteDatabaseIdentifier(
+          database,
+          "component_type",
+        )} = ${databasePlaceholder(database, 5)} LIMIT 2;`,
+        tableName: memberTableName,
+      });
+      if (result.rows.length > 1) {
+        throw new ProjectionSetPublicationDocumentComponentConflictError(normalized);
+      }
+
+      return result.rows[0] ? mapMemberRow(result.rows[0]) : null;
     },
     inheritFromPublished: async (input) => {
       const normalized = normalizeCandidateMutation(input);
@@ -1446,6 +1521,18 @@ function normalizeFilterMemberKeysInput(
   return {
     componentKeys: [...new Set(input.componentKeys.map(normalizeComponentKey))],
     componentType: parseComponentType(input.componentType),
+    knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
+    publicationId: UuidSchema.parse(input.publicationId),
+    tenantId: normalizeTenantId(input.tenantId),
+  };
+}
+
+function normalizeDocumentComponentLookup(
+  input: ProjectionSetPublicationDocumentComponentLookupInput,
+): ProjectionSetPublicationDocumentComponentLookupInput {
+  return {
+    componentType: input.componentType,
+    documentAssetId: UuidSchema.parse(input.documentAssetId),
     knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
     publicationId: UuidSchema.parse(input.publicationId),
     tenantId: normalizeTenantId(input.tenantId),

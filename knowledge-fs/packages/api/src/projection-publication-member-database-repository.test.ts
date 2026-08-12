@@ -74,6 +74,47 @@ describe("database projection publication member repository", () => {
     ]);
   });
 
+  it("resolves a document-owned outline with the document membership index", async () => {
+    const fake = createFakeMemberDatabase({
+      memberRows: [memberRow({ component_type: "document-outline" })],
+    });
+    const repository = createDatabaseProjectionSetPublicationMemberRepository({
+      database: fake.database,
+      maxBatchSize: 10,
+      maxListLimit: 10,
+    });
+
+    await expect(
+      repository.getDocumentComponent({
+        componentType: "document-outline",
+        documentAssetId,
+        knowledgeSpaceId,
+        publicationId: candidatePublicationId,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({
+      componentKey: componentA,
+      componentType: "document-outline",
+      generationId,
+    });
+    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls[0]?.input).toMatchObject({
+      maxRows: 2,
+      operation: "select",
+      params: [
+        tenantId,
+        knowledgeSpaceId,
+        candidatePublicationId,
+        documentAssetId,
+        "document-outline",
+      ],
+      tableName: "projection_set_publication_members",
+    });
+    expect(fake.calls[0]?.input.sql).toContain('"document_asset_id" = $4');
+    expect(fake.calls[0]?.input.sql).toContain('"component_type" = $5');
+    expect(fake.calls[0]?.input.sql).toContain("LIMIT 2");
+  });
+
   it("filters only requested keys in one bounded publication-member query", async () => {
     const fake = createFakeMemberDatabase({ memberRows: [memberRow()] });
     const repository = createDatabaseProjectionSetPublicationMemberRepository({
