@@ -106,13 +106,11 @@ Installed CLI:
 - Use the generated `dify-agent ... --help` output in the config prompt for exact command syntax.
 - Do not install or recreate the `dify-agent` CLI.
 
-Workspace persistence rules:
+Filesystem spaces:
 
-- The current workspace cwd is stable across runs for the current product session.
-- Workspace files are working data, not Agent configuration, and are removed when that product session ends.
-- In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
-- Shell file edits alone do not save Agent config files, skills, env, or notes.
-- In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
+- `$HOME` is the system space.
+- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
+- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
 
 shell_run script rules:
 
@@ -153,6 +151,14 @@ from rich import print
 response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")
 [end script]"""
+_BUILD_DRAFT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `$HOME` for work and changes intended for the system space.
+- Use `cwd` for scratch files, intermediate results, and other temporary work."""
+_DEFAULT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `cwd` for your work.
+- Changes in `$HOME` or `cwd` do not update the saved Agent state."""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 
@@ -239,7 +245,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     @property
     @override
     def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
-        return [_shell_layer_prefix_prompt]
+        return [self._build_prefix_prompt]
 
     @property
     @override
@@ -255,6 +261,17 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             Tool(self._tool_input, name="shell_input"),
             Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
+
+    def _build_prefix_prompt(self) -> str:
+        execution_context = self.deps.execution_context
+        is_build_draft = (
+            execution_context is not None
+            and execution_context.config.agent_config_version_kind == "build_draft"
+        )
+        working_location_prompt = (
+            _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
+        )
+        return f"{_SHELL_LAYER_PREFIX_PROMPT}\n\n{working_location_prompt}"
 
     @override
     async def on_context_create(self) -> None:
@@ -574,10 +591,6 @@ async def render_prompt_observation_from_result(
         truncated_in_middle=result.truncated or output_exceeds_edge_budget,
     )
     return ShellPromptObservation(text=text, output_path=output_path, offset=offset)
-
-
-def _shell_layer_prefix_prompt() -> str:
-    return _SHELL_LAYER_PREFIX_PROMPT
 
 
 def _shell_layer_suffix_prompt() -> str:
