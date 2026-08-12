@@ -727,14 +727,17 @@ class RBACDatasetWhitelistApi(Resource):
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(dataset_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value),
-            )
+        result = svc.RBACService.DatasetAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(dataset_id),
+            svc.ReplaceMemberBindings(scope=request.scope.value),
         )
+        # Widening the scope only records it: the members still need the default access policy
+        # before they can reach the dataset, same as the app whitelist route above.
+        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")
