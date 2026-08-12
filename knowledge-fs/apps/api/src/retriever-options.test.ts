@@ -415,13 +415,15 @@ describe("createApiRetriever final rerank wiring", () => {
     expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
   });
 
-  it("rejects a Fast profile that explicitly turns mandatory reranking off", async () => {
+  it("rejects a Fast profile that disables mandatory reranking before retrieval", async () => {
+    const searchDense = vi.fn(async () => [candidateWithGraphSeed()]);
+    const searchFts = vi.fn(async () => []);
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       repository: {
-        searchDense: async () => [candidateWithGraphSeed()],
-        searchFts: async () => [],
+        searchDense,
+        searchFts,
       },
     });
 
@@ -439,9 +441,11 @@ describe("createApiRetriever final rerank wiring", () => {
         topK: 3,
       }),
     ).rejects.toThrow("Knowledge-space Fast/Deep retrieval requires an enabled rerank model");
+    expect(searchDense).not.toHaveBeenCalled();
+    expect(searchFts).not.toHaveBeenCalled();
   });
 
-  it("rejects a disabled knowledge-space rerank profile before resolving a provider", async () => {
+  it("does not fall back to any reranker when the knowledge-space profile disables it", async () => {
     const defaultReranker = preferredReranker(candidateWithGraphSeed().nodeId, []);
     const defaultRerank = vi.spyOn(defaultReranker, "rerank");
     const providerFactory = vi.fn(() => defaultReranker);

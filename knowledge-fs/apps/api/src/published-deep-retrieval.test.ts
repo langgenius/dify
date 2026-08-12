@@ -170,6 +170,7 @@ describe("production published Deep stage order", () => {
     const dense = vi.fn(async () => [candidate(BASE_NODE_ID, "base-projection", "dense")]);
     const fts = vi.fn(async () => []);
     const pageIndex = publishedResearchPageIndex();
+    const reranker = passThroughReranker();
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       pageIndex,
@@ -189,19 +190,9 @@ describe("production published Deep stage order", () => {
         searchFts: fts,
       },
       rerankerOptions: {
-        providerFactory: () => ({
-          kind: "static",
-          models: async () => [],
-          rerank: async (input) => ({
-            items: input.documents.map((document, index) => ({
-              document,
-              index,
-              score: 1,
-            })),
-            metadata: { model: input.model, provider: "static" },
-            model: input.model,
-          }),
-        }),
+        model: "rerank-v1",
+        provider: reranker,
+        providerFactory: () => reranker,
       },
       strictPublishedReads: true,
     });
@@ -254,6 +245,25 @@ describe("production published Deep stage order", () => {
     expect(pageIndex.listOutlines).toHaveBeenCalledOnce();
   });
 });
+
+function passThroughReranker(): RerankerProvider {
+  return {
+    kind: "static",
+    models: async () => [],
+    rerank: async (input) => ({
+      items: input.documents.map((document, index) => ({
+        document: {
+          ...document,
+          metadata: { ...(document.metadata ?? {}) },
+        },
+        index,
+        score: 1 - index / 10,
+      })),
+      metadata: { model: input.model, provider: "static" },
+      model: input.model,
+    }),
+  };
+}
 
 function wholeTreeSelectorStub(): PageIndexWholeTreeSelector {
   return {
