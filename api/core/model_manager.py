@@ -540,7 +540,7 @@ class QuotaManagedModelInstance(ModelInstance):
 
             if reservation.commit_before_delivery:
                 for chunk in response:
-                    chunk_usage = getattr(getattr(chunk, "delta", None), "usage", None)
+                    chunk_usage = chunk.delta.usage
                     if chunk_usage is not None:
                         usage = chunk_usage
                     reservation.commit(usage)
@@ -549,7 +549,7 @@ class QuotaManagedModelInstance(ModelInstance):
 
             buffered_chunks = []
             for chunk in response:
-                chunk_usage = getattr(getattr(chunk, "delta", None), "usage", None)
+                chunk_usage = chunk.delta.usage
                 if chunk_usage is not None:
                     usage = chunk_usage
                 buffered_chunks.append(chunk)
