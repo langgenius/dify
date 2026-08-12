@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Reindicizza",
   "newKnowledge.reindexDocuments": "Reindicizzare",
   "newKnowledge.removeSource": "Rimuovi la fonte",
+  "newKnowledge.resetToDefaults": "Ripristina valori predefiniti",
   "newKnowledge.retrievalCount": "Numero di recuperi",
   "newKnowledge.retrievalCountValue": "{{value}} negli ultimi 7 giorni",
   "newKnowledge.retrievalTest.analyzing": "Risultati analizzati",

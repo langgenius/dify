@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Переиндексировать",
   "newKnowledge.reindexDocuments": "Переиндексация",
   "newKnowledge.removeSource": "Удалить источник",
+  "newKnowledge.resetToDefaults": "Сбросить до значений по умолчанию",
   "newKnowledge.retrievalCount": "Количество извлечений",
   "newKnowledge.retrievalCountValue": "{{value}} за последние 7 дней",
   "newKnowledge.retrievalTest.analyzing": "Результаты проанализированы",

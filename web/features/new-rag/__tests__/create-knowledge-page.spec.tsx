@@ -1294,6 +1294,9 @@ describe('CreateKnowledgePage', () => {
       screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
       'Dify docs',
     )
+    expect(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+    ).toHaveTextContent('dataset.newKnowledge.syncPolicyDaily')
     await user.keyboard('{Enter}')
     expect(serviceMock.create).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))

@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Reindexează",
   "newKnowledge.reindexDocuments": "Reindexați",
   "newKnowledge.removeSource": "Eliminați sursa",
+  "newKnowledge.resetToDefaults": "Restabilește valorile implicite",
   "newKnowledge.retrievalCount": "Număr de regăsiri",
   "newKnowledge.retrievalCountValue": "{{value}} în ultimele 7 zile",
   "newKnowledge.retrievalTest.analyzing": "Rezultate analizate",

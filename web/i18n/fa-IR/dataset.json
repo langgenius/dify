@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "نمایه‌سازی دوباره",
   "newKnowledge.reindexDocuments": "فهرست مجدد",
   "newKnowledge.removeSource": "حذف منبع",
+  "newKnowledge.resetToDefaults": "بازنشانی به پیش‌فرض‌ها",
   "newKnowledge.retrievalCount": "تعداد بازیابی",
   "newKnowledge.retrievalCountValue": "{{value}} در ۷ روز گذشته",
   "newKnowledge.retrievalTest.analyzing": "نتایج تحلیل شدند",

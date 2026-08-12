@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Re-index",
   "newKnowledge.reindexDocuments": "Re-index",
   "newKnowledge.removeSource": "Remove source",
+  "newKnowledge.resetToDefaults": "Reset to defaults",
   "newKnowledge.retrievalCount": "Retrieval count",
   "newKnowledge.retrievalCountValue": "{{value}} in last 7 days",
   "newKnowledge.retrievalTest.analyzing": "Analyzed findings",

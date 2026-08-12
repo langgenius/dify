@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Lập chỉ mục lại",
   "newKnowledge.reindexDocuments": "Lập chỉ mục lại",
   "newKnowledge.removeSource": "Xóa nguồn",
+  "newKnowledge.resetToDefaults": "Đặt lại về mặc định",
   "newKnowledge.retrievalCount": "Số lần truy xuất",
   "newKnowledge.retrievalCountValue": "{{value}} trong 7 ngày qua",
   "newKnowledge.retrievalTest.analyzing": "Đã phân tích kết quả",

@@ -139,13 +139,17 @@ describe('DatasourceParameterForm', () => {
     expect(
       screen.queryByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.operation.reset' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.resetToDefaults' }),
+    ).not.toBeInTheDocument()
 
     await user.click(crawlOptions)
     const includeSubpages = screen.getByRole('checkbox', {
       name: 'dataset.newKnowledge.includeSubpages',
     })
-    const resetButton = screen.getByRole('button', { name: 'common.operation.reset' })
+    const resetButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.resetToDefaults',
+    })
     expect(includeSubpages).toBeChecked()
     expect(resetButton).toBeEnabled()
     expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toBeVisible()

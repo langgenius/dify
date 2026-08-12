@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "إعادة الفهرسة",
   "newKnowledge.reindexDocuments": "إعادة الفهرسة",
   "newKnowledge.removeSource": "قم بإزالة المصدر",
+  "newKnowledge.resetToDefaults": "إعادة التعيين إلى الإعدادات الافتراضية",
   "newKnowledge.retrievalCount": "عدد مرات الاسترجاع",
   "newKnowledge.retrievalCountValue": "{{value}} خلال آخر 7 أيام",
   "newKnowledge.retrievalTest.analyzing": "تم تحليل النتائج",

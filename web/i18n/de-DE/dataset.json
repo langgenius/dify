@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Neu indizieren",
   "newKnowledge.reindexDocuments": "Neu indizieren",
   "newKnowledge.removeSource": "Quelle entfernen",
+  "newKnowledge.resetToDefaults": "Auf Standardwerte zurücksetzen",
   "newKnowledge.retrievalCount": "Anzahl der Abrufe",
   "newKnowledge.retrievalCountValue": "{{value}} in den letzten 7 Tagen",
   "newKnowledge.retrievalTest.analyzing": "Ergebnisse analysiert",

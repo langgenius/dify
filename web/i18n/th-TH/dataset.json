@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "จัดทำดัชนีใหม่",
   "newKnowledge.reindexDocuments": "จัดทำดัชนีใหม่",
   "newKnowledge.removeSource": "ลบแหล่งสัญญาณ",
+  "newKnowledge.resetToDefaults": "รีเซ็ตเป็นค่าเริ่มต้น",
   "newKnowledge.retrievalCount": "จำนวนการเรียกค้น",
   "newKnowledge.retrievalCountValue": "{{value}} ครั้งในช่วง 7 วันที่ผ่านมา",
   "newKnowledge.retrievalTest.analyzing": "วิเคราะห์ผลลัพธ์แล้ว",

@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Opnieuw indexeren",
   "newKnowledge.reindexDocuments": "Opnieuw indexeren",
   "newKnowledge.removeSource": "Bron verwijderen",
+  "newKnowledge.resetToDefaults": "Standaardwaarden herstellen",
   "newKnowledge.retrievalCount": "Aantal zoekacties",
   "newKnowledge.retrievalCountValue": "{{value}} in de afgelopen 7 dagen",
   "newKnowledge.retrievalTest.analyzing": "Resultaten geanalyseerd",

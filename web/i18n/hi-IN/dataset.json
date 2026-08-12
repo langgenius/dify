@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "पुनः इंडेक्स करें",
   "newKnowledge.reindexDocuments": "पुन: अनुक्रमणिका",
   "newKnowledge.removeSource": "स्रोत हटाएं",
+  "newKnowledge.resetToDefaults": "डिफ़ॉल्ट पर रीसेट करें",
   "newKnowledge.retrievalCount": "पुनर्प्राप्ति संख्या",
   "newKnowledge.retrievalCountValue": "पिछले 7 दिनों में {{value}}",
   "newKnowledge.retrievalTest.analyzing": "निष्कर्षों का विश्लेषण किया गया",

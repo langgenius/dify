@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Yeniden dizinle",
   "newKnowledge.reindexDocuments": "Yeniden indeksle",
   "newKnowledge.removeSource": "Kaynağı kaldır",
+  "newKnowledge.resetToDefaults": "Varsayılanlara sıfırla",
   "newKnowledge.retrievalCount": "Getirme sayısı",
   "newKnowledge.retrievalCountValue": "Son 7 günde {{value}}",
   "newKnowledge.retrievalTest.analyzing": "Bulgular analiz edildi",

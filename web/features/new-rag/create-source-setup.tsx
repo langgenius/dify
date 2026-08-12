@@ -625,15 +625,13 @@ export function CreateSourceSetup({
               />
             )}
           </section>
-          {crawlState === 'success' && (
-            <SourceSyncPolicyField
-              className="w-full sm:w-75.25"
-              disabled={disabled}
-              draft={draft}
-              onDraftChange={updateDraftWithoutReset}
-              size="medium"
-            />
-          )}
+          <SourceSyncPolicyField
+            className="w-full sm:w-75.25"
+            disabled={disabled}
+            draft={draft}
+            onDraftChange={updateDraftWithoutReset}
+            size="medium"
+          />
         </div>
       ) : draft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
         <CreateConnectedSourceSetup

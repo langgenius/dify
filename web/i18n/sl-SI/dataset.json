@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Ponovno indeksiraj",
   "newKnowledge.reindexDocuments": "Ponovno indeksiraj",
   "newKnowledge.removeSource": "Odstrani vir",
+  "newKnowledge.resetToDefaults": "Ponastavi na privzete vrednosti",
   "newKnowledge.retrievalCount": "Število pridobitev",
   "newKnowledge.retrievalCountValue": "{{value}} v zadnjih 7 dneh",
   "newKnowledge.retrievalTest.analyzing": "Rezultati analizirani",

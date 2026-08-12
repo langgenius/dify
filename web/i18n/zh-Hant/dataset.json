@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "重新建立索引",
   "newKnowledge.reindexDocuments": "重新索引",
   "newKnowledge.removeSource": "刪除來源",
+  "newKnowledge.resetToDefaults": "重設為預設值",
   "newKnowledge.retrievalCount": "檢索次數",
   "newKnowledge.retrievalCountValue": "過去 7 天內 {{value}} 次",
   "newKnowledge.retrievalTest.analyzing": "結果分析完成",

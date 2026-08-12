@@ -361,7 +361,6 @@ export function WebsiteDatasourceParameterForm({
   onChange: (parameters: DatasourceParameters) => void
 }) {
   const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
   const [optionsOpen, setOptionsOpen] = useState(false)
   const primarySchemas = schemas.filter((schema) => schema.required)
   const optionSchemas = schemas.filter((schema) => !schema.required)
@@ -399,8 +398,8 @@ export function WebsiteDatasourceParameterForm({
           className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default"
           onOpenChange={setOptionsOpen}
         >
-          <div className="flex h-10 items-center">
-            <CollapsibleTrigger className="h-full min-w-0 flex-1 justify-start rounded-none px-2.5">
+          <div className="flex h-10 items-center transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
+            <CollapsibleTrigger className="h-full min-w-0 flex-1 justify-start rounded-none px-3 hover:not-data-disabled:bg-transparent">
               <span
                 aria-hidden
                 className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
@@ -420,7 +419,7 @@ export function WebsiteDatasourceParameterForm({
                 variant="tertiary"
                 onClick={resetOptions}
               >
-                {tCommon(($) => $['operation.reset'])}
+                {t(($) => $['newKnowledge.resetToDefaults'])}
               </Button>
             )}
           </div>

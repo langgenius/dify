@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "재인덱싱",
   "newKnowledge.reindexDocuments": "재인덱싱",
   "newKnowledge.removeSource": "소스 제거",
+  "newKnowledge.resetToDefaults": "기본값으로 재설정",
   "newKnowledge.retrievalCount": "검색 횟수",
   "newKnowledge.retrievalCountValue": "최근 7일 동안 {{value}}회",
   "newKnowledge.retrievalTest.analyzing": "결과 분석 완료",

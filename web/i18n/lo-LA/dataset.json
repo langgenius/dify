@@ -360,6 +360,7 @@
   "newKnowledge.reindexDocument": "ດັດ​ຊະ​ນີ​ຄືນ​ໃຫມ່",
   "newKnowledge.reindexDocuments": "ດັດ​ຊະ​ນີ​ຄືນ​ໃຫມ່",
   "newKnowledge.removeSource": "ລຶບແຫຼ່ງ",
+  "newKnowledge.resetToDefaults": "ຣີເຊັດເປັນຄ່າເລີ່ມຕົ້ນ",
   "newKnowledge.retrievalCount": "ຈໍານວນການດຶງຂໍ້ມູນ",
   "newKnowledge.retryCrawl": "ລອງລວບລວມຂໍ້ມູນຄືນໃໝ່",
   "newKnowledge.retryProviderLoad": "ລອງໃໝ່",

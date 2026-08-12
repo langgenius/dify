@@ -534,6 +534,7 @@
   "newKnowledge.reindexDocument": "Indeks ulang",
   "newKnowledge.reindexDocuments": "Indeks ulang",
   "newKnowledge.removeSource": "Hapus sumber",
+  "newKnowledge.resetToDefaults": "Atur ulang ke default",
   "newKnowledge.retrievalCount": "Jumlah pengambilan",
   "newKnowledge.retrievalCountValue": "{{value}} dalam 7 hari terakhir",
   "newKnowledge.retrievalTest.analyzing": "Temuan telah dianalisis",
