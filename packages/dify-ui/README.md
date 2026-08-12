@@ -37,6 +37,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
 
@@ -64,7 +65,7 @@ Keep implementation-only render helpers, context values, styling helpers, and up
 
 | Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`, `./icon-button`                                                                                                                                   | Visible-label actions and icon-only commands.                                                         |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                       | Visible-label actions, icon-only commands, and persistent toggles.                                    |
 | Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
 | Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
@@ -95,7 +96,7 @@ When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loadi
 
 Use `IconButton` for a command represented by one icon and no visible text. Use `Button` when the control has a visible label, including buttons with leading or trailing icons.
 
-Pass exactly one React element as its child. React SVG components and CSS icons are both supported without an icon-specific prop or wrapper:
+Pass exactly one CSS or React SVG icon and provide either `aria-label` or `aria-labelledby`:
 
 ```tsx
 <IconButton aria-label="Close">
@@ -106,10 +107,6 @@ Pass exactly one React element as its child. React SVG components and CSS icons 
 Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is only a visual enhancement. The child chooses the glyph and its optical size. Omit `variant` for the neutral action-button appearance, or use the same appearance variants as `Button`. Use `tone="destructive"` for destructive intent. Size, radius, colors, hover, disabled, and focus-visible styles belong to `IconButton`; limit `className` to external layout.
 
 `IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
-
-Do not layer `IconButton` over compound controls that already own button behavior and a specialized recipe, such as Number Field increment/decrement, Combobox clear, or Pagination navigation. Those controls keep their Base UI owner and domain-specific styling.
-
-Dify-authored icon-only compound parts, such as dialog, drawer, and toast close controls, also keep their own Base UI semantic part. They reuse the private icon-button visual recipe directly instead of rendering the public `IconButton` component, so dependency direction and DOM ownership stay unchanged.
 
 ## Segmented control contract
 
