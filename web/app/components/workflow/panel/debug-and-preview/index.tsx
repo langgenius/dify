@@ -1,5 +1,6 @@
 import type { StartNodeType } from '../../nodes/start/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
@@ -97,9 +98,9 @@ const DebugAndPreview = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
+                  <IconButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
                     <RefreshCcw01 aria-hidden="true" className="size-4" />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>{restartLabel}</TooltipContent>
