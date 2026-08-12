@@ -106,11 +106,15 @@ Concrete adapter 只负责 authentication、applicable decryption、control-mess
 
 ### 9. Provider evidence validates the contract without prescribing implementation
 
-每个初始 Provider verification unit 的适用 operation 和 event entry 都需要权威资料、授权非生产环境真实执行和完整脱敏 fixture。该 evidence 用于确认 tenant identity、directory scope、identity mapping、message acceptance/reference、authentication、challenge、decryption 与 ACK semantics 确实能够支撑共享 contract。
+每个初始 Provider verification unit 的适用 operation 和 event entry 都需要权威资料，以及授权非生产环境真实执行产生的 committed fixture evidence。该 evidence 用于确认 tenant identity、directory scope、identity mapping、message acceptance/reference、authentication、challenge、decryption 与 ACK semantics 确实能够支撑共享 contract。
 
 初始 verification units 为 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams。Feishu 与 Lark 在 production protocol path 和 semantics 相同时作为一个共享 evidence unit，并使用授权飞书非生产环境提供真实证据；两者的 typed configuration、Provider discriminator 和 API host 仍保持独立。如果 production path 或 protocol semantics 分叉，共享 evidence assumption 失效，相关 contract 必须重新审阅。
 
-对于签名或加密 transport，fixture 必须以完整脱敏的真实 plaintext structure 为基础，使用 test-only material 重新生成有效签名或 ciphertext。真实 credential、secret、token 或 key 不得进入 repository。
+`temp/fixtures` 是独立的 committed fixture repository，其 `README.md` 按 Provider 维护 operation/event、transport/endpoint、fixture 与 verification result，作为本 change 的 real-execution evidence index。Fixture 可以在该专用 repository 中按其访问控制策略保留原始 capture；不得要求将它脱敏或复制进 Dify repository。Feishu credential、directory、destination 与 messaging 的补充 execution summary 已提交在该 repository 的 `progress` branch，card Webhook/STREAM 和 text evidence 已由 `main` branch index 覆盖。
+
+Evidence 以 caller-observable capability operation 或 event path 为验收单元。一次已提交的完整 E2E capture、人工验证记录或 agent verification 可以覆盖该路径中的内部 prerequisite calls；这些内部调用不需要为了重复证明同一个端到端结果而各自增加 canonical fixture row。
+
+对于签名或加密 transport，Dify test suite 中可公开提交的 replay fixture 必须以真实 plaintext structure 为基础，使用 test-only material 重新生成有效签名或 ciphertext。真实 credential、secret、token 或 key 不得从专用 fixture repository 复制到 Dify repository。
 
 Evidence matrix 不规定 concrete adapter 使用哪个 SDK、怎样组织 client、怎样同步或怎样清理资源。
 

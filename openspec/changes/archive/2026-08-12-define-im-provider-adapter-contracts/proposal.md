@@ -13,7 +13,7 @@ Dify 需要通过 Slack、Feishu/Lark、DingTalk、WeCom 与 Microsoft Teams 提
 - 定义消息发送的 confirmed Provider acceptance、未确认 acceptance 的统一 failure、exact message reference 和 no-automatic-retry 语义。
 - 将 Webhook 与 STREAM 保留为两种独立 event transport interfaces，并通过 `AuthenticatedIMEvent` 与 thread-safe `IMEventConsumer` 形成共同的 downstream boundary。
 - 定义调用方必须遵守的并发与生命周期约束，包括 externally serialized root adapter、thread-safe Webhook handling、独立 STREAM lifecycle，以及 root close 对已创建 event transport 的可观察影响。
-- 使用逐 Provider 的权威资料、授权非生产环境真实调用或真实事件，以及完整脱敏 fixture 验证公共接口假设；这些证据约束 contract correctness，但不规定 production implementation structure。
+- 使用逐 Provider 的权威资料、授权非生产环境真实调用或真实事件，以及专用 fixture repository 中已提交的完整 capture 验证公共接口假设；这些证据不要求复制或脱敏后进入 Dify repository，只约束 contract correctness，不规定 production implementation structure。
 
 ## Capabilities
 
