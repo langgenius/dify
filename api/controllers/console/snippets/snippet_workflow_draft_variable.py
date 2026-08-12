@@ -148,9 +148,7 @@ class SnippetNodeVariableCollectionApi(Resource):
     )
     @_snippet_draft_var_prerequisite
     @with_session(write=False)
-    def get(
-        self, session: Session, current_user: Account, snippet: CustomizedSnippet, node_id: str
-    ) -> dict[str, Any]:
+    def get(self, session: Session, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> dict[str, Any]:
         validate_node_id(node_id)
         draft_var_srv = WorkflowDraftVariableService(session=session)
         node_vars = draft_var_srv.list_node_variables(snippet.id, node_id, user_id=current_user.id)

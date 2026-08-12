@@ -6,30 +6,13 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
-
-
-@pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-    sqlite_session_factory: sessionmaker[Session],
-):
-    def factory():
-        return snippets_module.SnippetService.__new__(snippets_module.SnippetService)
-
-    database_session = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(snippets_module, "_snippet_service", factory)
-    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=sqlite_engine, session=database_session))
-    yield
-    database_session.remove()
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -434,7 +417,7 @@ def _persisted_name(session: Session) -> str | None:
         return stored.name if stored else None
 
 
-def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_delete_snippet_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippet = _snippet()
     user = _account()
     delete_snippet = Mock()
@@ -446,16 +429,16 @@ def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.Monk
     handler = unwrap(api.delete)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1", method="DELETE"):
-        response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = handler(api, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 204
     assert response == ""
     assert delete_snippet.call_args.kwargs["account_id"] == user.id
-    assert isinstance(delete_snippet.call_args.kwargs["session"], Session)
+    assert delete_snippet.call_args.kwargs["session"] is sqlite_session
     assert isinstance(delete_snippet.call_args.kwargs["snippet"], CustomizedSnippet)
 
 
-def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     snippet = _snippet(name="Snippet One")
     export_snippet_dsl = Mock(return_value="version: 0.1.0\nkind: snippet\n")
 
@@ -472,7 +455,7 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
     with app.test_request_context(
         "/workspaces/current/customized-snippets/snippet-1/export?include_secret=true&workflow_id=workflow-1"
     ):
-        response = handler(api, "tenant-1", snippet_id="snippet-1")
+        response = handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == "version: 0.1.0\nkind: snippet\n"
@@ -481,7 +464,9 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
     export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True, workflow_id="workflow-1")
 
 
-def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_export_snippet_raises_not_found_for_missing_workflow(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     snippet = _snippet(name="Snippet One")
 
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
@@ -499,7 +484,7 @@ def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkey
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
         with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
 def test_import_snippet_returns_202_for_pending_confirmation(
@@ -585,7 +570,9 @@ def test_import_confirm_returns_200_for_completed_import(
     confirm_import.assert_called_once_with(import_id="import-1", account=user)
 
 
-def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_check_dependencies_raises_when_snippet_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetCheckDependenciesApi()
@@ -593,10 +580,12 @@ def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch:
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"):
         with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
-def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_check_dependencies_returns_dependency_result(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     snippet = _snippet()
     check_dependencies = Mock(return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []})))
 
@@ -611,14 +600,16 @@ def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: p
     handler = unwrap(api.get)
 
     with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"):
-        response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
+        response, status_code = handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
     assert response == {"leaked_dependencies": []}
     check_dependencies.assert_called_once_with(snippet=snippet)
 
 
-def test_increment_use_count_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_increment_use_count_raises_when_snippet_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetUseCountIncrementApi()
@@ -629,10 +620,12 @@ def test_increment_use_count_raises_when_snippet_missing(app: Flask, monkeypatch
         method="POST",
     ):
         with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
-def test_increment_use_count_returns_refreshed_count(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_increment_use_count_returns_refreshed_count(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     snippet = _snippet(use_count=2)
 
     def increment_use_count(*, session: Session, snippet: CustomizedSnippet) -> None:
@@ -650,9 +643,9 @@ def test_increment_use_count_returns_refreshed_count(app: Flask, monkeypatch: py
         "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
         method="POST",
     ):
-        response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
+        response, status_code = handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
     assert response == {"result": "success", "use_count": 3}
-    assert isinstance(increment_use_count_mock.call_args.kwargs["session"], Session)
+    assert increment_use_count_mock.call_args.kwargs["session"] is sqlite_session
     assert isinstance(increment_use_count_mock.call_args.kwargs["snippet"], CustomizedSnippet)

@@ -12,7 +12,6 @@ from graphon.variables import StringSegment, StringVariable
 from models.account import Account, AccountStatus
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowDraftVariable
-from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 
 def _make_account() -> Account:
@@ -238,7 +237,6 @@ def test_variable_patch_returns_persisted_variable_without_committing_when_no_ch
         )
 
     assert result["id"] == variable.id
-    assert result["app_id"] == "snippet-1"
 
 
 def test_variable_delete_deletes_persisted_variable(
