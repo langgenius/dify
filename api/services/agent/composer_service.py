@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
-from models import Account, Conversation
+from models import Account, App, Conversation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -623,6 +623,7 @@ class AgentComposerService:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
+        access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
         draft = cls._get_or_create_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -665,6 +666,22 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
+        if not access_was_ready:
+            if not agent.app_id:
+                raise AgentNotFoundError()
+            app = session.scalar(
+                select(App)
+                .where(
+                    App.tenant_id == tenant_id,
+                    App.id == agent.app_id,
+                )
+                .limit(1)
+            )
+            if app is None:
+                raise AgentNotFoundError()
+            app.enable_site = True
+            app.enable_api = True
+            app.updated_by = account_id
         session.flush()
         return {
             "result": "success",

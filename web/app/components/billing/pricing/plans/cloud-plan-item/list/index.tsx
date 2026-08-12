@@ -1,18 +1,17 @@
-import type { BasicPlan } from '../../../../type'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
-import { Plan } from '../../../../type'
 import Item from './item'
 
 type ListProps = {
-  plan: BasicPlan
+  plan: CloudPlan
 }
 
 const List = ({ plan }: ListProps) => {
   const { t } = useTranslation()
-  const isFreePlan = plan === Plan.sandbox
+  const isFreePlan = plan === 'sandbox'
   const planInfo = ALL_PLANS[plan]
 
   return (
@@ -78,7 +77,7 @@ const List = ({ plan }: ListProps) => {
         label={
           planInfo.triggerEvents === NUM_INFINITE
             ? t(($) => $['plansCommon.triggerEvents.unlimited'], { ns: 'billing' })
-            : plan === Plan.sandbox
+            : plan === 'sandbox'
               ? t(($) => $['plansCommon.triggerEvents.sandbox'], {
                   ns: 'billing',
                   count: planInfo.triggerEvents,
@@ -92,16 +91,16 @@ const List = ({ plan }: ListProps) => {
       />
       <Item
         label={
-          plan === Plan.sandbox
+          plan === 'sandbox'
             ? t(($) => $['plansCommon.startNodes.limited'], { ns: 'billing', count: 2 })
             : t(($) => $['plansCommon.startNodes.unlimited'], { ns: 'billing' })
         }
       />
       <Item
         label={
-          plan === Plan.sandbox
+          plan === 'sandbox'
             ? t(($) => $['plansCommon.workflowExecution.standard'], { ns: 'billing' })
-            : plan === Plan.professional
+            : plan === 'professional'
               ? t(($) => $['plansCommon.workflowExecution.faster'], { ns: 'billing' })
               : t(($) => $['plansCommon.workflowExecution.priority'], { ns: 'billing' })
         }

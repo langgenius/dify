@@ -46,11 +46,11 @@ def service(sqlite_session: Session) -> RagPipelineDslService:
     return RagPipelineDslService(session=sqlite_session)
 
 
-def _account(*, tenant_id: str = "tenant-1") -> Account:
+def _account(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> Account:
     tenant = Tenant(name="Tenant")
     tenant.id = tenant_id
     account = Account(name="Account", email="account@example.com")
-    account.id = "account-1"
+    account.id = account_id
     account._current_tenant = tenant
     return account
 
@@ -627,6 +627,10 @@ def test_import_pending_version_stores_redis(monkeypatch: pytest.MonkeyPatch, se
         account=_account(), import_mode=ImportMode.YAML_CONTENT.value, yaml_content=_valid_dsl(version="1.0.0")
     )
     assert result.status == ImportStatus.PENDING
+    assert setex.call_args.args[0] == f"app_import_info:{result.id}"
+    pending = RagPipelinePendingData.model_validate_json(setex.call_args.args[2])
+    assert pending.tenant_id == "tenant-1"
+    assert pending.account_id == "account-1"
     setex.assert_called_once()
 
 
@@ -782,14 +786,26 @@ def test_confirm_import_updates_tenant_pipeline_and_dataset(
     dataset = _dataset(sqlite_session, pipeline)
     _workflow(sqlite_session, pipeline)
     pending = RagPipelinePendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode=ImportMode.YAML_CONTENT.value,
         yaml_content=_valid_dsl(name="Confirmed"),
         pipeline_id=pipeline.id,
     )
-    monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+    redis_key = "app_import_info:import-1"
+    monkeypatch.setattr(
+        module.redis_client,
+        "get",
+        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+    )
     delete = Mock()
     monkeypatch.setattr(module.redis_client, "delete", delete)
     monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    for foreign_account in (_account(tenant_id="tenant-2"), _account(account_id="account-2")):
+        assert service.confirm_import(import_id="import-1", account=foreign_account).status == ImportStatus.FAILED
+    delete.assert_not_called()
+    assert pipeline.name == "Pipeline"
+
     result = service.confirm_import(import_id="import-1", account=_account())
     assert result.status == ImportStatus.COMPLETED
     assert result.pipeline_id == pipeline.id
@@ -809,7 +825,7 @@ def test_confirm_import_updates_tenant_pipeline_and_dataset(
         assert observed_pipeline is not None
         assert observed_pipeline.name == "Confirmed"
 
-    delete.assert_called_once()
+    delete.assert_called_once_with(redis_key)
 
 
 def test_export_reads_real_dataset_and_workflow_and_filters_credentials(

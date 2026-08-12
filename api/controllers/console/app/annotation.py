@@ -20,6 +20,7 @@ from controllers.console.wraps import (
     annotation_import_rate_limit,
     cloud_edition_billing_resource_check,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
 )
@@ -180,14 +181,14 @@ class AnnotationReplyActionApi(Resource):
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    def post(self, app_id: UUID, action: Literal["enable", "disable"]):
-        args = AnnotationReplyPayload.model_validate(console_ns.payload)
+    @model_validate(AnnotationReplyPayload)
+    def post(self, req_data: AnnotationReplyPayload, app_id: UUID, action: Literal["enable", "disable"]):
         match action:
             case "enable":
                 enable_args: EnableAnnotationArgs = {
-                    "score_threshold": args.score_threshold,
-                    "embedding_provider_name": args.embedding_provider_name,
-                    "embedding_model_name": args.embedding_model_name,
+                    "score_threshold": req_data.score_threshold,
+                    "embedding_provider_name": req_data.embedding_provider_name,
+                    "embedding_model_name": req_data.embedding_model_name,
                 }
                 result = AppAnnotationService.enable_app_annotation(enable_args, str(app_id))
             case "disable":
@@ -231,12 +232,17 @@ class AppAnnotationSettingUpdateApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_session
-    def post(self, session: Session, app_id: UUID, annotation_setting_id: UUID):
+    @model_validate(AnnotationSettingUpdatePayload)
+    def post(
+        self,
+        req_data: AnnotationSettingUpdatePayload,
+        session: Session,
+        app_id: UUID,
+        annotation_setting_id: UUID,
+    ):
         annotation_setting_id_str = str(annotation_setting_id)
 
-        args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
-
-        setting_args: UpdateAnnotationSettingArgs = {"score_threshold": args.score_threshold}
+        setting_args: UpdateAnnotationSettingArgs = {"score_threshold": req_data.score_threshold}
         result = AppAnnotationService.update_app_annotation_setting(
             str(app_id), annotation_setting_id_str, setting_args, session
         )
@@ -290,11 +296,11 @@ class AnnotationApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_session(write=False)
-    def get(self, session: Session, app_id: UUID):
-        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
-        page = args.page
-        limit = args.limit
-        keyword = args.keyword
+    @model_validate(AnnotationListQuery)
+    def get(self, req_data: AnnotationListQuery, session: Session, app_id: UUID):
+        page = req_data.page
+        limit = req_data.limit
+        keyword = req_data.keyword
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
             str(app_id), page, limit, keyword, session
@@ -317,17 +323,17 @@ class AnnotationApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_session
-    def post(self, session: Session, app_id: UUID):
-        args = CreateAnnotationPayload.model_validate(console_ns.payload)
+    @model_validate(CreateAnnotationPayload)
+    def post(self, req_data: CreateAnnotationPayload, session: Session, app_id: UUID):
         upsert_args: UpsertAnnotationArgs = {}
-        if args.answer is not None:
-            upsert_args["answer"] = args.answer
-        if args.content is not None:
-            upsert_args["content"] = args.content
-        if args.message_id is not None:
-            upsert_args["message_id"] = args.message_id
-        if args.question is not None:
-            upsert_args["question"] = args.question
+        if req_data.answer is not None:
+            upsert_args["answer"] = req_data.answer
+        if req_data.content is not None:
+            upsert_args["content"] = req_data.content
+        if req_data.message_id is not None:
+            upsert_args["message_id"] = req_data.message_id
+        if req_data.question is not None:
+            upsert_args["question"] = req_data.question
         annotation = AppAnnotationService.up_insert_app_annotation_from_message(upsert_args, str(app_id), session)
         return dump_response(Annotation, annotation), 201
 
@@ -407,13 +413,13 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_session
-    def post(self, session: Session, app_id: UUID, annotation_id: UUID):
-        args = UpdateAnnotationPayload.model_validate(console_ns.payload)
+    @model_validate(UpdateAnnotationPayload)
+    def post(self, req_data: UpdateAnnotationPayload, session: Session, app_id: UUID, annotation_id: UUID):
         update_args: UpdateAnnotationArgs = {}
-        if args.answer is not None:
-            update_args["answer"] = args.answer
-        if args.question is not None:
-            update_args["question"] = args.question
+        if req_data.answer is not None:
+            update_args["answer"] = req_data.answer
+        if req_data.question is not None:
+            update_args["question"] = req_data.question
         app_ref = _get_app_ref(session, str(app_id))
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, session)

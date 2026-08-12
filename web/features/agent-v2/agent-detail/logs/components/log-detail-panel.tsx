@@ -2,8 +2,8 @@ import type {
   AgentLogConversationItemResponse,
   AgentLogMessageItemResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { FeedbackType, IChatItem } from '@/app/components/base/chat/chat/type'
-import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -61,7 +61,7 @@ export function AgentLogDetailPanel({
         messages: messagesQuery.data?.data ?? [],
       })
     : []
-  const handleFeedback = async (messageId: string, feedback: FeedbackType) => {
+  const handleFeedback: OnFeedback = async (messageId, feedback) => {
     try {
       await feedbackMutation.mutateAsync({
         params: { agent_id: agentId },
@@ -80,10 +80,9 @@ export function AgentLogDetailPanel({
         }),
       ])
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      return true
-    } catch {
+    } catch (error) {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      return false
+      throw error
     }
   }
 

@@ -25,6 +25,7 @@ vi.mock('@/service/base', () => ({
 // Mock file upload config
 const mockFileUploadConfig = {
   file_size_limit: 15,
+  knowledge_file_size_limit: 50,
   batch_count_limit: 5,
   file_upload_limit: 10,
 }
@@ -80,6 +81,7 @@ describe('useFileUpload', () => {
       expect(result.current.dropRef.current).toBeNull()
       expect(result.current.dragRef.current).toBeNull()
       expect(result.current.fileUploaderRef.current).toBeNull()
+      expect(result.current.fileUploadConfig.file_size_limit).toBe(50)
     })
 
     it('should set hideUpload true when not batch upload and has files', () => {
@@ -300,10 +302,8 @@ describe('useFileUpload', () => {
         wrapper: createWrapper(),
       })
 
-      // Create a file larger than the limit (15MB)
-      const largeFile = new File([new ArrayBuffer(20 * 1024 * 1024)], 'large.pdf', {
-        type: 'application/pdf',
-      })
+      const largeFile = new File(['content'], 'large.pdf', { type: 'application/pdf' })
+      Object.defineProperty(largeFile, 'size', { value: 51 * 1024 * 1024 })
 
       const event = {
         target: { files: [largeFile] },

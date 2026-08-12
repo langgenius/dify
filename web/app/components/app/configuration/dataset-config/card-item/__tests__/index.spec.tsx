@@ -151,7 +151,14 @@ describe('dataset-config/card-item', () => {
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const actionButtons = within(card).getAllByRole('button', { hidden: true })
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    const removeButton = within(card).getByRole('button', {
+      name: 'common.operation.remove',
+      hidden: true,
+    })
 
     expect(screen.getByText(dataset.name))!.toBeInTheDocument()
     expect(
@@ -160,7 +167,8 @@ describe('dataset-config/card-item', () => {
       ),
     )!.toBeInTheDocument()
     expect(screen.getByText('dataset.externalTag'))!.toBeInTheDocument()
-    expect(actionButtons).toHaveLength(2)
+    expect(editButton).toBeInTheDocument()
+    expect(removeButton).toBeInTheDocument()
   })
 
   it('should open settings drawer from edit action and close after saving', async () => {
@@ -169,8 +177,11 @@ describe('dataset-config/card-item', () => {
     const { onSave } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton!)
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    await user.click(editButton)
 
     expect(await screen.findByText('Mock settings modal'))!.toBeInTheDocument()
     fireEvent.click(await screen.findByText('Save changes'))
@@ -189,8 +200,10 @@ describe('dataset-config/card-item', () => {
     const { onRemove } = renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const buttons = within(card).getAllByRole('button', { hidden: true })
-    const deleteButton = buttons.at(-1)!
+    const deleteButton = within(card).getByRole('button', {
+      name: 'common.operation.remove',
+      hidden: true,
+    })
 
     expect(deleteButton.className).not.toContain('action-btn-destructive')
 
@@ -225,8 +238,11 @@ describe('dataset-config/card-item', () => {
     renderItem(dataset)
 
     const card = screen.getByText(dataset.name).closest('.group') as HTMLElement
-    const [editButton] = within(card).getAllByRole('button', { hidden: true })
-    await user.click(editButton!)
+    const editButton = within(card).getByRole('button', {
+      name: 'common.operation.edit',
+      hidden: true,
+    })
+    await user.click(editButton)
     expect(screen.getByText('Mock settings modal'))!.toBeInTheDocument()
 
     const overlay = [...document.querySelectorAll('[class]')].find(

@@ -2,7 +2,8 @@ import type {
   AgentLogConversationItemResponse,
   AgentLogMessageListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { FeedbackFunc, IChatItem } from '@/app/components/base/chat/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { OnFeedback } from '@/app/components/base/chat/types'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -25,11 +26,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   }: {
     chatList: IChatItem[]
     config?: { supportFeedback?: boolean }
-    onFeedback?: FeedbackFunc
+    onFeedback?: OnFeedback
   }) => {
     mocks.chatProps({ chatList, config, onFeedback })
     return (
-      <button onClick={() => void onFeedback?.('message-1', { rating: 'like' })}>
+      <button
+        onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
+      >
         submit-feedback
       </button>
     )

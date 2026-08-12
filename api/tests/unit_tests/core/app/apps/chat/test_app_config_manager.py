@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from models.model import AppMode
@@ -76,7 +78,7 @@ class TestChatAppConfigManager:
 
         app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
-    def test_config_validate_filters_related_keys(self):
+    def test_config_validate_filters_related_keys(self, unbound_session: Session):
         config = {"extra": 1}
 
         def _add_key(key, value):
@@ -133,7 +135,7 @@ class TestChatAppConfigManager:
                 side_effect=_add_key("sensitive_word_avoidance", 11),
             ),
         ):
-            filtered = ChatAppConfigManager.config_validate(session=MagicMock(), tenant_id="t1", config=config)
+            filtered = ChatAppConfigManager.config_validate(session=unbound_session, tenant_id="t1", config=config)
 
         assert filtered["model"] == 1
         assert filtered["inputs"] == 2

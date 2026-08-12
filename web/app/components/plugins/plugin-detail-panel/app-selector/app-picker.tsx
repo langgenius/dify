@@ -1,8 +1,9 @@
 'use client'
 
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { Placement } from '@langgenius/dify-ui/combobox'
 import type { ReactNode } from 'react'
-import type { App } from '@/types/app'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Combobox,
@@ -29,8 +30,8 @@ type AppPickerProps = {
   offset?: number
   isShow: boolean
   onShowChange: (isShow: boolean) => void
-  onSelect: (app: App) => void
-  apps: App[]
+  onSelect: (app: AppPartial) => void
+  apps: AppPartial[]
   isLoading: boolean
   hasMore: boolean
   onLoadMore: () => void
@@ -38,7 +39,7 @@ type AppPickerProps = {
   onSearchChange: (text: string) => void
 }
 
-function getAppTypeLabel(app: App) {
+function getAppTypeLabel(app: AppPartial) {
   switch (app.mode) {
     case AppModeEnum.ADVANCED_CHAT:
       return 'chatflow'
@@ -55,11 +56,12 @@ function getAppTypeLabel(app: App) {
   }
 }
 
-function getAppSearchText(app: App) {
+function getAppSearchText(app: AppPartial) {
   return `${app.name} ${app.id} ${getAppTypeLabel(app)}`
 }
 
-function AppPickerOption({ app }: { app: App }) {
+function AppPickerOption({ app }: { app: AppPartial }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
   return (
     <ComboboxItem
       key={app.id}
@@ -70,8 +72,8 @@ function AppPickerOption({ app }: { app: App }) {
         <AppIcon
           className="shrink-0"
           size="xs"
-          iconType={app.icon_type}
-          icon={app.icon}
+          iconType={appIconType}
+          icon={app.icon ?? undefined}
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
@@ -105,7 +107,7 @@ export function AppPicker({
   const { t } = useTranslation()
 
   const handleValueChange = useCallback(
-    (app: App | null) => {
+    (app: AppPartial | null) => {
       if (!app) return
 
       onSelect(app)
@@ -115,7 +117,7 @@ export function AppPicker({
   )
 
   return (
-    <Combobox<App>
+    <Combobox<AppPartial>
       items={apps}
       open={isShow}
       inputValue={searchText}
@@ -168,7 +170,7 @@ export function AppPicker({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-1">
             {isLoading && <ComboboxStatus>{t(($) => $.loading, { ns: 'common' })}</ComboboxStatus>}
-            <ComboboxList<App> className="max-h-none p-0">
+            <ComboboxList<AppPartial> className="max-h-none p-0">
               {(app) => <AppPickerOption key={app.id} app={app} />}
             </ComboboxList>
             <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>

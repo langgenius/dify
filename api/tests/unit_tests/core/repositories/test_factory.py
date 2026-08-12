@@ -69,7 +69,7 @@ class TestRepositoryFactory:
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
         # Create non-database dependencies
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
@@ -104,7 +104,7 @@ class TestRepositoryFactory:
         # Setup mock configuration with invalid class path
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "invalid.module.InvalidClass"
 
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
 
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_execution_repository(
@@ -122,7 +122,7 @@ class TestRepositoryFactory:
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
 
         # Create a mock repository class that raises exception on instantiation
         mock_repository_class = MagicMock()
@@ -147,7 +147,7 @@ class TestRepositoryFactory:
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
         # Create non-database dependencies
-        mock_user = MagicMock(spec=EndUser)
+        mock_user = EndUser()
         app_id = "test-app-id"
         triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
 
@@ -182,7 +182,7 @@ class TestRepositoryFactory:
         # Setup mock configuration with invalid class path
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "invalid.module.InvalidClass"
 
-        mock_user = MagicMock(spec=EndUser)
+        mock_user = EndUser()
 
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
@@ -200,7 +200,7 @@ class TestRepositoryFactory:
         # Setup mock configuration
         mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
-        mock_user = MagicMock(spec=EndUser)
+        mock_user = EndUser()
 
         # Create a mock repository class that raises exception on instantiation
         mock_repository_class = MagicMock()
@@ -231,7 +231,7 @@ class TestRepositoryFactory:
         mock_config.CORE_WORKFLOW_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
 
         # Pass the real Engine directly instead of wrapping it in sessionmaker
-        mock_user = MagicMock(spec=Account)
+        mock_user = Account(name="Test Account", email="test@example.com")
         app_id = "test-app-id"
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 

@@ -836,7 +836,12 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        conditions=cast(
+            Any,
+            metadata_filtering.conditions.model_dump(
+                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
+            ),
+        )
         if metadata_filtering.conditions is not None
         else None,
     )

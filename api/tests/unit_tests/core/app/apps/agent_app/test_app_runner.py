@@ -19,6 +19,9 @@ from dify_agent.protocol import (
     CancelRunResponse,
     PydanticAIStreamRunEvent,
     RunEvent,
+    RunFailedEvent,
+    RunFailedEventData,
+    RunFailureType,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -115,6 +118,30 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
+
+
+class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunFailedEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunFailedEventData(
+                error="run limit reached",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                reason="binding_lost",
+            ),
+        )
 
 
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
@@ -1142,6 +1169,17 @@ def test_failed_run_raises_agent_backend_error() -> None:
     assert store.saved == []
 
 
+def test_failed_run_prefers_run_failure_type_over_binding_lost_reason() -> None:
+    client = _RunLimitBindingLostFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+
+    with pytest.raises(AgentBackendRunFailedError) as raised:
+        _run(_runner(client, store), _FakeQueueManager())
+
+    assert raised.value.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert raised.value.reason == "binding_lost"
+
+
 def test_agent_backend_failure_to_exception_maps_rate_limit_reason() -> None:
     err = app_runner_module._agent_backend_failure_to_exception(
         AgentBackendRunFailedInternalEvent(
@@ -1175,6 +1213,26 @@ def test_agent_backend_failure_to_exception_preserves_unknown_reason_context() -
         "source_event_id": "event-1",
     }
     assert str(err) == "Knowledge retrieval failed (agent_run_id=run-1)"
+
+
+def test_agent_backend_failure_to_exception_prefers_run_failure_type_over_known_reason() -> None:
+    err = app_runner_module._agent_backend_failure_to_exception(
+        AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="run limit reached",
+            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            reason="InvokeRateLimitError",
+        )
+    )
+
+    assert isinstance(err, AgentBackendRunFailedError)
+    assert err.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert err.reason == "InvokeRateLimitError"
+    assert err.detail == {
+        "error": "run limit reached",
+        "reason": "InvokeRateLimitError",
+        "source_event_id": None,
+    }
 
 
 def test_stopped_task_cancels_agent_backend_run_and_skips_session_save() -> None:

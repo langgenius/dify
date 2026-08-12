@@ -46,7 +46,7 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}
-        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         <span
           aria-hidden

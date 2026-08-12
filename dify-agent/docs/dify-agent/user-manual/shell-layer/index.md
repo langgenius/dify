@@ -1,6 +1,6 @@
 # Shell layer
 
-The `dify.shell` layer exposes shellctl-backed commands and files to an Agent.
+The `dify.shell` layer exposes shellctl-backed commands to an Agent.
 It does not select a backend or own persistent Home, Workspace, or Binding
 resources. It consumes the operation-scoped `RuntimeLease` opened by a sibling
 `dify.runtime` layer.
@@ -96,7 +96,7 @@ DIFY_AGENT_SERVER_SECRET_KEY=replace-with-unpadded-base64url-for-32-random-bytes
 HTTP URLs may be either the service root or the explicit `/agent-stub` root.
 The server normalizes a service root and rejects unrelated paths. The separate
 Sandbox file base must point to the Dify API ingress serving `/files/*`; it is
-used for CLI upload/download bytes even when Agent Stub control calls use gRPC.
+used for CLI upload/download bytes, including Config file and skill pulls.
 
 After `dify-agent file upload <path>` succeeds, the CLI prints JSON such as:
 
@@ -115,6 +115,12 @@ or a same-origin `/files/...` relative URI when `FILES_URL` is empty. The CLI
 does not access this field. The former ambiguous `download_url` upload-output
 key is now named `public_download_url`.
 
+Server-side Binding downloads use
+`dify-agent file upload --no-download-link <path>`. This additive mode performs
+the same streaming ToolFile upload but skips the download-request step and
+prints only `transfer_method` plus the canonical `reference`. The regular
+`file upload` command keeps the link-producing behavior shown above.
+
 ## Request graph
 
 A shell-enabled run contains Execution Context, Runtime, and Shell layers:
@@ -127,7 +133,7 @@ flowchart LR
 
 `DifyRuntimeLayer` acquires the Binding when the run's resource context opens
 and releases it when that operation exits. `DifyShellLayer` uses the active
-lease's commands, files, Home path, and Workspace path. It performs only
+lease's commands, Home path, and Workspace path. It performs only
 best-effort cleanup of shell jobs; the persistent Binding lifecycle remains in
 Dify API.
 
@@ -227,11 +233,14 @@ sent in the run request. Shell commands start in `workspace_dir`, while `HOME`
 is forced to `home_dir`; `~` therefore resolves to the current Binding's
 materialized Home.
 
-Workspace files persist with the Workspace until Dify API retires and collects
-it. Releasing a RuntimeLease ends only the current operation. Dify API can later
-browse the current Workspace through Dify Agent's private
-`/workspace/files/list`, `/workspace/files/read`, and
-`/workspace/files/upload` routes, each of which acquires a fresh lease.
+Workspace content persists with the Workspace until Dify API retires and
+collects it. Releasing a RuntimeLease ends only the current operation. Dify API can later
+browse the Binding filesystem through Dify Agent's private
+`/execution-bindings/files/list`, `/execution-bindings/files/read`, and
+`/execution-bindings/files/download` routes, each of which acquires a fresh
+lease. Relative paths start in the Workspace, while `~` starts in the Binding's
+Home. Download uses the installed CLI to stream a ToolFile upload and returns
+only its canonical reference to Dify API.
 
 On Local, multiple Bindings may share a Workspace while each receives a
 separate materialized Home. Those directories may be siblings in one shellctl

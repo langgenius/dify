@@ -27,6 +27,7 @@ from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
 from configs import dify_config
 from constants import UUID_NIL
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
@@ -58,7 +59,6 @@ from models.agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentScope,
-    AgentSource,
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
@@ -644,12 +644,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
-        if (
-            agent.source == AgentSource.IMPORTED
-            and not agent.active_config_is_published
-            and invoke_from != InvokeFrom.DEBUGGER
-        ):
-            raise AgentAppNotPublishedError("Agent has not been published")
         if invoke_from == InvokeFrom.DEBUGGER:
             draft = self._resolve_debug_draft(
                 tenant_id=app_model.tenant_id,
@@ -664,9 +658,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
             )
             return agent, draft.id, config_version_kind, agent_soul
-        # active_config_is_published tracks whether the editable draft matches the active snapshot.
-        # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
-        if not agent.active_config_snapshot_id:
+        # Dirty drafts do not revoke a published snapshot, while the seeded
+        # create/import snapshot must never become public runtime configuration.
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             raise AgentAppNotPublishedError("Agent has not been published")
         conversation_binding = self._resolve_conversation_binding(
             session=session,

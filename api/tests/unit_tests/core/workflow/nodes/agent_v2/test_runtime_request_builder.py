@@ -744,7 +744,13 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "conditions": {
                                     "logical_operator": "and",
                                     "conditions": [
-                                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
+                                        {
+                                            "id": "cond-1",
+                                            "metadata_id": "meta-1",
+                                            "name": "category",
+                                            "comparison_operator": "contains",
+                                            "value": "auth",
+                                        }
                                     ],
                                 },
                             },

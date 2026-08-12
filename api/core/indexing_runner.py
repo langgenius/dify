@@ -34,6 +34,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -44,13 +45,19 @@ from models.dataset import AutomaticRulesConfig, ChildChunk, Dataset, DatasetPro
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
+from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 logger = logging.getLogger(__name__)
 
 
 class IndexingRunner:
-    def __init__(self):
+    def __init__(
+        self,
+        *,
+        enforce_vector_space_admission: bool = False,
+    ):
         self.storage = storage
+        self.enforce_vector_space_admission = enforce_vector_space_admission
 
     @staticmethod
     def _get_model_manager(tenant_id: str) -> ModelManager:
@@ -73,6 +80,7 @@ class IndexingRunner:
         The phase commits keep document locks short and make newly created segments
         visible to the worker sessions used for keyword and vector indexing.
         """
+        vector_space_admission = VectorSpaceAdmissionService()
         for dataset_document in dataset_documents:
             document_id = dataset_document.id
             try:
@@ -114,6 +122,15 @@ class IndexingRunner:
                     current_user=current_user,
                     session=session,
                 )
+                if self.enforce_vector_space_admission:
+                    vector_space_admission.ensure_document_can_be_indexed(
+                        dataset=dataset,
+                        document_id=requeried_document.id,
+                        doc_form=requeried_document.doc_form,
+                        documents=documents,
+                        include_summaries=bool(requeried_document.need_summary),
+                        session=session,
+                    )
                 token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
                 total_tokens = sum(token_counts)
                 # save segment
@@ -314,7 +331,7 @@ class IndexingRunner:
         Estimate the indexing for the document.
         """
         # check document limit
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             count = len(extract_settings)
             batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:

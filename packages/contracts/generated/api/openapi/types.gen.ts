@@ -125,6 +125,8 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
@@ -392,7 +394,7 @@ export type RevokeResponse = {
 }
 
 export type ServerVersionResponse = {
-  edition: 'CLOUD' | 'SELF_HOSTED'
+  edition: DeploymentEdition
   version: string
 }
 

@@ -19,10 +19,13 @@ from dify_agent.protocol.schemas import (
     RunCancelledEvent,
     RunCancelledEventData,
     RunComposition,
+    RunFailedEvent,
+    RunFailedEventData,
+    RunFailureType,
     RunSucceededEvent,
     RunSucceededEventData,
 )
-from dify_agent.runtime.event_sink import TerminalRunEvent, terminal_event_status_and_error
+from dify_agent.runtime.event_sink import TerminalRunEvent, terminal_event_status_fields
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -115,12 +118,13 @@ def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) 
             winner_index = next(index for index, result in enumerate(results) if result.applied)
             winner_event = terminal_events[winner_index]
             winner_result = results[winner_index]
-            expected_status, expected_error = terminal_event_status_and_error(winner_event)
+            expected_status, expected_error, expected_error_type = terminal_event_status_fields(winner_event)
 
             persisted = await first_store.get_run(record.run_id)
             page = await second_store.get_events(record.run_id)
             assert persisted.status == expected_status
             assert persisted.error == expected_error
+            assert persisted.error_type == expected_error_type
             assert persisted.updated_at == winner_event.created_at
             assert len(page.events) == 1
             assert page.events[0].type == winner_event.type
@@ -134,6 +138,36 @@ def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) 
         finally:
             await first_client.aclose()
             await second_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_classified_failure_persists_matching_record_and_event_error_type(redis_url: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        store = RedisRunStore(client, prefix=f"classified-failure-{uuid4().hex}", run_retention_seconds=60)
+        try:
+            record = await store.create_run()
+            event = RunFailedEvent(
+                run_id=record.run_id,
+                data=RunFailedEventData(
+                    error="run limit reached",
+                    error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                ),
+            )
+
+            result = await store.finalize_run(event)
+            persisted = await store.get_run(record.run_id)
+            page = await store.get_events(record.run_id)
+
+            assert result.applied is True
+            assert persisted.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+            assert len(page.events) == 1
+            persisted_event = page.events[0]
+            assert isinstance(persisted_event, RunFailedEvent)
+            assert persisted_event.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+        finally:
+            await client.aclose()
 
     asyncio.run(scenario())
 

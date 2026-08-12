@@ -23,7 +23,6 @@ import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
 import { forgotPassword } from './forgot-password/orpc.gen'
 import { form } from './form/orpc.gen'
-import { info } from './info/orpc.gen'
 import { init } from './init/orpc.gen'
 import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
@@ -80,7 +79,6 @@ const communityContract = {
   files,
   forgotPassword,
   form,
-  info,
   init,
   installedApps,
   instructionGenerate,

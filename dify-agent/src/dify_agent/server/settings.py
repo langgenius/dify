@@ -6,8 +6,8 @@ Dify API inner calls. Layers and Agenton providers do not own those clients, so
 these settings are process resource limits rather than per-run lifecycle knobs.
 Endpoint URLs and API keys stay service-specific. The Agent Stub also uses this
 settings model directly: the public Agent Stub API base URL, server secret,
-optional gRPC bind override, and optional Dify inner API bridge settings all
-live here under the ``DIFY_AGENT_...`` environment-variable namespace.
+and optional Dify inner API bridge settings live here under the
+``DIFY_AGENT_...`` environment-variable namespace.
 """
 
 import httpx
@@ -17,11 +17,10 @@ from typing import ClassVar, Literal, cast
 from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url, parse_agent_stub_endpoint
+from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
-from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
@@ -72,13 +71,11 @@ class ServerSettings(BaseSettings):
     )
     e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
-    sandbox_file_upload_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
         validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
     )
-    agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -126,17 +123,6 @@ class ServerSettings(BaseSettings):
         if "?" in parsed or "#" in parsed:
             raise ValueError("DIFY_AGENT_SANDBOX_FILES_BASE_URL must not include a query string or fragment")
         return parsed
-
-    @field_validator("agent_stub_grpc_bind_address")
-    @classmethod
-    def normalize_agent_stub_grpc_bind_address_value(cls, value: str | None) -> str | None:
-        """Normalize the optional explicit Agent Stub gRPC bind override."""
-        if value is None:
-            return None
-        stripped = value.strip()
-        if not stripped:
-            return None
-        return normalize_agent_stub_grpc_bind_address(stripped)
 
     @field_validator("server_secret_key")
     @classmethod
@@ -195,15 +181,8 @@ class ServerSettings(BaseSettings):
             and self.sandbox_files_base_url is None
         ):
             raise ValueError(
-                "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required when Agent Stub file operations are enabled."
+                "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required for Agent Stub file transfers and Config downloads."
             )
-        if self.agent_stub_grpc_bind_address is not None:
-            if self.agent_stub_api_base_url is None:
-                raise ValueError(
-                    "DIFY_AGENT_STUB_API_BASE_URL is required when DIFY_AGENT_STUB_GRPC_BIND_ADDRESS is set."
-                )
-            if not parse_agent_stub_endpoint(self.agent_stub_api_base_url).is_grpc:
-                raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_API_BASE_URL.")
         return self
 
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:
@@ -248,12 +227,13 @@ class ServerSettings(BaseSettings):
         )
 
     def create_agent_stub_config_request_handler(self) -> DifyApiAgentStubConfigRequestHandler | None:
-        """Return the Dify API config bridge when both Dify API settings are configured."""
-        if self.inner_api_key is None:
+        """Return the Config bridge when inner API and Sandbox data-plane settings are configured."""
+        if self.inner_api_key is None or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubConfigRequestHandler(
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
+            sandbox_files_base_url=self.sandbox_files_base_url,
             timeout=self.create_outbound_http_timeout(),
         )
 

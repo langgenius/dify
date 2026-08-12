@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LLMNodeType } from '../types'
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -179,7 +180,13 @@ const renderPanelElement = (data?: Partial<LLMNodeType>) => (
   // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider.
   <ProviderContext.Provider
     value={createMockProviderContextValue({
-      modelProviders: [createMockModelProvider('openai')],
+      modelProviders: [
+        {
+          ...createMockModelProvider('openai'),
+          is_configured: true,
+          plugin_id: 'langgenius/openai',
+        } as unknown as ModelProviderSummaryResponse,
+      ],
       isFetchedPlan: true,
     })}
   >

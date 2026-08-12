@@ -28,6 +28,12 @@ from pydantic_ai.messages import FunctionToolResultEvent
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileListRequest,
+    BindingFileListResponse,
+    BindingFileReadRequest,
+    BindingFileReadResponse,
     CreateRunRequest,
     CreateRunResponse,
     CreateExecutionBindingRequest,
@@ -40,17 +46,12 @@ from dify_agent.protocol import (
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
-    WorkspaceListRequest,
-    WorkspaceListResponse,
-    WorkspaceReadRequest,
-    WorkspaceReadResponse,
-    WorkspaceUploadRequest,
-    WorkspaceUploadResponse,
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
+_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS = 90.0
 _function_tool_result_payload_key_cache: str | None = None
 
 
@@ -260,7 +261,7 @@ class Client:
     headers, timeout settings, optional external HTTPX clients, and lazy-owned
     clients for whichever sync/async side is used. It is the shared transport
     boundary for both run-management endpoints (create/status/events/cancel) and
-    sandbox-file endpoints (list/read/upload). External clients are never closed
+    Binding-file endpoints (list/read/download). External clients are never closed
     by this wrapper. Owned sync clients close via ``close_sync`` or the sync
     context manager; owned async clients close via ``aclose`` or the async
     context manager.
@@ -474,43 +475,53 @@ class Client:
             raise DifyAgentClientError(f"get_events_sync request failed: {exc}") from exc
         return _parse_model_response(response, RunEventsResponse)
 
-    async def list_workspace_files(self, backend_binding_ref: str, path: str) -> WorkspaceListResponse:
-        request_model = WorkspaceListRequest(backend_binding_ref=backend_binding_ref, path=path)
-        response = await self._post_async_json("list_workspace_files", "/workspace/files/list", request_model)
-        return _parse_model_response(response, WorkspaceListResponse)
+    async def list_binding_files(self, backend_binding_ref: str, path: str) -> BindingFileListResponse:
+        request_model = BindingFileListRequest(backend_binding_ref=backend_binding_ref, path=path)
+        response = await self._post_async_json("list_binding_files", "/execution-bindings/files/list", request_model)
+        return _parse_model_response(response, BindingFileListResponse)
 
-    def list_workspace_files_sync(self, backend_binding_ref: str, path: str) -> WorkspaceListResponse:
-        request_model = WorkspaceListRequest(backend_binding_ref=backend_binding_ref, path=path)
-        response = self._post_sync_json("list_workspace_files_sync", "/workspace/files/list", request_model)
-        return _parse_model_response(response, WorkspaceListResponse)
+    def list_binding_files_sync(self, backend_binding_ref: str, path: str) -> BindingFileListResponse:
+        request_model = BindingFileListRequest(backend_binding_ref=backend_binding_ref, path=path)
+        response = self._post_sync_json("list_binding_files_sync", "/execution-bindings/files/list", request_model)
+        return _parse_model_response(response, BindingFileListResponse)
 
-    async def read_workspace_file(
+    async def read_binding_file(
         self,
         backend_binding_ref: str,
         path: str,
         max_bytes: int = 262144,
-    ) -> WorkspaceReadResponse:
-        request_model = WorkspaceReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
-        response = await self._post_async_json("read_workspace_file", "/workspace/files/read", request_model)
-        return _parse_model_response(response, WorkspaceReadResponse)
+    ) -> BindingFileReadResponse:
+        request_model = BindingFileReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
+        response = await self._post_async_json("read_binding_file", "/execution-bindings/files/read", request_model)
+        return _parse_model_response(response, BindingFileReadResponse)
 
-    def read_workspace_file_sync(
+    def read_binding_file_sync(
         self,
         backend_binding_ref: str,
         path: str,
         max_bytes: int = 262144,
-    ) -> WorkspaceReadResponse:
-        request_model = WorkspaceReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
-        response = self._post_sync_json("read_workspace_file_sync", "/workspace/files/read", request_model)
-        return _parse_model_response(response, WorkspaceReadResponse)
+    ) -> BindingFileReadResponse:
+        request_model = BindingFileReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
+        response = self._post_sync_json("read_binding_file_sync", "/execution-bindings/files/read", request_model)
+        return _parse_model_response(response, BindingFileReadResponse)
 
-    async def upload_workspace_file(self, request: WorkspaceUploadRequest) -> WorkspaceUploadResponse:
-        response = await self._post_async_json("upload_workspace_file", "/workspace/files/upload", request)
-        return _parse_model_response(response, WorkspaceUploadResponse)
+    async def download_binding_file(self, request: BindingFileDownloadRequest) -> BindingFileDownloadResponse:
+        response = await self._post_async_json(
+            "download_binding_file",
+            "/execution-bindings/files/download",
+            request,
+            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+        )
+        return _parse_model_response(response, BindingFileDownloadResponse)
 
-    def upload_workspace_file_sync(self, request: WorkspaceUploadRequest) -> WorkspaceUploadResponse:
-        response = self._post_sync_json("upload_workspace_file_sync", "/workspace/files/upload", request)
-        return _parse_model_response(response, WorkspaceUploadResponse)
+    def download_binding_file_sync(self, request: BindingFileDownloadRequest) -> BindingFileDownloadResponse:
+        response = self._post_sync_json(
+            "download_binding_file_sync",
+            "/execution-bindings/files/download",
+            request,
+            timeout=_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+        )
+        return _parse_model_response(response, BindingFileDownloadResponse)
 
     async def create_execution_binding(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = await self._post_async_json("create_execution_binding", "/execution-bindings", request)
@@ -600,11 +611,16 @@ class Client:
         with an id, reconnects resume from that id using the ``after`` query
         parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
         DTO validation failures, and malformed SSE frames are not retried. By
-        default iteration stops after a succeeded, failed, or cancelled terminal event.
+        default, ``until_terminal=True`` returns immediately after yielding a
+        succeeded, failed, or cancelled terminal event. With
+        ``until_terminal=False``, iteration may consume the remainder of the current
+        response, but after observing a terminal event it will not reconnect when that
+        response ends normally or raises a reconnectable transport error.
         """
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        terminal_event_seen = False
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
@@ -617,10 +633,14 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    if event.type in _TERMINAL_EVENT_TYPES:
+                        terminal_event_seen = True
                     yield event
-                    if until_terminal and event.type in _TERMINAL_EVENT_TYPES:
+                    if until_terminal and terminal_event_seen:
                         return
             except _ReconnectableStreamError as exc:
+                if terminal_event_seen:
+                    return
                 if not reconnect:
                     raise exc.error from exc
                 reconnect_attempts = _next_reconnect_attempt(
@@ -631,6 +651,8 @@ class Client:
                 _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                 await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
+            if terminal_event_seen:
+                return
             if not reconnect:
                 return
             reconnect_attempts = _next_reconnect_attempt(
@@ -657,6 +679,7 @@ class Client:
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        terminal_event_seen = False
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
@@ -669,10 +692,14 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    if event.type in _TERMINAL_EVENT_TYPES:
+                        terminal_event_seen = True
                     yield event
-                    if until_terminal and event.type in _TERMINAL_EVENT_TYPES:
+                    if until_terminal and terminal_event_seen:
                         return
             except _ReconnectableStreamError as exc:
+                if terminal_event_seen:
+                    return
                 if not reconnect:
                     raise exc.error from exc
                 reconnect_attempts = _next_reconnect_attempt(
@@ -683,6 +710,8 @@ class Client:
                 _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                 _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
+            if terminal_event_seen:
+                return
             if not reconnect:
                 return
             reconnect_attempts = _next_reconnect_attempt(
@@ -844,26 +873,40 @@ class Client:
             headers.update(extra)
         return headers
 
-    async def _post_async_json(self, operation: str, path: str, request_model: BaseModel) -> httpx.Response:
+    async def _post_async_json(
+        self,
+        operation: str,
+        path: str,
+        request_model: BaseModel,
+        *,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> httpx.Response:
         try:
             return await self._get_async_http_client().post(
                 self._url(path),
                 content=request_model.model_dump_json(),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
-                timeout=self._timeout,
+                timeout=self._timeout if timeout is None else timeout,
             )
         except httpx.TimeoutException as exc:
             raise DifyAgentTimeoutError(f"{operation} timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
 
-    def _post_sync_json(self, operation: str, path: str, request_model: BaseModel) -> httpx.Response:
+    def _post_sync_json(
+        self,
+        operation: str,
+        path: str,
+        request_model: BaseModel,
+        *,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> httpx.Response:
         try:
             return self._get_sync_http_client().post(
                 self._url(path),
                 content=request_model.model_dump_json(),
                 headers=self._merged_headers({"Content-Type": "application/json"}),
-                timeout=self._timeout,
+                timeout=self._timeout if timeout is None else timeout,
             )
         except httpx.TimeoutException as exc:
             raise DifyAgentTimeoutError(f"{operation} timed out") from exc

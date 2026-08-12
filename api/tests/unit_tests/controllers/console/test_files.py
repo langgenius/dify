@@ -87,12 +87,20 @@ class TestFileApiGet:
         api = FileApi()
         get_method = unwrap(api.get)
 
-        with app.test_request_context():
-            data, status = get_method(api)
+        with (
+            app.test_request_context(),
+            patch(
+                "controllers.console.files.FeatureService.get_knowledge_file_size_limit",
+                return_value=50,
+            ) as get_knowledge_file_size_limit,
+        ):
+            data, status = get_method(api, "tenant-1")
 
         assert status == 200
         assert "file_size_limit" in data
+        assert data["knowledge_file_size_limit"] == 50
         assert "batch_count_limit" in data
+        get_knowledge_file_size_limit.assert_called_once_with("tenant-1")
         assert data["skill_file_size_limit"] == dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT
 
 
@@ -199,6 +207,33 @@ class TestFileApiPost:
 
         assert result is upload_file
         assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+
+    def test_dataset_source_from_query_uses_knowledge_limit(
+        self,
+        app: Flask,
+        mock_account_context,
+        mock_file_service,
+    ):
+        upload_file = MagicMock()
+        mock_file_service.upload_file.return_value = upload_file
+
+        with (
+            app.test_request_context(
+                "/?source=datasets",
+                method="POST",
+                data={"file": (io.BytesIO(b"hello"), "test.txt")},
+            ),
+            patch(
+                "controllers.console.files.FeatureService.get_knowledge_file_size_limit",
+                return_value=50,
+            ) as get_knowledge_file_size_limit,
+        ):
+            result = upload_file_from_request(current_user=mock_account_context)
+
+        assert result is upload_file
+        assert mock_file_service.upload_file.call_args.kwargs["source"] == "datasets"
+        assert mock_file_service.upload_file.call_args.kwargs["default_file_size_limit"] == 50
+        get_knowledge_file_size_limit.assert_called_once_with(mock_account_context.current_tenant_id)
 
     def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
         """Test that invalid source parameter gets normalized to None"""

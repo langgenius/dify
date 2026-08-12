@@ -6,7 +6,7 @@ import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/r
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Plan } from '@/app/components/billing/type'
+import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
@@ -100,12 +100,26 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
     router.push(`/datasets/${datasetId}/documents`)
   }
 
-  const showUpgradeBanner = enableBilling && plan.type !== Plan.team
+  const showUpgradeBanner = enableBilling && plan.type !== 'team'
+  const showVectorSpaceUpgrade =
+    enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
+  const vectorSpaceAdmissionError = statusList.find(
+    (detail) => detail.error_code === 'vector_space_estimate_exceeded',
+  )
 
   return (
     <>
       <div className="flex flex-col gap-y-3">
         <StatusHeader isEmbedding={isEmbedding} isCompleted={isEmbeddingCompleted} />
+
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
+            <VectorSpaceAdmissionAlert
+              showUpgrade={showVectorSpaceUpgrade}
+              estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}
+              planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
+            />
+          )}
 
         {showUpgradeBanner && <UpgradeBanner />}
 

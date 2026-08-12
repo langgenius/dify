@@ -12,9 +12,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => (
-    <span data-testid="model-icon">{modelName}</span>
-  ),
+  default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
 }))
 
 describe('PublishWithMultipleModel', () => {
@@ -56,6 +54,27 @@ describe('PublishWithMultipleModel', () => {
       screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }),
     ).toBeDisabled()
     expect(screen.queryByText(/(?:^|\.)publishAs(?=$|:)/)).not.toBeInTheDocument()
+  })
+
+  it('should disable the trigger when publishing is unavailable', () => {
+    render(
+      <PublishWithMultipleModel
+        disabled
+        multipleModelConfigs={[
+          {
+            id: 'config-1',
+            provider: 'openai',
+            model: 'gpt-4o',
+            parameters: {},
+          },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: /(?:^|\.)operation\.applyConfig(?=$|:)/ }),
+    ).toBeDisabled()
   })
 
   it('should open matching model options and call onSelect', () => {

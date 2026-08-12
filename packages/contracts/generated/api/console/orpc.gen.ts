@@ -34,7 +34,6 @@ export const contractLoaders = {
   forgotPassword: () =>
     import('./forgot-password/orpc.gen').then(({ forgotPassword }) => ({ forgotPassword })),
   form: () => import('./form/orpc.gen').then(({ form }) => ({ form })),
-  info: () => import('./info/orpc.gen').then(({ info }) => ({ info })),
   init: () => import('./init/orpc.gen').then(({ init }) => ({ init })),
   installedApps: () =>
     import('./installed-apps/orpc.gen').then(({ installedApps }) => ({ installedApps })),

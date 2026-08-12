@@ -6,7 +6,6 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiAddLine, RiEqualizer2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -20,6 +19,7 @@ import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -305,6 +305,7 @@ const Debug: FC<IDebug> = ({
       onError() {
         setRespondingFalse()
       },
+      onNotifyError: (message) => toast.error(message),
     })
   }
 
@@ -441,8 +442,11 @@ const Debug: FC<IDebug> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={clearConversation}>
-                          <RefreshCcw01 className="size-4" />
+                        <ActionButton
+                          aria-label={t(($) => $['operation.refresh'], { ns: 'common' })}
+                          onClick={clearConversation}
+                        >
+                          <RefreshCcw01 aria-hidden="true" className="size-4" />
                         </ActionButton>
                       }
                     />
@@ -458,11 +462,13 @@ const Debug: FC<IDebug> = ({
                       <TooltipTrigger
                         render={
                           <ActionButton
+                            aria-expanded={expanded}
+                            aria-label={t(($) => $['panel.userInputField'], { ns: 'workflow' })}
                             state={expanded ? ActionButtonState.Active : undefined}
                             disabled={!canTestAndRun}
                             onClick={() => setExpanded(!expanded)}
                           >
-                            <RiEqualizer2Line className="size-4" />
+                            <RiEqualizer2Line aria-hidden="true" className="size-4" />
                           </ActionButton>
                         }
                       />

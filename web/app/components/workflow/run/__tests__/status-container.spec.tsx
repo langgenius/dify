@@ -1,7 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import StatusContainer from '../status-container'
+
+const copy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copied: false,
+    copy,
+  }),
+}))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
@@ -33,5 +43,20 @@ describe('StatusContainer', () => {
         ),
       ).toBeInTheDocument()
     })
+  })
+
+  it('copies the supplied content from the status action', async () => {
+    const user = userEvent.setup()
+    render(
+      <StatusContainer status="failed" copyContent="Execution failed">
+        Execution failed
+      </StatusContainer>,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'appOverview.overview.appInfo.embedded.copy' }),
+    )
+
+    expect(copy).toHaveBeenCalledWith('Execution failed')
   })
 })

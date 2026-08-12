@@ -137,7 +137,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >

@@ -4,7 +4,6 @@ import { RiAedFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import { DocumentProcessingPriority, Plan } from '../type'
 
 type PriorityLabelProps = {
   className?: string
@@ -15,14 +14,13 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
   const { plan } = useProviderContext()
 
   const priority = useMemo(() => {
-    if (plan.type === Plan.sandbox) return DocumentProcessingPriority.standard
+    if (plan.type === 'sandbox') return 'standard'
 
-    if (plan.type === Plan.professional) return DocumentProcessingPriority.priority
+    if (plan.type === 'professional') return 'priority'
 
-    if (plan.type === Plan.team || plan.type === Plan.enterprise)
-      return DocumentProcessingPriority.topPriority
+    if (plan.type === 'team') return 'top-priority'
 
-    return DocumentProcessingPriority.standard
+    return 'standard'
   }, [plan])
 
   return (
@@ -37,9 +35,9 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
           />
         }
       >
-        {(plan.type === Plan.professional ||
-          plan.type === Plan.team ||
-          plan.type === Plan.enterprise) && <RiAedFill className="mr-0.5 size-3" />}
+        {(plan.type === 'professional' || plan.type === 'team') && (
+          <RiAedFill className="mr-0.5 size-3" />
+        )}
         <span>{t(($) => $[`plansCommon.priority.${priority}`], { ns: 'billing' })}</span>
       </TooltipTrigger>
       <TooltipContent>
@@ -47,7 +45,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
           {t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' })}:{' '}
           {t(($) => $[`plansCommon.priority.${priority}`], { ns: 'billing' })}
         </div>
-        {priority !== DocumentProcessingPriority.topPriority && (
+        {priority !== 'top-priority' && (
           <div className="text-xs text-text-secondary">
             {t(($) => $['plansCommon.documentProcessingPriorityTip'], { ns: 'billing' })}
           </div>

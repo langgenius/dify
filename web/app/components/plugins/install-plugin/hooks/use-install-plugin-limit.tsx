@@ -3,9 +3,9 @@ import type {
   PluginBundleDependencyType,
   PluginVerification,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { InstallationScope } from '@/features/system-features/constants'
 
 type PluginInstallCandidate = {
   from: PluginBundleDependencyType
@@ -32,13 +32,13 @@ export function pluginInstallLimit(
   const scope = permission.plugin_installation_scope
 
   switch (scope) {
-    case InstallationScope.ALL:
+    case zPluginInstallationScope.enum.all:
       return { canInstall: true }
-    case InstallationScope.NONE:
+    case zPluginInstallationScope.enum.none:
       return { canInstall: false }
-    case InstallationScope.OFFICIAL_ONLY:
+    case zPluginInstallationScope.enum.official_only:
       return { canInstall: authorizedCategory === 'langgenius' }
-    case InstallationScope.OFFICIAL_AND_PARTNER:
+    case zPluginInstallationScope.enum.official_and_specific_partners:
       return {
         canInstall: authorizedCategory === 'langgenius' || authorizedCategory === 'partner',
       }
