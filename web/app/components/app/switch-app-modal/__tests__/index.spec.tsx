@@ -3,7 +3,6 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
@@ -40,7 +39,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 let mockEnableBilling = false
 let mockPlan = {
-  type: Plan.sandbox,
+  type: 'sandbox',
   usage: {
     buildApps: 0,
     teamMembers: 0,
@@ -155,7 +154,7 @@ describe('SwitchAppModal', () => {
     useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
     mockEnableBilling = false
     mockPlan = {
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: {
         buildApps: 0,
         teamMembers: 0,

@@ -11,7 +11,6 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
-import { Plan } from '@/app/components/billing/type'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -145,14 +144,14 @@ const StepOne = ({
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceUnavailable =
-    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
+    shouldCheckVectorSpace && plan.type === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
     !!vectorSpace &&
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&
     vectorSpace.size >= vectorSpace.limit
   const isShowVectorSpaceFull = (allFileLoaded || hasNotion) && isVectorSpaceFull && enableBilling
-  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
 
   const isNotionAuthed = useMemo(
     () => checkNotionAuth(authedDataSourceList),
@@ -249,7 +248,7 @@ const StepOne = ({
                     </div>
                   )}
                   <NextStepButton disabled={fileNextDisabled} onClick={onStepChange} />
-                  {enableBilling && plan.type === Plan.sandbox && (
+                  {enableBilling && plan.type === 'sandbox' && (
                     <div className="mt-5">
                       <div className="mb-4 h-px bg-divider-subtle" />
                       <UpgradeCard />

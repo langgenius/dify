@@ -1,8 +1,8 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -32,7 +32,7 @@ vi.mock('nuqs', async (importOriginal) => {
 
 const mockUseProviderContext = vi.mocked(useProviderContext)
 
-function mockProviderPlan(planType: Plan) {
+function mockProviderPlan(planType: CloudPlan) {
   mockUseProviderContext.mockReturnValue(
     createMockProviderContextValue({
       enableBilling: true,
@@ -54,7 +54,7 @@ describe('ArchivedLogsNotice', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderPlan(Plan.professional)
+    mockProviderPlan('professional')
   })
 
   it('should show an accessible notice for paid workspace managers', async () => {
@@ -71,7 +71,7 @@ describe('ArchivedLogsNotice', () => {
   })
 
   it('should not show notice for sandbox workspaces', () => {
-    mockProviderPlan(Plan.sandbox)
+    mockProviderPlan('sandbox')
 
     renderNotice()
 

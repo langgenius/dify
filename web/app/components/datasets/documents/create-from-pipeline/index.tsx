@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -134,13 +133,13 @@ const CreateFormPipeline = () => {
   )
   const isCheckingVectorSpace = shouldCheckVectorSpace && !vectorSpace && isFetchingVectorSpacePlan
   const isVectorSpaceUnavailable =
-    shouldCheckVectorSpace && plan.type === Plan.sandbox && !!vectorSpace?.usage_unknown
+    shouldCheckVectorSpace && plan.type === 'sandbox' && !!vectorSpace?.usage_unknown
   const isVectorSpaceFull =
     !!vectorSpace &&
     !vectorSpace.usage_unknown &&
     vectorSpace.limit > 0 &&
     vectorSpace.size >= vectorSpace.limit
-  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
 
   // UI state
   const {

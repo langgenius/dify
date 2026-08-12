@@ -10,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -67,7 +66,7 @@ export const VersionHistoryPanel = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const { plan, enableBilling } = useProviderContext()
-  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== 'sandbox'
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()

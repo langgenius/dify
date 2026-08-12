@@ -57,11 +57,22 @@ export const zLicenseLimitationModel = z.object({
 })
 
 /**
+ * CloudPlan
+ *
+ * Enum representing user plan types in the cloud platform.
+ *
+ * SANDBOX: Free/default plan with limited features
+ * PROFESSIONAL: Professional paid plan
+ * TEAM: Team collaboration paid plan
+ */
+export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
+
+/**
  * SubscriptionModel
  */
 export const zSubscriptionModel = z.object({
   interval: z.string().default(''),
-  plan: z.string().default('sandbox'),
+  plan: zCloudPlan.default('sandbox'),
 })
 
 /**

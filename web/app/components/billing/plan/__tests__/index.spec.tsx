@@ -46,7 +46,6 @@ vi.mock('@/app/components/billing/usage-info/vector-space-info', () => ({
 }))
 
 vi.mock('../assets', () => ({
-  Enterprise: () => null,
   Professional: () => null,
   Sandbox: () => null,
   Team: () => null,
