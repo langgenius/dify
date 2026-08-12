@@ -18,7 +18,7 @@ class KnowledgeFSOperationUnavailableHTTPError(BaseHTTPException):
 class KnowledgeFSUpstreamUnavailableHTTPError(BaseHTTPException):
     error_code = "knowledge_fs_upstream_unavailable"
     description = "KnowledgeFS is unavailable."
-    code = 502
+    code = 503
 
 
 class KnowledgeFSInvalidRequestHTTPError(BaseHTTPException):

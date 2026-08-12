@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound, RequestEntityTooLarge
+from werkzeug.exceptions import Forbidden, NotFound, RequestEntityTooLarge, ServiceUnavailable
 
 from controllers.common import wraps as common_wraps
 from controllers.console import console_ns
@@ -19,6 +19,7 @@ from controllers.console.wraps import RBACPermission, RBACResourceScope
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
+from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
 from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
@@ -276,6 +277,88 @@ def test_single_document_download_preserves_resource_not_found_after_permission_
         document_id="document-1",
     )
     download_service_factory.assert_not_called()
+
+
+def test_single_document_download_maps_storage_unavailable_after_permission_allows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor = KnowledgeFSDocumentDownloadDescriptor(
+        document_id="document-1",
+        filename="guide.md",
+        mime_type="text/markdown",
+        object_key="namespaces/tenant-1/spaces/space-1/documents/guide.md",
+        sha256="a" * 64,
+        size_bytes=4,
+    )
+    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
+    download_service = SimpleNamespace(
+        load_stream=MagicMock(side_effect=KnowledgeFSDownloadUnavailableError("storage unavailable"))
+    )
+    permission_gate = MagicMock()
+    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        common_wraps,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
+    permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi.get)
+    app = Flask(__name__)
+
+    with app.test_request_context(), pytest.raises(ServiceUnavailable):
+        permission_wrapper(
+            console_resources.KnowledgeFSSpaceLogicalDocumentDownloadApi(),
+            control_space_id="control-1",
+            document_id="document-1",
+        )
+
+    permission_gate.assert_called_once()
+    download_service.load_stream.assert_called_once_with(descriptor)
+
+
+def test_batch_document_download_maps_storage_unavailable_after_permission_allows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor = KnowledgeFSDocumentDownloadDescriptor(
+        document_id="document-1",
+        filename="guide.md",
+        mime_type="text/markdown",
+        object_key="namespaces/tenant-1/spaces/space-1/documents/guide.md",
+        sha256="a" * 64,
+        size_bytes=4,
+    )
+    facade = SimpleNamespace(prepare_logical_document_download=MagicMock(return_value=descriptor))
+    zip_context = MagicMock()
+    zip_context.__enter__.side_effect = KnowledgeFSDownloadUnavailableError("storage unavailable")
+    download_service = SimpleNamespace(build_zip_tempfile=MagicMock(return_value=zip_context))
+    permission_gate = MagicMock()
+    monkeypatch.setattr(common_wraps.dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(
+        common_wraps,
+        "current_account_with_tenant",
+        lambda: (SimpleNamespace(id="account-1"), "tenant-1"),
+    )
+    monkeypatch.setattr(common_wraps, "enforce_rbac_access", permission_gate)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", lambda: download_service)
+    permission_wrapper = _rbac_wrapper(console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi.post)
+    app = Flask(__name__)
+
+    with (
+        app.test_request_context(json={"document_ids": ["document-1"]}),
+        pytest.raises(ServiceUnavailable),
+    ):
+        permission_wrapper(
+            console_resources.KnowledgeFSSpaceLogicalDocumentsDownloadApi(),
+            control_space_id="control-1",
+        )
+
+    permission_gate.assert_called_once()
+    download_service.build_zip_tempfile.assert_called_once_with([descriptor])
 
 
 def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:

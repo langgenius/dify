@@ -9,7 +9,11 @@ from tempfile import NamedTemporaryFile
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from services.file_service import FileService
-from services.knowledge_fs.object_storage import KnowledgeFSObjectStorageService
+from services.knowledge_fs.object_storage import (
+    KnowledgeFSObjectStorageCorruptError,
+    KnowledgeFSObjectStorageError,
+    KnowledgeFSObjectStorageService,
+)
 from services.knowledge_fs.product_dto import KnowledgeFSDocumentDownloadDescriptor
 
 KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
@@ -23,18 +27,27 @@ class KnowledgeFSDownloadObjectNotFoundError(FileNotFoundError):
     pass
 
 
+class KnowledgeFSDownloadUnavailableError(RuntimeError):
+    pass
+
+
 class KnowledgeFSDownloadService:
     def __init__(self, *, object_storage: KnowledgeFSObjectStorageService | None = None) -> None:
         self._object_storage = object_storage or KnowledgeFSObjectStorageService()
 
     def load_stream(self, descriptor: KnowledgeFSDocumentDownloadDescriptor) -> Generator[bytes, None, None]:
-        metadata = self._object_storage.head_object(key=descriptor.object_key)
-        if metadata is None or metadata.size_bytes != descriptor.size_bytes:
-            raise KnowledgeFSDownloadObjectNotFoundError(descriptor.document_id)
-        stream = self._object_storage.load_stream(key=descriptor.object_key)
-        if stream is None:
-            raise KnowledgeFSDownloadObjectNotFoundError(descriptor.document_id)
-        return stream
+        try:
+            metadata = self._object_storage.head_object(key=descriptor.object_key)
+            if metadata is None or metadata.size_bytes != descriptor.size_bytes:
+                raise KnowledgeFSDownloadObjectNotFoundError(descriptor.document_id)
+            stream = self._object_storage.load_stream(key=descriptor.object_key)
+            if stream is None:
+                raise KnowledgeFSDownloadObjectNotFoundError(descriptor.document_id)
+            return stream
+        except KnowledgeFSObjectStorageCorruptError as exc:
+            raise KnowledgeFSDownloadObjectNotFoundError(descriptor.document_id) from exc
+        except KnowledgeFSObjectStorageError as exc:
+            raise KnowledgeFSDownloadUnavailableError("KnowledgeFS object storage is unavailable") from exc
 
     @contextmanager
     def build_zip_tempfile(

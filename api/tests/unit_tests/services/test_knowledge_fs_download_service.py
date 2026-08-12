@@ -11,6 +11,11 @@ from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadObjectNotFoundError,
     KnowledgeFSDownloadService,
     KnowledgeFSDownloadTooLargeError,
+    KnowledgeFSDownloadUnavailableError,
+)
+from services.knowledge_fs.object_storage import (
+    KnowledgeFSObjectStorageCorruptError,
+    KnowledgeFSObjectStorageUnavailableError,
 )
 from services.knowledge_fs.product_dto import KnowledgeFSDocumentDownloadDescriptor
 
@@ -54,6 +59,32 @@ def test_load_stream_rejects_missing_or_changed_object() -> None:
 
     with pytest.raises(KnowledgeFSDownloadObjectNotFoundError):
         service.load_stream(descriptor(document_id="document-1", filename="a.txt", object_key="object-1", size_bytes=5))
+
+
+@pytest.mark.parametrize(
+    ("storage_error", "expected_error"),
+    [
+        (
+            KnowledgeFSObjectStorageCorruptError("object body is missing"),
+            KnowledgeFSDownloadObjectNotFoundError,
+        ),
+        (
+            KnowledgeFSObjectStorageUnavailableError("storage is unavailable"),
+            KnowledgeFSDownloadUnavailableError,
+        ),
+    ],
+)
+def test_load_stream_translates_object_storage_errors(
+    storage_error: Exception,
+    expected_error: type[Exception],
+) -> None:
+    object_storage = SimpleNamespace(
+        head_object=lambda **_: (_ for _ in ()).throw(storage_error),
+    )
+    service = KnowledgeFSDownloadService(object_storage=object_storage)
+
+    with pytest.raises(expected_error):
+        service.load_stream(descriptor(document_id="document-1", filename="a.txt", object_key="object-1", size_bytes=4))
 
 
 def test_build_zip_streams_objects_and_deduplicates_names() -> None:

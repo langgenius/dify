@@ -73,6 +73,7 @@ import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 import { useQueryDataUpdateCount } from './use-query-data-update-count'
 
 const TASK_PAGE_SIZE = 100
+const KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_DOCUMENTS = 100
 const MAX_TASK_EVENT_STREAMS = 6
 const MAX_AUTO_CURSOR_PAGES = 20
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
@@ -824,13 +825,18 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [availableDocumentIds, selectedDocumentIds],
   )
-  const downloadableSelectedDocumentIds = useMemo(
-    () =>
-      documents.flatMap((document) =>
-        validSelectedDocumentIds.has(document.id) && document.active ? [document.id] : [],
-      ),
-    [documents, validSelectedDocumentIds],
-  )
+  const downloadableSelectedDocumentIds = useMemo(() => {
+    const selectedDocuments = documents.filter((document) =>
+      validSelectedDocumentIds.has(document.id),
+    )
+    if (
+      selectedDocuments.length !== validSelectedDocumentIds.size ||
+      selectedDocuments.length > KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_DOCUMENTS ||
+      selectedDocuments.some((document) => !document.active)
+    )
+      return []
+    return selectedDocuments.map((document) => document.id)
+  }, [documents, validSelectedDocumentIds])
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return documents.filter((document) => {

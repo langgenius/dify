@@ -1348,6 +1348,8 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
         with pytest.raises(http_error):
             fail()
 
+    assert KnowledgeFSUpstreamUnavailableHTTPError.code == HTTPStatus.SERVICE_UNAVAILABLE
+
 
 def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_contract() -> None:
     from pydantic import ValidationError

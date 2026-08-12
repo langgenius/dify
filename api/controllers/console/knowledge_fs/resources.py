@@ -58,6 +58,7 @@ from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadObjectNotFoundError,
     KnowledgeFSDownloadService,
     KnowledgeFSDownloadTooLargeError,
+    KnowledgeFSDownloadUnavailableError,
 )
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
 from services.knowledge_fs.initial_source_preview_job import (
@@ -1432,6 +1433,8 @@ class KnowledgeFSSpaceLogicalDocumentsDownloadApi(Resource):
             raise RequestEntityTooLarge(str(exc)) from exc
         except KnowledgeFSDownloadObjectNotFoundError as exc:
             raise NotFound("KnowledgeFS document object not found") from exc
+        except KnowledgeFSDownloadUnavailableError as exc:
+            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>/download")
@@ -1459,6 +1462,8 @@ class KnowledgeFSSpaceLogicalDocumentDownloadApi(Resource):
             body = KnowledgeFSDownloadService().load_stream(descriptor)
         except KnowledgeFSDownloadObjectNotFoundError as exc:
             raise NotFound("KnowledgeFS document object not found") from exc
+        except KnowledgeFSDownloadUnavailableError as exc:
+            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
         response = Response(body, content_type=descriptor.mime_type or "application/octet-stream")
         response.content_length = descriptor.size_bytes
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(descriptor.filename, safe='')}"

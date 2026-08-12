@@ -3164,6 +3164,63 @@ describe('DocumentsPage', () => {
     })
   })
 
+  it('disables bulk download when any selected document has no active revision', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'ready', title: 'Ready.pdf' }),
+            document({
+              active: null,
+              activeRevision: undefined,
+              id: 'pending',
+              title: 'Pending.pdf',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Ready.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Pending.pdf' }))
+
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    ).toBeDisabled()
+    expect(downloadDocumentsMutation).not.toHaveBeenCalled()
+  })
+
+  it('disables bulk download when more than 100 documents are selected', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 101 }, (_, index) =>
+            document({ id: `document-${index}`, title: `Document ${index}.pdf` }),
+          ),
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.selectAllDocuments' }),
+    )
+
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    ).toBeDisabled()
+    expect(downloadDocumentsMutation).not.toHaveBeenCalled()
+  })
+
   it('removes selected documents through one bulk deletion request', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
