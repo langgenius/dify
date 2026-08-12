@@ -26,6 +26,7 @@ const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 const render = (ui: React.ReactElement) => {
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile as { email?: string },
+    accountProfileMeta: { currentVersion: '1.0.0' },
     educationStatus: mockEducationStatus,
   })
   return renderWithConsoleState(ui, { wrapper })
@@ -40,11 +41,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
   useGetPricingPageLanguage: () => 'en',

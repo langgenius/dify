@@ -80,28 +80,28 @@ vi.mock('../shared/use-access-point-actions', () => ({
 vi.mock('../built-in-access-points/web-app-card', () => ({
   WebAppAccessPointCard: (props: Record<string, unknown>) => {
     mocks.webCard(props)
-    return <div data-testid="web-app-card" />
+    return null
   },
 }))
 
 vi.mock('../built-in-access-points/service-api-card', () => ({
   ServiceApiAccessPointCard: (props: Record<string, unknown>) => {
     mocks.apiCard(props)
-    return <div data-testid="service-api-card" />
+    return null
   },
 }))
 
 vi.mock('../built-in-access-points/mcp-card', () => ({
   MCPAccessPointCard: (props: Record<string, unknown>) => {
     mocks.mcpCard(props)
-    return <div data-testid="mcp-card" />
+    return null
   },
 }))
 
 vi.mock('../built-in-access-points/trigger-card', () => ({
   TriggerAccessPointCard: (props: Record<string, unknown>) => {
     mocks.triggerCard(props)
-    return <div data-testid="trigger-card" />
+    return null
   },
 }))
 
@@ -125,16 +125,13 @@ describe('BuiltInAccessPoints', () => {
     render(<BuiltInAccessPoints appId="app-1" />)
 
     expect(screen.getByText('deployments.studio.accessPoint.noPublishedTitle')).toBeInTheDocument()
-    expect(screen.getByTestId('web-app-card')).toBeInTheDocument()
-    expect(screen.getByTestId('service-api-card')).toBeInTheDocument()
-    expect(screen.getByTestId('mcp-card')).toBeInTheDocument()
-    expect(screen.getByTestId('trigger-card')).toBeInTheDocument()
     expect(mocks.webCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable', canDeploy: true, canEdit: false }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable', canEdit: false }),
     )
+    expect(mocks.mcpCard).toHaveBeenCalledTimes(1)
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable', canEdit: false }),
     )

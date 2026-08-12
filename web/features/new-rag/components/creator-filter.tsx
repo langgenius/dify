@@ -8,11 +8,10 @@ import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/client'
 
 type CreatorFilterProps = {
@@ -27,7 +26,10 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
   const { t } = useTranslation('dataset')
   const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
-  const currentUserId = useAtomValue(userProfileAtom).id
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const { data, isError, isPending, refetch } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions(),
   )

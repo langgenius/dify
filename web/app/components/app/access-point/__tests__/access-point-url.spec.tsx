@@ -17,6 +17,23 @@ describe('AccessPointUrl', () => {
     expect(screen.getByRole('button', { name: 'Open' })).toBeDisabled()
   })
 
+  it('exposes an available endpoint as an external link', () => {
+    render(
+      <AccessPointUrl
+        {...endpointProps}
+        enabled
+        showOpen
+        openLabel="Open"
+        openUrl={endpointProps.value}
+      />,
+    )
+
+    const openLink = screen.getByRole('link', { name: 'Open' })
+    expect(openLink).toHaveAttribute('href', endpointProps.value)
+    expect(openLink).toHaveAttribute('target', '_blank')
+    expect(openLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('shows an unavailable endpoint without replacing it with a loading skeleton', () => {
     render(<AccessPointUrl {...endpointProps} enabled={false} unavailable />)
 

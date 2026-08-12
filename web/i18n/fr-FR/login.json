@@ -91,6 +91,7 @@
   "timezone": "Fuseau horaire",
   "tos": "Conditions de Service",
   "tosDesc": "En vous inscrivant, vous acceptez nos",
+  "turnstile.loadError": "La vérification de sécurité n’a pas pu être chargée.",
   "usePassword": "Utiliser le mot de passe",
   "useVerificationCode": "Utiliser le code de vérification",
   "validate": "Valider",

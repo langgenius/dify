@@ -4,8 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { AccessMode } from '@/models/access-control'
 import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
+const mockAddMemberOrGroupDialog = vi.hoisted(() => vi.fn())
+
 vi.mock('../add-member-or-group-pop', () => ({
-  default: () => <div data-testid="add-member-or-group-dialog" />,
+  default: (props: Record<string, unknown>) => {
+    mockAddMemberOrGroupDialog(props)
+    return null
+  },
 }))
 
 const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup =>
@@ -34,6 +39,10 @@ describe('SpecificGroupsOrMembers', () => {
     members: [baseMember],
   }
 
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('should render the collapsed row when not in specific mode', () => {
     render(
       <SpecificGroupsOrMembers
@@ -45,7 +54,7 @@ describe('SpecificGroupsOrMembers', () => {
     )
 
     expect(screen.getByText('app.accessControlDialog.accessItems.specific')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
   })
 
   it('should show loading while whitelist subjects are pending', () => {
@@ -59,7 +68,7 @@ describe('SpecificGroupsOrMembers', () => {
     )
 
     expect(container.querySelector('.spin-animation')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
   })
 
   it('should expose the failed load and allow retry without rendering an empty selection', async () => {
@@ -78,7 +87,7 @@ describe('SpecificGroupsOrMembers', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('common.dynamicSelect.error')
     expect(screen.queryByText('app.accessControlDialog.noGroupsOrMembers')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
+    expect(mockAddMemberOrGroupDialog).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(onRetrySubjects).toHaveBeenCalledTimes(1)

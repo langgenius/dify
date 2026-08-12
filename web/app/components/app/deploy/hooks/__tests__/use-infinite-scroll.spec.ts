@@ -6,6 +6,8 @@ import { useInfiniteScroll } from '../use-infinite-scroll'
 
 let intersectionCallback: IntersectionObserverCallback | undefined
 let intersectionOptions: IntersectionObserverInit | undefined
+let scrollRoot: HTMLDivElement | null = null
+let scrollSentinel: HTMLDivElement | null = null
 const observe = vi.fn()
 const disconnect = vi.fn()
 const originalIntersectionObserver = globalThis.IntersectionObserver
@@ -37,8 +39,18 @@ function TestInfiniteScroll({ query }: { query: InfiniteScrollQuery }) {
 
   return createElement(
     'div',
-    { ref: rootRef, 'data-testid': 'scroll-root' },
-    createElement('div', { ref: sentinelRef, 'data-testid': 'scroll-sentinel' }),
+    {
+      ref: (node: HTMLDivElement | null) => {
+        scrollRoot = node
+        rootRef(node)
+      },
+    },
+    createElement('div', {
+      ref: (node: HTMLDivElement | null) => {
+        scrollSentinel = node
+        sentinelRef(node)
+      },
+    }),
   )
 }
 
@@ -69,6 +81,8 @@ describe('deploy useInfiniteScroll', () => {
     vi.clearAllMocks()
     intersectionCallback = undefined
     intersectionOptions = undefined
+    scrollRoot = null
+    scrollSentinel = null
     globalThis.IntersectionObserver =
       MockIntersectionObserver as unknown as typeof IntersectionObserver
   })
@@ -78,13 +92,13 @@ describe('deploy useInfiniteScroll', () => {
   })
 
   it('should observe the sentinel within the version list', () => {
-    const view = render(createElement(TestInfiniteScroll, { query: createQuery() }))
-    const root = view.getByTestId('scroll-root')
-    const sentinel = view.getByTestId('scroll-sentinel')
+    render(createElement(TestInfiniteScroll, { query: createQuery() }))
 
-    expect(observe).toHaveBeenCalledWith(sentinel)
+    expect(scrollRoot).not.toBeNull()
+    expect(scrollSentinel).not.toBeNull()
+    expect(observe).toHaveBeenCalledWith(scrollSentinel)
     expect(intersectionOptions).toMatchObject({
-      root,
+      root: scrollRoot,
       rootMargin: '0px 0px 300px 0px',
       threshold: 0,
     })

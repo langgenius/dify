@@ -135,10 +135,6 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   knowledgeFsUploadEnabled: true,
   knowledgeFsUploadEnabledAtom: Symbol('knowledgeFsUploadEnabledAtom'),
 }))
-const accountStateMock = vi.hoisted(() => ({
-  userProfileIdAtom: Symbol('userProfileIdAtom'),
-  userProfileAtom: Symbol('userProfileAtom'),
-}))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiBaseUrl: () => ({ data: { api_base_url: 'https://api.example.com' } }),
@@ -191,6 +187,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQueryClient: () => ({
       invalidateQueries: invalidateQueriesMock,
     }),
+    useSuspenseQuery: () => ({ data: 'account-1' }),
   }
 })
 
@@ -203,8 +200,6 @@ vi.mock('jotai', async (importOriginal) => {
         return permissionStateMock.workspacePermissionKeys
       if (atom === systemFeaturesStateMock.knowledgeFsUploadEnabledAtom)
         return systemFeaturesStateMock.knowledgeFsUploadEnabled
-      if (atom === accountStateMock.userProfileIdAtom) return 'account-1'
-      if (atom === accountStateMock.userProfileAtom) return { id: 'account-1' }
       return original.useAtomValue(atom as Parameters<typeof original.useAtomValue>[0])
     },
   }
@@ -218,9 +213,8 @@ vi.mock('@/features/system-features/state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.knowledgeFsUploadEnabledAtom,
 }))
 
-vi.mock('@/context/account-state', () => ({
-  userProfileIdAtom: accountStateMock.userProfileIdAtom,
-  userProfileAtom: accountStateMock.userProfileAtom,
+vi.mock('@/features/account-profile/client', () => ({
+  userProfileQueryOptions: () => ({}),
 }))
 
 vi.mock('@/service/client', () => ({
