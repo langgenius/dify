@@ -4150,6 +4150,7 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | document_id | string |  | Yes |
+| document_title | string |  | No |
 | job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
 | status_url | string |  | Yes |
 
@@ -4328,7 +4329,7 @@ Model class for i18n object.
 | asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
 | compilation_job | object |  | No |
 | document_id | string |  | No |
-| status | string, <br>**Available values:** "not_found", "queued" | *Enum:* `"not_found"`, `"queued"` | Yes |
+| status | string, <br>**Available values:** "disabled", "not_found", "queued" | *Enum:* `"disabled"`, `"not_found"`, `"queued"` | Yes |
 | status_url | string |  | No |
 
 #### KnowledgeFSDocumentReindexPayload
@@ -4446,6 +4447,9 @@ Model class for i18n object.
 | active | [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) |  | Yes |
 | active_revision | integer |  | No |
 | created_at | dateTime |  | Yes |
+| disabled_at | string |  | No |
+| disabled_by_subject_id | string |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | provider_item_id | string |  | No |

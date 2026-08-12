@@ -7550,6 +7550,45 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | Datasource resources available for an initial Source | **application/json**: [KnowledgeFSInitialSourcePreviewResponse](#knowledgefsinitialsourcepreviewresponse)<br> |
 
+### [POST] /knowledge-fs/source-provider-preview/jobs
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSInitialWebsiteSourcePreviewPayload](#knowledgefsinitialwebsitesourcepreviewpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Website datasource preview queued | **application/json**: [KnowledgeFSInitialSourcePreviewJobCreateResponse](#knowledgefsinitialsourcepreviewjobcreateresponse)<br> |
+
+### [DELETE] /knowledge-fs/source-provider-preview/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Website datasource preview canceled | **application/json**: [KnowledgeFSInitialSourcePreviewJobResponse](#knowledgefsinitialsourcepreviewjobresponse)<br> |
+
+### [GET] /knowledge-fs/source-provider-preview/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Website datasource preview status | **application/json**: [KnowledgeFSInitialSourcePreviewJobResponse](#knowledgefsinitialsourcepreviewjobresponse)<br> |
+
 ### [GET] /knowledge-fs/spaces
 #### Parameters
 
@@ -7558,6 +7597,7 @@ Get instruction generation template
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| query | query |  | No | string |
 
 #### Responses
 
@@ -8160,6 +8200,64 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS logical documents | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
 
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/logical-documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBulkDocumentAvailabilityPayload](#knowledgefsbulkdocumentavailabilitypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical document availability updated | **application/json**: [KnowledgeFSBulkDocumentAvailabilityResponse](#knowledgefsbulkdocumentavailabilityresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/bulk
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header | Stable key used to make the mutation safe to retry | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBulkLogicalDocumentDeletePayload](#knowledgefsbulklogicaldocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | KnowledgeFS logical document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/logical-documents/download-zip
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentBatchDownloadPayload](#knowledgefsdocumentbatchdownloadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical documents ZIP | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
+
 ### [DELETE] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
 #### Parameters
 
@@ -8194,6 +8292,40 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | KnowledgeFS logical document | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentAvailabilityPayload](#knowledgefsdocumentavailabilitypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical document availability updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | KnowledgeFS logical document | **application/octet-stream**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [PUT] /knowledge-fs/spaces/{control_space_id}/members
 #### Parameters
@@ -20821,6 +20953,16 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | KnowledgeFSAppSpaceJoinType | string |  |  |
 
+#### KnowledgeFSBackgroundTaskFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| job_id | string |  | No |
+
 #### KnowledgeFSBackgroundTaskListQuery
 
 | Name | Type | Description | Required |
@@ -20847,6 +20989,7 @@ Input field definition for snippet parameters.
 | document_revision | integer |  | No |
 | error_code | string |  | No |
 | error_message | string |  | No |
+| failures | [ [KnowledgeFSBackgroundTaskFailureResponse](#knowledgefsbackgroundtaskfailureresponse) ] |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | operation | string, <br>**Available values:** "document_delete", "document_processing", "document_reindex", "document_upload", "source_bulk", "source_crawl_import", "source_crawl_preview", "source_online_document_import", "source_online_drive_import", "source_sync" | *Enum:* `"document_delete"`, `"document_processing"`, `"document_reindex"`, `"document_upload"`, `"source_bulk"`, `"source_crawl_import"`, `"source_crawl_preview"`, `"source_online_document_import"`, `"source_online_drive_import"`, `"source_sync"` | Yes |
@@ -20909,6 +21052,7 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | document_id | string |  | Yes |
+| document_title | string |  | No |
 | job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
 | status_url | string |  | Yes |
 
@@ -20917,6 +21061,34 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | items | [ [KnowledgeFSBulkDeletionAcceptedItemResponse](#knowledgefsbulkdeletionaccepteditemresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentAvailabilityFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| status | string, <br>**Available values:** "conflict", "not_found" | *Enum:* `"conflict"`, `"not_found"` | Yes |
+
+#### KnowledgeFSBulkDocumentAvailabilityItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| expectedRowVersion | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentAvailabilityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSBulkDocumentAvailabilityItem](#knowledgefsbulkdocumentavailabilityitem) ] |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### KnowledgeFSBulkDocumentAvailabilityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br>[KnowledgeFSBulkDocumentAvailabilityFailureResponse](#knowledgefsbulkdocumentavailabilityfailureresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
 #### KnowledgeFSBulkDocumentDeleteItemPayload
@@ -20947,6 +21119,19 @@ Input field definition for snippet parameters.
 | total_items | integer |  | Yes |
 | type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSBulkLogicalDocumentDeleteItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSBulkLogicalDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSBulkLogicalDocumentDeleteItemPayload](#knowledgefsbulklogicaldocumentdeleteitempayload) ] |  | Yes |
 
 #### KnowledgeFSControlSpacePermissionRole
 
@@ -21055,6 +21240,19 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
+
+#### KnowledgeFSDocumentAvailabilityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| expectedRowVersion | integer |  | Yes |
+
+#### KnowledgeFSDocumentBatchDownloadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_ids | [ string ] |  | Yes |
 
 #### KnowledgeFSDocumentChunkListQuery
 
@@ -21172,7 +21370,7 @@ Input field definition for snippet parameters.
 | asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
 | compilation_job | object |  | No |
 | document_id | string |  | No |
-| status | string, <br>**Available values:** "not_found", "queued" | *Enum:* `"not_found"`, `"queued"` | Yes |
+| status | string, <br>**Available values:** "disabled", "not_found", "queued" | *Enum:* `"disabled"`, `"not_found"`, `"queued"` | Yes |
 | status_url | string |  | No |
 
 #### KnowledgeFSDocumentReindexPayload
@@ -21448,8 +21646,10 @@ Input field definition for snippet parameters.
 | datasource | string |  | Yes |
 | kind | string |  | Yes |
 | name | string |  | Yes |
+| parameters | object |  | No |
 | pluginId | string |  | Yes |
 | provider | string |  | Yes |
+| providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
 | sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
 
@@ -21461,8 +21661,10 @@ Input field definition for snippet parameters.
 | datasource | string |  | Yes |
 | kind | string |  | Yes |
 | name | string |  | Yes |
+| parameters | object |  | No |
 | pluginId | string |  | Yes |
 | provider | string |  | Yes |
+| providerDisplayName | string |  | No |
 | selection | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
 | sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
 
@@ -21490,6 +21692,29 @@ Input field definition for snippet parameters.
 | size | integer |  | Yes |
 | type | string |  | Yes |
 
+#### KnowledgeFSInitialSourcePreviewJobCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string |  | Yes |
+| status | string, <br>**Default:** pending |  | No |
+
+#### KnowledgeFSInitialSourcePreviewJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string |  | Yes |
+| result | [KnowledgeFSInitialSourcePreviewResponse](#knowledgefsinitialsourcepreviewresponse) |  | No |
+| status | string, <br>**Available values:** "canceled", "completed", "failed", "pending", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"pending"`, `"running"` | Yes |
+
+#### KnowledgeFSInitialSourcePreviewPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
 #### KnowledgeFSInitialSourcePreviewPayload
 
 | Name | Type | Description | Required |
@@ -21500,6 +21725,7 @@ Input field definition for snippet parameters.
 | parameters | object |  | No |
 | pluginId | string |  | Yes |
 | provider | string |  | Yes |
+| providerDisplayName | string |  | No |
 
 #### KnowledgeFSInitialSourcePreviewResponse
 
@@ -21507,8 +21733,9 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
-| kind | string, <br>**Available values:** "online_document", "online_drive" | *Enum:* `"online_document"`, `"online_drive"` | Yes |
+| kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
 | next_page_parameters | object |  | No |
+| pages | [ [KnowledgeFSInitialSourcePreviewPageResponse](#knowledgefsinitialsourcepreviewpageresponse) ] |  | No |
 
 #### KnowledgeFSInitialWebsiteCrawlOptionsPayload
 
@@ -21533,11 +21760,25 @@ Input field definition for snippet parameters.
 | datasource | string, <br>**Default:** crawl |  | No |
 | kind | string |  | Yes |
 | name | string |  | Yes |
+| parameters | object |  | No |
 | pluginId | string |  | No |
 | provider | string |  | Yes |
+| providerDisplayName | string |  | No |
 | root_url | string |  | Yes |
 | selection | [ [KnowledgeFSInitialWebsiteSelectionPayload](#knowledgefsinitialwebsiteselectionpayload) ] |  | Yes |
 | sync_policy | string, <br>**Available values:** "daily", "manual", "provider", <br>**Default:** provider | *Enum:* `"daily"`, `"manual"`, `"provider"` | No |
+
+#### KnowledgeFSInitialWebsiteSourcePreviewPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentialId | string |  | Yes |
+| datasource | string |  | Yes |
+| kind | string |  | Yes |
+| parameters | object |  | No |
+| pluginId | string |  | Yes |
+| provider | string |  | Yes |
+| providerDisplayName | string |  | No |
 
 #### KnowledgeFSJWKResponse
 
@@ -21576,6 +21817,9 @@ Input field definition for snippet parameters.
 | active | [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) |  | Yes |
 | active_revision | integer |  | No |
 | created_at | dateTime |  | Yes |
+| disabled_at | string |  | No |
+| disabled_by_subject_id | string |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
 | id | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
 | provider_item_id | string |  | No |
@@ -22653,6 +22897,7 @@ Input field definition for snippet parameters.
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| query | string |  | No |
 
 #### KnowledgeFSSpaceListResponse
 
