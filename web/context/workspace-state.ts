@@ -32,7 +32,8 @@ export const isCurrentWorkspaceManagerAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceManager
 })
 
-export const isCurrentWorkspaceEditorAtom = atom((get) => {
+// todo: refactor frontend permission check when RBAC is disabled
+export const _isCurrentWorkspaceEditorAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceEditor
 })
 
