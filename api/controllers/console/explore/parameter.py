@@ -45,7 +45,12 @@ class ExploreAppMetaApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ExploreAppMetaResponse.__name__])
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(installed_app.app_id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
         return dump_response(
             ExploreAppMetaResponse,
-            {"tool_icons": application_services().app_definitions.get_tool_icons(installed_app.app_id)},
+            {"tool_icons": tool_icons},
         )

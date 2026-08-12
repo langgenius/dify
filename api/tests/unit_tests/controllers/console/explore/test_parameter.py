@@ -56,3 +56,19 @@ class TestExploreAppMetaApi:
 
         assert result == {"tool_icons": {"search": "/icon"}}
         app_definitions.get_tool_icons.assert_called_once_with("app-1")
+
+    def test_get_maps_unavailable_definition_to_app_unavailable(self) -> None:
+        services, app_definitions = _application_services()
+        app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
+
+        with (
+            patch.object(module, "application_services", return_value=services),
+            pytest.raises(AppUnavailableError) as raised,
+        ):
+            unwrap(module.ExploreAppMetaApi.get)(module.ExploreAppMetaApi(), _installed_app())
+
+        assert raised.value.data == {
+            "code": "app_unavailable",
+            "message": "App unavailable, please check your app configurations.",
+            "status": 400,
+        }
