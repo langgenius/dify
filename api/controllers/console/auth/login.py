@@ -45,6 +45,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
