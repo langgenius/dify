@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileAtom } from '@/context/account-state'
 import { consoleQuery } from '@/service/client'
 
 type CreatorFilterProps = {
@@ -27,7 +27,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
   const { t } = useTranslation('dataset')
   const { t: tApp } = useTranslation('app')
   const { t: tCommon } = useTranslation('common')
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const currentUserId = useAtomValue(userProfileAtom).id
   const { data, isError, isPending, refetch } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions(),
   )
