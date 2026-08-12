@@ -11,7 +11,6 @@ import type { Model } from '@/app/components/header/account-setting/model-provid
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -1048,20 +1047,6 @@ export function SkillBuilderPanel({
                         )}
                       />
                     </button>
-                    <Tooltip>
-                      <TooltipTrigger
-                        className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                        aria-label={t(($) => $['skillManagement.detail.builder.voice'])}
-                        onClick={() => {
-                          toast.info(t(($) => $['skillManagement.detail.builder.voiceUnavailable']))
-                        }}
-                      >
-                        <span aria-hidden className="i-ri-mic-line size-4" />
-                      </TooltipTrigger>
-                      <TooltipContent placement="top">
-                        {t(($) => $['skillManagement.detail.builder.voiceUnavailable'])}
-                      </TooltipContent>
-                    </Tooltip>
                   </div>
                   <Button
                     aria-label={t(($) => $['skillManagement.detail.builder.send'])}

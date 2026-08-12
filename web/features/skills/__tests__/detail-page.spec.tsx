@@ -2768,18 +2768,15 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     expect(await screen.findByRole('img', { name: 'image.png' })).toBeInTheDocument()
   })
 
-  it('shows unavailable feedback for Skill Builder voice input', async () => {
-    const user = userEvent.setup()
+  it('does not show voice input in Skill Builder', async () => {
     renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    await user.click(
-      screen.getByRole('button', {
+    expect(
+      screen.queryByRole('button', {
         name: 'skill.skillManagement.detail.builder.voice',
       }),
-    )
-
-    expect(toast.info).toHaveBeenCalledWith('skill.skillManagement.detail.builder.voiceUnavailable')
+    ).not.toBeInTheDocument()
   })
 
   it('shows an error and re-enables Skill Builder input when sending fails', async () => {
