@@ -250,6 +250,35 @@ class TestAppWebAuthPermission:
         passport_service.return_value.verify.assert_called_once_with("passport")
         webapp_access.is_user_allowed.assert_called_once_with(user_id=expected_user_id, app_id="app-1")
 
+    @pytest.mark.parametrize("failing_method", ["requires_permission_check", "is_user_allowed"])
+    @patch("controllers.web.app.application_services")
+    def test_maps_access_dependency_failure_to_service_unavailable(
+        self, application_services: MagicMock, failing_method: str, app: Flask
+    ) -> None:
+        webapp_access = MagicMock()
+        webapp_access.requires_permission_check.return_value = True
+        if failing_method == "requires_permission_check":
+            webapp_access.requires_permission_check.side_effect = WebAppAccessUnavailableError()
+        else:
+            webapp_access.is_user_allowed.side_effect = WebAppAccessUnavailableError()
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        passport_service = MagicMock()
+        passport_service.return_value.verify.return_value = {"user_id": "user-1"}
+        with (
+            app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+            patch("controllers.web.app.extract_webapp_passport", return_value="passport"),
+            patch("controllers.web.app.PassportService", passport_service),
+            pytest.raises(WebAppAccessServiceUnavailableError) as raised,
+        ):
+            AppWebAuthPermission().get()
+
+        assert raised.value.data == {
+            "code": "web_app_access_unavailable",
+            "message": "Web app access service is unavailable.",
+            "status": 503,
+        }
+
     @patch("controllers.web.app.application_services")
     def test_private_app_requires_passport(self, application_services: MagicMock, app: Flask) -> None:
         webapp_access = MagicMock()

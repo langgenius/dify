@@ -318,9 +318,10 @@ def test_build_application_services_wires_webapp_permission(
             return_value=False,
         ) as is_user_allowed,
     ):
-        services = build_application_services(
+        services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
             deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
             redis=MagicMock(spec=RedisClientWrapper),
         )
         requires_permission = services.webapp_access.requires_permission_check("app-1")
@@ -331,3 +332,17 @@ def test_build_application_services_wires_webapp_permission(
     enabled.assert_called_once_with()
     get_access_mode.assert_called_once_with("app-1")
     is_user_allowed.assert_called_once_with("user-1", "app-1")
+
+
+def test_webapp_permission_adapter_maps_connection_failure() -> None:
+    failure = httpx.ConnectError("connection failed")
+    with (
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
+            side_effect=failure,
+        ),
+        pytest.raises(WebAppAccessUnavailableError) as raised,
+    ):
+        ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
+
+    assert raised.value.__cause__ is failure
