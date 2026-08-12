@@ -201,8 +201,8 @@ export function KnowledgeSpaceShell({
               <>
                 <div className="flex min-w-0 flex-1 items-center gap-px">
                   <Link
-                    href={newKnowledgeListPath}
-                    aria-label={t(($) => $['newKnowledge.backToList'])}
+                    href="/"
+                    aria-label={tCommon(($) => $['mainNav.home'])}
                     className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                   >
                     <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
@@ -211,9 +211,12 @@ export function KnowledgeSpaceShell({
                   <span aria-hidden className="system-md-regular text-text-quaternary">
                     /
                   </span>
-                  <span className="truncate px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary">
+                  <Link
+                    href={newKnowledgeListPath}
+                    className="truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  >
                     {t(($) => $.knowledge)}
-                  </span>
+                  </Link>
                 </div>
                 <DialogTrigger
                   handle={gotoAnythingDialogHandle}

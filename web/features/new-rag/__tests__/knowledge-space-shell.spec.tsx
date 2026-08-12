@@ -133,6 +133,11 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.settings.retrievalMode.fast')).toBeInTheDocument()
     expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
+      'href',
+      '/datasets?view=new',
+    )
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.overviewTitle' }),
     ).toHaveAttribute('href', '/datasets/new/space-1')
