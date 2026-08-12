@@ -161,6 +161,7 @@ class AppWebAuthPermission(Resource):
             400: "Bad Request",
             401: "Unauthorized",
             500: "Internal Server Error",
+            503: "Web App Access Service Unavailable",
         }
     )
     @web_ns.response(200, "Success", web_ns.models[BooleanResultResponse.__name__])
@@ -171,7 +172,11 @@ class AppWebAuthPermission(Resource):
             raise ValueError("appId must be provided")
 
         webapp_access = application_services().webapp_access
-        if not webapp_access.requires_permission_check(app_id):
+        try:
+            requires_permission_check = webapp_access.requires_permission_check(app_id)
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
+        if not requires_permission_check:
             return dump_response(BooleanResultResponse, {"result": True})
 
         try:
@@ -186,7 +191,8 @@ class AppWebAuthPermission(Resource):
             logger.exception("Unexpected error during auth verification")
             raise
 
-        return dump_response(
-            BooleanResultResponse,
-            {"result": webapp_access.is_user_allowed(user_id=str(user_id), app_id=app_id)},
-        )
+        try:
+            is_allowed = webapp_access.is_user_allowed(user_id=str(user_id), app_id=app_id)
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
+        return dump_response(BooleanResultResponse, {"result": is_allowed})
