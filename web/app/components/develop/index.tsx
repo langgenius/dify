@@ -42,7 +42,7 @@ const DevelopMain = ({ appId }: IDevelopMainProps) => {
         <ApiServer
           apiBaseUrl={appDetail.api_base_url}
           appId={appId}
-          canManageApiKey={appACLCapabilities.canEdit}
+          canManageApiKey={appACLCapabilities.canReleaseAndVersion}
         />
       </div>
       <div className="grow overflow-auto p-4 sm:px-10">

@@ -81,7 +81,6 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
 
   const changeApiStatus = useCallback(
     async (enabled: boolean) => {
-      if (!canEdit) return
       const [error] = await asyncRunSafe<App>(
         updateAppSiteStatus({
           url: `/apps/${appId}/api-enable`,
@@ -90,7 +89,7 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
       )
       handleResult(error)
     },
-    [appId, canEdit, handleResult],
+    [appId, handleResult],
   )
 
   const saveSiteConfig = useCallback(
