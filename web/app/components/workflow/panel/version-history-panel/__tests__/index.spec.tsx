@@ -1,9 +1,9 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { Shape } from '../../../store'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
-import { Plan } from '@/app/components/billing/type'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
@@ -25,7 +25,7 @@ const mockToast = vi.hoisted(() => ({
   error: vi.fn(),
   success: vi.fn(),
 }))
-let mockPlanType = Plan.professional
+let mockPlanType: CloudPlan = 'professional'
 let mockEnableBilling = true
 let mockPublishedEnvironments: VersionHistory['environments']
 let mockHasNextPage = false
@@ -284,7 +284,7 @@ describe('VersionHistoryPanel', () => {
     mockRestoreWorkflow.mockResolvedValue(undefined)
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
-    mockPlanType = Plan.professional
+    mockPlanType = 'professional'
     mockEnableBilling = true
     mockPublishedEnvironments = undefined
     mockHasNextPage = false
@@ -387,7 +387,7 @@ describe('VersionHistoryPanel', () => {
 
   it('should show plan upgrade modal instead of restore confirmation for sandbox users', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     render(
       <VersionHistoryPanel
@@ -407,7 +407,7 @@ describe('VersionHistoryPanel', () => {
 
   it('should show plan upgrade modal instead of exporting DSL for sandbox users', async () => {
     const { VersionHistoryPanel } = await import('../index')
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     render(
       <VersionHistoryPanel

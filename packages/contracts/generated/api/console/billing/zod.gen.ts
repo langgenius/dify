@@ -22,6 +22,13 @@ export const zPartnerTenantsPayload = z.object({
 export const zBillingResponse = z.record(z.string(), z.unknown())
 
 /**
+ * BillingSubscriptionResponse
+ */
+export const zBillingSubscriptionResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * Success
  */
 export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
@@ -45,4 +52,4 @@ export const zGetBillingSubscriptionQuery = z.object({
 /**
  * Success
  */
-export const zGetBillingSubscriptionResponse = zBillingResponse
+export const zGetBillingSubscriptionResponse = zBillingSubscriptionResponse

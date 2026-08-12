@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -13,7 +14,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -101,7 +101,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
   const { plan } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const isFreePlan = plan.type === Plan.sandbox
+  const isFreePlan = plan.type === 'sandbox'
 
   const { isPending, mutate: downloadCompliance } = useMutation({
     mutationKey: ['downloadCompliance', docName],
@@ -117,11 +117,11 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     },
   })
 
-  const whichPlanCanDownloadCompliance = {
-    [DocName.SOC2_Type_I]: [Plan.professional, Plan.team],
-    [DocName.SOC2_Type_II]: [Plan.team],
-    [DocName.ISO_27001]: [Plan.team],
-    [DocName.GDPR]: [Plan.team, Plan.professional, Plan.sandbox],
+  const whichPlanCanDownloadCompliance: Record<DocName, CloudPlan[]> = {
+    [DocName.SOC2_Type_I]: ['professional', 'team'],
+    [DocName.SOC2_Type_II]: ['team'],
+    [DocName.ISO_27001]: ['team'],
+    [DocName.GDPR]: ['team', 'professional', 'sandbox'],
   }
 
   const isCurrentPlanCanDownload = whichPlanCanDownloadCompliance[docName].includes(plan.type)
@@ -143,11 +143,10 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     setShowPricingModal,
   ])
 
-  const upgradeTooltip: Record<Plan, string> = {
-    [Plan.sandbox]: t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
-    [Plan.professional]: t(($) => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
-    [Plan.team]: '',
-    [Plan.enterprise]: '',
+  const upgradeTooltip: Record<CloudPlan, string> = {
+    sandbox: t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' }),
+    professional: t(($) => $['compliance.professionalUpgradeTooltip'], { ns: 'common' }),
+    team: '',
   }
   const labelTitle = typeof label === 'string' ? label : undefined
 
