@@ -7,7 +7,6 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   DragEvent,
-  FocusEvent,
   MouseEvent,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
@@ -43,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -266,13 +266,11 @@ export function FileTree({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const sidebarRef = useRef<HTMLElement>(null)
-  const referencesRegionRef = useRef<HTMLDivElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const [inlineAction, setInlineAction] = useState<FileTreeInlineAction>()
   const [draggingPaths, setDraggingPaths] = useState<string[]>([])
   const [dropTarget, setDropTarget] = useState<SkillDropTarget>()
   const [collapsedFolderPaths, setCollapsedFolderPaths] = useState<string[]>([])
-  const [referencesOpen, setReferencesOpen] = useState(false)
   const [searchDialogOpen, setSearchDialogOpen] = useState(false)
   const [skillRenameEditing, setSkillRenameEditing] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState<string[]>([])
@@ -301,26 +299,6 @@ export function FileTree({
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
   const closeSidebarFloatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleReferencesRegionBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
-    const nextTarget = event.relatedTarget
-    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return
-    setReferencesOpen(false)
-  }, [])
-
-  useEffect(() => {
-    if (!referencesOpen) return
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) return
-      if (referencesRegionRef.current?.contains(target)) return
-      setReferencesOpen(false)
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    return () => document.removeEventListener('pointerdown', handlePointerDown, true)
-  }, [referencesOpen])
 
   useEffect(() => {
     const fetchedReferenceCount = referencesQuery.data?.data?.length
@@ -1611,35 +1589,51 @@ export function FileTree({
               </AlertDialogActions>
             </AlertDialogContent>
           </AlertDialog>
-          <div className="mx-4 border-t border-divider-subtle py-3">
-            <div ref={referencesRegionRef} onBlur={handleReferencesRegionBlur}>
-              <button
-                type="button"
-                className="flex h-7 w-full cursor-pointer items-center gap-2 rounded-md text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                aria-expanded={referencesOpen}
-                onClick={() => setReferencesOpen((open) => !open)}
+          <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <button
+                    type="button"
+                    className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                  >
+                    <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate">
+                      {t(($) => $['skillManagement.detail.referencedBy'], {
+                        count: referenceCount,
+                      })}
+                    </span>
+                    <span
+                      aria-hidden
+                      className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
+                    />
+                  </button>
+                }
+              />
+              <PopoverContent
+                placement="top-start"
+                sideOffset={4}
+                popupClassName="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
+                popupProps={{
+                  'aria-label': t(($) => $['skillManagement.detail.referencedBy'], {
+                    count: referenceCount,
+                  }),
+                }}
               >
-                <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">
+                <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
                   {t(($) => $['skillManagement.detail.referencedBy'], {
                     count: referenceCount,
                   })}
-                </span>
-                <span
-                  aria-hidden
-                  className={cn(
-                    'i-ri-arrow-right-s-line size-4 text-text-quaternary transition-transform',
-                    referencesOpen && 'rotate-90',
-                  )}
-                />
-              </button>
-              {referencesOpen && (
-                <div className="relative z-20 mt-1">
-                  <SkillReferencesPanel skillId={skillId} />
                 </div>
-              )}
-            </div>
-            <div className="flex h-7 items-center gap-2 system-xs-regular text-text-tertiary">
+                <SkillReferencesPanel
+                  compact
+                  embedded
+                  maxHeight="max-h-[240px]"
+                  skillId={skillId}
+                />
+              </PopoverContent>
+            </Popover>
+            <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
               <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
               <span className="min-w-0 truncate">
                 {t(($) => $['skillManagement.detail.createdBy'], {

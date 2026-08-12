@@ -3015,7 +3015,15 @@ describe('SkillDetailPage', () => {
       }),
     )
 
-    expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
+    const referencesPopover = await screen.findByRole('dialog', {
+      name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+    })
+    const sidebarReferenceLink = within(referencesPopover).getByRole('link', {
+      name: /Sidebar Agent/,
+    })
+    expect(sidebarReferenceLink).toBeInTheDocument()
+    expect(sidebarReferenceLink.querySelector('.i-ri-external-link-line')).toHaveClass('size-3')
+    expect(sidebarReferenceLink.querySelector('.i-ri-arrow-right-up-line')).not.toBeInTheDocument()
     expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
       expect.objectContaining({
         input: {
@@ -3064,7 +3072,11 @@ describe('SkillDetailPage', () => {
     )
     expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
 
-    fireEvent.pointerDown(document.body)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'skill.skillManagement.detail.searchFiles',
+      }),
+    )
 
     await waitFor(() => {
       expect(screen.queryByText('Sidebar Agent')).not.toBeInTheDocument()
