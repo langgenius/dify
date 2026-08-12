@@ -109,6 +109,7 @@ def validate_url_with_path(
     url: str,
     default_url: str,
     required_suffix: str | None = None,
+    *,
     allowed_schemes: tuple[str, ...] = ("https", "http"),
 ) -> str:
     """
@@ -129,6 +130,7 @@ def validate_url_with_path(
     """
     if not url or url.strip() == "":
         return default_url
+    url = url.strip()
 
     # Parse URL to validate format
     parsed = urlparse(url)

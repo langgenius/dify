@@ -25,5 +25,5 @@ class WeaveConfig(BaseTracingConfig):
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
         if v is not None and v.strip() != "":
-            return validate_url_with_path(v, v)
+            return validate_url_with_path(v, v, allowed_schemes=("https", "http"))
         return v

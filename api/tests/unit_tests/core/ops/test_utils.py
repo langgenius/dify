@@ -174,6 +174,11 @@ class TestValidateUrlWithPath:
             validate_url_with_path("ftp://example.com", "https://default.com")
         assert str(excinfo.value) == "URL must start with https:// or http://"
 
+    def test_surrounding_whitespace_is_stripped(self):
+        """Test surrounding whitespace is removed while the path is preserved"""
+        result = validate_url_with_path("  https://example.com/api/v1  ", "https://default.com")
+        assert result == "https://example.com/api/v1"
+
 
 class TestValidateProjectName:
     """Test cases for validate_project_name function"""
