@@ -921,7 +921,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@2",
+        parserVersion: "unstructured@3",
       },
       parser: "unstructured",
       version: 1,
@@ -980,6 +980,71 @@ describe("parser adapters", () => {
         text: "ARR",
         type: "table",
       },
+    ]);
+  });
+
+  it("preserves nested Unstructured title paths from parent ids and category depth", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              element_id: "chapter",
+              metadata: { category_depth: 0, page_number: 1 },
+              text: "Detailed features",
+              type: "Title",
+            },
+            {
+              element_id: "section",
+              metadata: { category_depth: 1, page_number: 1, parent_id: "chapter" },
+              text: "Document upload",
+              type: "Title",
+            },
+            {
+              element_id: "subsection",
+              metadata: { category_depth: 2, page_number: 1, parent_id: "section" },
+              text: "Retry and recovery",
+              type: "Title",
+            },
+            {
+              metadata: { page_number: 1, parent_id: "subsection" },
+              text: "Failed jobs can be retried after their dependency recovers.",
+              type: "NarrativeText",
+            },
+            {
+              element_id: "sibling",
+              metadata: { category_depth: 1, page_number: 2, parent_id: "chapter" },
+              text: "Retrieval modes",
+              type: "Title",
+            },
+            {
+              metadata: { page_number: 2, parent_id: "sibling" },
+              text: "Fast, Deep, and Research use different retrieval paths.",
+              type: "NarrativeText",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "manual.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      version: 1,
+    });
+
+    expect(artifact.elements.map((element) => element.sectionPath)).toEqual([
+      ["Detailed features"],
+      ["Detailed features", "Document upload"],
+      ["Detailed features", "Document upload", "Retry and recovery"],
+      ["Detailed features", "Document upload", "Retry and recovery"],
+      ["Detailed features", "Retrieval modes"],
+      ["Detailed features", "Retrieval modes"],
     ]);
   });
 

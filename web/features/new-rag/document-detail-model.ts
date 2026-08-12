@@ -113,11 +113,15 @@ function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentC
   const cycleIds = cyclicChunkIds(unsectionedChunksById)
   const fallbackByChunkId = new Map<string, DocumentChunkTreeNode>()
   for (const chunk of unsectionedChunks) {
+    const contentLabel = chunk.text
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .find(Boolean)
     const node = {
       children: [],
       chunk,
       id: chunk.id,
-      label: `#${chunk.ordinal + 1}`,
+      label: contentLabel || `#${chunk.ordinal + 1}`,
       targetChunkId: chunk.id,
     } satisfies DocumentChunkTreeNode
     fallbackByChunkId.set(chunk.id, node)
@@ -155,16 +159,17 @@ function buildOutlineBackedChunkTree(
   const outlineRoots = coalesceDuplicateOutlineRoots(sourceRoots)
   const allOutlineNodes = flattenOutlineNodes(sourceRoots)
   const outlineTitleKeys = new Set(allOutlineNodes.map((node) => comparableTitle(node.title)))
+  const outlinePathKeys = new Set(
+    allOutlineNodes
+      .map((node) => normalizedSectionPath(node.section_path ?? []))
+      .filter((path) => path.length)
+      .map(sectionPathKey),
+  )
   const firstOrdinal = sortedChunks[0]?.ordinal
   const displayChunks = sortedChunks.filter(
     (chunk) =>
-      !(
-        chunk.ordinal === firstOrdinal &&
-        !chunk.parentChunkId &&
-        !normalizedSectionPath(chunk.sectionPath).length &&
-        !chunk.text.includes('\n') &&
-        outlineTitleKeys.has(comparableTitle(chunk.text))
-      ),
+      !isLegacyDocumentTitleChunk(chunk, firstOrdinal, outlineTitleKeys) &&
+      !isStructuralOutlineChunk(chunk, outlinePathKeys),
   )
   const chunksById = new Map(displayChunks.map((chunk) => [chunk.id, chunk]))
   const chunksBySection = new Map<string, DocumentRevisionChunk[]>()
@@ -243,6 +248,34 @@ function buildOutlineBackedChunkTree(
     outlineSummaryChunkIds,
     roots,
   }
+}
+
+function isLegacyDocumentTitleChunk(
+  chunk: DocumentRevisionChunk,
+  firstOrdinal: number | undefined,
+  outlineTitleKeys: ReadonlySet<string>,
+) {
+  return (
+    chunk.ordinal === firstOrdinal &&
+    !chunk.parentChunkId &&
+    !normalizedSectionPath(chunk.sectionPath).length &&
+    !chunk.text.includes('\n') &&
+    outlineTitleKeys.has(comparableTitle(chunk.text))
+  )
+}
+
+function isStructuralOutlineChunk(
+  chunk: DocumentRevisionChunk,
+  outlinePathKeys: ReadonlySet<string>,
+) {
+  if (chunk.kind !== 'chunk') return false
+  const sectionPath = normalizedSectionPath(chunk.sectionPath)
+  const title = sectionPath.at(-1)
+  return Boolean(
+    title &&
+    outlinePathKeys.has(sectionPathKey(sectionPath)) &&
+    comparableTitle(chunk.text) === comparableTitle(title),
+  )
 }
 
 function normalizedSectionPath(sectionPath: readonly string[]) {

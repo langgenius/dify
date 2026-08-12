@@ -161,6 +161,7 @@ const defaultNow = () => new Date().toISOString();
 const defaultGenerateId = () => crypto.randomUUID();
 
 const UnstructuredElementSchema = z.object({
+  element_id: z.string().min(1).max(512).optional(),
   metadata: z
     .object({
       page_number: z.number().int().positive().optional(),
@@ -263,7 +264,7 @@ export function createUnstructuredParserClient({
   return {
     kind: "unstructured",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "unstructured@2";
+      const parserVersion = options.parserVersion ?? "unstructured@3";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const response = await fetchWithRetries({
         buildRequest: () => {
@@ -864,6 +865,7 @@ function unstructuredElementsToElements(
 ): ParseElementInput[] {
   const elements: ParseElementInput[] = [];
   const sectionPath: string[] = [];
+  const headingPathsByElementId = new Map<string, string[]>();
 
   for (const sourceElement of sourceElements) {
     const text = normalizeText(sourceElement.text ?? "");
@@ -876,8 +878,19 @@ function unstructuredElementsToElements(
     const pageNumber = sourceElement.metadata.page_number;
 
     if (text && (type === "title" || type === "heading")) {
-      sectionPath.length = 1;
-      sectionPath[0] = text;
+      const parentId = metadataString(sourceElement.metadata, "parent_id");
+      const parentPath = parentId ? headingPathsByElementId.get(parentId) : undefined;
+      const categoryDepth = unstructuredCategoryDepth(sourceElement.metadata);
+      const depthPath =
+        categoryDepth !== undefined && categoryDepth <= sectionPath.length
+          ? [...sectionPath.slice(0, categoryDepth), text]
+          : undefined;
+      const nextPath = parentPath ? [...parentPath, text] : (depthPath ?? [text]);
+      sectionPath.splice(0, sectionPath.length, ...nextPath);
+
+      if (sourceElement.element_id) {
+        headingPathsByElementId.set(sourceElement.element_id, [...sectionPath]);
+      }
     }
 
     elements.push({
@@ -895,6 +908,14 @@ function unstructuredElementsToElements(
   }
 
   return elements;
+}
+
+function unstructuredCategoryDepth(
+  metadata: Readonly<Record<string, unknown>>,
+): number | undefined {
+  const depth = numericValue(metadata.category_depth);
+
+  return depth !== undefined && Number.isInteger(depth) && depth >= 0 ? depth : undefined;
 }
 
 type UnstructuredSourceElement = z.infer<typeof UnstructuredElementSchema>;

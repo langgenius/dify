@@ -191,6 +191,50 @@ describe('document detail model', () => {
     expect(tree.outlineSummaryChunkIds.has('setup')).toBe(true)
   })
 
+  it('keeps structural outline headings in the tree without rendering them as empty chunks', () => {
+    const chapterHeading = chunk({
+      id: 'chapter-heading',
+      ordinal: 0,
+      sectionPath: ['Detailed features'],
+      text: 'Detailed features',
+    })
+    const sectionHeading = chunk({
+      id: 'section-heading',
+      ordinal: 1,
+      sectionPath: ['Detailed features', 'Document upload'],
+      text: 'Document upload',
+    })
+    const sectionBody = chunk({
+      id: 'section-body',
+      ordinal: 2,
+      sectionPath: ['Detailed features', 'Document upload'],
+      text: 'Document upload\n\nFiles are parsed and indexed in the background.',
+    })
+    const tree = buildDocumentChunkTree(
+      [chapterHeading, sectionHeading, sectionBody],
+      [
+        outlineNode({
+          children: [
+            outlineNode({
+              id: 'document-upload',
+              level: 2,
+              section_path: ['Detailed features', 'Document upload'],
+              title: 'Document upload',
+            }),
+          ],
+          id: 'detailed-features',
+          section_path: ['Detailed features'],
+          title: 'Detailed features',
+        }),
+      ],
+    )
+
+    expect(tree.roots.map((node) => node.id)).toEqual(['detailed-features'])
+    expect(tree.roots[0]?.targetChunkId).toBe('section-body')
+    expect(tree.roots[0]?.children[0]?.targetChunkId).toBe('section-body')
+    expect(tree.displayChunks.map((item) => item.id)).toEqual(['section-body'])
+  })
+
   it('builds a deterministic parent-child tree and keeps orphans visible', () => {
     const tree = buildDocumentChunkTree([
       chunk({ id: 'child-b', ordinal: 3, parentChunkId: 'parent' }),
@@ -206,10 +250,13 @@ describe('document detail model', () => {
     ])
   })
 
-  it('uses one-based labels for flat chunk ordinals', () => {
-    const tree = buildDocumentChunkTree([chunk({ id: 'first', ordinal: 0 })])
+  it('uses chunk content for unsectioned labels and a one-based fallback for empty chunks', () => {
+    const tree = buildDocumentChunkTree([
+      chunk({ id: 'first', ordinal: 0, text: 'Product use and differentiation' }),
+      chunk({ id: 'empty', ordinal: 1, text: '' }),
+    ])
 
-    expect(tree.roots[0]?.label).toBe('#1')
+    expect(tree.roots.map((node) => node.label)).toEqual(['Product use and differentiation', '#2'])
   })
 
   it('breaks cyclic parent links instead of losing every node', () => {
