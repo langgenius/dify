@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { CommonNodeType, Node } from '../types'
-import { createContext, useCallback, useEffect, useRef } from 'react'
+import { createContext, useCallback, useEffect, useState } from 'react'
 import { fetchDatasets } from '@/service/datasets'
 import { BlockEnum } from '../types'
 import { createDatasetsDetailStore } from './store'
@@ -18,21 +18,21 @@ type DatasetsDetailProviderProps = {
 }
 
 const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, children }) => {
-  const storeRef = useRef<DatasetsDetailStoreApi>(undefined)
+  const [store] = useState(createDatasetsDetailStore)
 
-  if (!storeRef.current) storeRef.current = createDatasetsDetailStore()
-
-  const updateDatasetsDetail = useCallback(async (datasetIds: string[]) => {
-    const { data: datasetsDetail } = await fetchDatasets({
-      url: '/datasets',
-      params: { page: 1, ids: datasetIds },
-    })
-    if (datasetsDetail && datasetsDetail.length > 0)
-      storeRef.current!.getState().updateDatasetsDetail(datasetsDetail)
-  }, [])
+  const updateDatasetsDetail = useCallback(
+    async (datasetIds: string[]) => {
+      const { data: datasetsDetail } = await fetchDatasets({
+        url: '/datasets',
+        params: { page: 1, ids: datasetIds },
+      })
+      if (datasetsDetail && datasetsDetail.length > 0)
+        store.getState().updateDatasetsDetail(datasetsDetail)
+    },
+    [store],
+  )
 
   useEffect(() => {
-    if (!storeRef.current) return
     const knowledgeRetrievalNodes = nodes.filter(
       (node) => node.data.type === BlockEnum.KnowledgeRetrieval,
     )
@@ -45,11 +45,7 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, childr
     updateDatasetsDetail(allDatasetIds)
   }, [])
 
-  return (
-    <DatasetsDetailContext.Provider value={storeRef.current!}>
-      {children}
-    </DatasetsDetailContext.Provider>
-  )
+  return <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>
 }
 
 export default DatasetsDetailProvider

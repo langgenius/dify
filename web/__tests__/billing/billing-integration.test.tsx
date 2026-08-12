@@ -44,6 +44,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
   })
   seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -56,10 +57,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -80,25 +77,12 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ token: 'test-token' }),
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 const mockRouterPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="verify-state-modal" /> : null,
 }))
 
 vi.mock('@/app/components/header/utils/util', () => ({

@@ -26,22 +26,12 @@ export type ConsoleStateFixture = {
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
   langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
-  refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
 }
 
 type ConsoleStateFixtureResolver = () => ConsoleStateFixture
 type JotaiStore = ReturnType<typeof createStore>
-type ConsoleStateOwner = 'account' | 'workspace' | 'permission' | 'systemFeatures' | 'version'
-
-const defaultUserProfile = {
-  id: 'user-1',
-  name: 'User',
-  email: 'user@example.com',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: true,
-}
+type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures' | 'version'
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
@@ -56,21 +46,8 @@ const defaultLangGeniusVersionInfo = {
   current_version: '',
   latest_version: '',
   version: '',
-  release_date: '',
   release_notes: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
 } satisfies LangGeniusVersionInfo
-
-const userProfileAtom = atom(defaultUserProfile)
-const userProfileIdAtom = atom((get) => get(userProfileAtom).id)
-const userProfileEmailAtom = atom((get) => get(userProfileAtom).email)
-const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
-const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
-const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
 
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
@@ -110,10 +87,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   if (!resolvers.length) return false
 
   const state = Object.assign({}, ...resolvers.map((resolve) => resolve()))
-  store.set(userProfileAtom, {
-    ...defaultUserProfile,
-    ...state.userProfile,
-  })
   store.set(currentWorkspaceAtom, {
     ...defaultCurrentWorkspace,
     ...state.currentWorkspace,
@@ -140,29 +113,11 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     ...defaultLangGeniusVersionInfo,
     ...state.langGeniusVersionInfo,
   })
-  store.set(refreshUserProfileCallbackAtom, { callback: state.refreshUserProfile ?? (() => {}) })
   store.set(refreshCurrentWorkspaceCallbackAtom, {
     callback: state.refreshCurrentWorkspace ?? (() => {}),
   })
 
   return true
-}
-
-export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('account', () => {
-    const state = getState()
-    return {
-      userProfile: state.userProfile,
-      refreshUserProfile: state.refreshUserProfile,
-    }
-  })
-  return {
-    userProfileAtom,
-    userProfileIdAtom,
-    userProfileEmailAtom,
-    accountProfileMetaAtom,
-    refreshUserProfileAtom,
-  }
 }
 
 export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureResolver) => {

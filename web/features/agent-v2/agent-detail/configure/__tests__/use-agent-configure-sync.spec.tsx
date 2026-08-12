@@ -4,6 +4,7 @@ import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-compose
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { Suspense } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -236,11 +237,13 @@ function renderUseAgentConfigureSync({
   baseConfig,
   currentModel,
   enabled = true,
+  suspend = false,
 }: {
   agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: Parameters<typeof useAgentConfigureSync>[0]['currentModel']
   enabled?: boolean
+  suspend?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -249,23 +252,39 @@ function renderUseAgentConfigureSync({
     },
   })
   const store = createStore()
+  const pendingRender = new Promise<void>(() => {})
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>{children}</JotaiProvider>
+      <JotaiProvider store={store}>
+        <Suspense fallback={null}>{children}</Suspense>
+      </JotaiProvider>
     </QueryClientProvider>
   )
 
   return {
     ...renderHook(
-      () =>
-        useAgentConfigureSync({
+      (props) => {
+        const sync = useAgentConfigureSync({
           agentId: 'agent-1',
+          agentName: props.agentName,
+          baseConfig: props.baseConfig,
+          currentModel: props.currentModel,
+          enabled: props.enabled,
+        })
+        if (props.suspend) throw pendingRender
+
+        return sync
+      },
+      {
+        initialProps: {
           agentName,
           baseConfig,
           currentModel,
           enabled,
-        }),
-      { wrapper },
+          suspend,
+        },
+        wrapper,
+      },
     ),
     queryClient,
     store,
@@ -374,6 +393,93 @@ describe('useAgentConfigureSync', () => {
     })
   })
 
+  it('should autosave only the latest committed Agent configuration', async () => {
+    const committedProps = {
+      agentName: 'Agent',
+      baseConfig: {
+        app_features: {
+          file_upload: {
+            enabled: true,
+          },
+        },
+      },
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    }
+    const nextProps = {
+      agentName: 'Agent',
+      baseConfig: {
+        app_features: {
+          file_upload: {
+            enabled: false,
+          },
+        },
+      },
+      currentModel: {
+        provider: 'langgenius/anthropic/anthropic',
+        model: 'claude-3-5-sonnet',
+      },
+      enabled: true,
+      suspend: true,
+    }
+    const { rerender, store } = renderUseAgentConfigureSync(committedProps)
+
+    rerender(nextProps)
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Draft while the next configuration is pending',
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            app_features: expect.objectContaining({
+              file_upload: expect.objectContaining({ enabled: true }),
+            }),
+            model: expect.objectContaining({
+              model: 'gpt-4o-mini',
+              model_provider: 'langgenius/openai/openai',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    rerender({ ...nextProps, suspend: false })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Draft after the next configuration commits',
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            app_features: expect.objectContaining({
+              file_upload: expect.objectContaining({ enabled: false }),
+            }),
+            model: expect.objectContaining({
+              model: 'claude-3-5-sonnet',
+              model_provider: 'langgenius/anthropic/anthropic',
+            }),
+          }),
+        }),
+      }),
+    )
+  })
+
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
@@ -446,6 +552,61 @@ describe('useAgentConfigureSync', () => {
       saveDeferred.resolve({ agent_soul: {} })
       await Promise.resolve()
     })
+  })
+
+  it('should keep page-close saving enabled until a disabled configuration commits', async () => {
+    const committedProps = {
+      agentName: 'Agent',
+      baseConfig: undefined,
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    }
+    const disabledProps = {
+      ...committedProps,
+      enabled: false,
+      suspend: true,
+    }
+    const { rerender, store } = renderUseAgentConfigureSync(committedProps)
+
+    rerender(disabledProps)
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Committed draft before closing',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Committed draft before closing',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    rerender({ ...disabledProps, suspend: false })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Disabled draft after commit',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should dispatch the latest keepalive save while an earlier save is pending', async () => {

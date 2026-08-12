@@ -160,7 +160,7 @@ class TestAudioServiceMockedBehavior:
         return mock
 
     @patch.object(AudioService, "transcript_asr")
-    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file):
+    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
         """Test ASR transcription returns response dict."""
         mock_response = {"text": "Transcribed text"}
         mock_asr.return_value = mock_response
@@ -168,14 +168,13 @@ class TestAudioServiceMockedBehavior:
         result = AudioService.transcript_asr(
             app_model=mock_app,
             file=mock_file,
-            session=Mock(),
+            session=sqlite_session,
             end_user="user_123",
         )
 
         assert result["text"] == "Transcribed text"
 
     @patch.object(AudioService, "transcript_tts")
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
         """Test TTS transcription returns response."""
         mock_response = {"audio": "base64_audio_data"}

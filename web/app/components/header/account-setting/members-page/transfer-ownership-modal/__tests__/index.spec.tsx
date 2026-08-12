@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import TransferOwnershipModal from '../index'
 
@@ -15,10 +16,6 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -83,6 +80,9 @@ describe('TransferOwnershipModal', () => {
       <>
         <TransferOwnershipModal show onClose={mockOnClose} />
       </>,
+      {
+        wrapper: createAccountProfileQueryWrapper(mockConsoleState.current.userProfile ?? {}),
+      },
     )
 
   const mockEmailVerification = ({

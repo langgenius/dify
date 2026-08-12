@@ -19,14 +19,8 @@ const defaultLangGeniusVersionInfo: LangGeniusVersionInfo = {
   current_env: '',
   current_version: '1.0.0',
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
 }
 
 type ConsoleStateFixture = Omit<BaseConsoleStateFixture, 'langGeniusVersionInfo'> & {

@@ -1004,7 +1004,12 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
                         overrides=[
                             app_module.enterprise_rbac_service.ResourcePermissionKeys(
                                 resource_id="app-1",
-                                permission_keys=["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"],
+                                permission_keys=[
+                                    "app.acl.view_layout",
+                                    "app.acl.edit",
+                                    "app.acl.deploy",
+                                    "app.acl.monitor",
+                                ],
                             )
                         ]
                     )
@@ -1026,7 +1031,12 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
 
     get_app.assert_called_once_with(app_obj, session=unbound_session)
     get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=unbound_session)
-    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
+    assert resp["permission_keys"] == [
+        "app.acl.view_layout",
+        "app.acl.edit",
+        "app.acl.deploy",
+        "app.acl.monitor",
+    ]
 
 
 def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: Session, sqlite_engine: Engine):

@@ -36,7 +36,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         draft.annotationReply = newConfig
       })
       setFeatures(newFeatures)
-      if (onChange) onChange(newFeatures)
+      onChange?.()
     },
     [featuresStore, onChange],
   )

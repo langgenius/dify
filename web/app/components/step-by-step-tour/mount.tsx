@@ -19,7 +19,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { useEducationExpireNotice } from '@/app/education-apply/use-expire-notice'
+import { useEducationExpireNotice } from '@/app/education/expire-notice/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'

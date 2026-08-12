@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.errors.error import QuotaExceededError
+from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
 from services.credit_pool_service import (
@@ -45,7 +46,7 @@ def _make_redis_lock() -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _disable_billing_quota_by_default() -> Generator[None, None, None]:
-    with patch("services.credit_pool_service.dify_config.BILLING_ENABLED", False):
+    with patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
         yield
 
 
@@ -247,7 +248,7 @@ def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction(sqlite
 def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
     ):
         quota_get_balance.return_value = {
@@ -275,7 +276,7 @@ def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
 def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -310,7 +311,7 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
 
 def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
     ):
         quota_reserve.return_value = {"reservation_id": "", "available": 1, "reserved": 0}
@@ -321,7 +322,7 @@ def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() 
 
 def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -343,7 +344,7 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch(
@@ -369,7 +370,7 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
 def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_consume_capped") as quota_consume_capped,
     ):
         quota_consume_capped.return_value = {

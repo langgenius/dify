@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "पैरामीटर उद्देश्य और बाधाएँ",
   "mcp.server.modal.parametersTip": "प्रत्येक पैरामीटर के लिए विवरण जोड़ें ताकि LLM को उनके उद्देश्य और बाधाओं को समझने में मदद मिले।",
   "mcp.server.publishTip": "ऐप प्रकाशित नहीं हुआ। कृपया पहले ऐप प्रकाशित करें।",
-  "mcp.server.reGen": "सर्वर URL पुनः उत्पन्न करना चाहते हैं?",
+  "mcp.server.reGen": "क्या आप सर्वर URL पुनः उत्पन्न करना चाहते हैं? वर्तमान URL तुरंत काम करना बंद कर देगा।",
   "mcp.server.title": "MCP सर्वर",
   "mcp.server.url": "सर्वर URL",
   "mcp.toolItem.noDescription": "कोई वर्णन नहीं",

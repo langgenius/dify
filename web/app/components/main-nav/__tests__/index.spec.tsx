@@ -168,10 +168,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -492,7 +488,6 @@ const mainNavUserProfile = {
 
 const consoleState: ConsoleStateFixture = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -509,10 +504,8 @@ const consoleState: ConsoleStateFixture = {
     current_env: 'testing',
     current_version: '1.0.0',
     latest_version: '1.0.0',
-    release_date: '',
     release_notes: '',
     version: '1.0.0',
-    can_auto_update: false,
   },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -721,20 +714,8 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders deployments in primary navigation when app deploy is enabled', () => {
+  it('hides deployments in primary navigation when app deploy is enabled', () => {
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
-
-    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
-    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
-  })
-
-  it('hides deployments in primary navigation when app deploy is disabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
 
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
@@ -920,10 +901,9 @@ describe('MainNav', () => {
       expect(
         screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute(
-        'href',
-        '/deployments',
-      )
+      expect(
+        screen.queryByRole('link', { name: /common.menus.deployments/ }),
+      ).not.toBeInTheDocument()
     },
   )
 
@@ -977,22 +957,6 @@ describe('MainNav', () => {
 
     expect(homeLink).toHaveClass(activeGradientMaskClassName)
     expect(homeLink).toHaveClass(activeStackingClassName)
-  })
-
-  it('keeps Home active on the legacy explore apps route only', () => {
-    mockPathname = '/explore/apps'
-
-    const { rerender } = renderMainNav()
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink).toHaveAttribute('aria-current', 'page')
-
-    mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
-
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
-      'aria-current',
-    )
   })
 
   it('opens goto anything from the search button', async () => {

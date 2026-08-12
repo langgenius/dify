@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from enums import DeploymentEdition
 
 
 def test_im_message_inbox_policy_defaults_are_bounded() -> None:
@@ -117,7 +118,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.COMMIT_SHA == ""
 
     # default values
-    assert config.EDITION == "SELF_HOSTED"
+    assert config.DEPLOYMENT_EDITION is DeploymentEdition.COMMUNITY
     assert config.API_COMPRESSION_ENABLED is False
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
@@ -132,6 +133,19 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_deployment_edition_is_loaded_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.DEPLOYMENT_EDITION is edition
 
 
 def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -277,7 +291,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     # configs read from pydantic-settings
     assert config["LOG_LEVEL"] == "INFO"
     assert config["COMMIT_SHA"] == ""
-    assert config["EDITION"] == "SELF_HOSTED"
+    assert config["DEPLOYMENT_EDITION"] is DeploymentEdition.COMMUNITY
     assert config["API_COMPRESSION_ENABLED"] is False
     assert config["SENTRY_TRACES_SAMPLE_RATE"] == 1.0
 

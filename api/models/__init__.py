@@ -196,6 +196,7 @@ from .workflow import (
     WorkflowRun,
     WorkflowRunArchiveBundle,
     WorkflowType,
+    WorkflowVersionCounter,
     resolve_workflow_kind,
 )
 
@@ -387,5 +388,6 @@ __all__ = [
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
     "WorkflowType",
+    "WorkflowVersionCounter",
     "resolve_workflow_kind",
 ]
