@@ -7,6 +7,7 @@ import type {
 } from "@knowledge/core";
 
 import {
+  nonnegativeSafeIntegerColumn,
   numberColumn,
   optionalNumberColumn,
   optionalStringColumn,
@@ -267,8 +268,8 @@ async function readReservedUsage(
   const row = result.rows[0];
   if (!row) throw new Error("Upload session quota query returned no row");
   return {
-    rawDocumentBytes: nonNegativeIntegerColumn(row, "raw_document_bytes"),
-    reservedBytes: nonNegativeIntegerColumn(row, "reserved_bytes"),
+    rawDocumentBytes: nonnegativeSafeIntegerColumn(row, "raw_document_bytes"),
+    reservedBytes: nonnegativeSafeIntegerColumn(row, "reserved_bytes"),
   };
 }
 
@@ -360,10 +361,14 @@ function uploadSessionFromRow(row: DatabaseRow): UploadSession {
     throw new Error("Upload session status is invalid");
   }
   const completionParts = completionPartsFromRow(row);
+  const abortedAt = optionalNonnegativeSafeIntegerColumn(row, "aborted_at");
+  const completedAt = optionalNonnegativeSafeIntegerColumn(row, "completed_at");
+  const multipartPartSizeBytes = optionalNonnegativeSafeIntegerColumn(
+    row,
+    "multipart_part_size_bytes",
+  );
   return {
-    ...(optionalNumberColumn(row, "aborted_at") === undefined
-      ? {}
-      : { abortedAt: optionalNumberColumn(row, "aborted_at") }),
+    ...(abortedAt === undefined ? {} : { abortedAt }),
     checksumSha256Base64: stringColumn(row, "checksum_sha256_base64"),
     ...(optionalStringColumn(row, "completion_grant_id")
       ? { completionGrantId: optionalStringColumn(row, "completion_grant_id") }
@@ -371,20 +376,18 @@ function uploadSessionFromRow(row: DatabaseRow): UploadSession {
     ...(optionalStringColumn(row, "compilation_job_id")
       ? { compilationJobId: optionalStringColumn(row, "compilation_job_id") }
       : {}),
-    ...(optionalNumberColumn(row, "completed_at") === undefined
-      ? {}
-      : { completedAt: optionalNumberColumn(row, "completed_at") }),
+    ...(completedAt === undefined ? {} : { completedAt }),
     ...(completionParts.length > 0 ? { completionParts } : {}),
     contentType: stringColumn(row, "content_type"),
-    createdAt: numberColumn(row, "created_at"),
+    createdAt: nonnegativeSafeIntegerColumn(row, "created_at"),
     ...(optionalStringColumn(row, "document_asset_id")
       ? { documentAssetId: optionalStringColumn(row, "document_asset_id") }
       : {}),
     ...(optionalStringColumn(row, "error_code")
       ? { errorCode: optionalStringColumn(row, "error_code") }
       : {}),
-    expectedSizeBytes: nonNegativeIntegerColumn(row, "expected_size_bytes"),
-    expiresAt: numberColumn(row, "expires_at"),
+    expectedSizeBytes: nonnegativeSafeIntegerColumn(row, "expected_size_bytes"),
+    expiresAt: nonnegativeSafeIntegerColumn(row, "expires_at"),
     fileName: stringColumn(row, "file_name"),
     grantId: stringColumn(row, "grant_id"),
     id: stringColumn(row, "id"),
@@ -394,18 +397,16 @@ function uploadSessionFromRow(row: DatabaseRow): UploadSession {
     ...(optionalNumberColumn(row, "multipart_part_count") === undefined
       ? {}
       : { multipartPartCount: optionalNumberColumn(row, "multipart_part_count") }),
-    ...(optionalNumberColumn(row, "multipart_part_size_bytes") === undefined
-      ? {}
-      : { multipartPartSizeBytes: optionalNumberColumn(row, "multipart_part_size_bytes") }),
+    ...(multipartPartSizeBytes === undefined ? {} : { multipartPartSizeBytes }),
     ...(optionalStringColumn(row, "multipart_upload_id")
       ? { multipartUploadId: optionalStringColumn(row, "multipart_upload_id") }
       : {}),
     objectKey: stringColumn(row, "object_key"),
-    reservedBytes: nonNegativeIntegerColumn(row, "reserved_bytes"),
+    reservedBytes: nonnegativeSafeIntegerColumn(row, "reserved_bytes"),
     rowVersion: numberColumn(row, "row_version"),
     status: status as UploadSessionStatus,
     tenantId: stringColumn(row, "tenant_id"),
-    updatedAt: numberColumn(row, "updated_at"),
+    updatedAt: nonnegativeSafeIntegerColumn(row, "updated_at"),
   };
 }
 
@@ -447,13 +448,12 @@ function assertCreateReplay(existing: UploadSession, requested: UploadSession): 
   }
 }
 
-function nonNegativeIntegerColumn(row: DatabaseRow, column: string): number {
+function optionalNonnegativeSafeIntegerColumn(
+  row: DatabaseRow,
+  column: string,
+): number | undefined {
   const raw = row[column];
-  const value = typeof raw === "string" && /^\d+$/.test(raw) ? Number(raw) : raw;
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`Database row column ${column} must be a non-negative safe integer`);
-  }
-  return value;
+  return raw === null || raw === undefined ? undefined : nonnegativeSafeIntegerColumn(row, column);
 }
 
 function cloneUploadSession(session: UploadSession): UploadSession {

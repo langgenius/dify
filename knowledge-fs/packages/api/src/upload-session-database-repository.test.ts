@@ -111,6 +111,37 @@ describe.each(["postgres", "tidb"] as const)("database upload sessions (%s)", (d
     update.expectDone();
   });
 
+  it("normalizes PostgreSQL-style string BIGINT columns", async () => {
+    const database = scriptedDatabase(dialect, [
+      step("upload_sessions", "select", [
+        uploadSessionRow({
+          aborted_at: "2000001",
+          completed_at: "2000002",
+          created_at: "2000000",
+          expected_size_bytes: "500",
+          expires_at: "2900000",
+          multipart_part_size_bytes: "5242880",
+          reserved_bytes: "500",
+          updated_at: "2000003",
+        }),
+      ]),
+    ]);
+
+    await expect(
+      createDatabaseUploadSessionRepository({ database: database.database }).get({
+        id: SESSION_ID,
+        tenantId: TENANT_ID,
+      }),
+    ).resolves.toEqual({
+      ...uploadSession(),
+      abortedAt: 2_000_001,
+      completedAt: 2_000_002,
+      multipartPartSizeBytes: 5_242_880,
+      updatedAt: 2_000_003,
+    });
+    database.expectDone();
+  });
+
   it("returns null when a CAS loses and rejects malformed persisted state", async () => {
     const lost = scriptedDatabase(dialect, [step("upload_sessions", "update", [], 0)]);
     await expect(
