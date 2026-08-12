@@ -5,11 +5,12 @@ from uuid import UUID
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -448,7 +449,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, workflow_run_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, workflow_run_id: str):
         """
         Get workflow pause details.
 
@@ -458,10 +460,10 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         """
 
         # Query WorkflowRun to determine if workflow is suspended
-        session_maker = sessionmaker(bind=db.engine)
+        session_maker = sessionmaker(bind=session.get_bind())
         workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=session_maker)
 
-        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
+        workflow_run = session.get(WorkflowRun, workflow_run_id)
         if not workflow_run:
             raise NotFoundError("Workflow run not found")
 
