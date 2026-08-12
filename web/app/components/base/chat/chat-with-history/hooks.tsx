@@ -186,6 +186,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [appId, setStoredSidebarCollapseState],
   )
   const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
+  const removeConversationIdInfo = useCallback(
+    (targetAppId: string) => {
+      setConversationIdInfo((prev) => {
+        const newInfo = { ...prev }
+        delete newInfo[targetAppId]
+        return newInfo
+      })
+    },
+    [setConversationIdInfo],
+  )
   const currentConversationId = useMemo(
     () => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
     [appId, conversationIdInfo, userId],
@@ -238,7 +248,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         refetchOnReconnect: false,
       },
     )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList(
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+    error: appChatListDataError,
+  } = useShareChatList(
     {
       conversationId: chatShouldReloadKey,
       appSourceType,
@@ -250,6 +264,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnReconnect: false,
     },
   )
+  // When the backend reports the conversation no longer exists (404), clear the
+  // stale conversation_id from localStorage so the chatbot falls back to a new
+  // conversation instead of retrying forever (issue #39484).
+  useEffect(() => {
+    if (appChatListDataError instanceof Response && appChatListDataError.status === 404 && appId)
+      removeConversationIdInfo(appId)
+  }, [appChatListDataError, appId, removeConversationIdInfo])
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
