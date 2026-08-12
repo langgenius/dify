@@ -16,6 +16,7 @@ from services.credit_pool_service import (
     CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
     FEATURE_KEY_CREDIT_POOL,
     CreditPoolBalance,
+    CreditPoolReservationState,
     CreditPoolService,
 )
 
@@ -285,6 +286,90 @@ def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
         feature_key=FEATURE_KEY_CREDIT_POOL,
         bucket="paid",
     )
+
+
+def test_reserve_credits_commits_billing_reservation_once() -> None:
+    with (
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            pool_type=ProviderQuotaType.TRIAL,
+            request_id="request-1",
+            meta={"source": "test"},
+        )
+        reservation.commit()
+        reservation.commit()
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.COMMITTED
+    quota_reserve.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        request_id="request-1",
+        amount=3,
+        meta={"source": "test"},
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+        actual_amount=3,
+        meta={"source": "test", "request_id": "request-1"},
+    )
+    quota_release.assert_not_called()
+
+
+def test_reserve_credits_releases_billing_reservation() -> None:
+    with (
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            request_id="request-1",
+        )
+        reservation.release()
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.RELEASED
+    quota_release.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+    )
+
+
+def test_reserve_credits_database_fallback_restores_released_amount() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=2)
+    redis_lock = _make_redis_lock()
+
+    with (
+        _make_session(engine) as session,
+        patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock),
+    ):
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id=tenant_id, credits_required=3, request_id="request-1", session_factory=lambda: session
+        )
+        assert _get_quota_used(engine=engine, pool_id=pool_id) == 5
+
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.RELEASED
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 2
 
 
 def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled() -> None:
