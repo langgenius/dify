@@ -10,13 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { MARKETPLACE_OAUTH_CLIENT_ID, MARKETPLACE_URL_PREFIX } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
@@ -30,8 +32,22 @@ function buildReturnUrl(pathname: string, search: string) {
   }
 }
 
+function getMarketplaceOrigin() {
+  try {
+    return new URL(MARKETPLACE_URL_PREFIX).origin
+  } catch {
+    return ''
+  }
+}
+
+const subscribeToFrameContext = () => () => {}
+const getFrameContext = () =>
+  globalThis.parent !== globalThis.window ? ('framed' as const) : ('top-level' as const)
+const getServerFrameContext = () => 'checking' as const
+
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -66,6 +82,13 @@ export default function OAuthAuthorize() {
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
   const state = searchParams.get('state')
   const hasOAuthParams = Boolean(client_id && redirect_uri)
+  const marketplaceOrigin = getMarketplaceOrigin()
+  const isMarketplaceFlow =
+    systemFeatures.deployment_edition === 'CLOUD' &&
+    searchParams.get('flow') === 'marketplace' &&
+    Boolean(MARKETPLACE_OAUTH_CLIENT_ID) &&
+    client_id === MARKETPLACE_OAUTH_CLIENT_ID &&
+    Boolean(marketplaceOrigin)
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -94,6 +117,13 @@ export default function OAuthAuthorize() {
   )
   const { mutateAsync: logout } = useLogout()
   const hasNotifiedRef = useRef(false)
+  const authorizationStartedRef = useRef(false)
+  const marketplaceFlowHandledRef = useRef(false)
+  const frameContext = useSyncExternalStore(
+    subscribeToFrameContext,
+    getFrameContext,
+    getServerFrameContext,
+  )
   const localizedAppLabel = authAppInfo?.app_label[language]
   const englishAppLabel = authAppInfo?.app_label.en_US
   const appLabel =
@@ -113,7 +143,8 @@ export default function OAuthAuthorize() {
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri) return
+    if (!client_id || !redirect_uri || authorizationStartedRef.current) return
+    authorizationStartedRef.current = true
     try {
       const { code } = await authorize({ body: { client_id } })
       const url = new URL(redirect_uri)
@@ -121,10 +152,79 @@ export default function OAuthAuthorize() {
       if (state) url.searchParams.set('state', state)
       globalThis.location.href = url.toString()
     } catch (error: unknown) {
+      authorizationStartedRef.current = false
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }
   }
+
+  useEffect(() => {
+    if (
+      !isMarketplaceFlow ||
+      frameContext === 'checking' ||
+      marketplaceFlowHandledRef.current ||
+      isProfileLoading
+    )
+      return
+
+    const notifyMarketplace = (status: 'anonymous' | 'error') => {
+      if (frameContext !== 'framed') return
+      globalThis.parent.postMessage(
+        {
+          type: 'dify-marketplace-oauth-status',
+          status,
+        },
+        marketplaceOrigin,
+      )
+    }
+
+    if (!isLoggedIn) {
+      marketplaceFlowHandledRef.current = true
+      if (frameContext === 'framed') {
+        notifyMarketplace('anonymous')
+        return
+      }
+
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
+      router.replace(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
+      return
+    }
+
+    if (isOAuthLoading) return
+    marketplaceFlowHandledRef.current = true
+    if (isError) {
+      notifyMarketplace('error')
+      return
+    }
+
+    void authorize({ body: { client_id } })
+      .then(({ code }) => {
+        const url = new URL(redirect_uri)
+        url.searchParams.set('code', code)
+        if (state) url.searchParams.set('state', state)
+        globalThis.location.href = url.toString()
+      })
+      .catch(() => {
+        notifyMarketplace('error')
+        if (frameContext === 'top-level')
+          toast.error(t(($) => $['error.authorizeFailed'], { ns: 'oauth' }))
+      })
+  }, [
+    authorize,
+    client_id,
+    frameContext,
+    isError,
+    isLoggedIn,
+    isMarketplaceFlow,
+    isOAuthLoading,
+    isProfileLoading,
+    marketplaceOrigin,
+    redirect_uri,
+    router,
+    searchParams,
+    state,
+    t,
+  ])
 
   useEffect(() => {
     const invalidParams = !client_id || !redirect_uri
@@ -137,9 +237,9 @@ export default function OAuthAuthorize() {
         { timeout: 0 },
       )
     }
-  }, [client_id, redirect_uri, isError])
+  }, [client_id, redirect_uri, isError, t])
 
-  if (isLoading) {
+  if (isLoading || isMarketplaceFlow) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />

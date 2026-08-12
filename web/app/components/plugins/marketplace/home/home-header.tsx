@@ -1,36 +1,28 @@
-import type { HomeCatalogTab } from './home-catalog-tabs'
-import { Button } from '@langgenius/dify-ui/button'
+import type { HomeCatalogTab, HomeCatalogTabLabels } from './home-catalog-tabs'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from '#i18n'
-import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
 import MarketplaceLogo from '@/public/marketplace/dify-marketplace-logo.svg'
 import HomeCatalogTabs from './home-catalog-tabs'
+import HomeGuide from './home-guide'
 import { HomeStickyCatalogTabs } from './home-sticky-state-provider'
 import styles from './home-sticky.module.css'
 
 type HomeHeaderProps = {
   activeTab?: HomeCatalogTab
   actions?: React.ReactNode
+  catalogLabels?: HomeCatalogTabLabels
   isMarketplacePlatform: boolean
+  language?: string
 }
 
-function Guide() {
-  const docLink = useDocLink()
-  const { t } = useTranslation('plugin')
-
-  return (
-    <Link href={docLink()} target="_blank" rel="noopener noreferrer" className={styles.guide}>
-      <Button variant="ghost" size="large" className="min-w-[94px] gap-0.5 px-3 text-text-primary">
-        <span aria-hidden className="i-ri-map-2-line size-5" />
-        <span className="px-1 system-md-medium">{t(($) => $['marketplace.home.guide'])}</span>
-      </Button>
-    </Link>
-  )
-}
-
-const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: HomeHeaderProps) => {
+const HomeHeader = ({
+  activeTab = 'plugins',
+  actions,
+  catalogLabels,
+  isMarketplacePlatform,
+  language,
+}: HomeHeaderProps) => {
   return (
     <header
       className={cn(
@@ -72,12 +64,14 @@ const HomeHeader = ({ activeTab = 'plugins', actions, isMarketplacePlatform }: H
             activeTab={activeTab}
             className={styles.headerCatalogTabs}
             isMarketplacePlatform={isMarketplacePlatform}
+            labels={catalogLabels}
+            language={language}
           />
         </HomeStickyCatalogTabs>
       </div>
 
       <div className="flex h-full min-w-0 flex-1 items-center justify-end gap-2.5">
-        <Guide />
+        <HomeGuide isMarketplacePlatform={isMarketplacePlatform} />
         {actions}
       </div>
     </header>

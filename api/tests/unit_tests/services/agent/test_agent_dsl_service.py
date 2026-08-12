@@ -191,7 +191,7 @@ def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) ->
         AgentPackage.model_validate(package)
 
 
-def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -> None:
+def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "tools": {
@@ -326,7 +326,7 @@ def test_graph_without_package_bindings_removes_portable_fields() -> None:
     assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
 
 
-def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch) -> None:
+def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     soul = AgentSoulConfig(config_note="portable")
@@ -465,7 +465,7 @@ def test_import_workflow_packages_rejects_invalid_package_binding(binding: dict,
         )
 
 
-def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
+def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     target_agent = SimpleNamespace(id="target-agent")
@@ -505,7 +505,7 @@ def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
     )
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch) -> None:
+def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
@@ -588,7 +588,7 @@ def test_create_imported_inline_agent_uses_import_provenance() -> None:
     )
 
 
-def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -> None:
+def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     roster_service = Mock()
@@ -618,7 +618,7 @@ def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -
     assert session.flush.call_count == 2
 
 
-def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch) -> None:
+def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "config_skills": [{"name": "skill", "file_kind": "tool_file", "file_id": "skill-file"}],

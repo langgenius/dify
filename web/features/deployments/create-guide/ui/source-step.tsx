@@ -10,9 +10,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
+import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
   dslFileAtom,
@@ -46,7 +48,6 @@ import { DeploymentStateMessage } from '@/features/deployments/shared/components
 import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
-import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -211,29 +212,16 @@ function SourceAppList() {
   const sourceAppsIsFetchingNextPage = useAtomValue(sourceAppsIsFetchingNextPageAtom)
   const sourceAppsIsLoading = useAtomValue(sourceAppsIsLoadingAtom)
   const sourceAppsIsPlaceholderData = useAtomValue(sourceAppsIsPlaceholderDataAtom)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sourceAppsLoading =
     sourceAppsIsLoading ||
     sourceAppsIsPlaceholderData ||
     (sourceAppsIsFetching && sourceApps.length === 0)
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(
-    {
-      error: sourceAppsError,
-      fetchNextPage: sourceAppsFetchNextPage,
-      hasNextPage: sourceAppsHasNextPage,
-      isFetching: sourceAppsIsFetching,
-      isFetchingNextPage: sourceAppsIsFetchingNextPage,
-      isLoading: sourceAppsIsLoading,
-    },
-    {
-      enabled: !sourceAppsLoading,
-      rootMargin: '0px 0px 160px 0px',
-      threshold: 0.1,
-    },
-  )
+  const canLoadMore = !sourceAppsIsFetching && !sourceAppsError
 
   return (
     <div
-      ref={rootRef}
+      ref={scrollContainerRef}
       className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default"
     >
       {sourceAppsLoading ? (
@@ -257,7 +245,16 @@ function SourceAppList() {
               {t(($) => $['createModal.loadingApps'])}
             </div>
           )}
-          {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
+          {sourceAppsHasNextPage && (
+            <InfiniteScrollSentinel
+              canLoadMore={canLoadMore}
+              onLoadMore={() => {
+                void sourceAppsFetchNextPage({ cancelRefetch: false })
+              }}
+              preloadDistance={160}
+              scrollContainerRef={scrollContainerRef}
+            />
+          )}
         </div>
       )}
     </div>

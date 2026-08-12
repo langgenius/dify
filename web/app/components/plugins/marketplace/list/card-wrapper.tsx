@@ -51,7 +51,10 @@ const CardWrapperComponent = ({
 
   if (showInstallAction) {
     return (
-      <div className="group relative cursor-pointer rounded-xl">
+      <div
+        className="group relative cursor-pointer rounded-xl"
+        data-marketplace-card={plugin.plugin_id}
+      >
         <Card
           key={plugin.name}
           payload={plugin}
@@ -82,6 +85,13 @@ const CardWrapperComponent = ({
             {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
           </Button>
         </div>
+        <MarketplaceDetailDialog
+          isInstalled={isInstalled}
+          open={isShowMarketplaceDetail}
+          plugin={plugin}
+          onInstall={showInstallFromMarketplace}
+          onOpenChange={handleMarketplaceDetailOpenChange}
+        />
         {isShowInstallFromMarketplace && (
           <InstallFromMarketplace
             manifest={plugin}
@@ -90,17 +100,12 @@ const CardWrapperComponent = ({
             onSuccess={hideInstallFromMarketplace}
           />
         )}
-        <MarketplaceDetailDialog
-          open={isShowMarketplaceDetail}
-          plugin={plugin}
-          onOpenChange={handleMarketplaceDetailOpenChange}
-        />
       </div>
     )
   }
 
   const card = (
-    <div className="group relative rounded-xl">
+    <div className="group relative rounded-xl" data-marketplace-card={plugin.plugin_id}>
       <Card
         key={plugin.name}
         payload={plugin}

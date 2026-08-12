@@ -23,6 +23,10 @@ export const MARKETPLACE_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   'http://localhost:5002/api',
 )
+export const MARKETPLACE_OAUTH_CLIENT_ID = getStringConfig(
+  env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID,
+  '',
+)
 export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
 
 export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')

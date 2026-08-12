@@ -16,6 +16,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountInFreezeError
 from controllers.console.workspace.account import (
     AccountAvatarApi,
+    AccountAvatarQuery,
     AccountDeleteApi,
     AccountDeleteVerifyApi,
     AccountInitApi,
@@ -216,7 +217,7 @@ class TestAccountAvatarApiGet:
                 return_value="https://signed/example",
             ) as sign_mock,
         ):
-            result = method(api, user)
+            result = method(api, AccountAvatarQuery(avatar=file_id), user)
 
         assert result == {"avatar_url": "https://signed/example"}
         sign_mock.assert_called_once_with(upload_file_id=file_id)
@@ -256,7 +257,7 @@ class TestAccountAvatarApiGet:
             ) as sign_mock,
         ):
             with pytest.raises(NotFound):
-                method(api, user)
+                method(api, AccountAvatarQuery(avatar=file_id), user)
 
         sign_mock.assert_not_called()
 
@@ -289,7 +290,7 @@ class TestAccountAvatarApiGet:
                 return_value="https://signed/example",
             ) as sign_mock,
         ):
-            result = method(api, user)
+            result = method(api, AccountAvatarQuery(avatar=file_id), user)
 
         assert result == {"avatar_url": "https://signed/example"}
         sign_mock.assert_called_once_with(upload_file_id=file_id)
@@ -308,7 +309,7 @@ class TestAccountAvatarApiGet:
                 return_value="https://signed/should-not-use",
             ) as sign_mock,
         ):
-            result = method(api, user)
+            result = method(api, AccountAvatarQuery(avatar=external), user)
 
         assert result == {"avatar_url": external}
         sign_mock.assert_not_called()

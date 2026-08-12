@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canEmbedPath, proxy } from '@/proxy'
+import { canEmbedPath, getMarketplaceOAuthFrameOrigin, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
@@ -68,5 +68,39 @@ describe('proxy frame options', () => {
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+
+  it('allows only the configured Marketplace OAuth flow to be framed by Marketplace', () => {
+    const url = new URL(
+      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+    )
+
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+      }),
+    ).toBe('https://marketplace.dify.ai')
+
+    url.searchParams.set('client_id', 'another-client')
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
+      }),
+    ).toBe('')
+  })
+
+  it('allows only HTTP(S) Marketplace origins', () => {
+    const url = new URL(
+      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+    )
+
+    expect(
+      getMarketplaceOAuthFrameOrigin(url, {
+        marketplaceClientId: 'marketplace-client',
+        marketplaceUrlPrefix: 'javascript:alert(1)',
+      }),
+    ).toBe('')
   })
 })

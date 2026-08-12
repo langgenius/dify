@@ -7,6 +7,7 @@ from flask import Flask
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.console import console_ns
 from controllers.console.datasets.metadata import (
     DatasetMetadataApi,
@@ -24,6 +25,7 @@ from services.metadata_service import MetadataService
 @pytest.fixture
 def app():
     app = Flask("test_dataset_metadata")
+
     app.config["TESTING"] = True
     return app
 
@@ -76,7 +78,9 @@ class TestDatasetMetadataCreateApi:
                 MetadataService, "create_metadata", return_value={"id": "m1", "type": "string", "name": "author"}
             ),
         ):
-            result, status = method(api, MagicMock(), "tenant-1", current_user, dataset_id)
+            result, status = method(
+                api, MetadataArgs(type="string", name="author"), MagicMock(), "tenant-1", current_user, dataset_id
+            )
         assert status == 201
         assert result["type"] == "string"
         assert result["name"] == "author"
@@ -92,7 +96,9 @@ class TestDatasetMetadataCreateApi:
             patch.object(DatasetService, "get_dataset", return_value=None),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, MagicMock(), "tenant-1", current_user, dataset_id)
+                method(
+                    api, MetadataArgs(type="string", name="author"), MagicMock(), "tenant-1", current_user, dataset_id
+                )
 
 
 class TestDatasetMetadataGetApi:
@@ -140,7 +146,15 @@ class TestDatasetMetadataApi:
                 return_value={"id": "m1", "type": "string", "name": "updated-name"},
             ),
         ):
-            result, status = method(api, MagicMock(), "tenant-1", current_user, dataset_id, metadata_id)
+            result, status = method(
+                api,
+                MetadataUpdatePayload(name="updated-name"),
+                MagicMock(),
+                "tenant-1",
+                current_user,
+                dataset_id,
+                metadata_id,
+            )
         assert status == 200
         assert result["type"] == "string"
         assert result["name"] == "updated-name"
@@ -201,9 +215,14 @@ class TestDocumentMetadataEditApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
             patch.object(DatasetService, "get_dataset", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission"),
-            patch.object(MetadataOperationData, "model_validate", return_value=MagicMock()),
             patch.object(MetadataService, "update_documents_metadata"),
         ):
-            result, status = method(api, MagicMock(), current_user, dataset_id)
+            result, status = method(
+                api,
+                MetadataOperationData(operation_data=[{"document_id": "doc-1", "metadata_list": []}]),
+                MagicMock(),
+                current_user,
+                dataset_id,
+            )
         assert status == 204
         assert result == ""

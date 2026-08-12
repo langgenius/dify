@@ -105,6 +105,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.url().optional(),
   /**
+   * The OAuth client allowed to use the Marketplace silent authorization flow.
+   */
+  NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID: z.string().optional(),
+  /**
    * The URL for MARKETPLACE
    */
   NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: z.url().optional(),
@@ -259,6 +263,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
       : getRuntimeEnvFromBody('marketplaceApiPrefix'),
+    NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID: isServer
+      ? process.env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID
+      : getRuntimeEnvFromBody('marketplaceOauthClientId'),
     NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
       : getRuntimeEnvFromBody('marketplaceUrlPrefix'),

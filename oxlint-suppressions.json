@@ -96,14 +96,6 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/components/authenticated-layout.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -162,14 +154,6 @@
       "count": 2
     }
   },
-  "web/app/(shareLayout)/webapp-signin/page.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 3
@@ -190,9 +174,6 @@
     }
   },
   "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
-    "jsx_a11y/label-has-associated-control": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -2048,11 +2029,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/common/credential-icon.tsx": {
-    "jsx_a11y/alt-text": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/document-status-with-action/status-with-action.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -3040,14 +3016,6 @@
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/list/list-with-collection.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -5379,9 +5347,6 @@
     }
   },
   "web/app/components/workflow/run/output-panel.tsx": {
-    "jsx_a11y/no-noninteractive-tabindex": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 3
     }

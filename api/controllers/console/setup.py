@@ -2,15 +2,16 @@ from typing import Literal
 
 from flask import request
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 
-from configs import dify_config
 from controllers.fastopenapi import console_router
-from enums.deployment_edition import DeploymentEdition
+from extensions.ext_application_services import application_services
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
-from models.model import DifySetup, db
-from services.account_service import RegisterService, TenantService
+from services.setup_service import (
+    InitializationValidationRequiredError,
+    SetupAlreadyCompletedError,
+    SetupInput,
+)
 
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
@@ -53,14 +54,12 @@ def get_setup_status_api() -> SetupStatusResponse:
 
     Only bootstrap-safe status information should be returned by this endpoint.
     """
-    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-        setup_status = get_setup_status()
-        if setup_status and not isinstance(setup_status, bool):
-            return SetupStatusResponse(step="finished", setup_at=setup_status.setup_at.isoformat())
-        if setup_status:
-            return SetupStatusResponse(step="finished")
+    setup_status = application_services().setup.get_status()
+    if not setup_status.completed:
         return SetupStatusResponse(step="not_started")
-    return SetupStatusResponse(step="finished")
+
+    setup_at = setup_status.setup_at.isoformat() if setup_status.setup_at is not None else None
+    return SetupStatusResponse(step="finished", setup_at=setup_at)
 
 
 @console_router.post(
@@ -77,33 +76,22 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
     and init-password validation rather than user session authentication.
     """
-    if get_setup_status():
-        raise AlreadySetupError()
+    try:
+        application_services().setup.initialize(
+            SetupInput(
+                email=payload.email,
+                name=payload.name,
+                password=payload.password,
+                ip_address=extract_remote_ip(request),
+                language=payload.language,
+            ),
+            initialization_validated=get_init_validate_status(),
+        )
+    except SetupAlreadyCompletedError:
+        raise AlreadySetupError() from None
+    except InitializationValidationRequiredError:
+        raise NotInitValidateError() from None
 
-    tenant_count = TenantService.get_tenant_count(session=db.session())
-    if tenant_count > 0:
-        raise AlreadySetupError()
-
-    if not get_init_validate_status():
-        raise NotInitValidateError()
-
-    normalized_email = payload.email.lower()
-
-    RegisterService.setup(
-        email=normalized_email,
-        name=payload.name,
-        password=payload.password,
-        ip_address=extract_remote_ip(request),
-        language=payload.language,
-        session=db.session(),
-    )
     mark_setup_completed()
 
     return SetupResponse(result="success")
-
-
-def get_setup_status() -> DifySetup | bool | None:
-    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-        return db.session.scalar(select(DifySetup).limit(1))
-
-    return True

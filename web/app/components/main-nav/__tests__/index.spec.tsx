@@ -377,6 +377,14 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
+vi.mock('@/next/dynamic', async () => {
+  const { default: WebAppsSection } = await import('../components/web-apps-section')
+
+  return {
+    default: () => WebAppsSection,
+  }
+})
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -398,6 +406,40 @@ let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
 let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: TenantListItemResponse[] = []
+
+function stubScrollRootIntersectionObserver() {
+  const observers: Array<{
+    callback: IntersectionObserverCallback
+    root: Element | Document | null | undefined
+  }> = []
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(nextCallback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        observers.push({ callback: nextCallback, root: options?.root })
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+
+  return async () => {
+    await waitFor(() => {
+      expect(observers.some(({ root }) => root instanceof Element)).toBe(true)
+    })
+    const observer = observers.find(({ root }) => root instanceof Element)
+    if (!observer) throw new Error('The scroll root observer was not created')
+
+    act(() => {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+  }
+}
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',
@@ -918,14 +960,17 @@ describe('MainNav', () => {
     )
   })
 
-  it('marks marketplace active on marketplace routes', () => {
-    mockPathname = '/marketplace'
+  it.each(['/marketplace', '/plugins', '/templates', '/templates/marketing'])(
+    'marks marketplace active on route %s',
+    (pathname) => {
+      mockPathname = pathname
 
-    renderMainNav()
+      renderMainNav()
 
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
-  })
+      const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+      expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+    },
+  )
 
   it('marks roster active on roster routes', () => {
     mockPathname = '/agents'
@@ -1427,34 +1472,90 @@ describe('MainNav', () => {
   })
 
   it('fetches the next installed web app page when the bottom sentinel enters the viewport', async () => {
-    let intersectionCallback: IntersectionObserverCallback | undefined
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class MockIntersectionObserver {
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          if (options?.root) intersectionCallback = callback
-        }
-
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
+    const triggerIntersection = stubScrollRootIntersectionObserver()
     mockInstalledApps = [createInstalledApp()]
     mockInstalledAppsHasNextPage = true
     renderMainNav()
     await screen.findByText('Alpha App')
 
-    act(() => {
-      intersectionCallback?.(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
+    await triggerIntersection()
 
     await waitFor(() => {
       expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledWith('next-page')
     })
+  })
+
+  it('shows next-page errors at the pagination boundary and retries from there', async () => {
+    const user = userEvent.setup()
+    let nextPageAttempts = 0
+    let resolveNextPage: (() => void) | undefined
+    const nextPagePending = new Promise<void>((resolve) => {
+      resolveNextPage = resolve
+    })
+    const triggerIntersection = stubScrollRootIntersectionObserver()
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsRequest.mockImplementation(
+      async ({ query }: { query: { cursor?: string; name?: string } }) => {
+        if (!query.cursor) {
+          return {
+            installed_apps: mockInstalledApps,
+            has_more: true,
+            next_cursor: 'next-page',
+          }
+        }
+
+        nextPageAttempts += 1
+        if (nextPageAttempts === 1) throw new Error('Failed to load the next page')
+
+        await nextPagePending
+
+        return {
+          installed_apps: [
+            createInstalledApp({
+              id: 'installed-2',
+              app: { ...createInstalledApp().app, name: 'Beta Tool' },
+            }),
+          ],
+          has_more: false,
+          next_cursor: null,
+        }
+      },
+    )
+    renderMainNav()
+    const firstAppLink = await screen.findByRole('link', {
+      name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
+    })
+
+    await triggerIntersection()
+
+    const paginationError = await screen.findByRole('alert')
+    expect(
+      firstAppLink.compareDocumentPosition(paginationError) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    retryButton.focus()
+    expect(retryButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
+      expect(retryButton).toBeInTheDocument()
+      expect(retryButton).toHaveFocus()
+      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    await user.keyboard('{Enter}')
+    expect(nextPageAttempts).toBe(2)
+
+    act(() => {
+      resolveNextPage?.()
+    })
+
+    expect(await screen.findByText('Beta Tool')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('collapses and expands installed web apps from the section arrow', async () => {

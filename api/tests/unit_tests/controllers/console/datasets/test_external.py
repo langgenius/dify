@@ -12,10 +12,14 @@ from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.external import (
     BedrockRetrievalApi,
+    BedrockRetrievalPayload,
     ExternalApiTemplateApi,
     ExternalApiTemplateListApi,
+    ExternalApiTemplateListQuery,
     ExternalApiUseCheckApi,
     ExternalDatasetCreateApi,
+    ExternalHitTestingPayload,
+    ExternalKnowledgeApiPayload,
     ExternalKnowledgeHitTestingApi,
 )
 from models.account import Account, TenantAccountRole
@@ -174,7 +178,9 @@ class TestExternalApiTemplateListApi:
                 return_value=([api_item], 3),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, session, "tenant-1")
+            resp, status = method(
+                api, ExternalApiTemplateListQuery(page=2, limit=1, keyword="vector"), session, "tenant-1"
+            )
 
         assert status == 200
         assert resp == {
@@ -213,7 +219,9 @@ class TestExternalApiTemplateListApi:
                 return_value=created,
             ) as create_external_knowledge_api,
         ):
-            resp, status = method(api, session, "tenant-1", current_user)
+            resp, status = method(
+                api, ExternalKnowledgeApiPayload.model_validate(payload), session, "tenant-1", current_user
+            )
 
         assert status == 201
         assert resp == _external_api_dict("api-created")
@@ -239,7 +247,7 @@ class TestExternalApiTemplateListApi:
             patch.object(ExternalDatasetService, "validate_api_list"),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), MagicMock(), "tenant-1", current_user)
 
     def test_post_duplicate_name(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
@@ -258,7 +266,7 @@ class TestExternalApiTemplateListApi:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), MagicMock(), "tenant-1", current_user)
 
 
 class TestExternalApiTemplateApi:
@@ -325,7 +333,14 @@ class TestExternalApiTemplateApi:
                 return_value=updated,
             ) as update_external_knowledge_api,
         ):
-            resp, status = method(api, session, "tenant-1", current_user, "api-updated")
+            resp, status = method(
+                api,
+                ExternalKnowledgeApiPayload.model_validate(payload),
+                session,
+                "tenant-1",
+                current_user,
+                "api-updated",
+            )
 
         assert status == 200
         assert resp == _external_api_dict("api-updated")
@@ -405,7 +420,9 @@ class TestExternalDatasetCreateApi:
             ) as dataset_response_source,
         ):
             session = MagicMock()
-            resp, status = method(api, session, "tenant-1", current_user)
+            resp, status = method(
+                api, ExternalDatasetCreatePayload.model_validate(payload), session, "tenant-1", current_user
+            )
 
         assert status == 201
         assert resp == _expected_dataset_detail_payload()
@@ -433,7 +450,7 @@ class TestExternalDatasetCreateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalDatasetCreatePayload.model_validate(payload), MagicMock(), "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApi:
@@ -450,7 +467,7 @@ class TestExternalKnowledgeHitTestingApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), current_user, "dataset-id")
+                method(api, ExternalHitTestingPayload(query="test"), MagicMock(), current_user, "dataset-id")
 
     def test_hit_testing_success(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
@@ -496,7 +513,7 @@ class TestExternalKnowledgeHitTestingApi:
             ) as external_retrieve,
             patch("controllers.console.datasets.external.dump_response", side_effect=lambda _model, value: value),
         ):
-            resp = method(api, session, current_user, "dataset-id")
+            resp = method(api, ExternalHitTestingPayload.model_validate(payload), session, current_user, "dataset-id")
 
         assert resp == retrieve_response
         check_dataset_permission.assert_called_once_with(dataset, current_user, session)
@@ -549,7 +566,7 @@ class TestBedrockRetrievalApi:
                 return_value=retrieval_response,
             ) as knowledge_retrieval,
         ):
-            resp, status = method()
+            resp, status = method(api, BedrockRetrievalPayload.model_validate(payload))
 
         assert status == 200
         assert resp == retrieval_response
@@ -576,7 +593,7 @@ class TestExternalApiTemplateListApiAdvanced:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalKnowledgeApiPayload.model_validate(payload), MagicMock(), "tenant-1", current_user)
 
     def test_get_with_pagination(self, app: Flask):
         api = ExternalApiTemplateListApi()
@@ -591,7 +608,7 @@ class TestExternalApiTemplateListApiAdvanced:
                 return_value=(templates, 25),
             ) as get_external_knowledge_apis,
         ):
-            resp, status = method(api, MagicMock(), "tenant-1")
+            resp, status = method(api, ExternalApiTemplateListQuery(page=2, limit=3), MagicMock(), "tenant-1")
 
         assert status == 200
         assert resp == {
@@ -621,7 +638,7 @@ class TestExternalDatasetCreateApiAdvanced:
 
         with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user)
+                method(api, ExternalDatasetCreatePayload.model_validate(payload), MagicMock(), "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApiAdvanced:
@@ -644,7 +661,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), current_user, "ds-1")
+                method(api, ExternalHitTestingPayload.model_validate(payload), MagicMock(), current_user, "ds-1")
 
     def test_hit_testing_with_custom_retrieval_model(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
@@ -682,7 +699,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 },
             ) as external_retrieve,
         ):
-            resp = method(api, session, current_user, "ds-1")
+            resp = method(api, ExternalHitTestingPayload.model_validate(payload), session, current_user, "ds-1")
 
         assert resp == {
             "query": {"content": "test query"},
@@ -727,4 +744,4 @@ class TestBedrockRetrievalApiAdvanced:
             ),
         ):
             with pytest.raises(ValueError):
-                method()
+                method(api, BedrockRetrievalPayload.model_validate(payload))

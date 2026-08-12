@@ -73,7 +73,7 @@ def test_ensure_start_node_returns_workflow_when_start_already_exists():
     assert result is workflow
 
 
-def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch):
+def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch: pytest.MonkeyPatch):
     graph = {
         "nodes": [
             {"id": "llm-1", "data": {"type": "llm"}},
@@ -107,14 +107,14 @@ def test_ensure_start_node_injects_virtual_start_for_root_candidates(monkeypatch
     make_transient.assert_called_once_with(workflow)
 
 
-def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch):
+def test_parse_files_returns_empty_when_upload_config_disabled(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
     monkeypatch.setattr("services.snippet_generate_service.FileUploadConfigManager.convert", Mock(return_value=None))
 
     assert SnippetGenerateService.parse_files(workflow, files=[{"id": "file-1"}]) == []
 
 
-def test_parse_files_delegates_to_file_factory(monkeypatch):
+def test_parse_files_delegates_to_file_factory(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
     upload_config = SimpleNamespace(enabled=True)
     files = [SimpleNamespace(id="file-1")]
@@ -130,7 +130,7 @@ def test_parse_files_delegates_to_file_factory(monkeypatch):
     build_from_mappings.assert_called_once()
 
 
-def test_generate_raises_when_draft_workflow_missing(monkeypatch):
+def test_generate_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -145,7 +145,7 @@ def test_generate_raises_when_draft_workflow_missing(monkeypatch):
         )
 
 
-def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch):
+def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", input_fields_list=[])
     user = SimpleNamespace(id="user-1")
@@ -186,7 +186,7 @@ def test_generate_delegates_to_workflow_generator_and_filters_stream(monkeypatch
     workflow_generator_class.convert_to_event_stream.assert_called_once()
 
 
-def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch):
+def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", input_fields_list=[])
     user = SimpleNamespace(id="user-1")
@@ -216,7 +216,7 @@ def test_run_published_delegates_to_workflow_generator_non_streaming(monkeypatch
     assert kwargs["call_depth"] == 0
 
 
-def test_ensure_start_node_for_worker_delegates(monkeypatch):
+def test_ensure_start_node_for_worker_delegates(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [], "edges": []})
     snippet = SimpleNamespace(input_fields_list=[])
     ensure_start_node = Mock(return_value=workflow)
@@ -228,7 +228,7 @@ def test_ensure_start_node_for_worker_delegates(monkeypatch):
     ensure_start_node.assert_called_once_with(workflow, snippet)
 
 
-def test_run_draft_node_delegates_to_workflow_service(monkeypatch):
+def test_run_draft_node_delegates_to_workflow_service(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     account = SimpleNamespace(id="account-1")
@@ -262,7 +262,7 @@ def test_run_draft_node_delegates_to_workflow_service(monkeypatch):
     assert kwargs["files"] == []
 
 
-def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch):
+def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -277,7 +277,7 @@ def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch):
         )
 
 
-def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
+def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "iteration-1", "data": {"type": "iteration"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     user = SimpleNamespace(id="user-1")
@@ -313,7 +313,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch):
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
-def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatch):
+def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -329,7 +329,7 @@ def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatc
         )
 
 
-def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
+def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch: pytest.MonkeyPatch):
     workflow = _workflow({"nodes": [{"id": "loop-1", "data": {"type": "loop"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     user = SimpleNamespace(id="user-1")
@@ -365,7 +365,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch):
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
-def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch):
+def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_draft_workflow=Mock(return_value=None)),
@@ -381,7 +381,7 @@ def test_generate_single_loop_raises_when_draft_workflow_missing(monkeypatch):
         )
 
 
-def test_run_published_raises_when_published_workflow_missing(monkeypatch):
+def test_run_published_raises_when_published_workflow_missing(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "services.snippet_generate_service.SnippetService",
         lambda *_args, **_kwargs: SimpleNamespace(get_published_workflow=Mock(return_value=None)),

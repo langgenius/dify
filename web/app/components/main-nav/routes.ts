@@ -104,7 +104,9 @@ export const MAIN_NAV_ROUTES = [
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',
     active: (path: string) =>
-      isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
+      isPathUnderRoute(path, '/marketplace') ||
+      isPathUnderRoute(path, '/plugins') ||
+      isPathUnderRoute(path, '/templates'),
     icon: 'i-custom-vender-main-nav-marketplace-v2',
     activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,

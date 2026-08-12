@@ -1,4 +1,5 @@
 'use client'
+import type { ActivePluginType } from '../constants'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
@@ -7,12 +8,16 @@ import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
+  activePluginType?: ActivePluginType
   className?: string
+  deferOffscreenCollections?: boolean
   showInstallButton?: boolean
   linkToMarketplaceDetail?: boolean
 }
 const ListWrapper = ({
+  activePluginType,
   className,
+  deferOffscreenCollections,
   showInstallButton,
   linkToMarketplaceDetail,
 }: ListWrapperProps) => {
@@ -26,7 +31,7 @@ const ListWrapper = ({
     isLoading,
     isFetchingNextPage,
     page,
-  } = useMarketplaceData()
+  } = useMarketplaceData(activePluginType)
 
   return (
     <div
@@ -54,6 +59,7 @@ const ListWrapper = ({
             marketplaceCollections={marketplaceCollections || []}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
+            deferOffscreenCollections={deferOffscreenCollections}
             showInstallButton={showInstallButton}
             linkToMarketplaceDetail={linkToMarketplaceDetail}
           />

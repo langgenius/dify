@@ -51,6 +51,10 @@ describe('HomeCatalogNavigation', () => {
     const activeTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
     expect(activeTab).toHaveAttribute('aria-current', 'page')
     expect(activeTab).toHaveAttribute('href', '/plugins')
+    expect(activeTab).toHaveClass('bg-state-base-active')
+    expect(activeTab).not.toHaveClass('text-text-accent')
+    expect(activeTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
     ).toHaveAttribute('href', '/templates')
@@ -58,7 +62,7 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.getByTestId('plugin-type-switch')).toHaveAttribute('data-variant', 'home')
   })
 
-  it('keeps header tabs clickable', () => {
+  it('keeps tabs clickable and uses only the active background', () => {
     render(<HomeCatalogTabs isMarketplacePlatform />)
 
     const pluginsTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
@@ -66,8 +70,12 @@ describe('HomeCatalogNavigation', () => {
 
     expect(pluginsTab).toHaveAttribute('href', '/plugins')
     expect(pluginsTab).toHaveClass('cursor-pointer')
+    expect(pluginsTab).toHaveClass('bg-state-base-active')
+    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('href', '/templates')
     expect(templatesTab).toHaveClass('cursor-pointer')
+    expect(templatesTab).not.toHaveClass('bg-state-base-active')
+    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
   })
 
   it('marks Templates as active when rendering the Templates catalog', () => {
@@ -77,8 +85,35 @@ describe('HomeCatalogNavigation', () => {
     const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
 
     expect(pluginsTab).not.toHaveAttribute('aria-current')
+    expect(pluginsTab).not.toHaveClass('bg-state-base-active')
+    expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('aria-current', 'page')
+    expect(templatesTab).toHaveClass('bg-state-base-active')
+    expect(templatesTab).not.toHaveClass('text-text-accent')
+    expect(templatesTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
+  })
+
+  it('uses request-localized labels and preserves the selected language', () => {
+    render(
+      <HomeCatalogTabs
+        isMarketplacePlatform
+        labels={{
+          plugins: '插件',
+          templates: '模板',
+        }}
+        language="zh-Hans"
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: '插件' })).toHaveAttribute(
+      'href',
+      '/plugins?language=zh-Hans',
+    )
+    expect(screen.getByRole('link', { name: '模板' })).toHaveAttribute(
+      'href',
+      '/templates?language=zh-Hans',
+    )
   })
 
   it('renders a supplied catalog category navigation', () => {
@@ -95,7 +130,7 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
   })
 
-  it('links Dify users to the hosted Marketplace templates page', () => {
+  it('keeps Dify template navigation on the current origin', () => {
     renderNavigation(false)
 
     expect(screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })).toHaveAttribute(
@@ -104,7 +139,7 @@ describe('HomeCatalogNavigation', () => {
     )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
-    ).toHaveAttribute('href', 'https://marketplace.dify.ai/templates?source=console')
+    ).toHaveAttribute('href', '/templates')
   })
 
   it('shows the compact navigation and header tabs after reaching the sticky header', () => {

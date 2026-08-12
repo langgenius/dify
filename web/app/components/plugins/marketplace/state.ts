@@ -1,4 +1,5 @@
 import type { PluginsSearchParams } from '@dify/contracts/marketplace'
+import type { ActivePluginType } from './constants'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import {
@@ -8,33 +9,35 @@ import {
   useMarketplaceSortValue,
   useSearchPluginText,
 } from './atoms'
-import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
-import { getCollectionsParams, getMarketplaceListFilterType } from './utils'
+import { getMarketplacePluginsSearchParams } from './search-params'
+import { getCollectionsParams } from './utils'
 
-export function useMarketplaceData() {
+export function useMarketplaceData(activePluginTypeOverride?: ActivePluginType) {
   const [searchPluginTextOriginal] = useSearchPluginText()
   const searchPluginText = useDebounce(searchPluginTextOriginal, { wait: 500 })
   const [filterPluginTags] = useFilterPluginTags()
-  const [activePluginType] = useActivePluginType()
+  const [activePluginTypeFromUrl] = useActivePluginType()
+  const activePluginType = activePluginTypeOverride ?? activePluginTypeFromUrl
+  const isSearchMode = useMarketplaceSearchMode(activePluginType)
 
   const collectionsQuery = useMarketplaceCollectionsAndPlugins(
     getCollectionsParams(activePluginType),
+    !isSearchMode,
   )
 
   const sort = useMarketplaceSortValue()
-  const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
     if (!isSearchMode) return undefined
-    return {
-      query: searchPluginText,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
-      tags: filterPluginTags,
-      sort_by: sort.sortBy,
-      sort_order: sort.sortOrder,
-      type: getMarketplaceListFilterType(activePluginType),
-    }
+    return getMarketplacePluginsSearchParams(
+      {
+        q: searchPluginText,
+        category: activePluginType,
+        tags: filterPluginTags,
+      },
+      sort,
+    )
   }, [isSearchMode, searchPluginText, activePluginType, filterPluginTags, sort])
 
   const pluginsQuery = useMarketplacePlugins(queryParams)
