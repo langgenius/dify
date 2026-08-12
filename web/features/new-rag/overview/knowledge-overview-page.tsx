@@ -449,6 +449,48 @@ function OverviewErrorInline() {
   )
 }
 
+const ATTENTION_PAGE_SIZE = 4
+
+function attentionPresentation(
+  issue: KnowledgeFsOverviewAttentionResponse,
+  t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+): { description?: string; title: string } {
+  const evidenceCodes = new Set(issue.evidence.map(({ code }) => code))
+  if (issue.rule_id === 'stale-source')
+    return {
+      description: t(($) => $['newKnowledge.overview.attention.staleSource.description']),
+      title: t(($) => $['newKnowledge.overview.attention.staleSource.title']),
+    }
+  if (issue.rule_id === 'failed-document')
+    return {
+      description: t(($) => $['newKnowledge.overview.attention.failedDocument.description']),
+      title: t(($) => $['newKnowledge.overview.attention.failedDocument.title']),
+    }
+  if (issue.rule_id === 'low-quality-query')
+    return {
+      description: t(($) => $['newKnowledge.overview.attention.lowQualityQuery.description']),
+      title: t(($) => $['newKnowledge.overview.attention.lowQualityQuery.title']),
+    }
+  if (issue.rule_id === 'model-readiness') {
+    const reasons: string[] = []
+    if (
+      evidenceCodes.has('MODEL_EMBEDDING_PROFILE_MISSING') ||
+      evidenceCodes.has('MODEL_RETRIEVAL_PROFILE_MISSING')
+    )
+      reasons.push(t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing']))
+    if (evidenceCodes.has('MODEL_PUBLICATION_BINDING_MISSING'))
+      reasons.push(t(($) => $['newKnowledge.overview.attention.modelReadiness.bindingMissing']))
+    return {
+      description:
+        reasons.join(' ') ||
+        t(($) => $['newKnowledge.overview.attention.modelReadiness.description']),
+      title: t(($) => $['newKnowledge.overview.attention.modelReadiness.title']),
+    }
+  }
+
+  return { title: issue.title }
+}
+
 function AttentionPanel({
   attention,
   empty,
@@ -465,19 +507,20 @@ function AttentionPanel({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const [issuePage, setIssuePage] = useState(0)
-  const issuePageCount = Math.max(1, Math.ceil(attention.length / 5))
+  // Dify owns product authorization; ignore responses cached or served by an older backend that
+  // still contain the retired KnowledgeFS-local permission readiness rule.
+  const actionableAttention = attention.filter((issue) => issue.rule_id !== 'permission-readiness')
+  const issuePageCount = Math.max(1, Math.ceil(actionableAttention.length / ATTENTION_PAGE_SIZE))
   const activeIssuePage = Math.min(issuePage, issuePageCount - 1)
-  const visibleIssues = attention.slice(activeIssuePage * 5, activeIssuePage * 5 + 5)
+  const visibleIssues = actionableAttention.slice(
+    activeIssuePage * ATTENTION_PAGE_SIZE,
+    activeIssuePage * ATTENTION_PAGE_SIZE + ATTENTION_PAGE_SIZE,
+  )
   const issueAction = (issue: KnowledgeFsOverviewAttentionResponse) => {
-    if (issue.action.kind === 'review-permissions')
-      return {
-        href: newKnowledgeSettingsPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.permission']),
-      }
     if (issue.action.kind === 'review-models')
       return {
         href: newKnowledgeSettingsPath(knowledgeSpaceId),
-        label: t(($) => $['newKnowledge.retrievalTest.title']),
+        label: t(($) => $['newKnowledge.overview.attention.action.configureModels']),
       }
     if (issue.action.resource_type === 'failed-query' || issue.rule_id === 'low-quality-query')
       return {
@@ -539,54 +582,64 @@ function AttentionPanel({
               ['attention-2', 100],
               ['attention-3', 100],
               ['attention-4', 100],
-              ['attention-5', 86],
             ].map(([key, width]) => (
-              <div key={key} className="flex h-12 items-center">
+              <div key={key} className="flex h-16 items-center">
                 <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
               </div>
             ))}
           </div>
-        ) : attention.length ? (
+        ) : actionableAttention.length ? (
           <>
             <ul className="min-h-0 flex-1 overflow-hidden">
-              {visibleIssues.map((issue) => (
-                <li key={issue.issue_key} className="flex h-12 min-w-0 items-center gap-4">
-                  <span
-                    className={cn(
-                      'shrink-0 rounded-md px-2 py-0.5 system-xs-medium',
-                      issue.severity === 'critical'
-                        ? 'bg-state-destructive-hover text-text-destructive'
+              {visibleIssues.map((issue) => {
+                const presentation = attentionPresentation(issue, t)
+                const action = issueAction(issue)
+                return (
+                  <li key={issue.issue_key} className="flex h-16 min-w-0 items-center gap-4">
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-md px-2 py-0.5 system-xs-medium',
+                        issue.severity === 'critical'
+                          ? 'bg-state-destructive-hover text-text-destructive'
+                          : issue.severity === 'warning'
+                            ? 'bg-state-warning-hover text-text-warning'
+                            : 'bg-background-section text-text-tertiary',
+                      )}
+                    >
+                      {issue.severity === 'critical'
+                        ? t(($) => $['newKnowledge.overview.blocker'])
                         : issue.severity === 'warning'
-                          ? 'bg-state-warning-hover text-text-warning'
-                          : 'bg-background-section text-text-tertiary',
-                    )}
-                  >
-                    {issue.severity === 'critical'
-                      ? t(($) => $['newKnowledge.overview.blocker'])
-                      : issue.severity === 'warning'
-                        ? t(($) => $['newKnowledge.overview.serious'])
-                        : t(($) => $['newKnowledge.overview.review'])}
-                  </span>
-                  <p className="min-w-0 flex-1 truncate system-sm-regular text-text-primary">
-                    {issue.title}
-                  </p>
-                  <Button
-                    render={<Link href={issueAction(issue).href} />}
-                    nativeButton={false}
-                    size="small"
-                    tone={issue.severity === 'critical' ? 'destructive' : 'default'}
-                    variant={issue.severity === 'critical' ? 'primary' : 'secondary'}
-                    className={cn(
-                      issue.severity === 'critical' &&
-                        'border-[#ff4d14] bg-[#ff4d14] hover:border-[#e64210] hover:bg-[#e64210]',
-                    )}
-                  >
-                    {issueAction(issue).label}
-                  </Button>
-                </li>
-              ))}
+                          ? t(($) => $['newKnowledge.overview.serious'])
+                          : t(($) => $['newKnowledge.overview.review'])}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate system-sm-medium text-text-primary">
+                        {presentation.title}
+                      </p>
+                      {presentation.description && (
+                        <p className="mt-0.5 line-clamp-2 body-xs-regular text-text-tertiary">
+                          {presentation.description}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      render={<Link href={action.href} />}
+                      nativeButton={false}
+                      size="small"
+                      tone={issue.severity === 'critical' ? 'destructive' : 'default'}
+                      variant={issue.severity === 'critical' ? 'primary' : 'secondary'}
+                      className={cn(
+                        issue.severity === 'critical' &&
+                          'border-[#ff4d14] bg-[#ff4d14] hover:border-[#e64210] hover:bg-[#e64210]',
+                      )}
+                    >
+                      {action.label}
+                    </Button>
+                  </li>
+                )
+              })}
             </ul>
-            <div className="flex h-13 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
+            <div className="flex h-11 shrink-0 items-end justify-end border-t border-divider-subtle pb-1">
               <div className="flex h-8 items-center rounded-lg border border-divider-subtle p-0.5">
                 <button
                   type="button"

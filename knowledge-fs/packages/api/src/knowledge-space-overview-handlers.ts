@@ -154,7 +154,6 @@ export function registerKnowledgeSpaceOverviewHandlers(input: {
         limit: query.limit,
         now,
         staleBefore: new Date(Date.parse(now) - SOURCE_STALE_AFTER_MS).toISOString(),
-        subjectId: scope.subject.subjectId,
         tenantId: scope.subject.tenantId,
       });
       return context.json({ items: issues.map(toPublicAttention) }, 200);

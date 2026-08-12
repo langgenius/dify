@@ -360,7 +360,7 @@ describe.each(["postgres", "tidb"] as const)(
       }
     });
 
-    it("filters low-quality failed-query signals by tenant and current grants before LIMIT", async () => {
+    it("lists low-quality failed-query signals for the whole space within current grants", async () => {
       const calls: DatabaseExecuteInput[] = [];
       const database = testDatabase(dialect, async (input) => {
         calls.push(input);
@@ -379,25 +379,22 @@ describe.each(["postgres", "tidb"] as const)(
         limit: 10,
         now: NOW,
         staleBefore: "2026-07-07T14:00:00.000Z",
-        subjectId: "editor-1",
         tenantId: TENANT_ID,
       });
 
       const failed = calls.find((call) => call.tableName === "failed_queries");
-      expect(failed?.params.slice(0, 4)).toEqual([
+      expect(failed?.params.slice(0, 3)).toEqual([
         TENANT_ID,
         SPACE_ID,
-        "editor-1",
         JSON.stringify(candidateGrants),
       ]);
       const sql = failed?.sql ?? "";
       const acl = dialect === "postgres" ? "jsonb_typeof" : "JSON_CONTAINS";
-      expect(sql).toContain("requested_by_subject_id");
+      expect(sql).not.toContain("requested_by_subject_id");
       expect(sql).toContain("required_permission_scope");
       expect(sql).toContain("permission_snapshot_id");
       expect(sql).toContain("permission_snapshot_revision");
       expect(sql.indexOf(acl)).toBeLessThan(sql.indexOf("LIMIT"));
-      expect(sql.indexOf("requested_by_subject_id")).toBeLessThan(sql.indexOf("LIMIT"));
     });
 
     it("rejects an attention transition when the fresh snapshot was revoked", async () => {
@@ -813,10 +810,7 @@ describe.each(["postgres", "tidb"] as const)(
             rowsAffected: 1,
           };
         }
-        if (
-          input.tableName === "knowledge_space_access_policies" ||
-          input.tableName === "knowledge_space_profile_heads"
-        ) {
+        if (input.tableName === "knowledge_space_profile_heads") {
           return { rows: [], rowsAffected: 0 };
         }
         if (input.tableName === "knowledge_spaces") {
@@ -850,14 +844,12 @@ describe.each(["postgres", "tidb"] as const)(
         limit: 10,
         now: NOW,
         staleBefore: "2026-07-07T14:00:00.000Z",
-        subjectId: "editor-1",
         tenantId: TENANT_ID,
       });
 
       expect(issues.map((issue) => issue.ruleId)).toEqual([
         "failed-document",
         "model-readiness",
-        "permission-readiness",
         "stale-source",
       ]);
       expect(issues.find((issue) => issue.ruleId === "failed-document")).toMatchObject({
@@ -867,18 +859,23 @@ describe.each(["postgres", "tidb"] as const)(
       expect(issues.find((issue) => issue.ruleId === "stale-source")).toMatchObject({
         status: "active",
       });
+      expect(issues.find((issue) => issue.ruleId === "model-readiness")?.evidence).toEqual([
+        { code: "MODEL_PROFILE_NOT_READY", observedAt: NOW },
+        { code: "MODEL_EMBEDDING_PROFILE_MISSING", observedAt: NOW },
+        { code: "MODEL_RETRIEVAL_PROFILE_MISSING", observedAt: NOW },
+      ]);
       expect(
         calls.filter(
           (call) =>
             call.tableName === "knowledge_space_attention_states" && call.operation === "insert",
         ),
-      ).toHaveLength(5);
+      ).toHaveLength(4);
+      expect(calls.some((call) => call.tableName === "knowledge_space_access_policies")).toBe(
+        false,
+      );
 
       const noSignals = createDatabaseKnowledgeSpaceOverviewRepository({
         database: testDatabase(dialect, async (input) => {
-          if (input.tableName === "knowledge_space_access_policies") {
-            return { rows: [{ owner_count: 1, policy_id: "policy-1" }], rowsAffected: 1 };
-          }
           if (input.tableName === "knowledge_space_profile_heads") {
             return {
               rows: [{ bindings: 0, embedding_heads: 1, publications: 0, retrieval_heads: 1 }],
@@ -897,14 +894,54 @@ describe.each(["postgres", "tidb"] as const)(
           limit: 10,
           now: NOW,
           staleBefore: "2026-07-07T14:00:00.000Z",
-          subjectId: "editor-1",
           tenantId: TENANT_ID,
         }),
       ).resolves.toEqual([]);
     });
 
-    it("revalidates permission and transitions every persisted attention rule", async () => {
-      const definitions = attentionDefinitions();
+    it("reports a published index without a model-profile binding as specific evidence", async () => {
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database: testDatabase(dialect, async (input) => {
+          if (input.tableName === "knowledge_space_profile_heads") {
+            return {
+              rows: [{ bindings: 0, embedding_heads: 1, publications: 1, retrieval_heads: 1 }],
+              rowsAffected: 1,
+            };
+          }
+          if (
+            input.tableName === "knowledge_space_attention_states" &&
+            input.operation === "insert"
+          ) {
+            return { rows: [], rowsAffected: 1 };
+          }
+          return { rows: [], rowsAffected: 0 };
+        }),
+        generateAttentionStateId: () => "state-id",
+        maxListLimit: 20,
+        maxRuleItems: 20,
+      });
+
+      const issues = await repository.listAttention({
+        candidateGrants: ["team:camera"],
+        knowledgeSpaceId: SPACE_ID,
+        limit: 10,
+        now: NOW,
+        staleBefore: "2026-07-07T14:00:00.000Z",
+        tenantId: TENANT_ID,
+      });
+
+      expect(issues).toHaveLength(1);
+      expect(issues[0]).toMatchObject({
+        evidence: [
+          { code: "MODEL_PROFILE_NOT_READY", observedAt: NOW },
+          { code: "MODEL_PUBLICATION_BINDING_MISSING", observedAt: NOW },
+        ],
+        ruleId: "model-readiness",
+      });
+    });
+
+    it("transitions active attention rules and retires persisted permission-readiness states", async () => {
+      const definitions = persistedAttentionDefinitions();
       const database = testDatabase(dialect, async (input) => {
         if (input.tableName === "knowledge_spaces") {
           return { rows: [activeSpaceRow()], rowsAffected: 1 };
@@ -989,7 +1026,9 @@ describe.each(["postgres", "tidb"] as const)(
         maxRuleItems: 20,
       });
 
-      for (const definition of definitions) {
+      for (const definition of definitions.filter(
+        (candidate) => candidate.ruleId !== "permission-readiness",
+      )) {
         await expect(
           repository.transitionAttention({
             ...transitionInput(),
@@ -1001,6 +1040,17 @@ describe.each(["postgres", "tidb"] as const)(
           status: "resolved",
         });
       }
+
+      const retired = definitions.find(
+        (definition) => definition.ruleId === "permission-readiness",
+      );
+      expect(retired).toBeDefined();
+      await expect(
+        repository.transitionAttention({
+          ...transitionInput(),
+          issueKey: retired!.issueKey,
+        }),
+      ).resolves.toBeNull();
     });
   },
 );
@@ -1132,7 +1182,7 @@ function sourceFreshnessRow(overrides: DatabaseRow = {}): DatabaseRow {
   };
 }
 
-function attentionDefinitions() {
+function persistedAttentionDefinitions() {
   return [
     {
       issueKey: knowledgeSpaceAttentionIssueKey("stale-source", "source", "source-1"),
@@ -1172,7 +1222,7 @@ function attentionDefinitions() {
 }
 
 function attentionStateRow(
-  definition: ReturnType<typeof attentionDefinitions>[number],
+  definition: ReturnType<typeof persistedAttentionDefinitions>[number],
   overrides: DatabaseRow = {},
 ): DatabaseRow {
   return {
@@ -1191,7 +1241,9 @@ function attentionStateRow(
 }
 
 function attentionStateForIssue(issueKey: string): DatabaseRow {
-  const definition = attentionDefinitions().find((candidate) => candidate.issueKey === issueKey);
+  const definition = persistedAttentionDefinitions().find(
+    (candidate) => candidate.issueKey === issueKey,
+  );
   if (!definition) throw new Error(`unknown attention issue ${issueKey}`);
   if (definition.ruleId === "failed-document") {
     return attentionStateRow(definition, {

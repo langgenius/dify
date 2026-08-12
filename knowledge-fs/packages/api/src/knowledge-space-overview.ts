@@ -165,6 +165,7 @@ export const KnowledgeSpaceAttentionRuleIds = [
   "stale-source",
   "failed-document",
   "low-quality-query",
+  // Read compatibility for states persisted before Dify-owned authorization retired this rule.
   "permission-readiness",
   "model-readiness",
 ] as const;
@@ -206,7 +207,6 @@ export interface ListKnowledgeSpaceAttentionInput {
   readonly limit: number;
   readonly now: string;
   readonly staleBefore: string;
-  readonly subjectId: string;
   readonly tenantId: string;
 }
 

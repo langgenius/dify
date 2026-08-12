@@ -546,7 +546,10 @@ describe('KnowledgeOverviewPage', () => {
     }))
     const rendered = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('Source 0 has not synced in 7 days')).toBeInTheDocument()
+    expect(
+      screen.getAllByText('dataset.newKnowledge.overview.attention.staleSource.title'),
+    ).toHaveLength(4)
+    expect(screen.queryByText('Source 0 has not synced in 7 days')).not.toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.overview.blocker')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
@@ -556,6 +559,63 @@ describe('KnowledgeOverviewPage', () => {
 
     expect(screen.getByText('1 / 1')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.pagination.previous' })).toBeDisabled()
+  })
+
+  it('explains model blockers and ignores retired permission-readiness responses', () => {
+    queryData.attention.data = [
+      {
+        action: { kind: 'review-models', resource_type: 'knowledge-space' },
+        evidence: [
+          { code: 'MODEL_PROFILE_NOT_READY', observed_at: '2026-07-29T08:00:00Z' },
+          { code: 'MODEL_RETRIEVAL_PROFILE_MISSING', observed_at: '2026-07-29T08:00:00Z' },
+          { code: 'MODEL_PUBLICATION_BINDING_MISSING', observed_at: '2026-07-29T08:00:00Z' },
+        ],
+        issue_key: 'model-readiness:knowledge-space:knowledge-1',
+        knowledge_space_id: 'knowledge-1',
+        resource: { id: 'knowledge-1', type: 'knowledge-space' },
+        revision: 1,
+        rule_id: 'model-readiness',
+        severity: 'critical',
+        status: 'active',
+        title: 'Retrieval model profile is not published',
+        updated_at: '2026-07-29T08:00:00Z',
+      },
+      {
+        action: { kind: 'review-permissions', resource_type: 'knowledge-space' },
+        evidence: [
+          { code: 'PERMISSION_AGGREGATE_NOT_READY', observed_at: '2026-07-29T08:00:00Z' },
+          { code: 'PERMISSION_POLICY_MISSING', observed_at: '2026-07-29T08:00:00Z' },
+          { code: 'PERMISSION_OWNER_MISSING', observed_at: '2026-07-29T08:00:00Z' },
+        ],
+        issue_key: 'permission-readiness:knowledge-space:knowledge-1',
+        knowledge_space_id: 'knowledge-1',
+        resource: { id: 'knowledge-1', type: 'knowledge-space' },
+        revision: 1,
+        rule_id: 'permission-readiness',
+        severity: 'critical',
+        status: 'active',
+        title: 'Knowledge-space permissions are not ready',
+        updated_at: '2026-07-29T08:00:00Z',
+      },
+    ]
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByText('dataset.newKnowledge.overview.attention.modelReadiness.title'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'dataset.newKnowledge.overview.attention.modelReadiness.profilesMissing dataset.newKnowledge.overview.attention.modelReadiness.bindingMissing',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.overview.attention.action.configureModels',
+      }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/settings')
+    expect(screen.queryByText('Retrieval model profile is not published')).not.toBeInTheDocument()
+    expect(screen.queryByText('Knowledge-space permissions are not ready')).not.toBeInTheDocument()
   })
 
   it('opens the complete activity view from recent activity', async () => {

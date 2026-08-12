@@ -197,7 +197,6 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
         const signal = await signalFromStoredState(database, existing, {
           ...input,
           candidateGrants,
-          subjectId: input.actorSubjectId,
         });
         if (!signal) return null;
         const params: DatabaseQueryValue[] = [
@@ -570,7 +569,6 @@ interface AttentionSignalInput {
   readonly limit: number;
   readonly now: string;
   readonly staleBefore: string;
-  readonly subjectId: string;
   readonly tenantId: string;
 }
 
@@ -579,14 +577,13 @@ async function collectAttentionSignals(
   input: AttentionSignalInput,
 ): Promise<KnowledgeSpaceAttentionIssue[]> {
   const perRule = Math.max(1, Math.min(input.limit, 20));
-  const [sources, documents, quality, permission, model] = await Promise.all([
+  const [sources, documents, quality, model] = await Promise.all([
     staleSourceSignals(database, input, perRule),
     failedDocumentSignals(database, input, perRule),
     lowQualitySignals(database, input, perRule),
-    permissionSignals(database, input),
     modelSignals(database, input),
   ]);
-  return [...permission, ...model, ...documents, ...sources, ...quality]
+  return [...model, ...documents, ...sources, ...quality]
     .sort(
       (left, right) =>
         severityRank(left.severity) - severityRank(right.severity) ||
@@ -688,7 +685,6 @@ async function lowQualitySignals(
   const params: DatabaseQueryValue[] = [
     input.tenantId,
     input.knowledgeSpaceId,
-    input.subjectId,
     JSON.stringify(input.candidateGrants),
   ];
   const resourceFilter = resourceId
@@ -699,7 +695,7 @@ async function lowQualitySignals(
     maxRows: limit,
     operation: "select",
     params,
-    sql: `SELECT failed.${q(database, "id")}, failed.${q(database, "created_at")}, failed.${q(database, "trigger")}, failed.${q(database, "required_permission_scope")} FROM ${q(database, "failed_queries")} failed WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND failed.${q(database, "requested_by_subject_id")} = ${p(database, 3)} AND failed.${q(database, "status")} = 'pending-triage' AND failed.${q(database, "access_channel")} IN ('interactive', 'service_api', 'mcp', 'agent') AND failed.${q(database, "permission_snapshot_id")} IS NOT NULL AND failed.${q(database, "permission_snapshot_revision")} >= 1 AND failed.${q(database, "revision")} >= 1 AND ${permissionScopeSql(database, `failed.${q(database, "required_permission_scope")}`, p(database, 4))}${resourceFilter} ORDER BY failed.${q(database, "created_at")} DESC, failed.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
+    sql: `SELECT failed.${q(database, "id")}, failed.${q(database, "created_at")}, failed.${q(database, "trigger")}, failed.${q(database, "required_permission_scope")} FROM ${q(database, "failed_queries")} failed WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND failed.${q(database, "status")} = 'pending-triage' AND failed.${q(database, "access_channel")} IN ('interactive', 'service_api', 'mcp', 'agent') AND failed.${q(database, "permission_snapshot_id")} IS NOT NULL AND failed.${q(database, "permission_snapshot_revision")} >= 1 AND failed.${q(database, "revision")} >= 1 AND ${permissionScopeSql(database, `failed.${q(database, "required_permission_scope")}`, p(database, 3))}${resourceFilter} ORDER BY failed.${q(database, "created_at")} DESC, failed.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
     tableName: "failed_queries",
   });
   return result.rows.map((row) => {
@@ -717,36 +713,6 @@ async function lowQualitySignals(
       title: "Query quality needs review",
     });
   });
-}
-
-async function permissionSignals(
-  database: DatabaseAdapter,
-  input: AttentionSignalInput,
-): Promise<KnowledgeSpaceAttentionIssue[]> {
-  const result = await database.execute({
-    maxRows: 1,
-    operation: "select",
-    params: [input.tenantId, input.knowledgeSpaceId],
-    sql: `SELECT policy.${q(database, "id")} AS ${q(database, "policy_id")}, ${countCase(database, `member.${q(database, "role")} = 'owner'`)} AS ${q(database, "owner_count")} FROM ${q(database, "knowledge_spaces")} space LEFT JOIN ${q(database, "knowledge_space_access_policies")} policy ON policy.${q(database, "tenant_id")} = space.${q(database, "tenant_id")} AND policy.${q(database, "knowledge_space_id")} = space.${q(database, "id")} LEFT JOIN ${q(database, "knowledge_space_members")} member ON member.${q(database, "tenant_id")} = space.${q(database, "tenant_id")} AND member.${q(database, "knowledge_space_id")} = space.${q(database, "id")} WHERE space.${q(database, "tenant_id")} = ${p(database, 1)} AND space.${q(database, "id")} = ${p(database, 2)} GROUP BY policy.${q(database, "id")};`,
-    tableName: "knowledge_space_access_policies",
-  });
-  const row = result.rows[0];
-  if (row && optionalStringColumn(row, "policy_id") && numberColumn(row, "owner_count") > 0)
-    return [];
-  return [
-    attentionSignal({
-      action: { kind: "review-permissions", resourceType: "knowledge-space" },
-      code: "PERMISSION_AGGREGATE_NOT_READY",
-      knowledgeSpaceId: input.knowledgeSpaceId,
-      now: input.now,
-      observedAt: input.now,
-      requiredPermissionScope: [],
-      resource: { id: input.knowledgeSpaceId, type: "knowledge-space" },
-      ruleId: "permission-readiness",
-      severity: "critical",
-      title: "Knowledge-space permissions are not ready",
-    }),
-  ];
 }
 
 async function modelSignals(
@@ -773,10 +739,16 @@ async function modelSignals(
   ) {
     return [];
   }
+  const codes = ["MODEL_PROFILE_NOT_READY"];
+  if (numberColumn(row, "embedding_heads") <= 0) codes.push("MODEL_EMBEDDING_PROFILE_MISSING");
+  if (numberColumn(row, "retrieval_heads") <= 0) codes.push("MODEL_RETRIEVAL_PROFILE_MISSING");
+  if (numberColumn(row, "publications") > 0 && numberColumn(row, "bindings") <= 0) {
+    codes.push("MODEL_PUBLICATION_BINDING_MISSING");
+  }
   return [
     attentionSignal({
       action: { kind: "review-models", resourceType: "knowledge-space" },
-      code: "MODEL_PROFILE_NOT_READY",
+      codes,
       knowledgeSpaceId: input.knowledgeSpaceId,
       now: input.now,
       observedAt: input.now,
@@ -784,7 +756,7 @@ async function modelSignals(
       resource: { id: input.knowledgeSpaceId, type: "knowledge-space" },
       ruleId: "model-readiness",
       severity: "critical",
-      title: "Retrieval model profile is not published",
+      title: "Knowledge-space model configuration is incomplete",
     }),
   ];
 }
@@ -1017,17 +989,18 @@ async function signalFromStoredState(
   input: {
     readonly candidateGrants: readonly string[];
     readonly now: string;
-    readonly subjectId: string;
     readonly tenantId: string;
   },
 ) {
+  // Dify owns product authorization. Retain the old rule id only so states persisted before the
+  // rule was retired can be read and treated as no longer actionable.
+  if (state.ruleId === "permission-readiness") return null;
   const signalInput: AttentionSignalInput = {
     candidateGrants: input.candidateGrants,
     knowledgeSpaceId: state.knowledgeSpaceId,
     limit: 1,
     now: input.now,
     staleBefore: new Date(Date.parse(input.now) - 7 * 24 * 60 * 60_000).toISOString(),
-    subjectId: input.subjectId,
     tenantId: input.tenantId,
   };
   const signals =
@@ -1037,9 +1010,7 @@ async function signalFromStoredState(
         ? await failedDocumentSignals(database, signalInput, 1, state.resourceId)
         : state.ruleId === "low-quality-query"
           ? await lowQualitySignals(database, signalInput, 1, state.resourceId)
-          : state.ruleId === "permission-readiness"
-            ? await permissionSignals(database, signalInput)
-            : await modelSignals(database, signalInput);
+          : await modelSignals(database, signalInput);
   return signals.find((candidate) => candidate.issueKey === state.issueKey) ?? null;
 }
 
@@ -1062,7 +1033,8 @@ function mergeAttentionState(
 
 function attentionSignal(input: {
   readonly action: KnowledgeSpaceAttentionIssue["action"];
-  readonly code: string;
+  readonly code?: string | undefined;
+  readonly codes?: readonly string[] | undefined;
   readonly knowledgeSpaceId: string;
   readonly now: string;
   readonly observedAt: string;
@@ -1072,9 +1044,11 @@ function attentionSignal(input: {
   readonly severity: KnowledgeSpaceAttentionIssue["severity"];
   readonly title: string;
 }): KnowledgeSpaceAttentionIssue {
+  const codes = input.codes ?? (input.code ? [input.code] : []);
+  if (codes.length === 0) throw new Error("Knowledge-space attention signal requires evidence");
   return {
     action: input.action,
-    evidence: [{ code: input.code, observedAt: input.observedAt }],
+    evidence: codes.map((code) => ({ code, observedAt: input.observedAt })),
     issueKey: knowledgeSpaceAttentionIssueKey(input.ruleId, input.resource.type, input.resource.id),
     knowledgeSpaceId: input.knowledgeSpaceId,
     requiredPermissionScope: [...input.requiredPermissionScope],
