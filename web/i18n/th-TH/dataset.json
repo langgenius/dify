@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "รวมหน้าย่อย",
   "newKnowledge.indexInformation": "ดัชนี",
   "newKnowledge.interruptTask": "ขัดจังหวะ",
+  "newKnowledge.invalidDatasourceParameter": "ป้อนค่าที่ถูกต้องสำหรับ {{parameter}}",
   "newKnowledge.invalidRootUrl": "ป้อน URL http(s) ที่ถูกต้อง",
   "newKnowledge.keepEditing": "แก้ไขต่อ",
   "newKnowledge.lastIndexed": "จัดทำดัชนีล่าสุด",

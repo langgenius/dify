@@ -18,6 +18,7 @@ import type { DataSourceItem } from '@/app/components/workflow/block-selector/ty
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { ConnectedSourceSetup } from '../connected-source-setup'
@@ -263,6 +264,26 @@ const notionDatasourcePlugin: DataSourceItem = {
   provider: 'notion',
 }
 
+const notionDatasourcePluginWithParameters: DataSourceItem = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources[0]!,
+        parameters: [
+          {
+            label: { en_US: 'Workspace' },
+            name: 'workspace',
+            required: true,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+  },
+}
+
 const s3Provider: KnowledgeFsSourceProviderResponse = {
   auth_kinds: ['endpoint'],
   available: true,
@@ -489,6 +510,35 @@ function renderSetup(draft: ConnectedDraft = defaultDraft) {
   }
 }
 
+function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
+  const queryClient = createTestQueryClient()
+  const onCompleted = vi.fn()
+  const onDirtyChange = vi.fn()
+  const onDraftChange = vi.fn()
+  const onExit = vi.fn()
+
+  function StatefulSetup() {
+    const [currentDraft, setCurrentDraft] = useState(draft)
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ConnectedSourceSetup
+          draft={currentDraft}
+          knowledgeSpaceId="space-1"
+          onCompleted={onCompleted}
+          onDirtyChange={onDirtyChange}
+          onDraftChange={(nextDraft) => {
+            onDraftChange(nextDraft)
+            setCurrentDraft(nextDraft as ConnectedDraft)
+          }}
+          onExit={onExit}
+        />
+      </QueryClientProvider>
+    )
+  }
+
+  return { ...render(<StatefulSetup />), onDraftChange }
+}
+
 describe('ConnectedSourceSetup', () => {
   beforeEach(() => {
     for (const mock of Object.values(clientMock)) mock.mockReset()
@@ -623,6 +673,8 @@ describe('ConnectedSourceSetup', () => {
         connectionId: 'connection-1',
         metadata: {
           clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
           preview: true,
           providerId: 'notion-provider',
           providerKind: 'online-document',
@@ -657,6 +709,8 @@ describe('ConnectedSourceSetup', () => {
         expectedVersion: 3,
         metadata: {
           clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
           preview: false,
           providerId: 'notion-provider',
           providerKind: 'online-document',
@@ -711,6 +765,35 @@ describe('ConnectedSourceSetup', () => {
 
     view.unmount()
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
+  it('applies datasource parameters once instead of rebuilding the preview on every keypress', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourcePlugins.mockResolvedValue([notionDatasourcePluginWithParameters])
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+
+    renderStatefulSetup({ ...defaultDraft, parameters: {} })
+
+    const workspace = await screen.findByRole('textbox', { name: 'Workspace' })
+    await user.type(workspace, 'product-docs')
+
+    expect(clientMock.createSource).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+    expect(clientMock.createSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          metadata: expect.objectContaining({ parameters: { workspace: 'product-docs' } }),
+        }),
+      }),
+    )
   })
 
   it('creates the managed endpoint connection automatically from the default credential', async () => {
@@ -966,6 +1049,8 @@ describe('ConnectedSourceSetup', () => {
         connectionId: googleConnection.id,
         metadata: {
           clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
           preview: true,
           providerId: googleProvider.id,
           providerKind: 'online-drive',
@@ -1207,6 +1292,8 @@ describe('ConnectedSourceSetup', () => {
         connectionId: 's3-connection',
         metadata: {
           clientRequestId: expect.any(String),
+          datasourceParameterMode: 'exact',
+          parameters: {},
           preview: true,
           providerId: 's3-provider',
           providerKind: 'online-drive',

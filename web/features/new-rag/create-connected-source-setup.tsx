@@ -18,6 +18,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { consoleClient } from '@/service/client'
+import { DatasourceParameterForm } from './datasource-parameter-form'
+import {
+  datasourceParameterSchemas,
+  invalidDatasourceParameters,
+  missingRequiredDatasourceParameters,
+  withDatasourceParameterDefaults,
+} from './datasource-parameter-model'
 import { SourceNameField, SourceSyncPolicyField } from './source-setup-fields'
 
 type ConnectedDraft = NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
@@ -88,6 +95,17 @@ export function CreateConnectedSourceSetup({
     () => new Map(),
   )
   const driveTransport = providerOption.providerType === 'online_drive'
+  const parameterSchemas = useMemo(
+    () => datasourceParameterSchemas(providerOption.datasource),
+    [providerOption.datasource],
+  )
+  const parameters = useMemo(
+    () => withDatasourceParameterDefaults(parameterSchemas, draft.parameters),
+    [draft.parameters, parameterSchemas],
+  )
+  const parametersValid =
+    !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
+    !invalidDatasourceParameters(parameterSchemas, parameters).length
   const selectionAtLimit = selected.size >= MAX_SELECTION
   const selectableResources = useMemo(
     () =>
@@ -121,6 +139,7 @@ export function CreateConnectedSourceSetup({
       pluginId: providerOption.plugin.plugin_id,
       provider: providerOption.plugin.provider,
       providerDisplayName: providerOption.label,
+      parameters,
     }
     if (!driveTransport) {
       onInitialSourceChange({
@@ -173,6 +192,7 @@ export function CreateConnectedSourceSetup({
     providerOption.label,
     providerOption.plugin.plugin_id,
     providerOption.plugin.provider,
+    parameters,
     selectableResources,
     selected,
   ])
@@ -193,6 +213,7 @@ export function CreateConnectedSourceSetup({
       parentKey?: string
       prefix?: string
     } = {}) => {
+      if (!parametersValid) return
       append ? setLoadingMore(true) : setLoading(true)
       setError(false)
       try {
@@ -202,6 +223,7 @@ export function CreateConnectedSourceSetup({
             datasource: providerOption.datasource.identity.name,
             kind: driveTransport ? 'online_drive' : 'online_document',
             parameters: {
+              ...parameters,
               ...(bucket ? { bucket } : {}),
               ...(prefix ? { prefix } : {}),
               ...(nextPage ? { next_page_parameters: nextPage } : {}),
@@ -255,7 +277,7 @@ export function CreateConnectedSourceSetup({
         setLoadingMore(false)
       }
     },
-    [credential.id, driveTransport, providerOption],
+    [credential.id, driveTransport, parameters, parametersValid, providerOption],
   )
 
   const toggle = (key: string) => {
@@ -321,13 +343,26 @@ export function CreateConnectedSourceSetup({
           onDraftChange={onDraftChange}
         />
       </div>
+      <DatasourceParameterForm
+        disabled={disabled || loading}
+        parameters={parameters}
+        schemas={parameterSchemas}
+        onChange={(nextParameters) => {
+          setResources([])
+          setSelected(new Set())
+          setExpanded(new Set())
+          setNextPageRequests(new Map())
+          setPreviewed(false)
+          onDraftChange({ ...draft, parameters: nextParameters })
+        }}
+      />
       {!previewed && (
         <Button
           type="button"
           variant="primary"
           className="w-full"
           loading={loading}
-          disabled={disabled || loading}
+          disabled={disabled || loading || !parametersValid}
           onClick={() => void requestPreview()}
         >
           {t(($) => $['newKnowledge.preview'])}

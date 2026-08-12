@@ -278,6 +278,12 @@ describe('WebsiteCrawlPreview', () => {
         metadata: {
           clientRequestId: expect.any(String),
           crawlOptions: { includeSubpages: true, limit: 100 },
+          datasourceParameterMode: 'exact',
+          parameters: {
+            crawl_subpages: true,
+            limit: 100,
+            url: 'https://docs.dify.ai',
+          },
           preview: true,
           providerId: 'plugin-daemon-website',
           providerName: 'Firecrawl',
@@ -523,12 +529,11 @@ describe('WebsiteCrawlPreview', () => {
     async (invalidLimit) => {
       render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
       const user = await fillValidForm()
-      await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-      const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
+      const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
       await user.clear(pageLimit)
       await user.type(pageLimit, invalidLimit)
 
-      expect(pageLimit).toHaveValue(invalidLimit)
+      expect(pageLimit).toHaveValue(Number(invalidLimit))
       expect(pageLimit).toHaveAttribute('aria-invalid', 'true')
       expect(pageLimit).toHaveAccessibleDescription('dataset.newKnowledge.maxPages: 1–200')
       expect(
@@ -542,11 +547,10 @@ describe('WebsiteCrawlPreview', () => {
   it.each([1, 200])('submits the exact valid page limit %s', async (validLimit) => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
-    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-    const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
+    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, String(validLimit))
-    expect(pageLimit).toHaveValue(String(validLimit))
+    expect(pageLimit).toHaveValue(validLimit)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
@@ -558,17 +562,10 @@ describe('WebsiteCrawlPreview', () => {
   it('preserves a replacement crawl page limit after clearing the input', async () => {
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
-    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-    const pageLimit = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
+    const pageLimit = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(pageLimit)
     await user.type(pageLimit, '50')
-    expect(pageLimit).toHaveValue('50')
-    await user.click(screen.getByRole('button', { name: /^dataset\.newKnowledge\.crawlOptions/ }))
-    expect(
-      screen.getByText(
-        'dataset.newKnowledge.includeSubpages: dataset.newKnowledge.booleanTrue · dataset.newKnowledge.maxPages: 50',
-      ),
-    ).toBeInTheDocument()
+    expect(pageLimit).toHaveValue(50)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())

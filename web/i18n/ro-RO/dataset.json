@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Include subpaginile",
   "newKnowledge.indexInformation": "Index",
   "newKnowledge.interruptTask": "Întrerupe",
+  "newKnowledge.invalidDatasourceParameter": "Introdu o valoare validă pentru {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Introdu o adresă URL http(s) validă.",
   "newKnowledge.keepEditing": "Continuă editarea",
   "newKnowledge.lastIndexed": "Ultima indexare",

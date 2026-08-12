@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Subpagina’s opnemen",
   "newKnowledge.indexInformation": "Index",
   "newKnowledge.interruptTask": "Onderbreken",
+  "newKnowledge.invalidDatasourceParameter": "Voer een geldige waarde in voor {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Voer een geldige http(s)-URL in.",
   "newKnowledge.keepEditing": "Doorgaan met bewerken",
   "newKnowledge.lastIndexed": "Laatst geïndexeerd",

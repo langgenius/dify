@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -14,6 +15,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
+from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from models.account import Account
 from models.credential_permission import CredentialType
 from models.oauth import DatasourceProvider
@@ -22,23 +24,34 @@ from services.datasource_provider_service import DatasourceProviderService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialSourcePreviewDocumentResponse,
     KnowledgeFSInitialSourcePreviewFileResponse,
+    KnowledgeFSInitialSourcePreviewPageResponse,
     KnowledgeFSInitialSourcePreviewPayload,
     KnowledgeFSInitialSourcePreviewResponse,
+    KnowledgeFSInitialWebsiteSourcePreviewPayload,
 )
 
 _MAX_PREVIEW_ITEMS = 200
+
+
+class KnowledgeFSInitialSourcePreviewCanceledError(RuntimeError):
+    pass
+
+
+def _raise_if_canceled(is_canceled: Callable[[], bool] | None) -> None:
+    if is_canceled is not None and is_canceled():
+        raise KnowledgeFSInitialSourcePreviewCanceledError("Datasource preview was canceled")
 
 
 class KnowledgeFSInitialSourcePreviewService:
     def __init__(self, session_maker) -> None:
         self._session_maker = session_maker
 
-    def _require_visible_credential(
+    def require_visible_credential(
         self,
         *,
         tenant_id: str,
         account: Account,
-        payload: KnowledgeFSInitialSourcePreviewPayload,
+        payload: KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSInitialWebsiteSourcePreviewPayload,
     ) -> None:
         query = select(DatasourceProvider).where(
             DatasourceProvider.tenant_id == tenant_id,
@@ -63,14 +76,17 @@ class KnowledgeFSInitialSourcePreviewService:
         *,
         tenant_id: str,
         account: Account,
-        payload: KnowledgeFSInitialSourcePreviewPayload,
+        payload: KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSInitialWebsiteSourcePreviewPayload,
+        is_canceled: Callable[[], bool] | None = None,
     ) -> KnowledgeFSInitialSourcePreviewResponse:
-        self._require_visible_credential(tenant_id=tenant_id, account=account, payload=payload)
+        _raise_if_canceled(is_canceled)
+        self.require_visible_credential(tenant_id=tenant_id, account=account, payload=payload)
         credentials = DatasourceProviderService().get_datasource_credentials(
             tenant_id=tenant_id,
             provider=payload.provider,
             plugin_id=payload.plugin_id,
             credential_id=payload.credential_id,
+            current_user=account,
         )
         if not credentials:
             raise PermissionError("Datasource credential is unavailable")
@@ -83,6 +99,30 @@ class KnowledgeFSInitialSourcePreviewService:
         )
         runtime.runtime.credentials = credentials
         parameters = dict(payload.parameters)
+        if payload.kind == "website_crawl":
+            website_runtime = cast(WebsiteCrawlDatasourcePlugin, runtime)
+            pages_by_url: dict[str, KnowledgeFSInitialSourcePreviewPageResponse] = {}
+            for website_message in website_runtime.get_website_crawl(
+                user_id=account.id,
+                datasource_parameters=parameters,
+                provider_type=website_runtime.datasource_provider_type(),
+            ):
+                _raise_if_canceled(is_canceled)
+                for page in website_message.result.web_info_list or []:
+                    pages_by_url[page.source_url] = KnowledgeFSInitialSourcePreviewPageResponse(
+                        description=page.description or None,
+                        source_url=page.source_url,
+                        title=page.title or None,
+                    )
+                    if len(pages_by_url) >= _MAX_PREVIEW_ITEMS:
+                        return KnowledgeFSInitialSourcePreviewResponse(
+                            kind=payload.kind,
+                            pages=list(pages_by_url.values()),
+                        )
+            return KnowledgeFSInitialSourcePreviewResponse(
+                kind=payload.kind,
+                pages=list(pages_by_url.values()),
+            )
         if payload.kind == "online_document":
             document_runtime = cast(OnlineDocumentDatasourcePlugin, runtime)
             documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = []
@@ -174,4 +214,4 @@ class KnowledgeFSInitialSourcePreviewService:
         )
 
 
-__all__ = ["KnowledgeFSInitialSourcePreviewService"]
+__all__ = ["KnowledgeFSInitialSourcePreviewCanceledError", "KnowledgeFSInitialSourcePreviewService"]

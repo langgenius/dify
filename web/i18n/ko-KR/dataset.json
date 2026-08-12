@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "하위 페이지 포함",
   "newKnowledge.indexInformation": "인덱스",
   "newKnowledge.interruptTask": "중단",
+  "newKnowledge.invalidDatasourceParameter": "{{parameter}}에 유효한 값을 입력하세요.",
   "newKnowledge.invalidRootUrl": "유효한 http(s) URL을 입력하세요.",
   "newKnowledge.keepEditing": "계속 편집",
   "newKnowledge.lastIndexed": "마지막 인덱싱",

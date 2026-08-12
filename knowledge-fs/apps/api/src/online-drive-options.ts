@@ -6,8 +6,6 @@ import type {
 
 import type { ApiDatasourceInvocationClient } from "./datasource-invocation-client";
 
-const DEFAULT_MAX_KEYS = 20;
-
 /**
  * Online-drive connector backed by the deployment-selected datasource runtime. Downloaded file bytes arrive as
  * ToolInvokeMessage
@@ -33,7 +31,7 @@ export function createApiOnlineDriveConnector(input: {
       for await (const raw of input.client.dispatch({
         ...(bucket === undefined ? {} : { bucket }),
         ...(continuationToken === undefined ? {} : { continuationToken }),
-        maxKeys: maxKeys ?? DEFAULT_MAX_KEYS,
+        ...(maxKeys === undefined ? {} : { maxKeys }),
         operation: "online_drive_browse_files",
         prefix: prefix ?? "",
         source,

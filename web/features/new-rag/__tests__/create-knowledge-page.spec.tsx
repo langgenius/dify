@@ -10,7 +10,10 @@ const serviceMock = vi.hoisted(() => ({
   createKfsSource: vi.fn(),
   getKfsSource: vi.fn(),
   getCrawlStatus: vi.fn(),
+  cancelWebsitePreview: vi.fn(),
+  getWebsitePreview: vi.fn(),
   previewInitialSource: vi.fn(),
+  startWebsitePreview: vi.fn(),
   getDefaultModel: vi.fn(),
   getSpace: vi.fn(),
   getSyncPolicy: vi.fn(),
@@ -102,6 +105,13 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       sourceProviderPreview: {
         post: serviceMock.previewInitialSource,
+        jobs: {
+          post: serviceMock.startWebsitePreview,
+          byJobId: {
+            delete: serviceMock.cancelWebsitePreview,
+            get: serviceMock.getWebsitePreview,
+          },
+        },
       },
       spaces: {
         byControlSpaceId: {
@@ -272,6 +282,66 @@ const jinaDatasourceAuth = {
   provider: 'jinareader',
 }
 
+const tavilyDatasourcePlugin = {
+  ...firecrawlDatasourcePlugin,
+  declaration: {
+    ...firecrawlDatasourcePlugin.declaration,
+    datasources: [
+      {
+        description: { en_US: 'Search and extract', zh_Hans: '搜索与提取' },
+        identity: {
+          author: 'langgenius',
+          label: { en_US: 'Tavily', zh_Hans: 'Tavily' },
+          name: 'search_extract',
+          provider: 'tavily',
+        },
+        parameters: [
+          {
+            label: { en_US: 'Search query', zh_Hans: '搜索词' },
+            name: 'query',
+            required: true,
+            type: 'string',
+          },
+          {
+            default: 'basic',
+            label: { en_US: 'Search depth', zh_Hans: '搜索深度' },
+            name: 'search_depth',
+            options: [
+              { label: { en_US: 'Basic', zh_Hans: '基础' }, value: 'basic' },
+              { label: { en_US: 'Advanced', zh_Hans: '高级' }, value: 'advanced' },
+            ],
+            type: 'select',
+          },
+        ],
+      },
+    ],
+    identity: {
+      ...firecrawlDatasourcePlugin.declaration.identity,
+      label: { en_US: 'Tavily', zh_Hans: 'Tavily' },
+      name: 'tavily',
+    },
+  },
+  plugin_id: 'langgenius/tavily_datasource',
+  plugin_unique_identifier: 'langgenius/tavily_datasource:1.0.0@local',
+  provider: 'tavily',
+}
+
+const tavilyDatasourceAuth = {
+  ...firecrawlDatasourceAuth,
+  credentials_list: [
+    {
+      ...firecrawlDatasourceAuth.credentials_list[0],
+      id: 'tavily-credential-1',
+      name: 'Default Tavily',
+    },
+  ],
+  label: { en_US: 'Tavily' },
+  name: 'tavily',
+  plugin_id: 'langgenius/tavily_datasource',
+  plugin_unique_identifier: 'langgenius/tavily_datasource:1.0.0@local',
+  provider: 'tavily',
+}
+
 const notionDatasourcePlugin = {
   ...firecrawlDatasourcePlugin,
   declaration: {
@@ -300,6 +370,26 @@ const notionDatasourcePlugin = {
   provider: 'notion',
 }
 
+const notionDatasourcePluginWithParameters = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources[0],
+        parameters: [
+          {
+            label: { en_US: 'Workspace', zh_Hans: '工作区' },
+            name: 'workspace',
+            required: true,
+            type: 'string',
+          },
+        ],
+      },
+    ],
+  },
+}
+
 const notionDatasourceAuth = {
   ...firecrawlDatasourceAuth,
   credentials_list: [
@@ -314,6 +404,49 @@ const notionDatasourceAuth = {
   plugin_id: 'langgenius/notion_datasource',
   plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
   provider: 'notion',
+}
+
+const outlineDatasourcePlugin = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources[0]!,
+        description: { en_US: 'Outline', zh_Hans: 'Outline' },
+        identity: {
+          ...notionDatasourcePlugin.declaration.datasources[0]!.identity,
+          label: { en_US: 'Outline', zh_Hans: 'Outline' },
+          name: 'outline',
+          provider: 'outline',
+        },
+      },
+    ],
+    identity: {
+      ...notionDatasourcePlugin.declaration.identity,
+      label: { en_US: 'Outline', zh_Hans: 'Outline' },
+      name: 'outline',
+    },
+  },
+  plugin_id: 'langgenius/outline_datasource',
+  plugin_unique_identifier: 'langgenius/outline_datasource:1.0.0@local',
+  provider: 'outline',
+}
+
+const outlineDatasourceAuth = {
+  ...notionDatasourceAuth,
+  credentials_list: [
+    {
+      ...notionDatasourceAuth.credentials_list[0],
+      id: 'outline-credential-1',
+      name: 'Default Outline',
+    },
+  ],
+  label: { en_US: 'Outline' },
+  name: 'outline',
+  plugin_id: 'langgenius/outline_datasource',
+  plugin_unique_identifier: 'langgenius/outline_datasource:1.0.0@local',
+  provider: 'outline',
 }
 
 const googleDriveDatasourcePlugin = {
@@ -465,6 +598,25 @@ describe('CreateKnowledgePage', () => {
     datasourceQueryMock.auth.error = null
     datasourceQueryMock.auth.isPending = false
     serviceMock.create.mockResolvedValue(createdKnowledge)
+    serviceMock.startWebsitePreview.mockResolvedValue({ job_id: 'website-preview-1' })
+    serviceMock.getWebsitePreview.mockResolvedValue({
+      job_id: 'website-preview-1',
+      status: 'completed',
+      result: {
+        kind: 'website_crawl',
+        pages: [
+          {
+            description: 'Getting started',
+            source_url: 'https://docs.dify.ai/getting-started',
+            title: 'Getting started',
+          },
+        ],
+      },
+    })
+    serviceMock.cancelWebsitePreview.mockResolvedValue({
+      job_id: 'website-preview-1',
+      status: 'canceled',
+    })
     serviceMock.createCrawl.mockResolvedValue({ job_id: 'crawl-job-1' })
     serviceMock.createKfsSource.mockResolvedValue(kfsSourceResponse())
     serviceMock.getKfsSource.mockResolvedValue(kfsSourceResponse({ status: 'active', version: 3 }))
@@ -1025,12 +1177,10 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).toBeDisabled()
     expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.usingDefaults')).toBeInTheDocument()
     const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
     const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
     expect(rootUrl).toBeEnabled()
@@ -1146,27 +1296,23 @@ describe('CreateKnowledgePage', () => {
     )
     await user.keyboard('{Enter}')
     expect(serviceMock.create).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
-    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
-    const maxPages = screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })
+    await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
     await user.clear(maxPages)
     await user.type(maxPages, '25')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
-    expect(
-      screen.getByText(
-        'dataset.newKnowledge.includeSubpages: dataset.newKnowledge.booleanFalse · dataset.newKnowledge.maxPages: 25',
-      ),
-    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
     expect(serviceMock.create).not.toHaveBeenCalled()
     expect(routerMock.replace).not.toHaveBeenCalled()
-    expect(serviceMock.createCrawl).toHaveBeenCalledWith({
-      options: expect.objectContaining({
-        crawl_sub_pages: false,
-        limit: 25,
+    expect(serviceMock.startWebsitePreview).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        kind: 'website_crawl',
+        parameters: expect.objectContaining({
+          crawl_subpages: false,
+          limit: 25,
+          url: 'https://docs.dify.ai',
+        }),
       }),
-      url: 'https://docs.dify.ai',
     })
     expect(await screen.findByText('Getting started')).toBeInTheDocument()
     expect(
@@ -1187,17 +1333,46 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByText('Getting started')).toBeInTheDocument()
   })
 
-  it('creates an initial source from a synchronous Jina Reader preview', async () => {
+  it('lets users edit website parameters after a successful preview', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    await user.type(rootUrl, 'https://docs.dify.ai')
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    expect(rootUrl).toBeEnabled()
+    await user.clear(rootUrl)
+
+    expect(screen.queryByText('Getting started')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
+  })
+
+  it('creates an initial source from a Jina Reader preview job', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
     datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
-    serviceMock.createCrawl.mockResolvedValueOnce({
-      data: {
-        content: '# Dify introduction',
-        description: 'Introduction',
-        title: 'Dify introduction',
-        url: 'https://docs.dify.ai/introduction',
+    serviceMock.getWebsitePreview.mockResolvedValueOnce({
+      job_id: 'website-preview-1',
+      status: 'completed',
+      result: {
+        kind: 'website_crawl',
+        pages: [
+          {
+            description: 'Introduction',
+            source_url: 'https://docs.dify.ai/introduction',
+            title: 'Dify introduction',
+          },
+        ],
       },
     })
     renderPage()
@@ -1235,10 +1410,71 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
-  it('shows and can stop an ongoing website crawl', async () => {
+  it('previews and persists a declaration-driven website datasource without a root URL', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
-    serviceMock.getCrawlStatus.mockImplementation(() => new Promise(() => {}))
+    datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, tavilyDatasourcePlugin]
+    datasourceQueryMock.auth.data = { result: [firecrawlDatasourceAuth, tavilyDatasourceAuth] }
+    serviceMock.getWebsitePreview.mockResolvedValueOnce({
+      job_id: 'website-preview-1',
+      status: 'completed',
+      result: {
+        kind: 'website_crawl',
+        pages: [
+          {
+            description: 'Tavily result',
+            source_url: 'https://example.com/result',
+            title: 'Tavily result',
+          },
+        ],
+      },
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'Tavily' }))
+    await user.type(screen.getByRole('textbox', { name: /Search query/ }), 'agentic RAG')
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Tavily research',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    expect(serviceMock.startWebsitePreview).toHaveBeenCalledWith({
+      body: {
+        credentialId: 'tavily-credential-1',
+        datasource: 'search_extract',
+        kind: 'website_crawl',
+        parameters: { query: 'agentic RAG', search_depth: 'basic' },
+        pluginId: 'langgenius/tavily_datasource',
+        provider: 'tavily',
+        providerDisplayName: 'Tavily',
+      },
+    })
+    await user.click(await screen.findByRole('checkbox', { name: 'Tavily result' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    expect(serviceMock.create.mock.calls[0]?.[0].body.initial_source).toEqual(
+      expect.objectContaining({
+        parameters: { query: 'agentic RAG', search_depth: 'basic' },
+        root_url: expect.stringMatching(/^datasource:\/\//),
+      }),
+    )
+  })
+
+  it('shows and can stop an ongoing website crawl', async () => {
+    const user = userEvent.setup()
+    let resolveCancellation: ((value: { job_id: string; status: 'canceled' }) => void) | undefined
+    serviceMock.cancelWebsitePreview.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCancellation = resolve
+      }),
+    )
+    navigationMock.startMode = 'source'
+    serviceMock.getWebsitePreview.mockResolvedValue({
+      job_id: 'website-preview-1',
+      status: 'running',
+    })
     renderPage()
     await fillRequiredFields(user)
     await user.type(
@@ -1259,6 +1495,54 @@ describe('CreateKnowledgePage', () => {
     expect(stopButton).toBeEnabled()
 
     await user.click(stopButton)
+    expect(serviceMock.cancelWebsitePreview).toHaveBeenCalledWith({
+      params: { job_id: 'website-preview-1' },
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlingPages')
+
+    resolveCancellation?.({ job_id: 'website-preview-1', status: 'canceled' })
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlStopped'),
+    )
+  })
+
+  it('keeps the preview job available when stopping fails so cancellation can be retried', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    serviceMock.getWebsitePreview.mockResolvedValue({
+      job_id: 'website-preview-1',
+      status: 'running',
+    })
+    serviceMock.cancelWebsitePreview
+      .mockRejectedValueOnce(new Error('cancel response lost'))
+      .mockResolvedValueOnce({
+        job_id: 'website-preview-1',
+        status: 'canceled',
+      })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    const stopButton = await screen.findByRole('button', {
+      name: 'dataset.newKnowledge.stopCrawl',
+    })
+    await user.click(stopButton)
+    await waitFor(() => expect(stopButton).toBeEnabled())
+
+    await user.click(stopButton)
+
+    await waitFor(() => expect(serviceMock.cancelWebsitePreview).toHaveBeenCalledTimes(2))
+    expect(serviceMock.cancelWebsitePreview).toHaveBeenNthCalledWith(2, {
+      params: { job_id: 'website-preview-1' },
+    })
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.crawlStopped')
   })
 
@@ -1300,10 +1584,15 @@ describe('CreateKnowledgePage', () => {
           datasource: 'crawl',
           kind: 'website_crawl',
           name: 'Dify docs',
+          parameters: {
+            crawl_subpages: true,
+            limit: 100,
+            url: 'https://docs.dify.ai',
+          },
           pluginId: 'langgenius/firecrawl_datasource',
           provider: 'firecrawl',
           providerDisplayName: 'Firecrawl',
-          root_url: 'https://docs.dify.ai',
+          root_url: 'https://docs.dify.ai/',
           selection: [
             {
               source_url: 'https://docs.dify.ai/getting-started',
@@ -1385,6 +1674,7 @@ describe('CreateKnowledgePage', () => {
           datasource: 'notion',
           kind: 'online_document',
           name: 'Notion handbook',
+          parameters: {},
           pluginId: 'langgenius/notion_datasource',
           provider: 'notion',
           providerDisplayName: 'Notion',
@@ -1402,6 +1692,88 @@ describe('CreateKnowledgePage', () => {
         },
       }),
     })
+  })
+
+  it('does not inject website defaults when switching connected document providers', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [
+      firecrawlDatasourcePlugin,
+      notionDatasourcePlugin,
+      outlineDatasourcePlugin,
+    ]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, notionDatasourceAuth, outlineDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockResolvedValue({
+      documents: [],
+      files: [],
+      kind: 'online_document',
+      next_page_parameters: null,
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Outline' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Outline handbook',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+
+    await waitFor(() => expect(serviceMock.previewInitialSource).toHaveBeenCalledOnce())
+    expect(serviceMock.previewInitialSource).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        datasource: 'outline',
+        parameters: {},
+        pluginId: 'langgenius/outline_datasource',
+        provider: 'outline',
+      }),
+    })
+  })
+
+  it('resets a connected-source preview when datasource parameters change', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    datasourceQueryMock.plugins.data = [
+      firecrawlDatasourcePlugin,
+      notionDatasourcePluginWithParameters,
+    ]
+    datasourceQueryMock.auth.data = {
+      result: [firecrawlDatasourceAuth, notionDatasourceAuth],
+    }
+    serviceMock.previewInitialSource.mockResolvedValue({
+      documents: [
+        {
+          last_edited_time: '2026-08-10T08:00:00Z',
+          name: 'Product handbook',
+          page_id: 'page-1',
+          provider_item_id: '["workspace-1","page-1"]',
+          type: 'page',
+          workspace_id: 'workspace-1',
+          workspace_name: 'Dify',
+        },
+      ],
+      kind: 'online_document',
+      next_page_parameters: null,
+    })
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.type(screen.getByRole('textbox', { name: 'Workspace' }), 'Product')
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Notion handbook',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await screen.findByRole('checkbox', { name: 'Product handbook' })
+
+    const workspace = screen.getByRole('textbox', { name: 'Workspace' })
+    expect(workspace).toBeEnabled()
+    await user.clear(workspace)
+
+    expect(screen.queryByRole('checkbox', { name: 'Product handbook' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeDisabled()
   })
 
   it('creates a knowledge space atomically with a selected drive file', async () => {
@@ -1451,6 +1823,7 @@ describe('CreateKnowledgePage', () => {
           datasource: 'google_drive',
           kind: 'online_drive',
           name: 'Drive runbook',
+          parameters: {},
           pluginId: 'langgenius/google_drive',
           provider: 'google_drive',
           providerDisplayName: 'Google Drive',

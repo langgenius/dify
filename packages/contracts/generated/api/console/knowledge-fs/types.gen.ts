@@ -33,10 +33,34 @@ export type KnowledgeFsInitialSourcePreviewPayload = {
 export type KnowledgeFsInitialSourcePreviewResponse = {
   documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
   files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
-  kind: 'online_document' | 'online_drive'
+  kind: 'online_document' | 'online_drive' | 'website_crawl'
   next_page_parameters?: {
     [key: string]: JsonValue
   } | null
+  pages?: Array<KnowledgeFsInitialSourcePreviewPageResponse>
+}
+
+export type KnowledgeFsInitialWebsiteSourcePreviewPayload = {
+  credentialId: string
+  datasource: string
+  kind: 'website_crawl'
+  parameters?: {
+    [key: string]: JsonValue
+  }
+  pluginId: string
+  provider: string
+  providerDisplayName?: string | null
+}
+
+export type KnowledgeFsInitialSourcePreviewJobCreateResponse = {
+  job_id: string
+  status?: 'pending'
+}
+
+export type KnowledgeFsInitialSourcePreviewJobResponse = {
+  job_id: string
+  result?: KnowledgeFsInitialSourcePreviewResponse | null
+  status: 'canceled' | 'completed' | 'failed' | 'pending' | 'running'
 }
 
 export type KnowledgeFsSpaceListResponse = {
@@ -1040,6 +1064,12 @@ export type KnowledgeFsInitialSourcePreviewFileResponse = {
   type: string
 }
 
+export type KnowledgeFsInitialSourcePreviewPageResponse = {
+  description?: string | null
+  source_url: string
+  title?: string | null
+}
+
 export type KnowledgeFsSpaceListItemResponse = {
   control_space_id: string
   created_at: string
@@ -1067,6 +1097,9 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
   datasource?: string
   kind: 'website_crawl'
   name: string
+  parameters?: {
+    [key: string]: JsonValue
+  }
   pluginId?: string | null
   provider: string
   providerDisplayName?: string | null
@@ -1080,6 +1113,9 @@ export type KnowledgeFsInitialOnlineDocumentSourcePayload = {
   datasource: string
   kind: 'online_document'
   name: string
+  parameters?: {
+    [key: string]: JsonValue
+  }
   pluginId: string
   provider: string
   providerDisplayName?: string | null
@@ -1092,6 +1128,9 @@ export type KnowledgeFsInitialOnlineDriveSourcePayload = {
   datasource: string
   kind: 'online_drive'
   name: string
+  parameters?: {
+    [key: string]: JsonValue
+  }
   pluginId: string
   provider: string
   providerDisplayName?: string | null
@@ -1819,6 +1858,52 @@ export type PostKnowledgeFsSourceProviderPreviewResponses = {
 
 export type PostKnowledgeFsSourceProviderPreviewResponse =
   PostKnowledgeFsSourceProviderPreviewResponses[keyof PostKnowledgeFsSourceProviderPreviewResponses]
+
+export type PostKnowledgeFsSourceProviderPreviewJobsData = {
+  body: KnowledgeFsInitialWebsiteSourcePreviewPayload
+  path?: never
+  query?: never
+  url: '/knowledge-fs/source-provider-preview/jobs'
+}
+
+export type PostKnowledgeFsSourceProviderPreviewJobsResponses = {
+  202: KnowledgeFsInitialSourcePreviewJobCreateResponse
+}
+
+export type PostKnowledgeFsSourceProviderPreviewJobsResponse =
+  PostKnowledgeFsSourceProviderPreviewJobsResponses[keyof PostKnowledgeFsSourceProviderPreviewJobsResponses]
+
+export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdData = {
+  body?: never
+  path: {
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/source-provider-preview/jobs/{job_id}'
+}
+
+export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponses = {
+  200: KnowledgeFsInitialSourcePreviewJobResponse
+}
+
+export type DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponse =
+  DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponses[keyof DeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponses]
+
+export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdData = {
+  body?: never
+  path: {
+    job_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/source-provider-preview/jobs/{job_id}'
+}
+
+export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdResponses = {
+  200: KnowledgeFsInitialSourcePreviewJobResponse
+}
+
+export type GetKnowledgeFsSourceProviderPreviewJobsByJobIdResponse =
+  GetKnowledgeFsSourceProviderPreviewJobsByJobIdResponses[keyof GetKnowledgeFsSourceProviderPreviewJobsByJobIdResponses]
 
 export type GetKnowledgeFsSpacesData = {
   body?: never

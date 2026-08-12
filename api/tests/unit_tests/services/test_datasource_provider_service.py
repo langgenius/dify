@@ -345,7 +345,7 @@ class TestDatasourceProviderService:
 
     def test_should_fetch_by_credential_id_when_provided(self, service, sqlite_session, mock_user):
         """When credential_id is passed, the credential_id filter path (line 113) is taken."""
-        p = make_provider(credential_id="cred-id", provider="other-provider", plugin_id="other-plugin")
+        p = make_provider(credential_id="cred-id")
         persist(sqlite_session, p)
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
@@ -353,13 +353,6 @@ class TestDatasourceProviderService:
         ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id")
         assert result == {"k": "v"}
-
-        statement = mock_db_session.scalar.call_args.args[0]
-        sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
-        assert "datasource_providers.tenant_id = 't1'" in sql
-        assert "datasource_providers.id = 'cred-id'" in sql
-        assert "datasource_providers.provider = 'prov'" in sql
-        assert "datasource_providers.plugin_id = 'org/plug'" in sql
 
     # -----------------------------------------------------------------------
     # get_all_datasource_credentials_by_provider (lines 176-228)

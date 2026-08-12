@@ -9,6 +9,8 @@ import type {
   ApiDatasourceInvocationInput,
 } from "./datasource-invocation-client";
 
+const DEFAULT_ONLINE_DRIVE_MAX_KEYS = 20;
+
 interface DifyDatasourceSourceConfig {
   readonly credentialId: string;
   readonly datasource: string;
@@ -39,7 +41,7 @@ export function createDifyDatasourceInvocationClient(input: {
           yield* input.client.getWebsiteCrawl({
             ...common,
             datasourceParameters: withCrawlOptions(
-              config.parameters,
+              config,
               invocation.source,
               invocation.source.uri,
             ),
@@ -61,17 +63,26 @@ export function createDifyDatasourceInvocationClient(input: {
             page: invocation.page,
           });
           return;
-        case "online_drive_browse_files":
+        case "online_drive_browse_files": {
+          const sourceBucket = optionalString(config.parameters.bucket);
+          const sourcePrefix = optionalString(config.parameters.prefix);
+          const sourceMaxKeys = positiveSafeInteger(config.parameters.max_keys);
+          const sourceNextPageParameters = plainObject(config.parameters.next_page_parameters);
           yield* input.client.browseOnlineDrive({
             ...common,
-            ...(invocation.bucket === undefined ? {} : { bucket: invocation.bucket }),
-            ...(invocation.continuationToken === undefined
+            ...(invocation.bucket === undefined && sourceBucket === undefined
               ? {}
+              : { bucket: invocation.bucket ?? sourceBucket }),
+            ...(invocation.continuationToken === undefined
+              ? Object.keys(sourceNextPageParameters).length
+                ? { nextPageParameters: sourceNextPageParameters }
+                : {}
               : { nextPageParameters: decodeNextPageParameters(invocation.continuationToken) }),
-            ...(invocation.maxKeys === undefined ? {} : { maxKeys: invocation.maxKeys }),
-            prefix: invocation.prefix ?? "",
+            maxKeys: invocation.maxKeys ?? sourceMaxKeys ?? DEFAULT_ONLINE_DRIVE_MAX_KEYS,
+            prefix: invocation.prefix || sourcePrefix || "",
           });
           return;
+        }
         case "online_drive_download_file":
           yield* input.client.downloadOnlineDriveFile({ ...common, file: invocation.file });
           return;
@@ -149,18 +160,37 @@ function withCrawlUrl(parameters: Record<string, unknown>, uri: string): Record<
     : { ...parameters, url: uri };
 }
 
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function positiveSafeInteger(value: unknown): number | undefined {
+  return Number.isSafeInteger(value) && Number(value) > 0 ? Number(value) : undefined;
+}
+
 function withCrawlOptions(
-  parameters: Record<string, unknown>,
+  config: DifyDatasourceSourceConfig,
   source: Source,
   uri: string,
 ): Record<string, unknown> {
+  const parameters = config.parameters;
+  // New datasource-driven Sources persist the exact plugin parameters. Preserve the legacy
+  // URL, provider-specific subpage flag, and limit projection only for older Sources.
+  if (source.metadata.datasourceParameterMode === "exact") {
+    return parameters;
+  }
   const crawlOptions = plainObject(source.metadata.crawlOptions);
   const includeSubpages = crawlOptions.includeSubpages;
   const limit = crawlOptions.limit;
+  const subpagesParameter = /jina|watercrawl/u.test(
+    `${config.pluginId} ${config.provider} ${config.datasource}`.toLowerCase(),
+  )
+    ? "crawl_sub_pages"
+    : "crawl_subpages";
   return withCrawlUrl(
     {
       ...parameters,
-      ...(typeof includeSubpages === "boolean" ? { crawl_subpages: includeSubpages } : {}),
+      ...(typeof includeSubpages === "boolean" ? { [subpagesParameter]: includeSubpages } : {}),
       ...(Number.isSafeInteger(limit) && Number(limit) > 0 ? { limit } : {}),
     },
     uri,

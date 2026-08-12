@@ -29,6 +29,7 @@ def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePaylo
             "name": "Dify docs",
             "provider": "firecrawl",
             "providerDisplayName": "Firecrawl",
+            "parameters": {"url": "https://docs.dify.ai", "limit": 25},
             "root_url": "https://docs.dify.ai",
             "crawl_options": {"include_subpages": True, "limit": 25},
             "selection": [
@@ -36,6 +37,21 @@ def _payload(sync_policy: str = "daily") -> KnowledgeFSInitialWebsiteSourcePaylo
                 {"source_url": "https://docs.dify.ai/b", "title": "B"},
             ],
             "sync_policy": sync_policy,
+        }
+    )
+
+
+def _legacy_payload() -> KnowledgeFSInitialWebsiteSourcePayload:
+    return KnowledgeFSInitialWebsiteSourcePayload.model_validate(
+        {
+            "kind": "website_crawl",
+            "name": "Dify docs",
+            "provider": "firecrawl",
+            "providerDisplayName": "Firecrawl",
+            "root_url": "https://docs.dify.ai",
+            "crawl_options": {"include_subpages": False, "limit": 25},
+            "selection": [{"source_url": "https://docs.dify.ai/a", "title": "A"}],
+            "sync_policy": "manual",
         }
     )
 
@@ -205,7 +221,12 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     source_payload = facade.create_source.call_args.kwargs["payload"]
     assert source_payload.status == "disabled"
     assert source_payload.connection_id == "connection-1"
+    assert source_payload.metadata["datasourceParameterMode"] == "exact"
     assert source_payload.metadata["preview"] is True
+    assert source_payload.metadata["parameters"] == {
+        "limit": 25,
+        "url": "https://docs.dify.ai",
+    }
     import_payload = facade.import_selected_source_crawl.call_args.kwargs["payload"]
     assert import_payload.source_urls == [
         "https://docs.dify.ai/a",
@@ -223,6 +244,21 @@ def test_initial_website_source_import_recrawls_exact_selection_and_configures_d
     assert sync_payload.enabled is True
     assert sync_payload.expected_revision == 0
     assert sync_payload.expected_source_version == 4
+
+
+def test_initial_website_source_import_preserves_legacy_crawl_option_projection() -> None:
+    facade = _facade()
+
+    assert _start(facade, _legacy_payload()) == "workflow-1"
+
+    source_payload = facade.create_source.call_args.kwargs["payload"]
+    assert "datasourceParameterMode" not in source_payload.metadata
+    assert "parameters" not in source_payload.metadata
+    assert source_payload.metadata["crawlOptions"] == {
+        "includeSubpages": False,
+        "limit": 25,
+    }
+    assert source_payload.uri == "https://docs.dify.ai"
 
 
 @pytest.mark.parametrize(

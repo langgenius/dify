@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Include sub-pages",
   "newKnowledge.indexInformation": "Index",
   "newKnowledge.interruptTask": "Interrupt",
+  "newKnowledge.invalidDatasourceParameter": "Enter a valid value for {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Enter a valid http(s) URL.",
   "newKnowledge.keepEditing": "Keep editing",
   "newKnowledge.lastIndexed": "Last indexed",

@@ -1,3 +1,6 @@
+import type { DatasourceParameters } from './datasource-parameter-model'
+import { datasourceParameterRecord } from './datasource-parameter-model'
+
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
@@ -10,6 +13,7 @@ export type NewKnowledgeSourceProvider =
   | NewKnowledgeWebsiteProvider
 
 type NewKnowledgeSourceDraftBase = {
+  parameters?: DatasourceParameters
   sourceName: string
   syncPolicy: NewKnowledgeSyncPolicy
   providerKey?: string
@@ -51,6 +55,7 @@ export function createNewKnowledgeSourceDraft(
   if (sourceType === 'onlineDocuments')
     return {
       provider: initialProvider?.trim() || 'Notion',
+      parameters: {},
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
@@ -58,6 +63,7 @@ export function createNewKnowledgeSourceDraft(
   if (sourceType === 'onlineDrive')
     return {
       provider: initialProvider?.trim() || 'Google Drive',
+      parameters: {},
       sourceName: '',
       sourceType,
       syncPolicy: 'provider',
@@ -65,6 +71,7 @@ export function createNewKnowledgeSourceDraft(
   return {
     includeSubpages: true,
     maxPages: 100,
+    parameters: {},
     provider: initialProvider?.trim() || 'Firecrawl',
     rootUrl: '',
     sourceName: '',
@@ -127,6 +134,8 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
       : candidate.syncPolicy === undefined
         ? 'provider'
         : undefined
+    const parameters =
+      candidate.parameters === undefined ? {} : datasourceParameterRecord(candidate.parameters)
     if (
       typeof candidate.sourceName !== 'string' ||
       candidate.sourceName.length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH ||
@@ -137,12 +146,14 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
         (typeof candidate.providerKey !== 'string' ||
           !candidate.providerKey ||
           candidate.providerKey.length > NEW_KNOWLEDGE_PROVIDER_KEY_MAX_LENGTH)) ||
-      !syncPolicy
+      !syncPolicy ||
+      !parameters
     )
       return undefined
     if (candidate.sourceType === 'onlineDocuments') {
       return {
         provider: candidate.provider,
+        parameters,
         ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
         sourceName: candidate.sourceName,
         sourceType: candidate.sourceType,
@@ -152,6 +163,7 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     if (candidate.sourceType === 'onlineDrive') {
       return {
         provider: candidate.provider,
+        parameters,
         ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
         sourceName: candidate.sourceName,
         sourceType: candidate.sourceType,
@@ -172,6 +184,7 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     return {
       includeSubpages: candidate.includeSubpages,
       maxPages: candidate.maxPages,
+      parameters,
       provider: candidate.provider,
       ...(candidate.providerKey ? { providerKey: candidate.providerKey } : {}),
       rootUrl: candidate.rootUrl,

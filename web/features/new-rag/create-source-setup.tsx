@@ -7,40 +7,29 @@ import type {
   DataSourceAuth,
   DataSourceCredential,
 } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { CrawlResultItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import {
-  NumberField,
-  NumberFieldControls,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from '@langgenius/dify-ui/number-field'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import {
-  checkFirecrawlTaskStatus,
-  checkJinaReaderTaskStatus,
-  checkWatercrawlTaskStatus,
-  createFirecrawlTask,
-  createJinaReaderTask,
-  createWatercrawlTask,
-} from '@/service/datasets'
+import { consoleClient } from '@/service/client'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { useDataSourceList } from '@/service/use-pipeline'
 import { CrawlPreviewPageSelection } from './crawl-selection-form'
 import { CreateConnectedSourceSetup } from './create-connected-source-setup'
-import { isValidWebsiteSourceDraft, NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH } from './routes'
+import { DatasourceParameterForm } from './datasource-parameter-form'
+import {
+  datasourceIncludeSubpages,
+  datasourceParameterDefaults,
+  datasourceParameterSchemas,
+  invalidDatasourceParameters,
+  missingRequiredDatasourceParameters,
+  websiteDatasourceParameterSchemas,
+  withDatasourceParameterDefaults,
+} from './datasource-parameter-model'
 import {
   discoverSourceProviderOptions,
-  normalizeSourceProviderName,
   sourceProviderOptionForDraft,
 } from './source-provider-options'
 import {
@@ -52,59 +41,16 @@ import {
   SourceTypeSelector,
 } from './source-setup-fields'
 
-const DEFAULT_INCLUDE_SUBPAGES = true
-const DEFAULT_MAX_PAGES = 100
-const CRAWL_POLL_INTERVAL_MS = 1500
 const CRAWL_PREVIEW_SKELETONS = [
   { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
   { id: 'medium', sourceWidth: 'w-26', titleWidth: 'w-42.5' },
   { id: 'long', sourceWidth: 'w-29.5', titleWidth: 'w-47.5' },
   { id: 'longest', sourceWidth: 'w-33', titleWidth: 'w-52.5' },
 ] as const
+const CRAWL_POLL_INTERVAL_MS = 1500
 
 type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
 type InitialSource = NonNullable<KnowledgeFsSpaceCreatePayload['initial_source']>
-
-function crawlPages(response: Record<string, unknown>): CrawlResultItem[] {
-  const items = Array.isArray(response.data)
-    ? response.data
-    : response.data && typeof response.data === 'object'
-      ? [response.data]
-      : []
-  return items.flatMap((item) => {
-    if (!item || typeof item !== 'object') return []
-    const page = item as Record<string, unknown>
-    const sourceUrl =
-      typeof page.source_url === 'string'
-        ? page.source_url
-        : typeof page.url === 'string'
-          ? page.url
-          : ''
-    if (!sourceUrl) return []
-    return [
-      {
-        description: typeof page.description === 'string' ? page.description : '',
-        markdown:
-          typeof page.markdown === 'string'
-            ? page.markdown
-            : typeof page.content === 'string'
-              ? page.content
-              : '',
-        source_url: sourceUrl,
-        title: typeof page.title === 'string' ? page.title : sourceUrl,
-      },
-    ]
-  })
-}
-
-function crawlPreviewPages(pages: CrawlResultItem[]): CrawlPreviewPage[] {
-  return pages.map((page) => ({
-    description: page.description,
-    pageId: page.source_url,
-    sourceUrl: page.source_url,
-    title: page.title,
-  }))
-}
 
 function datasourceAuthForProvider(
   authProviders: DataSourceAuth[],
@@ -129,14 +75,18 @@ function providerIntegrationPath(packageId?: string) {
   return `${base}?${query.toString()}`
 }
 
-function websiteProviderTransport(provider: string) {
-  const normalized = normalizeSourceProviderName(provider)
-  if (normalized.includes('firecrawl'))
-    return { check: checkFirecrawlTaskStatus, create: createFirecrawlTask }
-  if (normalized.includes('jinareader') || normalized === 'jina')
-    return { check: checkJinaReaderTaskStatus, create: createJinaReaderTask }
-  if (normalized.includes('watercrawl'))
-    return { check: checkWatercrawlTaskStatus, create: createWatercrawlTask }
+function websiteSourceUri(parameters: Record<string, boolean | number | string>, fallback: string) {
+  const url = parameters.url
+  if (typeof url === 'string') {
+    try {
+      const parsed = new URL(url)
+      if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password)
+        return parsed.toString()
+    } catch {
+      // Non-URL website datasources use a stable synthetic URI.
+    }
+  }
+  return `datasource://${encodeURIComponent(fallback)}`
 }
 
 export function CreateSourceSetup({
@@ -155,13 +105,12 @@ export function CreateSourceSetup({
   const { t } = useTranslation('dataset')
   const datasourcePluginsQuery = useDataSourceList(true)
   const datasourceAuthQuery = useGetDataSourceListAuth()
-  const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
-  const [previewPages, setPreviewPages] = useState<CrawlResultItem[]>([])
+  const [stoppingPreview, setStoppingPreview] = useState(false)
+  const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const crawlAttemptRef = useRef(0)
-  const pollResolveRef = useRef<(() => void) | undefined>(undefined)
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const previewJobIdRef = useRef<string | undefined>(undefined)
   const sourceType = draft.sourceType
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(sourceType, datasourcePluginsQuery.data ?? []),
@@ -177,31 +126,95 @@ export function CreateSourceSetup({
       )
     : undefined
   const credential = preferredCredential(datasourceAuth)
-  const websiteTransport =
-    draft.sourceType === 'websiteCrawl' && installedProviderOption
-      ? websiteProviderTransport(installedProviderOption.plugin.provider)
-      : undefined
-  const previewReady = Boolean(
-    websiteTransport &&
-    credential &&
-    draft.sourceType === 'websiteCrawl' &&
-    isValidWebsiteSourceDraft(draft),
+  const parameterSchemas = useMemo(
+    () =>
+      draft.sourceType === 'websiteCrawl' && installedProviderOption
+        ? websiteDatasourceParameterSchemas(installedProviderOption.datasource)
+        : [],
+    [draft.sourceType, installedProviderOption],
   )
-  const previewRootUrl = draft.sourceType === 'websiteCrawl' ? draft.rootUrl : ''
-  const selectionPages = useMemo(() => crawlPreviewPages(previewPages), [previewPages])
-  const crawlOptionsAreDefault =
-    draft.sourceType !== 'websiteCrawl' ||
-    (draft.includeSubpages === DEFAULT_INCLUDE_SUBPAGES && draft.maxPages === DEFAULT_MAX_PAGES)
-  const stopPreview = (state: LocalCrawlState = 'stopped') => {
+  const parameters = useMemo(() => {
+    const current = withDatasourceParameterDefaults(parameterSchemas, draft.parameters)
+    if (
+      draft.sourceType === 'websiteCrawl' &&
+      draft.rootUrl &&
+      parameterSchemas.some((parameter) => parameter.name === 'url') &&
+      current.url === undefined
+    )
+      current.url = draft.rootUrl
+    return current
+  }, [draft, parameterSchemas])
+  const parametersValid =
+    !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
+    !invalidDatasourceParameters(parameterSchemas, parameters).length
+  const selectionPages = previewPages
+  const previewReady = Boolean(
+    draft.sourceType === 'websiteCrawl' &&
+    credential &&
+    installedProviderOption &&
+    parametersValid &&
+    draft.sourceName.trim(),
+  )
+  const sourceUri = installedProviderOption
+    ? websiteSourceUri(parameters, installedProviderOption.key)
+    : ''
+  const selectionRootUrl =
+    typeof parameters.url === 'string' && sourceUri.startsWith('http') ? sourceUri : undefined
+  const cancelPreviewBestEffort = () => {
     crawlAttemptRef.current += 1
-    globalThis.clearTimeout(pollTimerRef.current)
-    pollTimerRef.current = undefined
-    pollResolveRef.current?.()
-    pollResolveRef.current = undefined
-    setCrawlState(state)
+    const jobId = previewJobIdRef.current
+    previewJobIdRef.current = undefined
+    if (jobId)
+      void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+        .delete({
+          params: { job_id: jobId },
+        })
+        .catch(() => {})
+  }
+  const stopPreview = async () => {
+    if (stoppingPreview) return
+    crawlAttemptRef.current += 1
+    const jobId = previewJobIdRef.current
+    if (!jobId) {
+      setCrawlState('stopped')
+      return
+    }
+    setStoppingPreview(true)
+    try {
+      const response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.delete({
+        params: { job_id: jobId },
+      })
+      if (response.status === 'completed' && response.result) {
+        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
+        setPreviewPages(
+          (response.result.pages ?? []).map((page) => ({
+            description: page.description ?? undefined,
+            pageId: page.source_url,
+            sourceUrl: page.source_url,
+            title: page.title ?? page.source_url,
+          })),
+        )
+        setCrawlState('success')
+      } else if (response.status === 'canceled') {
+        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
+        setCrawlState('stopped')
+      } else if (response.status === 'failed') {
+        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
+        setCrawlState('error')
+      } else {
+        setCrawlState('running')
+      }
+    } catch {
+      // Keep the job handle and running state so Stop can be retried and unmount
+      // cleanup can still revoke a task whose cancellation response was lost.
+      setCrawlState('running')
+    } finally {
+      setStoppingPreview(false)
+    }
   }
   const resetPreview = () => {
-    stopPreview('idle')
+    cancelPreviewBestEffort()
+    setCrawlState('idle')
     setPreviewPages([])
     setSelectedPageIds(new Set())
     onInitialSourceChange(undefined)
@@ -218,9 +231,17 @@ export function CreateSourceSetup({
     if (!nextProvider) return
     updateDraft({
       ...draft,
+      parameters: nextProvider.installed
+        ? datasourceParameterDefaults(
+            draft.sourceType === 'websiteCrawl'
+              ? websiteDatasourceParameterSchemas(nextProvider.datasource)
+              : datasourceParameterSchemas(nextProvider.datasource),
+          )
+        : {},
       provider: nextProvider.label,
       providerKey: nextProvider.key,
       sourceName: '',
+      ...(draft.sourceType === 'websiteCrawl' ? { rootUrl: '' } : {}),
       ...(draft.sourceType === 'onlineDrive' &&
       nextProvider.label === 'Amazon S3' &&
       draft.syncPolicy === 'provider'
@@ -232,8 +253,13 @@ export function CreateSourceSetup({
   useEffect(
     () => () => {
       crawlAttemptRef.current += 1
-      globalThis.clearTimeout(pollTimerRef.current)
-      pollResolveRef.current?.()
+      const jobId = previewJobIdRef.current
+      if (jobId)
+        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+          .delete({
+            params: { job_id: jobId },
+          })
+          .catch(() => {})
     },
     [],
   )
@@ -241,62 +267,77 @@ export function CreateSourceSetup({
   const startPreview = async () => {
     if (
       draft.sourceType !== 'websiteCrawl' ||
-      !isValidWebsiteSourceDraft(draft) ||
-      !websiteTransport ||
+      !previewReady ||
       !credential ||
       !installedProviderOption
     )
       return
     const attempt = crawlAttemptRef.current + 1
     crawlAttemptRef.current = attempt
-    globalThis.clearTimeout(pollTimerRef.current)
     setPreviewPages([])
     setSelectedPageIds(new Set())
     setCrawlState('running')
     try {
-      const created = (await websiteTransport.create({
-        options: {
-          crawl_sub_pages: draft.includeSubpages,
-          excludes: '',
-          includes: '',
-          limit: draft.maxPages,
-          max_depth: '',
-          only_main_content: true,
-          use_sitemap: true,
+      const job = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.post({
+        body: {
+          credentialId: credential.id,
+          datasource: installedProviderOption.datasource.identity.name,
+          kind: 'website_crawl',
+          parameters,
+          pluginId: installedProviderOption.plugin.plugin_id,
+          provider: installedProviderOption.plugin.provider,
+          providerDisplayName: installedProviderOption.label,
         },
-        url: draft.rootUrl,
-      })) as Record<string, unknown>
-      const synchronousPages = crawlPages(created)
-      if (synchronousPages.length) {
-        setPreviewPages(synchronousPages)
-        setCrawlState('success')
+      })
+      if (crawlAttemptRef.current !== attempt) {
+        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+          .delete({
+            params: { job_id: job.job_id },
+          })
+          .catch(() => {})
         return
       }
-      const jobId = typeof created.job_id === 'string' ? created.job_id : undefined
-      if (!jobId) throw new Error('Website crawl did not return a job id')
-
-      while (crawlAttemptRef.current === attempt) {
-        const response = (await websiteTransport.check(jobId)) as Record<string, unknown>
+      previewJobIdRef.current = job.job_id
+      let response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.get({
+        params: { job_id: job.job_id },
+      })
+      while (
+        crawlAttemptRef.current === attempt &&
+        !['completed', 'failed', 'canceled'].includes(response.status)
+      ) {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, CRAWL_POLL_INTERVAL_MS))
         if (crawlAttemptRef.current !== attempt) return
-        setPreviewPages(crawlPages(response))
-        if (response.status === 'completed') {
-          setCrawlState('success')
-          return
-        }
-        if (response.status === 'error' || !response.status) {
-          setCrawlState('error')
-          return
-        }
-        await new Promise<void>((resolve) => {
-          pollResolveRef.current = resolve
-          pollTimerRef.current = globalThis.setTimeout(() => {
-            pollResolveRef.current = undefined
-            resolve()
-          }, CRAWL_POLL_INTERVAL_MS)
+        response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.get({
+          params: { job_id: job.job_id },
         })
       }
+      if (crawlAttemptRef.current !== attempt) return
+      previewJobIdRef.current = undefined
+      if (response.status !== 'completed' || !response.result) {
+        setCrawlState(response.status === 'canceled' ? 'stopped' : 'error')
+        return
+      }
+      setPreviewPages(
+        (response.result.pages ?? []).map((page) => ({
+          description: page.description ?? undefined,
+          pageId: page.source_url,
+          sourceUrl: page.source_url,
+          title: page.title ?? page.source_url,
+        })),
+      )
+      setCrawlState('success')
     } catch {
-      if (crawlAttemptRef.current === attempt) setCrawlState('error')
+      if (crawlAttemptRef.current === attempt) {
+        const jobId = previewJobIdRef.current
+        previewJobIdRef.current = undefined
+        if (jobId)
+          void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+            .delete({
+              params: { job_id: jobId },
+            })
+            .catch(() => {})
+        setCrawlState('error')
+      }
     }
   }
 
@@ -322,8 +363,8 @@ export function CreateSourceSetup({
     }
     onInitialSourceChange({
       crawl_options: {
-        include_subpages: draft.includeSubpages,
-        limit: draft.maxPages,
+        include_subpages: datasourceIncludeSubpages(parameters),
+        limit: typeof parameters.limit === 'number' ? parameters.limit : 200,
       },
       credentialId: credential.id,
       datasource: installedProviderOption.datasource.identity.name,
@@ -332,7 +373,8 @@ export function CreateSourceSetup({
       pluginId: installedProviderOption.plugin.plugin_id,
       provider: installedProviderOption.plugin.provider,
       providerDisplayName: installedProviderOption.label,
-      root_url: draft.rootUrl,
+      parameters,
+      root_url: sourceUri,
       selection: selectedPages.map((page) => ({
         source_url: page.sourceUrl,
         ...(page.title ? { title: page.title } : {}),
@@ -345,8 +387,10 @@ export function CreateSourceSetup({
     draft,
     installedProviderOption,
     onInitialSourceChange,
+    parameters,
     selectedPageIds,
     selectionPages,
+    sourceUri,
   ])
 
   return (
@@ -447,124 +491,28 @@ export function CreateSourceSetup({
             )
           }
         />
-      ) : draft.sourceType === 'websiteCrawl' &&
-        installedProviderOption &&
-        credential &&
-        !websiteTransport ? (
-        <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{installedProviderOption.label}</p>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.providerUnavailable'])}
-          </p>
-        </div>
       ) : draft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field name="rootUrl" className="gap-1.5">
-              <FieldLabel className="py-0.5">
-                {t(($) => $['newKnowledge.rootUrl'])}
-                <span aria-hidden className="ml-0.5 text-text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <FieldControl
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                disabled={disabled}
-                maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
-                value={draft.rootUrl}
-                placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-                size="large"
-                onValueChange={(value) => {
-                  updateDraft({ ...draft, rootUrl: value })
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') event.preventDefault()
-                }}
-              />
-            </Field>
-            <SourceNameField
-              disabled={disabled}
-              draft={draft}
-              labelClassName="py-0.5"
-              preventSubmitOnEnter
-              size="large"
-              onDraftChange={updateDraft}
-            />
-          </div>
-          <Collapsible
-            open={optionsExpanded}
-            onOpenChange={setOptionsExpanded}
-            className="overflow-hidden rounded-lg bg-background-section"
-          >
-            <CollapsibleTrigger
-              aria-label={t(($) => $['newKnowledge.crawlOptions'])}
-              disabled={disabled}
-              className="min-h-9 justify-start px-3 system-xs-medium"
-            >
-              <span
-                aria-hidden
-                className="i-ri-arrow-right-s-line size-4 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
-              />
-              {t(($) => $['newKnowledge.crawlOptions'])}
-              {!optionsExpanded && (
-                <span className="ml-auto system-xs-regular text-text-tertiary">
-                  {crawlOptionsAreDefault
-                    ? t(($) => $['newKnowledge.usingDefaults'])
-                    : `${t(($) => $['newKnowledge.includeSubpages'])}: ${t(($) =>
-                        draft.includeSubpages
-                          ? $['newKnowledge.booleanTrue']
-                          : $['newKnowledge.booleanFalse'],
-                      )} · ${t(($) => $['newKnowledge.maxPages'])}: ${draft.maxPages}`}
-                </span>
-              )}
-            </CollapsibleTrigger>
-            <CollapsiblePanel>
-              <Fieldset
-                disabled={disabled}
-                className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2"
-              >
-                <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
-                  <Checkbox
-                    name="includeSubpages"
-                    checked={draft.includeSubpages}
-                    disabled={disabled}
-                    onCheckedChange={(checked) =>
-                      updateDraft({ ...draft, includeSubpages: checked })
-                    }
-                  />
-                  {t(($) => $['newKnowledge.includeSubpages'])}
-                </label>
-                <div>
-                  <span className="system-xs-medium text-text-secondary">
-                    {t(($) => $['newKnowledge.maxPages'])}
-                  </span>
-                  <NumberField
-                    disabled={disabled}
-                    name="maxPages"
-                    min={1}
-                    max={200}
-                    value={draft.maxPages}
-                    onValueChange={(value) => updateDraft({ ...draft, maxPages: value ?? 0 })}
-                  >
-                    <NumberFieldGroup className="mt-1.5">
-                      <NumberFieldInput
-                        aria-label={t(($) => $['newKnowledge.maxPages'])}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') event.preventDefault()
-                        }}
-                      />
-                      <NumberFieldControls>
-                        <NumberFieldIncrement />
-                        <NumberFieldDecrement />
-                      </NumberFieldControls>
-                    </NumberFieldGroup>
-                  </NumberField>
-                </div>
-              </Fieldset>
-            </CollapsiblePanel>
-          </Collapsible>
+          <SourceNameField
+            disabled={disabled}
+            draft={draft}
+            labelClassName="py-0.5"
+            preventSubmitOnEnter
+            size="large"
+            onDraftChange={updateDraft}
+          />
+          <DatasourceParameterForm
+            disabled={disabled || crawlState === 'running'}
+            parameters={parameters}
+            schemas={parameterSchemas}
+            onChange={(nextParameters) =>
+              updateDraft({
+                ...draft,
+                parameters: nextParameters,
+                rootUrl: typeof nextParameters.url === 'string' ? nextParameters.url : '',
+              })
+            }
+          />
           {crawlState !== 'success' && (
             <Button
               type="button"
@@ -614,7 +562,7 @@ export function CreateSourceSetup({
                 >
                   {t(($) => $['newKnowledge.crawlingPages'], {
                     count: previewPages.length,
-                    host: new URL(draft.rootUrl).host,
+                    host: installedProviderOption.label,
                   })}
                 </p>
                 <Button
@@ -622,7 +570,9 @@ export function CreateSourceSetup({
                   variant="ghost-accent"
                   size="small"
                   className="ml-auto shrink-0"
-                  onClick={() => stopPreview()}
+                  disabled={stoppingPreview}
+                  loading={stoppingPreview}
+                  onClick={() => void stopPreview()}
                 >
                   {t(($) => $['newKnowledge.stopCrawl'])}
                 </Button>
@@ -664,8 +614,9 @@ export function CreateSourceSetup({
                 onRecrawl={() => void startPreview()}
                 onSelectionChange={updateSelectedPageIds}
                 pages={selectionPages}
-                rootUrl={previewRootUrl}
+                rootUrl={selectionRootUrl}
                 selectedPageIds={selectedPageIds}
+                sourceLabel={installedProviderOption.label}
               />
             )}
           </section>

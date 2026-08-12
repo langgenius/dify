@@ -676,7 +676,6 @@ describe('AddSourcePage', () => {
   })
 
   it('restores a website draft handed off by the creation flow', async () => {
-    const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }
 
     render(
@@ -700,11 +699,12 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
       'Dify docs',
     )
-    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
     expect(
-      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.includeSubpages' }),
     ).not.toBeChecked()
-    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue('25')
+    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
+      25,
+    )
   })
 
   it('keeps the exact website provider selected while loading website dependencies', async () => {
@@ -1059,6 +1059,57 @@ describe('AddSourcePage', () => {
     expect(
       await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
     ).toBeEnabled()
+  })
+
+  it('clears website parameters when switching between configured providers', async () => {
+    const user = userEvent.setup()
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
+    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth, jinaDatasourceAuth] }
+    queryState.connections.data = {
+      pages: [
+        {
+          items: [
+            {
+              ...connection('active'),
+              authKind: 'endpoint',
+              configuration: {
+                credentialId: 'firecrawl-credential-1',
+                datasource: 'crawl',
+                pluginId: 'langgenius/firecrawl_datasource',
+                provider: 'firecrawl',
+                providerKind: 'website',
+              },
+            },
+            {
+              ...connection('active'),
+              authKind: 'endpoint',
+              configuration: {
+                credentialId: 'jina-credential-1',
+                datasource: 'jina_reader',
+                pluginId: 'langgenius/jina_datasource',
+                provider: 'jinareader',
+                providerKind: 'website',
+              },
+              id: 'jina-connection-1',
+              name: 'Jina Reader',
+            },
+          ],
+        },
+      ],
+    }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    const rootUrl = await screen.findByRole('textbox', {
+      name: /dataset\.newKnowledge\.rootUrl/,
+    })
+    await user.type(rootUrl, 'https://firecrawl.example.com')
+
+    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
+
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('')
   })
 
   it('opens Data Source settings when Dify has no Firecrawl credential', async () => {

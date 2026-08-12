@@ -3,6 +3,14 @@
 import * as z from 'zod'
 
 /**
+ * KnowledgeFSInitialSourcePreviewJobCreateResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewJobCreateResponse = z.object({
+  job_id: z.string(),
+  status: z.literal('pending').optional().default('pending'),
+})
+
+/**
  * KnowledgeFSBulkJobResponse
  */
 export const zKnowledgeFsBulkJobResponse = z.object({
@@ -756,6 +764,19 @@ export const zKnowledgeFsInitialSourcePreviewPayload = z.object({
 })
 
 /**
+ * KnowledgeFSInitialWebsiteSourcePreviewPayload
+ */
+export const zKnowledgeFsInitialWebsiteSourcePreviewPayload = z.object({
+  credentialId: z.string().min(1).max(255),
+  datasource: z.string().min(1).max(255),
+  kind: z.literal('website_crawl'),
+  parameters: z.record(z.string(), zJsonValue).optional(),
+  pluginId: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+  providerDisplayName: z.string().min(1).max(255).nullish(),
+})
+
+/**
  * KnowledgeFSInitialSourcePreviewDocumentResponse
  */
 export const zKnowledgeFsInitialSourcePreviewDocumentResponse = z.object({
@@ -782,13 +803,32 @@ export const zKnowledgeFsInitialSourcePreviewFileResponse = z.object({
 })
 
 /**
+ * KnowledgeFSInitialSourcePreviewPageResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewPageResponse = z.object({
+  description: z.string().nullish(),
+  source_url: z.string(),
+  title: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSInitialSourcePreviewResponse
  */
 export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
   documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
   files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
-  kind: z.enum(['online_document', 'online_drive']),
+  kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
   next_page_parameters: z.record(z.string(), zJsonValue).nullish(),
+  pages: z.array(zKnowledgeFsInitialSourcePreviewPageResponse).optional(),
+})
+
+/**
+ * KnowledgeFSInitialSourcePreviewJobResponse
+ */
+export const zKnowledgeFsInitialSourcePreviewJobResponse = z.object({
+  job_id: z.string(),
+  result: zKnowledgeFsInitialSourcePreviewResponse.nullish(),
+  status: z.enum(['canceled', 'completed', 'failed', 'pending', 'running']),
 })
 
 /**
@@ -1742,6 +1782,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   datasource: z.string().min(1).max(255).optional().default('crawl'),
   kind: z.literal('website_crawl'),
   name: z.string().min(1).max(200),
+  parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255).nullish(),
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
@@ -1771,6 +1812,7 @@ export const zKnowledgeFsInitialOnlineDocumentSourcePayload = z.object({
   datasource: z.string().min(1).max(255),
   kind: z.literal('online_document'),
   name: z.string().min(1).max(200),
+  parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
@@ -1806,6 +1848,7 @@ export const zKnowledgeFsInitialOnlineDriveSourcePayload = z.object({
   datasource: z.string().min(1).max(255),
   kind: z.literal('online_drive'),
   name: z.string().min(1).max(200),
+  parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
@@ -2400,6 +2443,35 @@ export const zPostKnowledgeFsSourceProviderPreviewBody = zKnowledgeFsInitialSour
  */
 export const zPostKnowledgeFsSourceProviderPreviewResponse =
   zKnowledgeFsInitialSourcePreviewResponse
+
+export const zPostKnowledgeFsSourceProviderPreviewJobsBody =
+  zKnowledgeFsInitialWebsiteSourcePreviewPayload
+
+/**
+ * Website datasource preview queued
+ */
+export const zPostKnowledgeFsSourceProviderPreviewJobsResponse =
+  zKnowledgeFsInitialSourcePreviewJobCreateResponse
+
+export const zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdPath = z.object({
+  job_id: z.string(),
+})
+
+/**
+ * Website datasource preview canceled
+ */
+export const zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponse =
+  zKnowledgeFsInitialSourcePreviewJobResponse
+
+export const zGetKnowledgeFsSourceProviderPreviewJobsByJobIdPath = z.object({
+  job_id: z.string(),
+})
+
+/**
+ * Website datasource preview status
+ */
+export const zGetKnowledgeFsSourceProviderPreviewJobsByJobIdResponse =
+  zKnowledgeFsInitialSourcePreviewJobResponse
 
 export const zGetKnowledgeFsSpacesQuery = z.object({
   creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),

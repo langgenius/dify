@@ -4,6 +4,7 @@ import type {
   KnowledgeFsSourceFileResponse,
   KnowledgeFsSourcePageResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { DatasourceParameters, DatasourceParameterSchema } from './datasource-parameter-model'
 import type {
   NewKnowledgeOnlineDocumentsSourceDraft,
   NewKnowledgeOnlineDriveSourceDraft,
@@ -27,6 +28,14 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { useDataSourceList } from '@/service/use-pipeline'
 import { formatFileSize } from '@/utils/format'
+import { DatasourceParameterForm } from './datasource-parameter-form'
+import {
+  datasourceParameterDefaults,
+  datasourceParameterSchemas,
+  invalidDatasourceParameters,
+  missingRequiredDatasourceParameters,
+  withDatasourceParameterDefaults,
+} from './datasource-parameter-model'
 import { createRequestId } from './request-id'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './routes'
 import {
@@ -252,13 +261,16 @@ function sourceType() {
 
 function sourceMetadata(
   draft: ConnectedSourceDraft,
+  parameters: DatasourceParameters,
   provider: SourceProvider,
   clientRequestId: string,
   preview: boolean,
 ) {
   return {
     clientRequestId,
+    datasourceParameterMode: 'exact',
     preview,
+    parameters,
     providerId: provider.id,
     providerKind: usesDriveTransport(draft) ? 'online-drive' : 'online-document',
     providerName: draft.provider,
@@ -616,6 +628,7 @@ function ResourceConfiguration({
   onDraftChange,
   onDirtyChange,
   onExit,
+  parameters,
   provider,
   providerRegion,
 }: {
@@ -626,6 +639,7 @@ function ResourceConfiguration({
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   onDirtyChange: (dirty: boolean) => void
   onExit: () => void
+  parameters: DatasourceParameters
   provider: SourceProvider
   providerRegion?: string
 }) {
@@ -690,6 +704,8 @@ function ResourceConfiguration({
                 connectionId: connection.id,
                 metadata: {
                   clientRequestId,
+                  datasourceParameterMode: 'exact',
+                  parameters,
                   preview: true,
                   providerId: provider.id,
                   providerKind: driveTransport ? 'online-drive' : 'online-document',
@@ -732,6 +748,7 @@ function ResourceConfiguration({
     draft.sourceType,
     driveTransport,
     knowledgeSpaceId,
+    parameters,
     previewUri,
     provider.id,
   ])
@@ -1271,7 +1288,13 @@ function ResourceConfiguration({
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
           body: {
             expectedVersion: previewSource.version,
-            metadata: sourceMetadata(draft, provider, previewRequestIdRef.current, false),
+            metadata: sourceMetadata(
+              draft,
+              parameters,
+              provider,
+              previewRequestIdRef.current,
+              false,
+            ),
             name: draft.sourceName.trim(),
             status: 'active',
           },
@@ -1510,6 +1533,81 @@ function ResourceConfiguration({
   )
 }
 
+function AppliedResourceConfiguration({
+  connection,
+  draft,
+  knowledgeSpaceId,
+  onCompleted,
+  onDraftChange,
+  onDirtyChange,
+  onExit,
+  parameters,
+  parametersValid,
+  parameterSchemas,
+  provider,
+  providerRegion,
+}: {
+  connection: SourceConnection
+  draft: ConnectedSourceDraft
+  knowledgeSpaceId: string
+  onCompleted: () => void
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onDirtyChange: (dirty: boolean) => void
+  onExit: () => void
+  parameters: DatasourceParameters
+  parametersValid: boolean
+  parameterSchemas: DatasourceParameterSchema[]
+  provider: SourceProvider
+  providerRegion?: string
+}) {
+  const { t } = useTranslation('dataset')
+  const [appliedParameters, setAppliedParameters] = useState<DatasourceParameters | undefined>(
+    () => (parametersValid ? parameters : undefined),
+  )
+  const parametersApplied =
+    appliedParameters !== undefined &&
+    JSON.stringify(appliedParameters) === JSON.stringify(parameters)
+
+  return (
+    <>
+      <DatasourceParameterForm
+        parameters={parameters}
+        schemas={parameterSchemas}
+        onChange={(nextParameters) =>
+          onDraftChange({
+            ...draft,
+            parameters: nextParameters,
+          })
+        }
+      />
+      {parametersValid && !parametersApplied && (
+        <Button
+          type="button"
+          variant="primary"
+          className="w-full"
+          onClick={() => setAppliedParameters(parameters)}
+        >
+          {t(($) => $['newKnowledge.preview'])}
+        </Button>
+      )}
+      {parametersApplied && appliedParameters && (
+        <ResourceConfiguration
+          connection={connection}
+          draft={draft}
+          knowledgeSpaceId={knowledgeSpaceId}
+          onCompleted={onCompleted}
+          onDraftChange={onDraftChange}
+          onDirtyChange={onDirtyChange}
+          onExit={onExit}
+          parameters={appliedParameters}
+          provider={provider}
+          providerRegion={providerRegion}
+        />
+      )}
+    </>
+  )
+}
+
 export function ConnectedSourceSetup({
   draft,
   knowledgeSpaceId,
@@ -1558,6 +1656,18 @@ export function ConnectedSourceSetup({
   )
   const providerOption = sourceProviderOptionForDraft(providerOptions, draft)
   const installedProviderOption = providerOption?.installed ? providerOption : undefined
+  const parameterSchemas = useMemo(
+    () =>
+      installedProviderOption ? datasourceParameterSchemas(installedProviderOption.datasource) : [],
+    [installedProviderOption],
+  )
+  const parameters = useMemo(
+    () => withDatasourceParameterDefaults(parameterSchemas, draft.parameters),
+    [draft.parameters, parameterSchemas],
+  )
+  const parametersValid =
+    !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
+    !invalidDatasourceParameters(parameterSchemas, parameters).length
   const provider = providerForDraft(providersQuery.data ?? [], draft, providerOption)
   const driveTransport = usesDriveTransport(draft)
   const datasourceProvider = datasourceProviderForOption(installedProviderOption)
@@ -1725,6 +1835,9 @@ export function ConnectedSourceSetup({
     if (draft.sourceType === 'onlineDocuments') {
       onDraftChange({
         ...draft,
+        parameters: nextProvider.installed
+          ? datasourceParameterDefaults(datasourceParameterSchemas(nextProvider.datasource))
+          : {},
         provider: nextProvider.label,
         providerKey: nextProvider.key,
         sourceName: '',
@@ -1733,6 +1846,9 @@ export function ConnectedSourceSetup({
     }
     onDraftChange({
       ...draft,
+      parameters: nextProvider.installed
+        ? datasourceParameterDefaults(datasourceParameterSchemas(nextProvider.datasource))
+        : {},
       provider: nextProvider.label,
       providerKey: nextProvider.key,
       sourceName: '',
@@ -1806,7 +1922,7 @@ export function ConnectedSourceSetup({
           </p>
         </div>
       ) : connection?.status === 'active' ? (
-        <ResourceConfiguration
+        <AppliedResourceConfiguration
           key={`${provider.id}:${connection.id}`}
           connection={connection}
           draft={draft}
@@ -1815,6 +1931,9 @@ export function ConnectedSourceSetup({
           onDraftChange={onDraftChange}
           onDirtyChange={onDirtyChange}
           onExit={onExit}
+          parameters={parameters}
+          parametersValid={parametersValid}
+          parameterSchemas={parameterSchemas}
           provider={provider}
           providerRegion={draft.provider === 'Amazon S3' ? credentialRegion(credential) : undefined}
         />

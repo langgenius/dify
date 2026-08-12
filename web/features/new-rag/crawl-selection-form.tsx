@@ -108,9 +108,8 @@ async function waitForImportTerminal(
   throw new Error('Source import did not reach a terminal state')
 }
 
-function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | undefined {
+function pageSkipReason(page: PreviewPage, rootUrl?: string): PageSkipReason | undefined {
   try {
-    const root = new URL(rootUrl)
     const candidate = new URL(page.sourceUrl)
     if (
       !['http:', 'https:'].includes(candidate.protocol) ||
@@ -118,6 +117,8 @@ function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | un
       candidate.password
     )
       return 'failed'
+    if (!rootUrl) return undefined
+    const root = new URL(rootUrl)
     if (candidate.hostname.toLocaleLowerCase() !== root.hostname.toLocaleLowerCase())
       return 'off-domain'
     return undefined
@@ -186,6 +187,7 @@ export function CrawlPreviewPageSelection({
   progressFailed = 0,
   recrawlDisabled,
   rootUrl,
+  sourceLabel,
   selectedPageIds,
 }: {
   busy?: boolean
@@ -195,7 +197,8 @@ export function CrawlPreviewPageSelection({
   pages: PreviewPage[]
   progressFailed?: number
   recrawlDisabled?: boolean
-  rootUrl: string
+  rootUrl?: string
+  sourceLabel?: string
   selectedPageIds: Set<string>
 }) {
   const { t } = useTranslation('dataset')
@@ -251,7 +254,7 @@ export function CrawlPreviewPageSelection({
         >
           {t(($) => $['newKnowledge.pagesCrawled'], {
             count: pages.length,
-            host: new URL(rootUrl).host,
+            host: sourceLabel ?? (rootUrl ? new URL(rootUrl).host : ''),
           })}
         </h3>
         <span className="system-xs-regular text-text-tertiary">
@@ -372,7 +375,7 @@ function ReadyCrawlSelectionForm({
   onWorkflowRun: (run: SourceWorkflowRun) => void
   pages: PreviewPage[]
   policy: SyncPolicy
-  rootUrl: string
+  rootUrl?: string
   run: SourceWorkflowRun
   source: Source
   workflowUncertain: boolean
@@ -765,7 +768,7 @@ export function CrawlSelectionForm({
   onWorkflowPending: (request: Promise<SourceWorkflowRun | undefined>) => void
   onWorkflowRun: (run: SourceWorkflowRun) => void
   pages: PreviewPage[]
-  rootUrl: string
+  rootUrl?: string
   run: SourceWorkflowRun
   source: Source
   workflowUncertain?: boolean

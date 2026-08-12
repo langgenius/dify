@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "شامل صفحه‌های فرعی",
   "newKnowledge.indexInformation": "نمایه",
   "newKnowledge.interruptTask": "توقف",
+  "newKnowledge.invalidDatasourceParameter": "یک مقدار معتبر برای {{parameter}} وارد کنید.",
   "newKnowledge.invalidRootUrl": "یک نشانی معتبر http(s) وارد کنید.",
   "newKnowledge.keepEditing": "ادامه ویرایش",
   "newKnowledge.lastIndexed": "آخرین نمایه‌سازی",

@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "包含子頁面",
   "newKnowledge.indexInformation": "索引",
   "newKnowledge.interruptTask": "中斷",
+  "newKnowledge.invalidDatasourceParameter": "請輸入有效的 {{parameter}}。",
   "newKnowledge.invalidRootUrl": "請輸入有效的 http(s) URL。",
   "newKnowledge.keepEditing": "繼續編輯",
   "newKnowledge.lastIndexed": "最近建立索引時間",

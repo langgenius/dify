@@ -230,6 +230,9 @@ def _source_payload(
         "providerKind": binding.provider_kind,
         "providerName": payload.provider_display_name or payload.provider,
     }
+    if "parameters" in payload.model_fields_set:
+        metadata["datasourceParameterMode"] = "exact"
+        metadata["parameters"] = dict(payload.parameters)
     if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
         metadata["crawlOptions"] = {
             "includeSubpages": payload.crawl_options.include_subpages,

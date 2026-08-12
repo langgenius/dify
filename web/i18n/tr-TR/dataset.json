@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Alt sayfaları dahil et",
   "newKnowledge.indexInformation": "Dizin",
   "newKnowledge.interruptTask": "Kesinti",
+  "newKnowledge.invalidDatasourceParameter": "{{parameter}} için geçerli bir değer girin.",
   "newKnowledge.invalidRootUrl": "Geçerli bir http(s) URL’si girin.",
   "newKnowledge.keepEditing": "Düzenlemeye devam et",
   "newKnowledge.lastIndexed": "Son dizinleme",

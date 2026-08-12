@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Включати підсторінки",
   "newKnowledge.indexInformation": "Індекс",
   "newKnowledge.interruptTask": "Переривати",
+  "newKnowledge.invalidDatasourceParameter": "Введіть припустиме значення для {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Введіть дійсну URL-адресу http(s).",
   "newKnowledge.keepEditing": "Продовжити редагування",
   "newKnowledge.lastIndexed": "Останнє індексування",

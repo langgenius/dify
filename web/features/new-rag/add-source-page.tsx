@@ -29,6 +29,10 @@ import { useDataSourceList } from '@/service/use-pipeline'
 import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import { ConnectedSourceSetup } from './connected-source-setup'
 import {
+  datasourceParameterDefaults,
+  websiteDatasourceParameterSchemas,
+} from './datasource-parameter-model'
+import {
   createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
   newKnowledgeSourceDraftStorageKey,
@@ -1276,8 +1280,14 @@ export function AddSourcePage({
                   if (!nextProvider) return
                   updateSourceDraft({
                     ...sourceDraft,
+                    parameters: nextProvider.installed
+                      ? datasourceParameterDefaults(
+                          websiteDatasourceParameterSchemas(nextProvider.datasource),
+                        )
+                      : {},
                     provider: nextProvider.label,
                     providerKey: nextProvider.key,
+                    rootUrl: '',
                   })
                 }}
               />
@@ -1325,13 +1335,14 @@ export function AddSourcePage({
                 </div>
               ) : activeConnection && websitePreviewReady ? (
                 <WebsiteCrawlPreview
-                  key={historyGuardReleaseVersion}
+                  key={`${historyGuardReleaseVersion}:${datasourceProvider.key}:${activeConnection.id}`}
                   connection={activeConnection}
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
                   onInteractionLockChange={setWebsiteSetupLocked}
                   providerName={websiteProviderName}
+                  providerOption={datasourceProvider}
                 />
               ) : activeConnection ? (
                 <div className="flex min-h-64 items-center justify-center">

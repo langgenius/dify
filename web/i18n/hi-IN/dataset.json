@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "उप-पेज शामिल करें",
   "newKnowledge.indexInformation": "अनुक्रमणिका",
   "newKnowledge.interruptTask": "रोकें",
+  "newKnowledge.invalidDatasourceParameter": "{{parameter}} के लिए मान्य मान दर्ज करें।",
   "newKnowledge.invalidRootUrl": "मान्य http(s) URL दर्ज करें।",
   "newKnowledge.keepEditing": "संपादन जारी रखें",
   "newKnowledge.lastIndexed": "पिछली बार अनुक्रमित",

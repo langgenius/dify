@@ -286,6 +286,7 @@
   "newKnowledge.includeSubpages": "ລວມເອົາໜ້າຍ່ອຍ",
   "newKnowledge.indexInformation": "ຂໍ້ມູນດັດຊະນີ",
   "newKnowledge.interruptTask": "ຂັດຂວາງ",
+  "newKnowledge.invalidDatasourceParameter": "ປ້ອນຄ່າທີ່ຖືກຕ້ອງສຳລັບ {{parameter}}.",
   "newKnowledge.invalidRootUrl": "ລະບຸ URL http(s) ທີ່ຖືກຕ້ອງ.",
   "newKnowledge.keepEditing": "ສືບຕໍ່ແກ້ໄຂ",
   "newKnowledge.lastIndexed": "ດັດສະນີຫຼ້າສຸດ",

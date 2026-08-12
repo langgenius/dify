@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "サブページを含める",
   "newKnowledge.indexInformation": "インデックス",
   "newKnowledge.interruptTask": "中断",
+  "newKnowledge.invalidDatasourceParameter": "{{parameter}} に有効な値を入力してください。",
   "newKnowledge.invalidRootUrl": "有効なhttp(s) URLを入力してください。",
   "newKnowledge.keepEditing": "編集を続ける",
   "newKnowledge.lastIndexed": "最終インデックス日時",

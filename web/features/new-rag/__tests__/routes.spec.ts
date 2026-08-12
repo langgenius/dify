@@ -86,6 +86,7 @@ describe('New RAG routes', () => {
     ).toEqual({
       includeSubpages: false,
       maxPages: 25,
+      parameters: {},
       provider: 'Firecrawl',
       rootUrl: 'https://docs.dify.ai',
       sourceName: 'Dify docs',

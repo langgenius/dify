@@ -142,6 +142,7 @@ class KnowledgeFSInitialDatasourceBindingPayload(BaseModel):
     plugin_id: str = Field(min_length=1, max_length=255, alias="pluginId")
     provider: str = Field(min_length=1, max_length=255)
     provider_display_name: str | None = Field(default=None, min_length=1, max_length=255, alias="providerDisplayName")
+    parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
 
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
@@ -154,6 +155,7 @@ class KnowledgeFSInitialWebsiteSourcePayload(BaseModel):
     datasource: str = Field(default="crawl", min_length=1, max_length=255)
     credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
     provider_display_name: str | None = Field(default=None, min_length=1, max_length=255, alias="providerDisplayName")
+    parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
@@ -185,7 +187,16 @@ class KnowledgeFSInitialOnlineDriveSourcePayload(KnowledgeFSInitialDatasourceBin
 
 class KnowledgeFSInitialSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):
     kind: Literal["online_document", "online_drive"]
-    parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
+
+
+class KnowledgeFSInitialWebsiteSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):
+    kind: Literal["website_crawl"]
+
+
+class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
+    description: str | None = None
+    source_url: str = Field(validation_alias=AliasChoices("source_url", "sourceUrl"))
+    title: str | None = None
 
 
 class KnowledgeFSInitialSourcePreviewDocumentResponse(ResponseModel):
@@ -213,11 +224,23 @@ class KnowledgeFSInitialSourcePreviewFileResponse(ResponseModel):
 class KnowledgeFSInitialSourcePreviewResponse(ResponseModel):
     documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = Field(default_factory=list)
     files: list[KnowledgeFSInitialSourcePreviewFileResponse] = Field(default_factory=list)
-    kind: Literal["online_document", "online_drive"]
+    kind: Literal["online_document", "online_drive", "website_crawl"]
     next_page_parameters: dict[str, JsonValue] | None = Field(
         default=None,
         validation_alias=AliasChoices("next_page_parameters", "nextPageParameters"),
     )
+    pages: list[KnowledgeFSInitialSourcePreviewPageResponse] = Field(default_factory=list)
+
+
+class KnowledgeFSInitialSourcePreviewJobCreateResponse(ResponseModel):
+    job_id: str = Field(validation_alias=AliasChoices("job_id", "jobId"))
+    status: Literal["pending"] = "pending"
+
+
+class KnowledgeFSInitialSourcePreviewJobResponse(ResponseModel):
+    job_id: str = Field(validation_alias=AliasChoices("job_id", "jobId"))
+    result: KnowledgeFSInitialSourcePreviewResponse | None = None
+    status: Literal["pending", "running", "completed", "failed", "canceled"]
 
 
 KnowledgeFSInitialSourcePayload = Annotated[
@@ -2993,11 +3016,15 @@ __all__ = [
     "KnowledgeFSInitialSourcePayload",
     "KnowledgeFSInitialSourcePreviewDocumentResponse",
     "KnowledgeFSInitialSourcePreviewFileResponse",
+    "KnowledgeFSInitialSourcePreviewJobCreateResponse",
+    "KnowledgeFSInitialSourcePreviewJobResponse",
+    "KnowledgeFSInitialSourcePreviewPageResponse",
     "KnowledgeFSInitialSourcePreviewPayload",
     "KnowledgeFSInitialSourcePreviewResponse",
     "KnowledgeFSInitialWebsiteCrawlOptionsPayload",
     "KnowledgeFSInitialWebsiteSelectionPayload",
     "KnowledgeFSInitialWebsiteSourcePayload",
+    "KnowledgeFSInitialWebsiteSourcePreviewPayload",
     "KnowledgeFSJWKResponse",
     "KnowledgeFSJWKSResponse",
     "KnowledgeFSLogicalDocumentDeletePayload",

@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Bao gồm các trang con",
   "newKnowledge.indexInformation": "Chỉ mục",
   "newKnowledge.interruptTask": "Ngắt",
+  "newKnowledge.invalidDatasourceParameter": "Nhập giá trị hợp lệ cho {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Nhập URL http(s) hợp lệ.",
   "newKnowledge.keepEditing": "Tiếp tục chỉnh sửa",
   "newKnowledge.lastIndexed": "Lập chỉ mục gần nhất",

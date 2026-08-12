@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Включать вложенные страницы",
   "newKnowledge.indexInformation": "Индекс",
   "newKnowledge.interruptTask": "Прерывание",
+  "newKnowledge.invalidDatasourceParameter": "Введите допустимое значение для {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Введите корректный URL с http(s).",
   "newKnowledge.keepEditing": "Продолжить редактирование",
   "newKnowledge.lastIndexed": "Последняя индексация",

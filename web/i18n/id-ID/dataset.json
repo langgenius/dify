@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Sertakan subhalaman",
   "newKnowledge.indexInformation": "Indeks",
   "newKnowledge.interruptTask": "Hentikan",
+  "newKnowledge.invalidDatasourceParameter": "Masukkan nilai yang valid untuk {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Masukkan URL http(s) yang valid.",
   "newKnowledge.keepEditing": "Lanjutkan mengedit",
   "newKnowledge.lastIndexed": "Terakhir diindeks",

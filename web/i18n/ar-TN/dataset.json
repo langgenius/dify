@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "تضمين الصفحات الفرعية",
   "newKnowledge.indexInformation": "الفهرسة",
   "newKnowledge.interruptTask": "إيقاف",
+  "newKnowledge.invalidDatasourceParameter": "أدخل قيمة صالحة لـ {{parameter}}.",
   "newKnowledge.invalidRootUrl": "أدخل عنوان URL صالحًا يبدأ بـ http(s).",
   "newKnowledge.keepEditing": "متابعة التحرير",
   "newKnowledge.lastIndexed": "آخر فهرسة",

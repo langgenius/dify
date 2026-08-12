@@ -91,12 +91,12 @@ describe("createApiOnlineDriveConnector", () => {
     ]);
     expect(calls[0]).toMatchObject({
       bucket: "b1",
-      maxKeys: 20,
       operation: "online_drive_browse_files",
       prefix: "docs/",
       source: SOURCE,
       tenantId: "tenant-1",
     });
+    expect(calls[0]).not.toHaveProperty("maxKeys");
     expect(JSON.stringify(calls[0])).not.toContain("credentials");
   });
 

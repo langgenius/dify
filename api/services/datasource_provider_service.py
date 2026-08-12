@@ -197,6 +197,7 @@ class DatasourceProviderService:
         provider: str,
         plugin_id: str,
         credential_id: str | None = None,
+        current_user: Any | None = None,
     ) -> dict[str, Any]:
         """
         Return decrypted datasource credentials.
@@ -230,7 +231,8 @@ class DatasourceProviderService:
             if not datasource_provider:
                 return {}
             if self._should_refresh_credentials(datasource_provider):
-                current_user = get_current_user()
+                if current_user is None:
+                    current_user = get_current_user()
                 encrypted_credentials, expires_at = self._refresh_datasource_credentials(
                     tenant_id=tenant_id,
                     provider=provider,

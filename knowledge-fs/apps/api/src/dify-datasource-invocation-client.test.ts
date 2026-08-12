@@ -3,6 +3,7 @@ import type { DifyDatasourceRuntimeClient } from "@knowledge/dify-datasource-run
 import { describe, expect, it, vi } from "vitest";
 
 import { createDifyDatasourceInvocationClient } from "./dify-datasource-invocation-client";
+import { createApiOnlineDriveConnector } from "./online-drive-options";
 
 const SOURCE: Source = {
   createdAt: "2026-07-03T00:00:00.000Z",
@@ -61,7 +62,7 @@ describe("createDifyDatasourceInvocationClient", () => {
     expect(JSON.stringify(getOnlineDocumentPages.mock.calls)).not.toContain("credentials");
   });
 
-  it("maps product crawl options to the Firecrawl datasource parameters", async () => {
+  it("maps legacy product crawl options to the Firecrawl datasource parameters", async () => {
     const getWebsiteCrawl = vi.fn(() => chunks({ result: { web_info_list: [] } }));
     const adapter = createDifyDatasourceInvocationClient({
       client: difyClient({ getWebsiteCrawl }),
@@ -99,6 +100,153 @@ describe("createDifyDatasourceInvocationClient", () => {
       },
       pluginId: "langgenius/firecrawl_datasource",
       provider: "firecrawl",
+      tenantId: "tenant-1",
+    });
+  });
+
+  it("preserves exact datasource parameters for declaration-driven website sources", async () => {
+    const getWebsiteCrawl = vi.fn(() => chunks({ result: { web_info_list: [] } }));
+    const adapter = createDifyDatasourceInvocationClient({
+      client: difyClient({ getWebsiteCrawl }),
+    });
+    const source: Source = {
+      ...SOURCE,
+      metadata: {
+        credentialId: "dify-credential-1",
+        crawlOptions: { includeSubpages: false, limit: 1 },
+        datasource: "search_extract",
+        datasourceParameterMode: "exact",
+        parameters: { query: "dify knowledge", search_depth: "advanced" },
+        pluginId: "langgenius/tavily_datasource",
+        provider: "tavily",
+      },
+      type: "web",
+      uri: "datasource://tavily",
+    };
+
+    await collect(
+      adapter.dispatch({
+        operation: "get_website_crawl",
+        source,
+        tenantId: "tenant-1",
+      }),
+    );
+
+    expect(getWebsiteCrawl).toHaveBeenCalledWith({
+      credentialId: "dify-credential-1",
+      datasource: "search_extract",
+      datasourceParameters: { query: "dify knowledge", search_depth: "advanced" },
+      pluginId: "langgenius/tavily_datasource",
+      provider: "tavily",
+      tenantId: "tenant-1",
+    });
+  });
+
+  it("preserves an explicitly empty declaration-driven parameter set", async () => {
+    const getWebsiteCrawl = vi.fn(() => chunks({ result: { web_info_list: [] } }));
+    const adapter = createDifyDatasourceInvocationClient({
+      client: difyClient({ getWebsiteCrawl }),
+    });
+    const source: Source = {
+      ...SOURCE,
+      metadata: {
+        credentialId: "dify-credential-1",
+        crawlOptions: { includeSubpages: true, limit: 200 },
+        datasource: "optional_search",
+        datasourceParameterMode: "exact",
+        parameters: {},
+        pluginId: "langgenius/optional_search_datasource",
+        provider: "optional_search",
+      },
+      type: "web",
+      uri: "datasource://optional-search",
+    };
+
+    await collect(
+      adapter.dispatch({
+        operation: "get_website_crawl",
+        source,
+        tenantId: "tenant-1",
+      }),
+    );
+
+    expect(getWebsiteCrawl).toHaveBeenCalledWith(
+      expect.objectContaining({ datasourceParameters: {} }),
+    );
+  });
+
+  it("maps legacy Jina crawl options to crawl_sub_pages", async () => {
+    const getWebsiteCrawl = vi.fn(() => chunks({ result: { web_info_list: [] } }));
+    const adapter = createDifyDatasourceInvocationClient({
+      client: difyClient({ getWebsiteCrawl }),
+    });
+    const source: Source = {
+      ...SOURCE,
+      metadata: {
+        credentialId: "jina-credential-1",
+        crawlOptions: { includeSubpages: true, limit: 10 },
+        datasource: "jina_reader",
+        parameters: {},
+        pluginId: "langgenius/jina_datasource",
+        provider: "jinareader",
+      },
+      type: "web",
+      uri: "https://example.com",
+    };
+
+    await collect(
+      adapter.dispatch({
+        operation: "get_website_crawl",
+        source,
+        tenantId: "tenant-1",
+      }),
+    );
+
+    expect(getWebsiteCrawl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasourceParameters: {
+          crawl_sub_pages: true,
+          limit: 10,
+          url: "https://example.com",
+        },
+      }),
+    );
+  });
+
+  it("uses declaration-driven online drive parameters as the browse root", async () => {
+    const browseOnlineDrive = vi.fn(() => chunks({ result: [] }));
+    const adapter = createDifyDatasourceInvocationClient({
+      client: difyClient({ browseOnlineDrive }),
+    });
+    const source: Source = {
+      ...SOURCE,
+      metadata: {
+        ...SOURCE.metadata,
+        datasource: "shared_drive",
+        parameters: {
+          bucket: "manuals",
+          max_keys: 50,
+          next_page_parameters: { cursor: "saved" },
+          prefix: "products/",
+        },
+        providerKind: "online-drive",
+      },
+      uri: "gdrive://shared-drive",
+    };
+
+    const connector = createApiOnlineDriveConnector({ client: adapter });
+
+    await connector.browse({ source, tenantId: "tenant-1" });
+
+    expect(browseOnlineDrive).toHaveBeenCalledWith({
+      bucket: "manuals",
+      credentialId: "dify-credential-1",
+      datasource: "shared_drive",
+      maxKeys: 50,
+      nextPageParameters: { cursor: "saved" },
+      pluginId: "langgenius/notion_datasource",
+      prefix: "products/",
+      provider: "notion_datasource",
       tenantId: "tenant-1",
     });
   });

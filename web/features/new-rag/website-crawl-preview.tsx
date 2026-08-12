@@ -1,7 +1,9 @@
 'use client'
 
+import type { DatasourceParameters } from './datasource-parameter-model'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
+import type { InstalledSourceProviderOption } from './source-provider-options'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,27 +16,26 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
-import {
-  NumberField,
-  NumberFieldControls,
-  NumberFieldDecrement,
-  NumberFieldGroup,
-  NumberFieldIncrement,
-  NumberFieldInput,
-} from '@langgenius/dify-ui/number-field'
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { CrawlSelectionForm } from './crawl-selection-form'
+import { DatasourceParameterForm } from './datasource-parameter-form'
+import {
+  datasourceIncludeSubpages,
+  datasourceParameterDefaults,
+  invalidDatasourceParameters,
+  missingRequiredDatasourceParameters,
+  websiteDatasourceParameterSchemas,
+  withDatasourceParameterDefaults,
+} from './datasource-parameter-model'
 import { createRequestId } from './request-id'
 import {
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
-  NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
   newKnowledgeDetailPath,
   normalizeWebsiteSourceUrl,
 } from './routes'
@@ -46,10 +47,10 @@ type ConnectionReference = {
 }
 
 type CrawlConfiguration = {
-  includeSubpages: boolean
-  limit: number
   name: string
-  url: string
+  parameters: DatasourceParameters
+  rootUrl?: string
+  uri: string
 }
 
 type PreviewDraft = {
@@ -79,8 +80,6 @@ function previewPagesEqual(left: PreviewPage, right: PreviewPage) {
 const PAGE_SIZE = 200
 const MAX_CURSOR_PAGES = 100
 const POLL_INTERVAL_MS = 1500
-const DEFAULT_PAGE_LIMIT = 100
-const MAX_PAGE_LIMIT = 200
 const MAX_PREVIEW_SELECTION = 200
 const SUCCESS_STATES = new Set([
   'complete',
@@ -189,6 +188,15 @@ function requiresCancellation(state: string) {
 
 function configurationKey(configuration: CrawlConfiguration) {
   return JSON.stringify(configuration)
+}
+
+function datasourceSourceUri(parameters: DatasourceParameters, fallback: string) {
+  const url = parameters.url
+  if (typeof url === 'string') {
+    const normalized = normalizeWebsiteSourceUrl(url)
+    if (normalized) return normalized.toString()
+  }
+  return `datasource://${encodeURIComponent(fallback)}`
 }
 
 function workflowAttemptKey(run: SourceWorkflowRun) {
@@ -418,6 +426,7 @@ export function WebsiteCrawlPreview({
   knowledgeSpaceId,
   onDraftFinished,
   onInteractionLockChange,
+  providerOption,
   providerName = 'Firecrawl',
 }: {
   connection: ConnectionReference
@@ -425,25 +434,44 @@ export function WebsiteCrawlPreview({
   knowledgeSpaceId: string
   onDraftFinished?: () => void
   onInteractionLockChange?: (locked: boolean) => void
+  providerOption?: InstalledSourceProviderOption
   providerName?: string
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
-  const rootUrlErrorId = useId()
-  const pageLimitErrorId = useId()
-  const [rootUrl, setRootUrl] = useState(initialDraft?.rootUrl ?? '')
-  const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
-  const [urlTouched, setUrlTouched] = useState(false)
-  const [optionsExpanded, setOptionsExpanded] = useState(false)
-  const [includeSubpages, setIncludeSubpages] = useState(initialDraft?.includeSubpages ?? true)
-  const [pageLimit, setPageLimit] = useState<number | ''>(() => {
-    const initialLimit = initialDraft?.maxPages
-    return initialLimit && initialLimit > 0 && initialLimit <= MAX_PAGE_LIMIT
-      ? initialLimit
-      : DEFAULT_PAGE_LIMIT
+  const parameterSchemas = useMemo(
+    () =>
+      providerOption
+        ? websiteDatasourceParameterSchemas(providerOption.datasource)
+        : websiteDatasourceParameterSchemas(),
+    [providerOption],
+  )
+  const defaultParameters = useMemo(
+    () => datasourceParameterDefaults(parameterSchemas),
+    [parameterSchemas],
+  )
+  const [parameters, setParameters] = useState<DatasourceParameters>(() => {
+    const initialParameters = withDatasourceParameterDefaults(
+      parameterSchemas,
+      initialDraft?.parameters,
+    )
+    if (!providerOption || providerOption.datasource.parameters.length === 0) {
+      const crawlSubpagesParameter = parameterSchemas.find((parameter) =>
+        ['crawl_sub_pages', 'crawl_subpages'].includes(parameter.name),
+      )
+      if (crawlSubpagesParameter)
+        initialParameters[crawlSubpagesParameter.name] = initialDraft?.includeSubpages ?? true
+      initialParameters.limit = initialDraft?.maxPages ?? 100
+    }
+    if (
+      initialDraft?.rootUrl &&
+      parameterSchemas.some((parameter) => parameter.name === 'url') &&
+      initialParameters.url === undefined
+    )
+      initialParameters.url = initialDraft.rootUrl
+    return initialParameters
   })
-  const crawlOptionsAreDefault =
-    includeSubpages && (pageLimit === '' || pageLimit === DEFAULT_PAGE_LIMIT)
+  const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
@@ -464,7 +492,6 @@ export function WebsiteCrawlPreview({
   const actionPendingRef = useRef(false)
   const retryFingerprintRef = useRef<string | undefined>(undefined)
   const cancelFingerprintRef = useRef<string | undefined>(undefined)
-  const rootUrlInputRef = useRef<HTMLInputElement>(null)
   const sourceNameInputRef = useRef<HTMLInputElement>(null)
   const pageMapRef = useRef(new Map<string, PreviewPage>())
   const pageCursorRef = useRef<string | undefined>(undefined)
@@ -568,27 +595,29 @@ export function WebsiteCrawlPreview({
     setSelectionUncertain(uncertain)
   }, [])
 
-  const normalizedURL = useMemo(() => normalizeWebsiteSourceUrl(rootUrl), [rootUrl])
-  const pageLimitValid =
-    typeof pageLimit === 'number' &&
-    Number.isInteger(pageLimit) &&
-    pageLimit >= 1 &&
-    pageLimit <= MAX_PAGE_LIMIT
+  const normalizedURL = useMemo(
+    () =>
+      typeof parameters.url === 'string' ? normalizeWebsiteSourceUrl(parameters.url) : undefined,
+    [parameters.url],
+  )
+  const hasUrlParameter = parameterSchemas.some((parameter) => parameter.name === 'url')
+  const parametersValid =
+    !missingRequiredDatasourceParameters(parameterSchemas, parameters).length &&
+    !invalidDatasourceParameters(parameterSchemas, parameters).length &&
+    !(hasUrlParameter && parameters.url && !normalizedURL)
   const configuration = useMemo<CrawlConfiguration | undefined>(
     () =>
-      normalizedURL &&
+      parametersValid &&
       sourceName.trim() &&
-      sourceName.trim().length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH &&
-      typeof pageLimit === 'number' &&
-      pageLimitValid
+      sourceName.trim().length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
         ? {
-            includeSubpages,
-            limit: pageLimit,
             name: sourceName.trim(),
-            url: normalizedURL.toString(),
+            parameters,
+            ...(normalizedURL ? { rootUrl: normalizedURL.toString() } : {}),
+            uri: datasourceSourceUri(parameters, providerOption?.key ?? providerName),
           }
         : undefined,
-    [includeSubpages, pageLimit, pageLimitValid, normalizedURL, sourceName],
+    [normalizedURL, parameters, parametersValid, providerName, providerOption?.key, sourceName],
   )
   const currentConfigurationKey = configuration ? configurationKey(configuration) : undefined
   const previewConfigurationMatches = Boolean(
@@ -612,9 +641,9 @@ export function WebsiteCrawlPreview({
   const runId = run?.id
   const locked = starting || stopping || active || uncertainOperation || selectionInteractionLocked
   const dirty = Boolean(
-    rootUrl || sourceName || run || !includeSubpages || pageLimit !== DEFAULT_PAGE_LIMIT,
+    sourceName || run || JSON.stringify(parameters) !== JSON.stringify(defaultParameters),
   )
-  const host = normalizedURL?.host ?? ''
+  const host = normalizedURL?.host ?? providerName
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
   const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
     count: completedCount,
@@ -795,9 +824,14 @@ export function WebsiteCrawlPreview({
               metadata: {
                 clientRequestId: draft.clientRequestId,
                 crawlOptions: {
-                  includeSubpages: nextConfiguration.includeSubpages,
-                  limit: nextConfiguration.limit,
+                  includeSubpages: datasourceIncludeSubpages(nextConfiguration.parameters),
+                  limit:
+                    typeof nextConfiguration.parameters.limit === 'number'
+                      ? nextConfiguration.parameters.limit
+                      : 200,
                 },
+                datasourceParameterMode: 'exact',
+                parameters: nextConfiguration.parameters,
                 preview: true,
                 providerId: connection.providerId,
                 providerName,
@@ -805,7 +839,7 @@ export function WebsiteCrawlPreview({
               name: nextConfiguration.name,
               status: 'disabled',
               type: 'web',
-              uri: nextConfiguration.url,
+              uri: nextConfiguration.uri,
             },
             params: { control_space_id: knowledgeSpaceId },
           }),
@@ -1136,9 +1170,7 @@ export function WebsiteCrawlPreview({
 
   const handlePrimaryAction = () => {
     if (!configuration) {
-      setUrlTouched(true)
-      if (!normalizedURL) rootUrlInputRef.current?.focus()
-      else sourceNameInputRef.current?.focus()
+      sourceNameInputRef.current?.focus()
       return
     }
     if (requestError === 'POLL_FAILED' && run) {
@@ -1294,31 +1326,13 @@ export function WebsiteCrawlPreview({
       </p>
       <Form onFormSubmit={handleSubmit}>
         <Fieldset disabled={locked} className="space-y-4">
+          <DatasourceParameterForm
+            disabled={locked}
+            parameters={parameters}
+            schemas={parameterSchemas}
+            onChange={setParameters}
+          />
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2">
-            <Field name="rootUrl" invalid={urlTouched && !normalizedURL} className="gap-1.5">
-              <FieldLabel>
-                {t(($) => $['newKnowledge.rootUrl'])}
-                <span className="ml-0.5 text-text-destructive">*</span>
-              </FieldLabel>
-              <FieldControl
-                ref={rootUrlInputRef}
-                type="url"
-                inputMode="url"
-                autoComplete="off"
-                required
-                maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
-                value={rootUrl}
-                placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-                aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
-                onBlur={() => setUrlTouched(true)}
-                onValueChange={setRootUrl}
-              />
-              {urlTouched && !normalizedURL && (
-                <FieldError id={rootUrlErrorId} match>
-                  {t(($) => $['newKnowledge.invalidRootUrl'])}
-                </FieldError>
-              )}
-            </Field>
             <Field name="sourceName" className="gap-1.5">
               <FieldLabel>
                 {t(($) => $['newKnowledge.sourceName'])}
@@ -1336,81 +1350,6 @@ export function WebsiteCrawlPreview({
               />
             </Field>
           </div>
-          <Collapsible
-            open={optionsExpanded}
-            onOpenChange={setOptionsExpanded}
-            className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default"
-          >
-            <CollapsibleTrigger className="h-8.5 min-h-8.5 justify-start rounded-none px-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset">
-              <span
-                aria-hidden
-                className="i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
-              />
-              <span className="system-xs-medium text-text-primary">
-                {t(($) => $['newKnowledge.crawlOptions'])}
-              </span>
-              {!optionsExpanded && (
-                <span className="ml-auto system-xs-regular text-text-tertiary">
-                  {crawlOptionsAreDefault
-                    ? t(($) => $['newKnowledge.usingDefaults'])
-                    : `${t(($) => $['newKnowledge.includeSubpages'])}: ${t(($) =>
-                        includeSubpages
-                          ? $['newKnowledge.booleanTrue']
-                          : $['newKnowledge.booleanFalse'],
-                      )} · ${t(($) => $['newKnowledge.maxPages'])}: ${
-                        pageLimit === '' ? DEFAULT_PAGE_LIMIT : pageLimit
-                      }`}
-                </span>
-              )}
-            </CollapsibleTrigger>
-            <CollapsiblePanel>
-              <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
-                <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
-                  <Checkbox checked={includeSubpages} onCheckedChange={setIncludeSubpages} />
-                  {t(($) => $['newKnowledge.includeSubpages'])}
-                </label>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="system-xs-regular text-text-secondary">
-                      {t(($) => $['newKnowledge.maxPages'])}
-                    </span>
-                    <NumberField
-                      allowOutOfRange
-                      min={1}
-                      max={MAX_PAGE_LIMIT}
-                      step={1}
-                      value={pageLimit === '' ? null : pageLimit}
-                      onValueChange={(value) => setPageLimit(value === null ? '' : value)}
-                    >
-                      <NumberFieldGroup className="ml-auto w-28">
-                        <NumberFieldInput
-                          aria-label={t(($) => $['newKnowledge.maxPages'])}
-                          aria-describedby={!pageLimitValid ? pageLimitErrorId : undefined}
-                          aria-invalid={!pageLimitValid}
-                          onBlur={() => {
-                            if (pageLimit === '') setPageLimit(DEFAULT_PAGE_LIMIT)
-                          }}
-                        />
-                        <NumberFieldControls>
-                          <NumberFieldIncrement />
-                          <NumberFieldDecrement />
-                        </NumberFieldControls>
-                      </NumberFieldGroup>
-                    </NumberField>
-                  </div>
-                  {!pageLimitValid && (
-                    <p
-                      id={pageLimitErrorId}
-                      className="text-right system-xs-regular text-text-destructive"
-                      role="alert"
-                    >
-                      {t(($) => $['newKnowledge.maxPages'])}: 1–{MAX_PAGE_LIMIT}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CollapsiblePanel>
-          </Collapsible>
         </Fieldset>
 
         {!showSuccess && (
@@ -1506,7 +1445,7 @@ export function WebsiteCrawlPreview({
               pendingCancelRunRef.current = nextRun
             }}
             pages={pages}
-            rootUrl={configuration.url}
+            rootUrl={configuration.rootUrl}
             run={run}
             source={draftRef.current.source}
             workflowUncertain={workflowUncertain}

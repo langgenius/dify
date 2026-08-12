@@ -294,6 +294,7 @@
   "newKnowledge.includeSubpages": "Vključi podstrani",
   "newKnowledge.indexInformation": "Indeks",
   "newKnowledge.interruptTask": "Prekini",
+  "newKnowledge.invalidDatasourceParameter": "Vnesite veljavno vrednost za {{parameter}}.",
   "newKnowledge.invalidRootUrl": "Vnesite veljaven URL http(s).",
   "newKnowledge.keepEditing": "Nadaljuj urejanje",
   "newKnowledge.lastIndexed": "Nazadnje indeksirano",

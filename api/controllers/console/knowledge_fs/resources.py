@@ -60,6 +60,11 @@ from services.knowledge_fs.download_service import (
     KnowledgeFSDownloadTooLargeError,
 )
 from services.knowledge_fs.initial_source_preview import KnowledgeFSInitialSourcePreviewService
+from services.knowledge_fs.initial_source_preview_job import (
+    KnowledgeFSInitialSourcePreviewJobAlreadyRunningError,
+    KnowledgeFSInitialSourcePreviewJobNotFoundError,
+    KnowledgeFSInitialSourcePreviewJobService,
+)
 from services.knowledge_fs.product_authorization import (
     KnowledgeFSProductNotFoundError,
 )
@@ -119,8 +124,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSInitialSourcePreviewJobCreateResponse,
+    KnowledgeFSInitialSourcePreviewJobResponse,
     KnowledgeFSInitialSourcePreviewPayload,
     KnowledgeFSInitialSourcePreviewResponse,
+    KnowledgeFSInitialWebsiteSourcePreviewPayload,
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
@@ -281,6 +289,7 @@ register_schema_models(
     KnowledgeFSCrawlImportPayload,
     KnowledgeFSCrawlPreviewSelectionPayload,
     KnowledgeFSInitialSourcePreviewPayload,
+    KnowledgeFSInitialWebsiteSourcePreviewPayload,
     KnowledgeFSSourceDeletePayload,
     KnowledgeFSSourceDeleteQuery,
     KnowledgeFSSourceFilesQuery,
@@ -380,6 +389,8 @@ register_response_schema_models(
     KnowledgeFSOverviewStatsResponse,
     KnowledgeFSPresignedUploadResponse,
     KnowledgeFSInitialSourcePreviewResponse,
+    KnowledgeFSInitialSourcePreviewJobCreateResponse,
+    KnowledgeFSInitialSourcePreviewJobResponse,
     KnowledgeFSUploadSessionCreateResponse,
     KnowledgeFSUploadSessionMutationResponse,
 )
@@ -401,6 +412,8 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise KnowledgeFSSpaceNotFoundHTTPError() from exc
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSOperationUnavailableHTTPError() from exc
+        except KnowledgeFSInitialSourcePreviewJobAlreadyRunningError as exc:
+            raise Conflict() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:
             raise NotFound() from exc
         except KnowledgeFSStagedUploadNotFoundError as exc:
@@ -664,6 +677,73 @@ class KnowledgeFSInitialSourcePreviewApi(Resource):
             payload=_payload(KnowledgeFSInitialSourcePreviewPayload),
         )
         return dump_response(KnowledgeFSInitialSourcePreviewResponse, result)
+
+
+@console_ns.route("/knowledge-fs/source-provider-preview/jobs")
+class KnowledgeFSInitialSourcePreviewJobsApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSInitialWebsiteSourcePreviewPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "Website datasource preview queued",
+        console_ns.models[KnowledgeFSInitialSourcePreviewJobCreateResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self):
+        account, tenant_id = current_account_with_tenant()
+        result = KnowledgeFSInitialSourcePreviewJobService(session_factory.get_session_maker()).start(
+            tenant_id=tenant_id,
+            account=account,
+            payload=_payload(KnowledgeFSInitialWebsiteSourcePreviewPayload),
+        )
+        return dump_response(KnowledgeFSInitialSourcePreviewJobCreateResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/source-provider-preview/jobs/<string:job_id>")
+class KnowledgeFSInitialSourcePreviewJobApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Website datasource preview status",
+        console_ns.models[KnowledgeFSInitialSourcePreviewJobResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, job_id: str):
+        account, tenant_id = current_account_with_tenant()
+        try:
+            result = KnowledgeFSInitialSourcePreviewJobService.get(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                job_id=job_id,
+            )
+        except KnowledgeFSInitialSourcePreviewJobNotFoundError as exc:
+            raise NotFound() from exc
+        return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)
+
+    @console_ns.response(
+        HTTPStatus.OK,
+        "Website datasource preview canceled",
+        console_ns.models[KnowledgeFSInitialSourcePreviewJobResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def delete(self, job_id: str):
+        account, tenant_id = current_account_with_tenant()
+        try:
+            result = KnowledgeFSInitialSourcePreviewJobService.cancel(
+                tenant_id=tenant_id,
+                account_id=account.id,
+                job_id=job_id,
+            )
+        except KnowledgeFSInitialSourcePreviewJobNotFoundError as exc:
+            raise NotFound() from exc
+        return dump_response(KnowledgeFSInitialSourcePreviewJobResponse, result)
 
 
 @console_ns.route("/knowledge-fs/uploads")
