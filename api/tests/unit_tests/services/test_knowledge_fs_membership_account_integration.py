@@ -84,7 +84,6 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     sqlite_session.commit()
 
     with (
-        patch("services.account_service.dify_config.BILLING_ENABLED", False),
         patch("services.account_service.dify_config.RBAC_ENABLED", False),
         patch(
             "services.enterprise.account_deletion_sync.sync_workspace_member_removal",
