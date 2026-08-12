@@ -14,6 +14,7 @@ import {
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Input } from '@langgenius/dify-ui/input'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
 import {
   Select,
   SelectContent,
@@ -45,10 +55,11 @@ import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
-import { newKnowledgeAddSourcePath } from './routes'
+import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, newKnowledgeAddSourcePath } from './routes'
 import {
   sourceFromApi,
   sourceStatusWithSyncWorkflow,
+  sourceSyncPolicyFromApi,
   sourceWorkflowFromApi,
   sourceWorkflowStatus,
 } from './source-models'
@@ -63,6 +74,8 @@ type SourceSort = 'name-asc' | 'name-desc'
 const PAGE_SIZE = 50
 const MAX_AUTO_FILTER_PAGES = 4
 const SOURCE_POLL_INTERVAL = 3000
+const MIN_CUSTOM_INTERVAL_HOURS = 1
+const MAX_CUSTOM_INTERVAL_HOURS = 720
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   active: 'success',
@@ -160,6 +173,44 @@ function sourceSyncPolicyTranslationKey(policy: SourceSyncPolicy) {
   return 'newKnowledge.syncPolicyCustom' as const
 }
 
+function sourceSyncMode(source: Source): SourceSyncPolicy['mode'] {
+  return source.syncPolicy?.mode ?? 'manual'
+}
+
+function sourceCustomIntervalHours(source: Source) {
+  return source.syncPolicy?.customIntervalSeconds
+    ? source.syncPolicy.customIntervalSeconds / 3600
+    : MIN_CUSTOM_INTERVAL_HOURS
+}
+
+function syncPolicyConfiguration(mode: SourceSyncPolicy['mode'], customIntervalHours: number) {
+  if (mode === 'manual') return { enabled: false, mode } as const
+  if (mode === 'custom')
+    return {
+      customIntervalSeconds: customIntervalHours * 3600,
+      enabled: true,
+      mode,
+    } as const
+  return { enabled: true, mode } as const
+}
+
+function sourceSyncPolicyChanged(
+  source: Source,
+  mode: SourceSyncPolicy['mode'],
+  customIntervalHours: number,
+) {
+  if (mode !== sourceSyncMode(source)) return true
+  return (
+    mode === 'custom' && customIntervalHours * 3600 !== source.syncPolicy?.customIntervalSeconds
+  )
+}
+
+type SourceEditValues = {
+  customIntervalHours: number
+  name: string
+  syncMode: SourceSyncPolicy['mode']
+}
+
 function isPreviewDraft(source: Source) {
   return source.metadata.preview === true && source.status === 'disabled'
 }
@@ -237,7 +288,9 @@ function getCurrentSource(source: Source, sourceOverride?: Source) {
     lastSyncedAt: source.lastSyncedAt ?? sourceOverride.lastSyncedAt,
     status: sourceStatusWithSyncWorkflow(sourceOverride.status, syncWorkflow),
     syncWorkflow,
-    syncPolicy: source.syncPolicy ?? sourceOverride.syncPolicy,
+    syncPolicy: overrideHasNewerSource
+      ? (sourceOverride.syncPolicy ?? source.syncPolicy)
+      : (source.syncPolicy ?? sourceOverride.syncPolicy),
   }
 }
 
@@ -245,11 +298,12 @@ function sourceNeedsPolling(source: Source) {
   return source.status === 'syncing' || sourceWorkflowIsActive(source.syncWorkflow)
 }
 
-type SourceAction = 'remove' | 'sync' | 'toggle'
+type SourceAction = 'edit' | 'remove' | 'sync' | 'toggle'
 
 function SourceActions({
   canEdit,
   canSync,
+  onEdit,
   onRemove,
   onSync,
   onToggle,
@@ -258,6 +312,7 @@ function SourceActions({
 }: {
   canEdit: boolean
   canSync: boolean
+  onEdit: (values: SourceEditValues) => Promise<boolean>
   onRemove: () => Promise<boolean>
   onSync: () => Promise<boolean>
   onToggle: () => Promise<boolean>
@@ -266,14 +321,54 @@ function SourceActions({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [nextName, setNextName] = useState(source.name)
+  const [nextSyncMode, setNextSyncMode] = useState<SourceSyncPolicy['mode']>(() =>
+    sourceSyncMode(source),
+  )
+  const [nextCustomIntervalHours, setNextCustomIntervalHours] = useState<number | ''>(() =>
+    sourceCustomIntervalHours(source),
+  )
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const sourceUri = getOpenableSourceUri(source.uri)
+  const customIntervalValid =
+    typeof nextCustomIntervalHours === 'number' &&
+    Number.isInteger(nextCustomIntervalHours) &&
+    nextCustomIntervalHours >= MIN_CUSTOM_INTERVAL_HOURS &&
+    nextCustomIntervalHours <= MAX_CUSTOM_INTERVAL_HOURS
+  const nameChanged = nextName.trim() !== source.name
+  const syncPolicyChanged =
+    customIntervalValid &&
+    sourceSyncPolicyChanged(source, nextSyncMode, nextCustomIntervalHours as number)
+  const editChanged = nameChanged || syncPolicyChanged
+
+  const openEditDialog = () => {
+    setNextName(source.name)
+    setNextSyncMode(sourceSyncMode(source))
+    setNextCustomIntervalHours(sourceCustomIntervalHours(source))
+    setMenuOpen(false)
+    setEditDialogOpen(true)
+  }
+
+  const submitEdit = async () => {
+    const name = nextName.trim()
+    if (!name || !customIntervalValid || !editChanged || pendingAction) return
+    if (
+      await onEdit({
+        customIntervalHours: nextCustomIntervalHours as number,
+        name,
+        syncMode: nextSyncMode,
+      })
+    )
+      setEditDialogOpen(false)
+  }
 
   if (!canEdit && !canSync && !sourceUri) return null
 
   return (
     <>
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
           disabled={Boolean(pendingAction)}
@@ -316,6 +411,13 @@ function SourceActions({
           {canEdit && (
             <>
               <DropdownMenuItem
+                onClick={openEditDialog}
+                className="mb-px h-7 gap-2 px-2 system-sm-medium"
+              >
+                <span aria-hidden className="i-ri-edit-line size-4" />
+                {tCommon(($) => $['operation.edit'])}
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => void onToggle()}
                 className="h-7 gap-2 px-2 system-sm-medium"
               >
@@ -334,7 +436,10 @@ function SourceActions({
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-px" />
               <DropdownMenuItem
-                onClick={() => setRemoveDialogOpen(true)}
+                onClick={() => {
+                  setMenuOpen(false)
+                  setRemoveDialogOpen(true)
+                }}
                 variant="destructive"
                 className="h-7 gap-2 px-2 system-sm-medium"
               >
@@ -345,6 +450,135 @@ function SourceActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void submitEdit()
+            }}
+          >
+            <DialogTitle className="title-xl-semi-bold text-text-primary">
+              {tCommon(($) => $['operation.edit'])} {source.name}
+            </DialogTitle>
+            <label
+              className="mt-5 block system-sm-medium text-text-secondary"
+              htmlFor={`source-name-${source.id}`}
+            >
+              {t(($) => $['newKnowledge.sourceName'])}
+            </label>
+            <Input
+              id={`source-name-${source.id}`}
+              autoComplete="off"
+              className="mt-2 w-full"
+              disabled={pendingAction === 'edit'}
+              maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
+              value={nextName}
+              onChange={(event) => setNextName(event.target.value)}
+            />
+            <div className="mt-4">
+              <Select<SourceSyncPolicy['mode']>
+                name={`source-sync-policy-${source.id}`}
+                disabled={pendingAction === 'edit'}
+                value={nextSyncMode}
+                onValueChange={(value) => {
+                  if (value) setNextSyncMode(value)
+                }}
+              >
+                <SelectLabel>{t(($) => $['newKnowledge.syncPolicy'])}</SelectLabel>
+                <SelectTrigger className="w-full">
+                  {t(($) =>
+                    nextSyncMode === 'provider'
+                      ? $['newKnowledge.syncPolicyProvider']
+                      : nextSyncMode === 'interval'
+                        ? $['newKnowledge.syncPolicyDaily']
+                        : nextSyncMode === 'custom'
+                          ? $['newKnowledge.syncPolicyCustom']
+                          : $['newKnowledge.syncPolicyManual'],
+                  )}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="provider">
+                    <SelectItemText>
+                      {t(($) => $['newKnowledge.syncPolicyProvider'])}
+                    </SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                  <SelectItem value="interval">
+                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyDaily'])}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                  <SelectItem value="manual">
+                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyManual'])}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    <SelectItemText>{t(($) => $['newKnowledge.syncPolicyCustom'])}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {nextSyncMode === 'custom' && (
+              <div className="mt-4">
+                <NumberField
+                  name={`source-custom-interval-${source.id}`}
+                  disabled={pendingAction === 'edit'}
+                  min={MIN_CUSTOM_INTERVAL_HOURS}
+                  max={MAX_CUSTOM_INTERVAL_HOURS}
+                  step={1}
+                  value={nextCustomIntervalHours === '' ? null : nextCustomIntervalHours}
+                  onValueChange={(value) => setNextCustomIntervalHours(value ?? '')}
+                >
+                  <label
+                    className="mb-1.5 block system-sm-medium text-text-secondary"
+                    htmlFor={`source-custom-interval-input-${source.id}`}
+                  >
+                    {t(($) => $['newKnowledge.customIntervalHours'])}
+                  </label>
+                  <NumberFieldGroup>
+                    <NumberFieldInput
+                      id={`source-custom-interval-input-${source.id}`}
+                      aria-invalid={!customIntervalValid}
+                    />
+                    <NumberFieldControls>
+                      <NumberFieldIncrement />
+                      <NumberFieldDecrement />
+                    </NumberFieldControls>
+                  </NumberFieldGroup>
+                </NumberField>
+                {!customIntervalValid && (
+                  <p className="mt-1 system-xs-regular text-text-destructive">
+                    {t(($) => $['newKnowledge.customIntervalInvalid'])}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                disabled={pendingAction === 'edit'}
+                onClick={() => setEditDialogOpen(false)}
+                type="button"
+              >
+                {tCommon(($) => $['operation.cancel'])}
+              </Button>
+              <Button
+                disabled={
+                  pendingAction === 'edit' ||
+                  !nextName.trim() ||
+                  !customIntervalValid ||
+                  !editChanged
+                }
+                loading={pendingAction === 'edit'}
+                type="submit"
+                variant="primary"
+              >
+                {tCommon(($) => $['operation.save'])}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
@@ -525,6 +759,49 @@ function SourceRow({
       },
     )
 
+  const editSource = ({ customIntervalHours, name, syncMode }: SourceEditValues) =>
+    runAction(
+      'edit',
+      async () => {
+        let updatedSource = source
+        if (name !== source.name)
+          updatedSource = sourceFromApi(
+            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+              body: {
+                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+                name,
+              },
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            }),
+          )
+        if (sourceSyncPolicyChanged(source, syncMode, customIntervalHours)) {
+          if (updatedSource.version === undefined) throw new Error('Source version is required')
+          const syncPolicy = sourceSyncPolicyFromApi(
+            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put(
+              {
+                body: {
+                  ...syncPolicyConfiguration(syncMode, customIntervalHours),
+                  expectedRevision: source.syncPolicy?.revision ?? 0,
+                  expectedSourceVersion: updatedSource.version,
+                },
+                params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+              },
+            ),
+          )
+          updatedSource = { ...updatedSource, syncPolicy }
+        }
+        return updatedSource
+      },
+      (updatedSource) => {
+        onSourceChange({
+          ...updatedSource,
+          lastSyncedAt: updatedSource.lastSyncedAt ?? source.lastSyncedAt,
+          syncPolicy: updatedSource.syncPolicy ?? source.syncPolicy,
+          syncWorkflow: updatedSource.syncWorkflow ?? source.syncWorkflow,
+        })
+      },
+    )
+
   const removeSource = () =>
     runAction(
       'remove',
@@ -631,6 +908,7 @@ function SourceRow({
             canSync={canSync}
             source={source}
             pendingAction={pendingAction}
+            onEdit={editSource}
             onSync={syncSource}
             onToggle={toggleSource}
             onRemove={removeSource}

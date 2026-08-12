@@ -64,6 +64,20 @@ const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   version: source.version ?? null,
 }))
 
+const syncPolicyApiResponse = vi.hoisted(() => (policy: SourceSyncPolicy) => ({
+  created_at: policy.createdAt,
+  custom_interval_seconds: policy.customIntervalSeconds ?? null,
+  enabled: policy.enabled,
+  expected_source_version: policy.expectedSourceVersion,
+  id: policy.id,
+  knowledge_space_id: policy.knowledgeSpaceId,
+  mode: policy.mode,
+  next_run_at: policy.nextRunAt ?? null,
+  revision: policy.revision,
+  source_id: policy.sourceId,
+  updated_at: policy.updatedAt,
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: toastErrorMock, info: toastInfoMock },
 }))
@@ -100,6 +114,7 @@ const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOpt
 const clientMock = vi.hoisted(() => ({
   deleteSource: vi.fn(),
   patchSource: vi.fn(),
+  putSyncPolicy: vi.fn(),
   syncSource: vi.fn(),
 }))
 const invalidateQueriesMock = vi.hoisted(() => vi.fn())
@@ -149,6 +164,10 @@ vi.mock('@/service/client', () => ({
               patch: async (input: unknown) =>
                 sourceApiResponse(await clientMock.patchSource(input)),
               sync: { post: clientMock.syncSource },
+              syncPolicy: {
+                put: async (input: unknown) =>
+                  syncPolicyApiResponse(await clientMock.putSyncPolicy(input)),
+              },
             },
             get: {
               infiniteOptions: infiniteOptionsMock,
@@ -594,6 +613,7 @@ describe('SourcesPage', () => {
     expect(
       screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'common.operation.edit' })).toBeInTheDocument()
     expect(
       screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
     ).toBeInTheDocument()
@@ -621,11 +641,83 @@ describe('SourcesPage', () => {
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
     ).not.toBeInTheDocument()
     expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.edit' }),
+    ).not.toBeInTheDocument()
+    expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('edits a source name and sync policy from the row menu', async () => {
+    const user = userEvent.setup()
+    const manualPolicy: SourceSyncPolicy = {
+      createdAt: '2026-07-20T10:00:00Z',
+      enabled: false,
+      expectedSourceVersion: 3,
+      id: 'policy-1',
+      knowledgeSpaceId: 'space-1',
+      mode: 'manual',
+      revision: 1,
+      sourceId: 'source-1',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    const dailyPolicy: SourceSyncPolicy = {
+      ...manualPolicy,
+      enabled: true,
+      expectedSourceVersion: 4,
+      mode: 'interval',
+      revision: 2,
+      updatedAt: '2026-07-20T10:01:00Z',
+    }
+    sourcesQuery.data = { pages: [{ items: [source({ syncPolicy: manualPolicy })] }] }
+    clientMock.patchSource.mockResolvedValue(
+      source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+    )
+    clientMock.putSyncPolicy.mockResolvedValue(dailyPolicy)
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+
+    const nameInput = screen.getByRole('textbox', {
+      name: 'dataset.newKnowledge.sourceName',
+    })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Renamed documentation')
+    await user.click(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }))
+    await user.click(screen.getByRole('option', { name: 'dataset.newKnowledge.syncPolicyDaily' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: { expectedVersion: 3, name: 'Renamed documentation' },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+    await waitFor(() =>
+      expect(clientMock.putSyncPolicy).toHaveBeenCalledWith({
+        body: {
+          enabled: true,
+          expectedRevision: 1,
+          expectedSourceVersion: 4,
+          mode: 'interval',
+        },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
+    )
+    expect(screen.getByRole('row', { name: /Renamed documentation/ })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('row', { name: /Renamed documentation/ })).getByText(
+        'dataset.newKnowledge.syncPolicyDaily',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('syncs a source through the real KnowledgeFS action', async () => {
