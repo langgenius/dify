@@ -108,10 +108,7 @@ def _preview_was_canceled(
     job_id: str,
 ) -> bool:
     try:
-        return (
-            job_service.get(tenant_id=tenant_id, account_id=account_id, job_id=job_id).status
-            == "canceled"
-        )
+        return job_service.get(tenant_id=tenant_id, account_id=account_id, job_id=job_id).status == "canceled"
     except KnowledgeFSInitialSourcePreviewJobNotFoundError:
         return True
 
