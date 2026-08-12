@@ -163,13 +163,28 @@ async function createOrResolveAsset({
     asset.objectKey !== input.objectKey ||
     asset.sha256 !== sha256 ||
     asset.sizeBytes !== input.expectedSizeBytes ||
-    !isDeepStrictEqual(asset.metadata, metadata)
+    !isDeepStrictEqual(
+      stableUploadAssetMetadata(asset.metadata),
+      stableUploadAssetMetadata(metadata),
+    )
   ) {
     throw new UploadSessionConflictError(
       "Upload session publication conflicts with an existing document asset",
     );
   }
   return asset;
+}
+
+function stableUploadAssetMetadata(
+  metadata: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  return {
+    idempotencyKey: metadata.idempotencyKey,
+    permissionScope: metadata.permissionScope,
+    tenantId: metadata.tenantId,
+    uploadSessionId: metadata.uploadSessionId,
+    uploadedBy: metadata.uploadedBy,
+  };
 }
 
 function canonicalSha256Hex(checksumSha256Base64: string): string {

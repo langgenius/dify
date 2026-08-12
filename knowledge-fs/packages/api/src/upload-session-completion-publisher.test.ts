@@ -11,6 +11,7 @@ const TENANT_ID = "tenant-1";
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d03";
 const SESSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
 const GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02";
+const RETRY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d06";
 const ATTEMPT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d04";
 const CHECKSUM = Buffer.alloc(32, 1).toString("base64");
 
@@ -48,18 +49,27 @@ describe("upload session document completion publisher", () => {
     expect(fixture.releaseDispatch).toHaveBeenCalledWith(ATTEMPT_ID);
   });
 
-  it("replays after publication without creating another compilation attempt", async () => {
+  it("replays with a rotated completion grant while retaining original asset provenance", async () => {
     const fixture = await publisherFixture();
     await fixture.publisher.publish(publishInput());
+    await fixture.grants.admit(grantInput(RETRY_GRANT_ID, "trace-upload-2"));
     fixture.start.mockResolvedValueOnce(compilationJob("queued"));
 
-    await expect(fixture.publisher.publish(publishInput())).resolves.toEqual({
+    await expect(fixture.publisher.publish(publishInput(RETRY_GRANT_ID))).resolves.toEqual({
       compilationJobId: ATTEMPT_ID,
       documentAssetId: SESSION_ID,
     });
 
     expect(fixture.start).toHaveBeenCalledTimes(2);
     expect(fixture.releaseDispatch).toHaveBeenCalledOnce();
+    await expect(
+      fixture.assets.get({ id: SESSION_ID, knowledgeSpaceId: SPACE_ID }),
+    ).resolves.toMatchObject({
+      metadata: expect.objectContaining({
+        capabilityGrantId: GRANT_ID,
+        traceId: "trace-upload-1",
+      }),
+    });
   });
 
   it("fails closed when the persisted grant has been revoked", async () => {
@@ -90,28 +100,7 @@ async function publisherFixture() {
     maxRevisionsPerDocument: 10,
   });
   const grants = createInMemoryCapabilityGrantProvenanceRepository();
-  await grants.admit({
-    action: "upload_sessions.complete",
-    actorId: "user-1",
-    authzRevision: {
-      credentialRevision: null,
-      externalAccessEpoch: 1,
-      membershipEpoch: 1,
-      spaceAclEpoch: 1,
-    },
-    callerKind: "interactive",
-    contentPolicyRevision: 1,
-    contentScopeIds: ["document:write"],
-    expiresAt: "2026-07-22T00:00:00.000Z",
-    grantId: GRANT_ID,
-    issuedAt: "2026-07-21T00:00:00.000Z",
-    jtiHash: `sha256:${"a".repeat(64)}`,
-    knowledgeSpaceId: SPACE_ID,
-    resource: { id: SESSION_ID, parentId: SPACE_ID, type: "upload_session" },
-    subjectId: "user-1",
-    tenantId: TENANT_ID,
-    traceId: "trace-upload-1",
-  });
+  await grants.admit(grantInput(GRANT_ID, "trace-upload-1"));
   const start = vi.fn(async () => compilationJob("dispatch_pending"));
   const releaseDispatch = vi.fn(async () => compilationJob("queued"));
   const publisher = createUploadSessionDocumentCompletionPublisher({
@@ -124,13 +113,38 @@ async function publisherFixture() {
   return { assets, grants, publisher, releaseDispatch, start };
 }
 
-function publishInput() {
+function grantInput(grantId: string, traceId: string) {
+  return {
+    action: "upload_sessions.complete",
+    actorId: "user-1",
+    authzRevision: {
+      credentialRevision: null,
+      externalAccessEpoch: 1,
+      membershipEpoch: 1,
+      spaceAclEpoch: 1,
+    },
+    callerKind: "interactive",
+    contentPolicyRevision: 1,
+    contentScopeIds: ["document:write"],
+    expiresAt: "2026-07-22T00:00:00.000Z",
+    grantId,
+    issuedAt: "2026-07-21T00:00:00.000Z",
+    jtiHash: `sha256:${"a".repeat(64)}`,
+    knowledgeSpaceId: SPACE_ID,
+    resource: { id: SESSION_ID, parentId: SPACE_ID, type: "upload_session" },
+    subjectId: "user-1",
+    tenantId: TENANT_ID,
+    traceId,
+  } as const;
+}
+
+function publishInput(grantId = GRANT_ID) {
   return {
     checksumSha256Base64: CHECKSUM,
     contentType: "application/pdf",
     expectedSizeBytes: 42,
     fileName: "report.pdf",
-    grantId: GRANT_ID,
+    grantId,
     idempotencyKey: `upload-session:${SESSION_ID}:publish`,
     knowledgeSpaceId: SPACE_ID,
     objectKey: `namespaces/${TENANT_ID}/spaces/${SPACE_ID}/uploads/${SESSION_ID}/source`,
