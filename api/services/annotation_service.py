@@ -15,6 +15,7 @@ from libs.login import current_account_with_tenant
 from libs.pagination import paginate_query
 from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from services.annotation_job_service import AnnotationReplyJob, AnnotationReplyJobCoordinator
 from services.app_ref_service import AnnotationRef, AppRef
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -176,42 +177,44 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
-        cache_result = redis_client.get(enable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
-
-        # async job
         job_id = str(uuid.uuid4())
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
-        # send batch add segments task
-        redis_client.setnx(enable_app_annotation_job_key, "waiting")
-        current_user, current_tenant_id = current_account_with_tenant()
-        enable_annotation_reply_task.delay(
-            str(job_id),
-            app_id,
-            current_user.id,
-            current_tenant_id,
-            args["score_threshold"],
-            args["embedding_provider_name"],
-            args["embedding_model_name"],
-        )
+        job = AnnotationReplyJob(action="enable", app_id=app_id, job_id=job_id)
+        coordinator = AnnotationReplyJobCoordinator(redis_client)
+        running_job_id = coordinator.acquire(job)
+        if running_job_id is not None:
+            return {"job_id": running_job_id, "job_status": "processing"}
+
+        try:
+            current_user, current_tenant_id = current_account_with_tenant()
+            enable_annotation_reply_task.delay(
+                str(job_id),
+                app_id,
+                current_user.id,
+                current_tenant_id,
+                args["score_threshold"],
+                args["embedding_provider_name"],
+                args["embedding_model_name"],
+            )
+        except Exception:
+            coordinator.abandon(job)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
-        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
-        cache_result = redis_client.get(disable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
-
-        # async job
         job_id = str(uuid.uuid4())
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
-        # send batch add segments task
-        redis_client.setnx(disable_app_annotation_job_key, "waiting")
-        disable_annotation_reply_task.delay(str(job_id), app_id, current_tenant_id)
+        job = AnnotationReplyJob(action="disable", app_id=app_id, job_id=job_id)
+        coordinator = AnnotationReplyJobCoordinator(redis_client)
+        running_job_id = coordinator.acquire(job)
+        if running_job_id is not None:
+            return {"job_id": running_job_id, "job_status": "processing"}
+
+        try:
+            disable_annotation_reply_task.delay(str(job_id), app_id, current_tenant_id)
+        except Exception:
+            coordinator.abandon(job)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
