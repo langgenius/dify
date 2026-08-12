@@ -18,6 +18,7 @@ import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
@@ -33,9 +34,8 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
   const pathname = usePathname()
   const { t } = useTranslation()
 
-  const shareCode = useWebAppStore((s) => s.shareCode)
   const handleLogout = async () => {
-    await webAppLogout(shareCode!)
+    await webAppLogout(resolveWebAppAddress())
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 

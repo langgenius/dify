@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DetailSidebarFrame } from '..'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
@@ -12,14 +12,6 @@ const { hotkeyRegistrations } = vi.hoisted(() => ({
     }
   >(),
 }))
-const mockConsoleState = vi.hoisted(() => ({
-  current: {
-    langGeniusVersionInfo: {
-      current_env: '',
-    },
-  },
-}))
-
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
   return {
@@ -32,11 +24,6 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
       hotkeyRegistrations.set(hotkey, { handler, options })
     },
   }
-})
-
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
@@ -59,8 +46,8 @@ vi.mock('@/app/components/header/env-nav', () => ({
   default: () => <div>Environment tag</div>,
 }))
 
-function renderDetailSidebarFrame() {
-  return render(
+function renderDetailSidebarFrame(currentEnv: string | null = null) {
+  return renderWithConsoleQuery(
     <DetailSidebarFrame
       renderTop={({ expand, onToggle }) => (
         <div data-testid="detail-top" data-expand={expand}>
@@ -75,6 +62,7 @@ function renderDetailSidebarFrame() {
         </div>
       )}
     />,
+    { accountProfileMeta: { currentEnv } },
   )
 }
 
@@ -82,11 +70,6 @@ describe('DetailSidebarFrame', () => {
   beforeEach(() => {
     localStorage.clear()
     hotkeyRegistrations.clear()
-    mockConsoleState.current = {
-      langGeniusVersionInfo: {
-        current_env: '',
-      },
-    }
   })
 
   it('renders expanded detail content by default and registers the shortcut for focused inputs', () => {
@@ -109,13 +92,7 @@ describe('DetailSidebarFrame', () => {
   })
 
   it('collapses detail content from the top toggle and hides environment metadata', () => {
-    mockConsoleState.current = {
-      langGeniusVersionInfo: {
-        current_env: 'TESTING',
-      },
-    }
-
-    renderDetailSidebarFrame()
+    renderDetailSidebarFrame('TESTING')
     fireEvent.click(screen.getByTestId('detail-toggle'))
 
     expect(screen.getByTestId('detail-top')).toHaveAttribute('data-expand', 'false')

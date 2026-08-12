@@ -1,11 +1,11 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
@@ -236,10 +236,10 @@ vi.mock('@/hooks/use-theme', () => ({
 // Use real app store - global zustand mock will auto-reset between tests
 
 const createProviderContext = ({
-  type = Plan.sandbox,
+  type = 'sandbox',
   isFetchedPlan = true,
 }: {
-  type?: Plan
+  type?: CloudPlan
   isFetchedPlan?: boolean
 }) => ({
   plan: { type },

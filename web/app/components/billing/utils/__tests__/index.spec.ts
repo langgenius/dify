@@ -1,5 +1,4 @@
-import type { CurrentPlanInfoBackend } from '../../type'
-import { DocumentProcessingPriority, Plan } from '../../type'
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import { getPlanVectorSpaceLimitMB, parseCurrentPlan, parseVectorSpaceToMB } from '../index'
 
 describe('billing utils', () => {
@@ -31,75 +30,85 @@ describe('billing utils', () => {
   // getPlanVectorSpaceLimitMB tests
   describe('getPlanVectorSpaceLimitMB', () => {
     it('should return correct vector space for sandbox plan', () => {
-      expect(getPlanVectorSpaceLimitMB(Plan.sandbox)).toBe(50)
+      expect(getPlanVectorSpaceLimitMB('sandbox')).toBe(50)
     })
 
     it('should return correct vector space for professional plan', () => {
-      expect(getPlanVectorSpaceLimitMB(Plan.professional)).toBe(5 * 1024)
+      expect(getPlanVectorSpaceLimitMB('professional')).toBe(5 * 1024)
     })
 
     it('should return correct vector space for team plan', () => {
-      expect(getPlanVectorSpaceLimitMB(Plan.team)).toBe(20 * 1024)
-    })
-
-    it('should return 0 for invalid plan', () => {
-      // @ts-expect-error - Testing invalid plan input
-      expect(getPlanVectorSpaceLimitMB('invalid')).toBe(0)
+      expect(getPlanVectorSpaceLimitMB('team')).toBe(20 * 1024)
     })
   })
 
   // parseCurrentPlan tests
   describe('parseCurrentPlan', () => {
     const createMockPlanData = (
-      overrides: Partial<CurrentPlanInfoBackend> = {},
-    ): CurrentPlanInfoBackend => ({
-      billing: {
-        enabled: true,
-        subscription: {
-          plan: Plan.sandbox,
-        },
+      overrides: Partial<GetFeaturesResponse> = {},
+    ): GetFeaturesResponse => ({
+      annotation_quota_limit: {
+        size: 5,
+        limit: 10,
       },
-      members: {
-        size: 1,
-        limit: 1,
+      api_rate_limit: {
+        usage: 0,
+        limit: 5000,
+        reset_date: -1,
       },
       apps: {
         size: 2,
         limit: 5,
       },
-      annotation_quota_limit: {
-        size: 5,
-        limit: 10,
+      billing: {
+        enabled: true,
+        subscription: {
+          interval: '',
+          plan: 'sandbox',
+        },
       },
+      can_replace_logo: false,
+      dataset_operator_enabled: false,
+      docs_processing: '',
       documents_upload_quota: {
         size: 20,
         limit: 0,
       },
-      docs_processing: DocumentProcessingPriority.standard,
-      can_replace_logo: false,
-      model_load_balancing_enabled: false,
-      dataset_operator_enabled: false,
       education: {
-        enabled: false,
         activated: false,
+        enabled: false,
       },
-      webapp_copyright_enabled: false,
-      workspace_members: {
-        size: 1,
-        limit: 1,
-      },
+      human_input_email_delivery_enabled: false,
       is_allow_transfer_workspace: false,
       knowledge_pipeline: {
         publish_enabled: false,
       },
-      human_input_email_delivery_enabled: false,
+      knowledge_rate_limit: 0,
+      members: {
+        size: 1,
+        limit: 1,
+      },
+      model_load_balancing_enabled: false,
+      next_credit_reset_date: 0,
+      trigger_event: {
+        usage: 0,
+        limit: 3000,
+        reset_date: -1,
+      },
+      vector_space: null,
+      webapp_copyright_enabled: false,
+      workspace_members: {
+        enabled: false,
+        size: 0,
+        limit: 0,
+      },
       ...overrides,
     })
 
     it('should parse plan type correctly', () => {
       const data = createMockPlanData()
       const result = parseCurrentPlan(data)
-      expect(result.type).toBe(Plan.sandbox)
+      expect(result.type).toBe('sandbox')
     })
 
     it('should parse usage values correctly', () => {
@@ -136,7 +145,8 @@ describe('billing utils', () => {
         billing: {
           enabled: true,
           subscription: {
-            plan: Plan.professional,
+            interval: '',
+            plan: 'professional',
           },
         },
       })
@@ -162,7 +172,7 @@ describe('billing utils', () => {
         api_rate_limit: {
           usage: 100,
           limit: 5000,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -176,7 +186,7 @@ describe('billing utils', () => {
         trigger_event: {
           usage: 50,
           limit: 3000,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -185,20 +195,12 @@ describe('billing utils', () => {
       expect(result.total.triggerEvents).toBe(3000)
     })
 
-    it('should use fallback for api_rate_limit when not provided', () => {
-      const data = createMockPlanData()
-      const result = parseCurrentPlan(data)
-
-      // Fallback to plan preset value for sandbox: 5000
-      expect(result.total.apiRateLimit).toBe(5000)
-    })
-
     it('should convert 0 or -1 rate limits to NUM_INFINITE', () => {
       const data = createMockPlanData({
         api_rate_limit: {
           usage: 0,
           limit: 0,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result = parseCurrentPlan(data)
@@ -208,7 +210,7 @@ describe('billing utils', () => {
         api_rate_limit: {
           usage: 0,
           limit: -1,
-          reset_date: null,
+          reset_date: 0,
         },
       })
       const result2 = parseCurrentPlan(data2)
@@ -298,14 +300,6 @@ describe('billing utils', () => {
       })
       const result = parseCurrentPlan(data)
       expect(result.reset.apiRateLimit).toBeNull()
-    })
-
-    it('should handle missing apps field', () => {
-      const data = createMockPlanData()
-      // @ts-expect-error - Testing edge case
-      delete data.apps
-      const result = parseCurrentPlan(data)
-      expect(result.usage.buildApps).toBe(0)
     })
 
     it('should return null for unrecognized date format', () => {

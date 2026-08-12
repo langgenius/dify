@@ -13,6 +13,7 @@ const expectedAppACLPermissionKeys = [
   'app.acl.edit',
   'app.acl.import_export_dsl',
   'app.acl.delete',
+  'app.acl.deploy',
   'app.acl.release_and_version',
   'app.acl.monitor',
   'app.acl.tracing_config',

@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "¿Eliminar esta clave secreta?",
   "actionMsg.ok": "OK",
   "apiKey": "Clave de API",
-  "apiKeyModal.apiSecretKey": "Clave secreta de API",
+  "apiKeyModal.apiSecretKey": "Clave de API",
   "apiKeyModal.apiSecretKeyTips": "Para evitar el abuso de la API, protege tu clave de API. Evita usarla como texto plano en el código del frontend. :)",
   "apiKeyModal.createNewSecretKey": "Crear nueva clave secreta",
   "apiKeyModal.created": "CREADA",

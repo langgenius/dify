@@ -143,6 +143,36 @@ class TestDatasetServiceValidation:
         with pytest.raises(ValueError, match="doc_form is different"):
             DatasetService.check_doc_form(dataset, "text_model", session=sqlite_session)
 
+    @pytest.mark.parametrize("operator_check", [False, True])
+    def test_dataset_permission_checks_ignore_foreign_tenant_binding(
+        self, sqlite_session: Session, operator_check: bool
+    ) -> None:
+        dataset = _dataset(
+            dataset_id="dataset-1",
+            tenant_id="tenant-1",
+            permission=DatasetPermissionEnum.PARTIAL_TEAM,
+            maintainer="owner-1",
+        )
+        user = _account(
+            account_id="user-1",
+            tenant_id="tenant-1",
+            role=TenantAccountRole.NORMAL,
+        )
+        sqlite_session.add_all(
+            [
+                dataset,
+                DatasetPermission(dataset_id=dataset.id, account_id=user.id, tenant_id="tenant-2"),
+            ]
+        )
+        sqlite_session.commit()
+
+        if operator_check:
+            with pytest.raises(NoPermissionError):
+                DatasetService.check_dataset_operator_permission(user, dataset, session=sqlite_session)
+        else:
+            with pytest.raises(NoPermissionError):
+                DatasetService.check_dataset_permission(dataset, user, sqlite_session)
+
     def test_check_dataset_model_setting_skips_non_high_quality_datasets(self) -> None:
         dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
 
