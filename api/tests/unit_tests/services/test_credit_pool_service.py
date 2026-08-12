@@ -311,7 +311,7 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
 
 def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
     ):

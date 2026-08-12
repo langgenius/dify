@@ -1,7 +1,7 @@
 """add agent llm invocation ledger
 
 Revision ID: 39f8d6c14a21
-Revises: e4708db55c1d
+Revises: a1c7f4e9b3d2
 Create Date: 2026-08-12 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 import models
 
 revision = "39f8d6c14a21"
-down_revision = "e4708db55c1d"
+down_revision = "a1c7f4e9b3d2"
 branch_labels = None
 depends_on = None
 
