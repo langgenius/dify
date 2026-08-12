@@ -1,9 +1,12 @@
 """Composition root for application services used by transport adapters."""
 
+import json
 from dataclasses import dataclass
 from typing import cast
 
+import httpx
 from flask import Flask, current_app
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -34,6 +37,7 @@ from services.auth.data_source_api_key_auth_gateways import (
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -42,7 +46,10 @@ from services.init_validation_service import InitValidationService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
-from services.webapp_access_query_service import WebAppAccessQueryService
+from services.webapp_access_query_service import (
+    WebAppAccessQueryService,
+    WebAppAccessUnavailableError,
+)
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -52,8 +59,14 @@ _EXTENSION_KEY = "application_services"
 
 
 def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
-    settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-    return WebAppAccessMode(settings.access_mode)
+    try:
+        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+        raise WebAppAccessUnavailableError from e
+    try:
+        return WebAppAccessMode(settings.access_mode)
+    except ValueError as e:
+        raise WebAppAccessUnavailableError from e
 
 
 @dataclass(frozen=True, slots=True)

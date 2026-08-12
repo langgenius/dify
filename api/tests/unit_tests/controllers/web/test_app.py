@@ -8,13 +8,24 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
-from controllers.web.error import AgentNotPublishedError, AppUnavailableError
+from controllers.web.error import (
+    AgentNotPublishedError,
+    AppUnavailableError,
+    WebAppAccessServiceUnavailableError,
+    WebAppNotFoundError,
+)
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from enums import WebAppAccessMode
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessReferenceRequiredError,
+    WebAppAccessUnavailableError,
+)
 
 
 def _make_app() -> App:
@@ -131,6 +142,52 @@ class TestAppAccessMode:
 
         assert result == {"accessMode": "sso_verified"}
         webapp_access.get_access_mode.assert_called_once_with(app_id="app-1", app_code="code-1")
+
+    @pytest.mark.parametrize(
+        ("service_error", "http_error", "expected_data"),
+        [
+            pytest.param(
+                WebAppAccessReferenceRequiredError("appId or appCode must be provided"),
+                InvalidArgumentError,
+                {"code": "invalid_param", "message": "appId or appCode must be provided", "status": 400},
+                id="missing-reference",
+            ),
+            pytest.param(
+                WebAppAccessAppNotFoundError(),
+                WebAppNotFoundError,
+                {"code": "app_not_found", "message": "App not found.", "status": 404},
+                id="app-not-found",
+            ),
+            pytest.param(
+                WebAppAccessUnavailableError(),
+                WebAppAccessServiceUnavailableError,
+                {
+                    "code": "web_app_access_unavailable",
+                    "message": "Web app access service is unavailable.",
+                    "status": 503,
+                },
+                id="access-unavailable",
+            ),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_maps_query_errors(
+        self,
+        application_services: MagicMock,
+        service_error: Exception,
+        http_error: type[Exception],
+        expected_data: dict[str, object],
+        app: Flask,
+    ) -> None:
+        webapp_access = MagicMock()
+        webapp_access.get_access_mode.side_effect = service_error
+        application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
+
+        with app.test_request_context("/webapp/access-mode?appCode=code-1"):
+            with pytest.raises(http_error) as raised:
+                AppAccessMode().get()
+
+        assert raised.value.data == expected_data
 
 
 # ---------------------------------------------------------------------------

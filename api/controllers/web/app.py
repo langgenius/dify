@@ -8,6 +8,7 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import AccessModeResponse, Parameters
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from extensions.ext_application_services import application_services
@@ -19,10 +20,15 @@ from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessReferenceRequiredError,
+    WebAppAccessUnavailableError,
+)
 from services.webapp_auth_service import WebAppAuthService
 
 from . import web_ns
-from .error import AgentNotPublishedError, AppUnavailableError
+from .error import AgentNotPublishedError, AppUnavailableError, WebAppAccessServiceUnavailableError, WebAppNotFoundError
 from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
@@ -121,17 +127,26 @@ class AppAccessMode(Resource):
         responses={
             200: "Success",
             400: "Bad Request",
+            404: "App Not Found",
             500: "Internal Server Error",
+            503: "Web App Access Service Unavailable",
         }
     )
     @web_ns.response(200, "Success", web_ns.models[AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
-        access_mode = application_services().webapp_access.get_access_mode(
-            app_id=args.app_id,
-            app_code=args.app_code,
-        )
+        try:
+            access_mode = application_services().webapp_access.get_access_mode(
+                app_id=args.app_id,
+                app_code=args.app_code,
+            )
+        except WebAppAccessReferenceRequiredError as e:
+            raise InvalidArgumentError(description=str(e)) from None
+        except WebAppAccessAppNotFoundError:
+            raise WebAppNotFoundError() from None
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
         return dump_response(AccessModeResponse, {"access_mode": access_mode})
 
 

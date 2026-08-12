@@ -3,7 +3,12 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from enums import WebAppAccessMode
-from services.webapp_access_query_service import WebAppAccessQuery, WebAppAccessQueryService
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessQuery,
+    WebAppAccessQueryService,
+    WebAppAccessReferenceRequiredError,
+)
 
 
 def _service(
@@ -51,12 +56,12 @@ def test_app_code_takes_precedence_over_app_id() -> None:
     access_mode_for_app.assert_called_once_with("resolved-id")
 
 
-def test_missing_app_code_uses_existing_error_contract() -> None:
+def test_missing_app_code_raises_not_found() -> None:
     access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
     access.find_app_id_by_code.return_value = None
     service, access_mode_for_app = _service(access=access)
 
-    with pytest.raises(ValueError, match="^App with code missing-code not found$"):
+    with pytest.raises(WebAppAccessAppNotFoundError):
         service.get_access_mode(app_id="must-not-fallback", app_code="missing-code")
 
     access_mode_for_app.assert_not_called()
@@ -66,7 +71,31 @@ def test_enabled_auth_requires_app_id_or_code() -> None:
     access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
     service, access_mode_for_app = _service(access=access)
 
-    with pytest.raises(ValueError, match="^appId or appCode must be provided$"):
+    with pytest.raises(WebAppAccessReferenceRequiredError, match="^appId or appCode must be provided$"):
         service.get_access_mode(app_id=None, app_code=None)
 
     access_mode_for_app.assert_not_called()
+
+
+def test_repository_failure_is_not_hidden() -> None:
+    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
+    failure = TypeError("repository bug")
+    access.find_app_id_by_code.side_effect = failure
+    service, _ = _service(access=access)
+
+    with pytest.raises(TypeError) as raised:
+        service.get_access_mode(app_id=None, app_code="code-1")
+
+    assert raised.value is failure
+
+
+def test_access_mode_failure_is_not_hidden() -> None:
+    access: MagicMock = create_autospec(WebAppAccessQuery, instance=True, spec_set=True)
+    service, access_mode_for_app = _service(access=access)
+    failure = TypeError("adapter bug")
+    access_mode_for_app.side_effect = failure
+
+    with pytest.raises(TypeError) as raised:
+        service.get_access_mode(app_id="app-1", app_code=None)
+
+    assert raised.value is failure

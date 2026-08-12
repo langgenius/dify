@@ -285,7 +285,7 @@ class EnterpriseService:
             params = {"appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/id", params=params)
             if not data:
-                raise ValueError("No data found.")
+                raise EnterpriseServiceError("No data found.")
             return WebAppSettings.model_validate(data)
 
         @classmethod

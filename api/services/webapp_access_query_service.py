@@ -10,6 +10,18 @@ class WebAppAccessQuery(Protocol):
     def find_app_id_by_code(self, app_code: str) -> str | None: ...
 
 
+class WebAppAccessReferenceRequiredError(ValueError):
+    """Raised when neither an app ID nor an app code was provided."""
+
+
+class WebAppAccessAppNotFoundError(LookupError):
+    """Raised when an app code does not resolve to an app."""
+
+
+class WebAppAccessUnavailableError(RuntimeError):
+    """Raised when an access dependency cannot answer the query."""
+
+
 class WebAppAccessQueryService:
     def __init__(
         self,
@@ -29,9 +41,9 @@ class WebAppAccessQueryService:
         if app_code:
             app_id = self._access.find_app_id_by_code(app_code)
             if app_id is None:
-                raise ValueError(f"App with code {app_code} not found")
+                raise WebAppAccessAppNotFoundError
 
         if not app_id:
-            raise ValueError("appId or appCode must be provided")
+            raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
 
         return self._access_mode_for_app(app_id)
