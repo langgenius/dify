@@ -3,7 +3,7 @@ name = "dify-vdb-huawei-cloud"
 version = "0.0.1"
 
 dependencies = [
-    "elasticsearch==8.14.0",
+    "elasticsearch==9.5.0",
 ]
 description = "Dify vector store backend (dify-vdb-huawei-cloud)."
 
