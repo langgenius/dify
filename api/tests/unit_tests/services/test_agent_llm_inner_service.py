@@ -112,6 +112,12 @@ def _create_pool(session: Session, *, tenant_id: str, quota_limit: int, quota_us
     return pool
 
 
+def _get_pool(session: Session, pool_id: str) -> TenantCreditPool:
+    pool = session.get(TenantCreditPool, pool_id)
+    assert pool is not None
+    return pool
+
+
 def test_prepare_rejects_missing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
     request = _request()
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
@@ -164,7 +170,7 @@ def test_system_invocation_is_charged_once_per_run_call(
     assert invocation.user_from == "account"
     assert invocation.agent_config_version_kind == "draft"
     assert invocation.trace_id == "trace-1"
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 3
+    assert _get_pool(sqlite_session, pool.id).quota_used == 3
 
     with pytest.raises(AgentLLMInnerServiceError, match="already been accepted"):
         _prepare_with_plan(service, request, plan, session=sqlite_session)
@@ -176,7 +182,7 @@ def test_system_invocation_is_charged_once_per_run_call(
         _prepare_with_plan(service, changed_id_request, plan, session=sqlite_session)
 
     sqlite_session.expire_all()
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 3
+    assert _get_pool(sqlite_session, pool.id).quota_used == 3
 
 
 def test_custom_credentials_create_non_billable_ledger(
@@ -234,7 +240,7 @@ def test_insufficient_credits_reject_before_model_invocation(
     assert invocation is not None
     assert invocation.billing_status == AgentLLMBillingStatus.REJECTED
     assert invocation.execution_status == AgentLLMExecutionStatus.FAILED
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 0
+    assert _get_pool(sqlite_session, pool.id).quota_used == 0
 
 
 def test_terminal_status_does_not_regress_from_succeeded(
@@ -293,11 +299,11 @@ def test_reconciliation_does_not_create_a_charge_for_unconfirmed_pending_invocat
     assert invocation is not None
     assert invocation.billing_status == AgentLLMBillingStatus.INDETERMINATE
     assert invocation.execution_status == AgentLLMExecutionStatus.FAILED
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 0
+    assert _get_pool(sqlite_session, pool.id).quota_used == 0
 
     assert AgentLLMInnerService.reconcile_stale(stale_after=timedelta(minutes=15)) == 0
     sqlite_session.expire_all()
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 0
+    assert _get_pool(sqlite_session, pool.id).quota_used == 0
 
 
 def test_reconciliation_closes_confirmed_charge_without_deducting_again(
@@ -331,4 +337,4 @@ def test_reconciliation_closes_confirmed_charge_without_deducting_again(
     assert invocation is not None
     assert invocation.billing_status == AgentLLMBillingStatus.CHARGED
     assert invocation.execution_status == AgentLLMExecutionStatus.FAILED
-    assert sqlite_session.get(TenantCreditPool, pool.id).quota_used == 2
+    assert _get_pool(sqlite_session, pool.id).quota_used == 2
