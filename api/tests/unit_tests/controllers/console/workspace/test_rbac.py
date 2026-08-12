@@ -647,6 +647,29 @@ class TestWorkspaceRbacGuards:
 
         mock_replace.assert_not_called()
 
+    def test_workspace_app_bindings_replace_requires_workspace_role_manage(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/workspace/apps/access-policies/policy-1/bindings",
+                method="PUT",
+                json={"role_ids": [], "account_ids": []},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.replace_app_bindings"
+            ) as mock_replace,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACWorkspaceAppBindingsApi().put(policy_id="policy-1")
+
+        mock_replace.assert_not_called()
+
 
 class TestDumpHelper:
     def test_dump_returns_plain_dict(self):

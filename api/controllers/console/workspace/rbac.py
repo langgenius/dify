@@ -838,6 +838,9 @@ class RBACDatasetMemberBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policy")
 class RBACWorkspaceAppMatrixApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.WorkspaceAccessMatrix.__name__])
     def get(self):
         tenant_id, account_id = _current_ids()
@@ -850,6 +853,9 @@ class RBACWorkspaceAppMatrixApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/role-bindings")
 class RBACWorkspaceAppRoleBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.RoleBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
@@ -859,6 +865,9 @@ class RBACWorkspaceAppRoleBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/bindings")
 class RBACWorkspaceAppBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.AccessMatrixItem.__name__])
     def put(self, policy_id):
@@ -877,6 +886,9 @@ class RBACWorkspaceAppBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/member-bindings")
 class RBACWorkspaceAppMemberBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
@@ -886,6 +898,9 @@ class RBACWorkspaceAppMemberBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policy")
 class RBACWorkspaceDatasetMatrixApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.WorkspaceAccessMatrix.__name__])
     def get(self):
         tenant_id, account_id = _current_ids()
@@ -898,6 +913,9 @@ class RBACWorkspaceDatasetMatrixApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/role-bindings")
 class RBACWorkspaceDatasetRoleBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.RoleBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
@@ -907,6 +925,9 @@ class RBACWorkspaceDatasetRoleBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/bindings")
 class RBACWorkspaceDatasetBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.AccessMatrixItem.__name__])
     def put(self, policy_id):
@@ -925,6 +946,9 @@ class RBACWorkspaceDatasetBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/member-bindings")
 class RBACWorkspaceDatasetMemberBindingsApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
