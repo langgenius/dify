@@ -28,7 +28,7 @@ project-excludes = [
   "configs/test_dify_config.py",
   "configs/test_env_consistency.py",
   "configs/test_nacos_http_client.py",
-  "controllers/common/test_agent_app_parameters.py",
+  "repositories/test_app_definition_query_repository_agent.py",
   "controllers/common/test_app_access.py",
   "controllers/common/test_errors.py",
   "controllers/common/test_fields.py",
