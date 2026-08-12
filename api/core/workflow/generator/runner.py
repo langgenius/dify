@@ -64,6 +64,7 @@ from core.workflow.generator.tool_catalogue import (
     format_tool_catalogue,
     select_legacy_fallback_tools,
     select_tool_candidates,
+    text_mentions_tool_identifier,
 )
 from core.workflow.generator.types import (
     GraphDict,
@@ -335,8 +336,7 @@ def _find_planned_tool_entry(node: dict[str, Any], entries: list[ToolCatalogueEn
 
     purpose = str(node.get("purpose") or "")
     for entry in entries:
-        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
-        if re.search(rf"(?<![\w/]){re.escape(identifier)}(?![\w/])", purpose):
+        if text_mentions_tool_identifier(purpose, entry["provider_name"], entry["tool_name"]):
             return entry
     return None
 
@@ -730,19 +730,19 @@ class WorkflowGenerator:
             )
             candidate_count = len(selection.entries)
             if selection.unmatched_queries:
+                fallback_entries = select_legacy_fallback_tools(
+                    tool_catalogue_entries,
+                    explicit_text=explicit_text,
+                    current_graph=current_graph,
+                )
                 logger.warning(
                     "Workflow generator: tool catalogue selection mode=fallback reason=unmatched_query "
                     "total=%s query_count=%s candidates=%s pinned=%s elapsed_ms=%.1f",
                     tool_count,
                     query_count,
-                    candidate_count,
+                    len(fallback_entries),
                     selection.pinned_count,
                     (time.monotonic() - started_at) * 1000,
-                )
-                fallback_entries = select_legacy_fallback_tools(
-                    tool_catalogue_entries,
-                    explicit_text=explicit_text,
-                    current_graph=current_graph,
                 )
                 return format_tool_catalogue(fallback_entries, max_tools=None)
 
@@ -758,19 +758,19 @@ class WorkflowGenerator:
             )
             return format_tool_catalogue(selection.entries, max_tools=None)
         except Exception as e:
+            fallback_entries = select_legacy_fallback_tools(
+                tool_catalogue_entries,
+                explicit_text=explicit_text,
+                current_graph=current_graph,
+            )
             logger.warning(
                 "Workflow generator: tool catalogue selection mode=fallback reason=%s total=%s "
                 "query_count=%s candidates=%s elapsed_ms=%.1f",
                 type(e).__name__,
                 tool_count,
                 query_count,
-                candidate_count,
+                len(fallback_entries),
                 (time.monotonic() - started_at) * 1000,
-            )
-            fallback_entries = select_legacy_fallback_tools(
-                tool_catalogue_entries,
-                explicit_text=explicit_text,
-                current_graph=current_graph,
             )
             return format_tool_catalogue(fallback_entries, max_tools=None)
 
@@ -817,7 +817,8 @@ class WorkflowGenerator:
         for raw_query in raw_queries[:5]:
             if not isinstance(raw_query, dict):
                 continue
-            capability = str(raw_query.get("capability") or "").strip()
+            raw_capability = raw_query.get("capability")
+            capability = raw_capability.strip() if isinstance(raw_capability, str) else ""
             raw_keywords = raw_query.get("keywords")
             keywords = (
                 [keyword.strip() for keyword in raw_keywords[:8] if isinstance(keyword, str) and keyword.strip()]
@@ -1228,25 +1229,40 @@ class WorkflowGenerator:
 
             parameters = deepcopy(entry.get("parameters") or [])
             data["paramSchemas"] = parameters
-            data.setdefault(
-                "params",
-                {str(parameter.get("name")): "" for parameter in parameters if parameter.get("name")},
+            parameter_names = [str(parameter.get("name")) for parameter in parameters if parameter.get("name")]
+            parameter_name_set = set(parameter_names)
+            llm_parameter_names = {
+                str(parameter.get("name"))
+                for parameter in parameters
+                if parameter.get("name") and parameter.get("form") != "form"
+            }
+            form_parameter_names = parameter_name_set - llm_parameter_names
+            data["params"] = dict.fromkeys(parameter_names, "")
+
+            raw_tool_parameters = data.get("tool_parameters")
+            data["tool_parameters"] = (
+                {name: value for name, value in raw_tool_parameters.items() if name in llm_parameter_names}
+                if isinstance(raw_tool_parameters, dict)
+                else {}
             )
-            data.setdefault("tool_parameters", {})
-            configurations = data.setdefault("tool_configurations", {})
-            if isinstance(configurations, dict):
-                for parameter in parameters:
-                    if parameter.get("form") != "form" or parameter.get("default") is None:
-                        continue
-                    name = str(parameter.get("name") or "")
-                    if name:
-                        configurations.setdefault(
-                            name,
-                            {"type": "constant", "value": deepcopy(parameter["default"])},
-                        )
+            raw_configurations = data.get("tool_configurations")
+            configurations = (
+                {name: value for name, value in raw_configurations.items() if name in form_parameter_names}
+                if isinstance(raw_configurations, dict)
+                else {}
+            )
+            data["tool_configurations"] = configurations
+            for parameter in parameters:
+                if parameter.get("form") != "form" or parameter.get("default") is None:
+                    continue
+                name = str(parameter.get("name") or "")
+                if name:
+                    configurations.setdefault(
+                        name,
+                        {"type": "constant", "value": deepcopy(parameter["default"])},
+                    )
             output_schema = entry.get("output_schema") or {}
-            if output_schema:
-                data["output_schema"] = deepcopy(output_schema)
+            data["output_schema"] = deepcopy(output_schema)
 
     @classmethod
     def _assemble_parallel_graph(

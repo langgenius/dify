@@ -3,6 +3,8 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolDescription
 from core.workflow.generator.tool_catalogue import (
     MAX_ROUTED_TOOL_CANDIDATES,
     MAX_ROUTED_TOOLS_PER_PROVIDER,
@@ -179,6 +181,21 @@ class TestSelectToolCandidates:
         ]
         assert selection.pinned_count == 2
 
+    def test_explicit_identifier_does_not_also_pin_a_hyphenated_prefix(self):
+        entries = [
+            _entry("provider", "search"),
+            _entry("provider", "search-web"),
+        ]
+
+        selection = select_tool_candidates(
+            entries,
+            [],
+            explicit_text="Use provider/search-web exactly.",
+        )
+
+        assert selection.entries == [entries[1]]
+        assert selection.pinned_count == 1
+
     def test_reports_unmatched_capability_for_legacy_fallback(self):
         selection = select_tool_candidates(
             [_entry("records", "list", description="List stored database records.")],
@@ -301,20 +318,12 @@ class TestToolBuilderContext:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-class _FakeI18n(SimpleNamespace):
-    """Minimal stand-in for ``I18nObject`` — only the attrs we read."""
-
-
 class _FakeToolEntity(SimpleNamespace):
     """Tool entity exposing ``identity`` + ``description`` like the real thing."""
 
 
 class _FakeToolIdentity(SimpleNamespace):
     """Identity holding ``name`` + ``label`` like ``ToolIdentity``."""
-
-
-class _FakeToolDescription(SimpleNamespace):
-    """Description with the ``llm`` attribute we read for prompts."""
 
 
 class _FakeTool:
@@ -329,9 +338,9 @@ def _make_tool(name: str, label_en: str = "", description_llm: str = "") -> _Fak
         entity=_FakeToolEntity(
             identity=_FakeToolIdentity(
                 name=name,
-                label=_FakeI18n(en_US=label_en, zh_Hans=""),
+                label=I18nObject(en_US=label_en),
             ),
-            description=_FakeToolDescription(llm=description_llm),
+            description=ToolDescription(human=I18nObject(en_US=""), llm=description_llm),
             parameters=[],
             output_schema={},
         )
@@ -357,12 +366,12 @@ def _make_builtin_provider(name: str, tools: list, raises_on_get_tools: bool = F
     return provider
 
 
-def _make_plugin_provider(name: str, plugin_id: str, tools: list):
+def _make_plugin_provider(name: str, plugin_id: str | None, tools: list):
     provider = SimpleNamespace(
         entity=SimpleNamespace(identity=SimpleNamespace(name=name)),
         provider_type=_FakeProviderType(value="plugin"),
         plugin_id=plugin_id,
-        plugin_unique_identifier=f"{plugin_id}:1.0@checksum",
+        plugin_unique_identifier=f"{plugin_id}:1.0@checksum" if plugin_id else "",
         get_tools=lambda: tools,
     )
     provider._is_plugin = True
@@ -411,15 +420,15 @@ class TestI18nText:
         assert _i18n_text(None) == ""
 
     def test_returns_en_us_when_present(self):
-        assert _i18n_text(_FakeI18n(en_US="Search", zh_Hans="搜索")) == "Search"
+        assert _i18n_text(I18nObject(en_US="Search", zh_Hans="搜索")) == "Search"
 
     def test_falls_back_to_zh_hans_when_en_us_blank(self):
         # Some plugins ship only Chinese metadata; falling back keeps the
         # planner aware of those tools instead of dropping them silently.
-        assert _i18n_text(_FakeI18n(en_US="", zh_Hans="搜索")) == "搜索"
+        assert _i18n_text(I18nObject(en_US="", zh_Hans="搜索")) == "搜索"
 
     def test_returns_empty_when_both_locales_are_blank(self):
-        assert _i18n_text(_FakeI18n(en_US="", zh_Hans="")) == ""
+        assert _i18n_text(I18nObject(en_US="", zh_Hans="")) == ""
 
 
 class TestToolDescription:
@@ -428,10 +437,14 @@ class TestToolDescription:
         assert _tool_description(None) == ""
 
     def test_returns_llm_attribute(self):
-        assert _tool_description(_FakeToolDescription(llm="Web search")) == "Web search"
+        description = ToolDescription(human=I18nObject(en_US=""), llm="Web search")
+
+        assert _tool_description(description) == "Web search"
 
     def test_returns_empty_when_llm_is_blank(self):
-        assert _tool_description(_FakeToolDescription(llm="")) == ""
+        description = ToolDescription(human=I18nObject(en_US=""), llm="")
+
+        assert _tool_description(description) == ""
 
 
 # ── build_tool_catalogue ─────────────────────────────────────────────────────

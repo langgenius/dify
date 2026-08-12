@@ -11,8 +11,8 @@ import json
 import threading
 import time
 from copy import deepcopy
-from typing import Any, cast
-from unittest.mock import MagicMock
+from typing import Any, cast, override
+from unittest.mock import MagicMock, patch
 
 import pytest
 from jinja2 import Template
@@ -107,6 +107,7 @@ class _RoutingGraphFixtureModel(_GraphFixtureModel):
         self.router_calls: list[dict[str, Any]] = []
         super().__init__(planner, graph)
 
+    @override
     def _invoke(self, *, prompt_messages, model_parameters, stream):
         system_prompt = str(prompt_messages[0].content)
         if "route workflow requirements" in system_prompt.lower():
@@ -248,6 +249,52 @@ class TestDynamicToolRouting:
         assert len(text.splitlines()) == 80
         assert model.invoke_llm.call_count == 1
 
+    def test_router_json_parser_exception_falls_back_to_legacy_prompt(self):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result("invalid")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        with patch("core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("bad JSON")):
+            text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+                model_instance=model,
+                model_parameters={},
+                instruction="Use an external capability",
+                ideal_output="",
+                tool_catalogue_text="",
+                tool_catalogue_entries=entries,
+                current_graph=None,
+            )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
+    @pytest.mark.parametrize(
+        "router_payload",
+        [
+            {"needs_tools": "yes", "queries": []},
+            {"needs_tools": True, "queries": "not-an-array"},
+            {"needs_tools": True, "queries": [None]},
+            {"needs_tools": True, "queries": [{"capability": ["not", "a", "string"]}]},
+        ],
+    )
+    def test_invalid_router_query_schema_falls_back_to_legacy_prompt(self, router_payload: dict[str, Any]):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(json.dumps(router_payload))
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Use an external capability",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
     def test_router_exception_falls_back_without_blocking_generation(self):
         model = MagicMock()
         model.invoke_llm.side_effect = RuntimeError("router unavailable")
@@ -266,7 +313,7 @@ class TestDynamicToolRouting:
         assert len(text.splitlines()) == 80
         assert model.invoke_llm.call_count == 1
 
-    def test_unmatched_router_query_falls_back_to_legacy_prompt(self):
+    def test_unmatched_router_query_falls_back_to_legacy_prompt(self, caplog: pytest.LogCaptureFixture):
         model = MagicMock()
         model.invoke_llm.return_value = _llm_result(
             json.dumps(
@@ -289,6 +336,8 @@ class TestDynamicToolRouting:
         )
 
         assert len(text.splitlines()) == 80
+        assert "reason=unmatched_query" in caplog.text
+        assert "candidates=80" in caplog.text
 
     def test_router_failure_does_not_surface_as_model_error(self):
         planner = json.dumps(
@@ -1805,7 +1854,15 @@ class TestWorkflowGeneratorEdgeCases:
                             "provider_id": "hallucinated",
                             "provider_type": "plugin",
                             "tool_name": "fake",
-                            "tool_parameters": {"query": {"type": "mixed", "value": "{{#node1.query#}}"}},
+                            "tool_parameters": {
+                                "query": {"type": "mixed", "value": "{{#node1.query#}}"},
+                                "invented": {"type": "constant", "value": "wrong"},
+                            },
+                            "tool_configurations": {
+                                "safe_search": {"type": "constant", "value": "strict"},
+                                "invented": {"type": "constant", "value": "wrong"},
+                            },
+                            "params": {"invented": ""},
                         },
                     }
                 ],
@@ -1826,7 +1883,9 @@ class TestWorkflowGeneratorEdgeCases:
         assert data["plugin_id"] == "langgenius/google"
         assert data["tool_name"] == "search"
         assert data["tool_parameters"]["query"]["value"] == "{{#node1.query#}}"
-        assert data["tool_configurations"]["safe_search"] == {"type": "constant", "value": "moderate"}
+        assert "invented" not in data["tool_parameters"]
+        assert data["tool_configurations"] == {"safe_search": {"type": "constant", "value": "strict"}}
+        assert data["params"] == {"query": "", "safe_search": ""}
         assert data["paramSchemas"][0]["name"] == "query"
         assert data["output_schema"]["properties"]["text"]["type"] == "string"
 
@@ -1852,6 +1911,17 @@ class TestWorkflowGeneratorEdgeCases:
         )
 
         assert selected == entry
+
+    def test_purpose_fallback_does_not_select_a_prefix_tool(self):
+        short_entry = _tool_entry("provider", "search")
+        exact_entry = _tool_entry("provider", "search-web")
+
+        selected = _find_planned_tool_entry(
+            {"purpose": "Search using provider/search-web."},
+            [short_entry, exact_entry],
+        )
+
+        assert selected == exact_entry
 
     def test_tool_hydration_skips_unrelated_nodes_and_can_resolve_from_graph_data(self):
         entry = cast(
@@ -1885,6 +1955,10 @@ class TestWorkflowGeneratorEdgeCases:
                             "tool_name": "current_time",
                             "plugin_id": "stale/plugin",
                             "plugin_unique_identifier": "stale/plugin:1.0@checksum",
+                            "tool_parameters": ["invalid"],
+                            "tool_configurations": None,
+                            "params": {"stale": ""},
+                            "output_schema": {"stale": True},
                         },
                     },
                     {
@@ -1907,6 +1981,10 @@ class TestWorkflowGeneratorEdgeCases:
         assert hydrated["provider_id"] == "time"
         assert "plugin_id" not in hydrated
         assert "plugin_unique_identifier" not in hydrated
+        assert hydrated["tool_parameters"] == {}
+        assert hydrated["tool_configurations"] == {}
+        assert hydrated["params"] == {}
+        assert hydrated["output_schema"] == {}
         assert graph["nodes"][3]["data"]["provider_id"] == "missing"
 
     def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):

@@ -46,6 +46,8 @@ _MAX_FUZZY_TEXT_LENGTH = 160
 _MIN_NAME_FUZZY_RATIO = 0.72
 _TOKEN_PATTERN = re.compile(r"[^\W_]+", re.UNICODE)
 _CAMEL_BOUNDARY_PATTERN = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+_TOOL_IDENTIFIER_LEFT_BOUNDARY = r"(?<![\w/.:@-])"
+_TOOL_IDENTIFIER_RIGHT_BOUNDARY = r"(?![\w/@-]|[.:][\w])"
 _QUERY_STOP_WORDS = frozenset(
     {
         "a",
@@ -214,6 +216,25 @@ def find_tool_entry(entries: list[ToolCatalogueEntry], provider_name: str, tool_
     return None
 
 
+def text_mentions_tool_identifier(
+    text: str,
+    provider_name: str,
+    tool_name: str,
+    *,
+    ignore_case: bool = False,
+) -> bool:
+    """Return whether text contains one complete ``provider/tool`` identifier."""
+    identifier = f"{provider_name}/{tool_name}"
+    flags = re.IGNORECASE if ignore_case else 0
+    return bool(
+        re.search(
+            rf"{_TOOL_IDENTIFIER_LEFT_BOUNDARY}{re.escape(identifier)}{_TOOL_IDENTIFIER_RIGHT_BOUNDARY}",
+            text,
+            flags=flags,
+        )
+    )
+
+
 def select_tool_candidates(
     entries: list[ToolCatalogueEntry],
     queries: list[ToolCapabilityQuery],
@@ -300,8 +321,12 @@ def _find_explicit_tool_keys(
         return set()
     keys: set[tuple[str, str]] = set()
     for entry in entries:
-        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
-        if re.search(rf"(?<![\w/]){re.escape(identifier)}(?![\w/])", text, flags=re.IGNORECASE):
+        if text_mentions_tool_identifier(
+            text,
+            entry["provider_name"],
+            entry["tool_name"],
+            ignore_case=True,
+        ):
             keys.add((entry["provider_name"], entry["tool_name"]))
     return keys
 
