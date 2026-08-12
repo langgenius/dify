@@ -13,6 +13,7 @@ from werkzeug.datastructures import FileStorage
 from graphon.enums import WorkflowType
 from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, AppMode, EndUser
+from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
@@ -35,6 +36,20 @@ def _webhook_trigger(
         node_id=node_id,
         created_by=created_by,
     )
+
+
+def _tool_file() -> ToolFile:
+    tool_file = ToolFile(
+        user_id="user-123",
+        tenant_id="test_tenant",
+        conversation_id=None,
+        file_key="webhook/test.txt",
+        mimetype="text/plain",
+        name="test.txt",
+        size=7,
+    )
+    tool_file.id = "test_file_id"
+    return tool_file
 
 
 def _workflow(
@@ -545,9 +560,7 @@ class TestWebhookServiceUnit:
         """Test successful file upload processing."""
         # Mock ToolFileManager
         mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
-        mock_tool_file = MagicMock()
-        mock_tool_file.id = "test_file_id"
-        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+        mock_tool_file_instance.create_file_by_raw.return_value = _tool_file()
 
         # Mock file factory
         mock_file_obj = MagicMock()
@@ -582,9 +595,7 @@ class TestWebhookServiceUnit:
         """Test file upload processing with errors."""
         # Mock ToolFileManager
         mock_tool_file_instance = mock_tool_file_manager.return_value  # Mock file creation
-        mock_tool_file = MagicMock()
-        mock_tool_file.id = "test_file_id"
-        mock_tool_file_instance.create_file_by_raw.return_value = mock_tool_file
+        mock_tool_file_instance.create_file_by_raw.return_value = _tool_file()
 
         # Mock file factory
         mock_file_obj = MagicMock()
