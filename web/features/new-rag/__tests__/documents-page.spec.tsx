@@ -63,6 +63,7 @@ const cancelMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const retryMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const reindexMutation = vi.hoisted(() => ({ mutateAsync: vi.fn() }))
 const removeDocumentMutation = vi.hoisted(() => vi.fn())
+const bulkRemoveDocumentsMutation = vi.hoisted(() => vi.fn())
 const renameDocumentMutation = vi.hoisted(() => vi.fn())
 const updateLogicalDocumentMutation = vi.hoisted(() => vi.fn())
 const bulkUpdateLogicalDocumentsMutation = vi.hoisted(() => vi.fn())
@@ -436,6 +437,9 @@ vi.mock('@/service/client', () => ({
           logicalDocuments: {
             get: listLogicalDocuments,
             patch: bulkUpdateLogicalDocumentsMutation,
+            bulk: {
+              delete: bulkRemoveDocumentsMutation,
+            },
             downloadZip: {
               post: downloadDocumentsMutation,
             },
@@ -776,6 +780,7 @@ describe('DocumentsPage', () => {
       job: { id: 'delete-1', state: 'accepted' },
       status_url: '/delete-1',
     })
+    bulkRemoveDocumentsMutation.mockResolvedValue({ items: [], total: 2 })
     listLogicalDocuments.mockImplementation(async () => ({
       data: (documentsQuery.data?.pages.flatMap((page) => page.items) ?? []).map(
         documentApiResponse,
@@ -3159,7 +3164,7 @@ describe('DocumentsPage', () => {
     })
   })
 
-  it('confirms removal of selected documents from the designed bulk action', async () => {
+  it('removes selected documents through one bulk deletion request', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
@@ -3177,19 +3182,20 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
-    expect(removeDocumentMutation).not.toHaveBeenCalled()
+    expect(bulkRemoveDocumentsMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    expect(removeDocumentMutation).toHaveBeenCalledTimes(2)
-    expect(removeDocumentMutation).toHaveBeenNthCalledWith(1, {
-      body: { expectedRevision: 2 },
+    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledOnce()
+    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRevision: 2 },
+          { documentId: 'two', expectedRevision: 4 },
+        ],
+      },
       headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', document_id: 'one' },
+      params: { control_space_id: 'space-1' },
     })
-    expect(removeDocumentMutation).toHaveBeenNthCalledWith(2, {
-      body: { expectedRevision: 4 },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', document_id: 'two' },
-    })
+    expect(removeDocumentMutation).not.toHaveBeenCalled()
   })
 
   it('prompts for model setup before re-indexing selected documents', async () => {

@@ -2078,26 +2078,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     bulkActionPendingRef.current = true
     setBulkActionPending('remove')
     try {
-      const results = await Promise.allSettled(
-        selectedDocuments.map((document) =>
-          consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
-            body: { expectedRevision: document.rowVersion },
-            headers: { 'Idempotency-Key': createRequestId() },
-            params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-          }),
-        ),
-      )
-      const failedIds = results.flatMap((result, index) =>
-        result.status === 'rejected' ? [selectedDocuments[index]!.id] : [],
-      )
-      const permissionDeniedResult = results.find(
-        (result) => result.status === 'rejected' && responseStatus(result.reason) === 403,
-      )
-      setSelectedDocumentIds(new Set(failedIds))
-      if (permissionDeniedResult) handleWritePermissionDenied()
-      else if (failedIds.length) toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
+        body: {
+          documents: selectedDocuments.map((document) => ({
+            documentId: document.id,
+            expectedRevision: document.rowVersion,
+          })),
+        },
+        headers: { 'Idempotency-Key': createRequestId() },
+        params: { control_space_id: knowledgeSpaceId },
+      })
+      setSelectedDocumentIds(new Set())
       refreshDocumentsAndTasks()
-      return failedIds.length === 0
+      return true
+    } catch (error) {
+      if (responseStatus(error) === 403) handleWritePermissionDenied()
+      else toast.error(t(($) => $['newKnowledge.documentsErrorDescription']))
+      return false
     } finally {
       bulkActionPendingRef.current = false
       setBulkActionPending(undefined)
