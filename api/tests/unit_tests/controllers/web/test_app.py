@@ -15,6 +15,7 @@ from controllers.web.error import (
     AgentNotPublishedError,
     AppUnavailableError,
     WebAppAccessServiceUnavailableError,
+    WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
@@ -258,18 +259,29 @@ class TestAppWebAuthPermission:
         with (
             app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
             patch("controllers.web.app.extract_webapp_passport", return_value=None),
-            pytest.raises(Unauthorized, match="Access token is missing"),
+            pytest.raises(WebAppAuthRequiredError) as raised,
         ):
             AppWebAuthPermission().get()
 
+        assert raised.value.data == {
+            "code": "web_sso_auth_required",
+            "message": "Web app authentication required.",
+            "status": 401,
+        }
         webapp_access.is_user_allowed.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "description",
+        ["Token has expired.", "Invalid token signature.", "Invalid token."],
+    )
     @patch("controllers.web.app.application_services")
-    def test_invalid_passport_unauthorized_is_propagated(self, application_services: MagicMock, app: Flask) -> None:
+    def test_invalid_passport_is_normalized_to_web_app_auth_required(
+        self, application_services: MagicMock, description: str, app: Flask
+    ) -> None:
         webapp_access = MagicMock()
         webapp_access.requires_permission_check.return_value = True
         application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
-        invalid_passport = Unauthorized("Invalid passport")
+        invalid_passport = Unauthorized(description)
 
         with (
             app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
@@ -277,10 +289,14 @@ class TestAppWebAuthPermission:
             patch("controllers.web.app.PassportService") as passport_service,
         ):
             passport_service.return_value.verify.side_effect = invalid_passport
-            with pytest.raises(Unauthorized, match="Invalid passport") as raised:
+            with pytest.raises(WebAppAuthRequiredError) as raised:
                 AppWebAuthPermission().get()
 
-        assert raised.value is invalid_passport
+        assert raised.value.data == {
+            "code": "web_sso_auth_required",
+            "message": "Web app authentication required.",
+            "status": 401,
+        }
         webapp_access.is_user_allowed.assert_not_called()
 
     @pytest.mark.parametrize(

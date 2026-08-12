@@ -15,6 +15,7 @@ from controllers.web.error import (
     AgentNotPublishedError,
     AppUnavailableError,
     WebAppAccessServiceUnavailableError,
+    WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
 from controllers.web.wraps import WebApiResource
@@ -180,7 +181,7 @@ class AppWebAuthPermission(Resource):
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
-            raise
+            raise WebAppAuthRequiredError() from None
         except Exception:
             logger.exception("Unexpected error during auth verification")
             raise
