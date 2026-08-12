@@ -651,16 +651,19 @@ class DatasetRetrieval:
         self._record_usage(router_usage)
         timer = None
         if dataset_id:
-            # get retrieval model config
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            selected_dataset = session.scalar(dataset_stmt)
+            allowed_dataset = next((dataset for dataset in available_datasets if dataset.id == dataset_id), None)
+            selected_dataset = (
+                session.scalar(select(Dataset).where(Dataset.id == allowed_dataset.id, Dataset.tenant_id == tenant_id))
+                if allowed_dataset
+                else None
+            )
             if selected_dataset:
                 results = []
                 if selected_dataset.provider == "external":
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                         session=session,
                         tenant_id=selected_dataset.tenant_id,
-                        dataset_id=dataset_id,
+                        dataset_id=selected_dataset.id,
                         query=query,
                         external_retrieval_parameters=selected_dataset.retrieval_model,
                         metadata_condition=metadata_condition,
@@ -674,7 +677,7 @@ class DatasetRetrieval:
                         if document.metadata is not None:
                             document.metadata["score"] = external_document.get("score")
                             document.metadata["title"] = external_document.get("title")
-                            document.metadata["dataset_id"] = dataset_id
+                            document.metadata["dataset_id"] = selected_dataset.id
                             document.metadata["dataset_name"] = selected_dataset.name
                         results.append(document)
                 else:
@@ -724,7 +727,7 @@ class DatasetRetrieval:
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
                         )
-                self._on_query(query, None, [dataset_id], app_id, user_from, user_id)
+                self._on_query(query, None, [selected_dataset.id], app_id, user_from, user_id)
 
                 if results:
                     thread = threading.Thread(
