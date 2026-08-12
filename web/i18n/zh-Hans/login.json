@@ -91,6 +91,7 @@
   "timezone": "时区",
   "tos": "使用协议",
   "tosDesc": "使用即代表您同意我们的",
+  "turnstile.loadError": "无法加载安全验证。",
   "usePassword": "使用密码登录",
   "useVerificationCode": "使用验证码登录",
   "validate": "验证",

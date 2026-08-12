@@ -91,6 +91,7 @@
   "timezone": "Múi giờ",
   "tos": "Điều khoản dịch vụ",
   "tosDesc": "Bằng cách đăng ký, bạn đồng ý với",
+  "turnstile.loadError": "Không thể tải xác minh bảo mật.",
   "usePassword": "Sử dụng mật khẩu",
   "useVerificationCode": "Sử dụng mã xác minh",
   "validate": "Xác thực",

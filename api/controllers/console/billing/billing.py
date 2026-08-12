@@ -40,14 +40,18 @@ class BillingInvoiceResponse(ResponseModel):
     url: str
 
 
+class BillingSubscriptionResponse(ResponseModel):
+    url: str
+
+
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
-register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse)
+register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse, BillingSubscriptionResponse)
 
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
     @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
-    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

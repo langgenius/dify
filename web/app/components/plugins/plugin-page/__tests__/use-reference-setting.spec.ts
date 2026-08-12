@@ -11,7 +11,7 @@ import {
   usePluginAutoUpgradeSettings,
   usePluginPermissionSettings,
 } from '@/service/use-plugins'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -39,6 +39,18 @@ const setConsoleState = (state: ConsoleStateFixture) => {
   }
 }
 
+function renderHook<Result, Props = void>(
+  callback: (props: Props) => Result,
+  options: Parameters<typeof renderHookWithConsoleQuery<Result, Props>>[1] = {},
+) {
+  return renderHookWithConsoleQuery(callback, {
+    ...options,
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo?.current_version ?? null,
+    },
+  })
+}
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -47,11 +59,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/service/use-plugins', () => ({
   usePluginAutoUpgradeSettings: vi.fn(),
   usePluginPermissionSettings: vi.fn(),

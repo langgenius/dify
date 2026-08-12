@@ -36,10 +36,12 @@ vi.mock('@/app/components/app/app-publisher', () => ({
     mockAppPublisherProps.current = props
     return (
       <div>
-        <button onClick={() => props.onPublish?.({ id: 'model-1' })}>
+        <button type="button" onClick={() => props.onPublish?.({ id: 'model-1' })}>
           publish-through-wrapper
         </button>
-        <button onClick={() => props.onRestore?.()}>restore-through-wrapper</button>
+        <button type="button" onClick={() => props.onRestore?.()}>
+          restore-through-wrapper
+        </button>
       </div>
     )
   },

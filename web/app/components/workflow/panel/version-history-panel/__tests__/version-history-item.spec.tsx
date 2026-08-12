@@ -142,13 +142,9 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      const title = screen.getByText('Release 1')
-      const itemContainer = title.closest('.group')
-      if (!itemContainer) throw new Error('Expected version history item container')
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
 
-      fireEvent.mouseEnter(itemContainer)
-
-      const triggerButton = await screen.findByRole('button')
+      const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
       expect(screen.getByText('workflow.versionHistory.latest')).toBeInTheDocument()
@@ -188,13 +184,9 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      const title = screen.getByText('Release 1')
-      const itemContainer = title.closest('.group')
-      if (!itemContainer) throw new Error('Expected version history item container')
+      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
 
-      fireEvent.mouseEnter(itemContainer)
-
-      const triggerButton = await screen.findByRole('button')
+      const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
 
       expect(screen.queryByText('app.export')).not.toBeInTheDocument()
@@ -218,9 +210,34 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      await user.click(screen.getByText('Release 1'))
+      const versionButton = screen.getByRole('button', { name: 'Release 1' })
+      expect(versionButton).toHaveAttribute('aria-current', 'true')
+
+      await user.click(versionButton)
 
       expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('should expose the version and action menu in keyboard order', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <VersionHistoryItem
+          item={createVersionHistory()}
+          currentVersion={null}
+          latestVersionId="version-1"
+          onClick={vi.fn()}
+          handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL
+          isLast
+        />,
+      )
+
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Release 1' })).toHaveFocus()
+
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
     })
   })
 })

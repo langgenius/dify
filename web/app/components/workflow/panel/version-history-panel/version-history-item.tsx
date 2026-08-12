@@ -47,7 +47,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   hideActionMenu,
 }) => {
   const { t } = useTranslation()
-  const [isHovering, setIsHovering] = useState(false)
   const [open, setOpen] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
@@ -56,10 +55,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const isDraft = formattedVersion === WorkflowVersion.Draft
   const isLatest = formattedVersion === WorkflowVersion.Latest
   const deployedEnvironments = item.environments || []
+  const titleId = React.useId()
+  const didSelectDraftRef = React.useRef(false)
 
   useEffect(() => {
-    if (isDraft) onClick(item)
-  }, [])
+    if (!isDraft || didSelectDraftRef.current) return
+
+    didSelectDraftRef.current = true
+    onClick(item)
+  }, [isDraft, item, onClick])
 
   const handleClickItem = () => {
     if (isSelected) return
@@ -70,16 +74,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
     <div
       className={cn(
         'group relative flex gap-x-1 rounded-lg p-2',
-        isSelected
-          ? 'cursor-not-allowed bg-state-accent-active'
-          : 'cursor-pointer hover:bg-state-base-hover',
+        isSelected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
-      onClick={handleClickItem}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => {
-        setIsHovering(false)
-        setOpen(false)
-      }}
+      onMouseLeave={() => setOpen(false)}
       onContextMenu={(e) => {
         if (hideActionMenu) return
 
@@ -87,20 +84,35 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(true)
       }}
     >
+      <button
+        type="button"
+        aria-labelledby={titleId}
+        aria-current={isSelected ? 'true' : undefined}
+        className={cn(
+          'absolute inset-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          isSelected ? 'cursor-default' : 'cursor-pointer',
+        )}
+        onClick={handleClickItem}
+      />
       {!isLast && (
-        <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
-      )}
-      <div className="flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
+          aria-hidden
+          className="pointer-events-none absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle"
+        />
+      )}
+      <div className="pointer-events-none relative z-[1] flex h-5 w-4.5 shrink-0 items-center justify-center">
+        <div
+          aria-hidden
           className={cn(
             'size-2 rounded-lg border-2',
             isSelected ? 'border-text-accent' : 'border-text-quaternary',
           )}
         />
       </div>
-      <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
+      <div className="pointer-events-none relative z-[1] flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div
+            id={titleId}
             className={cn(
               'truncate py-px system-sm-semibold',
               isSelected ? 'text-text-accent' : 'text-text-secondary',
@@ -144,8 +156,13 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         )}
       </div>
       {/* Action Menu */}
-      {!hideActionMenu && !isDraft && isHovering && (
-        <div className="absolute top-1 right-1">
+      {!hideActionMenu && !isDraft && (
+        <div
+          className={cn(
+            'invisible absolute top-1 right-1 z-10 group-focus-within:visible group-hover:visible',
+            open && 'visible',
+          )}
+        >
           <ActionMenu
             workflowId={item.id}
             isShowDelete={!isLatest}

@@ -1838,7 +1838,7 @@
   },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/billing/pricing/assets/index.tsx": {
@@ -1862,11 +1862,6 @@
   "web/app/components/billing/pricing/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/app/components/billing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
     }
   },
   "web/app/components/datasets/chunk.tsx": {
@@ -5012,22 +5007,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/panel/version-history-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/panel/version-history-panel/version-history-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 4
@@ -5404,11 +5383,6 @@
       "count": 1
     }
   },
-  "web/app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signin/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -5599,11 +5573,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/billing.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/common.ts": {

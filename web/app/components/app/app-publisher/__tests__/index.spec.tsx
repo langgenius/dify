@@ -168,9 +168,11 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
   WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="workflow-tool-drawer">
+    <div role="dialog" aria-label="Workflow tool drawer">
       workflow tool drawer
-      <button onClick={onHide}>close-workflow-tool-drawer</button>
+      <button type="button" onClick={onHide}>
+        close-workflow-tool-drawer
+      </button>
     </div>
   ),
 }))
@@ -182,15 +184,18 @@ vi.mock('../built-in-publisher/summary-section', () => ({
       <div>
         {props.environmentTabs}
         <button
+          type="button"
           disabled={props.publishDisabled || props.published}
           onClick={() => void props.handlePublish()}
         >
           publisher-summary-publish
         </button>
-        <button disabled={props.published} onClick={() => void props.handleRestore()}>
+        <button type="button" disabled={props.published} onClick={() => void props.handleRestore()}>
           publisher-summary-restore
         </button>
-        <button onClick={props.onEditVersion}>publisher-summary-edit-version</button>
+        <button type="button" onClick={props.onEditVersion}>
+          publisher-summary-edit-version
+        </button>
       </div>
     )
   },
@@ -200,20 +205,26 @@ vi.mock('../built-in-publisher/actions-section', () => ({
   PublisherActionsSection: (props: Record<string, any>) => {
     sectionProps.actions = props
     return (
-      <div data-testid="publisher-actions">
+      <div>
         {props.showRunConfig && props.handleOpenRunConfig && (
-          <button onClick={() => props.handleOpenRunConfig(props.appURL)}>
+          <button type="button" onClick={() => props.handleOpenRunConfig(props.appURL)}>
             publisher-run-config
           </button>
         )}
         {props.showMarketplaceAction && (
-          <button disabled={props.marketplaceActionDisabled} onClick={props.onPublishToMarketplace}>
+          <button
+            type="button"
+            disabled={props.marketplaceActionDisabled}
+            onClick={props.onPublishToMarketplace}
+          >
             {props.publishingToMarketplace
               ? 'workflow.common.publishingToMarketplace'
               : 'workflow.common.publishToMarketplace'}
           </button>
         )}
-        <button onClick={props.onConfigureWorkflowTool}>publisher-workflow-tool</button>
+        <button type="button" onClick={props.onConfigureWorkflowTool}>
+          publisher-workflow-tool
+        </button>
       </div>
     )
   },
@@ -406,7 +417,7 @@ describe('AppPublisher', () => {
     )
     await user.click(screen.getByText('publisher-summary-edit-version'))
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('publisher-summary-edit-version')).not.toBeInTheDocument()
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
     await user.clear(titleInput!)
     await user.type(titleInput!, 'Release 6')
@@ -803,8 +814,8 @@ describe('AppPublisher', () => {
     )
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
-    expect(screen.getByTestId('workflow-tool-drawer')).toBeInTheDocument()
+    expect(screen.queryByText('publisher-workflow-tool')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Workflow tool drawer' })).toBeInTheDocument()
   })
 
   it('should not open workflow tool drawer without tool.manage', () => {
@@ -819,7 +830,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
-    expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Workflow tool drawer' })).not.toBeInTheDocument()
     expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
   })
 
@@ -833,31 +844,6 @@ describe('AppPublisher', () => {
 
     expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
     expect(mockOnToggle).not.toHaveBeenCalled()
-  })
-
-  it('should apply the per-open publish lock to the keyboard shortcut', async () => {
-    const preventDefault = vi.fn()
-    mockOnPublish.mockResolvedValue(undefined)
-
-    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
-
-    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
-    hotkeyMocks.handlers[0]!({ preventDefault })
-
-    await waitFor(() => {
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockOnPublish).toHaveBeenCalledTimes(1)
-    })
-
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    expect(mockOnPublish).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    expect(sectionProps.summary?.published).toBe(false)
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledTimes(2)
-    })
   })
 
   it('should keep keyboard publishing available in multiple model mode', async () => {

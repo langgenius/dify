@@ -52,7 +52,7 @@ describe('ServiceApiAccessPointCard', () => {
       <ServiceApiAccessPointCard
         appInfo={createAppInfo(mode)}
         availability="available"
-        canEdit
+        canManage
         onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       />,
     )
@@ -69,7 +69,7 @@ describe('ServiceApiAccessPointCard', () => {
       <ServiceApiAccessPointCard
         appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
         availability="loading"
-        canEdit
+        canManage
         onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       />,
     )
@@ -87,7 +87,7 @@ describe('ServiceApiAccessPointCard', () => {
       <ServiceApiAccessPointCard
         appInfo={createAppInfo(AppModeEnum.WORKFLOW, { enable_api: false })}
         availability="available"
-        canEdit
+        canManage
         onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       />,
     )
@@ -101,12 +101,26 @@ describe('ServiceApiAccessPointCard', () => {
     )
   })
 
+  it('disables API management without release permission', () => {
+    render(
+      <ServiceApiAccessPointCard
+        appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
+        availability="available"
+        canManage={false}
+        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('disables API keys and external documentation when the access point is unavailable', () => {
     render(
       <ServiceApiAccessPointCard
         appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
         availability="unavailable"
-        canEdit
+        canManage
         onChangeStatus={vi.fn().mockResolvedValue(undefined)}
       />,
     )
