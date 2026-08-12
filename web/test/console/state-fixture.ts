@@ -31,16 +31,7 @@ export type ConsoleStateFixture = {
 
 type ConsoleStateFixtureResolver = () => ConsoleStateFixture
 type JotaiStore = ReturnType<typeof createStore>
-type ConsoleStateOwner = 'account' | 'workspace' | 'permission' | 'systemFeatures' | 'version'
-
-const defaultUserProfile = {
-  id: 'user-1',
-  name: 'User',
-  email: 'user@example.com',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: true,
-}
+type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures' | 'version'
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
@@ -58,10 +49,6 @@ const defaultLangGeniusVersionInfo = {
   release_notes: '',
 } satisfies LangGeniusVersionInfo
 
-const userProfileAtom = atom(defaultUserProfile)
-const userProfileIdAtom = atom((get) => get(userProfileAtom).id)
-const userProfileEmailAtom = atom((get) => get(userProfileAtom).email)
-const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
@@ -100,10 +87,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   if (!resolvers.length) return false
 
   const state = Object.assign({}, ...resolvers.map((resolve) => resolve()))
-  store.set(userProfileAtom, {
-    ...defaultUserProfile,
-    ...state.userProfile,
-  })
   store.set(currentWorkspaceAtom, {
     ...defaultCurrentWorkspace,
     ...state.currentWorkspace,
@@ -135,21 +118,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   })
 
   return true
-}
-
-export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('account', () => {
-    const state = getState()
-    return {
-      userProfile: state.userProfile,
-    }
-  })
-  return {
-    userProfileAtom,
-    userProfileIdAtom,
-    userProfileEmailAtom,
-    accountProfileMetaAtom,
-  }
 }
 
 export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
