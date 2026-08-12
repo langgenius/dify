@@ -565,5 +565,42 @@ describe('Console bootstrap', () => {
         expect(flushRegistrationSuccess).toHaveBeenCalled()
       })
     })
+
+    it('should resync Amplitude only when identity properties change', async () => {
+      const { queryClient, rerender } = renderConsoleBootstrap()
+
+      await waitFor(() => expect(setUserProperties).toHaveBeenCalledTimes(1))
+
+      rerender(
+        <JotaiProvider>
+          <QueryClientProvider client={queryClient}>
+            <TestQueryClientHydrator queryClient={queryClient}>
+              <Suspense fallback={<span>loading</span>}>
+                <ExternalServiceSync />
+                <ConsoleBootstrapProbe />
+              </Suspense>
+            </TestQueryClientHydrator>
+          </QueryClientProvider>
+        </JotaiProvider>,
+      )
+      expect(setUserProperties).toHaveBeenCalledTimes(1)
+
+      act(() => {
+        queryClient.setQueryData(['user-profile'], {
+          ...mockUserProfileResponseState.data,
+          profile: {
+            ...mockUserProfileResponseState.data.profile,
+            name: 'Updated User',
+          },
+        })
+      })
+
+      await waitFor(() => {
+        expect(setUserProperties).toHaveBeenCalledTimes(2)
+        expect(setUserProperties).toHaveBeenLastCalledWith(
+          expect.objectContaining({ name: 'Updated User' }),
+        )
+      })
+    })
   })
 })
