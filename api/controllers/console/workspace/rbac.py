@@ -260,6 +260,9 @@ def _legacy_workspace_roles(
 @console_ns.route("/workspaces/current/rbac/role-permissions/catalog")
 class RBACWorkspaceCatalogApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.PermissionCatalogResponse.__name__])
     def get(self):
         tenant_id, account_id = _current_ids()
@@ -269,6 +272,9 @@ class RBACWorkspaceCatalogApi(Resource):
 @console_ns.route("/workspaces/current/rbac/role-permissions/catalog/app")
 class RBACAppCatalogApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.PermissionCatalogResponse.__name__])
     def get(self):
         tenant_id, account_id = _current_ids()
@@ -278,6 +284,9 @@ class RBACAppCatalogApi(Resource):
 @console_ns.route("/workspaces/current/rbac/role-permissions/catalog/dataset")
 class RBACDatasetCatalogApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.PermissionCatalogResponse.__name__])
     def get(self):
         tenant_id, account_id = _current_ids()

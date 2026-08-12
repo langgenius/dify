@@ -584,6 +584,23 @@ class TestWorkspaceRbacGuards:
 
         mock_create.assert_not_called()
 
+    def test_workspace_catalog_requires_workspace_role_manage(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/role-permissions/catalog"),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Catalog.workspace") as mock_catalog,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACWorkspaceCatalogApi().get()
+
+        mock_catalog.assert_not_called()
+
 
 class TestDumpHelper:
     def test_dump_returns_plain_dict(self):
