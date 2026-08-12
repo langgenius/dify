@@ -99,7 +99,7 @@ describe('permission', () => {
   })
 
   describe('app maintainer capabilities', () => {
-    it('requires explicit deploy permission while granting other maintainer capabilities', () => {
+    it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
       const permissionKeys: string[] = []
       const capabilities = getAppACLCapabilities(permissionKeys, {
         currentUserId: 'user-1',
