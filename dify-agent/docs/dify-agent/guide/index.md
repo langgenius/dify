@@ -265,7 +265,7 @@ automatic retry layer. Request-shaped runtime failures such as bad composition,
 prompt, output, or snapshot inputs are reported later as failed runs rather than
 rejected synchronously once the request DTO itself is accepted.
 
-Each run explicitly limits Pydantic AI to 100 model-request steps. Tool calls do
+Each run explicitly limits Pydantic AI to 500 model-request steps. Tool calls do
 not have a separate count limit, but every model request used to continue the
 tool loop consumes one of those steps.
 

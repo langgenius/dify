@@ -214,11 +214,11 @@ def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
 
 
 def test_run_failed_error_payload_classifies_usage_limit() -> None:
-    exc = UsageLimitExceeded("The next request would exceed the request_limit of 100")
+    exc = UsageLimitExceeded("The next request would exceed the request_limit of 500")
 
     message, error_type, reason = _run_failed_error_payload(exc)
 
-    assert message == "The next request would exceed the request_limit of 100"
+    assert message == "The next request would exceed the request_limit of 500"
     assert error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
     assert reason is None
 
@@ -650,7 +650,7 @@ def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPa
     class FakeAgent:
         async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
             usage_limits = cast(UsageLimits, kwargs["usage_limits"])
-            assert usage_limits.request_limit == 100
+            assert usage_limits.request_limit == 500
             return FakeAgentRunResult("done", [])
 
     monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
@@ -2159,7 +2159,7 @@ def test_runner_persists_usage_limit_failure_type_in_event_and_status(
             )
 
             async def exceed_limit() -> RunSuccessOutcome:
-                raise UsageLimitExceeded("The next request would exceed the request_limit of 100")
+                raise UsageLimitExceeded("The next request would exceed the request_limit of 500")
 
             monkeypatch.setattr(runner, "_run_agent", exceed_limit)
             with pytest.raises(UsageLimitExceeded):

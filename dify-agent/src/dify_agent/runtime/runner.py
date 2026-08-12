@@ -81,7 +81,7 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
-_MAX_AGENT_STEPS_PER_RUN = 100
+_MAX_AGENT_STEPS_PER_RUN = 500
 DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
 
 
