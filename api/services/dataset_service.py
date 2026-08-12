@@ -64,7 +64,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
-from services.dataset_ref_service import DatasetRef, SegmentRef
+from services.dataset_ref_service import DatasetRef, DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -1365,8 +1365,8 @@ class DatasetService:
         return True
 
     @staticmethod
-    def dataset_use_check(dataset_id, session: Session) -> bool:
-        stmt = select(exists().where(AppDatasetJoin.dataset_id == dataset_id))
+    def dataset_use_check(dataset_ref: DatasetRef, session: Session) -> bool:
+        stmt = select(exists().where(AppDatasetJoin.dataset_id == dataset_ref.dataset_id))
         return session.execute(stmt).scalar_one()
 
     @staticmethod
@@ -1432,22 +1432,17 @@ class DatasetService:
         ).all()
 
     @staticmethod
-    def update_dataset_api_status(dataset_id: str, status: bool, session: Session):
-        dataset = DatasetService.get_dataset(dataset_id, session)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
-        dataset.enable_api = status
-        if not current_user or not current_user.id:
+    def update_dataset_api_status(dataset: Dataset, status: bool, actor: Account, session: Session):
+        if not actor.id:
             raise ValueError("Current user or current user id not found")
-        dataset.updated_by = current_user.id
+        dataset.enable_api = status
+        dataset.updated_by = actor.id
         dataset.updated_at = naive_utc_now()
         session.flush()
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str, session: Session) -> AutoDisableLogsDict:
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
+    def get_dataset_auto_disable_logs(dataset_ref: DatasetRef, session: Session) -> AutoDisableLogsDict:
+        features = FeatureService.get_features(dataset_ref.tenant_id, exclude_vector_space=True)
         if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
@@ -1457,7 +1452,8 @@ class DatasetService:
         start_date = datetime.datetime.now() - datetime.timedelta(days=30)
         dataset_auto_disable_logs = session.scalars(
             select(DatasetAutoDisableLog).where(
-                DatasetAutoDisableLog.dataset_id == dataset_id,
+                DatasetAutoDisableLog.tenant_id == dataset_ref.tenant_id,
+                DatasetAutoDisableLog.dataset_id == dataset_ref.dataset_id,
                 DatasetAutoDisableLog.created_at >= start_date,
             )
         ).all()
@@ -1654,7 +1650,9 @@ class DocumentService:
             return None
 
     @staticmethod
-    def get_documents_by_ids(dataset_id: str, document_ids: Sequence[str], session: Session) -> Sequence[Document]:
+    def get_documents_by_ids(
+        dataset_ref: DatasetRef, document_ids: Sequence[str], session: Session
+    ) -> Sequence[Document]:
         """Fetch documents for a dataset in a single batch query."""
         if not document_ids:
             return []
@@ -1662,7 +1660,8 @@ class DocumentService:
         # Fetch all requested documents in one query to avoid N+1 lookups.
         documents: Sequence[Document] = session.scalars(
             select(Document).where(
-                Document.dataset_id == dataset_id,
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_id_list),
             )
         ).all()
@@ -1856,7 +1855,9 @@ class DocumentService:
         """
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, document_id_list, session)
+        documents = DocumentService.get_documents_by_ids(
+            DatasetRef(tenant_id=tenant_id, dataset_id=dataset_id), document_id_list, session
+        )
         documents_by_id: dict[str, Document] = {str(document.id): document for document in documents}
 
         missing_document_ids: set[str] = set(document_id_list) - set(documents_by_id.keys())
@@ -1866,9 +1867,6 @@ class DocumentService:
         upload_file_ids: list[str] = []
         upload_file_ids_by_document_id: dict[str, str] = {}
         for document_id, document in documents_by_id.items():
-            if document.tenant_id != tenant_id:
-                raise Forbidden("No permission.")
-
             upload_file_id = DocumentService._get_upload_file_id_for_upload_file_document(
                 document,
                 invalid_source_message="Only uploaded-file documents can be downloaded as ZIP.",
@@ -1895,9 +1893,13 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_document_by_ids(document_ids: list[str], session: Session) -> Sequence[Document]:
+    def get_document_by_ids(
+        dataset_ref: DatasetRef, document_ids: Sequence[str], session: Session
+    ) -> Sequence[Document]:
         documents = session.scalars(
             select(Document).where(
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
                 Document.id.in_(document_ids),
                 Document.enabled == True,
                 Document.indexing_status == IndexingStatus.COMPLETED,
@@ -1931,10 +1933,11 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def get_error_documents_by_dataset_id(dataset_id: str, session: Session) -> Sequence[Document]:
+    def get_error_documents_by_dataset_ref(dataset_ref: DatasetRef, session: Session) -> Sequence[Document]:
         documents = session.scalars(
             select(Document).where(
-                Document.dataset_id == dataset_id,
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
                 Document.indexing_status.in_([IndexingStatus.ERROR, IndexingStatus.PAUSED]),
             )
         ).all()
@@ -2143,7 +2146,11 @@ class DocumentService:
         retry_document_indexing_task.delay(dataset_id, document_ids, current_user.id)
 
     @staticmethod
-    def sync_website_document(dataset_id: str, document: Document, session: Session):
+    def sync_website_document(dataset: Dataset, document: Document, session: Session):
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        if DatasetRefService.create_document_ref(dataset_ref, document) is None:
+            raise ValueError("Document not found.")
+
         # add sync flag
         sync_indexing_cache_key = f"document_{document.id}_is_sync"
         cache_result = redis_client.get(sync_indexing_cache_key)
@@ -2160,7 +2167,7 @@ class DocumentService:
 
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
-        sync_website_document_indexing_task.delay(dataset_id, document.id)
+        sync_website_document_indexing_task.delay(dataset.id, document.id)
 
     @staticmethod
     def get_documents_position(dataset_id, session: Session):

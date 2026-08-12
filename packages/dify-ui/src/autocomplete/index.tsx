@@ -72,11 +72,10 @@ const autocompleteListClassName = [
 ]
 
 const autocompleteItemClassName = [
-  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
-  'motion-reduce:transition-none',
 ]
 
 const autocompleteInputGroupVariants = cva(
