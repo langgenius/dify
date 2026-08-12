@@ -361,9 +361,9 @@ def test_real_web_client_round_trips_credentials_directory_messages_and_cards(
     assert text_parameters["channel"] == "sanitized-user-1"
     assert text_parameters["markdown_text"] == "Sanitized text"
     card_parameters = state.requests_for("chat.postMessage")[1].parameters()
-    assert set(card_parameters) == {"blocks", "channel", "text"}
+    assert set(card_parameters) == {"blocks", "channel"}
     assert card_parameters["channel"] == "sanitized-user-2"
-    assert card_parameters["text"] == "Sanitized title"
+    assert "text" not in card_parameters
     assert "markdown_text" not in card_parameters
     blocks = card_parameters["blocks"]
     if isinstance(blocks, str):

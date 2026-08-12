@@ -738,10 +738,10 @@ def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -
     )
 
     assert isinstance(result, MessageAccepted)
-    assert set(client.post_calls[0]) == {"channel", "text", "blocks"}
+    assert set(client.post_calls[0]) == {"channel", "blocks"}
     blocks = client.post_calls[0]["blocks"]
     assert isinstance(blocks, list)
-    assert client.post_calls[0]["text"] == "Approval"
+    assert "text" not in client.post_calls[0]
     assert "markdown_text" not in client.post_calls[0]
     markdown_blocks = [block for block in blocks if block["type"] == "markdown"]
     input_blocks = [block for block in blocks if block["type"] == "input"]

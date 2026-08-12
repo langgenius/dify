@@ -613,7 +613,6 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
     assert isinstance(message_result.reference, _SlackMessageLocator)
     message_reference = message_result.reference
     persisted_message = _read_exact_message(slack_web_client, message_reference)
-    assert persisted_message.get("text") == intent.title
     blocks = persisted_message.get("blocks")
     assert isinstance(blocks, Sequence)
     assert not isinstance(blocks, str | bytes | bytearray)
@@ -953,7 +952,6 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
     assert isinstance(message_result, MessageAccepted)
     assert isinstance(message_result.reference, _SlackMessageLocator)
     persisted_message = _read_exact_message(slack_web_client, message_result.reference)
-    assert persisted_message.get("text") == f"Choose one action [{marker}]."
     blocks = persisted_message.get("blocks")
     assert isinstance(blocks, Sequence)
     assert not isinstance(blocks, str | bytes | bytearray)

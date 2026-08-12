@@ -13,7 +13,7 @@ from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import slack as slack_module
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter, _render_card_blocks
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter, _SlackCardCodec
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     CorrelationToken,
@@ -26,6 +26,7 @@ from core.human_input_v2.im_provider import (
 _FIXTURE_DIRECTORY = Path(__file__).with_name("fixtures")
 _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_webhook.json"
 _SOCKET_MODE_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_socket_mode.json"
+_LIVE_CAPTURE_SOCKET_MODE_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_live_capture_socket_mode.json"
 _STATIC_SELECT_INTERACTION_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_static_select_socket_mode.json"
 _RADIO_BUTTONS_INTERACTION_FIXTURE = _FIXTURE_DIRECTORY / "slack_block_actions_radio_buttons_webhook.json"
 _RECEIVED_AT = datetime(2026, 8, 11, 12, 0, 0)
@@ -104,9 +105,13 @@ def _event_with_raw_json_extra(raw_json_value: str) -> AuthenticatedIMEvent:
 
 
 def test_sender_renders_dify_namespaced_form_structure() -> None:
-    blocks = _render_card_blocks(_form(), CorrelationToken("关联令牌-🌍"))
-    repeated_blocks = _render_card_blocks(_form(), CorrelationToken("关联令牌-🌍"))
+    codec = _SlackCardCodec()
+    encoded = codec.encode(_form(), CorrelationToken("关联令牌-🌍"))
+    repeated = codec.encode(_form(), CorrelationToken("关联令牌-🌍"))
 
+    assert set(encoded) == {"blocks"}
+    blocks = encoded["blocks"]
+    assert isinstance(blocks, list)
     input_blocks = [block for block in blocks if block["type"] == "input"]
     assert len(input_blocks) == 2
     assert [block["block_id"] for block in input_blocks] == ["__dify.input.0", "__dify.input.1"]
@@ -137,11 +142,13 @@ def test_sender_renders_dify_namespaced_form_structure() -> None:
         "action_id": "批准✅",
         "correlation_token": "关联令牌-🌍",
     }
-    assert repeated_blocks == blocks
+    assert repeated == encoded
 
 
 def test_sender_static_select_has_provider_owned_placeholder() -> None:
-    blocks = _render_card_blocks(_form(), CorrelationToken("token"))
+    encoded = _SlackCardCodec().encode(_form(), CorrelationToken("token"))
+    blocks = encoded["blocks"]
+    assert isinstance(blocks, list)
     selection_element = next(
         block["element"] for block in blocks if block["type"] == "input" and block["element"]["action_id"] == "选择🌐"
     )
@@ -150,6 +157,19 @@ def test_sender_static_select_has_provider_owned_placeholder() -> None:
     assert isinstance(placeholder, dict)
     assert placeholder == {"type": "plain_text", "text": "Select an option"}
     assert len(placeholder["text"]) <= 150
+
+
+def test_encode_relies_on_the_callers_representability_precondition() -> None:
+    codec = _SlackCardCodec()
+    empty_form = ResolvedForm(
+        title=None,
+        blocks=(),
+        user_actions=(),
+        legacy_form_content="unused",
+    )
+
+    assert codec.assess(empty_form).representable is False
+    assert codec.encode(empty_form, CorrelationToken("token")) == {"blocks": []}
 
 
 def test_webhook_and_socket_mode_callbacks_converge_with_exact_unicode_round_trip() -> None:
@@ -166,6 +186,39 @@ def test_webhook_and_socket_mode_callbacks_converge_with_exact_unicode_round_tri
     )
     assert webhook_result == expected
     assert socket_result == expected
+
+
+def test_real_socket_mode_callback_capture_decodes_with_exact_unicode_round_trip() -> None:
+    assert _LIVE_CAPTURE_SOCKET_MODE_FIXTURE.exists()
+
+    decoded = _SlackCardCodec().decode(_event(_fixture(_LIVE_CAPTURE_SOCKET_MODE_FIXTURE)))
+
+    assert decoded == IMCardEvent(
+        provider_user_id=ProviderUserId("U012SANITIZED"),
+        action_id="批准✅",
+        inputs={"说明📝": "你好，世界 🌍", "选择🌐": "选项 β"},
+        correlation_token=CorrelationToken("关联令牌-🌍"),
+    )
+
+
+def test_real_socket_mode_callback_capture_sanitizes_provider_generated_block_ids() -> None:
+    callback = _fixture(_LIVE_CAPTURE_SOCKET_MODE_FIXTURE)
+    payload = callback["payload"]
+    assert isinstance(payload, dict)
+    message = payload["message"]
+    assert isinstance(message, dict)
+    blocks = message["blocks"]
+    assert isinstance(blocks, list)
+
+    provider_generated_block_ids = [
+        block["block_id"]
+        for block in blocks
+        if isinstance(block, dict)
+        and isinstance(block.get("block_id"), str)
+        and not block["block_id"].startswith("__dify.")
+    ]
+    assert len(provider_generated_block_ids) == 2
+    assert all(block_id == "slack-generated-block-id" for block_id in provider_generated_block_ids)
 
 
 @pytest.mark.parametrize(
