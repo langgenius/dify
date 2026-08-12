@@ -116,7 +116,7 @@ export function BuiltInAccessPoints({ appId, highlightedAccessPoint }: BuiltInAc
         <ServiceApiAccessPointCard
           appInfo={appInfo}
           availability={appCardAvailability}
-          canEdit={capabilities.canEdit}
+          canManage={capabilities.canReleaseAndVersion}
           onChangeStatus={actions.changeApiStatus}
           highlighted={highlightedAccessPoint === 'serviceApi'}
         />

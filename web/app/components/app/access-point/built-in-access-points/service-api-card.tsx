@@ -9,7 +9,7 @@ import { getBuiltInAccessUrls } from '../shared/utils'
 type ServiceApiAccessPointCardProps = {
   appInfo: AccessPointAppInfo
   availability: AccessPointAvailability
-  canEdit: boolean
+  canManage: boolean
   highlighted?: boolean
   onChangeStatus: (enabled: boolean) => Promise<void>
 }
@@ -17,7 +17,7 @@ type ServiceApiAccessPointCardProps = {
 export function ServiceApiAccessPointCard({
   appInfo,
   availability,
-  canEdit,
+  canManage,
   highlighted,
   onChangeStatus,
 }: ServiceApiAccessPointCardProps) {
@@ -29,7 +29,7 @@ export function ServiceApiAccessPointCard({
     <ServiceApiCardView
       apiKeyButtonProps={{
         appId: appInfo.id,
-        canManage: canEdit,
+        canManage,
         disabled: availability !== 'available',
       }}
       apiUrl={apiUrl}
@@ -37,7 +37,7 @@ export function ServiceApiAccessPointCard({
       available={availability === 'available'}
       status={status}
       highlighted={highlighted}
-      switchDisabled={!canEdit}
+      switchDisabled={!canManage}
       onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
     />
   )

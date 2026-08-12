@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   },
   webCard: vi.fn(),
   apiCard: vi.fn(),
+  capabilities: {
+    canEdit: false,
+    canDeploy: true,
+    canReleaseAndVersion: false,
+  },
   mcpCard: vi.fn(),
   triggerCard: vi.fn(),
 }))
@@ -59,11 +64,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/utils/permission', () => ({
-  getAppACLCapabilities: () => ({
-    canEdit: false,
-    canDeploy: true,
-    canReleaseAndVersion: false,
-  }),
+  getAppACLCapabilities: () => mocks.capabilities,
 }))
 
 vi.mock('../shared/use-access-point-actions', () => ({
@@ -119,6 +120,11 @@ describe('BuiltInAccessPoints', () => {
       data: null,
       isPending: false,
     }
+    mocks.capabilities = {
+      canEdit: false,
+      canDeploy: true,
+      canReleaseAndVersion: false,
+    }
   })
 
   it('renders the unpublished state across all access point cards', () => {
@@ -129,7 +135,7 @@ describe('BuiltInAccessPoints', () => {
       expect.objectContaining({ availability: 'unavailable', canDeploy: true, canEdit: false }),
     )
     expect(mocks.apiCard).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: 'unavailable', canEdit: false }),
+      expect.objectContaining({ availability: 'unavailable', canManage: false }),
     )
     expect(mocks.mcpCard).toHaveBeenCalledTimes(1)
     expect(mocks.triggerCard).toHaveBeenCalledWith(
@@ -161,6 +167,18 @@ describe('BuiltInAccessPoints', () => {
     expect(mocks.triggerCard).toHaveBeenCalledWith(
       expect.objectContaining({ availability: 'unavailable' }),
     )
+  })
+
+  it('does not use edit permission to manage the Service API', () => {
+    mocks.capabilities = {
+      canEdit: true,
+      canDeploy: true,
+      canReleaseAndVersion: false,
+    }
+
+    render(<BuiltInAccessPoints appId="app-1" />)
+
+    expect(mocks.apiCard).toHaveBeenCalledWith(expect.objectContaining({ canManage: false }))
   })
 
   it('highlights only the targeted built-in access point card', () => {
