@@ -84,17 +84,17 @@ class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
     def test_init_with_all_parameters(self):
         """Test initialization with dataset, user_id, and document_id."""
 
-        mock_dataset = Dataset(
+        dataset = Dataset(
             id="test-dataset-id",
         )
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=dataset,
             user_id="test-user-id",
             document_id="test-doc-id",
         )
 
-        assert store._dataset == mock_dataset
+        assert store._dataset == dataset
         assert store._user_id == "test-user-id"
         assert store._document_id == "test-doc-id"
         assert store.dataset_id == "test-dataset-id"
@@ -103,12 +103,12 @@ class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
     def test_init_without_document_id(self):
         """Test initialization without document_id."""
 
-        mock_dataset = Dataset(
+        dataset = Dataset(
             id="test-dataset-id",
         )
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=dataset,
             user_id="test-user-id",
         )
 
@@ -122,12 +122,12 @@ class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
     def test_to_dict(self):
         """Test serialization to dictionary."""
 
-        mock_dataset = Dataset(
+        dataset = Dataset(
             id="test-dataset-id",
         )
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=dataset,
             user_id="test-user-id",
         )
 
@@ -138,15 +138,16 @@ class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
     def test_from_dict(self):
         """Test deserialization from dictionary."""
 
+        dataset = Dataset(id="ds-123")
         config_dict = {
-            "dataset": MagicMock(spec=["id"]),
+            "dataset": dataset,
             "user_id": "test-user",
             "document_id": "test-doc",
         }
-        config_dict["dataset"].id = "ds-123"
 
         store = DatasetDocumentStore.from_dict(config_dict)
 
+        assert store._dataset is dataset
         assert store._user_id == "test-user"
         assert store._document_id == "test-doc"
 
@@ -159,16 +160,16 @@ class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
 
         mock_segment = _segment(index_node_id="node-1")
 
-        mock_session = self.session
-        mock_session.add(mock_segment)
-        mock_session.flush()
+        session = self.session
+        session.add(mock_segment)
+        session.flush()
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
             user_id="test-user-id",
         )
 
-        result = store.get_docs(mock_session)
+        result = store.get_docs(session)
 
         assert "node-1" in result
         assert isinstance(result["node-1"], Document)
@@ -176,18 +177,18 @@ class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
     def test_docs_empty_dataset(self):
         """Test docs property with no segments."""
 
-        mock_dataset = Dataset(
+        dataset = Dataset(
             id="test-dataset-id",
         )
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=dataset,
             user_id="test-user-id",
         )
 
-        result = store.get_docs(mock_session)
+        result = store.get_docs(session)
 
         assert result == {}
 
@@ -471,30 +472,30 @@ class TestDatasetDocumentStoreSegment(_UsesSQLiteSession):
 
         mock_segment = _segment()
 
-        mock_session = self.session
-        mock_session.add(mock_segment)
-        mock_session.flush()
+        session = self.session
+        session.add(mock_segment)
+        session.flush()
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
             user_id="test-user-id",
         )
 
-        result = store.get_document_segment("doc-1", session=mock_session)
+        result = store.get_document_segment("doc-1", session=session)
 
         assert result == mock_segment
 
     def test_get_document_segment_returns_none(self):
         """Test getting a non-existent document segment."""
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
             user_id="test-user-id",
         )
 
-        result = store.get_document_segment("nonexistent", session=mock_session)
+        result = store.get_document_segment("nonexistent", session=session)
 
         assert result is None
 
@@ -507,7 +508,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
 
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
@@ -515,10 +516,10 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
             document_id=DOCUMENT_ID,
         )
 
-        store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
-        mock_session.flush()
+        store.add_multimodel_documents_binding("seg-1", [attachment], session=session)
+        session.flush()
 
-        binding = mock_session.scalar(select(SegmentAttachmentBinding))
+        binding = session.scalar(select(SegmentAttachmentBinding))
         assert binding is not None
         assert binding.segment_id == "seg-1"
         assert binding.attachment_id == ATTACHMENT_ID
@@ -526,7 +527,7 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
     def test_add_multimodel_documents_binding_without_attachments(self):
         """Test adding bindings with None attachments."""
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
@@ -534,14 +535,14 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
             document_id=DOCUMENT_ID,
         )
 
-        store.add_multimodel_documents_binding("seg-1", None, session=mock_session)
+        store.add_multimodel_documents_binding("seg-1", None, session=session)
 
-        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
+        assert session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
     def test_add_multimodel_documents_binding_with_empty_list(self):
         """Test adding bindings with empty list."""
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
@@ -549,16 +550,16 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
             document_id=DOCUMENT_ID,
         )
 
-        store.add_multimodel_documents_binding("seg-1", [], session=mock_session)
+        store.add_multimodel_documents_binding("seg-1", [], session=session)
 
-        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
+        assert session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
     def test_add_multimodel_documents_binding_with_none_document_id(self):
         """Test that no bindings are added when document_id is None."""
 
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
-        mock_session = self.session
+        session = self.session
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
@@ -566,9 +567,9 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
             document_id=None,
         )
 
-        store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
+        store.add_multimodel_documents_binding("seg-1", [attachment], session=session)
 
-        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
+        assert session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
 
 class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):
