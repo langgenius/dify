@@ -529,7 +529,7 @@ export const AppCardActionBar = memo(
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteInput(app.name)}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </button>
