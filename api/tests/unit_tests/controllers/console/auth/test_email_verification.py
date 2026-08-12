@@ -38,6 +38,7 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
+from models.account import Account, Tenant
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
@@ -94,12 +95,9 @@ class TestEmailCodeLoginSendEmailApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for the mail service boundary."""
+        return Account(name="Test User", email="test@example.com")
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
@@ -383,12 +381,9 @@ class TestEmailCodeLoginApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for login orchestration."""
+        return Account(name="Test User", email="test@example.com")
 
     @pytest.fixture
     def mock_token_pair(self):
@@ -568,7 +563,7 @@ class TestEmailCodeLoginApi:
             status=EmailCodeLoginChallengeStatus.VERIFIED
         )
         mock_get_user.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
