@@ -1428,7 +1428,7 @@ class TestPluginChangeAutoUpgradeApi:
         api = PluginChangeAutoUpgradeApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_admin_or_owner=True)
+        user = _account()
 
         payload = {
             "category": TenantPluginAutoUpgradeCategory.TOOL.value,
