@@ -46,9 +46,8 @@
 - [x] 5.6 添加 publish failure、worker crash、lease expiry、duplicate wakeup 和 recovery race tests，证明 database inbox 是 canonical backlog 且只有 current claim token 能 finalize。
 - [x] 5.7 添加 at-least-once contract test，模拟 consumer side effect 后 terminal write 前 crash，证明 record 可重投且 inbox 不声称 exactly-once business execution。
 
-## 6. 接入 Provider event composition
+## 6. 验证 Provider event composition boundary
 
-- [ ] 6.1 在 Integration runtime/composition layer 为每个 active adapter 构造对应 `IMMessageInboxSink`，只把已有 `IMEventSink` view 传给 Webhook/STREAM capabilities。
 - [x] 6.2 添加 Webhook receiver-level test，断言 authentication 失败或 challenge 不调用 sink，authenticated event commit 成功后才返回 Provider success response，commit 失败映射 retry-compatible response。
 - [x] 6.3 为支持 STREAM 的 Provider 添加 callback-level test，断言同一 callback/connection 保留 ACK ownership，而 sink commit 结果只通过 `ACCEPTED` / `RETRY` 控制 ACK。
 - [x] 6.4 验证 Webhook 与 STREAM 产生的 event 可写入同一 inbox contract，且 HTTP objects、ACK envelope、SDK client、claim token 与 local Integration ID 都不进入 `AuthenticatedIMEvent`。

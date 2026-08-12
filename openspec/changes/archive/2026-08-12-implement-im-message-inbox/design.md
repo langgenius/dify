@@ -138,9 +138,8 @@ Alternative considered: 单元测试使用 mocked session。Rejected because它�
 1. 先落地 `define-im-provider-adapter-contracts` 中的 `AuthenticatedIMEvent`、`EventAcceptance` 与 `IMEventSink` contracts。
 2. 增加单一 `im_message_inbox` model、forward migration、repository ports 与 `IMMessageInboxSink` adapter；先用 SQLite unit tests 验证 persistence behavior，部署时尚不切换 receiver traffic。
 3. 增加 consumer port、worker、recovery task、metrics 与配置，并用 SQLite unit tests 和 fake consumer 验证完整 intake/claim/finalize path。
-4. 按 Integration composition 逐步把 concrete Webhook/STREAM capabilities 接入 `IMMessageInboxSink`，确认只有 durable commit 后才产生 Provider success ACK。
-5. 在 PostgreSQL integration tests 验证 commit、dedupe、concurrent claim、lease recovery 与 fencing 后，再接入具体 card/event consumers；在启用前验证各 consumer 的 retry classification 与 at-least-once idempotency protection。
-6. 回滚 application code 时先停止新 receiver intake 与 inbox workers，保留 table 和 accepted records；只有在 backlog 清空或已安全导出后才允许执行 destructive downgrade。
+4. Production Provider ingress、task runtime 与 concrete consumer composition 由 Linear issue [WTA-1962](https://linear.app/dify/issue/WTA-1962) 独立跟踪，不阻塞本 infrastructure change 归档。
+5. 回滚 application code 时先停止新 receiver intake 与 inbox workers，保留 table 和 accepted records；只有在 backlog 清空或已安全导出后才允许执行 destructive downgrade。
 
 ## Open Questions
 
