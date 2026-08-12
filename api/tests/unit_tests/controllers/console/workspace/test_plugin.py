@@ -77,6 +77,7 @@ from models.account import (
     TenantAccountRole,
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
     TenantPluginAutoUpgradeStrategySetting,
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
@@ -1455,7 +1456,8 @@ class TestPluginFetchAutoUpgradeApi:
         api = PluginFetchAutoUpgradeApi()
         method = unwrap(api.get)
 
-        auto_upgrade = MagicMock(
+        auto_upgrade = TenantPluginAutoUpgradeStrategy(
+            tenant_id="t1",
             category=TenantPluginAutoUpgradeCategory.TOOL,
             strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
             upgrade_time_of_day=1,
