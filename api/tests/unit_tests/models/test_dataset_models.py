@@ -190,6 +190,19 @@ class TestDatasetModelValidation:
         assert dataset.get_latest_process_rule(session=sqlite_session) is process_rule
         assert dataset.get_doc_form(session=sqlite_session) == IndexStructureType.PARAGRAPH_INDEX
 
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, Document)], indirect=True)
+    def test_get_doc_form_ignores_foreign_tenant_document(self, sqlite_session: Session) -> None:
+        dataset = _make_dataset()
+        foreign_document = _make_document(
+            dataset_id=dataset.id,
+            tenant_id="tenant-2",
+        )
+        foreign_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        sqlite_session.add_all([dataset, foreign_document])
+        sqlite_session.flush()
+
+        assert dataset.get_doc_form(session=sqlite_session) is None
+
     @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetKeywordTable)], indirect=True)
     def test_get_dataset_keyword_table_uses_caller_session(self, sqlite_session: Session):
         dataset = _make_dataset()
