@@ -794,7 +794,10 @@ describe('Operation', () => {
         }),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+        screen.getByRole('button', {
+          name: 'table.header.adminRate: detail.operation.dislike',
+          pressed: true,
+        }),
       ).toBeInTheDocument()
     })
 
