@@ -10,11 +10,12 @@ tool_label).
 
 Format: one tool per line, ``- <provider>/<tool> — <one-line description>``.
 
-The list is intentionally capped — if a tenant has hundreds of plugin tools,
-sending the full catalogue blows past LLM context windows. We sort by
-provider name and truncate to ``_MAX_TOOLS`` lines so the prompt stays
-bounded. Tools beyond the cap are dropped silently; if quality suffers, the
-fix is a planner-time relevance filter, not a bigger dump.
+The prompt representation is intentionally capped — if a tenant has hundreds
+of plugin tools, sending the full catalogue blows past LLM context windows.
+``build_tool_catalogue`` still returns the COMPLETE installed inventory because
+the validator and node hydrator must never mistake an installed tool beyond the
+prompt cap for a missing one. ``format_tool_catalogue`` alone truncates the
+sorted inventory to ``_MAX_PROMPT_TOOLS`` lines.
 """
 
 import json
@@ -23,13 +24,15 @@ from operator import itemgetter
 from typing import Any, NotRequired, TypedDict
 
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 
 
-_MAX_TOOLS = 80
+_MAX_PROMPT_TOOLS = 80
 
 
 class ToolCatalogueEntry(TypedDict):
@@ -50,7 +53,8 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
 
     Failures inside a single provider (mis-declared tool, plugin runtime
     error) are logged and skipped — one bad provider must not break the
-    whole generator. Returns at most ``_MAX_TOOLS`` entries.
+    whole generator. Returns the complete installed inventory; prompt-specific
+    truncation belongs to ``format_tool_catalogue``.
     """
     entries: list[ToolCatalogueEntry] = []
 
@@ -67,7 +71,7 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
         plugin_unique_identifier = ""
         if isinstance(provider, PluginToolProviderController):
             plugin_id = provider.plugin_id or ""
-            plugin_unique_identifier = getattr(provider, "plugin_unique_identifier", None) or ""
+            plugin_unique_identifier = provider.plugin_unique_identifier or ""
         elif not isinstance(provider, BuiltinToolProviderController):
             # Unknown provider class — skip rather than guess.
             continue
@@ -95,23 +99,19 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                         tool_name=tool_name,
                         tool_label=tool_label,
                         description=description,
-                        parameters=[
-                            parameter.model_dump(mode="json")
-                            for parameter in (getattr(tool.entity, "parameters", None) or [])
-                        ],
-                        output_schema=dict(getattr(tool.entity, "output_schema", None) or {}),
+                        parameters=[parameter.model_dump(mode="json") for parameter in tool.entity.parameters],
+                        output_schema=dict(tool.entity.output_schema),
                     )
                 )
             except Exception:
                 logger.exception(
-                    "Workflow generator: failed to describe tool %s in provider %s",
-                    getattr(getattr(tool, "entity", None), "identity", None),
+                    "Workflow generator: failed to describe a tool in provider %s",
                     provider_name,
                 )
                 continue
 
     entries.sort(key=itemgetter("provider_name", "tool_name"))
-    return entries[:_MAX_TOOLS]
+    return entries
 
 
 def installed_tool_keys(entries: list[ToolCatalogueEntry]) -> set[tuple[str, str]]:
@@ -131,20 +131,29 @@ def installed_tool_keys(entries: list[ToolCatalogueEntry]) -> set[tuple[str, str
 
 def format_tool_catalogue(entries: list[ToolCatalogueEntry]) -> str:
     """
-    Render the catalogue as a compact multi-line block for prompt injection.
-    Returns an empty string when no tools are installed — callers should skip
-    the section entirely in that case.
+    Render a bounded catalogue as a compact multi-line block for prompt
+    injection. Returns an empty string when no tools are installed — callers
+    should skip the section entirely in that case. The full input remains
+    available to validation and node hydration; only prompt text is capped.
     """
     if not entries:
         return ""
     lines = []
-    for e in entries:
+    for e in entries[:_MAX_PROMPT_TOOLS]:
         desc = e["description"].replace("\n", " ").strip()
         if len(desc) > 120:
             desc = desc[:117] + "..."
         line = f"- {e['provider_name']}/{e['tool_name']}"
         if e["tool_label"] and e["tool_label"] != e["tool_name"]:
             line += f" ({e['tool_label']})"
+        # provider names for plugin tools commonly contain slashes themselves
+        # (for example ``langgenius/google/google``). Explicit JSON-quoted
+        # fields remove the ambiguous "split on the last slash" guess while
+        # retaining the readable provider/tool display id.
+        line += (
+            f" [provider_id={json.dumps(e['provider_name'], ensure_ascii=False)}; "
+            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}]"
+        )
         if desc:
             line += f" — {desc}"
         lines.append(line)
@@ -229,18 +238,15 @@ def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
     return "\n".join(lines)
 
 
-def _i18n_text(label) -> str:
-    """Pull the English label out of an I18nObject (falls back to .name)."""
+def _i18n_text(label: I18nObject | None) -> str:
+    """Pull the English label out of an I18nObject, falling back to Chinese."""
     if label is None:
         return ""
-    en = getattr(label, "en_US", None)
-    if en:
-        return en
-    return getattr(label, "zh_Hans", "") or ""
+    return label.en_US or label.zh_Hans or ""
 
 
-def _tool_description(description) -> str:
+def _tool_description(description: ToolDescription | None) -> str:
     """Pull the LLM-facing description (``.llm``) from a ToolDescription."""
     if description is None:
         return ""
-    return getattr(description, "llm", "") or ""
+    return description.llm or ""

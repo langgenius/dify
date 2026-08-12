@@ -18,7 +18,7 @@ import pytest
 from jinja2 import Template
 
 from configs import dify_config
-from core.workflow.generator.runner import WorkflowGenerator
+from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 
@@ -1581,6 +1581,85 @@ class TestWorkflowGeneratorEdgeCases:
         assert data["tool_configurations"]["safe_search"] == {"type": "constant", "value": "moderate"}
         assert data["paramSchemas"][0]["name"] == "query"
         assert data["output_schema"]["properties"]["text"]["type"] == "string"
+
+    def test_tool_selection_falls_back_to_exact_identifier_in_purpose(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "langgenius/google/google",
+                "provider_type": "builtin",
+                "plugin_id": "langgenius/google",
+                "tool_name": "search",
+                "tool_label": "Google Search",
+                "description": "Search the web.",
+            },
+        )
+
+        selected = _find_planned_tool_entry(
+            {
+                "purpose": "Search using langgenius/google/google/search.",
+                "tool": {"provider_id": "wrong/provider", "tool_name": "search"},
+            },
+            [entry],
+        )
+
+        assert selected == entry
+
+    def test_tool_hydration_skips_unrelated_nodes_and_can_resolve_from_graph_data(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "time",
+                "provider_type": "builtin",
+                "plugin_id": "",
+                "tool_name": "current_time",
+                "tool_label": "Current Time",
+                "description": "Return the current time.",
+                "parameters": [],
+            },
+        )
+        plan_nodes = [
+            {"id": "no-data", "node_type": "tool", "purpose": "Broken data."},
+            {"id": "from-data", "node_type": "tool", "purpose": "Return the time."},
+            {"id": "not-installed", "node_type": "tool", "purpose": "Use missing/tool."},
+        ]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {"id": "unplanned", "data": {"type": "tool"}},
+                    {"id": "no-data", "data": "invalid"},
+                    {
+                        "id": "from-data",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "time",
+                            "tool_name": "current_time",
+                            "plugin_id": "stale/plugin",
+                            "plugin_unique_identifier": "stale/plugin:1.0@checksum",
+                        },
+                    },
+                    {
+                        "id": "not-installed",
+                        "data": {"type": "tool", "provider_id": "missing", "tool_name": "tool"},
+                    },
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=[entry],
+        )
+
+        hydrated = graph["nodes"][2]["data"]
+        assert hydrated["provider_id"] == "time"
+        assert "plugin_id" not in hydrated
+        assert "plugin_unique_identifier" not in hydrated
+        assert graph["nodes"][3]["data"]["provider_id"] == "missing"
 
     def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):
         # The LLM often returns wildly overlapping positions. The postprocess

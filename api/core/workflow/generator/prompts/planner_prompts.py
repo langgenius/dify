@@ -229,6 +229,6 @@ def format_tool_catalogue_section(catalogue_text: str) -> str:
         return ""
     return (
         "# Available tools (installed; capability-first: when an entry covers a workflow step, "
-        "the planner must choose a 'tool' node and reference its exact provider/tool name)\n\n"
+        "the planner must choose a 'tool' node and copy its explicit provider_id and tool_name values)\n\n"
         f"{catalogue_text}\n\n"
     )

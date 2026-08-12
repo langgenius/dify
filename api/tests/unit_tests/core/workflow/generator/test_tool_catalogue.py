@@ -69,8 +69,8 @@ class TestFormatToolCatalogue:
         )
         lines = out.split("\n")
         assert lines == [
-            "- google/search — Search the web with Google.",
-            "- time/current_time — Return the current time.",
+            '- google/search [provider_id="google"; tool_name="search"] — Search the web with Google.',
+            '- time/current_time [provider_id="time"; tool_name="current_time"] — Return the current time.',
         ]
 
     def test_includes_label_when_different_from_tool_name(self):
@@ -79,7 +79,7 @@ class TestFormatToolCatalogue:
                 _entry("google", "search", label="Google Search", description="Search."),
             ]
         )
-        assert out == "- google/search (Google Search) — Search."
+        assert out == '- google/search (Google Search) [provider_id="google"; tool_name="search"] — Search.'
 
     def test_omits_label_when_identical_to_tool_name(self):
         out = format_tool_catalogue(
@@ -87,7 +87,17 @@ class TestFormatToolCatalogue:
                 _entry("time", "current_time", label="current_time", description="Now."),
             ]
         )
-        assert out == "- time/current_time — Now."
+        assert out == '- time/current_time [provider_id="time"; tool_name="current_time"] — Now.'
+
+    def test_caps_only_prompt_text_while_full_inventory_remains_available(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        out = format_tool_catalogue(entries)
+
+        assert len(out.splitlines()) == 80
+        assert "tool_079" in out
+        assert "tool_080" not in out
+        assert ("provider", "tool_099") in installed_tool_keys(entries)
 
     def test_truncates_long_descriptions(self):
         long_desc = "x" * 200
@@ -115,6 +125,12 @@ class TestToolBuilderContext:
         entry["plugin_unique_identifier"] = "langgenius/google:1.0@checksum"
         entry["parameters"] = [
             {
+                "name": "",
+                "type": "string",
+                "form": "llm",
+                "required": False,
+            },
+            {
                 "name": "query",
                 "type": "string",
                 "form": "llm",
@@ -140,6 +156,7 @@ class TestToolBuilderContext:
         assert '"plugin_id":"langgenius/google"' in out
         assert "query: string, form=llm, required" in out
         assert 'safe_search: select, form=form, optional — options=["moderate","off"]; default="moderate"' in out
+        assert "- : string" not in out
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -176,6 +193,8 @@ def _make_tool(name: str, label_en: str = "", description_llm: str = "") -> _Fak
                 label=_FakeI18n(en_US=label_en, zh_Hans=""),
             ),
             description=_FakeToolDescription(llm=description_llm),
+            parameters=[],
+            output_schema={},
         )
     )
 
@@ -204,6 +223,7 @@ def _make_plugin_provider(name: str, plugin_id: str, tools: list):
         entity=SimpleNamespace(identity=SimpleNamespace(name=name)),
         provider_type=_FakeProviderType(value="plugin"),
         plugin_id=plugin_id,
+        plugin_unique_identifier=f"{plugin_id}:1.0@checksum",
         get_tools=lambda: tools,
     )
     provider._is_plugin = True
@@ -259,8 +279,8 @@ class TestI18nText:
         # planner aware of those tools instead of dropping them silently.
         assert _i18n_text(_FakeI18n(en_US="", zh_Hans="搜索")) == "搜索"
 
-    def test_returns_empty_when_both_locales_missing(self):
-        assert _i18n_text(_FakeI18n()) == ""
+    def test_returns_empty_when_both_locales_are_blank(self):
+        assert _i18n_text(_FakeI18n(en_US="", zh_Hans="")) == ""
 
 
 class TestToolDescription:
@@ -271,8 +291,8 @@ class TestToolDescription:
     def test_returns_llm_attribute(self):
         assert _tool_description(_FakeToolDescription(llm="Web search")) == "Web search"
 
-    def test_returns_empty_when_llm_missing(self):
-        assert _tool_description(SimpleNamespace()) == ""
+    def test_returns_empty_when_llm_is_blank(self):
+        assert _tool_description(_FakeToolDescription(llm="")) == ""
 
 
 # ── build_tool_catalogue ─────────────────────────────────────────────────────
@@ -323,7 +343,7 @@ class TestBuildToolCatalogue:
         # nodes; plugin identity lives in plugin_id / unique identifier.
         assert google["provider_type"] == "builtin"
         assert google["plugin_id"] == "langgenius/google"
-        assert google["plugin_unique_identifier"] == ""
+        assert google["plugin_unique_identifier"] == "langgenius/google:1.0@checksum"
         assert google["tool_label"] == "Google Search"
         assert google["description"] == "Search the web."
         time_entry = entries[1]
@@ -375,9 +395,10 @@ class TestBuildToolCatalogue:
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
     @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
-    def test_truncates_to_max_tools_to_keep_prompt_bounded(self, mock_list, mock_isinstance):
-        # A tenant with hundreds of plugin tools would blow the LLM context
-        # window. The catalogue caps the output at ``_MAX_TOOLS``.
+    def test_keeps_complete_inventory_for_validation_beyond_prompt_cap(self, mock_list, mock_isinstance):
+        # Prompt formatting is capped separately. Dropping entries here would
+        # make the validator falsely report installed tools after the cap as
+        # missing from the workspace.
         big_provider = _make_builtin_provider(
             "p",
             [_make_tool(f"t{i:03d}") for i in range(200)],
@@ -386,7 +407,8 @@ class TestBuildToolCatalogue:
 
         entries = build_tool_catalogue("tenant-1")
 
-        assert len(entries) == 80
+        assert len(entries) == 200
+        assert ("p", "t199") in installed_tool_keys(entries)
 
     @patch("core.workflow.generator.tool_catalogue.isinstance", side_effect=_patched_isinstance)
     @patch("core.workflow.generator.tool_catalogue.ToolManager.list_builtin_providers")
