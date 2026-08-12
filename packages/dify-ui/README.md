@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -63,7 +64,7 @@ Keep implementation-only render helpers, context values, styling helpers, and up
 
 | Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                    | Design-system CTA primitive with `cva` variants.                                                      |
+| Actions          | `./button`, `./icon-button`                                                                                                                                   | Visible-label actions and icon-only commands.                                                         |
 | Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
 | Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
@@ -89,6 +90,22 @@ documented layout exception.
 `Button` keeps normal `disabled` controls native-disabled by default so unavailable actions are removed from the keyboard focus order.
 
 When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loading represents an action that has already been triggered and is temporarily pending, so the button remains focusable while Base UI still suppresses click, pointer, keyboard activation, and submit-button activation. Pass `focusableWhenDisabled={false}` only when a loading button should use native disabled behavior.
+
+## Icon button contract
+
+Use `IconButton` for a command represented by one icon and no visible text. Use `Button` when the control has a visible label, including buttons with leading or trailing icons.
+
+Pass exactly one React element as its child. React SVG components and CSS icons are both supported without an icon-specific prop or wrapper:
+
+```tsx
+<IconButton aria-label="Close">
+  <span aria-hidden="true" className="i-ri-close-line size-4" />
+</IconButton>
+```
+
+Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is only a visual enhancement. The child chooses the glyph and its optical size. Omit `variant` for the neutral action-button appearance, or use the same appearance variants as `Button`. Use `tone="destructive"` for destructive intent. Size, radius, colors, hover, disabled, and focus-visible styles belong to `IconButton`; limit `className` to external layout.
+
+`IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
 
 ## Segmented control contract
 
