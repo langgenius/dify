@@ -91,6 +91,7 @@
   "timezone": "Zona waktu",
   "tos": "Ketentuan Layanan",
   "tosDesc": "Dengan mendaftar, Anda menyetujui",
+  "turnstile.loadError": "Verifikasi keamanan tidak dapat dimuat.",
   "usePassword": "Gunakan Kata Sandi",
   "useVerificationCode": "Gunakan Kode Verifikasi",
   "validate": "Memvalidasi",
