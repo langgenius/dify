@@ -24,7 +24,10 @@ let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: 
 const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
 
 const render = (ui: React.ReactElement) => {
-  const { wrapper } = createConsoleQueryWrapper({ educationStatus: mockEducationStatus })
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
+    educationStatus: mockEducationStatus,
+  })
   return renderWithConsoleState(ui, { wrapper })
 }
 
@@ -33,10 +36,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -175,6 +174,15 @@ describe('Pricing Modal Flow', () => {
     it('should default to cloud category with three cloud plans', () => {
       render(<Pricing onCancel={onCancel} />)
 
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.cloud' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.self' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+
       // Three cloud plans: sandbox, professional, team
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.professional\.name/i)).toBeInTheDocument()
@@ -205,9 +213,13 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      // Click the self-hosted tab
-      const selfTab = screen.getByText(/plansCommon\.self/i)
-      await user.click(selfTab)
+      const selfHostedButton = screen.getByRole('button', {
+        name: 'billing.plansCommon.self',
+      })
+      selfHostedButton.focus()
+      await user.keyboard(' ')
+
+      expect(selfHostedButton).toHaveAttribute('aria-pressed', 'true')
 
       // Self-hosted plans should appear
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
@@ -222,7 +234,7 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
 
       // Annual billing toggle should not be visible
       expect(screen.queryByText(/plansCommon\.annualBilling/i)).not.toBeInTheDocument()
@@ -232,7 +244,7 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
 
       expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
     })
@@ -242,11 +254,11 @@ describe('Pricing Modal Flow', () => {
       render(<Pricing onCancel={onCancel} />)
 
       // Switch to self-hosted
-      await user.click(screen.getByText(/plansCommon\.self/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.self' }))
       expect(screen.queryByText(/plans\.sandbox\.name/i)).not.toBeInTheDocument()
 
       // Switch back to cloud
-      await user.click(screen.getByText(/plansCommon\.cloud/i))
+      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.cloud' }))
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })

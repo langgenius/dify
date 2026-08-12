@@ -46,28 +46,33 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <div
-            data-testid="member-selector-trigger"
-            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
-          >
-            {!currentValue && (
-              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">
-                {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
-              </div>
-            )}
-            {currentValue && (
-              <>
-                <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-                <div className="grow truncate system-sm-medium text-text-secondary">
-                  {currentValue.name}
-                </div>
-                <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
-              </>
-            )}
-            <div className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary" />
-          </div>
+          <button
+            type="button"
+            className="group flex cursor-pointer appearance-none items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt"
+          />
         }
-      />
+      >
+        {!currentValue && (
+          <span className="grow p-1 system-sm-regular text-components-input-text-placeholder">
+            {t(($) => $['members.transferModal.transferPlaceholder'], { ns: 'common' })}
+          </span>
+        )}
+        {currentValue && (
+          <>
+            <span aria-hidden>
+              <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
+            </span>
+            <span className="grow truncate system-sm-medium text-text-secondary">
+              {currentValue.name}
+            </span>
+            <span className="system-xs-regular text-text-quaternary">{currentValue.email}</span>
+          </>
+        )}
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary"
+        />
+      </PopoverTrigger>
       <PopoverContent
         placement="bottom"
         sideOffset={4}
@@ -84,21 +89,23 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
           </div>
           <div className="p-1">
             {filteredList.map((account) => (
-              <div
+              <button
+                type="button"
                 key={account.id}
-                data-testid="member-selector-item"
-                className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
+                className="flex w-full cursor-pointer appearance-none items-center gap-2 rounded-lg py-1 pr-3 pl-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
                 }}
               >
-                <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
-                <div className="grow truncate system-sm-medium text-text-secondary">
+                <span aria-hidden>
+                  <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
+                </span>
+                <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}
-                </div>
-                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
-              </div>
+                </span>
+                <span className="system-xs-regular text-text-quaternary">{account.email}</span>
+              </button>
             ))}
           </div>
         </div>

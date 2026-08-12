@@ -58,7 +58,13 @@ def test_completion_conversation_list_returns_paginated_result(
     paginate_result.items = []
     monkeypatch.setattr(conversation_module, "paginate_query", lambda *_args, **_kwargs: paginate_result)
     with app.test_request_context("/console/api/apps/app-1/completion-conversations", method="GET"):
-        response = method(api, unbound_session, account, app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            conversation_module.CompletionConversationQuery(),
+            unbound_session,
+            account,
+            app_model=SimpleNamespace(id="app-1"),
+        )
     assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
@@ -77,7 +83,13 @@ def test_completion_conversation_list_invalid_time_range(
         "/console/api/apps/app-1/completion-conversations", method="GET", query_string={"start": "bad"}
     ):
         with pytest.raises(BadRequest):
-            method(api, unbound_session, account, app_model=SimpleNamespace(id="app-1"))
+            method(
+                api,
+                conversation_module.CompletionConversationQuery(),
+                unbound_session,
+                account,
+                app_model=SimpleNamespace(id="app-1"),
+            )
 
 
 def test_chat_conversation_list_advanced_chat_calls_paginate(
@@ -96,7 +108,11 @@ def test_chat_conversation_list_advanced_chat_calls_paginate(
     monkeypatch.setattr(conversation_module, "paginate_query", lambda *_args, **_kwargs: paginate_result)
     with app.test_request_context("/console/api/apps/app-1/chat-conversations", method="GET"):
         response = method(
-            api, unbound_session, account, app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT)
+            api,
+            conversation_module.ChatConversationQuery(),
+            unbound_session,
+            account,
+            app_model=SimpleNamespace(id="app-1", mode=AppMode.ADVANCED_CHAT),
         )
     assert response == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 

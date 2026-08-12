@@ -81,9 +81,9 @@ const ChangePasswordForm = () => {
       {!showSuccess && (
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-secondary">
               {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
@@ -161,9 +161,9 @@ const ChangePasswordForm = () => {
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
               <RiCheckboxCircleFill className="size-6 text-text-success" />
             </div>
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}
-            </h2>
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button

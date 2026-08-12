@@ -13,6 +13,7 @@ import pytest
 from redis import RedisError
 from sqlalchemy.orm import Session
 
+from enums import DeploymentEdition
 from models.account import TenantAccountJoin
 from services.enterprise.account_deletion_sync import (
     _queue_task,
@@ -48,21 +49,21 @@ class TestSyncWorkspaceMemberRemoval:
             mock_queue.return_value = True
             yield mock_queue
 
-    def test_sync_workspace_member_removal_enterprise_enabled(self, mock_queue_task):
+    def test_sync_workspace_member_removal_enterprise_edition(self, mock_queue_task):
         workspace_id = str(uuid4())
         member_id = str(uuid4())
 
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_workspace_member_removal(workspace_id=workspace_id, member_id=member_id, source="removed")
 
             assert result is True
             mock_queue_task.assert_called_once_with(workspace_id=workspace_id, member_id=member_id, source="removed")
 
-    def test_sync_workspace_member_removal_enterprise_disabled(self, mock_queue_task):
+    def test_sync_workspace_member_removal_non_enterprise_edition(self, mock_queue_task):
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             result = sync_workspace_member_removal(
                 workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source"
@@ -75,7 +76,7 @@ class TestSyncWorkspaceMemberRemoval:
         mock_queue_task.return_value = False
 
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_workspace_member_removal(
                 workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source"
@@ -92,9 +93,9 @@ class TestSyncAccountDeletion:
             mock_queue.return_value = True
             yield mock_queue
 
-    def test_sync_account_deletion_enterprise_disabled(self, mock_queue_task, sqlite_session: Session) -> None:
+    def test_sync_account_deletion_non_enterprise_edition(self, mock_queue_task, sqlite_session: Session) -> None:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
             result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
 
@@ -111,7 +112,7 @@ class TestSyncAccountDeletion:
         sqlite_session.commit()
 
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
@@ -123,7 +124,7 @@ class TestSyncAccountDeletion:
 
     def test_sync_account_deletion_no_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
 
@@ -146,7 +147,7 @@ class TestSyncAccountDeletion:
         mock_queue_task.side_effect = queue_side_effect
 
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
@@ -164,7 +165,7 @@ class TestSyncAccountDeletion:
         mock_queue_task.return_value = False
 
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
 
             result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 

@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Parametre amacı ve kısıtlamaları",
   "mcp.server.modal.parametersTip": "LLM'nin amaçlarını ve kısıtlamalarını anlamasına yardımcı olmak için her parametreye açıklamalar ekleyin.",
   "mcp.server.publishTip": "Uygulama yayınlanmadı. Lütfen önce uygulamayı yayınlayın.",
-  "mcp.server.reGen": "Sunucu URL yeniden oluşturulsun mu?",
+  "mcp.server.reGen": "Sunucu URL yeniden oluşturulsun mu? Mevcut URL hemen çalışmayı durduracaktır.",
   "mcp.server.title": "MCP Sunucusu",
   "mcp.server.url": "Sunucu URL",
   "mcp.toolItem.noDescription": "Açıklama yok",

@@ -2,7 +2,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -17,6 +16,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -160,21 +160,21 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    def get(self, req_data: WorkflowRunListQuery, app_model: App):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args: WorkflowRunListArgs = {"limit": req_data.limit}
+        if req_data.last_id is not None:
+            args["last_id"] = req_data.last_id
+        if req_data.status is not None:
+            args["status"] = req_data.status
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -258,17 +258,17 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, app_model: App):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
-        args = args_model.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -299,21 +299,21 @@ class WorkflowRunListApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunListQuery)
+    def get(self, req_data: WorkflowRunListQuery, app_model: App):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))
-        args: WorkflowRunListArgs = {"limit": args_model.limit}
-        if args_model.last_id is not None:
-            args["last_id"] = args_model.last_id
-        if args_model.status is not None:
-            args["status"] = args_model.status
+        args: WorkflowRunListArgs = {"limit": req_data.limit}
+        if req_data.last_id is not None:
+            args["last_id"] = req_data.last_id
+        if req_data.status is not None:
+            args["status"] = req_data.status
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -341,17 +341,17 @@ class WorkflowRunCountApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
+    @model_validate(WorkflowRunCountQuery)
+    def get(self, req_data: WorkflowRunCountQuery, app_model: App):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))
-        args = args_model.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args_model.triggered_from)
-            if args_model.triggered_from
+            WorkflowRunTriggeredFrom(req_data.triggered_from)
+            if req_data.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 

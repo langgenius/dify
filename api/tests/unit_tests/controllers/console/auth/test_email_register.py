@@ -11,7 +11,7 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
 
 
@@ -41,8 +41,8 @@ class TestEmailRegisterSendEmailApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.auth.email_register.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -86,7 +86,7 @@ class TestEmailRegisterCheckApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -138,7 +138,7 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -190,7 +190,7 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -247,7 +247,7 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(

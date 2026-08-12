@@ -184,8 +184,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               </div>
             )}
           </div>
-          <ActionButton className="absolute top-5 right-5" onClick={onCancel}>
-            <RiCloseLine className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
+          <ActionButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="absolute top-5 right-5"
+            onClick={onCancel}
+          >
+            <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
           </ActionButton>
           <Form
             value={formData}

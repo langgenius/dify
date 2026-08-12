@@ -51,7 +51,11 @@ def test_get_conversation_variables_returns_paginated_response(
         method="GET",
         query_string={"conversation_id": "conv-1"},
     ):
-        response = method(api, app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            conversation_variables_module.ConversationVariablesQuery(conversation_id="conv-1"),
+            app_model=SimpleNamespace(id="app-1"),
+        )
 
     assert response["page"] == 1
     assert response["limit"] == 100
@@ -90,7 +94,11 @@ def test_get_conversation_variables_normalizes_value_type_and_value(
         method="GET",
         query_string={"conversation_id": "conv-1"},
     ):
-        response = method(api, app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            conversation_variables_module.ConversationVariablesQuery(conversation_id="conv-1"),
+            app_model=SimpleNamespace(id="app-1"),
+        )
 
     assert response["data"][0]["value_type"] == "number"
     assert response["data"][0]["value"] == "42"
@@ -102,4 +110,4 @@ def test_get_conversation_variables_requires_conversation_id(app) -> None:
 
     with app.test_request_context("/console/api/apps/app-1/conversation-variables", method="GET"):
         with pytest.raises(ValidationError):
-            method(api, app_model=SimpleNamespace(id="app-1"))
+            conversation_variables_module.ConversationVariablesQuery.model_validate({})

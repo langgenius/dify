@@ -1,8 +1,10 @@
+import type { ReactElement } from 'react'
 import type { EmailConfig, FormInputItem } from '../../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodItem from '../method-item'
 
@@ -27,10 +29,10 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 vi.mock('../email-configure-modal', () => ({
   default: (props: EmailConfigureModalProps) => {

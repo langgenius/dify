@@ -13,12 +13,12 @@ import {
   RiRobot2Fill,
   RiSendPlane2Line,
 } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
@@ -49,7 +49,10 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const email = useAtomValue(userProfileEmailAtom)
+  const { data: email } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const [isHovering, setIsHovering] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showTestEmailModal, setShowTestEmailModal] = useState(false)

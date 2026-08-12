@@ -462,7 +462,9 @@ export const useChat = (
     },
     [bindWorkflowEventsReadyWaiters, markWorkflowEventsPending, resolveWorkflowEventsReadyWaiters],
   )
-  startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  useEffect(() => {
+    startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  }, [startWorkflowEventsSubscription])
 
   const ensureWorkflowEventsSubscription = useCallback(
     (workflowRunId: string, options: IOtherOptions) => {

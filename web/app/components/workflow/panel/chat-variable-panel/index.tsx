@@ -212,17 +212,21 @@ const ChatVariablePanel = () => {
         {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton
+            aria-label={t(($) => $['chatVariable.tips'], { ns: 'workflow' })}
+            aria-expanded={showTip}
             state={showTip ? ActionButtonState.Active : undefined}
             onClick={() => setShowTip(!showTip)}
           >
-            <RiBookOpenLine className="size-4" />
+            <RiBookOpenLine aria-hidden="true" className="size-4" />
           </ActionButton>
-          <div
-            className="flex size-6 cursor-pointer items-center justify-center"
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             onClick={() => setShowChatVariablePanel(false)}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" />
-          </div>
+            <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
+          </button>
         </div>
       </div>
       {showTip && (

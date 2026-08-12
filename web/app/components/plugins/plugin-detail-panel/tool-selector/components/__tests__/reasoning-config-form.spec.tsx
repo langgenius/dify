@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import ReasoningConfigForm from '../reasoning-config-form'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({

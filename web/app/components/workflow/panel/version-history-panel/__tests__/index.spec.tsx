@@ -11,20 +11,21 @@ const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
+const mockUpdateWorkflow = vi.fn()
+const mockInvalidateAppWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockEmitRestoreIntent = vi.fn()
 const mockEmitRestoreComplete = vi.fn()
 const mockEmitWorkflowUpdate = vi.fn()
+const mockToast = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
 let mockPlanType = Plan.professional
 let mockEnableBilling = true
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'test-user-id',
-    name: 'Test User',
-  },
-}))
+let mockPublishedEnvironments: VersionHistory['environments']
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
@@ -63,16 +64,14 @@ type MockRestoreConfirmModalProps = {
   versionInfo: VersionHistory
   onRestore: (item: VersionHistory) => void
 }
+type MockDeleteConfirmModalProps = {
+  isOpen: boolean
+}
 type MockVersionHistoryItemProps = {
   item: VersionHistory
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -81,12 +80,15 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
+
 vi.mock('@/service/use-workflow', () => ({
   useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
     data: {
       pages: [
@@ -101,6 +103,7 @@ vi.mock('@/service/use-workflow', () => ({
               version: '2024-01-01T00:00:00Z',
               marked_name: 'v1.0',
               marked_comment: 'First release',
+              environments: mockPublishedEnvironments,
             }),
           ],
         },
@@ -128,10 +131,19 @@ vi.mock('../../../hooks/use-workflow-run', () => ({
 }))
 
 vi.mock('../../../hooks-store', () => ({
-  useHooksStore: () => ({
-    flowId: 'test-flow-id',
-    flowType: 'workflow',
-  }),
+  useHooksStore: (
+    selector: (state: {
+      accessControl: { canImportExportDSL: boolean }
+      configsMap: { flowId: string; flowType: string }
+    }) => unknown,
+  ) =>
+    selector({
+      accessControl: { canImportExportDSL: true },
+      configsMap: {
+        flowId: 'app-1',
+        flowType: 'appFlow',
+      },
+    }),
 }))
 
 vi.mock('../../../collaboration/core/collaboration-manager', () => ({
@@ -162,7 +174,7 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../delete-confirm-modal', () => ({
-  default: () => null,
+  default: ({ isOpen }: MockDeleteConfirmModalProps) => (isOpen ? <div>confirm delete</div> : null),
 }))
 
 vi.mock('../restore-confirm-modal', () => ({
@@ -180,7 +192,25 @@ vi.mock('../restore-confirm-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
-  default: () => null,
+  default: ({
+    versionInfo,
+    onPublish,
+  }: {
+    versionInfo: VersionHistory
+    onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
+  }) => (
+    <button
+      onClick={() =>
+        onPublish({
+          id: versionInfo.id,
+          title: 'Updated release',
+          releaseNotes: 'Updated notes',
+        })
+      }
+    >
+      submit version info
+    </button>
+  ),
 }))
 
 vi.mock('../version-history-item', () => ({
@@ -213,6 +243,16 @@ vi.mock('../version-history-item', () => ({
               >
                 {`export-${item.id}`}
               </button>
+              <button
+                onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.edit)}
+              >
+                {`edit-${item.id}`}
+              </button>
+              <button
+                onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.delete)}
+              >
+                {`delete-${item.id}`}
+              </button>
             </>
           )}
         </div>
@@ -227,9 +267,11 @@ describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRestoreWorkflow.mockResolvedValue(undefined)
+    mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
     mockPlanType = Plan.professional
     mockEnableBilling = true
+    mockPublishedEnvironments = undefined
   })
 
   describe('Version Click Behavior', () => {
@@ -338,6 +380,41 @@ describe('VersionHistoryPanel', () => {
     expect(mockHandleExportDSL).not.toHaveBeenCalled()
   })
 
+  it('should block deleting a version deployed to an environment', async () => {
+    mockPublishedEnvironments = [{ id: 'environment-id', name: 'Production' }]
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('delete-published-version-id'))
+
+    expect(mockToast.error).toHaveBeenCalledWith(
+      'workflow.versionHistory.action.deleteDeployedVersionError',
+    )
+    expect(screen.queryByText('confirm delete')).not.toBeInTheDocument()
+  })
+
+  it('should allow deleting a version that is not deployed', async () => {
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('delete-published-version-id'))
+
+    expect(screen.getByText('confirm delete')).toBeInTheDocument()
+    expect(mockToast.error).not.toHaveBeenCalled()
+  })
+
   it('should keep restore mode backup state when restore request fails', async () => {
     const { VersionHistoryPanel } = await import('../index')
     mockCurrentVersion = createVersionHistory({
@@ -368,5 +445,36 @@ describe('VersionHistoryPanel', () => {
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ backupDraft: undefined })
     expect(mockSetCurrentVersion).not.toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should refresh the published workflow after editing the latest app version', async () => {
+    mockUpdateWorkflow.mockImplementation(
+      async (
+        _params,
+        options?: {
+          onSuccess?: () => void
+          onSettled?: () => void
+        },
+      ) => {
+        options?.onSuccess?.()
+        options?.onSettled?.()
+      },
+    )
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}/restore`}
+        updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('edit-published-version-id'))
+    fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
+
+    await waitFor(() => {
+      expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
+    })
   })
 })

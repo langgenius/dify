@@ -35,10 +35,6 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -189,6 +185,59 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should allow access point pages without app deploy or app ACL permissions', async () => {
+    mockPathname = '/app/app-1/access-point'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect deploy pages when app deploy ACL permission is missing', async () => {
+    mockPathname = '/app/app-1/deploy'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should allow users with app deploy ACL permission to open deploy directly', async () => {
+    mockPathname = '/app/app-1/deploy'
+    mockFetchAppDetailDirect.mockResolvedValue(
+      createAppDetail({ permission_keys: [AppACLPermission.Deploy] }),
+    )
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
   it('should allow users with layout access to open workflow pages directly', async () => {
     mockPathname = '/app/app-1/workflow'
 
@@ -215,7 +264,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()
@@ -340,7 +389,7 @@ describe('AppDetailLayout', () => {
     )
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/access-point')
     })
     expect(screen.queryByText('App page content')).not.toBeInTheDocument()
     expect(useStore.getState().appDetail).toBeUndefined()

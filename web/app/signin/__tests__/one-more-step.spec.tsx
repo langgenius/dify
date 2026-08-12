@@ -41,6 +41,17 @@ describe('OneMoreStep', () => {
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 
+  it('exposes the page title as the main heading', () => {
+    const queryClient = new QueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <OneMoreStep />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   // Successful account initialization returns users to their original console destination.
   describe('Post-registration redirect', () => {
     it('should return to the requested console page when account initialization succeeds', async () => {

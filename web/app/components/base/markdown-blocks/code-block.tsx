@@ -296,6 +296,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         const parsed = JSON.parse(trimmedContent)
         if (typeof parsed === 'object' && parsed !== null) {
           setFinalChartOption(parsed)
+          finishedEventCountRef.current = 0
           setChartState('success')
           processedRef.current = true
           return
@@ -338,6 +339,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       }
 
       if (isValidOption) {
+        finishedEventCountRef.current = 0
         setChartState('success')
         processedRef.current = true
       }
@@ -424,9 +426,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
         // Success state: show the chart
         if (chartState === 'success' && finalChartOption) {
-          // Reset finished event counter
-          finishedEventCountRef.current = 0
-
           return (
             <div
               style={{
