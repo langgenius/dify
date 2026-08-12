@@ -52,6 +52,7 @@ from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import (
+    ApiTokenType,
     CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
@@ -59,7 +60,7 @@ from models.enums import (
     IndexingStatus,
     SegmentStatus,
 )
-from models.model import UploadFile
+from models.model import ApiToken, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
@@ -1341,9 +1342,8 @@ class TestDocumentAddByTextApi(SQLiteControllerTest):
         ``FeatureService.get_knowledge_rate_limit``.
         Both call ``validate_and_get_api_token`` first.
         """
-        mock_api_token = Mock()
-        mock_api_token.tenant_id = tenant_id
-        mock_validate_token.return_value = mock_api_token
+        api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
+        mock_validate_token.return_value = api_token
 
         mock_features = Mock()
         mock_features.billing.enabled = False
@@ -1518,9 +1518,8 @@ class TestDocumentRouteDeprecation:
 
 def _setup_billing_mocks(mock_validate_token, mock_feature_svc, tenant_id: str):
     """Configure mocks to neutralise billing/auth decorators."""
-    mock_api_token = Mock()
-    mock_api_token.tenant_id = tenant_id
-    mock_validate_token.return_value = mock_api_token
+    api_token = ApiToken(tenant_id=tenant_id, type=ApiTokenType.DATASET, token="dataset-token")
+    mock_validate_token.return_value = api_token
     mock_features = Mock()
     mock_features.billing.enabled = False
     mock_feature_svc.get_features.return_value = mock_features
