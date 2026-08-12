@@ -50,7 +50,9 @@ describe('HomeHeader', () => {
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(creatorCenterLink).toHaveAttribute('target', '_blank')
     expect(creatorCenterLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(creatorCenterLink.compareDocumentPosition(guideLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(creatorCenterLink.compareDocumentPosition(guideLink)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('links Creator Center to the staging Creators site in staging', () => {

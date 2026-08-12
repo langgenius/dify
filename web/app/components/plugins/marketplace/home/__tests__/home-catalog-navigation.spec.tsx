@@ -41,7 +41,7 @@ describe('HomeCatalogNavigation', () => {
 
     const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
 
-    expect(navigationSection).toHaveClass(styles.catalogNavigation)
+    expect(navigationSection).toHaveClass(styles.catalogNavigation!)
     expect(navigationSection.firstElementChild).toHaveClass('w-full')
     expect(navigationSection.firstElementChild).not.toHaveClass('mx-auto', 'max-w-[1200px]')
     const activeTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
@@ -158,17 +158,17 @@ describe('HomeCatalogNavigation', () => {
     triggerRect.mockReturnValue(new DOMRect(0, 48, 100, 100))
     fireEvent.scroll(scrollContainer)
 
-    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
+    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned!)
     expect(
       screen.getByRole('navigation', { name: 'common.mainNav.marketplace' }).parentElement,
-    ).toHaveClass(styles.catalogTabsPinned)
-    expect(screen.getByTestId('plugin-type-switch')).toHaveClass(styles.categoriesPinned)
+    ).toHaveClass(styles.catalogTabsPinned!)
+    expect(screen.getByTestId('plugin-type-switch')).toHaveClass(styles.categoriesPinned!)
     expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
 
     triggerRect.mockReturnValue(new DOMRect(0, 49, 100, 100))
     fireEvent.scroll(scrollContainer)
 
-    expect(navigationSection).not.toHaveClass(styles.catalogNavigationPinned)
+    expect(navigationSection).not.toHaveClass(styles.catalogNavigationPinned!)
     expect(screen.queryByTestId('header-catalog-tabs')).not.toBeInTheDocument()
 
     scrollContainer.remove()
@@ -191,7 +191,7 @@ describe('HomeCatalogNavigation', () => {
 
     fireEvent.scroll(scrollContainer)
 
-    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned)
+    expect(navigationSection).toHaveClass(styles.catalogNavigationPinned!)
     expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
 
     scrollContainer.remove()

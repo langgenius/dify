@@ -34,15 +34,12 @@ const getHTTPOrigin = (urlPrefix: string) => {
   try {
     const url = new URL(urlPrefix)
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : ''
-  }
-  catch {
+  } catch {
     return ''
   }
 }
 
-const MARKETPLACE_FRAME_ORIGIN = getHTTPOrigin(
-  marketplaceOAuthFrameConfig.marketplaceUrlPrefix,
-)
+const MARKETPLACE_FRAME_ORIGIN = getHTTPOrigin(marketplaceOAuthFrameConfig.marketplaceUrlPrefix)
 
 export const getMarketplaceOAuthFrameOrigin = (
   url: Pick<URL, 'pathname' | 'searchParams'>,

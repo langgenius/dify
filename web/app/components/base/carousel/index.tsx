@@ -99,34 +99,29 @@ const Carousel: TCarousel = React.forwardRef(
       canScrollNext,
     }))
 
-    const carousel = overlay
-      ? (
-          <div
-            className={cn('relative', className)}
-            role="region"
-            aria-roledescription="carousel"
-            {...props}
-          >
-            {overlay}
-            <div
-              ref={carouselRef}
-              className="overflow-hidden [border-radius:inherit]"
-            >
-              {children}
-            </div>
-          </div>
-        )
-      : (
-          <div
-            ref={carouselRef}
-            className={cn('relative overflow-hidden', className)}
-            role="region"
-            aria-roledescription="carousel"
-            {...props}
-          >
-            {children}
-          </div>
-        )
+    const carousel = overlay ? (
+      <div
+        className={cn('relative', className)}
+        role="region"
+        aria-roledescription="carousel"
+        {...props}
+      >
+        {overlay}
+        <div ref={carouselRef} className="overflow-hidden [border-radius:inherit]">
+          {children}
+        </div>
+      </div>
+    ) : (
+      <div
+        ref={carouselRef}
+        className={cn('relative overflow-hidden', className)}
+        role="region"
+        aria-roledescription="carousel"
+        {...props}
+      >
+        {children}
+      </div>
+    )
 
     return (
       <CarouselContext.Provider

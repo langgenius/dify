@@ -68,9 +68,9 @@ describe('PluginTypeSwitch', () => {
     const inactiveCategory = screen.getByRole('button', { name: 'category.models' })
 
     expect(activeCategory).toHaveAttribute('aria-pressed', 'true')
-    expect(activeCategory).toHaveClass(styles.homeItem, styles.homeItemActive)
-    expect(inactiveCategory).toHaveClass(styles.homeItem)
-    expect(inactiveCategory).not.toHaveClass(styles.homeItemActive)
+    expect(activeCategory).toHaveClass(styles.homeItem!, styles.homeItemActive!)
+    expect(inactiveCategory).toHaveClass(styles.homeItem!)
+    expect(inactiveCategory).not.toHaveClass(styles.homeItemActive!)
     expect(screen.getByRole('button', { name: 'categorySingle.datasource' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'categorySingle.agent' })).toBeInTheDocument()
 
