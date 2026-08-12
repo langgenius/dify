@@ -99,7 +99,7 @@ describe('permission', () => {
   })
 
   describe('app maintainer capabilities', () => {
-    it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
+    it('requires explicit deploy permission while granting other maintainer capabilities', () => {
       const permissionKeys: string[] = []
       const capabilities = getAppACLCapabilities(permissionKeys, {
         currentUserId: 'user-1',
@@ -114,7 +114,7 @@ describe('permission', () => {
       expect(capabilities.canImportExportDSL).toBe(true)
       expect(capabilities.canDelete).toBe(true)
       expect(capabilities.canReleaseAndVersion).toBe(true)
-      expect(capabilities.canDeploy).toBe(true)
+      expect(capabilities.canDeploy).toBe(false)
       expect(capabilities.canMonitor).toBe(true)
       expect(capabilities.canConfigureTracing).toBe(true)
       expect(capabilities.canAccessLogAndAnnotation).toBe(true)

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rbac import RBACResourceWhitelistScope
+from enums import DeploymentEdition
 from models import TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
@@ -522,13 +523,20 @@ _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
 }
 
 
+def _legacy_app_permission_keys(permissions: dict[str, list[str]]) -> list[str]:
+    permission_keys = permissions.get("app", [])
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+        return list(permission_keys)
+    return [permission_key for permission_key in permission_keys if permission_key != "app.acl.deploy"]
+
+
 def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
     permissions = _LEGACY_MY_PERMISSIONS.get(role, {})
     return list(
         dict.fromkeys(
             [
                 *permissions.get("workspace", []),
-                *permissions.get("app", []),
+                *_legacy_app_permission_keys(permissions),
                 *permissions.get("dataset", []),
             ]
         )
@@ -584,7 +592,7 @@ def _legacy_my_permissions(tenant_id: str, account_id: str | None, *, session: S
     permissions = _LEGACY_MY_PERMISSIONS.get(tenant_role, {})
     return MyPermissionsResponse(
         workspace=WorkspacePermissionSnapshot(permission_keys=list(permissions.get("workspace", []))),
-        app=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("app", []))),
+        app=ResourcePermissionSnapshot(default_permission_keys=_legacy_app_permission_keys(permissions)),
         dataset=ResourcePermissionSnapshot(default_permission_keys=list(permissions.get("dataset", []))),
     )
 
