@@ -37,11 +37,6 @@ class AgentBackendConfig(BaseSettings):
         default=3,
     )
 
-    AGENT_BACKEND_RUN_TIMEOUT_SECONDS: PositiveFloat = Field(
-        description="Total deadline for one Agent backend run event stream.",
-        default=1200,
-    )
-
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
             "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "

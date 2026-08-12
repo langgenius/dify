@@ -16,7 +16,6 @@ def create_agent_backend_run_client(
     fake_scenario: str | FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
     stream_read_timeout_seconds: float = 30,
     stream_max_reconnects: int = 3,
-    stream_run_timeout_seconds: float = 1200,
 ) -> AgentBackendRunClient:
     """Create the API-side run client without hiding the ``dify-agent`` protocol."""
     if use_fake:
@@ -29,5 +28,4 @@ def create_agent_backend_run_client(
     return DifyAgentBackendRunClient(
         Client(base_url=base_url, stream_timeout=stream_read_timeout_seconds, headers=headers),
         stream_max_reconnects=stream_max_reconnects,
-        stream_timeout_seconds=stream_run_timeout_seconds,
     )

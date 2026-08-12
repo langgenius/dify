@@ -22,6 +22,7 @@ from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfi
 from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.profile import (
@@ -42,6 +43,7 @@ class ServerSettings(BaseSettings):
     redis_prefix: str = "dify-agent"
     shutdown_grace_seconds: float = 30
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
+    run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"

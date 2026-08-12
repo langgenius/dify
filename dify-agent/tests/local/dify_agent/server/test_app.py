@@ -68,6 +68,7 @@ class FakeRunScheduler:
 
     store: object
     shutdown_grace_seconds: float
+    run_timeout_seconds: float
     layer_providers: tuple[DifyAgentLayerProvider, ...]
     plugin_daemon_http_client: FakePluginDaemonHttpClient
     dify_api_http_client: FakePluginDaemonHttpClient
@@ -80,10 +81,12 @@ class FakeRunScheduler:
         plugin_daemon_http_client: FakePluginDaemonHttpClient,
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
+        run_timeout_seconds: float,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.run_timeout_seconds = run_timeout_seconds
         self.layer_providers = layer_providers
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
@@ -177,6 +180,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         redis_url="redis://example.invalid/0",
         redis_prefix="test",
         shutdown_grace_seconds=5,
+        run_timeout_seconds=17,
         run_retention_seconds=7,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
@@ -200,6 +204,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert len(FakeRunScheduler.created) == 1
         scheduler = FakeRunScheduler.created[0]
         assert scheduler.shutdown_grace_seconds == 5
+        assert scheduler.run_timeout_seconds == 17
         layer_providers = scheduler.layer_providers
         assert isinstance(layer_providers, tuple)
         execution_context_provider = next(

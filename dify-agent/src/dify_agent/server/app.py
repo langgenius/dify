@@ -111,6 +111,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             plugin_daemon_http_client=plugin_daemon_http_client,
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
+            run_timeout_seconds=resolved_settings.run_timeout_seconds,
             layer_providers=layer_providers,
         )
         state["store"] = store

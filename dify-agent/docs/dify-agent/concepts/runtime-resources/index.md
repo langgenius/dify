@@ -192,9 +192,11 @@ Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource to one hour. The limit covers the complete Agent run held by one
-RuntimeLease rather than an individual tool call. Runtime resources pause on
-timeout. It is not a retention TTL and does not delete paused resources or
-immutable snapshots.
+RuntimeLease rather than an individual tool call. Its 3600-second default is
+intentionally the same as `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the two settings
+remain independently configurable. Runtime resources pause on timeout, but this
+resource setting does not own the Agent run terminal state. It is not a retention
+TTL and does not delete paused resources or immutable snapshots.
 
 See the [Shell layer](../../user-manual/shell-layer/index.md) for request
 composition and the [Operations Guide](../../guide/index.md) for Local and E2B

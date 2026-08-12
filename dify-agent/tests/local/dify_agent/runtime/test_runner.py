@@ -330,6 +330,24 @@ def _request(
     )
 
 
+def _request_with_shell() -> CreateRunRequest:
+    request = _request()
+    request.composition.layers[-1:-1] = [
+        RunLayerSpec(
+            name="runtime",
+            type=DIFY_RUNTIME_LAYER_TYPE_ID,
+            config=DifyRuntimeLayerConfig(backend_binding_ref="binding-1"),
+        ),
+        RunLayerSpec(
+            name="shell",
+            type=DIFY_SHELL_LAYER_TYPE_ID,
+            deps={"execution_context": "execution_context", "runtime": "runtime"},
+            config=DifyShellLayerConfig(),
+        ),
+    ]
+    return request
+
+
 def _recursive_output_schema() -> dict[str, object]:
     return {
         "type": "object",
@@ -652,6 +670,159 @@ def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPa
     asyncio.run(scenario())
 
     assert sink.statuses["run-explicit-step-limit"] == "succeeded"
+
+
+def test_runner_timeout_excludes_tool_preparation_and_runtime_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    shell_client = FakeRunnerShellctlClient()
+    tools_prepared = False
+
+    class SlowLifecycleBackend(FakeRunnerExecutionBindingBackend):
+        acquired: bool = False
+        released: bool = False
+
+        async def acquire(self, binding_ref: str) -> RuntimeLease:
+            await asyncio.sleep(0.01)
+            lease = await super().acquire(binding_ref)
+            self.acquired = True
+            return lease
+
+        async def release(self, lease: RuntimeLease) -> None:
+            await asyncio.sleep(0.01)
+            await super().release(lease)
+            self.released = True
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class ImmediateAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            return FakeAgentRunResult("done", [])
+
+    async def slow_resolve_run_tools(
+        _run: object,
+        *,
+        plugin_daemon_http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
+        nonlocal tools_prepared
+        assert plugin_daemon_http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
+        await asyncio.sleep(0.01)
+        tools_prepared = True
+        return []
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: ImmediateAgent())
+    monkeypatch.setattr("dify_agent.runtime.runner._resolve_run_tools", slow_resolve_run_tools)
+    backend = SlowLifecycleBackend(shell_client)
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=backend,
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request_with_shell(),
+                run_id="run-lifecycle-outside-timeout",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=create_default_layer_providers(runtime_backend_profile=runtime_backend_profile),
+                run_timeout_seconds=0.001,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-lifecycle-outside-timeout"] == "succeeded"
+    assert tools_prepared is True
+    assert backend.acquired is True
+    assert backend.released is True
+    assert shell_client.closed is True
+
+
+def test_runner_timeout_cancels_agent_and_releases_runtime_lease(monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_cancelled = False
+    shell_client = FakeRunnerShellctlClient()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> None:
+            nonlocal agent_cancelled
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                agent_cancelled = True
+                raise
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    runtime_backend_profile = RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, object()),
+        execution_bindings=FakeRunnerExecutionBindingBackend(shell_client),
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(UsageLimitExceeded, match="0.01 seconds"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request_with_shell(),
+                    run_id="run-timeout",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                    layer_providers=create_default_layer_providers(runtime_backend_profile=runtime_backend_profile),
+                    run_timeout_seconds=0.01,
+                ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-timeout"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert sink.statuses["run-timeout"] == "failed"
+    assert agent_cancelled is True
+    assert shell_client.closed is True
+
+
+def test_runner_does_not_classify_nested_timeout_as_agent_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeAgentRunResult:
+            raise TimeoutError("provider timed out")
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(TimeoutError, match="provider timed out"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=_request(),
+                    run_id="run-provider-timeout",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                    run_timeout_seconds=1,
+                ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-provider-timeout"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.error == "provider timed out"
+    assert terminal.data.error_type is None
+    assert sink.statuses["run-provider-timeout"] == "failed"
 
 
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:
