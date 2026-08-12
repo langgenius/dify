@@ -75,22 +75,6 @@ vi.mock('@/context/permission-state', async () => {
     },
   }))
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_notes: '',
-    },
-  }))
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     account: {

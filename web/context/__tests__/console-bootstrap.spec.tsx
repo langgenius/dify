@@ -20,7 +20,6 @@ import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '../permission-state'
-import { langGeniusVersionInfoAtom } from '../version-state'
 import {
   currentWorkspaceAtom,
   currentWorkspaceLoadingAtom,
@@ -207,7 +206,6 @@ function ConsoleBootstrapProbe() {
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const refreshPermissionsAfterMutationDenial = useSetAtom(
     refreshWorkspacePermissionKeysAfterMutationDenialAtom,
   )
@@ -253,11 +251,6 @@ function ConsoleBootstrapProbe() {
       <span>
         dataset operator:
         {String(isCurrentWorkspaceDatasetOperator)}
-      </span>
-      <span>
-        version:
-        {langGeniusVersionInfo.current_version}/{langGeniusVersionInfo.latest_version}/
-        {langGeniusVersionInfo.current_env}
       </span>
       <button type="button" onClick={() => void refreshPermissionsAfterMutationDenial()}>
         refresh permissions after denial
@@ -368,7 +361,7 @@ describe('Console bootstrap', () => {
   })
 
   describe('Bootstrap atoms', () => {
-    it('should provide profile, workspace, permissions, loading state, and version metadata', async () => {
+    it('should provide workspace, permissions, and loading state', async () => {
       renderConsoleBootstrap()
 
       expect(await screen.findByText('workspace:Workspace')).toBeInTheDocument()
@@ -376,10 +369,9 @@ describe('Console bootstrap', () => {
       expect(screen.getByText('dataset keys:dataset.acl.edit')).toBeInTheDocument()
       expect(screen.getByText('permission loading:false')).toBeInTheDocument()
       expect(screen.getByText('workspace loading:false')).toBeInTheDocument()
-      expect(await screen.findByText('version:1.0.0/1.0.1/cloud')).toBeInTheDocument()
     })
 
-    it('should fall back to placeholder values when workspace, permission, or version data is missing', async () => {
+    it('should fall back to placeholder values when workspace or permission data is missing', async () => {
       mockCurrentWorkspaceQueryState.data = undefined
       mockPermissionKeysState.datasetPermissionKeys = []
       mockPermissionKeysState.permissionKeys = []
@@ -393,7 +385,6 @@ describe('Console bootstrap', () => {
       expect(screen.getByText(`role:${initialWorkspaceSummary.role}`)).toBeInTheDocument()
       expect(screen.getByText('keys:')).toBeInTheDocument()
       expect(screen.getByText('dataset keys:')).toBeInTheDocument()
-      expect(screen.getByText('version://')).toBeInTheDocument()
     })
 
     it('should normalize invalid workspace roles to the initial workspace role', async () => {

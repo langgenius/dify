@@ -45,6 +45,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageU
   seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile as { email?: string },
+    accountProfileMeta: { currentVersion: '1.0.0' },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -61,11 +62,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
