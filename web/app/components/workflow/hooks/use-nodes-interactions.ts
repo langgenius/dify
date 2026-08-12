@@ -2169,7 +2169,7 @@ export const useNodesInteractions = () => {
       const containerNeedingConfirm = bundledNodes.find((node) => {
         if (node.data.type !== BlockEnum.Iteration && node.data.type !== BlockEnum.Loop)
           return false
-        const childNodes = nodes.filter(child => child.parentId === node.id)
+        const childNodes = nodes.filter((child) => child.parentId === node.id)
         return childNodes.length > 1
       })
 
@@ -2177,10 +2177,14 @@ export const useNodesInteractions = () => {
         const { setShowConfirm, showConfirm } = workflowStore.getState()
 
         if (!showConfirm) {
-          const bundledNodeIds = new Set(bundledNodes.map(node => node.id))
+          const bundledNodeIds = new Set(bundledNodes.map((node) => node.id))
           const isLoopContainer = containerNeedingConfirm.data.type === BlockEnum.Loop
-          const confirmTitleKey = isLoopContainer ? 'nodes.loop.deleteTitle' : 'nodes.iteration.deleteTitle'
-          const confirmDescKey = isLoopContainer ? 'nodes.loop.deleteDesc' : 'nodes.iteration.deleteDesc'
+          const confirmTitleKey = isLoopContainer
+            ? 'nodes.loop.deleteTitle'
+            : 'nodes.iteration.deleteTitle'
+          const confirmDescKey = isLoopContainer
+            ? 'nodes.loop.deleteDesc'
+            : 'nodes.iteration.deleteDesc'
 
           setShowConfirm({
             title: t(confirmTitleKey, { ns: 'workflow' }),
@@ -2188,10 +2192,10 @@ export const useNodesInteractions = () => {
             onConfirm: () => {
               const { nodes: currentNodes } = collaborativeWorkflow.getState()
               const currentBundledNodeIds = currentNodes
-                .filter(node => bundledNodeIds.has(node.id))
-                .map(node => node.id)
+                .filter((node) => bundledNodeIds.has(node.id))
+                .map((node) => node.id)
 
-              currentBundledNodeIds.forEach(nodeId => handleNodeDelete(nodeId))
+              currentBundledNodeIds.forEach((nodeId) => handleNodeDelete(nodeId))
               setShowConfirm(undefined)
             },
           })
@@ -2200,7 +2204,7 @@ export const useNodesInteractions = () => {
         return
       }
 
-      bundledNodes.forEach(node => handleNodeDelete(node.id))
+      bundledNodes.forEach((node) => handleNodeDelete(node.id))
 
       return
     }

@@ -58,14 +58,11 @@ describe('Nodes delete confirm', () => {
       }),
     ]
 
-    const { store } = renderWorkflowFlowComponent(
-      <DeleteProbe />,
-      {
-        nodes,
-        historyStore: { nodes, edges: [] },
-        hooksStoreProps,
-      },
-    )
+    const { store } = renderWorkflowFlowComponent(<DeleteProbe />, {
+      nodes,
+      historyStore: { nodes, edges: [] },
+      hooksStoreProps,
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'delete' }))
 
