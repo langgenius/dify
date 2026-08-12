@@ -9,7 +9,6 @@ const NECESSARY_DOMAIN =
   '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://cdn-cookieyes.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
-const EMBEDDABLE_PATH_PREFIXES = ['/chat', '/workflow', '/completion', '/webapp-signin']
 const EMBEDDABLE_PATH_SEGMENTS = [
   '/agent',
   '/chat',
@@ -18,9 +17,6 @@ const EMBEDDABLE_PATH_SEGMENTS = [
   '/webapp-signin',
   '/workflow',
 ]
-const MARKETPLACE_FRAME_ORIGIN = env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
-  ? new URL(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX).origin
-  : ''
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
 
@@ -68,7 +64,6 @@ export const getMarketplaceOAuthFrameOrigin = (
 }
 
 export const canEmbedPath = (pathname: string) =>
-  EMBEDDABLE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
   matchesPathSegment(pathname, EMBEDDABLE_PATH_SEGMENTS)
 
 const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {

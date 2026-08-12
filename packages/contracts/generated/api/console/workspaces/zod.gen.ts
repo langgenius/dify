@@ -1579,10 +1579,10 @@ export const zSkillDraftFileCheckPayload = z.object({
  * SkillReferenceResponse
  */
 export const zSkillReferenceResponse = z.object({
-  agent_id: z.string(),
   agent_icon: z.string().nullish(),
   agent_icon_background: z.string().nullish(),
   agent_icon_type: z.string().nullish(),
+  agent_id: z.string(),
   app_id: z.string().nullish(),
   display_name: z.string(),
   name: z.string(),

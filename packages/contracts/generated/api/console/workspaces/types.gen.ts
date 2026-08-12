@@ -739,20 +739,6 @@ export type SkillResponse = {
   visibility: string
 }
 
-export type SkillAssistModelPayload = {
-  model: string
-  model_settings?: { [key: string]: unknown } | null
-  plugin_id?: string | null
-  provider: string
-}
-
-export type SkillAssistAttachmentPayload = {
-  mime_type?: string | null
-  name: string
-  size?: number | null
-  tool_file_id: string
-}
-
 export type SkillAssistMessagePayload = {
   attachments?: Array<SkillAssistAttachmentPayload>
   history?: Array<SkillAssistHistoryMessagePayload>
@@ -1808,6 +1794,7 @@ export type SkillAssistModelPayload = {
   plugin_id?: string | null
   provider: string
 }
+
 export type SkillDraftFileOperation =
   | 'delete'
   | 'mkdir'
@@ -1843,10 +1830,10 @@ export type SkillFileCheckItemResponse = {
 }
 
 export type SkillReferenceResponse = {
-  agent_id: string
   agent_icon?: string | null
   agent_icon_background?: string | null
   agent_icon_type?: string | null
+  agent_id: string
   app_id?: string | null
   display_name: string
   name: string

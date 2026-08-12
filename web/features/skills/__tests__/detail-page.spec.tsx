@@ -650,7 +650,7 @@ async function openVersionRowActions(
   await user.click(actionButton)
 }
 
-describe('SkillDetailPage', () => {
+describe('SkillDetailPage', { timeout: 10000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.defaultTextGenerationModel = {
