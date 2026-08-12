@@ -134,7 +134,7 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: 
       {hasError && (
         <div
           role="alert"
-          className="mt-3 flex min-h-16 w-full items-center gap-3 rounded-xl border border-state-destructive-border bg-state-destructive-hover-alt p-3"
+          className="mt-3 flex min-h-16.25 w-full items-center gap-3 rounded-xl border border-state-destructive-border bg-state-destructive-hover-alt p-3"
         >
           <span className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
           <span className="grow system-xs-regular text-text-destructive">
@@ -145,7 +145,7 @@ export default function Turnstile({ siteKey, onVerify, onInvalidate, onError }: 
           </Button>
         </div>
       )}
-      <div ref={containerRef} className={`mt-3 min-h-16 w-full ${hasError ? 'hidden' : ''}`} />
+      <div ref={containerRef} className={`mt-3 h-16.25 w-full ${hasError ? 'hidden' : ''}`} />
       <Script
         key={scriptGeneration}
         id={scriptId}
