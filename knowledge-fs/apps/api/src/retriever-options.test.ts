@@ -415,7 +415,7 @@ describe("createApiRetriever final rerank wiring", () => {
     expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
   });
 
-  it("allows a Fast profile to explicitly turn reranking off without a capability", async () => {
+  it("rejects a Fast profile that explicitly turns mandatory reranking off", async () => {
     const retriever = createApiRetriever({
       embeddingEnabled: true,
       planner: createRetrievalPlanner({ maxTopK: 100 }),
@@ -425,24 +425,23 @@ describe("createApiRetriever final rerank wiring", () => {
       },
     });
 
-    const result = await retriever.retrieve({
-      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-      limit: 1,
-      mode: "fast",
-      query: "policy renewal",
-      queryVector: [0.1, 0.2, 0.3],
-      retrievalProfile: retrievalProfile({
-        rerank: { enabled: false },
-        scoreThreshold: { enabled: false, stage: "rerank" },
+    await expect(
+      retriever.retrieve({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        mode: "fast",
+        query: "policy renewal",
+        queryVector: [0.1, 0.2, 0.3],
+        retrievalProfile: retrievalProfile({
+          rerank: { enabled: false },
+          scoreThreshold: { enabled: false, stage: "rerank" },
+        }),
+        topK: 3,
       }),
-      topK: 3,
-    });
-
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
+    ).rejects.toThrow("Knowledge-space Fast/Deep retrieval requires an enabled rerank model");
   });
 
-  it("does not resolve or call any reranker when the knowledge-space profile disables it", async () => {
+  it("rejects a disabled knowledge-space rerank profile before resolving a provider", async () => {
     const defaultReranker = preferredReranker(candidateWithGraphSeed().nodeId, []);
     const defaultRerank = vi.spyOn(defaultReranker, "rerank");
     const providerFactory = vi.fn(() => defaultReranker);
@@ -460,23 +459,23 @@ describe("createApiRetriever final rerank wiring", () => {
       },
     });
 
-    const result = await retriever.retrieve({
-      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
-      limit: 1,
-      mode: "fast",
-      query: "policy renewal",
-      queryVector: [0.1, 0.2, 0.3],
-      retrievalProfile: retrievalProfile({
-        rerank: { enabled: false },
-        scoreThreshold: { enabled: false, stage: "rerank" },
+    await expect(
+      retriever.retrieve({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        mode: "fast",
+        query: "policy renewal",
+        queryVector: [0.1, 0.2, 0.3],
+        retrievalProfile: retrievalProfile({
+          rerank: { enabled: false },
+          scoreThreshold: { enabled: false, stage: "rerank" },
+        }),
+        topK: 3,
       }),
-      topK: 3,
-    });
+    ).rejects.toThrow("Knowledge-space Fast/Deep retrieval requires an enabled rerank model");
 
     expect(providerFactory).not.toHaveBeenCalled();
     expect(defaultRerank).not.toHaveBeenCalled();
-    expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
-    expect(result.metrics?.rerankCandidates).toBeUndefined();
   });
 });
 

@@ -188,6 +188,21 @@ describe("production published Deep stage order", () => {
         searchDense: dense,
         searchFts: fts,
       },
+      rerankerOptions: {
+        providerFactory: () => ({
+          kind: "static",
+          models: async () => [],
+          rerank: async (input) => ({
+            items: input.documents.map((document, index) => ({
+              document,
+              index,
+              score: 1,
+            })),
+            metadata: { model: input.model, provider: "static" },
+            model: input.model,
+          }),
+        }),
+      },
       strictPublishedReads: true,
     });
     const baseInput = {
@@ -205,7 +220,14 @@ describe("production published Deep stage order", () => {
           pluginId: "vendor/chat",
           provider: "vendor",
         },
-        rerank: { enabled: false as const },
+        rerank: {
+          enabled: true as const,
+          model: {
+            model: "rerank-v1",
+            pluginId: "vendor/reranker",
+            provider: "vendor",
+          },
+        },
         revision: 1,
         scoreThreshold: {
           enabled: false as const,
