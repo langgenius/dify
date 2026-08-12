@@ -228,6 +228,7 @@ class VectorService:
             # save vector index
             vector = Vector(dataset=dataset, session=session)
             vector.add_texts([child_document], duplicate_check=True)
+        Keyword(dataset).add_texts([child_document], session)
 
     @classmethod
     def update_child_chunk_vector(
@@ -275,12 +276,18 @@ class VectorService:
                 vector.delete_by_ids(delete_node_ids)
             if documents:
                 vector.add_texts(documents, duplicate_check=True)
+        keyword = Keyword(dataset)
+        if delete_node_ids:
+            keyword.delete_by_ids(delete_node_ids, session)
+        if documents:
+            keyword.add_texts(documents, session)
 
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset, *, session: Session):
         vector = Vector(dataset=dataset, session=session)
         assert child_chunk.index_node_id
         vector.delete_by_ids([child_chunk.index_node_id])
+        Keyword(dataset).delete_by_ids([child_chunk.index_node_id], session)
 
     @classmethod
     def update_multimodel_vector(

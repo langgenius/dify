@@ -218,7 +218,10 @@ class TestParentChildIndexProcessor:
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
         session = self.session
 
-        with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls:
+        with (
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
+        ):
             vector = mock_vector_cls.return_value
             processor.load(dataset, [parent_doc], multimodal_documents=multimodal_docs, session=session)
 
@@ -228,12 +231,14 @@ class TestParentChildIndexProcessor:
         assert len(formatted_docs) == 2
         assert all(isinstance(doc, Document) for doc in formatted_docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(formatted_docs, session)
 
     def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
         session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(
@@ -246,6 +251,7 @@ class TestParentChildIndexProcessor:
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
         assert session.query(ChildChunk).count() == 0
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
 
     def test_clean_queries_child_ids_when_not_precomputed(
         self, processor: ParentChildIndexProcessor, dataset: Mock
@@ -284,23 +290,27 @@ class TestParentChildIndexProcessor:
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(dataset, ["node-1"], delete_child_chunks=False, session=session)
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
+        mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
 
     def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
         session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             vector = mock_vector_cls.return_value
             processor.clean(dataset, None, delete_child_chunks=True, session=session)
 
         vector.delete.assert_called_once()
         assert session.query(ChildChunk).count() == 0
+        mock_keyword_cls.return_value.delete.assert_called_once_with(session=session)
 
     def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
         session = self.session
@@ -323,6 +333,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[], session=session)
 
@@ -336,6 +347,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.SummaryIndexService.delete_summaries_for_segments"
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             session = self.session
             processor.clean(dataset, None, delete_summaries=True, session=session)
@@ -404,6 +416,7 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.calculate_segment_token_counts"
             ) as mock_token_counter,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword") as mock_keyword_cls,
         ):
             mock_token_counter.side_effect = lambda **_kwargs: phase_events.append("count") or [11]
             mock_store_cls.return_value.add_documents.side_effect = lambda **_kwargs: phase_events.append("store")
@@ -425,6 +438,7 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.assert_called_once_with(dataset, session=session)
         assert mock_vector_cls.return_value.create.call_count == 1
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
+        mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_uses_content_files_when_files_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
@@ -462,6 +476,7 @@ class TestParentChildIndexProcessor:
                 return_value=[11],
             ),
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
+            patch("core.rag.index_processor.processor.parent_child_index_processor.Keyword"),
         ):
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 

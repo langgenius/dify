@@ -13,6 +13,7 @@ from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
@@ -143,17 +144,22 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         session: Session,
         **kwargs,
     ) -> None:
+        child_documents: list[Document] = []
+        for document in documents:
+            if document.children:
+                child_documents.extend(
+                    Document.model_validate(child_document.model_dump()) for child_document in document.children
+                )
+
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset, session=session)
-            for document in documents:
-                child_documents = document.children
-                if child_documents:
-                    formatted_child_documents = [
-                        Document.model_validate(child_document.model_dump()) for child_document in child_documents
-                    ]
-                    vector.create(formatted_child_documents)
+            if child_documents:
+                vector.create(child_documents)
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
+
+        if with_keywords and child_documents:
+            Keyword(dataset).add_texts(child_documents, session)
 
     @override
     def clean(
@@ -181,28 +187,28 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 # Delete all summaries for the dataset
                 SummaryIndexService.delete_summaries_for_segments(dataset, None, session=session)
 
+        delete_child_chunks = kwargs.get("delete_child_chunks") or False
+        precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
+        child_node_ids: list[str] = []
+        if node_ids:
+            if precomputed_child_node_ids is not None:
+                child_node_ids = precomputed_child_node_ids
+            else:
+                rows = session.execute(
+                    select(ChildChunk.index_node_id)
+                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                    .where(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                        ChildChunk.dataset_id == dataset.id,
+                    )
+                ).all()
+                child_node_ids = [row[0] for row in rows if row[0]]
+
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            delete_child_chunks = kwargs.get("delete_child_chunks") or False
-            precomputed_child_node_ids = kwargs.get("precomputed_child_node_ids")
             vector = Vector(dataset, session=session)
 
             if node_ids:
-                # Use precomputed child_node_ids if available (to avoid race conditions)
-                if precomputed_child_node_ids is not None:
-                    child_node_ids = precomputed_child_node_ids
-                else:
-                    # Fallback to original query (may fail if segments are already deleted)
-                    rows = session.execute(
-                        select(ChildChunk.index_node_id)
-                        .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
-                        .where(
-                            DocumentSegment.dataset_id == dataset.id,
-                            DocumentSegment.index_node_id.in_(node_ids),
-                            ChildChunk.dataset_id == dataset.id,
-                        )
-                    ).all()
-                    child_node_ids = [row[0] for row in rows if row[0]]
-
                 # Delete from vector index
                 if child_node_ids:
                     vector.delete_by_ids(child_node_ids)
@@ -226,6 +232,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         )
                     )
                     session.flush()
+
+        if with_keywords:
+            keyword = Keyword(dataset)
+            if node_ids:
+                if child_node_ids:
+                    keyword.delete_by_ids(child_node_ids, session)
+            else:
+                keyword.delete(session=session)
 
     def _split_child_nodes(
         self,
@@ -343,6 +357,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     vector.create(all_child_documents)
                 if all_multimodal_documents and dataset.is_multimodal:
                     vector.create_multimodal(all_multimodal_documents)
+                if all_child_documents:
+                    Keyword(dataset).add_texts(all_child_documents, session)
 
     @override
     def format_preview(self, chunks: Any) -> ParentChildFormatPreviewDict:
