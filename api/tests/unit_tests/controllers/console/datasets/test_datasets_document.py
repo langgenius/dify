@@ -38,9 +38,10 @@ from controllers.console.datasets.error import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetPermissionEnum
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 
 
 def make_serializable_document(**overrides):
@@ -476,6 +477,7 @@ class TestDatasetInitApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
@@ -484,6 +486,12 @@ class TestDatasetInitApi:
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
                 return_value=(created_dataset, [created_document], "batch-init"),
             ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
+            ) as replace_whitelist,
+            patch(
+                "controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task"
+            ) as initialize_rbac_task,
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -491,6 +499,14 @@ class TestDatasetInitApi:
         assert response["documents"][0]["data_source_info"] == {}
         assert response["documents"][0]["doc_metadata"] == []
         assert response["batch"] == "batch-init"
+        assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
+        replace_whitelist.assert_called_once_with(
+            tenant_id,
+            user.id,
+            created_dataset.id,
+            ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+        )
+        initialize_rbac_task.delay.assert_called_once_with(tenant_id, user.id, dataset_id=created_dataset.id)
 
 
 class TestDocumentApi:
