@@ -520,6 +520,16 @@ export function AgentSkills() {
           },
           onSuccess: () => {
             invalidateAgentSkillBindings()
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.composer.get.key({
+                type: 'query',
+                input: {
+                  params: {
+                    agent_id: apiContext.agentId,
+                  },
+                },
+              }),
+            })
             onSuccess?.()
           },
         },
@@ -529,6 +539,7 @@ export function AgentSkills() {
       apiContext.agentId,
       invalidateAgentSkillBindings,
       isViewingVersion,
+      queryClient,
       replaceAgentSkillBindings,
       t,
     ],

@@ -121,6 +121,11 @@ vi.mock('@/service/client', () => ({
     },
     agent: {
       byAgentId: {
+        composer: {
+          get: {
+            key: vi.fn((_options: unknown): unknown[] => ['agent-composer']),
+          },
+        },
         config: {
           skills: {
             upload: {
