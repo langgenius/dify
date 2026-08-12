@@ -22,10 +22,6 @@ vi.mock('../../plugin-type-switch', () => ({
   ),
 }))
 
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}?source=console`,
-}))
-
 describe('HomeCatalogNavigation', () => {
   const renderNavigation = (isMarketplacePlatform: boolean) => {
     return render(
@@ -130,12 +126,12 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
   })
 
-  it('keeps Dify template navigation on the current origin', () => {
+  it('keeps Dify catalog navigation on the current origin', () => {
     renderNavigation(false)
 
     expect(screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })).toHaveAttribute(
       'href',
-      'https://marketplace.dify.ai/plugins?source=console',
+      '/marketplace',
     )
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
