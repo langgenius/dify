@@ -1045,10 +1045,13 @@ describe.each(["postgres", "tidb"] as const)(
         (definition) => definition.ruleId === "permission-readiness",
       );
       expect(retired).toBeDefined();
+      if (!retired) {
+        throw new Error("Expected permission-readiness attention definition");
+      }
       await expect(
         repository.transitionAttention({
           ...transitionInput(),
-          issueKey: retired!.issueKey,
+          issueKey: retired.issueKey,
         }),
       ).resolves.toBeNull();
     });
