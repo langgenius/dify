@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,39 +12,8 @@ from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account, App
-from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
-from models.model import (
-    AppAnnotationHitHistory,
-    AppMode,
-    Conversation,
-    IconType,
-    Message,
-    MessageAnnotation,
-    MessageFeedback,
-)
-
-
-def _app() -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Message app",
-        description="",
-        mode=AppMode.CHAT,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=None,
-    )
-
-
-def _account() -> Account:
-    account = Account(name="Account", email="account@example.com")
-    account.id = "account-1"
-    return account
+from models.enums import ConversationFromSource
+from models.model import AppMode, Conversation, Message
 
 
 def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
@@ -89,7 +59,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         app_mode=AppMode.CHAT,
     )
     message.id = message_id
-    session.add_all([_app(), conversation, message])
+    session.add_all([conversation, message])
     session.flush()
     return message
 
@@ -98,8 +68,8 @@ def test_app_message_routes_pass_injected_session(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     session = unbound_session
-    current_user = _account()
-    app_model = _app()
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", mode="chat")
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     list_messages = MagicMock(return_value={"data": []})
     update_feedback = MagicMock(return_value={"result": "success"})
@@ -131,18 +101,10 @@ def test_app_message_routes_pass_injected_session(
 
 def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_session: Session) -> None:
     message_id = "550e8400-e29b-41d4-a716-446655440000"
+    feedback = SimpleNamespace(rating="dislike", content=None)
+    get_admin_feedback = MagicMock(return_value=feedback)
     message = _persist_message(sqlite_session, message_id=message_id)
-    current_user = _account()
-    feedback = MessageFeedback(
-        app_id=message.app_id,
-        conversation_id=message.conversation_id,
-        message_id=message.id,
-        rating=FeedbackRating.DISLIKE,
-        from_source=FeedbackFromSource.ADMIN,
-        from_account_id=current_user.id,
-    )
-    sqlite_session.add_all([current_user, feedback])
-    sqlite_session.commit()
+    message.admin_feedback_with_session = get_admin_feedback
     session = sqlite_session
     commits: list[str] = []
     event.listen(session, "after_commit", lambda _session: commits.append("commit"))
@@ -150,16 +112,14 @@ def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_ses
     with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
         result = message_module._update_message_feedback(
             session=session,
-            current_user=current_user,
-            app_model=_app(),
+            current_user=SimpleNamespace(id="account-1"),
+            app_model=SimpleNamespace(id="app-1"),
         )
 
     assert result == {"result": "success"}
-    session.expire_all()
-    persisted_feedback = session.get(MessageFeedback, feedback.id)
-    assert persisted_feedback is not None
-    assert persisted_feedback.rating == FeedbackRating.LIKE
-    assert persisted_feedback.content == "helpful"
+    assert feedback.rating == "like"
+    assert feedback.content == "helpful"
+    get_admin_feedback.assert_called_once_with(session=session)
     assert commits == ["commit"]
 
 
@@ -175,7 +135,7 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     result = message_module._get_message_detail(
         session=session,
-        app_model=_app(),
+        app_model=SimpleNamespace(id="app-1"),
         message_id=message_id,
     )
 
@@ -183,43 +143,26 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
     response_source_factory.assert_called_once_with(message, session=session)
 
 
-def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_session: Session) -> None:
-    message = _persist_message(sqlite_session, message_id="message-1")
-    message.inputs = {"topic": "support"}
-    account = _account()
-    feedback = MessageFeedback(
-        app_id=message.app_id,
-        conversation_id=message.conversation_id,
-        message_id=message.id,
-        rating=FeedbackRating.LIKE,
-        from_source=FeedbackFromSource.USER,
-        from_account_id=account.id,
-    )
-    annotation = MessageAnnotation(
-        app_id=message.app_id,
-        question="question",
-        content="annotation",
-        account_id=account.id,
-        conversation_id=message.conversation_id,
-        message_id=message.id,
-    )
-    sqlite_session.add_all([account, feedback, annotation])
-    sqlite_session.flush()
-    annotation_history = AppAnnotationHitHistory(
-        app_id=message.app_id,
-        annotation_id=annotation.id,
-        source="console",
-        question="question",
-        account_id=account.id,
-        score=1,
-        message_id=message.id,
-        annotation_question=annotation.question,
-        annotation_content=annotation.content,
-    )
-    sqlite_session.add(annotation_history)
-    sqlite_session.commit()
+def test_message_response_source_uses_caller_session_for_nested_fields(unbound_session: Session) -> None:
+    session = unbound_session
+    account = object()
+    feedback = MagicMock()
+    feedback.from_account_with_session.return_value = account
+    annotation = MagicMock()
+    annotation.account_with_session.return_value = account
+    annotation.annotation_create_account_with_session.return_value = account
+    thought = object()
+    message_file = {"id": "file-1"}
+    message = MagicMock()
+    message.inputs_with_session.return_value = {"topic": "support"}
+    message.user_feedback_with_session.return_value = feedback
+    message.feedbacks_with_session.return_value = [feedback]
+    message.annotation_with_session.return_value = annotation
+    message.annotation_hit_history_with_session.return_value = annotation
+    message.agent_thoughts_with_session.return_value = [thought]
+    message.message_files_with_session.return_value = [message_file]
 
-    source = message_module.MessageResponseSource(message, session=sqlite_session)
+    source = message_module.MessageResponseSource(message, session=session)
 
     assert source.inputs == {"topic": "support"}
     assert source.user_feedback is feedback
@@ -230,8 +173,18 @@ def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_se
     annotation_hit_history_source = source.annotation_hit_history
     assert annotation_hit_history_source is not None
     assert annotation_hit_history_source.annotation_create_account is account
-    assert source.agent_thoughts == []
-    assert source.message_files == []
+    assert source.agent_thoughts == [thought]
+    assert source.message_files == [message_file]
+    message.inputs_with_session.assert_called_once_with(session=session)
+    message.user_feedback_with_session.assert_called_once_with(session=session)
+    message.feedbacks_with_session.assert_called_once_with(session=session)
+    message.annotation_with_session.assert_called_once_with(session=session)
+    message.annotation_hit_history_with_session.assert_called_once_with(session=session)
+    message.agent_thoughts_with_session.assert_called_once_with(session=session)
+    message.message_files_with_session.assert_called_once_with(session=session)
+    feedback.from_account_with_session.assert_called_once_with(session=session)
+    annotation.account_with_session.assert_called_once_with(session=session)
+    annotation.annotation_create_account_with_session.assert_called_once_with(session=session)
 
 
 def test_chat_messages_query_valid(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
