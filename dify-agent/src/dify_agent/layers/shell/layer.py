@@ -265,8 +265,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     def _build_prefix_prompt(self) -> str:
         execution_context = self.deps.execution_context
         is_build_draft = (
-            execution_context is not None
-            and execution_context.config.agent_config_version_kind == "build_draft"
+            execution_context is not None and execution_context.config.agent_config_version_kind == "build_draft"
         )
         working_location_prompt = (
             _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
