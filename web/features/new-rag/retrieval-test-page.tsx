@@ -425,6 +425,7 @@ function EvidenceCard({
   citationTargeted?: boolean
   documentReference?: {
     id: string
+    revision: number
     title: string
   }
   evidence: RetrievalEvidence
@@ -433,7 +434,10 @@ function EvidenceCard({
 }) {
   const { t } = useTranslation('dataset')
   const openHref = documentReference
-    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentReference.id)
+    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentReference.id, {
+        chunkId: evidence.chunkId,
+        revision: documentReference.revision,
+      })
     : undefined
 
   return (
@@ -1412,7 +1416,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     queryKey: ['retrieval-document-references', knowledgeSpaceId],
     enabled: currentEvidence.some((evidence) => evidence.documentId),
     queryFn: async () => {
-      const references: Record<string, { id: string; title: string }> = {}
+      const references: Record<string, { id: string; revision: number; title: string }> = {}
       const visitedCursors = new Set<string>()
       let cursor: string | undefined
       do {
@@ -1425,6 +1429,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           if (document.active)
             references[document.active.document_asset_id] = {
               id: document.id,
+              revision: document.active.revision,
               title: document.title,
             }
         })

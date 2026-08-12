@@ -21,7 +21,7 @@ const apiMock = vi.hoisted(() => ({
   streamCapability: vi.fn(),
   streamQuery: vi.fn(),
   streamResearchEvents: vi.fn(),
-  documentReferences: {} as Record<string, { id: string; title: string }>,
+  documentReferences: {} as Record<string, { id: string; revision: number; title: string }>,
   evidence: undefined as Record<string, unknown> | undefined,
   evidenceError: false,
   evidenceFetchNextPageError: false,
@@ -1414,7 +1414,7 @@ describe('RetrievalTestPage', () => {
       ],
     }
     apiMock.documentReferences = {
-      'asset-1': { id: 'document-1', title: 'refund-policy.txt' },
+      'asset-1': { id: 'document-1', revision: 2, title: 'refund-policy.txt' },
     }
     const user = userEvent.setup()
     renderPage()
@@ -1423,7 +1423,7 @@ describe('RetrievalTestPage', () => {
 
     expect(
       screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
-    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1')
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1?revision=2&chunk=chunk-1')
     expect(screen.getByText('refund-policy.txt')).toBeInTheDocument()
     expect(
       screen.getByText('dataset.newKnowledge.retrievalTest.revision:{"revision":"2"}'),

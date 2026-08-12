@@ -1,6 +1,7 @@
 import {
   createNewKnowledgeSourceDraft,
   newKnowledgeAddSourcePath,
+  newKnowledgeDocumentDetailPath,
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
   normalizeWebsiteSourceUrl,
@@ -15,6 +16,15 @@ describe('New RAG routes', () => {
 
   it('builds the retrieval test path from the knowledge space id', () => {
     expect(newKnowledgeRetrievalTestPath('space-1')).toBe('/datasets/new/space-1/retrieval')
+  })
+
+  it('builds a document chunk deep link with its revision', () => {
+    expect(
+      newKnowledgeDocumentDetailPath('space-1', 'document-1', {
+        chunkId: 'chunk/with spaces',
+        revision: 3,
+      }),
+    ).toBe('/datasets/new/space-1/documents/document-1?revision=3&chunk=chunk%2Fwith+spaces')
   })
 
   it('keeps source details out of the add-source URL', () => {

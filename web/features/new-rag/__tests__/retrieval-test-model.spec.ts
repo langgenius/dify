@@ -62,6 +62,7 @@ describe('retrieval test model', () => {
       }),
     ).toEqual([
       expect.objectContaining({
+        chunkId: 'node-1',
         documentId: 'document-1',
         id: 'node-1',
         revision: '3',
@@ -119,6 +120,7 @@ describe('retrieval test model', () => {
       }),
     ).toEqual([
       expect.objectContaining({
+        chunkId: 'node-1',
         documentId: 'asset-1',
         revision: 'Revision 2',
         score: 0.45,

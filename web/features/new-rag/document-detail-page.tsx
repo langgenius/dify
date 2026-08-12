@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { createParser, useQueryState } from 'nuqs'
+import { createParser, parseAsString, useQueryStates } from 'nuqs'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -34,6 +34,7 @@ const documentRevisionParser = createParser<number>({
   },
   serialize: String,
 }).withOptions({ history: 'push' })
+const documentChunkParser = parseAsString.withOptions({ history: 'replace' })
 
 function ErrorState({
   description,
@@ -69,7 +70,11 @@ export function DocumentDetailPage({
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
-  const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
+  const [documentLocation, setDocumentLocation] = useQueryStates({
+    chunk: documentChunkParser,
+    revision: documentRevisionParser,
+  })
+  const { chunk: selectedChunkId, revision: selectedRevision } = documentLocation
   const [tasksDrawerOpen, setTasksDrawerOpen] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
@@ -259,7 +264,7 @@ export function DocumentDetailPage({
         isFetchingNextRevisionPage={revisionsQuery.isFetchingNextPage}
         onCancelReindex={() => void cancelReindex()}
         onReindex={() => void reindex()}
-        onRevisionChange={(revision) => void setSelectedRevision(revision)}
+        onRevisionChange={(revision) => void setDocumentLocation({ chunk: null, revision })}
         reindexDisabled={
           !canEdit ||
           reindexBusy ||
@@ -358,10 +363,12 @@ export function DocumentDetailPage({
         effectiveRevision={effectiveRevision}
         knowledgeSpaceId={knowledgeSpaceId}
         locale={locale}
+        onSelectChunk={(chunkId) => void setDocumentLocation({ chunk: chunkId })}
         revision={activeRevision}
         revisionHistoryError={Boolean(revisionsQuery.error)}
         revisionHistoryPending={revisionsQuery.isPending}
         retryRevisionHistory={() => void revisionsQuery.refetch()}
+        selectedChunkId={selectedChunkId ?? undefined}
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}

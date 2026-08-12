@@ -7,7 +7,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { chunkCharacterCount, chunkContentParts } from './document-detail-model'
@@ -80,6 +80,7 @@ export function DocumentChunkDetail({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const contentScrollRef = useRef<HTMLDivElement>(null)
   const characterCount = useMemo(
     () => chunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
     [chunks],
@@ -115,11 +116,25 @@ export function DocumentChunkDetail({
       : undefined
 
   useEffect(() => {
-    if (!selectedChunkId) return
-    globalThis.document
-      ?.getElementById(`document-chunk-${selectedChunkId}`)
-      ?.scrollIntoView({ block: 'nearest' })
-  }, [selectedChunkId])
+    const animationFrame = globalThis.requestAnimationFrame(() => {
+      const contentScroll = contentScrollRef.current
+      const selectedChunk = selectedChunkId
+        ? globalThis.document?.getElementById(`document-chunk-${selectedChunkId}`)
+        : undefined
+      if (!contentScroll || !selectedChunk) return
+
+      const contentRect = contentScroll.getBoundingClientRect()
+      const chunkRect = selectedChunk.getBoundingClientRect()
+      const chunkTop = contentScroll.scrollTop + chunkRect.top - contentRect.top
+      const chunkBottom = chunkTop + chunkRect.height
+      if (chunkTop < contentScroll.scrollTop)
+        contentScroll.scrollTo({ top: Math.max(0, chunkTop - 16), behavior: 'instant' })
+      else if (chunkBottom > contentScroll.scrollTop + contentScroll.clientHeight)
+        contentScroll.scrollTo({ top: Math.max(0, chunkTop - 16), behavior: 'instant' })
+    })
+
+    return () => globalThis.cancelAnimationFrame(animationFrame)
+  }, [chunks, outlineNodesByChunkId, outlineSummaryChunkIds, selectedChunkId])
 
   return (
     <>
@@ -129,6 +144,7 @@ export function DocumentChunkDetail({
       >
         {chunks.length ? (
           <div
+            ref={contentScrollRef}
             className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:h-full xl:max-h-none xl:px-0"
             data-testid="chunk-content-scroll"
           >

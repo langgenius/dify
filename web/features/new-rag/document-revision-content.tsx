@@ -3,7 +3,7 @@
 import type { LogicalDocument, LogicalDocumentRevision } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
@@ -19,10 +19,12 @@ export function DocumentRevisionContent({
   effectiveRevision,
   knowledgeSpaceId,
   locale,
+  onSelectChunk,
   revision,
   revisionHistoryError,
   revisionHistoryPending,
   retryRevisionHistory,
+  selectedChunkId,
 }: {
   canEdit: boolean
   document: LogicalDocument
@@ -30,10 +32,12 @@ export function DocumentRevisionContent({
   effectiveRevision?: number
   knowledgeSpaceId: string
   locale: string
+  onSelectChunk: (chunkId: string) => void
   revision?: Exclude<LogicalDocumentRevision, null>
   revisionHistoryError: boolean
   revisionHistoryPending: boolean
   retryRevisionHistory: () => void
+  selectedChunkId?: string
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -82,7 +86,9 @@ export function DocumentRevisionContent({
       effectiveRevision={effectiveRevision}
       knowledgeSpaceId={knowledgeSpaceId}
       locale={locale}
+      onSelectChunk={onSelectChunk}
       revision={revision}
+      selectedChunkId={selectedChunkId}
     />
   )
 }
@@ -94,7 +100,9 @@ function LoadedDocumentRevisionContent({
   effectiveRevision,
   knowledgeSpaceId,
   locale,
+  onSelectChunk,
   revision,
+  selectedChunkId,
 }: {
   canEdit: boolean
   document: LogicalDocument
@@ -102,14 +110,21 @@ function LoadedDocumentRevisionContent({
   effectiveRevision: number
   knowledgeSpaceId: string
   locale: string
+  onSelectChunk: (chunkId: string) => void
   revision?: Exclude<LogicalDocumentRevision, null>
+  selectedChunkId?: string
 }) {
-  const [selectedChunkId, setSelectedChunkId] = useState<string>()
   const chunksQueryOptions = useMemo(
     () => documentChunksQueryOptions({ documentId, effectiveRevision, knowledgeSpaceId }),
     [documentId, effectiveRevision, knowledgeSpaceId],
   )
   const chunksQuery = useInfiniteQuery(chunksQueryOptions)
+  const {
+    fetchNextPage: fetchNextChunkPage,
+    hasNextPage: hasNextChunkPage,
+    isFetchNextPageError: isFetchNextChunkPageError,
+    isFetchingNextPage: isFetchingNextChunkPage,
+  } = chunksQuery
   const documentAsset =
     revision ?? (document.active?.revision === effectiveRevision ? document.active : undefined)
   const outlineQueryOptions = useMemo(
@@ -135,8 +150,29 @@ function LoadedDocumentRevisionContent({
       outline && outline.version === documentAsset?.documentAssetVersion ? outline.nodes : [],
     )
   }, [chunks, documentAsset?.documentAssetVersion, outlineQuery.data])
-  const selectedChunk =
-    (selectedChunkId ? tree.chunksById.get(selectedChunkId) : undefined) ?? tree.roots[0]?.chunk
+  const targetedChunk = selectedChunkId ? tree.chunksById.get(selectedChunkId) : undefined
+  const targetLookupComplete =
+    !selectedChunkId || (!chunksQuery.isPending && (!hasNextChunkPage || isFetchNextChunkPageError))
+  const selectedChunk = targetedChunk ?? (targetLookupComplete ? tree.roots[0]?.chunk : undefined)
+
+  useEffect(() => {
+    if (
+      !selectedChunkId ||
+      targetedChunk ||
+      !hasNextChunkPage ||
+      isFetchingNextChunkPage ||
+      isFetchNextChunkPageError
+    )
+      return
+    void fetchNextChunkPage()
+  }, [
+    fetchNextChunkPage,
+    hasNextChunkPage,
+    isFetchNextChunkPageError,
+    isFetchingNextChunkPage,
+    selectedChunkId,
+    targetedChunk,
+  ])
 
   return (
     <div className="mt-7 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
@@ -149,7 +185,7 @@ function LoadedDocumentRevisionContent({
         isFetchingNextPage={chunksQuery.isFetchingNextPage}
         isPending={chunksQuery.isPending}
         onRetry={() => void chunksQuery.refetch()}
-        onSelectChunk={setSelectedChunkId}
+        onSelectChunk={onSelectChunk}
         selectedChunkId={selectedChunk?.id}
         tree={tree}
       />

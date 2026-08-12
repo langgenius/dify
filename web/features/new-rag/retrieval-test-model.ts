@@ -6,6 +6,7 @@ import type {
 export type RetrievalTestMode = 'deep' | 'fast' | 'research'
 
 export type RetrievalEvidence = {
+  chunkId?: string
   documentId?: string
   documentName?: string
   id: string
@@ -153,6 +154,17 @@ function evidenceFromValue(
     record.name,
     context.includes('chunk') ? record.name : undefined,
   )
+  const resourceType = firstString(record.resource_type, record.resourceType)
+  const chunkId = firstString(
+    record.chunk_id,
+    record.chunkId,
+    record.node_id,
+    record.nodeId,
+    metadata.chunk_id,
+    metadata.chunkId,
+    resourceType === 'node' ? record.target_id : undefined,
+    resourceType === 'node' ? record.targetId : undefined,
+  )
   const hasEvidenceSignal = Boolean(
     score !== undefined ||
     documentName ||
@@ -164,18 +176,8 @@ function evidenceFromValue(
   )
   if (!text || !hasEvidenceSignal) return undefined
   const id =
-    firstString(
-      record.id,
-      record.chunk_id,
-      record.chunkId,
-      record.node_id,
-      record.nodeId,
-      record.target_id,
-      record.targetId,
-      metadata.id,
-      metadata.chunk_id,
-      metadata.chunkId,
-    ) ?? `${context}-${index}-${text.slice(0, 24)}`
+    firstString(record.id, chunkId, record.target_id, record.targetId, metadata.id) ??
+    `${context}-${index}-${text.slice(0, 24)}`
   const images = [
     ...stringArray(record.images),
     ...stringArray(record.files),
@@ -185,6 +187,7 @@ function evidenceFromValue(
   ]
 
   return {
+    chunkId,
     documentId,
     documentName,
     id,

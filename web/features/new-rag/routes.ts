@@ -242,8 +242,17 @@ export const newKnowledgeQualityPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/settings`
 
-export const newKnowledgeDocumentDetailPath = (knowledgeSpaceId: string, documentId: string) =>
-  `/datasets/new/${knowledgeSpaceId}/documents/${documentId}`
+export const newKnowledgeDocumentDetailPath = (
+  knowledgeSpaceId: string,
+  documentId: string,
+  { chunkId, revision }: { chunkId?: string; revision?: number } = {},
+) => {
+  const searchParams = new URLSearchParams()
+  if (revision !== undefined) searchParams.set('revision', String(revision))
+  if (chunkId) searchParams.set('chunk', chunkId)
+  const query = searchParams.toString()
+  return `/datasets/new/${knowledgeSpaceId}/documents/${documentId}${query ? `?${query}` : ''}`
+}
 
 type NewKnowledgeAddSourcePathOptions = {
   draftKey?: string

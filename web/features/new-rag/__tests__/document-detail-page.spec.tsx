@@ -1895,6 +1895,61 @@ describe('DocumentDetailPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.documentContentIncomplete')).toBeNull()
   })
 
+  it('loads and selects a chunk targeted by the document deep link', async () => {
+    const getBoundingClientRect = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        const top =
+          this.id === 'document-chunk-target'
+            ? 500
+            : this.getAttribute('data-testid') === 'chunk-content-scroll'
+              ? 100
+              : 0
+        return {
+          bottom: top + 40,
+          height: 40,
+          left: 0,
+          right: 100,
+          top,
+          width: 100,
+          x: 0,
+          y: top,
+          toJSON: () => ({}),
+        }
+      })
+    chunksQuery.data = {
+      pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
+    }
+    chunksQuery.hasNextPage = true
+
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+      { searchParams: '?revision=3&chunk=target' },
+    )
+
+    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
+    expect(screen.getByRole('treeitem', { name: 'First chunk' })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+
+    chunksQuery.data = {
+      pages: [
+        { items: [chunk({ id: 'first', text: 'First chunk' })] },
+        { items: [chunk({ id: 'target', ordinal: 2, text: 'Target chunk' })] },
+      ],
+    }
+    chunksQuery.hasNextPage = false
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('treeitem', { name: 'Target chunk' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await waitFor(() => expect(screen.getByTestId('chunk-content-scroll').scrollTop).toBe(384))
+    getBoundingClientRect.mockRestore()
+  })
+
   it('distinguishes missing, restricted, and retryable document failures', async () => {
     const user = userEvent.setup()
     documentQuery.data = undefined
