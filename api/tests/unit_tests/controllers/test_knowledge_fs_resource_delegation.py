@@ -8,33 +8,39 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import (
-    Conflict,
-    NotFound,
-    RequestEntityTooLarge,
-    ServiceUnavailable,
-    UnprocessableEntity,
-)
+from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 from controllers.console.knowledge_fs import resources as console_resources
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
+    KnowledgeFSConflictHTTPError,
     KnowledgeFSInvalidRequestHTTPError,
     KnowledgeFSOperationUnavailableHTTPError,
+    KnowledgeFSRateLimitHTTPError,
+    KnowledgeFSRequestRejectedHTTPError,
+    KnowledgeFSRequestTooLargeHTTPError,
+    KnowledgeFSResourceNotFoundHTTPError,
     KnowledgeFSSpaceNotFoundHTTPError,
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
 from controllers.service_api.knowledge_fs import resources as service_resources
 from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSInvalidCredentialHTTPError,
+    KnowledgeFSServiceAccessDeniedHTTPError,
+    KnowledgeFSServiceConflictHTTPError,
     KnowledgeFSServiceInvalidRequestHTTPError,
     KnowledgeFSServiceOperationUnavailableHTTPError,
+    KnowledgeFSServiceRateLimitHTTPError,
+    KnowledgeFSServiceRequestRejectedHTTPError,
+    KnowledgeFSServiceRequestTooLargeHTTPError,
+    KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewBaseStatsResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSPublicFailureResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSStreamCapabilityPayload,
 )
@@ -1277,9 +1283,11 @@ def test_console_request_rejections_preserve_conflict_size_and_validation_contra
 
     expected = {
         HTTPStatus.BAD_REQUEST: KnowledgeFSInvalidRequestHTTPError,
-        HTTPStatus.CONFLICT: Conflict,
-        HTTPStatus.REQUEST_ENTITY_TOO_LARGE: RequestEntityTooLarge,
-        HTTPStatus.UNPROCESSABLE_ENTITY: UnprocessableEntity,
+        HTTPStatus.FORBIDDEN: KnowledgeFSAccessDeniedHTTPError,
+        HTTPStatus.CONFLICT: KnowledgeFSConflictHTTPError,
+        HTTPStatus.REQUEST_ENTITY_TOO_LARGE: KnowledgeFSRequestTooLargeHTTPError,
+        HTTPStatus.UNPROCESSABLE_ENTITY: KnowledgeFSRequestRejectedHTTPError,
+        HTTPStatus.TOO_MANY_REQUESTS: KnowledgeFSRateLimitHTTPError,
     }
     for status, http_error in expected.items():
         reject = console_resources._knowledge_fs_errors(
@@ -1288,6 +1296,41 @@ def test_console_request_rejections_preserve_conflict_size_and_validation_contra
 
         with pytest.raises(http_error):
             reject()
+
+
+def test_console_request_rejection_preserves_safe_failure_metadata() -> None:
+    from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "action": "configure_model",
+            "category": "configuration",
+            "code": "MODEL_SELECTION_NOT_FOUND",
+            "message": "Select another model before retrying.",
+            "retryPolicy": "after_configuration",
+            "traceId": "trace-model",
+        }
+    )
+    reject = console_resources._knowledge_fs_errors(
+        MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=422, failure=failure))
+    )
+
+    with pytest.raises(KnowledgeFSRequestRejectedHTTPError) as raised:
+        reject()
+
+    assert raised.value.data == {
+        "code": "knowledge_fs_request_rejected",
+        "message": "The KnowledgeFS operation requires a configuration change before it can continue.",
+        "status": 422,
+        "failure": {
+            "action": "configure_model",
+            "category": "configuration",
+            "code": "MODEL_SELECTION_NOT_FOUND",
+            "message": "The KnowledgeFS operation requires a configuration change before it can continue.",
+            "retryPolicy": "after_configuration",
+            "traceId": "trace-model",
+        },
+    }
 
 
 def test_jwks_resource_fails_closed_for_disabled_missing_and_misconfigured_issuers(
@@ -1332,7 +1375,7 @@ def test_console_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     validation_error = raised_validation.value
     mappings = (
         (KnowledgeFSProductNotFoundError("hidden"), KnowledgeFSSpaceNotFoundHTTPError),
-        (KnowledgeFSProductResourceNotFoundError("missing child"), NotFound),
+        (KnowledgeFSProductResourceNotFoundError("missing child"), KnowledgeFSResourceNotFoundHTTPError),
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSOperationUnavailableHTTPError),
         (KnowledgeFSProductRemoteError("upstream unavailable"), KnowledgeFSUpstreamUnavailableHTTPError),
         (KnowledgeFSAppBindingManagementError("invalid binding"), KnowledgeFSInvalidRequestHTTPError),
@@ -1358,6 +1401,7 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     from services.knowledge_fs.credential_service import KnowledgeFSCredentialValidationError
     from services.knowledge_fs.product_remote import (
         KnowledgeFSProductRemoteError,
+        KnowledgeFSProductRequestRejectedError,
         KnowledgeFSProductResourceNotFoundError,
     )
 
@@ -1367,7 +1411,10 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     mappings = (
         (KnowledgeFSCredentialValidationError("revoked"), KnowledgeFSInvalidCredentialHTTPError),
         (KnowledgeFSOperationUnavailableError("manifest mismatch"), KnowledgeFSServiceOperationUnavailableHTTPError),
-        (KnowledgeFSProductResourceNotFoundError("missing child"), NotFound),
+        (
+            KnowledgeFSProductResourceNotFoundError("missing child"),
+            KnowledgeFSServiceResourceNotFoundHTTPError,
+        ),
         (KnowledgeFSProductRemoteError("upstream unavailable"), KnowledgeFSServiceUpstreamUnavailableHTTPError),
         (validation_error, KnowledgeFSServiceInvalidRequestHTTPError),
     )
@@ -1375,6 +1422,21 @@ def test_service_error_adapter_maps_every_domain_boundary_to_the_stable_http_con
     for domain_error, http_error in mappings:
         fail = service_resources._service_api_errors(MagicMock(side_effect=domain_error))
 
+        with pytest.raises(http_error):
+            fail()
+
+    rejected_mappings = (
+        (HTTPStatus.BAD_REQUEST, KnowledgeFSServiceInvalidRequestHTTPError),
+        (HTTPStatus.FORBIDDEN, KnowledgeFSServiceAccessDeniedHTTPError),
+        (HTTPStatus.CONFLICT, KnowledgeFSServiceConflictHTTPError),
+        (HTTPStatus.REQUEST_ENTITY_TOO_LARGE, KnowledgeFSServiceRequestTooLargeHTTPError),
+        (HTTPStatus.UNPROCESSABLE_ENTITY, KnowledgeFSServiceRequestRejectedHTTPError),
+        (HTTPStatus.TOO_MANY_REQUESTS, KnowledgeFSServiceRateLimitHTTPError),
+    )
+    for status, http_error in rejected_mappings:
+        fail = service_resources._service_api_errors(
+            MagicMock(side_effect=KnowledgeFSProductRequestRejectedError(status_code=status))
+        )
         with pytest.raises(http_error):
             fail()
 

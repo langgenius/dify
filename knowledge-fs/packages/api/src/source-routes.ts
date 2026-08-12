@@ -5,6 +5,7 @@ import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contr
 import {
   CandidateVisibilityScanBudgetExceededResponseSchema,
   ErrorResponseSchema,
+  KnowledgeFsPublicFailureSchema,
 } from "./gateway-route-schemas";
 import {
   BrowseSourceFilesQuerySchema,
@@ -43,10 +44,11 @@ export const SourceWorkflowRunResponseSchema = z
     createdAt: z.string(),
     cursor: z.string().optional(),
     executionAttempts: z.number().int(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
     kind: z.string(),
-    lastErrorCode: z.string().optional(),
+    lastErrorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
     maxExecutionAttempts: z.number().int(),
     progressCompleted: z.number().int(),
     progressFailed: z.number().int(),
@@ -297,7 +299,14 @@ const OnlineDocumentPagesResponseSchema = z
 const SourceImportResponseSchema = z
   .object({
     documents: z.array(z.object({ documentAssetId: z.string(), filename: z.string() })),
-    failed: z.array(z.object({ code: z.string(), error: z.string(), filename: z.string() })),
+    failed: z.array(
+      z.object({
+        code: KnowledgeFsPublicFailureSchema.shape.code,
+        error: KnowledgeFsPublicFailureSchema.shape.message,
+        failure: KnowledgeFsPublicFailureSchema,
+        filename: z.string(),
+      }),
+    ),
     skipped: z.array(z.string()),
   })
   .openapi("SourceImportResult");
@@ -341,8 +350,9 @@ export const listSourcePagesRoute = createRoute({
 
 const SourceCredentialTestResponseSchema = z
   .object({
-    code: z.string().optional(),
+    code: KnowledgeFsPublicFailureSchema.shape.code.optional(),
     error: z.string().optional(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
     valid: z.boolean(),
   })
   .openapi("SourceCredentialTest");

@@ -8,11 +8,20 @@ from typing import Literal, NamedTuple, Protocol
 
 from pydantic import JsonValue
 
-from services.knowledge_fs.product_dto import KnowledgeFSTechnicalSummary
+from services.knowledge_fs.product_dto import KnowledgeFSPublicFailureResponse, KnowledgeFSTechnicalSummary
 
 
 class KnowledgeFSProductRemoteError(RuntimeError):
     """KnowledgeFS could not provide an authoritative product response."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure: KnowledgeFSPublicFailureResponse | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.failure = failure
 
 
 class KnowledgeFSProductResourceNotFoundError(KnowledgeFSProductRemoteError):
@@ -26,9 +35,15 @@ class KnowledgeFSOperationUnavailableError(RuntimeError):
 class KnowledgeFSProductRequestRejectedError(RuntimeError):
     """A bounded product request was rejected locally or by authoritative KFS validation."""
 
-    def __init__(self, *, status_code: Literal[400, 409, 413, 422]) -> None:
+    def __init__(
+        self,
+        *,
+        status_code: Literal[400, 403, 409, 413, 422, 429],
+        failure: KnowledgeFSPublicFailureResponse | None = None,
+    ) -> None:
         super().__init__(f"KnowledgeFS rejected the product request with HTTP {status_code}")
         self.status_code = status_code
+        self.failure = failure
 
 
 class KnowledgeFSRemoteJSONRequest(NamedTuple):

@@ -529,7 +529,10 @@ describe("knowledge-space gateway integration", () => {
           pluginId: "plugin-reasoning",
           provider: "provider-a",
         },
-        rerank: { enabled: false },
+        rerank: {
+          enabled: true,
+          model: { model: "rerank-a", pluginId: "plugin-rerank", provider: "provider-a" },
+        },
         scoreThreshold: { enabled: false, stage: "mode-final" },
         topK: 5,
       },
@@ -805,7 +808,10 @@ describe("knowledge-space gateway integration", () => {
             pluginId: "reasoning-plugin",
             provider: "provider-a",
           },
-          rerank: { enabled: false },
+          rerank: {
+            enabled: true,
+            model: { model: "rerank-a", pluginId: "plugin-rerank", provider: "provider-a" },
+          },
           scoreThreshold: { enabled: false, stage: "mode-final" },
           topK: 6,
         },
@@ -877,7 +883,10 @@ describe("knowledge-space gateway integration", () => {
             pluginId: "plugin-reasoning",
             provider: "provider-a",
           },
-          rerank: { enabled: false },
+          rerank: {
+            enabled: true,
+            model: { model: "rerank-a", pluginId: "plugin-rerank", provider: "provider-a" },
+          },
           scoreThreshold: { enabled: false, stage: "mode-final" },
           topK: 5,
         },
@@ -950,7 +959,14 @@ describe("knowledge-space gateway integration", () => {
         pluginId: "plugin-reasoning-a",
         provider: "provider-a",
       },
-      rerank: { enabled: false as const },
+      rerank: {
+        enabled: true as const,
+        model: {
+          model: "rerank-a",
+          pluginId: "plugin-rerank-a",
+          provider: "provider-a",
+        },
+      },
       scoreThreshold: { enabled: false as const, stage: "mode-final" as const },
       topK: 5,
     };
@@ -1005,7 +1021,14 @@ describe("knowledge-space gateway integration", () => {
             pluginId: "plugin-reasoning-b",
             provider: "provider-b",
           },
-          rerank: { enabled: false },
+          rerank: {
+            enabled: true,
+            model: {
+              model: "rerank-a",
+              pluginId: "plugin-rerank-a",
+              provider: "provider-a",
+            },
+          },
           scoreThreshold: { enabled: false, stage: "mode-final" },
           topK: 5,
         },

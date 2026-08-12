@@ -9,11 +9,47 @@ import {
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED,
   CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED_MESSAGE,
 } from "./candidate-content-authorization";
+import {
+  KnowledgeFsErrorCategoryValues,
+  KnowledgeFsErrorCodeValues,
+  KnowledgeFsFailureParameterKeyValues,
+  KnowledgeFsRecoveryActionValues,
+  KnowledgeFsRetryPolicyValues,
+} from "./knowledge-fs-errors";
 import { QueryImageReferencesSchema, hasQueryInput } from "./query-images";
+
+export const KnowledgeFsPublicFailureSchema = z
+  .object({
+    action: z.enum(KnowledgeFsRecoveryActionValues).optional(),
+    category: z.enum(KnowledgeFsErrorCategoryValues),
+    code: z.enum(KnowledgeFsErrorCodeValues),
+    message: z.string().min(1).max(1_024),
+    parameters: z
+      .record(
+        z.enum(KnowledgeFsFailureParameterKeyValues),
+        z.union([z.string().max(256), z.number().finite(), z.boolean()]),
+      )
+      .optional(),
+    retryPolicy: z.enum(KnowledgeFsRetryPolicyValues),
+    stage: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[a-z][a-z0-9_.-]{0,127}$/u)
+      .optional(),
+    traceId: z
+      .string()
+      .min(1)
+      .max(128)
+      .regex(/^[A-Za-z0-9._:-]{1,128}$/u)
+      .optional(),
+  })
+  .strict();
 
 export const ErrorResponseSchema = z.object({
   code: z.string().optional(),
   error: z.string(),
+  failure: KnowledgeFsPublicFailureSchema.optional(),
 });
 
 export const CandidateVisibilityScanBudgetExceededResponseSchema = z

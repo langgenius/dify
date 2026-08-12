@@ -20,15 +20,21 @@ describe("profile-aware manifest repository", () => {
     const legacy = createKnowledgeSpaceRetrievalProfile({
       defaultMode: "fast",
       reasoningModel: { model: "old", pluginId: "p", provider: "v" },
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: false, stage: "mode-final" },
+      rerank: {
+        enabled: true,
+        model: { model: "rerank-old", pluginId: "p", provider: "v" },
+      },
+      scoreThreshold: { enabled: false, stage: "rerank" },
       topK: 3,
     });
     const active = createKnowledgeSpaceRetrievalProfile(
       {
         defaultMode: "research",
         reasoningModel: { model: "new", pluginId: "p", provider: "v" },
-        rerank: { enabled: false },
+        rerank: {
+          enabled: true,
+          model: { model: "rerank-new", pluginId: "p", provider: "v" },
+        },
         scoreThreshold: { enabled: false, stage: "mode-final" },
         topK: 9,
       },

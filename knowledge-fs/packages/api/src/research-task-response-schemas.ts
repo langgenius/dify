@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { EvidenceBundleSchema } from "@knowledge/core";
 
+import { KnowledgeFsPublicFailureSchema } from "./gateway-route-schemas";
 import { RESEARCH_TASK_PARTIAL_ANSWER_MAX_CHARS } from "./research-task-job";
 
 export const ResearchTaskJobResponseSchema = z
@@ -23,6 +24,7 @@ export const ResearchTaskJobResponseSchema = z
     }),
     createdAt: z.number(),
     error: z.string().optional(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
     id: z.string().min(1),
     knowledgeSpaceId: z.string().min(1),
     limits: z

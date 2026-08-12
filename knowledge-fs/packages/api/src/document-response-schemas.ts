@@ -6,6 +6,8 @@ import {
   TenantIdSchema,
 } from "@knowledge/core";
 
+import { KnowledgeFsPublicFailureSchema } from "./gateway-route-schemas";
+
 export const DocumentAssetResponseSchema = DocumentAssetSchema.openapi("DocumentAsset");
 export const DocumentMultimodalManifestResponseSchema = DocumentMultimodalManifestSchema.openapi(
   "DocumentMultimodalManifest",
@@ -157,6 +159,7 @@ export const DocumentCompilationJobResponseSchema = z
     createdAt: z.number(),
     documentAssetId: z.string().min(1),
     error: z.string().optional(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
     executionAttempts: z.number().int().nonnegative().optional(),
     id: z.string().min(1),
     knowledgeSpaceId: z.string().min(1),

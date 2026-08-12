@@ -10,7 +10,7 @@ from typing import Literal
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, JsonValue, ValidationError
-from werkzeug.exceptions import NotFound, RequestEntityTooLarge
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.schema import (
@@ -21,8 +21,14 @@ from controllers.common.schema import (
 from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs.error import (
     KnowledgeFSInvalidCredentialHTTPError,
+    KnowledgeFSServiceAccessDeniedHTTPError,
+    KnowledgeFSServiceConflictHTTPError,
     KnowledgeFSServiceInvalidRequestHTTPError,
     KnowledgeFSServiceOperationUnavailableHTTPError,
+    KnowledgeFSServiceRateLimitHTTPError,
+    KnowledgeFSServiceRequestRejectedHTTPError,
+    KnowledgeFSServiceRequestTooLargeHTTPError,
+    KnowledgeFSServiceResourceNotFoundHTTPError,
     KnowledgeFSServiceUpstreamUnavailableHTTPError,
 )
 from core.db.session_factory import session_factory
@@ -174,13 +180,21 @@ def _service_api_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except KnowledgeFSOperationUnavailableError as exc:
             raise KnowledgeFSServiceOperationUnavailableHTTPError() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:
-            raise NotFound() from exc
+            raise KnowledgeFSServiceResourceNotFoundHTTPError(exc.failure) from exc
         except KnowledgeFSProductRemoteError as exc:
-            raise KnowledgeFSServiceUpstreamUnavailableHTTPError() from exc
+            raise KnowledgeFSServiceUpstreamUnavailableHTTPError(exc.failure) from exc
         except KnowledgeFSProductRequestRejectedError as exc:
+            if exc.status_code == HTTPStatus.FORBIDDEN:
+                raise KnowledgeFSServiceAccessDeniedHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.CONFLICT:
+                raise KnowledgeFSServiceConflictHTTPError(exc.failure) from exc
             if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
-                raise RequestEntityTooLarge() from exc
-            raise KnowledgeFSServiceInvalidRequestHTTPError() from exc
+                raise KnowledgeFSServiceRequestTooLargeHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
+                raise KnowledgeFSServiceRequestRejectedHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+                raise KnowledgeFSServiceRateLimitHTTPError(exc.failure) from exc
+            raise KnowledgeFSServiceInvalidRequestHTTPError(exc.failure) from exc
         except ValidationError as exc:
             raise KnowledgeFSServiceInvalidRequestHTTPError() from exc
 

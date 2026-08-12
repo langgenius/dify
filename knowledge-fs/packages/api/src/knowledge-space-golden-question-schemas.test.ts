@@ -91,7 +91,14 @@ describe("knowledge-space-golden-question-schemas", () => {
             pluginId: "openai-plugin",
             provider: "openai",
           },
-          rerank: { enabled: false },
+          rerank: {
+            enabled: true,
+            model: {
+              model: "rerank-v3",
+              pluginId: "cohere-plugin",
+              provider: "cohere",
+            },
+          },
           scoreThreshold: { enabled: false, stage: "rerank" },
           topK: 3,
         },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { isRegisteredKnowledgeFsErrorCode } from "./knowledge-fs-errors";
 import { OnlineDocumentConnectorConfigError } from "./online-document-connector";
 import { OnlineDriveConnectorConfigError } from "./online-drive-connector";
 import {
@@ -19,6 +20,12 @@ import {
 import { WebsiteCrawlConnectorConfigError } from "./website-crawl-connector";
 
 describe("safeSourceOperationError", () => {
+  it("registers every public source-operation fallback in the common error catalog", () => {
+    for (const failure of Object.values(SOURCE_OPERATION_FAILURES)) {
+      expect(isRegisteredKnowledgeFsErrorCode(failure.code), failure.code).toBe(true);
+    }
+  });
+
   it("maps unknown connector failures without retaining secret-bearing messages", () => {
     const failure = safeSourceOperationError(
       "websiteCrawl",

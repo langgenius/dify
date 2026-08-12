@@ -40,6 +40,21 @@ describe("research-task-response-schemas", () => {
       mode: "deep",
       topK: 7,
     });
+    expect(
+      ResearchTaskJobResponseSchema.parse({
+        ...job,
+        error: "RESEARCH_TASK_FAILED",
+        failure: {
+          action: "contact_admin",
+          category: "internal",
+          code: "RESEARCH_TASK_FAILED",
+          message: "The research task could not be completed.",
+          retryPolicy: "manual",
+          traceId: "research-1",
+        },
+        stage: "failed",
+      }),
+    ).toMatchObject({ failure: { code: "RESEARCH_TASK_FAILED" }, stage: "failed" });
 
     expect(
       ResearchTaskPartialResultListResponseSchema.parse({

@@ -378,7 +378,6 @@ describe("derived result authorization", () => {
   it("exposes only public research-task, workspace snapshot, and replay fields", () => {
     const job = researchTaskJob({
       completedAt: 2_000,
-      error: "completed with warning",
       heartbeatAt: 1_500,
       leaseToken: "secret-lease",
       queueJobId: "queue-1",
@@ -389,7 +388,6 @@ describe("derived result authorization", () => {
       completedAt: 2_000,
       cost: job.cost,
       createdAt: 1_000,
-      error: "completed with warning",
       id: "research-task-1",
       knowledgeSpaceId,
       limits: { maxToolCalls: 4 },
@@ -400,6 +398,27 @@ describe("derived result authorization", () => {
       topK: 8,
       updatedAt: 2_000,
     });
+
+    expect(
+      toPublicResearchTaskJob(
+        researchTaskJob({ error: "provider credential=secret", stage: "failed" }),
+      ),
+    ).toMatchObject({
+      error: "RESEARCH_TASK_FAILED",
+      failure: {
+        code: "RESEARCH_TASK_FAILED",
+        message:
+          "The research task could not be completed. Try again, or contact an administrator with the error reference.",
+        traceId: "research-task-1",
+      },
+    });
+    expect(
+      JSON.stringify(
+        toPublicResearchTaskJob(
+          researchTaskJob({ error: "provider credential=secret", stage: "failed" }),
+        ),
+      ),
+    ).not.toContain("credential=secret");
 
     const snapshot = agentWorkspaceSnapshot();
     expect(toPublicAgentWorkspaceSnapshot(snapshot)).toEqual(

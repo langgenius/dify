@@ -246,7 +246,13 @@ describe("research task job state machine", () => {
 
     await machine.fail(failedJob.id, "retriever unavailable", { retryAt: 2_000 });
     await expect(machine.get(failedJob.id)).resolves.toMatchObject({
-      error: "retriever unavailable",
+      error: "RESEARCH_TASK_FAILED",
+      failure: {
+        action: "contact_admin",
+        category: "internal",
+        code: "RESEARCH_TASK_FAILED",
+        retryPolicy: "manual",
+      },
       stage: "failed",
     });
     expect(queue.failed).toEqual([

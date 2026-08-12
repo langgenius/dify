@@ -12,26 +12,33 @@ import type { BasicHybridRetriever, RetrieveHybridInput } from "./retrieval-type
 const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 
 describe("final rerank capability gating", () => {
-  it("uses a knowledge-space factory without requiring a legacy deployment default", async () => {
-    const factory = vi.fn(() => passThroughReranker());
-    const retriever = createFinalRerankRetrieval({
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      rerankerFactory: factory,
-      retriever: baseRetriever(),
-    });
+  it.each(["fast", "deep"] as const)(
+    "publishes the configured rerank score for %s without requiring a legacy deployment default",
+    async (mode) => {
+      const factory = vi.fn(() => passThroughReranker());
+      const retriever = createFinalRerankRetrieval({
+        planner: createRetrievalPlanner({ maxTopK: 100 }),
+        rerankerFactory: factory,
+        retriever: baseRetriever(),
+      });
 
-    const result = await retriever.retrieve(input("fast", enabledProfile()));
+      const result = await retriever.retrieve(input(mode, enabledProfile()));
 
-    expect(factory).toHaveBeenCalledWith({
-      model: "space-reranker",
-      pluginId: "vendor/reranker",
-      provider: "vendor",
-    });
-    expect(result.items[0]?.metadata).toMatchObject({
-      rerankModel: "space-reranker",
-      rerankScore: 0.9,
-    });
-  });
+      expect(factory).toHaveBeenCalledWith({
+        model: "space-reranker",
+        pluginId: "vendor/reranker",
+        provider: "vendor",
+      });
+      expect(result.items[0]).toMatchObject({
+        metadata: {
+          rerankModel: "space-reranker",
+          rerankScore: 0.9,
+          retrievalScore: 0.5,
+        },
+        score: 0.9,
+      });
+    },
+  );
 
   it.each(["fast", "deep"] as const)(
     "fails closed for %s when the profile requires an unavailable capability",
@@ -92,17 +99,19 @@ describe("final rerank capability gating", () => {
     expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
   });
 
-  it("does not require a capability when the profile explicitly disables reranking", async () => {
-    const retriever = createFinalRerankRetrieval({
-      planner: createRetrievalPlanner({ maxTopK: 100 }),
-      retriever: baseRetriever(),
-    });
+  it.each(["fast", "deep"] as const)(
+    "rejects a legacy %s profile that has no rerank model",
+    async (mode) => {
+      const retriever = createFinalRerankRetrieval({
+        planner: createRetrievalPlanner({ maxTopK: 100 }),
+        retriever: baseRetriever(),
+      });
 
-    const result = await retriever.retrieve(input("fast", disabledProfile()));
-
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.metadata.rerankScore).toBeUndefined();
-  });
+      await expect(retriever.retrieve(input(mode, disabledProfile()))).rejects.toThrow(
+        "Knowledge-space Fast/Deep retrieval requires an enabled rerank model",
+      );
+    },
+  );
 
   it("normalizes out-of-range retrieval scores and orders by the public score without reranking", async () => {
     const retriever = createFinalRerankRetrieval({
@@ -115,7 +124,7 @@ describe("final rerank capability gating", () => {
     });
 
     const result = await retriever.retrieve({
-      ...input("fast", disabledProfile()),
+      ...input("research", enabledProfile()),
       limit: 2,
     });
 
@@ -167,7 +176,7 @@ describe("final rerank capability gating", () => {
     },
   );
 
-  it("allows the same threshold-without-rerank profile for Research runtime calls", async () => {
+  it("rejects a legacy Research profile without the mandatory rerank model", async () => {
     const base = baseRetriever();
     const baseRetrieve = vi.spyOn(base, "retrieve");
     const retriever = createFinalRerankRetrieval({
@@ -183,8 +192,8 @@ describe("final rerank capability gating", () => {
           scoreThreshold: { enabled: true, stage: "mode-final", value: 0.5 },
         }),
       ),
-    ).resolves.toMatchObject({ items: expect.any(Array) });
-    expect(baseRetrieve).toHaveBeenCalledOnce();
+    ).rejects.toThrow("Knowledge-space retrieval requires an enabled rerank model");
+    expect(baseRetrieve).not.toHaveBeenCalled();
   });
 
   it("preserves the configured legacy default for requests without a profile", async () => {

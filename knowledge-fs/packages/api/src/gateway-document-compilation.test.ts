@@ -59,7 +59,10 @@ describe("document compilation gateway integration", () => {
   it("protects tenant-scoped document compilation job status and cancellation APIs", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const compilationJobs = createDocumentCompilationJobStateMachine({
-      generateId: () => "document-compilation-job-1",
+      generateId: (() => {
+        let next = 1;
+        return () => `document-compilation-job-${next++}`;
+      })(),
       jobs: adapter.jobs,
       now: () => 1_777_777_000_000,
       repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
@@ -162,6 +165,32 @@ describe("document compilation gateway integration", () => {
     await expect(adapter.jobs.status("job-1")).resolves.toMatchObject({
       status: "canceled",
     });
+
+    const failedJob = await compilationJobs.start({
+      documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      permissionSnapshot: (await compilationJobs.get("document-compilation-job-1"))
+        ?.permissionSnapshot,
+      requestedBySubjectId: "user-1",
+      tenantId: "tenant-1",
+      version: 1,
+    });
+    await compilationJobs.fail(failedJob.id, "Authorization: Bearer compilation-provider-secret");
+    const failedStatus = await app.request(`/jobs/${failedJob.id}`, {
+      headers: bearer(readToken),
+    });
+    expect(failedStatus.status).toBe(200);
+    const failedBody = await failedStatus.json();
+    expect(failedBody).toMatchObject({
+      error:
+        "The document could not be processed. Try again, or contact an administrator with the error reference.",
+      failure: {
+        code: "DOCUMENT_COMPILATION_FAILED",
+        stage: "document-compilation",
+      },
+      stage: "failed",
+    });
+    expect(JSON.stringify(failedBody)).not.toContain("compilation-provider-secret");
   });
 
   it("accepts document uploads through a Dify Capability and persists its provenance", async () => {

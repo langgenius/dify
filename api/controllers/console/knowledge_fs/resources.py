@@ -26,8 +26,13 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.knowledge_fs.error import (
     KnowledgeFSAccessDeniedHTTPError,
+    KnowledgeFSConflictHTTPError,
     KnowledgeFSInvalidRequestHTTPError,
     KnowledgeFSOperationUnavailableHTTPError,
+    KnowledgeFSRateLimitHTTPError,
+    KnowledgeFSRequestRejectedHTTPError,
+    KnowledgeFSRequestTooLargeHTTPError,
+    KnowledgeFSResourceNotFoundHTTPError,
     KnowledgeFSSpaceNotFoundHTTPError,
     KnowledgeFSUpstreamUnavailableHTTPError,
 )
@@ -416,7 +421,7 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except KnowledgeFSInitialSourcePreviewJobAlreadyRunningError as exc:
             raise Conflict() from exc
         except KnowledgeFSProductResourceNotFoundError as exc:
-            raise NotFound() from exc
+            raise KnowledgeFSResourceNotFoundHTTPError(exc.failure) from exc
         except KnowledgeFSStagedUploadNotFoundError as exc:
             raise NotFound() from exc
         except KnowledgeFSStagedUploadConflictError as exc:
@@ -426,15 +431,19 @@ def _knowledge_fs_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except KnowledgeFSStagedUploadInvalidError as exc:
             raise UnprocessableEntity() from exc
         except KnowledgeFSProductRemoteError as exc:
-            raise KnowledgeFSUpstreamUnavailableHTTPError() from exc
+            raise KnowledgeFSUpstreamUnavailableHTTPError(exc.failure) from exc
         except KnowledgeFSProductRequestRejectedError as exc:
             if exc.status_code == HTTPStatus.BAD_REQUEST:
-                raise KnowledgeFSInvalidRequestHTTPError() from exc
+                raise KnowledgeFSInvalidRequestHTTPError(exc.failure) from exc
             if exc.status_code == HTTPStatus.CONFLICT:
-                raise Conflict() from exc
+                raise KnowledgeFSConflictHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.FORBIDDEN:
+                raise KnowledgeFSAccessDeniedHTTPError(exc.failure) from exc
             if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
-                raise RequestEntityTooLarge() from exc
-            raise UnprocessableEntity() from exc
+                raise KnowledgeFSRequestTooLargeHTTPError(exc.failure) from exc
+            if exc.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+                raise KnowledgeFSRateLimitHTTPError(exc.failure) from exc
+            raise KnowledgeFSRequestRejectedHTTPError(exc.failure) from exc
         except KnowledgeFSQueryImageError as exc:
             if exc.code == "QUERY_IMAGE_NOT_FOUND":
                 raise NotFound() from exc

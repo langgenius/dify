@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
+import re
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 from uuid import UUID
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, RootModel, field_validator, model_validator
@@ -45,8 +47,8 @@ class KnowledgeFSRerankIntent(BaseModel):
 
     @model_validator(mode="after")
     def validate_enabled_model(self) -> KnowledgeFSRerankIntent:
-        if self.enabled and self.model is None:
-            raise ValueError("Enabled rerank requires a model selection")
+        if not self.enabled or self.model is None:
+            raise ValueError("Knowledge-space retrieval requires an enabled rerank model")
         return self
 
 
@@ -283,8 +285,8 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_initial_model_configuration(self) -> KnowledgeFSSpaceCreatePayload:
-        if self.retrieval is not None and self.retrieval.default_mode != "research" and self.embedding is None:
-            raise ValueError("Fast/Deep retrieval requires an embedding model")
+        if self.retrieval is not None and self.embedding is None:
+            raise ValueError("Knowledge-space retrieval requires an embedding model")
         return self
 
 
@@ -1098,6 +1100,8 @@ class KnowledgeFSSettingsPayload(BaseModel):
     def validate_setting_present(self) -> KnowledgeFSSettingsPayload:
         if self.embedding is None and self.retrieval is None:
             raise ValueError("At least one KnowledgeFS setting must be supplied")
+        if self.retrieval is not None and (not self.retrieval.rerank.enabled or self.retrieval.rerank.model is None):
+            raise ValueError("Knowledge-space retrieval requires an enabled rerank model")
         return self
 
 
@@ -1624,11 +1628,176 @@ class KnowledgeFSBulkJobResponse(ResponseModel):
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
 
+KnowledgeFSPublicErrorCode = Literal[
+    "DOCUMENT_COMPILATION_FAILED",
+    "DOCUMENT_COMPILATION_RETRYABLE",
+    "DOCUMENT_DISABLED",
+    "DOCUMENT_PARSER_INPUT_INVALID",
+    "DOCUMENT_PARSER_NOT_CONFIGURED",
+    "DOCUMENT_PARSER_RATE_LIMITED",
+    "DOCUMENT_PARSER_RESPONSE_INVALID",
+    "DOCUMENT_PARSER_UNAVAILABLE",
+    "EMBEDDING_DIMENSION_INVALID",
+    "EMBEDDING_DIMENSION_UNSUPPORTED",
+    "EXECUTION_ATTEMPTS_EXHAUSTED",
+    "KNOWLEDGE_FS_ACCESS_DENIED",
+    "KNOWLEDGE_FS_CONFLICT",
+    "KNOWLEDGE_FS_INTERNAL_ERROR",
+    "KNOWLEDGE_FS_INVALID_REQUEST",
+    "KNOWLEDGE_FS_NOT_FOUND",
+    "KNOWLEDGE_FS_RATE_LIMITED",
+    "KNOWLEDGE_FS_TIMEOUT",
+    "KNOWLEDGE_FS_UNAVAILABLE",
+    "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
+    "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
+    "MODEL_CAPABILITY_MISMATCH",
+    "MODEL_CONFIGURATION_STALE",
+    "MODEL_CREDENTIAL_INVALID",
+    "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE",
+    "MODEL_IDENTITY_MISMATCH",
+    "MODEL_PREFLIGHT_CANCELED",
+    "MODEL_PREFLIGHT_FAILED",
+    "MODEL_PREFLIGHT_TIMEOUT",
+    "MODEL_PREFLIGHT_UNAVAILABLE",
+    "MODEL_PROFILE_ACTIVATION_INCOMPLETE",
+    "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED",
+    "MODEL_RUNTIME_FAILED",
+    "MODEL_RUNTIME_TIMEOUT",
+    "MODEL_RUNTIME_UNAVAILABLE",
+    "MODEL_SELECTION_NOT_FOUND",
+    "RESEARCH_TASK_CAPABILITY_REVOKED",
+    "RESEARCH_TASK_DISPATCH_DEAD",
+    "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
+    "RESEARCH_TASK_FAILED",
+    "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID",
+    "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID",
+    "SOURCE_BULK_ACTION_FAILED",
+    "SOURCE_CREDENTIAL_CONFIG_INVALID",
+    "SOURCE_CREDENTIAL_MUTATION_FAILED",
+    "SOURCE_CREDENTIAL_TEST_FAILED",
+    "SOURCE_CREDENTIAL_UNAVAILABLE",
+    "SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+    "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+    "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID",
+    "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED",
+    "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED",
+    "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED",
+    "SOURCE_ONLINE_DRIVE_CONFIG_INVALID",
+    "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED",
+    "SOURCE_ONLINE_DRIVE_IMPORT_FAILED",
+    "SOURCE_ONLINE_DRIVE_REQUEST_FAILED",
+    "SOURCE_OPERATION_FAILED",
+    "SOURCE_SECRET_INTEGRITY_FAILED",
+    "SOURCE_SECRET_REF_CONFLICT",
+    "SOURCE_SYNC_FAILED",
+    "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID",
+    "SOURCE_WEBSITE_CRAWL_FAILED",
+    "SOURCE_WORKFLOW_FAILED",
+    "UPLOAD_INITIALIZATION_FAILED",
+    "UPLOAD_INTEGRITY_MISMATCH",
+]
+
+
+class KnowledgeFSPublicFailureResponse(ResponseModel):
+    _SAFE_MESSAGE_BY_CATEGORY: ClassVar[dict[str, str]] = {
+        "authorization": "You do not have permission to perform this KnowledgeFS operation.",
+        "canceled": "The KnowledgeFS operation was canceled.",
+        "configuration": "The KnowledgeFS operation requires a configuration change before it can continue.",
+        "conflict": "The KnowledgeFS operation conflicts with the current resource state.",
+        "dependency": "A service required by KnowledgeFS is temporarily unavailable.",
+        "internal": (
+            "KnowledgeFS could not complete the operation. Try again, or contact an administrator "
+            "with the error reference."
+        ),
+        "not_found": "The requested KnowledgeFS resource was not found.",
+        "rate_limit": "Too many KnowledgeFS operations were requested. Try again later.",
+        "timeout": "The KnowledgeFS operation timed out. Try again later.",
+        "validation": "The KnowledgeFS request is invalid.",
+    }
+    _SAFE_PARAMETER_KEYS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "attempt",
+            "documentCount",
+            "fileSizeBytes",
+            "limit",
+            "maxFileSizeBytes",
+            "maxItems",
+            "modelType",
+            "providerKind",
+            "retryAfterSeconds",
+            "status",
+        }
+    )
+    action: (
+        Literal[
+            "configure_model",
+            "configure_parser",
+            "configure_source",
+            "contact_admin",
+            "reupload",
+            "retry",
+        ]
+        | None
+    ) = None
+    category: Literal[
+        "authorization",
+        "canceled",
+        "configuration",
+        "conflict",
+        "dependency",
+        "internal",
+        "not_found",
+        "rate_limit",
+        "timeout",
+        "validation",
+    ]
+    code: KnowledgeFSPublicErrorCode
+    message: str = Field(min_length=1, max_length=1_024)
+    parameters: dict[str, str | int | float | bool] | None = Field(default=None, max_length=8)
+    retry_policy: Literal["automatic", "manual", "after_configuration", "never"] = Field(
+        validation_alias=AliasChoices("retry_policy", "retryPolicy"),
+        serialization_alias="retryPolicy",
+    )
+    stage: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"^[a-z][a-z0-9_.-]{0,127}$")
+    trace_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._:-]{1,128}$",
+        validation_alias=AliasChoices("trace_id", "traceId"),
+        serialization_alias="traceId",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("parameters")
+    @classmethod
+    def validate_public_parameters(
+        cls, parameters: dict[str, str | int | float | bool] | None
+    ) -> dict[str, str | int | float | bool] | None:
+        if parameters is None:
+            return None
+        for key, value in parameters.items():
+            if key not in cls._SAFE_PARAMETER_KEYS or re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", key) is None:
+                raise ValueError("KnowledgeFS public failure parameter key is invalid")
+            if isinstance(value, str) and len(value) > 256:
+                raise ValueError("KnowledgeFS public failure parameter value is too long")
+            if isinstance(value, float) and not math.isfinite(value):
+                raise ValueError("KnowledgeFS public failure parameter must be finite")
+        return parameters
+
+    @model_validator(mode="after")
+    def replace_untrusted_message_with_bff_fallback(self) -> KnowledgeFSPublicFailureResponse:
+        self.message = self._SAFE_MESSAGE_BY_CATEGORY[self.category]
+        return self
+
+
 class KnowledgeFSBackgroundTaskFailureResponse(ResponseModel):
     document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
     document_title: str | None = Field(default=None, validation_alias=AliasChoices("document_title", "documentTitle"))
     error_code: str = Field(validation_alias=AliasChoices("error_code", "errorCode"))
     error_message: str = Field(validation_alias=AliasChoices("error_message", "errorMessage"))
+    failure: KnowledgeFSPublicFailureResponse
     job_id: str | None = Field(default=None, validation_alias=AliasChoices("job_id", "jobId"))
 
 
@@ -1643,6 +1812,7 @@ class KnowledgeFSBackgroundTaskResponse(ResponseModel):
     )
     error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
     error_message: str | None = Field(default=None, validation_alias=AliasChoices("error_message", "errorMessage"))
+    failure: KnowledgeFSPublicFailureResponse | None = None
     failures: list[KnowledgeFSBackgroundTaskFailureResponse] | None = None
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
@@ -1788,9 +1958,21 @@ class KnowledgeFSSourceDeleteQuery(BaseModel):
 
 
 class KnowledgeFSSourceCredentialTestResponse(ResponseModel):
-    code: str | None = None
+    code: KnowledgeFSPublicErrorCode | None = None
     error: str | None = None
+    failure: KnowledgeFSPublicFailureResponse | None = None
     valid: bool
+
+    @model_validator(mode="after")
+    def normalize_public_failure(self) -> KnowledgeFSSourceCredentialTestResponse:
+        if not self.valid and self.failure is not None:
+            self.code = self.failure.code
+            self.error = self.failure.message
+        else:
+            self.code = None
+            self.error = None
+            self.failure = None
+        return self
 
 
 class KnowledgeFSSourceWorkflowResponse(ResponseModel):
@@ -1800,12 +1982,12 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     cursor: str | None = None
     execution_attempts: int = Field(ge=0, validation_alias=AliasChoices("execution_attempts", "executionAttempts"))
+    failure: KnowledgeFSPublicFailureResponse | None = None
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
     kind: str
-    last_error_code: str | None = Field(default=None, validation_alias=AliasChoices("last_error_code", "lastErrorCode"))
-    last_error_message: str | None = Field(
-        default=None, validation_alias=AliasChoices("last_error_message", "lastErrorMessage")
+    last_error_code: KnowledgeFSPublicErrorCode | None = Field(
+        default=None, validation_alias=AliasChoices("last_error_code", "lastErrorCode")
     )
     max_execution_attempts: int = Field(
         ge=1, validation_alias=AliasChoices("max_execution_attempts", "maxExecutionAttempts")
@@ -1819,6 +2001,15 @@ class KnowledgeFSSourceWorkflowResponse(ResponseModel):
     source_id: str | None = Field(default=None, validation_alias=AliasChoices("source_id", "sourceId"))
     state: str
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+    @model_validator(mode="after")
+    def normalize_public_failure(self) -> KnowledgeFSSourceWorkflowResponse:
+        if self.state == "failed" and self.failure is not None:
+            self.last_error_code = self.failure.code
+        else:
+            self.failure = None
+            self.last_error_code = None
+        return self
 
 
 class KnowledgeFSOnlineDocumentWorkflowImportPayload(BaseModel):
@@ -2088,9 +2279,19 @@ class KnowledgeFSSourceImportedDocumentResponse(ResponseModel):
 
 
 class KnowledgeFSSourceImportFailureResponse(ResponseModel):
-    code: str
+    code: KnowledgeFSPublicErrorCode
     error: str
+    failure: KnowledgeFSPublicFailureResponse | None = None
     filename: str
+
+    @model_validator(mode="after")
+    def normalize_public_failure(self) -> KnowledgeFSSourceImportFailureResponse:
+        self.error = (
+            self.failure.message if self.failure is not None else "KnowledgeFS could not import this source document."
+        )
+        if self.failure is not None:
+            self.code = self.failure.code
+        return self
 
 
 class KnowledgeFSSourceImportResponse(ResponseModel):
@@ -2378,6 +2579,7 @@ class KnowledgeFSResearchTaskResponse(ResponseModel):
     top_k: int | None = Field(default=None, validation_alias=AliasChoices("top_k", "topK"))
     metadata: dict[str, object]
     error: str | None = None
+    failure: KnowledgeFSPublicFailureResponse | None = None
     created_at: float = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     updated_at: float = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
 
@@ -3079,6 +3281,7 @@ __all__ = [
     "KnowledgeFSPermissionListResponse",
     "KnowledgeFSPermissionResponse",
     "KnowledgeFSPresignedUploadResponse",
+    "KnowledgeFSPublicFailureResponse",
     "KnowledgeFSQualityListQuery",
     "KnowledgeFSQueryAdmissionResponse",
     "KnowledgeFSQueryCreatePayload",

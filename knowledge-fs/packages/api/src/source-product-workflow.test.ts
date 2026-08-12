@@ -1393,17 +1393,24 @@ describe("source product workflow service boundaries", () => {
       canceledAt: "2026-02-05T00:00:00.000Z",
       completedAt: "2026-02-05T00:00:00.000Z",
       cursor: "cursor-a",
-      lastErrorCode: "SAFE_CODE",
+      lastErrorCode: "SOURCE_PROVIDER_SECRET",
+      lastErrorMessage: "Authorization: Bearer credential-secret",
       progressTotal: 3,
+      state: "failed",
     });
     expect(publicRun).toMatchObject({
       canceledAt: "2026-02-05T00:00:00.000Z",
       completedAt: "2026-02-05T00:00:00.000Z",
       cursor: "cursor-a",
-      lastErrorCode: "SAFE_CODE",
+      failure: {
+        code: "SOURCE_OPERATION_FAILED",
+        stage: "queued",
+      },
+      lastErrorCode: "SOURCE_OPERATION_FAILED",
       progressTotal: 3,
       sourceId: "source-public",
     });
+    expect(JSON.stringify(publicRun)).not.toContain("credential-secret");
     expect(JSON.stringify(publicRun)).not.toMatch(
       /accessChannel|idempotencyKey|payload|permissionSnapshot|tenantId/u,
     );
@@ -1417,6 +1424,16 @@ describe("source product workflow service boundaries", () => {
     expect(minimal).not.toHaveProperty("lastErrorCode");
     expect(minimal).not.toHaveProperty("progressTotal");
     expect(minimal).not.toHaveProperty("sourceId");
+
+    const canceled = toPublicSourceWorkflowRun({
+      ...workflowRun("sync"),
+      lastErrorCode: "SOURCE_WORKFLOW_CANCELED",
+      lastErrorMessage: "Authorization: Bearer canceled-secret",
+      state: "canceled",
+    });
+    expect(canceled).not.toHaveProperty("failure");
+    expect(canceled).not.toHaveProperty("lastErrorCode");
+    expect(JSON.stringify(canceled)).not.toContain("canceled-secret");
   });
 
   it("computes supported policy intervals and rejects invalid scheduling anchors", () => {

@@ -214,7 +214,7 @@ function publishTask(subscription: TaskSubscription, task: DocumentProcessingTas
   if (eventId !== subscription.lastEventId) {
     if (terminalState) {
       pushSubscriptionEvent(subscription, {
-        data: { errorCode: task.errorCode, state: terminalState },
+        data: { errorCode: task.errorCode, failure: task.failure, state: terminalState },
         event: 'terminal',
         id: eventId,
       })

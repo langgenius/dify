@@ -606,7 +606,16 @@ describe("online document pages", () => {
     expect(second.skipped).toEqual(["p1"]);
     expect(second.documents).toHaveLength(0);
     expect(second.failed).toEqual([
-      expect.objectContaining({ code: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED" }),
+      expect.objectContaining({
+        code: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+        error:
+          "A changed source document cannot be replaced until durable source replacement is available.",
+        failure: expect.objectContaining({
+          action: "contact_admin",
+          category: "dependency",
+          retryPolicy: "never",
+        }),
+      }),
     ]);
     expect(fetched).toEqual([]);
 
@@ -744,7 +753,12 @@ describe("online drive files", () => {
     expect(reimport.status).toBe(200);
     await expect(reimport.json()).resolves.toMatchObject({
       documents: [],
-      failed: [expect.objectContaining({ code: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED" })],
+      failed: [
+        expect.objectContaining({
+          code: "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+          failure: expect.objectContaining({ retryPolicy: "never" }),
+        }),
+      ],
     });
     const documentsAfter = await (
       await app.request(`/knowledge-spaces/${spaceId}/documents?limit=10`, {

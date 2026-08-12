@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
+import { KnowledgeFsPublicFailureSchema } from "./gateway-route-schemas";
+
 export const LogicalDocumentParamsSchema = z.object({
   documentId: z.string().uuid(),
   id: z.string().uuid(),
@@ -212,8 +214,9 @@ export const DocumentProcessingTaskSchema = z
     createdAt: z.string(),
     documentId: z.string().uuid(),
     documentRevision: z.number().int().positive(),
-    errorCode: z.string().optional(),
-    errorMessage: z.string().optional(),
+    errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
+    errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
     id: z.string().uuid(),
     knowledgeSpaceId: z.string().uuid(),
     phase: z
@@ -250,8 +253,9 @@ export const DocumentProcessingTaskSchema = z
     ]),
     semanticEnrichment: z
       .object({
-        errorCode: z.string().optional(),
-        errorMessage: z.string().optional(),
+        errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
+        errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),
+        failure: KnowledgeFsPublicFailureSchema.optional(),
         nodesCompleted: z.number().int().nonnegative(),
         nodesTotal: z.number().int().nonnegative().optional(),
         providerCalls: z.number().int().nonnegative().optional(),

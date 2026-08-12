@@ -70,7 +70,6 @@ type ExternalAccessDraft = {
 type SettingsDraft = {
   embeddingModel: DefaultModel | undefined
   reasoningModel: DefaultModel | undefined
-  rerankEnabled: boolean
   rerankModel: DefaultModel | undefined
   retrievalMode: KnowledgeFsProductRetrievalProfile['defaultMode']
   scoreThreshold: number
@@ -132,7 +131,6 @@ function modelFingerprint(model: DefaultModel | undefined) {
 function retrievalFingerprint({
   mode,
   reasoningModel,
-  rerankEnabled,
   rerankModel,
   scoreThreshold,
   scoreThresholdEnabled,
@@ -140,7 +138,6 @@ function retrievalFingerprint({
 }: {
   mode: KnowledgeFsProductRetrievalProfile['defaultMode']
   reasoningModel: DefaultModel | undefined
-  rerankEnabled: boolean
   rerankModel: DefaultModel | undefined
   scoreThreshold: number
   scoreThresholdEnabled: boolean
@@ -149,7 +146,6 @@ function retrievalFingerprint({
   return JSON.stringify({
     mode,
     reasoningModel: modelFingerprint(reasoningModel),
-    rerankEnabled,
     rerankModel: modelFingerprint(rerankModel),
     scoreThreshold,
     scoreThresholdEnabled,
@@ -248,7 +244,6 @@ export function KnowledgeSettingsForm({
   const initialReasoningModel = toDefaultReasoningModel(settings.retrieval)
   const initialRerankModel = toDefaultRerankModel(settings.retrieval)
   const initialRetrievalMode = settings.retrieval?.default_mode ?? 'fast'
-  const initialRerankEnabled = settings.retrieval?.rerank.enabled ?? false
   const initialTopK = clamp(settings.retrieval?.top_k ?? 3, TOP_K_MIN, TOP_K_MAX)
   const initialScoreThresholdEnabled = settings.retrieval?.score_threshold.enabled ?? false
   const initialScoreThreshold = clamp(
@@ -268,7 +263,6 @@ export function KnowledgeSettingsForm({
   const [reasoningModel, setReasoningModel] = useState(initialReasoningModel)
   const [rerankModel, setRerankModel] = useState(initialRerankModel)
   const [retrievalMode, setRetrievalMode] = useState(initialRetrievalMode)
-  const [rerankEnabled, setRerankEnabled] = useState(initialRerankEnabled)
   const [topK, setTopK] = useState(initialTopK)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
@@ -279,7 +273,6 @@ export function KnowledgeSettingsForm({
     retrievalFingerprint({
       mode: initialRetrievalMode,
       reasoningModel: initialReasoningModel,
-      rerankEnabled: initialRerankEnabled,
       rerankModel: initialRerankModel,
       scoreThreshold: initialScoreThreshold,
       scoreThresholdEnabled: initialScoreThresholdEnabled,
@@ -330,7 +323,6 @@ export function KnowledgeSettingsForm({
   const currentRetrievalFingerprint = retrievalFingerprint({
     mode: retrievalMode,
     reasoningModel,
-    rerankEnabled,
     rerankModel,
     scoreThreshold,
     scoreThresholdEnabled,
@@ -339,7 +331,6 @@ export function KnowledgeSettingsForm({
   const currentSettingsDraft: SettingsDraft = {
     embeddingModel,
     reasoningModel,
-    rerankEnabled,
     rerankModel,
     retrievalMode,
     scoreThreshold,
@@ -397,7 +388,6 @@ export function KnowledgeSettingsForm({
     Boolean(pendingMigrationId)
   const fieldsDisabled = !canEdit || isSaving
   const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
-  const scoreThresholdAvailable = retrievalMode === 'research' || rerankEnabled
   const saveDisabled =
     !basicDirty || nameInvalid || descriptionInvalid || membersInvalid || isSaving || serverConflict
   const startDraft = () => onDraftStart?.()
@@ -444,7 +434,6 @@ export function KnowledgeSettingsForm({
           retrievalFingerprint({
             mode: savedDraft.retrievalMode,
             reasoningModel: savedDraft.reasoningModel,
-            rerankEnabled: savedDraft.rerankEnabled,
             rerankModel: savedDraft.rerankModel,
             scoreThreshold: savedDraft.scoreThreshold,
             scoreThresholdEnabled: savedDraft.scoreThresholdEnabled,
@@ -567,7 +556,6 @@ export function KnowledgeSettingsForm({
     const nextRetrievalFingerprint = retrievalFingerprint({
       mode: draft.retrievalMode,
       reasoningModel: draft.reasoningModel,
-      rerankEnabled: draft.rerankEnabled,
       rerankModel: draft.rerankModel,
       scoreThreshold: draft.scoreThreshold,
       scoreThresholdEnabled: draft.scoreThresholdEnabled,
@@ -577,16 +565,8 @@ export function KnowledgeSettingsForm({
     const nextRetrievalDirty = nextRetrievalFingerprint !== retrievalBaseline
     const invalid =
       (nextEmbeddingDirty && !draft.embeddingModel) ||
-      (nextRetrievalDirty &&
-        (!draft.reasoningModel ||
-          (draft.rerankEnabled && !draft.rerankModel) ||
-          (draft.retrievalMode !== 'research' &&
-            draft.scoreThresholdEnabled &&
-            !draft.rerankEnabled))) ||
-      (initialModelSetup &&
-        nextRetrievalDirty &&
-        draft.retrievalMode !== 'research' &&
-        !draft.embeddingModel) ||
+      (nextRetrievalDirty && (!draft.reasoningModel || !draft.rerankModel)) ||
+      (initialModelSetup && nextRetrievalDirty && !draft.embeddingModel) ||
       (!initialModelSetup && nextEmbeddingDirty && nextRetrievalDirty)
     if (invalid || (!nextEmbeddingDirty && !nextRetrievalDirty)) return
 
@@ -595,17 +575,17 @@ export function KnowledgeSettingsForm({
     }
     if (nextEmbeddingDirty && draft.embeddingModel)
       body.embedding = modelPayload(draft.embeddingModel)
-    if (nextRetrievalDirty && draft.reasoningModel) {
+    if (nextRetrievalDirty && draft.reasoningModel && draft.rerankModel) {
       body.retrieval = {
         defaultMode: draft.retrievalMode,
         reasoningModel: modelPayload(draft.reasoningModel),
         rerank: {
-          enabled: draft.rerankEnabled,
-          model: draft.rerankModel ? modelPayload(draft.rerankModel) : null,
+          enabled: true,
+          model: modelPayload(draft.rerankModel),
         },
         scoreThreshold: {
           enabled: draft.scoreThresholdEnabled,
-          stage: draft.rerankEnabled ? 'rerank' : 'mode-final',
+          stage: draft.retrievalMode === 'research' ? 'mode-final' : 'rerank',
           value: draft.scoreThreshold,
         },
         topK: draft.topK,
@@ -996,6 +976,9 @@ export function KnowledgeSettingsForm({
                 className="flex h-7 items-center system-sm-medium text-text-secondary"
               >
                 {t(($) => $['newKnowledge.settings.systemReasoningModelLabel'])}
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
               </div>
               <ModelSelector
                 ariaLabelledBy={REASONING_MODEL_LABEL_ID}
@@ -1016,6 +999,9 @@ export function KnowledgeSettingsForm({
                 className="flex h-7 items-center system-sm-medium text-text-secondary"
               >
                 {t(($) => $['newKnowledge.settings.embeddingModelLabel'])}
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
               </div>
               <ModelSelector
                 ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
@@ -1042,39 +1028,27 @@ export function KnowledgeSettingsForm({
             </div>
 
             <div>
-              <div className="flex h-7 items-center gap-2">
-                <Switch
-                  aria-label={tCommon(($) => $['modelProvider.rerankModel.key'])}
-                  checked={rerankEnabled}
-                  disabled={retrievalFieldsDisabled}
-                  onCheckedChange={(checked) => {
-                    const nextScoreThresholdEnabled =
-                      !checked && retrievalMode !== 'research' ? false : scoreThresholdEnabled
-                    setRerankEnabled(checked)
-                    setScoreThresholdEnabled(nextScoreThresholdEnabled)
-                    void performSettingsSave({
-                      ...currentSettingsDraft,
-                      rerankEnabled: checked,
-                      scoreThresholdEnabled: nextScoreThresholdEnabled,
-                    })
-                  }}
-                />
-                <span id={RERANK_MODEL_LABEL_ID} className="system-sm-medium text-text-secondary">
-                  {tCommon(($) => $['modelProvider.rerankModel.key'])}
+              <div
+                id={RERANK_MODEL_LABEL_ID}
+                className="flex h-7 items-center system-sm-medium text-text-secondary"
+              >
+                {tCommon(($) => $['modelProvider.rerankModel.key'])}
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
                 </span>
               </div>
               <ModelSelector
                 ariaLabelledBy={RERANK_MODEL_LABEL_ID}
                 defaultModel={rerankModel}
                 modelList={rerankModelList}
-                readonly={retrievalFieldsDisabled || !rerankEnabled}
+                readonly={retrievalFieldsDisabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
                   setRerankModel(model)
                   void performSettingsSave({ ...currentSettingsDraft, rerankModel: model })
                 }}
               />
-              {rerankEnabled && !rerankModel && (
+              {!rerankModel && (
                 <p className="mt-1 system-xs-regular text-text-destructive" role="alert">
                   {t(($) => $['newKnowledge.settings.rerankModelRequired'])}
                 </p>
@@ -1093,14 +1067,10 @@ export function KnowledgeSettingsForm({
                 disabled={retrievalFieldsDisabled}
                 value={retrievalMode}
                 onChange={(mode) => {
-                  const nextScoreThresholdEnabled =
-                    mode !== 'research' && !rerankEnabled ? false : scoreThresholdEnabled
                   setRetrievalMode(mode)
-                  setScoreThresholdEnabled(nextScoreThresholdEnabled)
                   void performSettingsSave({
                     ...currentSettingsDraft,
                     retrievalMode: mode,
-                    scoreThresholdEnabled: nextScoreThresholdEnabled,
                   })
                 }}
               />
@@ -1154,7 +1124,7 @@ export function KnowledgeSettingsForm({
                   <Switch
                     aria-label={tAppDebug(($) => $['datasetConfig.score_threshold'])}
                     checked={scoreThresholdEnabled}
-                    disabled={retrievalFieldsDisabled || !scoreThresholdAvailable}
+                    disabled={retrievalFieldsDisabled || !rerankModel}
                     onCheckedChange={(checked) => {
                       setScoreThresholdEnabled(checked)
                       void performSettingsSave({

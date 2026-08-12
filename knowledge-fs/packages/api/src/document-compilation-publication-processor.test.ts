@@ -119,7 +119,8 @@ describe("document compilation publication processor", () => {
     const attempt = await fixture.attempts.get(attemptId);
     expect(attempt).toMatchObject({
       checkpoint: "projection_built",
-      lastErrorMessage: expect.stringContaining("candidate recall below threshold"),
+      lastErrorMessage:
+        "The document could not be processed. Try again, or contact an administrator with the error reference.",
       runState: "failed",
     });
     await expect(fixture.queue.status("job-1")).resolves.toMatchObject({

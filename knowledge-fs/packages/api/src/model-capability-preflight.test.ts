@@ -196,7 +196,7 @@ describe("createModelCapabilityPreflight", () => {
     await expect(
       preflight.verify({ kind: "embedding", selection, tenantId: "tenant-1" }),
     ).rejects.toMatchObject({
-      code: "MODEL_PREFLIGHT_FAILED",
+      code: "MODEL_CREDENTIAL_INVALID",
       message: "The selected model's credentials are not valid",
       retryable: false,
     });
@@ -327,7 +327,7 @@ describe("createModelCapabilityPreflight", () => {
           tenantId: "tenant-1",
         });
         const rejection = expect(verification).rejects.toMatchObject({
-          code: "MODEL_PREFLIGHT_FAILED",
+          code: "MODEL_PREFLIGHT_TIMEOUT",
           message: "The selected model capability preflight timed out",
           retryable: true,
         });
@@ -429,7 +429,7 @@ describe("createModelCapabilityPreflight", () => {
     await expect(
       catalogFailure.verify({ kind: "embedding", selection, tenantId: "tenant-1" }),
     ).rejects.toMatchObject({
-      code: "MODEL_PREFLIGHT_FAILED",
+      code: "MODEL_PREFLIGHT_UNAVAILABLE",
       message: "Model capability catalog is temporarily unavailable",
       retryable: true,
     });

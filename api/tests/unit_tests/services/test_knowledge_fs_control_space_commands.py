@@ -43,8 +43,11 @@ def _provision_intent() -> KnowledgeFSProvisionIntent:
         profile_intent={
             "defaultMode": "fast",
             "reasoningModel": {"pluginId": "langgenius/openai", "provider": "openai", "model": "gpt-4.1-mini"},
-            "rerank": {"enabled": False},
-            "scoreThreshold": {"enabled": False, "stage": "mode-final"},
+            "rerank": {
+                "enabled": True,
+                "model": {"pluginId": "langgenius/cohere", "provider": "cohere", "model": "rerank-v3"},
+            },
+            "scoreThreshold": {"enabled": False, "stage": "rerank"},
             "topK": 10,
         },
     )
@@ -113,6 +116,32 @@ def test_create_provision_intent_omits_unconfigured_models(sqlite_session: Sessi
 
     assert "model_intent" not in result.outbox.command_payload
     assert "profile_intent" not in result.outbox.command_payload
+    assert result.model_setup_required is True
+    assert replay.model_setup_required is True
+    assert replay.outbox.id == result.outbox.id
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSControlSpacePermission,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSLifecycleOutbox,
+        )
+    ],
+    indirect=True,
+)
+def test_create_provision_intent_requires_an_enabled_rerank_model(sqlite_session: Session) -> None:
+    service = _service(sqlite_session)
+    profile_intent = dict(_provision_intent().profile_intent or {})
+    profile_intent["rerank"] = {"enabled": False}
+    intent = _provision_intent()._replace(profile_intent=profile_intent)
+
+    result = service.create_provision_intent(intent)
+    replay = service.create_provision_intent(_provision_intent())
+
     assert result.model_setup_required is True
     assert replay.model_setup_required is True
     assert replay.outbox.id == result.outbox.id

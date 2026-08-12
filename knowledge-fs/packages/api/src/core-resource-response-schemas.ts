@@ -18,6 +18,8 @@ import {
   SourceSchema,
 } from "@knowledge/core";
 
+import { KnowledgeFsPublicFailureSchema } from "./gateway-route-schemas";
+
 export const FailedQueryResponseSchema = FailedQuerySchema.omit({
   answerTraceId: true,
 }).openapi("FailedQuery");
@@ -262,9 +264,16 @@ function isSensitiveSourceMetadataKey(key: string): boolean {
     sensitiveSourceMetadataExactKeys.has(normalized) || sensitiveSourceMetadataKey.test(normalized)
   );
 }
-export const KnowledgeSpaceStagedCommitResponseSchema = KnowledgeSpaceStagedCommitSchema.openapi(
-  "KnowledgeSpaceStagedCommit",
-);
+export const KnowledgeSpaceStagedCommitResponseSchema = KnowledgeSpaceStagedCommitSchema.omit({
+  errorCode: true,
+  errorMessage: true,
+})
+  .extend({
+    errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
+    errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),
+    failure: KnowledgeFsPublicFailureSchema.optional(),
+  })
+  .openapi("KnowledgeSpaceStagedCommit");
 export const KnowledgeFsLeaseResponseSchema = KnowledgeFsLeaseSchema.openapi("KnowledgeFsLease");
 export const ParseArtifactResponseSchema = ParseArtifactSchema.openapi("ParseArtifact");
 export const AnswerTraceResponseSchema = AnswerTraceSchema.omit({
@@ -393,8 +402,9 @@ export const KnowledgeSpaceStatusResponseSchema = z
     configuration: KnowledgeSpaceConfigurationStatusResponseSchema,
     failedCommits: KnowledgeSpaceStatusCountedListSchema(
       z.object({
-        errorCode: z.string().optional(),
+        errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
         expiresAt: z.string().datetime().optional(),
+        failure: KnowledgeFsPublicFailureSchema.optional(),
         id: z.string().uuid(),
         status: z.enum(["failed-retryable", "failed-terminal"]),
         updatedAt: z.string().datetime(),

@@ -15,6 +15,7 @@ import {
 import { DeletionLifecycleFenceActiveError } from "./deletion-lifecycle-fence";
 import { DeletionObjectWriteAdmissionError } from "./deletion-object-write-admission";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { OnlineDocumentConnector } from "./online-document-connector";
 import type { OnlineDriveConnector } from "./online-drive-connector";
@@ -847,7 +848,7 @@ export function registerSourceHandlers({
             documentAssetId,
             filename,
           })),
-          failed: allFailed,
+          failed: allFailed.map(toPublicSourceDocumentFailure),
           skipped,
         },
         200,
@@ -918,10 +919,23 @@ export function registerSourceHandlers({
       }
 
       const failure = safeSourceOperationError("credentialTest", result.error);
-      return context.json({ code: failure.code, error: failure.message, valid: result.valid }, 200);
+      const publicFailure = knowledgeFsFailureForCode(failure.code, { stage: "credential-test" });
+      return context.json(
+        {
+          code: publicFailure.code,
+          error: publicFailure.message,
+          failure: publicFailure,
+          valid: result.valid,
+        },
+        200,
+      );
     } catch (error) {
       const failure = safeSourceOperationError("credentialTest", error);
-      return context.json({ code: failure.code, error: failure.message }, 502);
+      const publicFailure = knowledgeFsFailureForCode(failure.code, { stage: "credential-test" });
+      return context.json(
+        { code: publicFailure.code, error: publicFailure.message, failure: publicFailure },
+        502,
+      );
     }
   });
 
@@ -1134,7 +1148,7 @@ export function registerSourceHandlers({
             documentAssetId,
             filename,
           })),
-          failed: allFailed,
+          failed: allFailed.map(toPublicSourceDocumentFailure),
           skipped: [],
         },
         200,
@@ -1364,6 +1378,21 @@ export function readImportedFilesState(
   }
 
   return result;
+}
+
+function toPublicSourceDocumentFailure(failure: FailedSourceDocument): FailedSourceDocument & {
+  readonly code: KnowledgeFsPublicFailure["code"];
+  readonly failure: KnowledgeFsPublicFailure;
+} {
+  const publicFailure = knowledgeFsFailureForCode(failure.code, {
+    stage: "source-document-import",
+  });
+  return {
+    code: publicFailure.code,
+    error: publicFailure.message,
+    failure: publicFailure,
+    filename: failure.filename,
+  };
 }
 
 function readInlineCredentials(

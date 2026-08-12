@@ -74,6 +74,46 @@ describe("SSE event formatting", () => {
     ).toContain("event: completed\n");
   });
 
+  it("replaces raw Research failure diagnostics with the common public failure", () => {
+    const event = formatResearchTaskProgressSseEvent({
+      createdAt: "2026-05-13T00:00:00.000Z",
+      id: "event-failed",
+      knowledgeSpaceId: "ks-1",
+      payload: { error: "Authorization: Bearer credential-secret" },
+      researchTaskJobId: "job-failed",
+      sequence: 9,
+      stage: "failed",
+      tenantId: "tenant-1",
+      type: "research_task.failed",
+    });
+
+    expect(event).toContain('"error":"RESEARCH_TASK_FAILED"');
+    expect(event).toContain('"failure":{"action":"contact_admin"');
+    expect(event).not.toContain("credential-secret");
+  });
+
+  it("removes retry diagnostics from non-terminal Research progress", () => {
+    const event = formatResearchTaskProgressSseEvent({
+      createdAt: "2026-05-13T00:00:00.000Z",
+      id: "event-retry",
+      knowledgeSpaceId: "ks-1",
+      payload: {
+        error: "Authorization: Bearer credential-secret",
+        retryAt: 2_000,
+        retryScheduled: true,
+      },
+      researchTaskJobId: "job-retry",
+      sequence: 10,
+      stage: "retrieving",
+      tenantId: "tenant-1",
+      type: "research_task.stage_changed",
+    });
+
+    expect(event).toContain('"retryScheduled":true');
+    expect(event).not.toContain("credential-secret");
+    expect(event).not.toContain('"error"');
+  });
+
   it("uses the common event formatter for error frames", () => {
     expect(formatSseEvent("answer.error", { error: "Query generation failed", traceId: "t" })).toBe(
       'event: answer.error\ndata: {"error":"Query generation failed","traceId":"t"}\n\n',

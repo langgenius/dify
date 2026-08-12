@@ -101,7 +101,14 @@ describe("document processing task repository", () => {
         id: "task-terminal:2026-07-14T12:02:00.000Z",
       }),
       expect.objectContaining({
-        data: { errorCode: "PARSER_FAILED", state: "failed" },
+        data: {
+          errorCode: "DOCUMENT_PARSER_UNAVAILABLE",
+          failure: expect.objectContaining({
+            code: "DOCUMENT_PARSER_UNAVAILABLE",
+            retryPolicy: "automatic",
+          }),
+          state: "failed",
+        },
         event: "terminal",
         id: "task-terminal:terminal",
       }),
@@ -238,20 +245,32 @@ describe("document processing task repository", () => {
         }),
         kind: "postgres",
       });
-      await expect(
-        createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit: 10 }).get({
-          documentId,
-          knowledgeSpaceId,
-          taskId: "task-visible",
-          tenantId,
-        }),
-      ).resolves.toMatchObject({
+      const mapped = await createDatabaseDocumentProcessingTaskRepository({
+        database,
+        maxListLimit: 10,
+      }).get({
+        documentId,
+        knowledgeSpaceId,
+        taskId: "task-visible",
+        tenantId,
+      });
+      expect(mapped).toMatchObject({
         completedAt: "2026-07-14T12:02:00.000Z",
-        errorCode: "FAILED",
-        errorMessage: "failure",
         retryAt: "2026-07-14T12:03:00.000Z",
         state,
       });
+      if (state === "failed") {
+        expect(mapped).toMatchObject({
+          errorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
+          errorMessage:
+            "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+          failure: { code: "KNOWLEDGE_FS_INTERNAL_ERROR", retryPolicy: "manual" },
+        });
+      } else {
+        expect(mapped).not.toHaveProperty("errorCode");
+        expect(mapped).not.toHaveProperty("errorMessage");
+        expect(mapped).not.toHaveProperty("failure");
+      }
     }
 
     for (const row of [taskRow({ run_state: "invalid" }), taskRow({ checkpoint: "invalid" })]) {

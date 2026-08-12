@@ -10,6 +10,7 @@ import {
   type DocumentCompilationCheckpoint,
   DocumentCompilationOutboxEventType,
 } from "./document-compilation-attempt-repository";
+import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import {
   type DurableTaskOperationalMetrics,
   recordDurableTaskOperationalMetric,
@@ -684,20 +685,34 @@ function createFencedExecution({
 
 export function defaultDocumentCompilationErrorClassifier(
   error: unknown,
+  attempt?: DocumentCompilationAttempt,
 ): DocumentCompilationErrorClassification {
+  const stage = attempt?.checkpoint;
   if (error instanceof DocumentCompilationProcessingError) {
-    return { code: error.code, message: error.message, retryable: error.retryable };
+    const failure = knowledgeFsFailureForCode(error.code, {
+      ...(stage ? { stage } : {}),
+    });
+    return { code: failure.code, message: failure.message, retryable: error.retryable };
   }
   if (isRetryableProviderError(error)) {
+    const failure = knowledgeFsFailureForCode(
+      typeof error.code === "string" && error.code.trim()
+        ? error.code
+        : "DOCUMENT_COMPILATION_RETRYABLE",
+      { ...(stage ? { stage } : {}) },
+    );
     return {
-      code: providerErrorCode(error),
-      message: errorMessage(error),
+      code: failure.code,
+      message: failure.message,
       retryable: true,
     };
   }
+  const failure = knowledgeFsFailureForCode("DOCUMENT_COMPILATION_FAILED", {
+    ...(stage ? { stage } : {}),
+  });
   return {
-    code: "DOCUMENT_COMPILATION_FAILED",
-    message: errorMessage(error),
+    code: failure.code,
+    message: failure.message,
     retryable: false,
   };
 }
@@ -712,12 +727,6 @@ function isRetryableProviderError(
   );
 }
 
-function providerErrorCode(error: { readonly code?: unknown }): string {
-  return typeof error.code === "string" && error.code.trim()
-    ? error.code
-    : "DOCUMENT_COMPILATION_RETRYABLE";
-}
-
 function normalizeErrorClassification(
   classification: DocumentCompilationErrorClassification,
 ): DocumentCompilationErrorClassification {
@@ -726,7 +735,8 @@ function normalizeErrorClassification(
   if (!code || !message) {
     throw new Error("Document compilation error classification requires code and message");
   }
-  return { code, message, retryable: classification.retryable };
+  const failure = knowledgeFsFailureForCode(code);
+  return { code: failure.code, message: failure.message, retryable: classification.retryable };
 }
 
 function parseAttemptPayload(payload: JobPayload): { readonly attemptId: string } {

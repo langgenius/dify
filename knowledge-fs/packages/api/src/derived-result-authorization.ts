@@ -1,6 +1,7 @@
 import type { AuthSubject } from "@knowledge/core";
 
 import type { AgentWorkspaceReplay, AgentWorkspaceSnapshot } from "./agent-workspace-snapshot";
+import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import { omitKnowledgeFsReservedMetadata } from "./knowledge-fs-reserved-metadata";
 import type {
   KnowledgeSpaceAccessService,
@@ -145,12 +146,21 @@ export async function authorizeAgentWorkspaceDerivedResult(input: {
 /** Explicit allow-list: broker, lease, ACL provenance, and tenant fencing never become API data. */
 export function toPublicResearchTaskJob(job: ResearchTaskJob) {
   const queryImages = queryImageReferencesFromMetadata(job.metadata);
+  const rawErrorCode =
+    job.error && /^[A-Z][A-Z0-9_]{1,127}$/u.test(job.error) ? job.error : undefined;
+  const failure =
+    job.stage === "failed"
+      ? knowledgeFsFailureForCode(rawErrorCode ?? "RESEARCH_TASK_FAILED", {
+          stage: "research",
+          traceId: job.id,
+        })
+      : undefined;
   return {
     budgetUsd: job.budgetUsd,
     completedAt: job.completedAt,
     cost: job.cost,
     createdAt: job.createdAt,
-    error: job.error,
+    ...(failure ? { error: failure.code, failure } : {}),
     id: job.id,
     knowledgeSpaceId: job.knowledgeSpaceId,
     limits: job.limits,

@@ -524,7 +524,11 @@ class KnowledgeFSDataFacade:
             account_id=account_id,
             control_space_id=control_space_id,
         )
-        if current.configuration_state == "active":
+        has_active_profile = bool(
+            (current.embedding is not None and current.embedding.revision is not None)
+            or (current.retrieval is not None and current.retrieval.revision is not None)
+        )
+        if current.configuration_state == "active" or has_active_profile:
             if current.revision != payload.expected_revision:
                 raise KnowledgeFSProductRequestRejectedError(status_code=409)
             if payload.embedding is not None and payload.retrieval is not None:

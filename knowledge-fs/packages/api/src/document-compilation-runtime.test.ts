@@ -108,12 +108,13 @@ describe("createDocumentCompilationRuntime", () => {
       ),
     ).toEqual({
       code: "DOCUMENT_COMPILATION_RETRYABLE",
-      message: "provider temporarily unavailable",
+      message: "Document processing was interrupted by a temporary service failure.",
       retryable: true,
     });
     expect(defaultDocumentCompilationErrorClassifier({ retryable: true })).toEqual({
       code: "DOCUMENT_COMPILATION_FAILED",
-      message: "Document compilation execution failed",
+      message:
+        "The document could not be processed. Try again, or contact an administrator with the error reference.",
       retryable: false,
     });
   });
@@ -307,7 +308,7 @@ describe("createDocumentCompilationRuntime", () => {
 
     await expect(runtime.tick()).resolves.toMatchObject({ retryScheduled: 1 });
     await expect(attempts.get(attemptId)).resolves.toMatchObject({
-      lastErrorCode: "EMBEDDING_UNAVAILABLE",
+      lastErrorCode: "MODEL_RUNTIME_UNAVAILABLE",
       retryAt: new Date(startedAt + 2_000).toISOString(),
       runState: "retry_wait",
     });
@@ -349,8 +350,8 @@ describe("createDocumentCompilationRuntime", () => {
     });
     await expect(attempts.get(attemptId)).resolves.toMatchObject({
       executionAttempts: 1,
-      lastErrorCode: "dify_model_runtime_timeout",
-      lastErrorMessage: "Dify model runtime request timed out",
+      lastErrorCode: "MODEL_RUNTIME_TIMEOUT",
+      lastErrorMessage: "The model service timed out while processing the document.",
       retryAt: new Date(startedAt + 2_000).toISOString(),
       runState: "retry_wait",
     });
@@ -388,7 +389,9 @@ describe("createDocumentCompilationRuntime", () => {
       lastErrorCode: "DOCUMENT_COMPILATION_FAILED",
       runState: "failed",
     });
-    expect(failed?.lastErrorMessage).toHaveLength(4_096);
+    expect(failed?.lastErrorMessage).toBe(
+      "The document could not be processed. Try again, or contact an administrator with the error reference.",
+    );
     expect(statesAtQueueAck).toEqual(["failed"]);
 
     await queue.enqueue({
@@ -399,6 +402,33 @@ describe("createDocumentCompilationRuntime", () => {
     await expect(runtime.tick()).resolves.toMatchObject({ acknowledgedTerminal: 1 });
     expect(processingCalls).toBe(1);
     expect(statesAtQueueAck).toEqual(["failed", "failed"]);
+  });
+
+  it("revalidates custom error classifications before persistence", async () => {
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => startedAt);
+    await startAttempt(attempts);
+    await dispatchPendingAttempts(attempts, queue, startedAt);
+    const runtime = createRuntime({
+      attempts,
+      classifyError: () => ({
+        code: "PROVIDER_SECRET_FAILURE",
+        message: "Authorization: Bearer credential-secret",
+        retryable: false,
+      }),
+      now: () => startedAt,
+      processor: async () => {
+        throw new Error("provider failure");
+      },
+      queue,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ failed: 1 });
+    await expect(attempts.get(attemptId)).resolves.toMatchObject({
+      lastErrorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
+      lastErrorMessage:
+        "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+    });
   });
 
   it("turns invalid checkpoint transitions into terminal processor failures", async () => {
@@ -444,7 +474,7 @@ describe("createDocumentCompilationRuntime", () => {
 
     await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, retryScheduled: 0 });
     await expect(attempts.get(attemptId)).resolves.toMatchObject({
-      lastErrorCode: "GENERATION_COORDINATOR_REQUIRED",
+      lastErrorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
       runState: "failed",
     });
   });
@@ -702,6 +732,7 @@ function createQueue(now: () => number): JobQueueAdapter {
 
 function createRuntime({
   attempts,
+  classifyError,
   generateLeaseToken = () => leaseToken,
   initialRetryDelayMs,
   maxBatchSize = 10,
@@ -712,6 +743,7 @@ function createRuntime({
   queue,
 }: {
   readonly attempts: DocumentCompilationAttemptRepository;
+  readonly classifyError?: Parameters<typeof createDocumentCompilationRuntime>[0]["classifyError"];
   readonly generateLeaseToken?: () => string;
   readonly initialRetryDelayMs?: number | undefined;
   readonly maxBatchSize?: number | undefined;
@@ -723,6 +755,7 @@ function createRuntime({
 }) {
   return createDocumentCompilationRuntime({
     attempts,
+    ...(classifyError ? { classifyError } : {}),
     generateLeaseToken,
     heartbeatIntervalMs: 5_000,
     ...(initialRetryDelayMs ? { initialRetryDelayMs } : {}),

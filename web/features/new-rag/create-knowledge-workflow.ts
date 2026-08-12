@@ -134,7 +134,7 @@ function modelSelection(model: string, canonicalProvider: string): KnowledgeFsMo
 }
 
 async function getDefaultModelSelection(
-  modelType: 'llm' | 'text-embedding',
+  modelType: 'llm' | 'rerank' | 'text-embedding',
 ): Promise<KnowledgeFsModelIntent | undefined> {
   const response = await consoleClient.workspaces.current.defaultModel.get({
     query: { model_type: modelType },
@@ -146,22 +146,24 @@ async function getDefaultModelSelection(
 async function initialModelConfiguration(): Promise<
   Partial<Pick<KnowledgeFsSpaceCreatePayload, 'embedding' | 'retrieval'>>
 > {
-  const [embeddingResult, reasoningModelResult] = await Promise.allSettled([
+  const [embeddingResult, reasoningModelResult, rerankModelResult] = await Promise.allSettled([
     getDefaultModelSelection('text-embedding'),
     getDefaultModelSelection('llm'),
+    getDefaultModelSelection('rerank'),
   ])
   const embedding = embeddingResult.status === 'fulfilled' ? embeddingResult.value : undefined
   const reasoningModel =
     reasoningModelResult.status === 'fulfilled' ? reasoningModelResult.value : undefined
-  if (!embedding || !reasoningModel) return {}
+  const rerankModel = rerankModelResult.status === 'fulfilled' ? rerankModelResult.value : undefined
+  if (!embedding || !reasoningModel || !rerankModel) return {}
 
   return {
     embedding,
     retrieval: {
       default_mode: 'fast',
       reasoning_model: reasoningModel,
-      rerank: { enabled: false },
-      score_threshold: { enabled: false, stage: 'mode-final' },
+      rerank: { enabled: true, model: rerankModel },
+      score_threshold: { enabled: false, stage: 'rerank' },
       top_k: 10,
     },
   }

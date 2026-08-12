@@ -9,6 +9,7 @@ import type {
   CapabilityCallerKind,
   CapabilityGrantProvenanceRepository,
 } from "./capability-grant-provenance";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import {
   type DurableTaskOperationalMetrics,
   recordDurableTaskOperationalMetric,
@@ -51,6 +52,7 @@ export interface ResearchTaskJob {
   cost: ResearchTaskCostSummary;
   createdAt: number;
   error?: string;
+  failure?: KnowledgeFsPublicFailure | undefined;
   id: string;
   knowledgeSpaceId: string;
   limits?: ResearchTaskJobLimits | undefined;
@@ -1058,7 +1060,18 @@ function cloneRecord(input: Record<string, JobPayload>): Record<string, JobPaylo
 }
 
 function cloneResearchTaskJob(job: ResearchTaskJob): ResearchTaskJob {
-  return JSON.parse(JSON.stringify(job)) as ResearchTaskJob;
+  const cloned = JSON.parse(JSON.stringify(job)) as ResearchTaskJob;
+  if (cloned.stage !== "failed") return cloned;
+  const failure = researchTaskPublicFailure(cloned.error, cloned.id);
+  return { ...cloned, error: failure.code, failure };
+}
+
+function researchTaskPublicFailure(
+  error: string | undefined,
+  traceId: string,
+): KnowledgeFsPublicFailure {
+  const code = error && /^[A-Z][A-Z0-9_]{1,127}$/u.test(error) ? error : "RESEARCH_TASK_FAILED";
+  return knowledgeFsFailureForCode(code, { stage: "research", traceId });
 }
 
 function validatePartialResultScope(input: AppendResearchTaskPartialResultInput): void {

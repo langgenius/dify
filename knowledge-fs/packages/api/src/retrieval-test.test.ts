@@ -377,13 +377,13 @@ describe("assertRetrievalTestRuntimeCapabilities", () => {
     ).toThrow(RetrievalTestUnavailableError);
   });
 
-  it("requires Research embedding and reasoning capabilities while keeping rerank unnecessary", () => {
+  it("requires Research embedding, reasoning, and configured rerank capabilities", () => {
     expect(() =>
       assertRetrievalTestRuntimeCapabilities({
         mode: "research",
         retrievalCapabilitySnapshot: {
           reasoning: capability("reasoning", reasoningSelection),
-          rerank: null,
+          rerank: capability("rerank", rerankSelection),
           verification: "verified",
         },
         retrievalProfile,
@@ -397,12 +397,26 @@ describe("assertRetrievalTestRuntimeCapabilities", () => {
         mode: "research",
         retrievalCapabilitySnapshot: {
           reasoning: capability("reasoning", reasoningSelection),
-          rerank: null,
+          rerank: capability("rerank", rerankSelection),
           verification: "verified",
         },
         retrievalProfile,
       }),
     ).not.toThrow();
+
+    expect(() =>
+      assertRetrievalTestRuntimeCapabilities({
+        embeddingCapabilitySnapshot: capability("embedding", embeddingSelection, 3),
+        embeddingProfile,
+        mode: "research",
+        retrievalCapabilitySnapshot: {
+          reasoning: capability("reasoning", reasoningSelection),
+          rerank: null,
+          verification: "verified",
+        },
+        retrievalProfile,
+      }),
+    ).toThrow("rerank capability");
 
     expect(() =>
       assertRetrievalTestRuntimeCapabilities({

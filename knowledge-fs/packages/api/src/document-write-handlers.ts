@@ -56,10 +56,17 @@ import {
   bulkUploadDocumentsRoute,
   uploadDocumentRoute,
 } from "./document-write-routes";
+import { knowledgeFsErrorContractRequested } from "./gateway-error-envelope-middleware";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 import type { IndexProjectionRepository } from "./index-projection-repository";
 import type { IncrementalReindexer } from "./index-reindexer";
-import { KnowledgeFsValidationError } from "./knowledge-fs-errors";
+import {
+  type KnowledgeFsErrorCode,
+  type KnowledgeFsPublicFailure,
+  KnowledgeFsValidationError,
+  knowledgeFsFailureForCode,
+  knowledgeFsFailureFromError,
+} from "./knowledge-fs-errors";
 import type { KnowledgeFsOperationLeaseCoordinator } from "./knowledge-fs-operation-leases";
 import type { KnowledgeNodeRepository } from "./knowledge-node-repository";
 import type { KnowledgePathRepository } from "./knowledge-path-repository";
@@ -1214,12 +1221,20 @@ export function registerDocumentWriteHandlers({
       } catch (error) {
         const effectiveError = await resolveDeletionFenceAfterFailure(error, assertWritable);
         if (isDeletionWriteBlocked(effectiveError)) throw effectiveError;
+        const failure = documentIngestionFailure(
+          effectiveError,
+          effectiveError instanceof StagedObjectVerificationError
+            ? "UPLOAD_INTEGRITY_MISMATCH"
+            : "UPLOAD_INITIALIZATION_FAILED",
+          "upload",
+          traceId,
+        );
         await traceAsync(traces, traceId, "ingestion.staged_commit_object_failed", () =>
           stagedCommits.transition({
             ...stagedCommitScope,
             patch: {
-              errorCode: "object_verification_failed",
-              errorMessage: errorMessage(effectiveError),
+              errorCode: failure.code,
+              errorMessage: failure.message,
             },
             status: "failed-retryable",
             updatedAt: now(),
@@ -1239,7 +1254,7 @@ export function registerDocumentWriteHandlers({
           adapter.objectStorage.deleteObject(objectKey),
         );
 
-        return context.json({ error: "Document upload failed" }, 500);
+        return context.json(documentFailureBody(context, failure, "Document upload failed"), 500);
       }
 
       let metadataAsset: DocumentAsset | undefined;
@@ -1479,6 +1494,12 @@ export function registerDocumentWriteHandlers({
         } catch (error) {
           const effectiveError = await resolveDeletionFenceAfterFailure(error, assertWritable);
           if (isDeletionWriteBlocked(effectiveError)) throw effectiveError;
+          const failure = documentIngestionFailure(
+            effectiveError,
+            "DOCUMENT_PARSER_UNAVAILABLE",
+            "parse",
+            traceId,
+          );
           logDocumentUploadDiagnostic({
             asset,
             error: effectiveError,
@@ -1498,8 +1519,8 @@ export function registerDocumentWriteHandlers({
               ...stagedCommitScope,
               patch: {
                 documentAssetId: asset.id,
-                errorCode: "parser_failed",
-                errorMessage: errorMessage(effectiveError),
+                errorCode: failure.code,
+                errorMessage: failure.message,
                 publishedObjectKey: objectKey,
               },
               status: "failed-terminal",
@@ -1507,11 +1528,20 @@ export function registerDocumentWriteHandlers({
             }),
           ).catch(() => undefined);
 
-          return context.json({ error: "Document parsing failed" }, 500);
+          return context.json(
+            documentFailureBody(context, failure, "Document parsing failed"),
+            500,
+          );
         }
       } catch (error) {
         const effectiveError = await resolveDeletionFenceAfterFailure(error, assertWritable);
         if (isDeletionWriteBlocked(effectiveError)) throw effectiveError;
+        const failure = documentIngestionFailure(
+          effectiveError,
+          "DOCUMENT_COMPILATION_FAILED",
+          "metadata",
+          traceId,
+        );
         if (logicalRevision && logicalDocuments) {
           await failLogicalCandidateIfPending(logicalDocuments, logicalRevision, now()).catch(
             () => undefined,
@@ -1533,8 +1563,8 @@ export function registerDocumentWriteHandlers({
           stagedCommits.transition({
             ...stagedCommitScope,
             patch: {
-              errorCode: "metadata_prepare_failed",
-              errorMessage: errorMessage(effectiveError),
+              errorCode: failure.code,
+              errorMessage: failure.message,
             },
             status: "failed-retryable",
             updatedAt: now(),
@@ -1578,7 +1608,7 @@ export function registerDocumentWriteHandlers({
         ) {
           throw effectiveError;
         }
-        return context.json({ error: "Document upload failed" }, 500);
+        return context.json(documentFailureBody(context, failure, "Document upload failed"), 500);
       }
     } catch (error) {
       const effectiveError = deletionAssertWritable
@@ -2030,8 +2060,34 @@ function isKnowledgeSpaceQuotaAdmissionError(
 
 class StagedObjectVerificationError extends Error {}
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message.slice(0, 2_000) : "Unknown error";
+function documentIngestionFailure(
+  error: unknown,
+  fallbackCode: KnowledgeFsErrorCode,
+  stage: string,
+  traceId: string,
+): KnowledgeFsPublicFailure {
+  const classified = knowledgeFsFailureFromError(error, { stage, traceId });
+  return classified.code === "KNOWLEDGE_FS_INTERNAL_ERROR"
+    ? knowledgeFsFailureForCode(fallbackCode, { stage, traceId })
+    : classified;
+}
+
+function documentFailureBody(
+  context: Context,
+  failure: KnowledgeFsPublicFailure,
+  legacyError: string,
+):
+  | {
+      readonly code: KnowledgeFsErrorCode;
+      readonly error: string;
+      readonly failure: KnowledgeFsPublicFailure;
+    }
+  | {
+      readonly error: string;
+    } {
+  return knowledgeFsErrorContractRequested(context)
+    ? { code: failure.code, error: failure.message, failure }
+    : { error: legacyError };
 }
 
 function bulkRuntimeExclusionReason(

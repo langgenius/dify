@@ -7,6 +7,7 @@ import type {
   KnowledgeFsDocumentRevisionResponse,
   KnowledgeFsLogicalDocumentListResponse,
   KnowledgeFsLogicalDocumentResponse,
+  KnowledgeFsPublicFailureResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 
 export type LogicalDocumentRevision = {
@@ -79,6 +80,7 @@ export type BackgroundTask = {
   documentRevision?: number
   errorCode?: string
   errorMessage?: string
+  failure?: KnowledgeFsPublicFailureResponse
   id: string
   knowledgeSpaceId: string
   operation: KnowledgeFsBackgroundTaskResponse['operation']
@@ -132,6 +134,7 @@ export type DocumentProcessingTaskEvent =
   | {
       data: {
         errorCode?: string
+        failure?: KnowledgeFsPublicFailureResponse
         state: 'succeeded' | 'failed' | 'canceled' | 'superseded'
       }
       event: 'terminal'
@@ -241,6 +244,7 @@ export function backgroundTaskFromApi(task: KnowledgeFsBackgroundTaskResponse): 
     documentRevision: task.document_revision ?? undefined,
     errorCode: task.error_code ?? undefined,
     errorMessage: task.error_message ?? undefined,
+    failure: task.failure ?? undefined,
     id: task.id,
     knowledgeSpaceId: task.knowledge_space_id,
     operation: task.operation,

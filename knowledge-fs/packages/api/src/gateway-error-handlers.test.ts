@@ -20,10 +20,25 @@ describe("handleGatewayError", () => {
     });
     app.onError(handleGatewayError);
 
-    const response = await app.request("/knowledge-spaces/space-1/background-tasks?limit=100");
+    const response = await app.request("/knowledge-spaces/space-1/background-tasks?limit=100", {
+      headers: { "X-KnowledgeFS-Error-Contract": "2" },
+    });
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: "Internal server error" });
+    await expect(response.json()).resolves.toEqual({
+      code: "KNOWLEDGE_FS_INTERNAL_ERROR",
+      error:
+        "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+      failure: {
+        action: "contact_admin",
+        category: "internal",
+        code: "KNOWLEDGE_FS_INTERNAL_ERROR",
+        message:
+          "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+        retryPolicy: "manual",
+        traceId: "trace-background-task",
+      },
+    });
     expect(log).toHaveBeenCalledWith("Unhandled gateway error", {
       code: "42P01",
       message: "relation does not exist",

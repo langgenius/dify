@@ -90,8 +90,12 @@ export type ModelCapabilityPreflightErrorCode =
   | "EMBEDDING_DIMENSION_INVALID"
   | "EMBEDDING_DIMENSION_UNSUPPORTED"
   | "MODEL_CAPABILITY_MISMATCH"
+  | "MODEL_CREDENTIAL_INVALID"
+  | "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"
   | "MODEL_IDENTITY_MISMATCH"
+  | "MODEL_PREFLIGHT_CANCELED"
   | "MODEL_PREFLIGHT_FAILED"
+  | "MODEL_PREFLIGHT_TIMEOUT"
   | "MODEL_PREFLIGHT_UNAVAILABLE"
   | "MODEL_SELECTION_NOT_FOUND";
 
@@ -198,7 +202,7 @@ export function createModelCapabilityPreflight({
               });
             } catch (cause) {
               throw new ModelCapabilityPreflightError(
-                "MODEL_PREFLIGHT_FAILED",
+                "MODEL_PREFLIGHT_UNAVAILABLE",
                 "Model capability catalog is temporarily unavailable",
                 { cause, retryable: true },
               );
@@ -223,7 +227,7 @@ export function createModelCapabilityPreflight({
                 });
               } catch (cause) {
                 throw new ModelCapabilityPreflightError(
-                  "MODEL_PREFLIGHT_FAILED",
+                  "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE",
                   "The selected model's credentials could not be validated",
                   { cause, retryable: true },
                 );
@@ -231,7 +235,7 @@ export function createModelCapabilityPreflight({
               assertPreflightActive(scoped.signal);
               if (!valid) {
                 throw new ModelCapabilityPreflightError(
-                  "MODEL_PREFLIGHT_FAILED",
+                  "MODEL_CREDENTIAL_INVALID",
                   "The selected model's credentials are not valid",
                 );
               }
@@ -295,11 +299,7 @@ export function createModelCapabilityPreflight({
         if (error instanceof ModelCapabilityPreflightError) {
           throw error;
         }
-        throw new ModelCapabilityPreflightError(
-          "MODEL_PREFLIGHT_FAILED",
-          "The selected model failed its capability preflight",
-          { cause: error, retryable: true },
-        );
+        throw normalizePreflightProviderError(error);
       } finally {
         scoped.dispose();
       }
@@ -501,7 +501,7 @@ function createPreflightAbortScope(
   const abortFromParent = () =>
     abort(
       new ModelCapabilityPreflightError(
-        "MODEL_PREFLIGHT_FAILED",
+        "MODEL_PREFLIGHT_CANCELED",
         "The selected model capability preflight was canceled",
         { cause: parentSignal?.reason, retryable: true },
       ),
@@ -514,7 +514,7 @@ function createPreflightAbortScope(
   const timeout = setTimeout(() => {
     abort(
       new ModelCapabilityPreflightError(
-        "MODEL_PREFLIGHT_FAILED",
+        "MODEL_PREFLIGHT_TIMEOUT",
         "The selected model capability preflight timed out",
         { retryable: true },
       ),
@@ -529,4 +529,51 @@ function createPreflightAbortScope(
     race: <T>(operation: Promise<T>) => Promise.race([operation, boundary]),
     signal: controller.signal,
   };
+}
+
+function normalizePreflightProviderError(error: unknown): ModelCapabilityPreflightError {
+  const providerCode =
+    error && typeof error === "object" && "code" in error
+      ? (error as { readonly code?: unknown }).code
+      : undefined;
+  const normalizedProviderCode =
+    typeof providerCode === "string" ? providerCode.trim().toLowerCase() : "";
+  const retryable =
+    error && typeof error === "object" && "retryable" in error
+      ? (error as { readonly retryable?: unknown }).retryable === true
+      : true;
+
+  if (normalizedProviderCode.includes("timeout")) {
+    return new ModelCapabilityPreflightError(
+      "MODEL_PREFLIGHT_TIMEOUT",
+      "The selected model capability preflight timed out",
+      { cause: error, retryable: true },
+    );
+  }
+  if (
+    normalizedProviderCode.includes("abort") ||
+    normalizedProviderCode.includes("cancel") ||
+    (error instanceof Error && error.name === "AbortError")
+  ) {
+    return new ModelCapabilityPreflightError(
+      "MODEL_PREFLIGHT_CANCELED",
+      "The selected model capability preflight was canceled",
+      { cause: error, retryable: true },
+    );
+  }
+  if (
+    normalizedProviderCode.includes("request_failed") ||
+    normalizedProviderCode.includes("unavailable")
+  ) {
+    return new ModelCapabilityPreflightError(
+      "MODEL_PREFLIGHT_UNAVAILABLE",
+      "The selected model service is temporarily unavailable",
+      { cause: error, retryable },
+    );
+  }
+  return new ModelCapabilityPreflightError(
+    "MODEL_PREFLIGHT_FAILED",
+    "The selected model failed its capability preflight",
+    { cause: error, retryable },
+  );
 }

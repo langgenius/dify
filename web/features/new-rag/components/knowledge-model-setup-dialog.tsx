@@ -34,6 +34,8 @@ export function KnowledgeModelSetupDialog({
             {tCommon(($) => $['modelProvider.systemReasoningModel.key'])}
             {' · '}
             {tSettings(($) => $['form.embeddingModel'])}
+            {' · '}
+            {tCommon(($) => $['modelProvider.rerankModel.key'])}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>

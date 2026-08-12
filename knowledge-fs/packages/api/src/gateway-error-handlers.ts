@@ -1,5 +1,9 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+
+import { knowledgeFsErrorContractRequested } from "./gateway-error-envelope-middleware";
+import { KnowledgeFsError, knowledgeFsFailureFromError } from "./knowledge-fs-errors";
 
 export function handleGatewayError(error: Error, context: Context): Response {
   if (error instanceof HTTPException) {
@@ -17,9 +21,28 @@ export function handleGatewayError(error: Error, context: Context): Response {
     method: context.req.method,
     path: context.req.path,
   });
-  return context.json({ error: "Internal server error" }, 500);
+  if (!knowledgeFsErrorContractRequested(context)) {
+    return context.json({ error: "Internal server error" }, 500);
+  }
+  const failure = knowledgeFsFailureFromError(error, {
+    ...(typeof traceId === "string" ? { traceId } : {}),
+  });
+  const status = (
+    error instanceof KnowledgeFsError ? error.httpStatus : 500
+  ) as ContentfulStatusCode;
+  return context.json({ code: failure.code, error: failure.message, failure }, status);
 }
 
 export function handleGatewayNotFound(context: Context): Response {
-  return context.json({ error: "Not found" }, 404);
+  if (!knowledgeFsErrorContractRequested(context)) {
+    return context.json({ error: "Not found" }, 404);
+  }
+  const traceId = (context.var as Record<string, unknown>).traceId;
+  const failure = knowledgeFsFailureFromError(
+    new KnowledgeFsError("Route not found", {
+      code: "KNOWLEDGE_FS_NOT_FOUND",
+    }),
+    { ...(typeof traceId === "string" ? { traceId } : {}) },
+  );
+  return context.json({ code: failure.code, error: failure.message, failure }, 404);
 }

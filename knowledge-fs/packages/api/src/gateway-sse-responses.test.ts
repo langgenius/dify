@@ -335,7 +335,8 @@ describe("createQuerySseResponse", () => {
 
     const body = await response.text();
     expect(body).not.toContain("deleted-secret-evidence");
-    expect(body).toContain("knowledge deletion started");
+    expect(body).toContain('"code":"KNOWLEDGE_FS_CONFLICT"');
+    expect(body).toContain('"failure"');
     expect(record).not.toHaveBeenCalled();
     expect(release).toHaveBeenCalledOnce();
   });
@@ -377,7 +378,8 @@ describe("createQuerySseResponse", () => {
     abort.abort(new RetrievalExecutionLeaseLostError());
     const body = await response.text();
 
-    expect(body).toContain("knowledge deletion started");
+    expect(body).toContain('"code":"KNOWLEDGE_FS_CONFLICT"');
+    expect(body).toContain('"failure"');
     expect(returnIterator).toHaveBeenCalledOnce();
     expect(release).toHaveBeenCalledOnce();
   });

@@ -195,6 +195,7 @@ export * from "./freshness-checking";
 export * from "./gateway-app";
 export * from "./gateway-defaults";
 export * from "./gateway-error-handlers";
+export * from "./gateway-error-envelope-middleware";
 export * from "./gateway-health";
 export * from "./gateway-openapi-contracts";
 export * from "./gateway-openapi-document";
@@ -462,6 +463,7 @@ import { createFailedQueryRecorder } from "./failed-query-recorder";
 import { createInMemoryFailedQueryRepository } from "./failed-query-repository";
 import { createKnowledgeGatewayApp } from "./gateway-app";
 import { createDefaultComputeRuntime, createDefaultParser } from "./gateway-defaults";
+import { createKnowledgeFsErrorEnvelopeMiddleware } from "./gateway-error-envelope-middleware";
 import {
   completeKnowledgeGatewayOpenApiDocument,
   knowledgeGatewayOpenApiDocument,
@@ -1490,6 +1492,7 @@ export function createKnowledgeGateway({
         )
     : legacyAuthMiddleware;
   app.use("*", createTraceMiddleware(traces));
+  app.use("*", createKnowledgeFsErrorEnvelopeMiddleware());
   const internalTransportGuard = createInternalTransportGuardMiddleware();
   app.use("/queries", internalTransportGuard);
   app.use("/research-tasks/:id/events", internalTransportGuard);

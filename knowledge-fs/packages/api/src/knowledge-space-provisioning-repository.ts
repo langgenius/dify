@@ -14,6 +14,7 @@ import {
   KnowledgeSpaceRetrievalProfileSchema,
   KnowledgeSpaceSchema,
   createDefaultKnowledgeSpaceManifest,
+  hasRequiredKnowledgeSpaceRetrievalModels,
   stableJson,
 } from "@knowledge/core";
 
@@ -1101,11 +1102,19 @@ export function configurationStatusFor(
   pendingModelConfiguration?: KnowledgeSpacePendingModelConfiguration | undefined,
 ): KnowledgeSpaceConfigurationStatus {
   if (pendingModelConfiguration) {
-    if (!pendingModelConfiguration.retrievalProfile) return "setup-required";
+    if (
+      !pendingModelConfiguration.embeddingSelection ||
+      !pendingModelConfiguration.retrievalProfile ||
+      !hasRequiredKnowledgeSpaceRetrievalModels(pendingModelConfiguration.retrievalProfile)
+    ) {
+      return "setup-required";
+    }
     return pendingModelConfiguration.state;
   }
-  if (!retrieval) return "setup-required";
-  return embedding ? "ready" : "setup-required";
+  if (!embedding || !retrieval || !hasRequiredKnowledgeSpaceRetrievalModels(retrieval)) {
+    return "setup-required";
+  }
+  return "ready";
 }
 
 function provisioningIntentDigest(

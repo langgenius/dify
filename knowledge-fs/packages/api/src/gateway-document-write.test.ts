@@ -1444,13 +1444,25 @@ describe("document write gateway integration", () => {
       "/knowledge-spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents",
       {
         body: form,
-        headers: bearer(writeToken),
+        headers: {
+          ...bearer(writeToken),
+          "X-KnowledgeFS-Error-Contract": "2",
+        },
         method: "POST",
       },
     );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toEqual({ error: "Document upload failed" });
+    await expect(response.json()).resolves.toMatchObject({
+      code: "UPLOAD_INTEGRITY_MISMATCH",
+      error: "The uploaded file did not pass its integrity check. Upload the file again.",
+      failure: {
+        action: "reupload",
+        code: "UPLOAD_INTEGRITY_MISMATCH",
+        retryPolicy: "never",
+        stage: "upload",
+      },
+    });
     await expect(
       assets.get({
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
@@ -1466,7 +1478,9 @@ describe("document write gateway integration", () => {
     ).resolves.toMatchObject({
       items: [
         {
-          errorCode: "object_verification_failed",
+          errorCode: "UPLOAD_INTEGRITY_MISMATCH",
+          errorMessage:
+            "The uploaded file did not pass its integrity check. Upload the file again.",
           rawObjectKey:
             "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/verify.md",
           status: "failed-retryable",
@@ -1669,7 +1683,8 @@ describe("document write gateway integration", () => {
       items: [
         {
           documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
-          errorCode: "parser_failed",
+          errorCode: "DOCUMENT_PARSER_UNAVAILABLE",
+          errorMessage: "The document parser is temporarily unavailable.",
           publishedObjectKey:
             "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/failure.md",
           status: "failed-terminal",

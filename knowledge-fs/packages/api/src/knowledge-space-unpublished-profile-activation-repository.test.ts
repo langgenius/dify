@@ -100,7 +100,14 @@ function researchRetrievalInput(): KnowledgeSpaceRetrievalProfileInput {
       pluginId: "plugin-daemon-reasoning",
       provider: "user-provider",
     },
-    rerank: { enabled: false },
+    rerank: {
+      enabled: true,
+      model: {
+        model: "rerank-model",
+        pluginId: "plugin-daemon-rerank",
+        provider: "user-provider",
+      },
+    },
     scoreThreshold: { enabled: false, stage: "mode-final" },
     topK: 10,
   };
@@ -137,7 +144,7 @@ function initialTupleFixture() {
       retrieval: {
         capabilitySnapshot: {
           reasoning: { kind: "reasoning", selection: retrieval.reasoningModel },
-          rerank: null,
+          rerank: { kind: "rerank", selection: retrieval.rerank.model },
           verification: "verified",
         },
         snapshot: retrieval,
@@ -703,7 +710,7 @@ describe("unpublished knowledge-space profile atomic activation", () => {
       repository.activate({
         capabilitySnapshot: {
           reasoning: { kind: "reasoning", selection: retrieval.reasoningModel },
-          rerank: null,
+          rerank: { kind: "rerank", selection: retrieval.rerank.model },
           verification: "verified",
         },
         clearPendingConfiguration: true,

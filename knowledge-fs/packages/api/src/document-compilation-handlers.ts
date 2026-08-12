@@ -13,6 +13,7 @@ import {
   retryDocumentCompilationJobRoute,
 } from "./document-compilation-routes";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type {
   KnowledgeSpaceAccessService,
   KnowledgeSpacePermissionSnapshot,
@@ -238,19 +239,29 @@ export function registerDocumentCompilationHandlers({
   });
 }
 
-function toPublicCompilationJob(
-  job: DocumentCompilationJob,
-): Omit<
+function toPublicCompilationJob(job: DocumentCompilationJob): Omit<
   DocumentCompilationJob,
-  "capabilityGrantId" | "permissionSnapshot" | "requestedBySubjectId"
-> {
+  "capabilityGrantId" | "error" | "permissionSnapshot" | "requestedBySubjectId"
+> & {
+  readonly error?: string | undefined;
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
+} {
   const {
     capabilityGrantId: _capabilityGrantId,
+    error: _error,
     permissionSnapshot: _permissionSnapshot,
     requestedBySubjectId: _requestedBySubjectId,
     ...publicJob
   } = job;
-  return publicJob;
+  if (job.stage !== "failed" && job.runState !== "failed") return publicJob;
+
+  const failure = knowledgeFsFailureForCode(
+    job.error && /^[A-Z][A-Z0-9_]{2,127}$/u.test(job.error)
+      ? job.error
+      : "DOCUMENT_COMPILATION_FAILED",
+    { stage: "document-compilation", traceId: job.id },
+  );
+  return { ...publicJob, error: failure.message, failure };
 }
 
 async function revalidateCompilationJobPermission(

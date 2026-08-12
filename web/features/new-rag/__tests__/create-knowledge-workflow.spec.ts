@@ -34,10 +34,15 @@ describe('createKnowledge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     serviceMock.getDefaultModel.mockImplementation(
-      ({ query }: { query: { model_type: 'llm' | 'text-embedding' } }) =>
+      ({ query }: { query: { model_type: 'llm' | 'rerank' | 'text-embedding' } }) =>
         Promise.resolve({
           data: {
-            model: query.model_type === 'llm' ? 'reasoning-model' : 'embedding-model',
+            model:
+              query.model_type === 'llm'
+                ? 'reasoning-model'
+                : query.model_type === 'rerank'
+                  ? 'rerank-model'
+                  : 'embedding-model',
             provider: {
               provider:
                 query.model_type === 'llm'
@@ -110,8 +115,15 @@ describe('createKnowledge', () => {
             plugin_id: 'langgenius/openai',
             provider: 'openai',
           },
-          rerank: { enabled: false },
-          score_threshold: { enabled: false, stage: 'mode-final' },
+          rerank: {
+            enabled: true,
+            model: {
+              model: 'rerank-model',
+              plugin_id: 'langgenius/cohere',
+              provider: 'cohere',
+            },
+          },
+          score_threshold: { enabled: false, stage: 'rerank' },
           top_k: 10,
         },
         slug: expect.stringMatching(/^dify-product-docs-[a-z0-9]+$/),
@@ -126,7 +138,7 @@ describe('createKnowledge', () => {
     })
   })
 
-  it.each(['text-embedding', 'llm'] as const)(
+  it.each(['text-embedding', 'llm', 'rerank'] as const)(
     'creates a setup-required control space when the default %s model is missing',
     async (missingModelType) => {
       serviceMock.createSpace.mockResolvedValueOnce({
@@ -136,7 +148,7 @@ describe('createKnowledge', () => {
         state: 'provisioning',
       })
       serviceMock.getDefaultModel.mockImplementation(
-        ({ query }: { query: { model_type: 'llm' | 'text-embedding' } }) =>
+        ({ query }: { query: { model_type: 'llm' | 'rerank' | 'text-embedding' } }) =>
           Promise.resolve(
             query.model_type !== missingModelType
               ? {
@@ -146,10 +158,15 @@ describe('createKnowledge', () => {
                           model: 'reasoning-model',
                           provider: { provider: 'langgenius/openai/openai' },
                         }
-                      : {
-                          model: 'embedding-model',
-                          provider: { provider: 'langgenius/cohere/cohere' },
-                        },
+                      : query.model_type === 'rerank'
+                        ? {
+                            model: 'rerank-model',
+                            provider: { provider: 'langgenius/cohere/cohere' },
+                          }
+                        : {
+                            model: 'embedding-model',
+                            provider: { provider: 'langgenius/cohere/cohere' },
+                          },
                 }
               : { data: null },
           ),

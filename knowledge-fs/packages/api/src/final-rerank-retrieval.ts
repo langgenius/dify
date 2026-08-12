@@ -1,6 +1,7 @@
 import {
   type KnowledgeSpaceModelSelection,
   assertKnowledgeSpaceRetrievalProfileForMode,
+  hasRequiredKnowledgeSpaceRetrievalModels,
 } from "@knowledge/core";
 import type { RerankerProvider } from "@knowledge/embeddings";
 
@@ -63,6 +64,9 @@ export function createFinalRerankRetrieval({
       if (input.mode === "research") {
         if (input.retrievalProfile) {
           assertKnowledgeSpaceRetrievalProfileForMode(input.retrievalProfile, "research");
+          if (!hasRequiredKnowledgeSpaceRetrievalModels(input.retrievalProfile)) {
+            throw new Error("Knowledge-space retrieval requires an enabled rerank model");
+          }
         }
         return normalizeRetrievalResult(await retriever.retrieve(input), input.limit);
       }
@@ -76,9 +80,8 @@ export function createFinalRerankRetrieval({
       }
 
       // Resolve a knowledge-space provider only after the plan has confirmed
-      // that this request will rerank. This keeps the Research pipeline and
-      // profiles with reranking disabled from instantiating or calling a
-      // provider that cannot affect the result.
+      // that this request will rerank. Research never reaches this boundary;
+      // Fast/Deep profiles fail closed when their mandatory reranker is absent.
       const runtime = resolveFinalRerankRuntime({
         input,
         reranker,
@@ -166,13 +169,9 @@ function resolveFinalRerankRuntime({
     return reranker && rerankerModel ? { model: rerankerModel, provider: reranker } : undefined;
   }
 
-  if (!profile.rerank.enabled) {
-    return undefined;
-  }
-
   const selection = profile.rerank.model;
-  if (!selection) {
-    throw new Error("Enabled knowledge-space rerank profile is missing its model selection");
+  if (!profile.rerank.enabled || !selection) {
+    throw new Error("Knowledge-space Fast/Deep retrieval requires an enabled rerank model");
   }
   if (!rerankerFactory) {
     throw new Error(

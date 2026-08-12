@@ -1,7 +1,7 @@
 import { createRoute, z } from "@hono/zod-openapi";
 
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
-import { ErrorResponseSchema } from "./gateway-route-schemas";
+import { ErrorResponseSchema, KnowledgeFsPublicFailureSchema } from "./gateway-route-schemas";
 
 export const BackgroundTaskKindSchema = z.enum(["document", "document_bulk", "source"]);
 export const BackgroundTaskStateSchema = z.enum([
@@ -43,16 +43,18 @@ export const BackgroundTaskSchema = z.object({
   createdAt: z.string(),
   documentId: z.string().uuid().optional(),
   documentRevision: z.number().int().positive().optional(),
-  errorCode: z.string().optional(),
-  errorMessage: z.string().optional(),
+  errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
+  errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),
+  failure: KnowledgeFsPublicFailureSchema.optional(),
   failures: z
     .array(
       z
         .object({
           documentId: z.string().uuid(),
           documentTitle: z.string().optional(),
-          errorCode: z.string(),
-          errorMessage: z.string(),
+          errorCode: KnowledgeFsPublicFailureSchema.shape.code,
+          errorMessage: KnowledgeFsPublicFailureSchema.shape.message,
+          failure: KnowledgeFsPublicFailureSchema,
           jobId: z.string().uuid().optional(),
         })
         .strict(),
@@ -80,8 +82,9 @@ export const BackgroundTaskSchema = z.object({
   state: BackgroundTaskStateSchema,
   semanticEnrichment: z
     .object({
-      errorCode: z.string().optional(),
-      errorMessage: z.string().optional(),
+      errorCode: KnowledgeFsPublicFailureSchema.shape.code.optional(),
+      errorMessage: KnowledgeFsPublicFailureSchema.shape.message.optional(),
+      failure: KnowledgeFsPublicFailureSchema.optional(),
       nodesCompleted: z.number().int().nonnegative(),
       nodesTotal: z.number().int().nonnegative().optional(),
       providerCalls: z.number().int().nonnegative().optional(),

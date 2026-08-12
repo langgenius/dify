@@ -1,11 +1,16 @@
 import type { BulkOperation } from "./bulk-operation";
-import type { BulkOperationSummary } from "./bulk-operation-summary";
+import type { BulkOperationFailure, BulkOperationSummary } from "./bulk-operation-summary";
 import type {
   DocumentProcessingOperation,
   DocumentProcessingPhase,
   DocumentProcessingTask,
   DocumentSemanticEnrichmentProgress,
 } from "./document-processing-task-repository";
+import {
+  type KnowledgeFsPublicFailure,
+  knowledgeFsFailureAllowsManualRetry,
+  knowledgeFsFailureForCode,
+} from "./knowledge-fs-errors";
 import type { SourceWorkflowRun } from "./source-product-workflow";
 
 export type BackgroundTaskKind = "document" | "document_bulk" | "source";
@@ -24,6 +29,10 @@ export type BackgroundTaskOperation =
 
 export type BackgroundTaskState = "queued" | "running" | "completed" | "failed" | "canceled";
 
+export interface BackgroundTaskItemFailure extends BulkOperationFailure {
+  readonly failure: KnowledgeFsPublicFailure;
+}
+
 export interface BackgroundTask {
   readonly activeOperations?: readonly DocumentProcessingOperation[] | undefined;
   readonly canCancel: boolean;
@@ -34,7 +43,8 @@ export interface BackgroundTask {
   readonly documentRevision?: number | undefined;
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
-  readonly failures?: BulkOperationSummary["failures"] | undefined;
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
+  readonly failures?: readonly BackgroundTaskItemFailure[] | undefined;
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly operation: BackgroundTaskOperation;
@@ -59,16 +69,19 @@ export interface BackgroundTaskCursor {
 
 export function documentBackgroundTask(task: DocumentProcessingTask): BackgroundTask {
   const state = documentState(task.state);
+  const failure =
+    state === "failed"
+      ? taskFailure(task.errorCode, "DOCUMENT_COMPILATION_FAILED", task.phase, task.id)
+      : undefined;
   return {
     ...(task.activeOperations ? { activeOperations: task.activeOperations } : {}),
     canCancel: state === "queued" || state === "running",
-    canRetry: state === "failed" || state === "canceled",
+    canRetry: state === "canceled" || knowledgeFsFailureAllowsManualRetry(failure),
     ...(task.completedAt ? { completedAt: task.completedAt } : {}),
     createdAt: task.createdAt,
     documentId: task.documentId,
     documentRevision: task.documentRevision,
-    ...(task.errorCode ? { errorCode: task.errorCode } : {}),
-    ...(task.errorMessage ? { errorMessage: task.errorMessage } : {}),
+    ...(failure ? { errorCode: failure.code, errorMessage: failure.message, failure } : {}),
     id: task.id,
     knowledgeSpaceId: task.knowledgeSpaceId,
     operation: "document_processing",
@@ -89,15 +102,39 @@ export function bulkBackgroundTask(
   summary: BulkOperationSummary,
 ): BackgroundTask {
   const state = summary.status;
+  const failures = summary.failures?.map((item) => {
+    const failure = taskFailure(
+      item.errorCode,
+      "DOCUMENT_COMPILATION_FAILED",
+      operation.type,
+      item.jobId,
+    );
+    return { ...item, errorCode: failure.code, errorMessage: failure.message, failure };
+  });
+  const failure =
+    state === "failed"
+      ? (failures?.[0]?.failure ??
+        taskFailure(undefined, "DOCUMENT_COMPILATION_FAILED", operation.type, summary.id))
+      : undefined;
+  const hasRetryableFailure =
+    failures?.some((item) => knowledgeFsFailureAllowsManualRetry(item.failure)) ??
+    knowledgeFsFailureAllowsManualRetry(failure);
   return {
     canCancel: operation.type !== "document_delete" && state === "running",
-    canRetry: state === "failed" || state === "canceled",
+    canRetry: state === "canceled" || (state === "failed" && hasRetryableFailure),
     ...(state === "completed" || state === "failed" || state === "canceled"
       ? { completedAt: summary.updatedAt }
       : {}),
     createdAt: summary.createdAt,
+    ...(failure
+      ? {
+          errorCode: failure.code,
+          errorMessage: failure.message,
+          failure,
+        }
+      : {}),
     id: summary.id,
-    ...(summary.failures?.length ? { failures: summary.failures } : {}),
+    ...(failures?.length ? { failures } : {}),
     knowledgeSpaceId: summary.knowledgeSpaceId,
     operation: operation.type,
     progressCompleted: summary.completedItems,
@@ -121,13 +158,16 @@ export function sourceBackgroundTask(run: SourceWorkflowRun): BackgroundTask {
   const state = sourceState(run.state);
   const progressTotal = run.progressTotal ?? 1;
   const terminalProgress = state === "completed" ? progressTotal : run.progressCompleted;
+  const failure =
+    state === "failed"
+      ? taskFailure(run.lastErrorCode, "SOURCE_OPERATION_FAILED", run.checkpoint, run.id)
+      : undefined;
   return {
     canCancel: state === "queued" || state === "running",
-    canRetry: state === "failed" || state === "canceled",
+    canRetry: state === "canceled" || knowledgeFsFailureAllowsManualRetry(failure),
     ...(run.completedAt ? { completedAt: run.completedAt } : {}),
     createdAt: run.createdAt,
-    ...(run.lastErrorCode ? { errorCode: run.lastErrorCode } : {}),
-    ...(run.lastErrorMessage ? { errorMessage: run.lastErrorMessage } : {}),
+    ...(failure ? { errorCode: failure.code, errorMessage: failure.message, failure } : {}),
     id: run.id,
     knowledgeSpaceId: run.knowledgeSpaceId,
     operation: sourceOperation(run.kind),
@@ -222,4 +262,16 @@ function sourceOperation(kind: SourceWorkflowRun["kind"]): BackgroundTaskOperati
     sync: "source_sync",
   } as const;
   return operations[kind];
+}
+
+function taskFailure(
+  errorCode: string | undefined,
+  fallbackCode: string,
+  stage: string | undefined,
+  traceId: string | undefined,
+): KnowledgeFsPublicFailure {
+  return knowledgeFsFailureForCode(errorCode ?? fallbackCode, {
+    ...(stage ? { stage } : {}),
+    ...(traceId ? { traceId } : {}),
+  });
 }

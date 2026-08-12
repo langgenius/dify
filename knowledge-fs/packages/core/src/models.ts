@@ -378,10 +378,15 @@ const KnowledgeSpaceRetrievalProfileShape = {
   topK: z.number().int().min(1).max(100),
 } as const;
 
-export const KnowledgeSpaceRetrievalProfileInputSchema = z
+const KnowledgeSpaceRetrievalProfileCompatibilitySchema = z
   .object(KnowledgeSpaceRetrievalProfileShape)
   .strict()
   .superRefine(validateKnowledgeSpaceRetrievalProfile);
+
+export const KnowledgeSpaceRetrievalProfileInputSchema =
+  KnowledgeSpaceRetrievalProfileCompatibilitySchema.superRefine(
+    validateRequiredKnowledgeSpaceRetrievalModels,
+  );
 export type KnowledgeSpaceRetrievalProfileInput = z.infer<
   typeof KnowledgeSpaceRetrievalProfileInputSchema
 >;
@@ -407,7 +412,9 @@ export const KnowledgeSpacePendingModelConfigurationSchema = z
       })
       .strict()
       .optional(),
-    retrievalProfile: KnowledgeSpaceRetrievalProfileInputSchema.optional(),
+    // Persisted pending configurations created before reranking became mandatory remain readable
+    // so the control plane can expose them as setup-required and let an owner repair the profile.
+    retrievalProfile: KnowledgeSpaceRetrievalProfileCompatibilitySchema.optional(),
     revision: z.number().int().positive(),
     state: z.enum(["pending-validation", "validation-failed"]),
   })
@@ -512,6 +519,27 @@ function validateKnowledgeSpaceRetrievalProfile(
       path: ["scoreThreshold", "value"],
     });
   }
+}
+
+function validateRequiredKnowledgeSpaceRetrievalModels(
+  profile: {
+    readonly rerank: { readonly enabled: boolean; readonly model?: unknown | undefined };
+  },
+  context: z.RefinementCtx,
+): void {
+  if (!hasRequiredKnowledgeSpaceRetrievalModels(profile)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Knowledge-space retrieval requires an enabled rerank model",
+      path: ["rerank", "model"],
+    });
+  }
+}
+
+export function hasRequiredKnowledgeSpaceRetrievalModels(profile: {
+  readonly rerank: { readonly enabled: boolean; readonly model?: unknown | undefined };
+}): boolean {
+  return profile.rerank.enabled && profile.rerank.model !== undefined;
 }
 
 function validatePersistedKnowledgeSpaceRetrievalProfileMode(

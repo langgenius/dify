@@ -31,7 +31,14 @@ describe("background task DTOs", () => {
     ).toMatchObject({
       canCancel: false,
       canRetry: true,
-      errorCode: "PARSER_FAILED",
+      errorCode: "DOCUMENT_PARSER_UNAVAILABLE",
+      errorMessage: "The document parser is temporarily unavailable.",
+      failure: {
+        action: "retry",
+        category: "dependency",
+        code: "DOCUMENT_PARSER_UNAVAILABLE",
+        retryPolicy: "automatic",
+      },
       operation: "document_processing",
       progressFailed: 1,
       state: "failed",
@@ -42,6 +49,27 @@ describe("background task DTOs", () => {
       canCancel: true,
       canRetry: false,
       state: "queued",
+    });
+
+    expect(
+      documentBackgroundTask(
+        documentTask({
+          errorCode: "MODEL_SELECTION_NOT_FOUND",
+          errorMessage: "provider credential and endpoint detail",
+          phase: "outline_summary",
+          state: "failed",
+        }),
+      ),
+    ).toMatchObject({
+      canRetry: false,
+      errorMessage:
+        "The selected model is no longer available in this workspace. Select another model before retrying.",
+      failure: {
+        action: "configure_model",
+        code: "MODEL_SELECTION_NOT_FOUND",
+        retryPolicy: "after_configuration",
+        stage: "outline_summary",
+      },
     });
   });
 
@@ -195,8 +223,13 @@ describe("background task DTOs", () => {
       ),
     ).toMatchObject({
       canRetry: true,
-      errorCode: "SOURCE_FAILED",
-      errorMessage: "Source failed",
+      errorCode: "SOURCE_OPERATION_FAILED",
+      errorMessage: "The source operation could not be completed.",
+      failure: {
+        action: "retry",
+        code: "SOURCE_OPERATION_FAILED",
+        retryPolicy: "manual",
+      },
       operation: "source_crawl_import",
       progressPercent: 100,
       state: "failed",
@@ -231,6 +264,57 @@ describe("background task DTOs", () => {
       canCancel: true,
       state: "queued",
     });
+  });
+
+  it("replaces raw bulk item diagnostics with the registered public failure", () => {
+    const operation: BulkOperation = {
+      createdAt: CREATED_AT,
+      id: "22222222-2222-4222-8222-222222222222",
+      items: [],
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: "tenant-1",
+      type: "document_reindex",
+      updatedAt: UPDATED_AT,
+    };
+    const task = bulkBackgroundTask(operation, {
+      canceledItems: 0,
+      completedItems: 0,
+      createdAt: CREATED_AT,
+      failedItemIds: ["document-1"],
+      failedItems: 1,
+      failures: [
+        {
+          documentId: "document-1",
+          errorCode: "MODEL_CREDENTIAL_INVALID",
+          errorMessage: "Authorization: Bearer secret",
+        },
+      ],
+      id: operation.id,
+      knowledgeSpaceId: SPACE_ID,
+      status: "failed",
+      totalItems: 1,
+      type: operation.type,
+      updatedAt: UPDATED_AT,
+    });
+
+    expect(task).toMatchObject({
+      canRetry: false,
+      errorMessage:
+        "The selected model credentials are invalid. Ask an administrator to update the model provider configuration.",
+      failures: [
+        {
+          errorCode: "MODEL_CREDENTIAL_INVALID",
+          errorMessage:
+            "The selected model credentials are invalid. Ask an administrator to update the model provider configuration.",
+          failure: {
+            action: "configure_model",
+            code: "MODEL_CREDENTIAL_INVALID",
+            retryPolicy: "after_configuration",
+          },
+        },
+      ],
+    });
+    expect(JSON.stringify(task)).not.toContain("Bearer secret");
   });
 
   it("round-trips opaque composite cursors and rejects malformed values", () => {

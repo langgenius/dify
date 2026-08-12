@@ -142,19 +142,17 @@ export function assertRetrievalTestRuntimeCapabilities(
     selection: input.retrievalProfile.reasoningModel,
   });
 
-  if (input.mode !== "research" && input.retrievalProfile.rerank.enabled) {
-    const rerankSelection = input.retrievalProfile.rerank.model;
-    if (!rerankSelection) {
-      throw new RetrievalTestUnavailableError(
-        "The active retrieval profile is missing its rerank model",
-      );
-    }
-    assertCapabilityMatchesSelection({
-      capability: input.retrievalCapabilitySnapshot.rerank,
-      expectedKind: "rerank",
-      selection: rerankSelection,
-    });
+  const rerankSelection = input.retrievalProfile.rerank.model;
+  if (!input.retrievalProfile.rerank.enabled || !rerankSelection) {
+    throw new RetrievalTestUnavailableError(
+      "The active retrieval profile is missing its mandatory rerank model",
+    );
   }
+  assertCapabilityMatchesSelection({
+    capability: input.retrievalCapabilitySnapshot.rerank,
+    expectedKind: "rerank",
+    selection: rerankSelection,
+  });
 
   if (!input.embeddingProfile || !input.embeddingCapabilitySnapshot) {
     throw new RetrievalTestUnavailableError(

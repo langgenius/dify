@@ -701,7 +701,12 @@ describe('CreateKnowledgePage', () => {
     serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
       Promise.resolve({
         data: {
-          model: query.model_type === 'llm' ? 'echo' : 'embed',
+          model:
+            query.model_type === 'llm'
+              ? 'echo'
+              : query.model_type === 'rerank'
+                ? 'rerank'
+                : 'embed',
           model_type: query.model_type,
           provider: {
             provider:
@@ -820,8 +825,15 @@ describe('CreateKnowledgePage', () => {
               plugin_id: 'kurokobo/fake_models',
               provider: 'fake_models',
             },
-            rerank: { enabled: false },
-            score_threshold: { enabled: false, stage: 'mode-final' },
+            rerank: {
+              enabled: true,
+              model: {
+                model: 'rerank',
+                plugin_id: 'langgenius/cohere',
+                provider: 'cohere',
+              },
+            },
+            score_threshold: { enabled: false, stage: 'rerank' },
             top_k: 10,
           },
           slug: 'product-handbook-a9c36c572d84',

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from http import HTTPStatus
+from typing import Literal, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -14,6 +15,7 @@ from core.helper import ssrf_proxy
 from core.tools.errors import ToolSSRFError
 from services.knowledge_fs.product_dto import (
     KnowledgeFSBatchTechnicalSummaryResponse,
+    KnowledgeFSPublicFailureResponse,
     KnowledgeFSTechnicalSummary,
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
@@ -31,6 +33,10 @@ from services.knowledge_fs.product_remote import (
 
 _JSON_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 logger = logging.getLogger(__name__)
+
+_ERROR_CONTRACT_HEADER = "X-KnowledgeFS-Error-Contract"
+_ERROR_CONTRACT_VERSION = "2"
+_REJECTED_STATUS_CODES = frozenset({400, 403, 409, 413, 422, 429})
 _MAX_BATCH_SUMMARIES = 100
 _SSE_RESPONSE_HEADERS = (
     "cache-control",
@@ -157,6 +163,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             "Authorization": f"Bearer {request.capability_token}",
             "Content-Type": "application/octet-stream",
             "X-Trace-Id": request.trace_id,
+            _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
         try:
             upstream_url = httpx.URL(f"{self._base_url.rstrip('/')}/").join(request.path.lstrip("/"))
@@ -175,21 +182,21 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
-            if response.status_code == 400:
-                raise KnowledgeFSProductRequestRejectedError(status_code=400)
-            if response.status_code == 409:
-                raise KnowledgeFSProductRequestRejectedError(status_code=409)
-            if response.status_code == 413:
-                raise KnowledgeFSProductRequestRejectedError(status_code=413)
-            if response.status_code == 422:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if response.status_code in _REJECTED_STATUS_CODES:
+                raise _request_rejected(response)
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
             if response.status_code == HTTPStatus.NOT_FOUND:
-                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
+                raise KnowledgeFSProductResourceNotFoundError(
+                    "KnowledgeFS resource was not found",
+                    failure=_public_failure_from_response(response),
+                )
             if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
-                raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
+                raise KnowledgeFSProductRemoteError(
+                    f"KnowledgeFS returned HTTP {response.status_code}",
+                    failure=_public_failure_from_response(response),
+                )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
             except (ValueError, ValidationError) as exc:
@@ -241,6 +248,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             "Accept-Encoding": "identity",
             "Authorization": f"Bearer {request.capability_token}",
             "X-Trace-Id": request.trace_id,
+            _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
         try:
             upstream_url = httpx.URL(f"{self._base_url.rstrip('/')}/").join(request.path.lstrip("/"))
@@ -258,27 +266,27 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
-            if response.status_code in {400, 409, 413, 422}:
+            if response.status_code in _REJECTED_STATUS_CODES:
                 _log_upstream_rejection(
                     operation_id=request.operation_id,
                     trace_id=request.trace_id,
                     response=response,
                 )
-            if response.status_code == 400:
-                raise KnowledgeFSProductRequestRejectedError(status_code=400)
-            if response.status_code == 409:
-                raise KnowledgeFSProductRequestRejectedError(status_code=409)
-            if response.status_code == 413:
-                raise KnowledgeFSProductRequestRejectedError(status_code=413)
-            if response.status_code == 422:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if response.status_code in _REJECTED_STATUS_CODES:
+                raise _request_rejected(response)
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
             if response.status_code == HTTPStatus.NOT_FOUND:
-                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
+                raise KnowledgeFSProductResourceNotFoundError(
+                    "KnowledgeFS resource was not found",
+                    failure=_public_failure_from_response(response),
+                )
             if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
-                raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
+                raise KnowledgeFSProductRemoteError(
+                    f"KnowledgeFS returned HTTP {response.status_code}",
+                    failure=_public_failure_from_response(response),
+                )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
             except (ValueError, ValidationError) as exc:
@@ -321,6 +329,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             "Accept-Encoding": "identity",
             "Authorization": f"Bearer {request.capability_token}",
             "X-Trace-Id": request.trace_id,
+            _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
         request_kwargs: dict[str, object] = {
             "headers": headers,
@@ -401,6 +410,7 @@ class HTTPKnowledgeFSProductRemoteClient:
             "Accept-Encoding": "identity",
             "Authorization": f"Bearer {capability_token}",
             "X-Trace-Id": trace_id,
+            _ERROR_CONTRACT_HEADER: _ERROR_CONTRACT_VERSION,
         }
         for name, value in extra_headers:
             if name.lower() != "idempotency-key" or not 8 <= len(value.strip()) <= 255:
@@ -428,29 +438,29 @@ class HTTPKnowledgeFSProductRemoteClient:
         except (ssrf_proxy.ResponseLimitError, httpx.RequestError, ToolSSRFError) as exc:
             raise KnowledgeFSProductRemoteError("KnowledgeFS request failed") from exc
         try:
-            if response.status_code in {400, 409, 413, 422}:
+            if response.status_code in _REJECTED_STATUS_CODES:
                 _log_upstream_rejection(
                     operation_id=operation_id,
                     trace_id=trace_id,
                     response=response,
                 )
-            if response.status_code == 400:
-                raise KnowledgeFSProductRequestRejectedError(status_code=400)
-            if response.status_code == 409:
-                raise KnowledgeFSProductRequestRejectedError(status_code=409)
-            if response.status_code == 413:
-                raise KnowledgeFSProductRequestRejectedError(status_code=413)
-            if response.status_code == 422:
-                raise KnowledgeFSProductRequestRejectedError(status_code=422)
+            if response.status_code in _REJECTED_STATUS_CODES:
+                raise _request_rejected(response)
             if response.status_code == HTTPStatus.NO_CONTENT:
                 return None
             content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
             if content_type != "application/json" and not content_type.endswith("+json"):
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned an unsupported media type")
             if response.status_code == HTTPStatus.NOT_FOUND:
-                raise KnowledgeFSProductResourceNotFoundError("KnowledgeFS resource was not found")
+                raise KnowledgeFSProductResourceNotFoundError(
+                    "KnowledgeFS resource was not found",
+                    failure=_public_failure_from_response(response),
+                )
             if not HTTPStatus.OK <= response.status_code < HTTPStatus.MULTIPLE_CHOICES:
-                raise KnowledgeFSProductRemoteError(f"KnowledgeFS returned HTTP {response.status_code}")
+                raise KnowledgeFSProductRemoteError(
+                    f"KnowledgeFS returned HTTP {response.status_code}",
+                    failure=_public_failure_from_response(response),
+                )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
             except (ValueError, ValidationError) as exc:
@@ -459,29 +469,42 @@ class HTTPKnowledgeFSProductRemoteClient:
             response.close()
 
 
-def _log_upstream_rejection(*, operation_id: str, trace_id: str, response: httpx.Response) -> None:
-    """Log bounded, non-secret KnowledgeFS error fields without exposing request or response payloads."""
-    code: str | None = None
-    message: str | None = None
+def _request_rejected(response: httpx.Response) -> KnowledgeFSProductRequestRejectedError:
+    status_code = cast(Literal[400, 403, 409, 413, 422, 429], response.status_code)
+    return KnowledgeFSProductRequestRejectedError(
+        status_code=status_code,
+        failure=_public_failure_from_response(response),
+    )
+
+
+def _public_failure_from_response(response: httpx.Response) -> KnowledgeFSPublicFailureResponse | None:
+    content_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+    if content_type != "application/json" and not content_type.endswith("+json"):
+        return None
     try:
         body = response.json()
-        if isinstance(body, dict):
-            raw_code = body.get("code")
-            raw_message = body.get("error", body.get("message"))
-            if isinstance(raw_code, str):
-                code = raw_code[:256]
-            if isinstance(raw_message, str):
-                message = raw_message[:1024]
+        if not isinstance(body, dict):
+            return None
+        failure = body.get("failure")
+        if not isinstance(failure, dict):
+            return None
+        return KnowledgeFSPublicFailureResponse.model_validate(failure)
     except (ValueError, ValidationError):
-        pass
+        return None
+
+
+def _log_upstream_rejection(*, operation_id: str, trace_id: str, response: httpx.Response) -> None:
+    """Log bounded, allowlisted failure metadata without exposing upstream diagnostic messages."""
+    failure = _public_failure_from_response(response)
     logger.warning(
         "KnowledgeFS rejected JSON request: operation_id=%s trace_id=%s status_code=%s "
-        "upstream_code=%s upstream_message=%s",
+        "upstream_code=%s upstream_category=%s upstream_action=%s",
         operation_id,
         trace_id,
         response.status_code,
-        code or "unavailable",
-        message or "unavailable",
+        failure.code if failure else "unavailable",
+        failure.category if failure else "unavailable",
+        failure.action if failure and failure.action else "unavailable",
     )
 
 

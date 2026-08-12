@@ -3,6 +3,7 @@ import {
   type KnowledgeSpaceManifest,
   type KnowledgeSpacePendingModelConfiguration,
   createKnowledgeSpaceRetrievalProfile,
+  hasRequiredKnowledgeSpaceRetrievalModels,
   updateKnowledgeSpaceEmbeddingProfile,
 } from "@knowledge/core";
 
@@ -11,6 +12,7 @@ import {
   type DocumentCompilationExecutionContext,
   DocumentCompilationProcessingError,
 } from "./document-compilation-runtime";
+import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type { KnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
 import type {
   KnowledgeSpaceProfileHead,
@@ -106,7 +108,7 @@ export function createDocumentCompilationInitialProfileCoordinator({
       if (existingHeads.retrieval && !manifest.pendingModelConfiguration) {
         throw compilationError(
           "MODEL_PROFILE_ACTIVATION_INCOMPLETE",
-          "Retrieval requires an active embedding profile",
+          "Retrieval requires an active embedding profile and enabled rerank model",
           false,
         );
       }
@@ -278,29 +280,38 @@ async function verifyPendingConfiguration(
       false,
     );
   }
+  const embeddingSelection = pending.embeddingSelection;
+  const rerankSelection = retrievalInput.rerank.model;
+  if (
+    !embeddingSelection ||
+    !rerankSelection ||
+    !hasRequiredKnowledgeSpaceRetrievalModels(retrievalInput)
+  ) {
+    throw compilationError(
+      "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
+      "Embedding, reasoning, and rerank models must be configured before documents can be compiled",
+      false,
+    );
+  }
   const [embedding, reasoning, rerank] = await Promise.all([
-    pending.embeddingSelection
-      ? preflight.verify({
-          kind: "embedding",
-          selection: pending.embeddingSelection,
-          signal,
-          tenantId,
-        })
-      : undefined,
+    preflight.verify({
+      kind: "embedding",
+      selection: embeddingSelection,
+      signal,
+      tenantId,
+    }),
     preflight.verify({
       kind: "reasoning",
       selection: retrievalInput.reasoningModel,
       signal,
       tenantId,
     }),
-    retrievalInput.rerank.enabled && retrievalInput.rerank.model
-      ? preflight.verify({
-          kind: "rerank",
-          selection: retrievalInput.rerank.model,
-          signal,
-          tenantId,
-        })
-      : undefined,
+    preflight.verify({
+      kind: "rerank",
+      selection: rerankSelection,
+      signal,
+      tenantId,
+    }),
   ]);
   if (!pending.embeddingSelection || !embedding) {
     throw new ModelCapabilityPreflightError(
@@ -312,6 +323,12 @@ async function verifyPendingConfiguration(
     throw new ModelCapabilityPreflightError(
       "MODEL_CAPABILITY_MISMATCH",
       "The reasoning model did not return a verified capability snapshot",
+    );
+  }
+  if (!rerank) {
+    throw new ModelCapabilityPreflightError(
+      "MODEL_CAPABILITY_MISMATCH",
+      "The rerank model did not return a verified capability snapshot",
     );
   }
 
@@ -450,7 +467,11 @@ function activeTupleSupportsCompilation(heads: {
 }): boolean {
   if (!heads.retrieval) return false;
   const retrieval = heads.retrieval.profile.snapshot;
-  return "defaultMode" in retrieval && heads.embedding !== null;
+  return (
+    "defaultMode" in retrieval &&
+    heads.embedding !== null &&
+    hasRequiredKnowledgeSpaceRetrievalModels(retrieval)
+  );
 }
 
 function initialActivationPermission(
@@ -486,18 +507,23 @@ function classifyInitialProfileError(error: unknown): {
   readonly retryable: boolean;
 } {
   if (error instanceof DocumentCompilationProcessingError) {
-    return { code: error.code, message: error.message, retryable: error.retryable };
+    const failure = knowledgeFsFailureForCode(error.code, { stage: "model_preflight" });
+    return { code: failure.code, message: failure.message, retryable: error.retryable };
   }
   if (error instanceof ModelCapabilityPreflightError) {
+    const failure = knowledgeFsFailureForCode(error.code, { stage: "model_preflight" });
     return {
-      code: error.code,
-      message: "The selected model could not be validated",
+      code: failure.code,
+      message: failure.message,
       retryable: error.retryable,
     };
   }
+  const failure = knowledgeFsFailureForCode("MODEL_PREFLIGHT_FAILED", {
+    stage: "model_preflight",
+  });
   return {
-    code: "MODEL_PREFLIGHT_FAILED",
-    message: "The selected model could not be validated",
+    code: failure.code,
+    message: failure.message,
     retryable: true,
   };
 }

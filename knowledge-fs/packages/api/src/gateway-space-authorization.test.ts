@@ -154,7 +154,10 @@ describe("gateway knowledge-space authorization", () => {
               pluginId: "plugin-reasoning",
               provider: "provider-a",
             },
-            rerank: { enabled: false },
+            rerank: {
+              enabled: true,
+              model: { model: "rerank-a", pluginId: "plugin-rerank", provider: "provider-a" },
+            },
             scoreThreshold: { enabled: false, stage: "mode-final" },
             topK: 3,
           },
@@ -266,7 +269,10 @@ describe("gateway knowledge-space authorization", () => {
               pluginId: "plugin-reasoning",
               provider: "provider-a",
             },
-            rerank: { enabled: false },
+            rerank: {
+              enabled: true,
+              model: { model: "rerank-a", pluginId: "plugin-rerank", provider: "provider-a" },
+            },
             scoreThreshold: { enabled: false, stage: "mode-final" },
             topK: 3,
           },

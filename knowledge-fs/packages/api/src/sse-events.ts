@@ -1,3 +1,4 @@
+import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type { ResearchTaskProgressEvent } from "./research-task-progress";
 
 export type QuerySseEvent =
@@ -28,15 +29,35 @@ export function formatQuerySseEvent(event: QuerySseEvent, traceId: string): stri
 
 export function formatResearchTaskProgressSseEvent(event: ResearchTaskProgressEvent): string {
   const eventName = researchTaskSseEventName(event);
+  const payload = publicResearchTaskProgressPayload(event);
   return `id: ${event.sequence}\n${formatSseEvent(eventName, {
     createdAt: event.createdAt,
     id: event.id,
-    payload: event.payload,
+    payload,
     researchTaskJobId: event.researchTaskJobId,
     sequence: event.sequence,
     stage: event.stage,
     type: event.type,
   })}`;
+}
+
+function publicResearchTaskProgressPayload(
+  event: ResearchTaskProgressEvent,
+): Record<string, unknown> {
+  if (event.type !== "research_task.failed") {
+    const { error: _diagnosticError, ...safePayload } = event.payload;
+    return safePayload;
+  }
+  const rawCode = event.payload.error;
+  const code =
+    typeof rawCode === "string" && /^[A-Z][A-Z0-9_]{1,127}$/u.test(rawCode)
+      ? rawCode
+      : "RESEARCH_TASK_FAILED";
+  const failure = knowledgeFsFailureForCode(code, {
+    stage: event.stage,
+    traceId: event.researchTaskJobId,
+  });
+  return { error: failure.code, failure };
 }
 
 export function isResearchTaskTerminalProgressEvent(event: ResearchTaskProgressEvent): boolean {

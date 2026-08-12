@@ -73,9 +73,10 @@ class KnowledgeFSControlSpaceIntentConflictError(RuntimeError):
 
 def _provision_payload_requires_model_setup(payload: KnowledgeFSProvisionCommandPayload) -> bool:
     profile_intent = payload.get("profile_intent")
-    if profile_intent is None:
+    if profile_intent is None or payload.get("model_intent") is None:
         return True
-    return profile_intent["defaultMode"] != "research" and payload.get("model_intent") is None
+    rerank = profile_intent["rerank"]
+    return not rerank["enabled"] or rerank.get("model") is None
 
 
 class KnowledgeFSControlSpaceCommandService:

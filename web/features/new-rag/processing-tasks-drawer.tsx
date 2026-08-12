@@ -2,7 +2,7 @@
 
 import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './document-models'
 import type { TaskProgressStore } from './task-progress-store'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import {
   Drawer,
   DrawerBackdrop,
@@ -19,9 +19,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 import { consoleClient } from '@/service/client'
 import { taskCanCancel, taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 import { backgroundTaskFromApi } from './document-models'
+import {
+  knowledgeFsTaskFailureMessageKey,
+  knowledgeFsTaskRecoveryPath,
+} from './knowledge-fs-task-error'
 
 type TaskAction = 'cancel' | 'retry'
 
@@ -248,6 +253,7 @@ export function ProcessingTasksDrawer({
       ...(stateChanged ? { canCancel: undefined, canRetry: undefined } : {}),
       errorCode: undefined,
       errorMessage: undefined,
+      failure: undefined,
       ...progress,
     }
   })
@@ -576,7 +582,25 @@ export function ProcessingTasksDrawer({
                                 : task.state === 'succeeded'
                                   ? `${stateLabel}${relativeTime ? ` ${relativeTime}` : ''}`
                                   : `${stateLabel}${relativeTime ? ` · ${relativeTime}` : ''}`
-                      const taskError = task.errorMessage ?? task.errorCode
+                      const taskFailureMessageKey = knowledgeFsTaskFailureMessageKey(
+                        task.failure,
+                        task.errorCode ?? (task.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
+                      )
+                      const taskError = taskFailureMessageKey
+                        ? t(($) => $[taskFailureMessageKey])
+                        : undefined
+                      const recoveryPath = knowledgeFsTaskRecoveryPath(
+                        task.failure,
+                        knowledgeSpaceId,
+                      )
+                      const recoveryLabel =
+                        task.failure?.action === 'configure_model'
+                          ? tCommon(($) => $['datasetMenus.settings'])
+                          : task.failure?.action === 'configure_source'
+                            ? t(($) => $['newKnowledge.openSource'])
+                            : task.failure?.action === 'reupload'
+                              ? t(($) => $['newKnowledge.addDocument'])
+                              : undefined
                       const actionTarget = `${title} · ${task.id}`
                       return (
                         <li key={task.id} className="flex min-h-15.5 items-center gap-2.5 py-3.5">
@@ -604,6 +628,13 @@ export function ProcessingTasksDrawer({
                             {taskError && (
                               <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
                                 {taskError}
+                              </p>
+                            )}
+                            {task.failure?.traceId && task.failure.category === 'internal' && (
+                              <p className="mt-1 system-2xs-regular text-text-tertiary">
+                                {t(($) => $['newKnowledge.taskFailure.reference'], {
+                                  traceId: task.failure?.traceId,
+                                })}
                               </p>
                             )}
                             {actionErrors[task.id] === taskLifecycle(task) && (
@@ -657,6 +688,14 @@ export function ProcessingTasksDrawer({
                             >
                               {t(($) => $['newKnowledge.retryTask'])}
                             </Button>
+                          ) : canEdit && recoveryPath && recoveryLabel ? (
+                            <Link
+                              aria-label={`${recoveryLabel} · ${actionTarget}`}
+                              className={buttonVariants({ size: 'small' })}
+                              href={recoveryPath}
+                            >
+                              {recoveryLabel}
+                            </Link>
                           ) : null}
                         </li>
                       )

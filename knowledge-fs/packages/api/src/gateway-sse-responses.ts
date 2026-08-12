@@ -11,6 +11,7 @@ import {
   failedQueryTrigger,
   readTopScore,
 } from "./failed-query-recorder";
+import { knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { QueryImageMetadata, QueryImageReference, ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
@@ -337,12 +338,16 @@ export function createQuerySseResponse({
         }
         if (!clientCanceled) {
           try {
+            const failure = knowledgeFsFailureForCode(
+              leaseLost ? "KNOWLEDGE_FS_CONFLICT" : "KNOWLEDGE_FS_UNAVAILABLE",
+              { stage: "query_generation", traceId },
+            );
             controller.enqueue(
               encoder.encode(
                 formatSseEvent("answer.error", {
-                  error: leaseLost
-                    ? "Query stopped because knowledge deletion started"
-                    : "Query generation failed",
+                  code: failure.code,
+                  error: failure.message,
+                  failure,
                   traceId,
                 }),
               ),

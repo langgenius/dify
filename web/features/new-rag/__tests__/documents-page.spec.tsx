@@ -3546,7 +3546,7 @@ describe('DocumentsPage', () => {
     expect(
       within(panel).getByText('dataset.newKnowledge.backgroundTasksDescription'),
     ).toBeInTheDocument()
-    expect(within(panel).getByText('Parser failed')).toBeInTheDocument()
+    expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
     expect(
       within(panel).getByText((_, element) =>
         Boolean(
@@ -3602,7 +3602,7 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.overview.operation.source_sync · Notion support SOP',
       ),
     ).toBeInTheDocument()
-    expect(within(panel).getByText('Source sync failed')).toBeInTheDocument()
+    expect(within(panel).getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
   })
 
   it('gives duplicate task actions distinct accessible names', async () => {
@@ -4066,7 +4066,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
 
     await waitFor(() => expect(screen.queryByText('Old parser error')).not.toBeInTheDocument())
-    expect(await screen.findByText('NEW_PARSER_ERROR')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
   })
 
   it('ignores a delayed retry response older than the current failed list snapshot', async () => {
@@ -4126,7 +4128,7 @@ describe('DocumentsPage', () => {
       ),
     )
 
-    expect(await screen.findByText('NEWER_FAILURE')).toBeInTheDocument()
+    expect(await screen.findByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).not.toBeInTheDocument()
@@ -4237,7 +4239,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
 
     tasksQuery.data = {
       pages: [
@@ -4256,7 +4260,7 @@ describe('DocumentsPage', () => {
     }
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    const error = await screen.findByText('Parser failed at line 400 with complete server context')
+    const error = await screen.findByText('dataset.newKnowledge.taskFailure.temporary')
     expect(error).toHaveClass('whitespace-pre-wrap', 'wrap-break-word')
     expect(error).not.toHaveClass('truncate')
   })
@@ -4849,7 +4853,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -4872,7 +4878,7 @@ describe('DocumentsPage', () => {
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
@@ -4896,7 +4902,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -4919,7 +4927,7 @@ describe('DocumentsPage', () => {
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
@@ -4949,7 +4957,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = {
@@ -4963,7 +4973,7 @@ describe('DocumentsPage', () => {
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledTimes(2))
-    expect(screen.getByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.taskFailure.temporary')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).toBeInTheDocument()
@@ -4999,7 +5009,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
     expect(reconciliationSignal?.aborted).toBe(true)
@@ -5021,7 +5033,7 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('PARSER_FAILED')).not.toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.taskFailure.temporary')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).not.toBeInTheDocument()
@@ -5056,7 +5068,9 @@ describe('DocumentsPage', () => {
       }),
     )
 
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     expect(toastMock.error).toHaveBeenCalledTimes(1)
     expect(queryClient.invalidateQueries).toHaveBeenCalledOnce()
   })
@@ -6699,7 +6713,7 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
       expect(streamProcessingTaskEvents).not.toHaveBeenCalled()
-      expect(screen.getByText('LATEST_FAILURE')).toBeInTheDocument()
+      expect(screen.getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
     } finally {
       rendered.unmount()
       vi.useRealTimers()
@@ -6753,7 +6767,7 @@ describe('DocumentsPage', () => {
       await act(async () => vi.advanceTimersByTime(5000))
       await act(async () => {})
       expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
-      expect(screen.getByText('NEW_FAILURE')).toBeInTheDocument()
+      expect(screen.getByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
       ).not.toBeInTheDocument()
@@ -7484,7 +7498,9 @@ describe('DocumentsPage', () => {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
       }),
     )
-    expect(await screen.findByText('PARSER_FAILED')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.temporary'),
+    ).toBeInTheDocument()
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
 
     tasksQuery.data = sharedTaskData
@@ -7585,7 +7601,7 @@ describe('DocumentsPage', () => {
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalled())
-    expect(await screen.findByText('TERMINAL_CONFIRMED')).toBeInTheDocument()
+    expect(await screen.findByText('dataset.newKnowledge.taskFailure.internal')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
     ).toBeInTheDocument()

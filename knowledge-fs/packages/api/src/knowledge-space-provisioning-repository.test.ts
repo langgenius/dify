@@ -1,10 +1,15 @@
+import { createHash } from "node:crypto";
+
 import { createSchemaDatabaseAdapter } from "@knowledge/adapters";
 import {
   type DatabaseExecuteInput,
   type DatabaseExecuteResult,
   KnowledgeSpaceEmbeddingProfileSchema,
+  KnowledgeSpacePendingModelConfigurationSchema,
+  KnowledgeSpaceRetrievalProfileSchema,
   createKnowledgeSpaceEmbeddingProfile,
   createKnowledgeSpaceRetrievalProfile,
+  stableJson,
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
@@ -139,8 +144,15 @@ describe.each(["postgres", "tidb"] as const)(
             pluginId: "plugin-daemon-reasoning",
             provider: "tenant-provider",
           },
-          rerank: { enabled: false },
-          scoreThreshold: { enabled: false, stage: "mode-final" },
+          rerank: {
+            enabled: true,
+            model: {
+              model: "rerank-user-selected",
+              pluginId: "plugin-daemon-rerank",
+              provider: "tenant-provider",
+            },
+          },
+          scoreThreshold: { enabled: false, stage: "rerank" },
           topK: 5,
         },
       });
@@ -255,7 +267,7 @@ describe.each(["postgres", "tidb"] as const)(
       });
       expect(fake.calls.filter((call) => call.operation === "insert")).toHaveLength(insertCount);
 
-      const researchProfile = createKnowledgeSpaceRetrievalProfile({
+      const researchProfile = KnowledgeSpaceRetrievalProfileSchema.parse({
         defaultMode: "research",
         reasoningModel: {
           model: "research-reasoning",
@@ -263,6 +275,7 @@ describe.each(["postgres", "tidb"] as const)(
           provider: "tenant-provider",
         },
         rerank: { enabled: false },
+        revision: 1,
         scoreThreshold: { enabled: false, stage: "mode-final" },
         topK: 6,
       });
@@ -279,19 +292,28 @@ describe.each(["postgres", "tidb"] as const)(
         tenantId: "tenant-1",
       };
       await beforeDeploy.provision(legacyResearchRequest);
+      const legacyPendingMaterial = {
+        embeddingSelection: null,
+        retrievalProfile: {
+          defaultMode: researchProfile.defaultMode,
+          reasoningModel: researchProfile.reasoningModel,
+          rerank: researchProfile.rerank,
+          scoreThreshold: researchProfile.scoreThreshold,
+          topK: researchProfile.topK,
+        },
+        revision: 1,
+        schemaVersion: 1,
+      };
       await expect(
         afterDeploy.provision({
           createdBySubjectId: legacyResearchRequest.createdBySubjectId,
           idempotencyKey: legacyResearchRequest.idempotencyKey,
           name: legacyResearchRequest.name,
-          pendingModelConfiguration: createKnowledgeSpacePendingModelConfiguration({
-            retrievalProfile: {
-              defaultMode: researchProfile.defaultMode,
-              reasoningModel: researchProfile.reasoningModel,
-              rerank: researchProfile.rerank,
-              scoreThreshold: researchProfile.scoreThreshold,
-              topK: researchProfile.topK,
-            },
+          pendingModelConfiguration: KnowledgeSpacePendingModelConfigurationSchema.parse({
+            digest: createHash("sha256").update(stableJson(legacyPendingMaterial)).digest("hex"),
+            retrievalProfile: legacyPendingMaterial.retrievalProfile,
+            revision: 1,
+            state: "pending-validation",
           }),
           slug: legacyResearchRequest.slug,
           slugSource: legacyResearchRequest.slugSource,

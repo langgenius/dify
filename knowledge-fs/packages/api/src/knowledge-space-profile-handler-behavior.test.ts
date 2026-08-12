@@ -2,6 +2,7 @@ import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import {
   type KnowledgeSpaceManifest,
   type KnowledgeSpaceModelSelection,
+  KnowledgeSpaceRetrievalProfileSchema,
   createDefaultKnowledgeSpaceManifest,
   createKnowledgeSpaceEmbeddingProfile,
   createKnowledgeSpaceRetrievalProfile,
@@ -175,6 +176,17 @@ async function legacyManifest(): Promise<KnowledgeSpaceManifest> {
     }),
     tenantId: "tenant-1",
     updatedAt: NOW,
+  });
+}
+
+function legacyResearchProfile() {
+  return KnowledgeSpaceRetrievalProfileSchema.parse({
+    defaultMode: "research",
+    reasoningModel: REASONING_V1,
+    rerank: { enabled: false },
+    revision: 1,
+    scoreThreshold: { enabled: false, stage: "mode-final" },
+    topK: 5,
   });
 }
 
@@ -976,13 +988,7 @@ describe("legacy published profile reconciliation behavior", () => {
 
   it("reuses a matching legacy Research candidate", async () => {
     const manifest = await legacyManifest();
-    const researchProfile = createKnowledgeSpaceRetrievalProfile({
-      defaultMode: "research",
-      reasoningModel: REASONING_V1,
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: false, stage: "mode-final" },
-      topK: 5,
-    });
+    const researchProfile = legacyResearchProfile();
     const researchProfiles = profileRepository();
     await researchProfiles.createCandidate({
       capabilitySnapshot: {
@@ -1128,13 +1134,7 @@ describe("legacy published profile reconciliation behavior", () => {
 
   it("converges candidate-creation races for both repository conflict codes", async () => {
     const baseManifest = await legacyManifest();
-    const researchProfile = createKnowledgeSpaceRetrievalProfile({
-      defaultMode: "research",
-      reasoningModel: REASONING_V1,
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: false, stage: "mode-final" },
-      topK: 5,
-    });
+    const researchProfile = legacyResearchProfile();
     const manifest = {
       ...baseManifest,
       embeddingProfile: undefined,
@@ -1203,13 +1203,7 @@ describe("legacy published profile reconciliation behavior", () => {
 
   it("rejects replay candidates with unverified or mismatched reasoning capabilities", async () => {
     const baseManifest = await legacyManifest();
-    const researchProfile = createKnowledgeSpaceRetrievalProfile({
-      defaultMode: "research",
-      reasoningModel: REASONING_V1,
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: false, stage: "mode-final" },
-      topK: 5,
-    });
+    const researchProfile = legacyResearchProfile();
     const manifest = {
       ...baseManifest,
       embeddingProfile: undefined,
@@ -1278,13 +1272,7 @@ describe("legacy published profile reconciliation behavior", () => {
       ensureLegacyPublishedProfileTuple(bootstrapInput(manifest, unverifiedProfiles)),
     ).rejects.toMatchObject({ code: "PROFILE_PUBLICATION_BOOTSTRAP_PROFILE_UNVERIFIED" });
 
-    const researchProfile = createKnowledgeSpaceRetrievalProfile({
-      defaultMode: "research",
-      reasoningModel: REASONING_V1,
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: false, stage: "mode-final" },
-      topK: 5,
-    });
+    const researchProfile = legacyResearchProfile();
     const inconsistentProfiles = profileRepository();
     const inconsistentCandidate = await inconsistentProfiles.createCandidate({
       capabilitySnapshot: {
@@ -2344,13 +2332,7 @@ describe("knowledge-space configuration status behavior", () => {
       kind: "retrieval",
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
-      snapshot: createKnowledgeSpaceRetrievalProfile({
-        defaultMode: "research",
-        reasoningModel: REASONING_V1,
-        rerank: { enabled: false },
-        scoreThreshold: { enabled: false, stage: "mode-final" },
-        topK: 5,
-      }),
+      snapshot: legacyResearchProfile(),
       tenantId: "tenant-1",
     });
     await profiles.activateCandidate({

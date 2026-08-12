@@ -427,11 +427,16 @@ class RecordingRemote:
 
 
 class ActiveSettingsRemote(RecordingRemote):
+    def __init__(self, *, configuration_state: str = "active", rerank_enabled: bool = True) -> None:
+        super().__init__()
+        self.configuration_state = configuration_state
+        self.rerank_enabled = rerank_enabled
+
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
         self.requests.append(request)
         if request.operation_id == "getSettings":
             return {
-                "configurationState": "active",
+                "configurationState": self.configuration_state,
                 "embedding": {
                     "model": "embed-v1",
                     "pluginId": "plugin-1",
@@ -445,11 +450,22 @@ class ActiveSettingsRemote(RecordingRemote):
                         "pluginId": "plugin-1",
                         "provider": "provider-1",
                     },
-                    "rerank": {"enabled": False, "model": None},
+                    "rerank": {
+                        "enabled": self.rerank_enabled,
+                        "model": (
+                            {
+                                "model": "rerank-v1",
+                                "pluginId": "plugin-1",
+                                "provider": "provider-1",
+                            }
+                            if self.rerank_enabled
+                            else None
+                        ),
+                    },
                     "revision": 4,
                     "scoreThreshold": {
                         "enabled": False,
-                        "stage": "mode-final",
+                        "stage": "rerank" if self.rerank_enabled else "mode-final",
                         "value": 0.5,
                     },
                     "topK": 3,
@@ -1174,7 +1190,14 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
             plugin_id="plugin-2",
             provider="provider-2",
         ),
-        rerank=KnowledgeFSProductRerankProfile(enabled=False),
+        rerank=KnowledgeFSProductRerankProfile(
+            enabled=True,
+            model=KnowledgeFSProfileModelSelection(
+                model="rerank-v2",
+                plugin_id="plugin-2",
+                provider="provider-2",
+            ),
+        ),
         score_threshold=KnowledgeFSProductScoreThreshold(
             enabled=True,
             stage="mode-final",
@@ -1207,7 +1230,14 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
                 "pluginId": "plugin-2",
                 "provider": "provider-2",
             },
-            "rerank": {"enabled": False},
+            "rerank": {
+                "enabled": True,
+                "model": {
+                    "model": "rerank-v2",
+                    "pluginId": "plugin-2",
+                    "provider": "provider-2",
+                },
+            },
             "scoreThreshold": {
                 "enabled": True,
                 "stage": "mode-final",
@@ -1216,6 +1246,52 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
             "topK": 6,
         },
     }
+
+
+def test_setup_required_legacy_settings_with_revisions_use_the_migration_route() -> None:
+    remote = ActiveSettingsRemote(configuration_state="setup-required", rerank_enabled=False)
+    facade = KnowledgeFSDataFacade(
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    result = facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            expected_revision=9,
+            retrieval=KnowledgeFSProductRetrievalProfile(
+                default_mode="fast",
+                reasoning_model=KnowledgeFSProfileModelSelection(
+                    model="reason-v1",
+                    plugin_id="plugin-1",
+                    provider="provider-1",
+                ),
+                rerank=KnowledgeFSProductRerankProfile(
+                    enabled=True,
+                    model=KnowledgeFSProfileModelSelection(
+                        model="rerank-v1",
+                        plugin_id="plugin-1",
+                        provider="provider-1",
+                    ),
+                ),
+                score_threshold=KnowledgeFSProductScoreThreshold(
+                    enabled=False,
+                    stage="rerank",
+                    value=0.5,
+                ),
+                top_k=3,
+            ),
+        ),
+    )
+
+    assert result.settings.configuration_state == "setup-required"
+    assert result.migration is not None
+    assert [request.operation_id for request in remote.requests] == [
+        "getSettings",
+        "updateRetrievalProfile",
+    ]
 
 
 def test_get_profile_migration_uses_the_durable_migration_route() -> None:
@@ -1262,10 +1338,17 @@ def test_active_settings_reject_concurrent_profile_migrations() -> None:
                         plugin_id="plugin-2",
                         provider="provider-2",
                     ),
-                    rerank=KnowledgeFSProductRerankProfile(enabled=False),
+                    rerank=KnowledgeFSProductRerankProfile(
+                        enabled=True,
+                        model=KnowledgeFSProfileModelSelection(
+                            model="rerank-v2",
+                            plugin_id="plugin-2",
+                            provider="provider-2",
+                        ),
+                    ),
                     score_threshold=KnowledgeFSProductScoreThreshold(
                         enabled=False,
-                        stage="mode-final",
+                        stage="rerank",
                         value=0.5,
                     ),
                     top_k=3,

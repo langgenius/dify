@@ -24,7 +24,7 @@ import {
   KnowledgeSpacePendingModelConfigurationSchema,
   KnowledgeSpaceQuotaPolicySchema,
   KnowledgeSpaceRetrievalProfileInputSchema,
-  KnowledgeSpaceRetrievalProfileModeError,
+  KnowledgeSpaceRetrievalProfileSchema,
   KnowledgeSpaceSchema,
   KnowledgeSpaceStagedCommitSchema,
   PUBLICATION_GENERATION_ID_SENTINEL,
@@ -818,18 +818,14 @@ describe("core domain models", () => {
         rerank: { enabled: true },
       }),
     ).toThrow("Enabled rerank requires a model selection");
-    expect(
+    expect(() =>
       KnowledgeSpaceRetrievalProfileInputSchema.parse({
         ...input,
         defaultMode: "research",
         rerank: { enabled: false },
         scoreThreshold: { enabled: true, stage: "mode-final", value: 0.5 },
       }),
-    ).toMatchObject({
-      defaultMode: "research",
-      rerank: { enabled: false },
-      scoreThreshold: { enabled: true, stage: "mode-final", value: 0.5 },
-    });
+    ).toThrow("Knowledge-space retrieval requires an enabled rerank model");
     const thresholdWithoutRerank = {
       ...input,
       rerank: { enabled: false },
@@ -846,15 +842,17 @@ describe("core domain models", () => {
     });
     expect(() =>
       createKnowledgeSpaceRetrievalProfile({ ...thresholdWithoutRerank, defaultMode: "deep" }),
-    ).toThrow(KnowledgeSpaceRetrievalProfileModeError);
+    ).toThrow("Knowledge-space retrieval requires an enabled rerank model");
     expect(
-      createKnowledgeSpaceRetrievalProfile({
+      KnowledgeSpaceRetrievalProfileSchema.parse({
         ...thresholdWithoutRerank,
         defaultMode: "research",
+        revision: 1,
       }),
     ).toMatchObject({
       defaultMode: "research",
       rerank: { enabled: false },
+      revision: 1,
       scoreThreshold: { enabled: true, stage: "mode-final", value: 0.5 },
     });
     expect(() =>

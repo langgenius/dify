@@ -101,5 +101,10 @@ export function taskCanCancel(task: BackgroundTask) {
 }
 
 export function taskCanRetry(task: BackgroundTask) {
+  if (task.failure)
+    return (
+      (task.failure.retryPolicy === 'automatic' || task.failure.retryPolicy === 'manual') &&
+      (task.state === 'failed' || task.state === 'canceled')
+    )
   return task.canRetry ?? (task.state === 'failed' || task.state === 'canceled')
 }

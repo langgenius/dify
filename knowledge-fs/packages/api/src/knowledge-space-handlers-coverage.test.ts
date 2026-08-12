@@ -77,7 +77,10 @@ describe("knowledge space operator handlers coverage", () => {
     const retrieval = {
       defaultMode: "research",
       reasoningModel: { model: "reasoning", pluginId: "plugin", provider: "provider" },
-      rerank: { enabled: false },
+      rerank: {
+        enabled: true,
+        model: { model: "rerank", pluginId: "plugin", provider: "provider" },
+      },
       scoreThreshold: { enabled: false, stage: "mode-final" },
       topK: 8,
     } as const;
@@ -140,7 +143,7 @@ describe("knowledge space operator handlers coverage", () => {
     }
   });
 
-  it("rejects a mode-incompatible retrieval profile on an existing space", async () => {
+  it("rejects a retrieval profile without the mandatory rerank model", async () => {
     const app = createApp();
     const spaceId = await createSpace(app, "invalid-retrieval-update");
     const response = await app.request(`/knowledge-spaces/${spaceId}/retrieval-profile`, {
@@ -160,8 +163,15 @@ describe("knowledge space operator handlers coverage", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      code: "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK",
-      mode: "deep",
+      error: {
+        issues: [
+          {
+            message: "Knowledge-space retrieval requires an enabled rerank model",
+            path: ["profile", "rerank", "model"],
+          },
+        ],
+      },
+      success: false,
     });
   });
 
@@ -286,6 +296,10 @@ describe("knowledge space operator handlers coverage", () => {
         name: "Deep without embedding",
         retrievalProfile: {
           ...invalidProfile,
+          rerank: {
+            enabled: true,
+            model: { model: "rerank", pluginId: "plugin", provider: "provider" },
+          },
           scoreThreshold: { enabled: false, stage: "mode-final" },
         },
       }),
@@ -362,7 +376,10 @@ describe("knowledge space operator handlers coverage", () => {
     const retrieval = {
       defaultMode: "research",
       reasoningModel: { model: "reasoning", pluginId: "plugin", provider: "provider" },
-      rerank: { enabled: false },
+      rerank: {
+        enabled: true,
+        model: { model: "rerank", pluginId: "plugin", provider: "provider" },
+      },
       scoreThreshold: { enabled: true, stage: "mode-final", value: 0.25 },
       topK: 8,
     } as const;
@@ -387,6 +404,7 @@ describe("knowledge space operator handlers coverage", () => {
           retrieval: {
             ...retrieval,
             defaultMode: "fast",
+            rerank: { enabled: false },
           },
         }),
         headers: json(writeToken),
@@ -394,11 +412,16 @@ describe("knowledge space operator handlers coverage", () => {
       },
     );
     expect(invalidRetrievalUpdate.status).toBe(400);
-    await expect(invalidRetrievalUpdate.json()).resolves.toEqual({
-      code: "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK",
-      error:
-        "Fast/Deep mode-final score threshold requires the knowledge-space reranker to be enabled",
-      mode: "fast",
+    await expect(invalidRetrievalUpdate.json()).resolves.toMatchObject({
+      error: {
+        issues: [
+          {
+            message: "Knowledge-space retrieval requires an enabled rerank model",
+            path: ["retrieval", "rerank", "model"],
+          },
+        ],
+      },
+      success: false,
     });
 
     const retrievalUpdate = await app.request(`/knowledge-spaces/${spaceId}/product-settings`, {
@@ -726,6 +749,7 @@ describe("knowledge space operator handlers coverage", () => {
     await stagedCommits.create({
       ...commitBase,
       errorCode: "E_RETRY",
+      errorMessage: "Authorization: Bearer staged-commit-secret",
       expiresAt: "2030-01-01T00:00:00.000Z",
       id: "00000000-0000-4000-8000-000000000101",
       idempotencyKey: "commit-key-1",
@@ -757,8 +781,12 @@ describe("knowledge space operator handlers coverage", () => {
     expect(status.failedCommits.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          errorCode: "E_RETRY",
+          errorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
           expiresAt: "2030-01-01T00:00:00.000Z",
+          failure: expect.objectContaining({
+            code: "KNOWLEDGE_FS_INTERNAL_ERROR",
+            stage: "document-upload",
+          }),
           id: "00000000-0000-4000-8000-000000000101",
           status: "failed-retryable",
         }),
@@ -771,8 +799,28 @@ describe("knowledge space operator handlers coverage", () => {
     const terminalItem = status.failedCommits.items.find(
       (item: { id: string }) => item.id === "00000000-0000-4000-8000-000000000102",
     );
-    expect(terminalItem).not.toHaveProperty("errorCode");
+    expect(terminalItem).toMatchObject({
+      errorCode: "DOCUMENT_COMPILATION_FAILED",
+      failure: { code: "DOCUMENT_COMPILATION_FAILED" },
+    });
     expect(terminalItem).not.toHaveProperty("expiresAt");
+    expect(JSON.stringify(status)).not.toContain("staged-commit-secret");
+
+    const commitsResponse = await app.request(`/knowledge-spaces/${spaceId}/staged-commits`, {
+      headers: bearer(readToken),
+    });
+    expect(commitsResponse.status).toBe(200);
+    const commits = await commitsResponse.json();
+    expect(commits.items[0]).toMatchObject({
+      errorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
+      errorMessage:
+        "KnowledgeFS could not complete the operation. Try again, or contact an administrator with the error reference.",
+      failure: {
+        code: "KNOWLEDGE_FS_INTERNAL_ERROR",
+        stage: "document-upload",
+      },
+    });
+    expect(JSON.stringify(commits)).not.toContain("staged-commit-secret");
 
     const statsResponse = await app.request(`/knowledge-spaces/${spaceId}/stats`, {
       headers: bearer(readToken),

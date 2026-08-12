@@ -176,7 +176,14 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
     await expect(response.json()).resolves.toEqual({
       items: [
         expect.objectContaining({
-          errorCode: "parser_timeout",
+          errorCode: "KNOWLEDGE_FS_TIMEOUT",
+          errorMessage: "The KnowledgeFS operation timed out. Try again later.",
+          failure: expect.objectContaining({
+            action: "retry",
+            category: "timeout",
+            code: "KNOWLEDGE_FS_TIMEOUT",
+            retryPolicy: "manual",
+          }),
           id: "018f0d60-7a49-7cc2-9c1b-5b36f18f9b10",
           status: "failed-retryable",
         }),
@@ -362,7 +369,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
         count: 1,
         items: [
           {
-            errorCode: "parser_timeout",
+            errorCode: "KNOWLEDGE_FS_TIMEOUT",
             id: "018f0d60-7a49-7cc2-9c1b-5b36f18f9e10",
             status: "failed-retryable",
           },
@@ -564,7 +571,14 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
               pluginId: "private-replacement-plugin",
               provider: "private-replacement-provider",
             },
-            rerank: { enabled: false },
+            rerank: {
+              enabled: true,
+              model: {
+                model: "private-replacement-rerank-model",
+                pluginId: "private-replacement-rerank-plugin",
+                provider: "private-replacement-provider",
+              },
+            },
             scoreThreshold: { enabled: false, stage: "mode-final" },
             topK: 8,
           },
@@ -592,7 +606,14 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
           pluginId: "active-reasoning-plugin",
           provider: "active-reasoning-provider",
         },
-        rerank: { enabled: false },
+        rerank: {
+          enabled: true,
+          model: {
+            model: "active-rerank-model",
+            pluginId: "active-rerank-plugin",
+            provider: "active-rerank-provider",
+          },
+        },
         scoreThreshold: { enabled: false, stage: "mode-final" },
         topK: 5,
       }),

@@ -13,6 +13,7 @@ import {
   type PlatformAdapter,
   buildKnowledgeSpaceVectorSpaceId,
   createKnowledgeSpaceRetrievalProfile,
+  hasRequiredKnowledgeSpaceRetrievalModels,
   updateKnowledgeSpaceEmbeddingProfile,
   validateKnowledgeSpaceRetrievalProfileForMode,
 } from "@knowledge/core";
@@ -27,6 +28,7 @@ import type {
   IndexProjectionRepository,
   IndexProjectionVersionSummary,
 } from "./index-projection-repository";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import {
   createKnowledgeFsArtifactSegmentFsckChecker,
   createKnowledgeFsRawObjectFsckChecker,
@@ -1397,13 +1399,17 @@ export function registerKnowledgeSpaceHandlers({
         configuration,
         failedCommits: {
           count: failedCommitItems.length,
-          items: failedCommitItems.map((commit) => ({
-            ...(commit.errorCode ? { errorCode: commit.errorCode } : {}),
-            ...(commit.expiresAt ? { expiresAt: commit.expiresAt } : {}),
-            id: commit.id,
-            status: commit.status,
-            updatedAt: commit.updatedAt,
-          })),
+          items: failedCommitItems.map((commit) => {
+            const publicCommit = toPublicKnowledgeSpaceStagedCommit(commit);
+            return {
+              ...(publicCommit.errorCode ? { errorCode: publicCommit.errorCode } : {}),
+              ...(publicCommit.expiresAt ? { expiresAt: publicCommit.expiresAt } : {}),
+              ...(publicCommit.failure ? { failure: publicCommit.failure } : {}),
+              id: publicCommit.id,
+              status: commit.status,
+              updatedAt: publicCommit.updatedAt,
+            };
+          }),
           truncated:
             Boolean(retryableCommits.nextCursor) ||
             Boolean(terminalCommits.nextCursor) ||
@@ -1746,7 +1752,13 @@ export function registerKnowledgeSpaceHandlers({
         tenantId: subject.tenantId,
       });
 
-      return context.json(result, 200);
+      return context.json(
+        {
+          items: result.items.map(toPublicKnowledgeSpaceStagedCommit),
+          ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+        },
+        200,
+      );
     } catch (error) {
       if (error instanceof StagedCommitListLimitExceededError) {
         return context.json({ error: error.message }, 400);
@@ -1872,11 +1884,14 @@ function toProductSettings(manifest: KnowledgeSpaceManifest) {
   const pending = manifest.pendingModelConfiguration;
   const embedding = pending?.embeddingSelection ?? manifest.embeddingProfile ?? null;
   const retrieval = pending?.retrievalProfile ?? manifest.retrievalProfile ?? null;
-  const configurationState = pending
-    ? pending.state
-    : embedding || retrieval
-      ? ("active" as const)
-      : ("setup-required" as const);
+  const hasRequiredModels = Boolean(
+    embedding && retrieval && hasRequiredKnowledgeSpaceRetrievalModels(retrieval),
+  );
+  const configurationState = hasRequiredModels
+    ? pending
+      ? pending.state
+      : ("active" as const)
+    : ("setup-required" as const);
   return {
     configurationState,
     embedding,
@@ -2439,7 +2454,11 @@ async function resolveKnowledgeSpaceConfigurationStatus({
   const retrievalProfile = profiles
     ? KnowledgeSpaceRetrievalProfileSchema.safeParse(retrievalHead?.profile.snapshot).data
     : manifest.retrievalProfile;
-  const activeReady = Boolean(retrievalProfile && embeddingProfile);
+  const activeReady = Boolean(
+    retrievalProfile &&
+      embeddingProfile &&
+      hasRequiredKnowledgeSpaceRetrievalModels(retrievalProfile),
+  );
   const pendingResult = readPendingModelConfiguration(manifest);
   const pendingModelConfiguration =
     pendingResult.kind === "valid" ? pendingResult.configuration : undefined;
@@ -2551,6 +2570,33 @@ function isFailedCommitDiagnostic(
   readonly status: "failed-retryable" | "failed-terminal";
 } {
   return commit.status === "failed-retryable" || commit.status === "failed-terminal";
+}
+
+type PublicKnowledgeSpaceStagedCommit = Omit<
+  KnowledgeSpaceStagedCommit,
+  "errorCode" | "errorMessage"
+> & {
+  readonly errorCode?: KnowledgeFsPublicFailure["code"] | undefined;
+  readonly errorMessage?: string | undefined;
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
+};
+
+function toPublicKnowledgeSpaceStagedCommit(
+  commit: KnowledgeSpaceStagedCommit,
+): PublicKnowledgeSpaceStagedCommit {
+  const { errorCode: _errorCode, errorMessage: _errorMessage, ...safeCommit } = commit;
+  if (!isFailedCommitDiagnostic(commit)) return safeCommit;
+
+  const failure = knowledgeFsFailureForCode(commit.errorCode ?? "DOCUMENT_COMPILATION_FAILED", {
+    stage: commit.operationType,
+    traceId: commit.id,
+  });
+  return {
+    ...safeCommit,
+    errorCode: failure.code,
+    errorMessage: failure.message,
+    failure,
+  };
 }
 
 async function listAuthorizedSpacesFallback(input: {

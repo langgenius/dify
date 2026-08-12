@@ -31,6 +31,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewInventoryResponse,
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSOverviewWindowQuery,
+    KnowledgeFSPublicFailureResponse,
     KnowledgeFSQualityListQuery,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSRerankIntent,
@@ -43,9 +44,12 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSScoreThresholdIntent,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSourceCreatePayload,
+    KnowledgeFSSourceCredentialTestResponse,
+    KnowledgeFSSourceImportFailureResponse,
     KnowledgeFSSourceListQuery,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
+    KnowledgeFSSourceWorkflowResponse,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListItemResponse,
     KnowledgeFSStatResponse,
@@ -55,6 +59,74 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
 )
+
+
+def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "category": "rate_limit",
+            "code": "KNOWLEDGE_FS_RATE_LIMITED",
+            "message": "Try again later.",
+            "parameters": {"retryAfterSeconds": 30},
+            "retryPolicy": "manual",
+        }
+    )
+
+    assert failure.parameters == {"retryAfterSeconds": 30}
+    assert failure.message == "Too many KnowledgeFS operations were requested. Try again later."
+    with pytest.raises(ValidationError):
+        KnowledgeFSPublicFailureResponse.model_validate(
+            {
+                "category": "internal",
+                "code": "KNOWLEDGE_FS_INTERNAL_ERROR",
+                "message": "Safe message",
+                "parameters": {"secret": "must-not-cross-the-boundary"},
+                "retryPolicy": "never",
+            }
+        )
+    with pytest.raises(ValidationError):
+        KnowledgeFSPublicFailureResponse.model_validate(
+            {
+                "category": "internal",
+                "code": "UNREGISTERED_PROVIDER_FAILURE",
+                "message": "An unreviewed upstream message",
+                "retryPolicy": "manual",
+            }
+        )
+    with pytest.raises(ValidationError):
+        KnowledgeFSPublicFailureResponse.model_validate(
+            {
+                "category": "internal",
+                "code": "KNOWLEDGE_FS_INTERNAL_ERROR",
+                "message": "Safe message",
+                "retryPolicy": "manual",
+                "stage": "Authorization: Bearer secret",
+            }
+        )
+    with pytest.raises(ValidationError):
+        KnowledgeFSPublicFailureResponse.model_validate(
+            {
+                "category": "internal",
+                "code": "KNOWLEDGE_FS_INTERNAL_ERROR",
+                "message": "Safe message",
+                "retryPolicy": "manual",
+                "traceId": "Authorization: Bearer secret",
+            }
+        )
+
+
+def test_public_failure_replaces_a_registered_code_message_with_a_safe_bff_fallback() -> None:
+    failure = KnowledgeFSPublicFailureResponse.model_validate(
+        {
+            "category": "configuration",
+            "code": "MODEL_CREDENTIAL_INVALID",
+            "message": "Authorization: Bearer credential-secret",
+            "retryPolicy": "after_configuration",
+        }
+    )
+
+    assert failure.message == ("The KnowledgeFS operation requires a configuration change before it can continue.")
+    assert "credential-secret" not in failure.model_dump_json()
 
 
 def test_document_reindex_response_preserves_disabled_items() -> None:
@@ -533,6 +605,7 @@ def test_document_outline_preserves_recursive_nodes_and_serializes_nested_aliase
     ("model", "payload"),
     [
         (KnowledgeFSRerankIntent, {"enabled": True}),
+        (KnowledgeFSRerankIntent, {"enabled": False}),
         (KnowledgeFSScoreThresholdIntent, {"enabled": True}),
         (
             KnowledgeFSRetrievalProfileIntent,
@@ -824,6 +897,74 @@ def test_source_workflow_import_payload_preserves_each_provider_item_contract() 
                 ],
             }
         )
+
+
+def test_source_workflow_response_exposes_only_validated_terminal_failures() -> None:
+    payload: dict[str, object] = {
+        "checkpoint": "provider-read",
+        "createdAt": "2030-01-01T00:00:00Z",
+        "executionAttempts": 1,
+        "id": "workflow-1",
+        "knowledgeSpaceId": "space-1",
+        "kind": "sync",
+        "lastErrorCode": "SOURCE_OPERATION_FAILED",
+        "lastErrorMessage": "Authorization: Bearer provider-secret",
+        "maxExecutionAttempts": 3,
+        "progressCompleted": 0,
+        "progressFailed": 1,
+        "progressSkipped": 0,
+        "state": "failed",
+        "updatedAt": "2030-01-01T00:01:00Z",
+    }
+
+    legacy = KnowledgeFSSourceWorkflowResponse.model_validate(payload)
+    assert legacy.last_error_code is None
+    assert "provider-secret" not in legacy.model_dump_json()
+
+    response = KnowledgeFSSourceWorkflowResponse.model_validate(
+        {
+            **payload,
+            "failure": {
+                "category": "dependency",
+                "code": "SOURCE_OPERATION_FAILED",
+                "message": "Authorization: Bearer provider-secret",
+                "retryPolicy": "manual",
+                "stage": "provider-read",
+            },
+        }
+    )
+    assert response.last_error_code == "SOURCE_OPERATION_FAILED"
+    assert response.failure is not None
+    assert response.failure.message == "A service required by KnowledgeFS is temporarily unavailable."
+    assert "provider-secret" not in response.model_dump_json()
+
+
+def test_source_result_dtos_never_forward_untrusted_success_payload_messages() -> None:
+    credential = KnowledgeFSSourceCredentialTestResponse.model_validate(
+        {
+            "code": "SOURCE_CREDENTIAL_TEST_FAILED",
+            "error": "Authorization: Bearer credential-test-secret",
+            "failure": {
+                "category": "configuration",
+                "code": "SOURCE_CREDENTIAL_TEST_FAILED",
+                "message": "Authorization: Bearer credential-test-secret",
+                "retryPolicy": "after_configuration",
+            },
+            "valid": False,
+        }
+    )
+    assert credential.error == "The KnowledgeFS operation requires a configuration change before it can continue."
+    assert "credential-test-secret" not in credential.model_dump_json()
+
+    legacy_import = KnowledgeFSSourceImportFailureResponse.model_validate(
+        {
+            "code": "SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+            "error": "signed-url-secret",
+            "filename": "runbook.pdf",
+        }
+    )
+    assert legacy_import.error == "KnowledgeFS could not import this source document."
+    assert "signed-url-secret" not in legacy_import.model_dump_json()
 
 
 @pytest.mark.parametrize(

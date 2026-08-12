@@ -2188,6 +2188,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               ? {
                   errorCode: undefined,
                   errorMessage: undefined,
+                  failure: undefined,
                   progressPercent: event.data.progressPercent,
                   stage: event.data.stage,
                   state: event.data.state,
@@ -2196,6 +2197,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               : {
                   errorCode: event.data.errorCode,
                   errorMessage: undefined,
+                  failure: event.data.failure,
                   ...(pendingTerminalProgress
                     ? {
                         progressPercent: pendingTerminalProgress.data.progressPercent,

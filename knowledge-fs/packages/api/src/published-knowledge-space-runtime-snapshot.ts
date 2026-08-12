@@ -5,6 +5,7 @@ import {
   type KnowledgeSpaceRetrievalProfile,
   KnowledgeSpaceRetrievalProfileSchema,
   buildKnowledgeSpaceVectorSpaceId,
+  hasRequiredKnowledgeSpaceRetrievalModels,
 } from "@knowledge/core";
 
 import { numberColumn, stringColumn } from "./database-row-utils";
@@ -255,17 +256,13 @@ function assertRetrievalCapabilityMatchesProfile(
   if (reasoning.kind !== "reasoning" || !sameSelection(reasoning, profile.reasoningModel)) {
     throw new Error("Reasoning capability does not match its active profile");
   }
-  if (profile.rerank.enabled) {
-    const rerank = ModelCapabilitySnapshotSchema.parse(value.rerank);
-    if (
-      rerank.kind !== "rerank" ||
-      !profile.rerank.model ||
-      !sameSelection(rerank, profile.rerank.model)
-    ) {
-      throw new Error("Rerank capability does not match its active profile");
-    }
-  } else if (value.rerank != null) {
-    throw new Error("Disabled rerank profile contains an active capability snapshot");
+  const rerankSelection = profile.rerank.model;
+  if (!hasRequiredKnowledgeSpaceRetrievalModels(profile) || !rerankSelection) {
+    throw new Error("Active retrieval profile is missing its mandatory rerank model");
+  }
+  const rerank = ModelCapabilitySnapshotSchema.parse(value.rerank);
+  if (rerank.kind !== "rerank" || !sameSelection(rerank, rerankSelection)) {
+    throw new Error("Rerank capability does not match its active profile");
   }
 }
 

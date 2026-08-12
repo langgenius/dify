@@ -177,12 +177,16 @@ const settings = {
       provider: 'langgenius/openai/openai',
     },
     rerank: {
-      enabled: false,
-      model: null,
+      enabled: true,
+      model: {
+        model: 'rerank-v3',
+        pluginId: 'langgenius/cohere',
+        provider: 'cohere',
+      },
     },
     score_threshold: {
       enabled: false,
-      stage: 'mode-final' as const,
+      stage: 'rerank' as const,
       value: 0.5,
     },
     top_k: 3,
@@ -733,37 +737,64 @@ describe('KnowledgeSettingsForm', () => {
     ).toBeDisabled()
   })
 
-  it('only allows a score threshold without rerank in Research mode', async () => {
+  it('keeps the score threshold available in Fast and Deep because rerank is mandatory', async () => {
     const user = userEvent.setup()
     renderForm()
 
     const thresholdSwitch = screen.getByRole('switch', {
       name: 'appDebug.datasetConfig.score_threshold',
     })
-    expect(thresholdSwitch).toHaveAttribute('aria-disabled', 'true')
-
-    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.research'))
     expect(thresholdSwitch).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(thresholdSwitch)
     expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
 
-    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.fast'))
-    expect(thresholdSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(thresholdSwitch).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByText('dataset.newKnowledge.settings.retrievalMode.deep'))
+    expect(thresholdSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('prompts for a rerank model when reranking is enabled without one', async () => {
+  it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
     const user = userEvent.setup()
-    renderForm()
+    renderForm({
+      settings: {
+        ...settings,
+        configuration_state: 'setup-required',
+        retrieval: {
+          ...settings.retrieval,
+          rerank: { enabled: false, model: null },
+        },
+      },
+    })
 
-    await user.click(
-      screen.getByRole('switch', {
-        name: 'common.modelProvider.rerankModel.key',
-      }),
-    )
-
+    expect(
+      screen.queryByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.settings.rerankModelRequired',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }))
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
+    expect(serviceMock.patchSettings).toHaveBeenCalledWith(
+      {
+        body: {
+          expectedRevision: 5,
+          retrieval: expect.objectContaining({
+            defaultMode: 'fast',
+            rerank: {
+              enabled: true,
+              model: {
+                model: 'openrouter/auto',
+                pluginId: 'langgenius/openrouter',
+                provider: 'openrouter',
+              },
+            },
+            scoreThreshold: expect.objectContaining({ stage: 'rerank' }),
+          }),
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
     )
   })
 
@@ -867,6 +898,8 @@ describe('KnowledgeSettingsForm', () => {
     })
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
+    expect(serviceMock.patchSettings).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }))
 
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(

@@ -92,17 +92,32 @@ describe("first-document model profile activation", () => {
     );
   });
 
-  it("activates Research with embedding-backed semantic Value Search and reasoning", async () => {
+  it("blocks compilation for a legacy active tuple without the mandatory rerank model", async () => {
+    const harness = createHarness("fast");
+    await harness.coordinator.ensureReady(harness.execution);
+    harness.disableActiveRerank();
+
+    await expect(harness.coordinator.ensureReady(harness.execution)).rejects.toMatchObject({
+      code: "MODEL_PROFILE_ACTIVATION_INCOMPLETE",
+      message: "Retrieval requires an active embedding profile and enabled rerank model",
+      retryable: false,
+    } satisfies Partial<DocumentCompilationProcessingError>);
+  });
+
+  it("activates Research only after all three required models pass preflight", async () => {
     const harness = createHarness("research");
 
     await harness.coordinator.ensureReady(harness.execution);
 
-    expect(harness.preflight.verify).toHaveBeenCalledTimes(2);
+    expect(harness.preflight.verify).toHaveBeenCalledTimes(3);
     expect(harness.preflight.verify).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "embedding" }),
     );
     expect(harness.preflight.verify).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "reasoning" }),
+    );
+    expect(harness.preflight.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "rerank" }),
     );
     expect(harness.activations.activateInitialTuple).toHaveBeenCalledTimes(1);
     expect(harness.activations.activateInitialTuple).toHaveBeenCalledWith(
@@ -127,7 +142,8 @@ describe("first-document model profile activation", () => {
 
     await expect(harness.coordinator.ensureReady(harness.execution)).rejects.toMatchObject({
       code: "MODEL_SELECTION_NOT_FOUND",
-      message: "The selected model could not be validated",
+      message:
+        "The selected model is no longer available in this workspace. Select another model before retrying.",
       retryable: false,
     } satisfies Partial<DocumentCompilationProcessingError>);
 
@@ -212,7 +228,7 @@ function createHarness(mode: "fast" | "research") {
       retrievalProfile: {
         defaultMode: mode,
         reasoningModel: reasoningSelection,
-        rerank: mode === "fast" ? { enabled: true, model: rerankSelection } : { enabled: false },
+        rerank: { enabled: true, model: rerankSelection },
         scoreThreshold: { enabled: false, stage: "mode-final" },
         topK: 10,
       },
@@ -354,6 +370,22 @@ function createHarness(mode: "fast" | "research") {
       return bound;
     },
     coordinator,
+    disableActiveRerank() {
+      const head = heads.get("retrieval");
+      if (!head || !("defaultMode" in head.profile.snapshot)) {
+        throw new Error("test active retrieval head missing");
+      }
+      heads.set("retrieval", {
+        ...head,
+        profile: {
+          ...head.profile,
+          snapshot: {
+            ...head.profile.snapshot,
+            rerank: { enabled: false },
+          },
+        },
+      });
+    },
     execution,
     get manifest() {
       return manifest;

@@ -371,6 +371,7 @@ def test_binary_remote_binds_only_small_file_bytes_parent_space_and_capability(
         "Accept-Encoding": "identity",
         "Authorization": "Bearer small-file-capability",
         "Content-Type": "application/octet-stream",
+        "X-KnowledgeFS-Error-Contract": "2",
         "X-Trace-Id": "trace-1",
     }
     assert "small-file-capability" not in str(captured["url"])
@@ -768,9 +769,11 @@ def test_multipart_remote_maps_network_failure_to_stable_error(monkeypatch: pyte
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
         (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
+        (403, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 403),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
         (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
+        (429, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 429),
         (404, "application/json", b"{}", KnowledgeFSProductResourceNotFoundError, None),
         (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
         (200, "text/plain", b"ok", KnowledgeFSProductRemoteError, None),
@@ -806,8 +809,16 @@ def test_multipart_remote_logs_bounded_upstream_rejection(
     response = httpx.Response(
         409,
         json={
-            "code": "DOCUMENT_MUTATION_CONFLICT",
+            "code": "KNOWLEDGE_FS_CONFLICT",
             "error": "Knowledge space already has an active document mutation lease",
+            "failure": {
+                "action": "retry",
+                "category": "conflict",
+                "code": "KNOWLEDGE_FS_CONFLICT",
+                "message": "The document changed while the operation was running.",
+                "retryPolicy": "manual",
+                "traceId": "trace-kfs",
+            },
             "secret": "must-not-be-logged",
         },
     )
@@ -816,14 +827,17 @@ def test_multipart_remote_logs_bounded_upstream_rejection(
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
     with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
-        with pytest.raises(KnowledgeFSProductRequestRejectedError):
+        with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
             client.execute_multipart(_multipart_request())
 
     assert "operation_id=createDocument" in caplog.text
     assert "trace_id=trace-1" in caplog.text
     assert "status_code=409" in caplog.text
-    assert "upstream_code=DOCUMENT_MUTATION_CONFLICT" in caplog.text
-    assert "upstream_message=Knowledge space already has an active document mutation lease" in caplog.text
+    assert "upstream_code=KNOWLEDGE_FS_CONFLICT" in caplog.text
+    assert "upstream_category=conflict" in caplog.text
+    assert "upstream_action=retry" in caplog.text
+    assert rejected.value.failure is not None
+    assert rejected.value.failure.code == "KNOWLEDGE_FS_CONFLICT"
     assert "must-not-be-logged" not in caplog.text
 
 
@@ -971,8 +985,11 @@ def test_remote_maps_network_and_response_limit_failures_to_stable_error(
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
         (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
+        (403, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 403),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
+        (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
+        (429, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 429),
         (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
         (200, "text/plain", b"ok", KnowledgeFSProductRemoteError, None),
         (200, "application/json", b"{", KnowledgeFSProductRemoteError, None),
@@ -1004,9 +1021,11 @@ def test_binary_remote_closes_and_maps_all_upstream_response_failures(
     ("status_code", "content_type", "body", "error_type", "expected_status"),
     [
         (400, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 400),
+        (403, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 403),
         (409, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 409),
         (413, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 413),
         (422, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 422),
+        (429, "application/json", b"{}", KnowledgeFSProductRequestRejectedError, 429),
         (500, "application/json", b"{}", KnowledgeFSProductRemoteError, None),
         (200, "text/plain", b"ok", KnowledgeFSProductRemoteError, None),
         (200, "application/json", b"{", KnowledgeFSProductRemoteError, None),
@@ -1041,8 +1060,15 @@ def test_json_remote_logs_bounded_upstream_rejection_details(
     response = httpx.Response(
         400,
         json={
-            "code": "SOURCE_CONNECTION_CONFIGURATION_INVALID",
+            "code": "SOURCE_CREDENTIAL_CONFIG_INVALID",
             "error": "Required source connection field providerKind is missing",
+            "failure": {
+                "action": "configure_source",
+                "category": "configuration",
+                "code": "SOURCE_CREDENTIAL_CONFIG_INVALID",
+                "message": "Update the source configuration before retrying.",
+                "retryPolicy": "after_configuration",
+            },
             "credentials": {"accessToken": "must-not-be-logged"},
         },
     )
@@ -1051,14 +1077,17 @@ def test_json_remote_logs_bounded_upstream_rejection_details(
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
     with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
-        with pytest.raises(KnowledgeFSProductRequestRejectedError):
+        with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
             client.execute_json(_json_request())
 
     assert "operation_id=getSettings" in caplog.text
     assert "trace_id=trace-1" in caplog.text
     assert "status_code=400" in caplog.text
-    assert "upstream_code=SOURCE_CONNECTION_CONFIGURATION_INVALID" in caplog.text
-    assert "upstream_message=Required source connection field providerKind is missing" in caplog.text
+    assert "upstream_code=SOURCE_CREDENTIAL_CONFIG_INVALID" in caplog.text
+    assert "upstream_category=configuration" in caplog.text
+    assert "upstream_action=configure_source" in caplog.text
+    assert rejected.value.failure is not None
+    assert rejected.value.failure.retry_policy == "after_configuration"
     assert "must-not-be-logged" not in caplog.text
 
 
@@ -1077,6 +1106,94 @@ def test_json_remote_preserves_authoritative_resource_not_found(
     with pytest.raises(KnowledgeFSProductResourceNotFoundError):
         client.execute_json(_json_request())
 
+    assert response.is_closed
+
+
+def test_json_remote_preserves_safe_failure_for_upstream_unavailability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(
+        503,
+        json={
+            "failure": {
+                "action": "retry",
+                "category": "dependency",
+                "code": "KNOWLEDGE_FS_UNAVAILABLE",
+                "message": "KnowledgeFS is temporarily unavailable.",
+                "retryPolicy": "automatic",
+                "traceId": "trace-kfs",
+            }
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRemoteError) as raised:
+        client.execute_json(_json_request())
+
+    assert raised.value.failure is not None
+    assert raised.value.failure.code == "KNOWLEDGE_FS_UNAVAILABLE"
+    assert raised.value.failure.retry_policy == "automatic"
+    assert response.is_closed
+
+
+def test_json_remote_masks_unregistered_upstream_failure_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(
+        503,
+        json={
+            "failure": {
+                "category": "internal",
+                "code": "UNREGISTERED_PROVIDER_FAILURE",
+                "message": "provider credential must not cross the boundary",
+                "retryPolicy": "manual",
+            }
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRemoteError) as raised:
+        client.execute_json(_json_request())
+
+    assert raised.value.failure is None
+    assert "credential" not in str(raised.value)
+    assert response.is_closed
+
+
+def test_json_remote_replaces_registered_failure_messages_with_safe_bff_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = httpx.Response(
+        422,
+        json={
+            "failure": {
+                "action": "configure_model",
+                "category": "configuration",
+                "code": "MODEL_CREDENTIAL_INVALID",
+                "message": "Authorization: Bearer credential-secret",
+                "retryPolicy": "after_configuration",
+            }
+        },
+        headers={"Content-Type": "application/json"},
+    )
+    monkeypatch.setattr(ssrf_proxy, "make_request", lambda **_: response)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+
+    with pytest.raises(KnowledgeFSProductRequestRejectedError) as raised:
+        client.execute_json(_json_request())
+
+    assert raised.value.failure is not None
+    assert raised.value.failure.message == (
+        "The KnowledgeFS operation requires a configuration change before it can continue."
+    )
+    assert "credential-secret" not in raised.value.failure.model_dump_json()
     assert response.is_closed
 
 

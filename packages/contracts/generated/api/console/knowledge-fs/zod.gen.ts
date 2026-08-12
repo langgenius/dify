@@ -470,31 +470,6 @@ export const zKnowledgeFsSourceConnectionRefreshPayload = z.object({
 })
 
 /**
- * KnowledgeFSSourceWorkflowResponse
- */
-export const zKnowledgeFsSourceWorkflowResponse = z.object({
-  canceled_at: z.iso.datetime().nullish(),
-  checkpoint: z.string(),
-  completed_at: z.iso.datetime().nullish(),
-  created_at: z.iso.datetime(),
-  cursor: z.string().nullish(),
-  execution_attempts: z.int().gte(0),
-  id: z.string(),
-  kind: z.string(),
-  knowledge_space_id: z.string(),
-  last_error_code: z.string().nullish(),
-  last_error_message: z.string().nullish(),
-  max_execution_attempts: z.int().gte(1),
-  progress_completed: z.int().gte(0),
-  progress_failed: z.int().gte(0),
-  progress_skipped: z.int().gte(0),
-  progress_total: z.int().gte(0).nullish(),
-  source_id: z.string().nullish(),
-  state: z.string(),
-  updated_at: z.iso.datetime(),
-})
-
-/**
  * KnowledgeFSSourceWorkflowCancelPayload
  */
 export const zKnowledgeFsSourceWorkflowCancelPayload = z.object({
@@ -564,36 +539,6 @@ export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
 })
 
 /**
- * KnowledgeFSSourceResponse
- */
-export const zKnowledgeFsSourceResponse = z.object({
-  connection_id: z.string().nullish(),
-  created_at: z.iso.datetime(),
-  credential_configured: z.boolean().nullish(),
-  id: z.string(),
-  knowledge_space_id: z.string(),
-  last_synced_at: z.iso.datetime().nullish(),
-  metadata: z.record(z.string(), z.unknown()),
-  name: z.string(),
-  permission_scope: z.array(z.string()),
-  status: z.enum(['active', 'disabled', 'error', 'syncing']),
-  sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
-  sync_workflow: zKnowledgeFsSourceWorkflowResponse.nullish(),
-  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
-  updated_at: z.iso.datetime(),
-  uri: z.string(),
-  version: z.int().gte(1),
-})
-
-/**
- * KnowledgeFSSourceListResponse
- */
-export const zKnowledgeFsSourceListResponse = z.object({
-  data: z.array(zKnowledgeFsSourceResponse),
-  next_cursor: z.string().nullish(),
-})
-
-/**
  * KnowledgeFSSourceSyncPolicyPayload
  */
 export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
@@ -602,15 +547,6 @@ export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
   expectedRevision: z.int().gte(0),
   expectedSourceVersion: z.int().gte(1),
   mode: z.enum(['custom', 'interval', 'manual', 'provider']),
-})
-
-/**
- * KnowledgeFSSourceCredentialTestResponse
- */
-export const zKnowledgeFsSourceCredentialTestResponse = z.object({
-  code: z.string().nullish(),
-  error: z.string().nullish(),
-  valid: z.boolean(),
 })
 
 /**
@@ -996,6 +932,322 @@ export const zKnowledgeFsAppBindingListResponse = z.object({
 })
 
 /**
+ * KnowledgeFSPublicFailureResponse
+ */
+export const zKnowledgeFsPublicFailureResponse = z.object({
+  action: z
+    .enum([
+      'configure_model',
+      'configure_parser',
+      'configure_source',
+      'contact_admin',
+      'retry',
+      'reupload',
+    ])
+    .nullish(),
+  category: z.enum([
+    'authorization',
+    'canceled',
+    'configuration',
+    'conflict',
+    'dependency',
+    'internal',
+    'not_found',
+    'rate_limit',
+    'timeout',
+    'validation',
+  ]),
+  code: z.enum([
+    'DOCUMENT_COMPILATION_FAILED',
+    'DOCUMENT_COMPILATION_RETRYABLE',
+    'DOCUMENT_DISABLED',
+    'DOCUMENT_PARSER_INPUT_INVALID',
+    'DOCUMENT_PARSER_NOT_CONFIGURED',
+    'DOCUMENT_PARSER_RATE_LIMITED',
+    'DOCUMENT_PARSER_RESPONSE_INVALID',
+    'DOCUMENT_PARSER_UNAVAILABLE',
+    'EMBEDDING_DIMENSION_INVALID',
+    'EMBEDDING_DIMENSION_UNSUPPORTED',
+    'EXECUTION_ATTEMPTS_EXHAUSTED',
+    'KNOWLEDGE_FS_ACCESS_DENIED',
+    'KNOWLEDGE_FS_CONFLICT',
+    'KNOWLEDGE_FS_INTERNAL_ERROR',
+    'KNOWLEDGE_FS_INVALID_REQUEST',
+    'KNOWLEDGE_FS_NOT_FOUND',
+    'KNOWLEDGE_FS_RATE_LIMITED',
+    'KNOWLEDGE_FS_TIMEOUT',
+    'KNOWLEDGE_FS_UNAVAILABLE',
+    'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+    'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+    'MODEL_CAPABILITY_MISMATCH',
+    'MODEL_CONFIGURATION_STALE',
+    'MODEL_CREDENTIAL_INVALID',
+    'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+    'MODEL_IDENTITY_MISMATCH',
+    'MODEL_PREFLIGHT_CANCELED',
+    'MODEL_PREFLIGHT_FAILED',
+    'MODEL_PREFLIGHT_TIMEOUT',
+    'MODEL_PREFLIGHT_UNAVAILABLE',
+    'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+    'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+    'MODEL_RUNTIME_FAILED',
+    'MODEL_RUNTIME_TIMEOUT',
+    'MODEL_RUNTIME_UNAVAILABLE',
+    'MODEL_SELECTION_NOT_FOUND',
+    'RESEARCH_TASK_CAPABILITY_REVOKED',
+    'RESEARCH_TASK_DISPATCH_DEAD',
+    'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+    'RESEARCH_TASK_FAILED',
+    'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+    'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+    'SOURCE_BULK_ACTION_FAILED',
+    'SOURCE_CREDENTIAL_CONFIG_INVALID',
+    'SOURCE_CREDENTIAL_MUTATION_FAILED',
+    'SOURCE_CREDENTIAL_TEST_FAILED',
+    'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+    'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+    'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+    'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+    'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+    'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+    'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+    'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+    'SOURCE_OPERATION_FAILED',
+    'SOURCE_SECRET_INTEGRITY_FAILED',
+    'SOURCE_SECRET_REF_CONFLICT',
+    'SOURCE_SYNC_FAILED',
+    'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+    'SOURCE_WEBSITE_CRAWL_FAILED',
+    'SOURCE_WORKFLOW_FAILED',
+    'UPLOAD_INITIALIZATION_FAILED',
+    'UPLOAD_INTEGRITY_MISMATCH',
+  ]),
+  message: z.string().min(1).max(1024),
+  parameters: z
+    .record(z.string(), z.union([z.string(), z.int(), z.number(), z.boolean()]))
+    .nullish(),
+  retryPolicy: z.enum(['after_configuration', 'automatic', 'manual', 'never']),
+  stage: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[a-z][a-z0-9_.-]{0,127}$/)
+    .nullish(),
+  traceId: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9._:-]{1,128}$/)
+    .nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowResponse
+ */
+export const zKnowledgeFsSourceWorkflowResponse = z.object({
+  canceled_at: z.iso.datetime().nullish(),
+  checkpoint: z.string(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  cursor: z.string().nullish(),
+  execution_attempts: z.int().gte(0),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  kind: z.string(),
+  knowledge_space_id: z.string(),
+  last_error_code: z
+    .enum([
+      'DOCUMENT_COMPILATION_FAILED',
+      'DOCUMENT_COMPILATION_RETRYABLE',
+      'DOCUMENT_DISABLED',
+      'DOCUMENT_PARSER_INPUT_INVALID',
+      'DOCUMENT_PARSER_NOT_CONFIGURED',
+      'DOCUMENT_PARSER_RATE_LIMITED',
+      'DOCUMENT_PARSER_RESPONSE_INVALID',
+      'DOCUMENT_PARSER_UNAVAILABLE',
+      'EMBEDDING_DIMENSION_INVALID',
+      'EMBEDDING_DIMENSION_UNSUPPORTED',
+      'EXECUTION_ATTEMPTS_EXHAUSTED',
+      'KNOWLEDGE_FS_ACCESS_DENIED',
+      'KNOWLEDGE_FS_CONFLICT',
+      'KNOWLEDGE_FS_INTERNAL_ERROR',
+      'KNOWLEDGE_FS_INVALID_REQUEST',
+      'KNOWLEDGE_FS_NOT_FOUND',
+      'KNOWLEDGE_FS_RATE_LIMITED',
+      'KNOWLEDGE_FS_TIMEOUT',
+      'KNOWLEDGE_FS_UNAVAILABLE',
+      'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+      'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+      'MODEL_CAPABILITY_MISMATCH',
+      'MODEL_CONFIGURATION_STALE',
+      'MODEL_CREDENTIAL_INVALID',
+      'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+      'MODEL_IDENTITY_MISMATCH',
+      'MODEL_PREFLIGHT_CANCELED',
+      'MODEL_PREFLIGHT_FAILED',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'MODEL_PREFLIGHT_UNAVAILABLE',
+      'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+      'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+      'MODEL_RUNTIME_FAILED',
+      'MODEL_RUNTIME_TIMEOUT',
+      'MODEL_RUNTIME_UNAVAILABLE',
+      'MODEL_SELECTION_NOT_FOUND',
+      'RESEARCH_TASK_CAPABILITY_REVOKED',
+      'RESEARCH_TASK_DISPATCH_DEAD',
+      'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+      'RESEARCH_TASK_FAILED',
+      'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+      'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+      'SOURCE_BULK_ACTION_FAILED',
+      'SOURCE_CREDENTIAL_CONFIG_INVALID',
+      'SOURCE_CREDENTIAL_MUTATION_FAILED',
+      'SOURCE_CREDENTIAL_TEST_FAILED',
+      'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+      'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+      'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+      'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+      'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+      'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+      'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+      'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+      'SOURCE_OPERATION_FAILED',
+      'SOURCE_SECRET_INTEGRITY_FAILED',
+      'SOURCE_SECRET_REF_CONFLICT',
+      'SOURCE_SYNC_FAILED',
+      'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+      'SOURCE_WEBSITE_CRAWL_FAILED',
+      'SOURCE_WORKFLOW_FAILED',
+      'UPLOAD_INITIALIZATION_FAILED',
+      'UPLOAD_INTEGRITY_MISMATCH',
+    ])
+    .nullish(),
+  max_execution_attempts: z.int().gte(1),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_skipped: z.int().gte(0),
+  progress_total: z.int().gte(0).nullish(),
+  source_id: z.string().nullish(),
+  state: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceResponse
+ */
+export const zKnowledgeFsSourceResponse = z.object({
+  connection_id: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  credential_configured: z.boolean().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  last_synced_at: z.iso.datetime().nullish(),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  permission_scope: z.array(z.string()),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']),
+  sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
+  sync_workflow: zKnowledgeFsSourceWorkflowResponse.nullish(),
+  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
+  updated_at: z.iso.datetime(),
+  uri: z.string(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceListResponse
+ */
+export const zKnowledgeFsSourceListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceCredentialTestResponse
+ */
+export const zKnowledgeFsSourceCredentialTestResponse = z.object({
+  code: z
+    .enum([
+      'DOCUMENT_COMPILATION_FAILED',
+      'DOCUMENT_COMPILATION_RETRYABLE',
+      'DOCUMENT_DISABLED',
+      'DOCUMENT_PARSER_INPUT_INVALID',
+      'DOCUMENT_PARSER_NOT_CONFIGURED',
+      'DOCUMENT_PARSER_RATE_LIMITED',
+      'DOCUMENT_PARSER_RESPONSE_INVALID',
+      'DOCUMENT_PARSER_UNAVAILABLE',
+      'EMBEDDING_DIMENSION_INVALID',
+      'EMBEDDING_DIMENSION_UNSUPPORTED',
+      'EXECUTION_ATTEMPTS_EXHAUSTED',
+      'KNOWLEDGE_FS_ACCESS_DENIED',
+      'KNOWLEDGE_FS_CONFLICT',
+      'KNOWLEDGE_FS_INTERNAL_ERROR',
+      'KNOWLEDGE_FS_INVALID_REQUEST',
+      'KNOWLEDGE_FS_NOT_FOUND',
+      'KNOWLEDGE_FS_RATE_LIMITED',
+      'KNOWLEDGE_FS_TIMEOUT',
+      'KNOWLEDGE_FS_UNAVAILABLE',
+      'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+      'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+      'MODEL_CAPABILITY_MISMATCH',
+      'MODEL_CONFIGURATION_STALE',
+      'MODEL_CREDENTIAL_INVALID',
+      'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+      'MODEL_IDENTITY_MISMATCH',
+      'MODEL_PREFLIGHT_CANCELED',
+      'MODEL_PREFLIGHT_FAILED',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'MODEL_PREFLIGHT_UNAVAILABLE',
+      'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+      'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+      'MODEL_RUNTIME_FAILED',
+      'MODEL_RUNTIME_TIMEOUT',
+      'MODEL_RUNTIME_UNAVAILABLE',
+      'MODEL_SELECTION_NOT_FOUND',
+      'RESEARCH_TASK_CAPABILITY_REVOKED',
+      'RESEARCH_TASK_DISPATCH_DEAD',
+      'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+      'RESEARCH_TASK_FAILED',
+      'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+      'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+      'SOURCE_BULK_ACTION_FAILED',
+      'SOURCE_CREDENTIAL_CONFIG_INVALID',
+      'SOURCE_CREDENTIAL_MUTATION_FAILED',
+      'SOURCE_CREDENTIAL_TEST_FAILED',
+      'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+      'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+      'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+      'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+      'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+      'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+      'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+      'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+      'SOURCE_OPERATION_FAILED',
+      'SOURCE_SECRET_INTEGRITY_FAILED',
+      'SOURCE_SECRET_REF_CONFLICT',
+      'SOURCE_SYNC_FAILED',
+      'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+      'SOURCE_WEBSITE_CRAWL_FAILED',
+      'SOURCE_WORKFLOW_FAILED',
+      'UPLOAD_INITIALIZATION_FAILED',
+      'UPLOAD_INTEGRITY_MISMATCH',
+    ])
+    .nullish(),
+  error: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  valid: z.boolean(),
+})
+
+/**
  * KnowledgeFSBackgroundTaskFailureResponse
  */
 export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
@@ -1003,6 +1255,7 @@ export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
   document_title: z.string().nullish(),
   error_code: z.string(),
   error_message: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse,
   job_id: z.string().nullish(),
 })
 
@@ -1018,6 +1271,7 @@ export const zKnowledgeFsBackgroundTaskResponse = z.object({
   document_revision: z.int().gte(1).nullish(),
   error_code: z.string().nullish(),
   error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
   failures: z.array(zKnowledgeFsBackgroundTaskFailureResponse).nullish(),
   id: z.string(),
   knowledge_space_id: z.string(),
@@ -1457,6 +1711,7 @@ export const zKnowledgeFsResearchTaskResponse = z.object({
   cost: z.record(z.string(), z.unknown()),
   created_at: z.number(),
   error: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
   id: z.string(),
   knowledge_space_id: z.string(),
   limits: zKnowledgeFsResearchTaskLimits.nullish(),
@@ -1614,8 +1869,76 @@ export const zKnowledgeFsSourceImportedDocumentResponse = z.object({
  * KnowledgeFSSourceImportFailureResponse
  */
 export const zKnowledgeFsSourceImportFailureResponse = z.object({
-  code: z.string(),
+  code: z.enum([
+    'DOCUMENT_COMPILATION_FAILED',
+    'DOCUMENT_COMPILATION_RETRYABLE',
+    'DOCUMENT_DISABLED',
+    'DOCUMENT_PARSER_INPUT_INVALID',
+    'DOCUMENT_PARSER_NOT_CONFIGURED',
+    'DOCUMENT_PARSER_RATE_LIMITED',
+    'DOCUMENT_PARSER_RESPONSE_INVALID',
+    'DOCUMENT_PARSER_UNAVAILABLE',
+    'EMBEDDING_DIMENSION_INVALID',
+    'EMBEDDING_DIMENSION_UNSUPPORTED',
+    'EXECUTION_ATTEMPTS_EXHAUSTED',
+    'KNOWLEDGE_FS_ACCESS_DENIED',
+    'KNOWLEDGE_FS_CONFLICT',
+    'KNOWLEDGE_FS_INTERNAL_ERROR',
+    'KNOWLEDGE_FS_INVALID_REQUEST',
+    'KNOWLEDGE_FS_NOT_FOUND',
+    'KNOWLEDGE_FS_RATE_LIMITED',
+    'KNOWLEDGE_FS_TIMEOUT',
+    'KNOWLEDGE_FS_UNAVAILABLE',
+    'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+    'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+    'MODEL_CAPABILITY_MISMATCH',
+    'MODEL_CONFIGURATION_STALE',
+    'MODEL_CREDENTIAL_INVALID',
+    'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+    'MODEL_IDENTITY_MISMATCH',
+    'MODEL_PREFLIGHT_CANCELED',
+    'MODEL_PREFLIGHT_FAILED',
+    'MODEL_PREFLIGHT_TIMEOUT',
+    'MODEL_PREFLIGHT_UNAVAILABLE',
+    'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+    'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+    'MODEL_RUNTIME_FAILED',
+    'MODEL_RUNTIME_TIMEOUT',
+    'MODEL_RUNTIME_UNAVAILABLE',
+    'MODEL_SELECTION_NOT_FOUND',
+    'RESEARCH_TASK_CAPABILITY_REVOKED',
+    'RESEARCH_TASK_DISPATCH_DEAD',
+    'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+    'RESEARCH_TASK_FAILED',
+    'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+    'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+    'SOURCE_BULK_ACTION_FAILED',
+    'SOURCE_CREDENTIAL_CONFIG_INVALID',
+    'SOURCE_CREDENTIAL_MUTATION_FAILED',
+    'SOURCE_CREDENTIAL_TEST_FAILED',
+    'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+    'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+    'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+    'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+    'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+    'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+    'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+    'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+    'SOURCE_OPERATION_FAILED',
+    'SOURCE_SECRET_INTEGRITY_FAILED',
+    'SOURCE_SECRET_REF_CONFLICT',
+    'SOURCE_SYNC_FAILED',
+    'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+    'SOURCE_WEBSITE_CRAWL_FAILED',
+    'SOURCE_WORKFLOW_FAILED',
+    'UPLOAD_INITIALIZATION_FAILED',
+    'UPLOAD_INTEGRITY_MISMATCH',
+  ]),
   error: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
   filename: z.string(),
 })
 

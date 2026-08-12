@@ -307,11 +307,16 @@ describe("KnowledgeSpace manifest bootstrap", () => {
       method: "POST",
     });
     expect(invalidCreate.status).toBe(400);
-    await expect(invalidCreate.json()).resolves.toEqual({
-      code: "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK",
-      error:
-        "Fast/Deep mode-final score threshold requires the knowledge-space reranker to be enabled",
-      mode: "fast",
+    await expect(invalidCreate.json()).resolves.toMatchObject({
+      error: {
+        issues: [
+          {
+            message: "Knowledge-space retrieval requires an enabled rerank model",
+            path: ["retrievalProfile", "rerank", "model"],
+          },
+        ],
+      },
+      success: false,
     });
     const created = await app.request("/knowledge-spaces", {
       body: JSON.stringify({
@@ -373,11 +378,16 @@ describe("KnowledgeSpace manifest bootstrap", () => {
       },
     );
     expect(invalidUpdate.status).toBe(400);
-    await expect(invalidUpdate.json()).resolves.toEqual({
-      code: "RETRIEVAL_PROFILE_SCORE_THRESHOLD_REQUIRES_RERANK",
-      error:
-        "Fast/Deep mode-final score threshold requires the knowledge-space reranker to be enabled",
-      mode: "deep",
+    await expect(invalidUpdate.json()).resolves.toMatchObject({
+      error: {
+        issues: [
+          {
+            message: "Knowledge-space retrieval requires an enabled rerank model",
+            path: ["profile", "rerank", "model"],
+          },
+        ],
+      },
+      success: false,
     });
 
     await expect(

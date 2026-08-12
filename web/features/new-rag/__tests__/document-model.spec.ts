@@ -119,5 +119,20 @@ describe('new Knowledge document model', () => {
     expect(taskNeedsAttention(task({ state: 'canceled' }))).toBe(true)
     expect(taskNeedsAttention(task({ state: 'succeeded' }))).toBe(false)
     expect(taskCanRetry(task({ state: 'superseded' }))).toBe(false)
+    expect(
+      taskCanRetry(
+        task({
+          canRetry: true,
+          failure: {
+            action: 'configure_model',
+            category: 'configuration',
+            code: 'MODEL_SELECTION_NOT_FOUND',
+            message: 'Select another model.',
+            retryPolicy: 'after_configuration',
+          },
+          state: 'failed',
+        }),
+      ),
+    ).toBe(false)
   })
 })

@@ -1144,12 +1144,20 @@ describe("online document import edge branches", () => {
     expect(body.failed).toEqual([
       {
         code: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.code,
-        error: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.message,
+        error: "A page from the online-document source could not be loaded.",
+        failure: expect.objectContaining({
+          code: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.code,
+          stage: "source-document-import",
+        }),
         filename: "Two-p2.md",
       },
       {
         code: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.code,
-        error: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.message,
+        error: "A page from the online-document source could not be loaded.",
+        failure: expect.objectContaining({
+          code: SOURCE_OPERATION_FAILURES.onlineDocumentPageFetch.code,
+          stage: "source-document-import",
+        }),
         filename: "Three-p3.md",
       },
     ]);
@@ -1175,7 +1183,11 @@ describe("source credential test result mapping", () => {
     const body = await response.json();
     expect(body).toEqual({
       code: SOURCE_OPERATION_FAILURES.credentialTest.code,
-      error: SOURCE_OPERATION_FAILURES.credentialTest.message,
+      error: "The source credential could not be validated.",
+      failure: expect.objectContaining({
+        code: SOURCE_OPERATION_FAILURES.credentialTest.code,
+        stage: "credential-test",
+      }),
       valid: false,
     });
     expect(JSON.stringify(body)).not.toContain("credential-secret");
@@ -1201,7 +1213,11 @@ describe("source credential test result mapping", () => {
     const body = await response.json();
     expect(body).toEqual({
       code: SOURCE_OPERATION_FAILURES.credentialTest.code,
-      error: SOURCE_OPERATION_FAILURES.credentialTest.message,
+      error: "The source credential could not be validated.",
+      failure: expect.objectContaining({
+        code: SOURCE_OPERATION_FAILURES.credentialTest.code,
+        stage: "credential-test",
+      }),
     });
     expect(JSON.stringify(body)).not.toContain("credential-secret");
   });
@@ -1365,12 +1381,20 @@ describe("online drive import edge branches", () => {
     expect(body.failed).toEqual([
       {
         code: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.code,
-        error: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.message,
+        error: "A file from the online-drive source could not be downloaded.",
+        failure: expect.objectContaining({
+          code: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.code,
+          stage: "source-document-import",
+        }),
         filename: "broken.bin",
       },
       {
         code: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.code,
-        error: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.message,
+        error: "A file from the online-drive source could not be downloaded.",
+        failure: expect.objectContaining({
+          code: SOURCE_OPERATION_FAILURES.onlineDriveFileDownload.code,
+          stage: "source-document-import",
+        }),
         filename: "worse.bin",
       },
     ]);
@@ -1623,8 +1647,9 @@ describe("source handlers without optional collaborators", () => {
           id: sourceId,
           status: "error",
           syncWorkflow: {
+            failure: { code: "KNOWLEDGE_FS_INTERNAL_ERROR" },
             id: "00000000-0000-4000-8000-000000000333",
-            lastErrorCode: "PROVIDER_FAILED",
+            lastErrorCode: "KNOWLEDGE_FS_INTERNAL_ERROR",
             state: "failed",
           },
         },

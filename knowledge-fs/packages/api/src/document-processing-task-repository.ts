@@ -2,6 +2,7 @@ import { numberColumn, optionalStringColumn, stringColumn } from "./database-row
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { readableDocumentAssetPredicateSql } from "./document-asset-visibility-sql";
 import { jsonObjectColumn } from "./json-utils";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import {
   type LogicalDocumentLookup,
   type LogicalDocumentScope,
@@ -41,6 +42,7 @@ export type DocumentProcessingOperation =
 export interface DocumentSemanticEnrichmentProgress {
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
   readonly nodesCompleted: number;
   readonly nodesTotal?: number | undefined;
   readonly providerCalls?: number | undefined;
@@ -57,6 +59,7 @@ export interface DocumentProcessingTask {
   readonly documentRevision: number;
   readonly errorCode?: string | undefined;
   readonly errorMessage?: string | undefined;
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
   readonly id: string;
   readonly knowledgeSpaceId: string;
   readonly progressPercent: number;
@@ -292,7 +295,8 @@ export function documentTaskSseEvents(task: DocumentProcessingTask): readonly {
         progress,
         {
           data: {
-            ...(task.errorCode ? { errorCode: task.errorCode } : {}),
+            ...(normalized.errorCode ? { errorCode: normalized.errorCode } : {}),
+            ...(normalized.failure ? { failure: normalized.failure } : {}),
             state: task.state,
           },
           event: "terminal" as const,
@@ -368,8 +372,22 @@ function mapTask(row: DatabaseRow): DocumentProcessingTask {
 
 function normalizeTaskProgress(task: DocumentProcessingTask): DocumentProcessingTask {
   const phase = task.phase ?? phaseForTask(task.stage, task.state);
+  const {
+    errorCode: _errorCode,
+    errorMessage: _errorMessage,
+    failure: _failure,
+    ...taskWithoutFailure
+  } = task;
+  const failure =
+    task.state === "failed"
+      ? knowledgeFsFailureForCode(task.errorCode ?? "DOCUMENT_COMPILATION_FAILED", {
+          stage: phase,
+          traceId: task.id,
+        })
+      : undefined;
   return {
-    ...task,
+    ...taskWithoutFailure,
+    ...(failure ? { errorCode: failure.code, errorMessage: failure.message, failure } : {}),
     activeOperations: task.activeOperations ?? operationsForPhase(phase),
     phase,
     semanticEnrichment:
@@ -447,13 +465,16 @@ function mapSemanticEnrichment(
   const nodesTotal = nonnegativeResultInteger(result.nodesScanned);
   const providerCalls = nonnegativeResultInteger(result.semanticProviderCalls);
   const providerCallsMaximum = nonnegativeResultInteger(result.semanticProviderCallsMaximum);
+  const errorCode = optionalStringColumn(row, "semantic_enrichment_error_code");
+  const failure =
+    state === "failed"
+      ? knowledgeFsFailureForCode(errorCode ?? "DOCUMENT_COMPILATION_FAILED", {
+          stage: "semantic_enrichment",
+          traceId: stringColumn(row, "id"),
+        })
+      : undefined;
   return {
-    ...(optionalStringColumn(row, "semantic_enrichment_error_code")
-      ? { errorCode: optionalStringColumn(row, "semantic_enrichment_error_code") }
-      : {}),
-    ...(optionalStringColumn(row, "semantic_enrichment_error_message")
-      ? { errorMessage: optionalStringColumn(row, "semantic_enrichment_error_message") }
-      : {}),
+    ...(failure ? { errorCode: failure.code, errorMessage: failure.message, failure } : {}),
     nodesCompleted: state === "ready" ? (nodesTotal ?? 0) : 0,
     ...(nodesTotal !== undefined ? { nodesTotal } : {}),
     ...(providerCalls !== undefined ? { providerCalls } : {}),

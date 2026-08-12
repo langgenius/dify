@@ -7,6 +7,7 @@ import {
   candidatePermissionScopeSnapshot,
 } from "./candidate-content-authorization";
 import { issueKnowledgeSpaceDurablePermission } from "./derived-result-authorization";
+import { type KnowledgeFsPublicFailure, knowledgeFsFailureForCode } from "./knowledge-fs-errors";
 import type {
   KnowledgeSpaceAccessService,
   KnowledgeSpaceApiKeyPermissionBinding,
@@ -1160,7 +1161,6 @@ export type PublicSourceWorkflowRun = Pick<
   | "id"
   | "knowledgeSpaceId"
   | "kind"
-  | "lastErrorCode"
   | "maxExecutionAttempts"
   | "progressCompleted"
   | "progressFailed"
@@ -1169,10 +1169,20 @@ export type PublicSourceWorkflowRun = Pick<
   | "sourceId"
   | "state"
   | "updatedAt"
->;
+> & {
+  readonly failure?: KnowledgeFsPublicFailure | undefined;
+  readonly lastErrorCode?: KnowledgeFsPublicFailure["code"] | undefined;
+};
 
 /** Strict allow-list: durable authorization, raw selections, worker and lease provenance stay internal. */
 export function toPublicSourceWorkflowRun(run: SourceWorkflowRun): PublicSourceWorkflowRun {
+  const failure =
+    run.state === "failed"
+      ? knowledgeFsFailureForCode(run.lastErrorCode ?? "SOURCE_OPERATION_FAILED", {
+          stage: run.checkpoint,
+          traceId: run.id,
+        })
+      : undefined;
   return {
     ...(run.canceledAt ? { canceledAt: run.canceledAt } : {}),
     checkpoint: run.checkpoint,
@@ -1183,7 +1193,7 @@ export function toPublicSourceWorkflowRun(run: SourceWorkflowRun): PublicSourceW
     id: run.id,
     knowledgeSpaceId: run.knowledgeSpaceId,
     kind: run.kind,
-    ...(run.lastErrorCode ? { lastErrorCode: run.lastErrorCode } : {}),
+    ...(failure ? { failure, lastErrorCode: failure.code } : {}),
     maxExecutionAttempts: run.maxExecutionAttempts,
     progressCompleted: run.progressCompleted,
     progressFailed: run.progressFailed,
