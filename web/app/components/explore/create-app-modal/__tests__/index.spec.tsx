@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { CreateAppModalProps } from '../index'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -7,7 +8,6 @@ import {
   createMockPlanTotal,
   createMockPlanUsage,
 } from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
@@ -57,7 +57,7 @@ const createPlanInfo = (buildApps: number): UsagePlanInfo => ({
 })
 
 let mockEnableBilling = false
-let mockPlanType: Plan = Plan.team
+let mockPlanType: CloudPlan = 'team'
 let mockUsagePlanInfo: UsagePlanInfo = createPlanInfo(1)
 let mockTotalPlanInfo: UsagePlanInfo = createPlanInfo(10)
 
@@ -118,7 +118,7 @@ describe('CreateAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockEnableBilling = false
-    mockPlanType = Plan.team
+    mockPlanType = 'team'
     mockUsagePlanInfo = createPlanInfo(1)
     mockTotalPlanInfo = createPlanInfo(10)
     hotkeyMocks.handlers.clear()
@@ -223,7 +223,7 @@ describe('CreateAppModal', () => {
   describe('Quota Gating', () => {
     it('should show AppsFull and disable create when apps quota is reached', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       mockUsagePlanInfo = createPlanInfo(10)
       mockTotalPlanInfo = createPlanInfo(10)
 
@@ -235,7 +235,7 @@ describe('CreateAppModal', () => {
 
     it('should allow saving when apps quota is reached in edit mode', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       mockUsagePlanInfo = createPlanInfo(10)
       mockTotalPlanInfo = createPlanInfo(10)
 
@@ -281,7 +281,7 @@ describe('CreateAppModal', () => {
 
     it('should not submit when apps quota is reached in create mode', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       mockUsagePlanInfo = createPlanInfo(10)
       mockTotalPlanInfo = createPlanInfo(10)
 
@@ -298,7 +298,7 @@ describe('CreateAppModal', () => {
 
     it('should submit when apps quota is reached in edit mode', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       mockUsagePlanInfo = createPlanInfo(10)
       mockTotalPlanInfo = createPlanInfo(10)
 
