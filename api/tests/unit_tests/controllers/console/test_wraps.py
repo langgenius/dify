@@ -40,7 +40,7 @@ from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.dataset import RateLimitLog
+from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 
 
@@ -395,6 +395,36 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
             assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+
+    def test_extract_resource_id_scopes_pipeline_resolution_to_the_calling_tenant(self, sqlite_session: Session):
+        app = Flask(__name__)
+        pipeline_id = "00000000-0000-0000-0000-000000000001"
+        current_tenant_id = "00000000-0000-0000-0000-000000000002"
+        foreign_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000003",
+            tenant_id="00000000-0000-0000-0000-000000000004",
+            name="Foreign decoy",
+            created_by="00000000-0000-0000-0000-000000000005",
+            pipeline_id=pipeline_id,
+        )
+        current_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000006",
+            tenant_id=current_tenant_id,
+            name="Current tenant dataset",
+            created_by="00000000-0000-0000-0000-000000000007",
+            pipeline_id=pipeline_id,
+        )
+        sqlite_session.add_all([foreign_dataset, current_dataset])
+
+        unscoped_dataset = sqlite_session.scalar(select(Dataset).where(Dataset.pipeline_id == pipeline_id))
+        assert unscoped_dataset is foreign_dataset
+
+        with (
+            app.test_request_context("/rag/pipelines/pipeline-1"),
+            patch("controllers.common.wraps.db", SimpleNamespace(session=sqlite_session)),
+        ):
+            request.view_args = {"pipeline_id": pipeline_id}
+            assert _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id) == current_dataset.id
 
     def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
         app = Flask(__name__)
