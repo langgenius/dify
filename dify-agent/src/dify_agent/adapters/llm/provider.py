@@ -91,7 +91,13 @@ class DifyApiLLMClient:
         invocation_id = str(uuid5(NAMESPACE_URL, f"dify-agent:{self.agent_run_id}:llm:{call_index}"))
         context = self.execution_context
         missing = [
-            field_name for field_name in ("user_id", "user_from", "app_id") if getattr(context, field_name) is None
+            field_name
+            for field_name, value in (
+                ("user_id", context.user_id),
+                ("user_from", context.user_from),
+                ("app_id", context.app_id),
+            )
+            if value is None
         ]
         if missing:
             raise UserError(f"Agent LLM Gateway requires execution context fields: {', '.join(missing)}")
