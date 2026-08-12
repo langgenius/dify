@@ -5,13 +5,14 @@ import json
 from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
@@ -21,79 +22,41 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
-from models import Account, App
-from models.model import AppMode
-from models.workflow import Workflow
 
 
-@pytest.fixture(autouse=True)
-def _bind_database(
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-):
-    session_proxy = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(workflow_module.db, "session", session_proxy)
-    monkeypatch.setattr(workflow_module.encrypter, "encrypt_token", lambda tenant_id, token: token)
-    monkeypatch.setattr(workflow_module.encrypter, "decrypt_token", lambda tenant_id, token: token)
-    yield
-    session_proxy.remove()
-
-
-def _make_app(*, app_id: str = "app", tenant_id: str = "t1", workflow_id: str | None = None) -> App:
-    return App(
-        id=app_id,
-        tenant_id=tenant_id,
-        name="Workflow App",
-        mode=AppMode.WORKFLOW,
-        workflow_id=workflow_id,
-        enable_site=True,
-        enable_api=False,
-    )
-
-
-def _make_account(*, account_id: str = "account-1") -> Account:
-    account = Account(name="Alice", email="alice@example.com")
-    account.id = account_id
-    return account
-
-
-def _transient_workflow(*, features: dict | None = None, tenant_id: str = "t1") -> Workflow:
-    workflow = Workflow()
-    workflow.tenant_id = tenant_id
-    workflow._features = json.dumps(features or {})
-    return workflow
-
-
-def _make_workflow(session: Session, **overrides) -> Workflow:
-    graph = overrides.pop("graph_dict", {"nodes": [], "edges": []})
-    features = overrides.pop("features_dict", {"file_upload": {"enabled": False}})
-    environment_variables = overrides.pop(
-        "environment_variables",
-        [
-            SecretVariable(
-                id="env-1",
-                name="API_KEY",
-                value="[__HIDDEN__]",
-                selector=["env", "API_KEY"],
-                description="API key",
-            )
+def _make_workflow(**overrides):
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        graph_dict={"nodes": [], "edges": []},
+        features_dict={"file_upload": {"enabled": False}},
+        unique_hash="hash-1",
+        version="1",
+        marked_name="Release 1",
+        marked_comment="Initial release",
+        created_by_account=SimpleNamespace(id="user-1", name="Alice", email="alice@example.com"),
+        created_at=datetime(2024, 1, 1, 12, 0, 0),
+        updated_by_account=None,
+        updated_at=datetime(2024, 1, 1, 12, 1, 0),
+        tool_published=False,
+        environment_variables=[
+            {
+                "id": "env-1",
+                "name": "API_KEY",
+                "value": "[__HIDDEN__]",
+                "value_type": "secret",
+                "description": "API key",
+            }
         ],
-    )
-    conversation_variables = overrides.pop(
-        "conversation_variables",
-        [
-            StringVariable(
-                id="conv-1",
-                name="topic",
-                value="hello",
-                selector=["conversation", "topic"],
-                description="Topic",
-            )
+        conversation_variables=[
+            {
+                "id": "conv-1",
+                "name": "topic",
+                "value": "hello",
+                "value_type": "string",
+                "description": "Topic",
+            }
         ],
-    )
-    rag_pipeline_variables = overrides.pop(
-        "rag_pipeline_variables",
-        [
+        rag_pipeline_variables=[
             {
                 "variable": "query",
                 "type": "text-input",
@@ -112,33 +75,8 @@ def _make_workflow(session: Session, **overrides) -> Workflow:
             }
         ],
     )
-    account = _make_account(account_id="user-1")
-    app = _make_app()
-    workflow = Workflow.new(
-        tenant_id=app.tenant_id,
-        app_id=app.id,
-        type="workflow",
-        version="1",
-        graph=json.dumps(graph),
-        features=json.dumps(features),
-        created_by=account.id,
-        environment_variables=environment_variables
-        if all(not isinstance(item, dict) for item in environment_variables)
-        else [],
-        conversation_variables=conversation_variables,
-        rag_pipeline_variables=rag_pipeline_variables,
-        marked_name="Release 1",
-        marked_comment="Initial release",
-    )
-    workflow.id = "workflow-1"
-    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
-    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
-    if environment_variables and any(isinstance(item, dict) for item in environment_variables):
-        workflow._environment_variables = json.dumps({"invalid": environment_variables[0]})
     for key, value in overrides.items():
         setattr(workflow, key, value)
-    session.add_all([account, app, workflow])
-    session.commit()
     return workflow
 
 
@@ -237,9 +175,9 @@ def test_delete_workflow_retires_candidates_only_after_transaction_exit(
 
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module.FileUploadConfigManager, "convert", lambda *_args, **_kwargs: None)
-    workflow = _transient_workflow()
+    workflow = SimpleNamespace(features_dict={}, tenant_id="t1")
 
-    assert workflow_module._parse_file(workflow, files=[{"id": "f"}]) == []
+    assert workflow_module._parse_file(cast(workflow_module.Workflow, workflow), files=[{"id": "f"}]) == []
 
 
 def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -256,8 +194,8 @@ def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_module.FileUploadConfigManager, "convert", lambda *_args, **_kwargs: config)
     monkeypatch.setattr(workflow_module.file_factory, "build_from_mappings", build_mock)
 
-    workflow = _transient_workflow()
-    result = workflow_module._parse_file(workflow, files=[{"id": "f"}])
+    workflow = SimpleNamespace(features_dict={}, tenant_id="t1")
+    result = workflow_module._parse_file(cast(workflow_module.Workflow, workflow), files=[{"id": "f"}])
 
     assert result == file_list
     build_mock.assert_called_once()
@@ -269,7 +207,7 @@ def test_sync_draft_workflow_invalid_content_type(app: Flask, monkeypatch: pytes
 
     with app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"):
         with pytest.raises(HTTPException) as exc:
-            handler(api, "t1", app_model=_make_app())
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.code == 415
 
@@ -284,14 +222,18 @@ def test_sync_draft_workflow_invalid_json(app: Flask, monkeypatch: pytest.Monkey
         data="[]",
         content_type="application/json",
     ):
-        response, status = handler(api, "t1", app_model=_make_app())
+        response, status = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert status == 400
     assert response["message"] == "Invalid JSON data"
 
 
-def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    workflow = _make_workflow(sqlite_session)
+def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="h",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
 
     monkeypatch.setattr(
         workflow_module.variable_factory, "build_environment_variable_from_mapping", lambda *_args: "env"
@@ -312,17 +254,19 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         method="POST",
         json={"graph": {}, "features": {}, "hash": "h"},
     ):
-        response = handler(api, "t1", app_model=_make_app())
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
     assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
     assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
 
 
-def test_sync_draft_workflow_passes_environment_patch(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    workflow = _make_workflow(sqlite_session)
+def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="next-hash",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
     patched_variable = StringVariable(
         id="env-model",
         name="shared_model",
@@ -364,7 +308,7 @@ def test_sync_draft_workflow_passes_environment_patch(
             },
         },
     ):
-        response = handler(api, "t1", app_model=_make_app())
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
     assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
@@ -415,7 +359,7 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
         json={"graph": {}, "features": {}, "hash": "h"},
     ):
         with pytest.raises(DraftWorkflowNotSync):
-            handler(api, "t1", app_model=_make_app())
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -436,15 +380,18 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
         json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
     ):
         with pytest.raises(InvalidArgumentError) as exc:
-            handler(api, "t1", app_model=_make_app())
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.description == "description too long"
 
 
-def test_restore_published_workflow_to_draft_success(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    workflow = _make_workflow(sqlite_session)
+def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="restored-hash",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
+    user = SimpleNamespace(id="account-1")
 
     monkeypatch.setattr(
         workflow_module,
@@ -462,12 +409,12 @@ def test_restore_published_workflow_to_draft_success(
         response = handler(
             api,
             "t1",
-            app_model=_make_app(tenant_id="tenant-1"),
+            app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
             workflow_id="published-workflow",
         )
 
     assert response["result"] == "success"
-    assert response["hash"] == workflow.unique_hash
+    assert response["hash"] == "restored-hash"
 
 
 def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -492,7 +439,7 @@ def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: 
             handler(
                 api,
                 "t1",
-                app_model=_make_app(tenant_id="tenant-1"),
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
 
@@ -524,7 +471,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
             handler(
                 api,
                 "t1",
-                app_model=_make_app(tenant_id="tenant-1"),
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="draft-workflow",
             )
 
@@ -556,7 +503,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
             handler(
                 api,
                 "t1",
-                app_model=_make_app(tenant_id="tenant-1"),
+                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
 
@@ -565,22 +512,28 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
 
 
 def test_get_published_workflows_serializes_items_before_session_closes(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-    sqlite_session: Session,
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    workflow = _make_workflow(sqlite_session)
+    base_workflow = _make_workflow()
+
+    class _Workflow:
+        def __init__(self, session: Session) -> None:
+            self._session = session
+
+        def __getattr__(self, name):
+            return getattr(base_workflow, name)
+
+        @property
+        def id(self):
+            assert self._session.in_transaction()
+            return "w1"
 
     def get_all_published_workflow(*, session: Session, **_kwargs):
         assert isinstance(session, Session)
-        assert session.in_transaction()
-        persisted_workflow = session.get(Workflow, workflow.id)
-        assert persisted_workflow is not None
-        return [persisted_workflow], False
+        return [_Workflow(session)], False
 
     monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(
@@ -594,16 +547,16 @@ def test_get_published_workflows_serializes_items_before_session_closes(
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, "t1", app_model=_make_app(workflow_id="wf-1"))
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
 
-    assert response["items"][0]["id"] == workflow.id
+    assert response["items"][0]["id"] == "w1"
     assert response["page"] == 1
     assert response["limit"] == 10
     assert response["has_more"] is False
 
 
-def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    workflow = _make_workflow(sqlite_session)
+def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow()
     monkeypatch.setattr(
         workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
     )
@@ -611,12 +564,12 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    response = handler(api, app_model=_make_app())
+    response = handler(api, app_model=SimpleNamespace(id="app"))
 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}
     assert response["features"] == {"file_upload": {"enabled": False}}
-    assert response["hash"] == workflow.unique_hash
+    assert response["hash"] == "hash-1"
     assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}
     assert response["updated_by"] is None
     assert response["created_at"] == int(datetime(2024, 1, 1, 12, 0, 0).timestamp())
@@ -625,7 +578,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
         {
             "id": "env-1",
             "name": "API_KEY",
-            "value": workflow_module.encrypter.full_mask_token(),
+            "value": "[__HIDDEN__]",
             "value_type": "secret",
             "description": "API key",
         }
@@ -710,13 +663,12 @@ def test_pipeline_variable_response_accepts_explicit_null_optional_fields() -> N
     assert response["allowed_file_upload_methods"] is None
 
 
-def test_workflow_response_masks_secret_environment_variables(sqlite_session: Session) -> None:
+def test_workflow_response_masks_secret_environment_variables() -> None:
     workflow = _make_workflow(
-        sqlite_session,
         environment_variables=[
             SecretVariable(id="env-secret", name="API_KEY", value="plain-token", selector=["env", "API_KEY"]),
             StringVariable(id="env-string", name="REGION", value="us-east-1", selector=["env", "REGION"]),
-        ],
+        ]
     )
 
     response = workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
@@ -739,9 +691,8 @@ def test_workflow_response_masks_secret_environment_variables(sqlite_session: Se
     ]
 
 
-def test_workflow_response_preserves_llm_environment_variable_type(sqlite_session: Session) -> None:
+def test_workflow_response_preserves_llm_environment_variable_type() -> None:
     workflow = _make_workflow(
-        sqlite_session,
         environment_variables=[
             LLMEnvironmentVariable(
                 id="env-llm",
@@ -749,7 +700,7 @@ def test_workflow_response_preserves_llm_environment_variable_type(sqlite_sessio
                 value={"provider": "provider", "name": "model", "mode": "chat"},
                 selector=["env", "for_summarize"],
             )
-        ],
+        ]
     )
 
     response = workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
@@ -765,8 +716,8 @@ def test_workflow_response_preserves_llm_environment_variable_type(sqlite_sessio
     ]
 
 
-def test_workflow_response_rejects_invalid_environment_variable_dict(sqlite_session: Session) -> None:
-    workflow = _make_workflow(sqlite_session, environment_variables=[{"value_type": "not-a-segment-type"}])
+def test_workflow_response_rejects_invalid_environment_variable_dict() -> None:
+    workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
 
     with pytest.raises(ValidationError):
         workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True)
@@ -781,14 +732,11 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     handler = inspect.unwrap(api.get)
 
     with pytest.raises(DraftWorkflowNotExist):
-        handler(api, app_model=_make_app())
+        handler(api, app_model=SimpleNamespace(id="app"))
 
 
-def test_draft_workflow_get_projects_agent_node_job_to_graph(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
+def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(
-        sqlite_session,
         graph_dict={
             "nodes": [
                 {
@@ -801,7 +749,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
                 }
             ],
             "edges": [],
-        },
+        }
     )
     projected_graph = {
         "nodes": [
@@ -836,14 +784,12 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.get)
 
-    response = handler(api, app_model=_make_app())
+    response = handler(api, app_model=SimpleNamespace(id="app"))
 
     assert response["graph"] == projected_graph
 
 
-def test_advanced_chat_run_conversation_not_exists(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-) -> None:
+def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         workflow_module.AppGenerateService,
         "generate",
@@ -861,7 +807,7 @@ def test_advanced_chat_run_conversation_not_exists(
         json={"inputs": {}},
     ):
         with pytest.raises(NotFound):
-            handler(api, unbound_session, _make_account(), app_model=_make_app())
+            handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
 @pytest.mark.parametrize(
@@ -885,13 +831,12 @@ def test_trigger_run_loads_draft_with_request_session(
         lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
     )
     session = unbound_session
-    app_model = _make_app(app_id="app-1")
-    account = _make_account()
+    app_model = SimpleNamespace(id="app-1")
     handler = inspect.unwrap(resource.post)
 
     with app.test_request_context("/", method="POST", json=payload):
         with pytest.raises(ValueError, match="Workflow not found"):
-            handler(resource(), session, account, app_model)
+            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
 
     get_draft_workflow.assert_called_once_with(app_model, session=session)
 
