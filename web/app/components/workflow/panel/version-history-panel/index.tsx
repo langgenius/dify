@@ -2,7 +2,6 @@
 
 import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -372,12 +371,14 @@ export const VersionHistoryPanel = ({
           handleSwitch={handleSwitch}
         />
         <Divider type="vertical" className="mx-1 h-3.5" />
-        <div
-          className="flex size-6 cursor-pointer items-center justify-center p-0.5"
+        <button
+          type="button"
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="flex size-6 cursor-pointer items-center justify-center rounded p-0.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={handleClose}
         >
-          <RiCloseLine className="size-4 text-text-tertiary" />
-        </div>
+          <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
+        </button>
       </div>
       <div className="flex h-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto px-3 py-2">
@@ -412,18 +413,30 @@ export const VersionHistoryPanel = ({
         </div>
         {hasNextPage && (
           <div className="p-2">
-            <div className="flex cursor-pointer items-center gap-x-1" onClick={handleNextPage}>
-              <div className="item-center flex justify-center p-0.5">
+            <button
+              type="button"
+              aria-busy={isFetching || undefined}
+              className="flex w-full cursor-pointer items-center gap-x-1 rounded outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-wait"
+              disabled={isFetching}
+              onClick={handleNextPage}
+            >
+              <span className="flex items-center justify-center p-0.5">
                 {isFetching ? (
-                  <RiLoader2Line className="size-3.5 animate-spin text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent motion-reduce:animate-none"
+                  />
                 ) : (
-                  <RiArrowDownDoubleLine className="size-3.5 text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="i-ri-arrow-down-double-line size-3.5 text-text-accent"
+                  />
                 )}
-              </div>
-              <div className="py-px system-xs-medium-uppercase text-text-accent">
+              </span>
+              <span className="py-px system-xs-medium-uppercase text-text-accent">
                 {t(($) => $['common.loadMore'], { ns: 'workflow' })}
-              </div>
-            </div>
+              </span>
+            </button>
           </div>
         )}
       </div>

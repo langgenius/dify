@@ -214,7 +214,8 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
 
     return (
       <div
-        data-testid="workflow-app-main"
+        role="region"
+        aria-label="Workflow canvas"
         data-nodes={JSON.stringify(nodes)}
         data-edges={JSON.stringify(edges)}
         data-viewport={JSON.stringify(viewport)}
@@ -274,7 +275,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     expect(screen.getByTestId('loading')).toBeInTheDocument()
-    expect(screen.queryByTestId('workflow-app-main')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
   })
 
   it('should render the workflow app shell and sync trigger statuses when data is ready', () => {
@@ -297,7 +298,7 @@ describe('WorkflowApp', () => {
       'data-edges',
       JSON.stringify([{ id: 'edge-1' }]),
     )
-    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute(
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toHaveAttribute(
       'data-viewport',
       JSON.stringify({ x: 1, y: 2, zoom: 3 }),
     )
@@ -311,7 +312,7 @@ describe('WorkflowApp', () => {
   it('should not sync trigger statuses when trigger data is unavailable', () => {
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(mockSetTriggerStatuses).not.toHaveBeenCalled()
   })
 
@@ -370,7 +371,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     })
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()

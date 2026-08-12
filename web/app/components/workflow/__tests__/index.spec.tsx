@@ -94,7 +94,9 @@ const WorkflowRemountHarness = () => {
 
   return (
     <>
-      <button onClick={() => setUseReplacementHistory(true)}>Remount workflow</button>
+      <button type="button" onClick={() => setUseReplacementHistory(true)}>
+        Remount workflow
+      </button>
       <WorkflowWithDefaultContext
         key={useReplacementHistory ? 'replacement' : 'initial'}
         nodes={replacementNodes}

@@ -12,9 +12,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => (
-    <span data-testid="model-icon">{modelName}</span>
-  ),
+  default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
 }))
 
 describe('PublishWithMultipleModel', () => {
