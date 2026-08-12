@@ -15,7 +15,7 @@ const fixedNow = () => NOW
 
 type Probe = (host: string) => Promise<ServerVersionResponse>
 
-const UNSUPPORTED: ServerVersionResponse = { version: '99.0.0', edition: 'SELF_HOSTED' }
+const UNSUPPORTED: ServerVersionResponse = { version: '99.0.0', edition: 'COMMUNITY' }
 const COMPATIBLE: ServerVersionResponse = { version: '1.6.4', edition: 'CLOUD' }
 
 function emitterSpy() {
@@ -122,7 +122,7 @@ describe('maybeNudgeCompat', () => {
 
   it('does not warn when server version yields unknown verdict', async () => {
     const probe = vi.fn(
-      async () => ({ version: '', edition: 'SELF_HOSTED' }) as ServerVersionResponse,
+      async () => ({ version: '', edition: 'COMMUNITY' }) as ServerVersionResponse,
     )
     const { emit, lines } = emitterSpy()
 

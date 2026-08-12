@@ -31,6 +31,7 @@ from controllers.console.workspace.members import (
     SendOwnerTransferEmailApi,
     _count_new_member_invites,
 )
+from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
@@ -134,7 +135,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -152,8 +152,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -171,7 +170,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = True
         features.workspace_members.is_available.return_value = False
 
@@ -184,20 +182,18 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
 
-    def test_invite_billing_limit_exceeded(self, app: Flask):
+    def test_invite_cloud_member_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = True
         features.members.size = 9
         features.members.limit = 10
         features.workspace_members.enabled = False
@@ -212,8 +208,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
@@ -225,7 +220,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -243,8 +237,7 @@ class TestMemberInviteEmailApi:
                 side_effect=AccountAlreadyInTenantError(),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -293,7 +286,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -311,8 +303,7 @@ class TestMemberInviteEmailApi:
                 side_effect=Exception("boom"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, _ = method(api, user)
 
@@ -325,7 +316,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -344,8 +334,7 @@ class TestMemberInviteEmailApi:
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(SeatsLimitExceeded):
                 method(api, user)
@@ -361,7 +350,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -383,8 +371,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -401,7 +388,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = True
@@ -423,8 +409,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -441,7 +426,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -461,8 +445,7 @@ class TestMemberInviteEmailApi:
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -478,7 +461,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = True
@@ -501,8 +483,7 @@ class TestMemberInviteEmailApi:
                 side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 

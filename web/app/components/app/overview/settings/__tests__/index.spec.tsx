@@ -117,9 +117,16 @@ const mockAppInfo = {
   enable_sso: false,
 } as unknown as AppDetailResponse & Partial<AppSSO>
 
-const renderSettingsModal = (appInfo = mockAppInfo) =>
+const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
   render(
-    <SettingsModal isChat isShow appInfo={appInfo} onClose={mockOnClose} onSave={mockOnSave} />,
+    <SettingsModal
+      isChat
+      canDeploy={canDeploy}
+      isShow
+      appInfo={appInfo}
+      onClose={mockOnClose}
+      onSave={mockOnSave}
+    />,
   )
 
 const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
@@ -148,6 +155,7 @@ describe('SettingsModal', () => {
   it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     expect(
       screen.queryByText('appOverview.overview.appInfo.settings.more.entry'),
@@ -163,6 +171,14 @@ describe('SettingsModal', () => {
         'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('should explain that Web app settings apply to every environment when ACL allows deploy', () => {
+    renderSettingsModal(mockAppInfo, true)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
+    )
   })
 
   it('should notify the user when the name is empty', async () => {
@@ -261,6 +277,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -276,6 +293,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={false}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -285,6 +303,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -306,6 +325,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -319,6 +339,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={
           {

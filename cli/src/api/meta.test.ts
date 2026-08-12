@@ -38,7 +38,7 @@ describe('MetaClient', () => {
     const info = await client.serverVersion()
 
     expect(info.version).toBe('')
-    expect(info.edition).toBe('SELF_HOSTED')
+    expect(info.edition).toBe('COMMUNITY')
   })
 
   it('throws when the host has no Dify on it', async () => {

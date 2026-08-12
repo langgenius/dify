@@ -42,10 +42,6 @@ const ShareQRCode = ({ content }: Props) => {
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
-  const handlePanelClick = (event: React.MouseEvent) => {
-    event.stopPropagation()
-  }
-
   const tooltipText = t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
   /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
@@ -65,7 +61,6 @@ const ShareQRCode = ({ content }: Props) => {
           <div
             ref={qrCodeRef}
             className="absolute top-8 -right-8 z-10 flex w-58 flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
-            onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">

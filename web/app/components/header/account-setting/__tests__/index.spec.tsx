@@ -20,10 +20,6 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -151,7 +147,6 @@ const baseConsoleState: ConsoleStateFixture = {
     avatar_url: '',
     is_password_set: false,
   },
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
@@ -167,10 +162,8 @@ const baseConsoleState: ConsoleStateFixture = {
     current_env: 'testing',
     current_version: '0.1.0',
     latest_version: '0.1.0',
-    release_date: '',
     release_notes: '',
     version: '0.1.0',
-    can_auto_update: false,
   },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
@@ -216,6 +209,7 @@ describe('AccountSetting', () => {
     }
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
+      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
       systemFeatures: {
         deployment_edition: deploymentEdition,
         webapp_auth: { enabled: true },

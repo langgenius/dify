@@ -119,6 +119,29 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
 
 
+def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body():
+    run_input = _run_input().model_copy(
+        update={
+            "model": AgentBackendModelConfig(
+                plugin_id="langgenius/tongyi",
+                model_provider="tongyi",
+                model="qwen-plus-latest",
+                credentials={"api_key": "secret-key"},
+                model_settings={"temperature": 0.7, "enable_thinking": True, "thinking_budget": 4096},
+            )
+        }
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    model_config = cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+
+    assert model_config.model_settings == {
+        "temperature": 0.7,
+        "extra_body": {"enable_thinking": True, "thinking_budget": 4096},
+    }
+
+
 @pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
 def test_agent_app_request_builder_keeps_agent_soul_prompt_for_snapshot_and_draft(
     agent_config_version_kind: str,

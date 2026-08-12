@@ -13,7 +13,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.account import Account
 from models.base import TypeBase
 from models.engine import db
@@ -159,7 +159,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.rollbacks == 1
         assert transaction_events.commits == 0
@@ -185,7 +185,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -213,7 +213,7 @@ class TestAppImportApi:
         monkeypatch.setattr(app_import_module.EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method(api, _make_account())
+            response, status = method(api, app_import_module.AppImportPayload(mode="yaml-content"), _make_account())
 
         assert transaction_events.commits == 1
         assert transaction_events.rollbacks == 0
@@ -251,7 +251,7 @@ class TestAppImportApi:
         )
 
         with app.test_request_context("/console/api/apps/imports", method="POST", json={"mode": "yaml-content"}):
-            response, status = method()
+            response, status = method(app_import_module.AppImportPayload(mode="yaml-content"))
 
         assert transaction_events.commits == 1
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
@@ -291,7 +291,7 @@ class TestAppImportApi:
             method="POST",
             json={"mode": "yaml-content", "app_id": "existing-app"},
         ):
-            response, status = method()
+            response, status = method(app_import_module.AppImportPayload(mode="yaml-content", app_id="existing-app"))
 
         assert transaction_events.commits == 1
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)

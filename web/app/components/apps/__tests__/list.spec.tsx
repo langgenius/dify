@@ -86,6 +86,13 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     apps: {
       get: {
         key: () => ['console', 'apps', 'get'],
@@ -117,13 +124,6 @@ vi.mock('@/service/client', () => ({
 
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -414,18 +414,21 @@ vi.mock('../app-card', () => ({
       }),
     )
   },
-  AppCardActionBar: ({ app }: { app: { id: string } }) => {
-    return React.createElement('button', {
-      'data-testid': `app-card-action-bar-${app.id}`,
-      type: 'button',
-    })
-  },
   default: ({ app }: { app: { id: string; name: string } }) => {
     return React.createElement(
       'div',
       { 'data-testid': `app-card-${app.id}`, role: 'article' },
       app.name,
     )
+  },
+}))
+
+vi.mock('../app-card/action-bar', () => ({
+  AppCardActionBar: ({ app }: { app: { id: string } }) => {
+    return React.createElement('button', {
+      'data-testid': `app-card-action-bar-${app.id}`,
+      type: 'button',
+    })
   },
 }))
 
@@ -502,6 +505,7 @@ type RenderListOptions = {
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: ConsoleQueryWrapper, systemFeatures } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
   mockSystemFeatures = systemFeatures

@@ -317,6 +317,7 @@ export const zSnippetWorkflowResponse = z.object({
   updated_at: z.int(),
   updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
+  version_number: z.int().nullish(),
 })
 
 /**
@@ -1155,6 +1156,13 @@ export const zAgentModelResponseFormatConfig = z.object({
 
 /**
  * AgentSoulModelSettings
+ *
+ * Model parameters for the Agent Soul model.
+ *
+ * Model plugins can declare arbitrary parameters via ``parameter_rules``
+ * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+ * fields typed below, so extra keys must round-trip through persistence
+ * rather than being dropped.
  */
 export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
