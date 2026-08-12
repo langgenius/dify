@@ -66,7 +66,7 @@ from controllers.console.app.message import (
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource, AgentStatus
-from models.enums import ConversationFromSource
+from models.enums import ApiTokenType, ConversationFromSource
 from models.model import ApiToken, App, AppMode, Conversation, IconType, Message
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -857,7 +857,7 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
         api_rph=600,
     )
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
-    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 2)
+    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 2)
     monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
     with app.test_request_context(base_url="https://api.example.test"):
         response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
@@ -880,6 +880,20 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
     }
 
 
+def test_agent_api_key_count_scopes_tenant_and_keeps_legacy_tokens(sqlite_session: Session) -> None:
+    app_model = cast(App, _app_detail_obj())
+    sqlite_session.add_all(
+        [
+            ApiToken(type=ApiTokenType.APP, token="owned", app_id=app_model.id, tenant_id=app_model.tenant_id),
+            ApiToken(type=ApiTokenType.APP, token="legacy", app_id=app_model.id, tenant_id=None),
+            ApiToken(type=ApiTokenType.APP, token="foreign", app_id=app_model.id, tenant_id="tenant-2"),
+        ]
+    )
+    sqlite_session.commit()
+
+    assert roster_controller._agent_api_key_count(sqlite_session, app_model) == 2
+
+
 def test_agent_api_status_and_key_routes_resolve_backing_app(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
@@ -895,7 +909,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
     captured: dict[str, object] = {}
     resolve_app = Mock(return_value=app_model)
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", resolve_app)
-    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, app_id: 1)
+    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 1)
     monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
 
     class FakeAppService:
