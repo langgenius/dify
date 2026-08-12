@@ -54,8 +54,8 @@ class TestToolCatalogueSections:
     def test_planner_includes_catalogue(self):
         out = format_planner_tool_catalogue_section("- google/search — Search.")
 
-        assert "# Available tools" in out
-        assert "planner" in out.lower()
+        assert "# Relevant installed tools" in out
+        assert "dynamically selected" in out.lower()
         assert "- google/search — Search." in out
 
     def test_node_builder_returns_empty_when_catalogue_is_blank(self):

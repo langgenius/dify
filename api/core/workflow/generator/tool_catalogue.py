@@ -20,6 +20,10 @@ sorted inventory to ``_MAX_PROMPT_TOOLS`` lines.
 
 import json
 import logging
+import re
+import unicodedata
+from dataclasses import dataclass
+from difflib import SequenceMatcher
 from operator import itemgetter
 from typing import Any, NotRequired, TypedDict
 
@@ -33,6 +37,33 @@ logger = logging.getLogger(__name__)
 
 
 _MAX_PROMPT_TOOLS = 80
+DIRECT_TOOL_INJECTION_LIMIT = 24
+MAX_ROUTED_TOOL_CANDIDATES = 16
+MAX_ROUTED_TOOLS_PER_QUERY = 3
+MAX_ROUTED_TOOLS_PER_PROVIDER = 4
+
+_MAX_FUZZY_TEXT_LENGTH = 160
+_MIN_NAME_FUZZY_RATIO = 0.72
+_TOKEN_PATTERN = re.compile(r"[^\W_]+", re.UNICODE)
+_CAMEL_BOUNDARY_PATTERN = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+_QUERY_STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "for",
+        "from",
+        "in",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "tool",
+        "using",
+        "with",
+    }
+)
 
 
 class ToolCatalogueEntry(TypedDict):
@@ -45,6 +76,18 @@ class ToolCatalogueEntry(TypedDict):
     description: str  # one-line LLM-friendly description
     parameters: NotRequired[list[dict[str, Any]]]
     output_schema: NotRequired[dict[str, Any]]
+
+
+class ToolCapabilityQuery(TypedDict):
+    capability: str
+    keywords: list[str]
+
+
+@dataclass(frozen=True)
+class ToolCandidateSelection:
+    entries: list[ToolCatalogueEntry]
+    unmatched_queries: list[str]
+    pinned_count: int
 
 
 def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
@@ -129,17 +172,18 @@ def installed_tool_keys(entries: list[ToolCatalogueEntry]) -> set[tuple[str, str
     return {(e["provider_name"], e["tool_name"]) for e in entries}
 
 
-def format_tool_catalogue(entries: list[ToolCatalogueEntry]) -> str:
+def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int | None = _MAX_PROMPT_TOOLS) -> str:
     """
-    Render a bounded catalogue as a compact multi-line block for prompt
+    Render a compact multi-line catalogue for prompt
     injection. Returns an empty string when no tools are installed — callers
-    should skip the section entirely in that case. The full input remains
-    available to validation and node hydration; only prompt text is capped.
+    should skip the section entirely in that case. The default preserves the
+    legacy cap; routed callers pass ``max_tools=None`` for their selected set.
     """
     if not entries:
         return ""
     lines = []
-    for e in entries[:_MAX_PROMPT_TOOLS]:
+    prompt_entries = entries if max_tools is None else entries[:max_tools]
+    for e in prompt_entries:
         desc = e["description"].replace("\n", " ").strip()
         if len(desc) > 120:
             desc = desc[:117] + "..."
@@ -168,6 +212,191 @@ def find_tool_entry(entries: list[ToolCatalogueEntry], provider_name: str, tool_
         if entry["provider_name"] == provider_name and entry["tool_name"] == tool_name:
             return entry
     return None
+
+
+def select_tool_candidates(
+    entries: list[ToolCatalogueEntry],
+    queries: list[ToolCapabilityQuery],
+    *,
+    explicit_text: str = "",
+    current_graph: dict[str, Any] | None = None,
+) -> ToolCandidateSelection:
+    """Select a small, deterministic prompt catalogue from the full inventory.
+
+    Exact identifiers in the request and tools already present in a refine
+    graph are pinned. Routed candidates are ranked independently per capability
+    and then merged under global and per-provider diversity caps. Pinned tools
+    are never dropped by those caps.
+    """
+    pinned_keys = _find_explicit_tool_keys(entries, explicit_text)
+    pinned_keys.update(_find_current_graph_tool_keys(entries, current_graph))
+    entries_by_key = {(entry["provider_name"], entry["tool_name"]): entry for entry in entries}
+    pinned = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) in pinned_keys]
+
+    candidate_scores: dict[tuple[str, str], float] = {}
+    unmatched_queries: list[str] = []
+    for query in queries[:5]:
+        ranked = _rank_tools_for_query(entries, query)
+        confident = [(score, entry) for score, entry, is_confident in ranked if is_confident]
+        if not confident:
+            capability = str(query.get("capability") or "").strip()
+            if capability:
+                unmatched_queries.append(capability)
+            continue
+        for score, entry in confident[:MAX_ROUTED_TOOLS_PER_QUERY]:
+            key = (entry["provider_name"], entry["tool_name"])
+            candidate_scores[key] = max(score, candidate_scores.get(key, 0.0))
+
+    ranked_keys = sorted(
+        candidate_scores,
+        key=lambda key: (-candidate_scores[key], key[0], key[1]),
+    )
+    provider_counts: dict[str, int] = {}
+    routed: list[ToolCatalogueEntry] = []
+    for key in ranked_keys:
+        if key in pinned_keys:
+            continue
+        provider_name = key[0]
+        if provider_counts.get(provider_name, 0) >= MAX_ROUTED_TOOLS_PER_PROVIDER:
+            continue
+        routed.append(entries_by_key[key])
+        provider_counts[provider_name] = provider_counts.get(provider_name, 0) + 1
+        if len(routed) >= MAX_ROUTED_TOOL_CANDIDATES:
+            break
+
+    return ToolCandidateSelection(
+        entries=[*pinned, *routed],
+        unmatched_queries=unmatched_queries,
+        pinned_count=len(pinned),
+    )
+
+
+def select_legacy_fallback_tools(
+    entries: list[ToolCatalogueEntry],
+    *,
+    explicit_text: str = "",
+    current_graph: dict[str, Any] | None = None,
+) -> list[ToolCatalogueEntry]:
+    """Keep pinned tools while reproducing the legacy bounded prompt fallback."""
+    pinned = select_tool_candidates(
+        entries,
+        [],
+        explicit_text=explicit_text,
+        current_graph=current_graph,
+    ).entries
+    pinned_keys = {(entry["provider_name"], entry["tool_name"]) for entry in pinned}
+    regular_limit = max(0, _MAX_PROMPT_TOOLS - len(pinned))
+    regular = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) not in pinned_keys][
+        :regular_limit
+    ]
+    return [*pinned, *regular]
+
+
+def _find_explicit_tool_keys(
+    entries: list[ToolCatalogueEntry],
+    text: str,
+) -> set[tuple[str, str]]:
+    if not text.strip():
+        return set()
+    keys: set[tuple[str, str]] = set()
+    for entry in entries:
+        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
+        if re.search(rf"(?<![\w/]){re.escape(identifier)}(?![\w/])", text, flags=re.IGNORECASE):
+            keys.add((entry["provider_name"], entry["tool_name"]))
+    return keys
+
+
+def _find_current_graph_tool_keys(
+    entries: list[ToolCatalogueEntry],
+    current_graph: dict[str, Any] | None,
+) -> set[tuple[str, str]]:
+    if not current_graph:
+        return set()
+    installed = {(entry["provider_name"], entry["tool_name"]) for entry in entries}
+    keys: set[tuple[str, str]] = set()
+    for node in current_graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        data = node.get("data")
+        if not isinstance(data, dict) or data.get("type") != "tool":
+            continue
+        key = (
+            str(data.get("provider_id") or data.get("provider_name") or "").strip(),
+            str(data.get("tool_name") or "").strip(),
+        )
+        if key in installed:
+            keys.add(key)
+    return keys
+
+
+def _rank_tools_for_query(
+    entries: list[ToolCatalogueEntry], query: ToolCapabilityQuery
+) -> list[tuple[float, ToolCatalogueEntry, bool]]:
+    capability = str(query.get("capability") or "").strip()
+    keywords = [str(keyword).strip() for keyword in (query.get("keywords") or []) if str(keyword).strip()]
+    query_text = " ".join([capability, *keywords]).strip()
+    query_normalized = _normalize_search_text(query_text)
+    query_tokens = _search_tokens(query_text)
+    ranked: list[tuple[float, ToolCatalogueEntry, bool]] = []
+
+    for entry in entries:
+        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
+        name_text = f"{entry['provider_name']} {entry['tool_name']}"
+        label_text = entry["tool_label"]
+        description_text = entry["description"]
+        name_tokens = _search_tokens(name_text)
+        label_tokens = _search_tokens(label_text)
+        description_tokens = _search_tokens(description_text)
+        name_overlap = len(query_tokens & name_tokens)
+        label_overlap = len(query_tokens & label_tokens)
+        description_overlap = len(query_tokens & description_tokens)
+
+        normalized_identifier = _normalize_search_text(identifier)
+        normalized_name = _normalize_search_text(entry["tool_name"])
+        normalized_label = _normalize_search_text(label_text)
+        normalized_description = _normalize_search_text(description_text)
+        phrase_bonus = 0.0
+        if query_normalized and query_normalized in normalized_identifier:
+            phrase_bonus = 8.0
+        elif query_normalized and query_normalized in normalized_label:
+            phrase_bonus = 6.0
+        elif query_normalized and query_normalized in normalized_description:
+            phrase_bonus = 2.0
+
+        fuzzy_ratio = max(
+            _fuzzy_ratio(query_normalized, normalized_name),
+            _fuzzy_ratio(query_normalized, normalized_label),
+        )
+        score = phrase_bonus + name_overlap * 5.0 + label_overlap * 3.0 + description_overlap + fuzzy_ratio
+        is_confident = bool(
+            name_overlap or label_overlap or description_overlap or fuzzy_ratio >= _MIN_NAME_FUZZY_RATIO
+        )
+        ranked.append((score, entry, is_confident))
+
+    ranked.sort(key=lambda item: (-item[0], item[1]["provider_name"], item[1]["tool_name"]))
+    return ranked
+
+
+def _normalize_search_text(text: str) -> str:
+    camel_spaced = _CAMEL_BOUNDARY_PATTERN.sub(" ", unicodedata.normalize("NFKC", text))
+    return " ".join(_TOKEN_PATTERN.findall(camel_spaced.replace("_", " ").replace("-", " "))).casefold()
+
+
+def _search_tokens(text: str) -> set[str]:
+    return {
+        token for token in _normalize_search_text(text).split() if len(token) > 1 and token not in _QUERY_STOP_WORDS
+    }
+
+
+def _fuzzy_ratio(query: str, candidate: str) -> float:
+    if not query or not candidate:
+        return 0.0
+    return SequenceMatcher(
+        None,
+        query[:_MAX_FUZZY_TEXT_LENGTH],
+        candidate[:_MAX_FUZZY_TEXT_LENGTH],
+        autojunk=False,
+    ).ratio()
 
 
 def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:

@@ -4,6 +4,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.workflow.generator.tool_catalogue import (
+    MAX_ROUTED_TOOL_CANDIDATES,
+    MAX_ROUTED_TOOLS_PER_PROVIDER,
+    ToolCapabilityQuery,
     ToolCatalogueEntry,
     _i18n_text,
     _tool_description,
@@ -12,6 +15,8 @@ from core.workflow.generator.tool_catalogue import (
     format_tool_builder_context,
     format_tool_catalogue,
     installed_tool_keys,
+    select_legacy_fallback_tools,
+    select_tool_candidates,
 )
 
 
@@ -99,6 +104,14 @@ class TestFormatToolCatalogue:
         assert "tool_080" not in out
         assert ("provider", "tool_099") in installed_tool_keys(entries)
 
+    def test_can_disable_prompt_cap_for_an_already_selected_catalogue(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        out = format_tool_catalogue(entries, max_tools=None)
+
+        assert len(out.splitlines()) == 100
+        assert "tool_099" in out
+
     def test_truncates_long_descriptions(self):
         long_desc = "x" * 200
         out = format_tool_catalogue([_entry("p", "t", description=long_desc)])
@@ -110,6 +123,132 @@ class TestFormatToolCatalogue:
         out = format_tool_catalogue([_entry("p", "t", description="line1\nline2\nline3")])
         assert "\n" not in out.split(" — ", 1)[1]
         assert "line1 line2 line3" in out
+
+
+class TestSelectToolCandidates:
+    def test_routes_english_capability_query_to_relevant_tool_description(self):
+        entries = [
+            *[_entry(f"provider_{index}", "generic", description="Manage generic records.") for index in range(30)],
+            _entry(
+                "langgenius/google/google",
+                "search",
+                label="Google Search",
+                description="Search the current web and return internet results.",
+            ),
+        ]
+
+        selection = select_tool_candidates(
+            entries,
+            [ToolCapabilityQuery(capability="web search", keywords=["internet", "current", "results"])],
+        )
+
+        assert [(entry["provider_name"], entry["tool_name"]) for entry in selection.entries] == [
+            ("langgenius/google/google", "search")
+        ]
+        assert selection.unmatched_queries == []
+
+    def test_pins_explicit_identifier_and_existing_refine_tool_without_queries(self):
+        entries = [
+            _entry("langgenius/google/google", "search"),
+            _entry("langgenius/time/time", "current_time"),
+            _entry("other", "tool"),
+        ]
+        current_graph = {
+            "nodes": [
+                {
+                    "id": "time-node",
+                    "data": {
+                        "type": "tool",
+                        "provider_id": "langgenius/time/time",
+                        "tool_name": "current_time",
+                    },
+                }
+            ]
+        }
+
+        selection = select_tool_candidates(
+            entries,
+            [],
+            explicit_text="Use langgenius/google/google/search for this step.",
+            current_graph=current_graph,
+        )
+
+        assert [(entry["provider_name"], entry["tool_name"]) for entry in selection.entries] == [
+            ("langgenius/google/google", "search"),
+            ("langgenius/time/time", "current_time"),
+        ]
+        assert selection.pinned_count == 2
+
+    def test_reports_unmatched_capability_for_legacy_fallback(self):
+        selection = select_tool_candidates(
+            [_entry("records", "list", description="List stored database records.")],
+            [ToolCapabilityQuery(capability="synthesize quantum music", keywords=["qubits", "melody"])],
+        )
+
+        assert selection.entries == []
+        assert selection.unmatched_queries == ["synthesize quantum music"]
+
+    def test_deduplicates_one_tool_selected_by_multiple_queries(self):
+        entries = [
+            _entry(
+                "langgenius/google/google",
+                "search",
+                label="Google Search",
+                description="Search the current web and return internet results.",
+            )
+        ]
+        queries = [
+            ToolCapabilityQuery(capability="web search", keywords=["internet"]),
+            ToolCapabilityQuery(capability="internet lookup", keywords=["web"]),
+        ]
+
+        selection = select_tool_candidates(entries, queries)
+
+        assert selection.entries == entries
+
+    def test_enforces_provider_diversity(self):
+        words = ["alpha", "bravo", "charlie", "delta", "echo"]
+        entries = [
+            _entry("large_provider", f"{word}_action", description=f"Perform the {word} capability.") for word in words
+        ]
+        queries = [ToolCapabilityQuery(capability=word, keywords=[word]) for word in words]
+
+        selection = select_tool_candidates(entries, queries)
+
+        assert sum(entry["provider_name"] == "large_provider" for entry in selection.entries) == (
+            MAX_ROUTED_TOOLS_PER_PROVIDER
+        )
+        assert selection.entries == select_tool_candidates(entries, queries).entries
+
+    def test_500_tool_catalogue_never_exceeds_global_candidate_limit(self):
+        words = ["alpha", "bravo", "charlie", "delta", "echo"]
+        entries = [
+            _entry(
+                f"provider_{index:03d}",
+                f"tool_{index:03d}",
+                description=f"Handle {words[index % len(words)]} operations.",
+            )
+            for index in range(500)
+        ]
+        queries = [ToolCapabilityQuery(capability=word, keywords=[word]) for word in words]
+
+        selection = select_tool_candidates(entries, queries)
+
+        assert len(selection.entries) == 15
+        assert len(selection.entries) <= MAX_ROUTED_TOOL_CANDIDATES
+
+    def test_legacy_fallback_keeps_explicit_tool_beyond_first_80(self):
+        entries = [_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        selected = select_legacy_fallback_tools(
+            entries,
+            explicit_text="Use provider/tool_099 exactly.",
+        )
+
+        assert len(selected) == 80
+        assert selected[0]["tool_name"] == "tool_099"
+        assert any(entry["tool_name"] == "tool_078" for entry in selected)
+        assert all(entry["tool_name"] != "tool_079" for entry in selected)
 
 
 class TestToolBuilderContext:

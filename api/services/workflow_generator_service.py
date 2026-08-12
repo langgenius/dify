@@ -21,7 +21,6 @@ from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import (
     ToolCatalogueEntry,
     build_tool_catalogue,
-    format_tool_catalogue,
     installed_tool_keys,
 )
 from core.workflow.generator.types import (
@@ -161,11 +160,13 @@ class WorkflowGeneratorService:
         model_parameters: dict[str, Any] = dict(model_config.completion_params or {})
 
         tool_catalogue_entries: list[ToolCatalogueEntry] = []
+        # Formatting is instruction-dependent and therefore owned by the
+        # runner. Keep the text slot empty so the complete structured catalogue
+        # can be dynamically routed after the instruction is available.
         tool_catalogue_text = ""
         installed_tools: set[tuple[str, str]] | None = None
         try:
             tool_catalogue_entries = build_tool_catalogue(tenant_id)
-            tool_catalogue_text = format_tool_catalogue(tool_catalogue_entries)
             installed_tools = installed_tool_keys(tool_catalogue_entries)
         except Exception:
             logger.exception("Workflow generator: failed to build tool catalogue for tenant %s", tenant_id)
