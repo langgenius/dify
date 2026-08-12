@@ -86,7 +86,6 @@ const AddOAuthButton = ({
   } = mergedOAuthData
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
   const openOAuthSettings = useCallback(() => {
-    setPendingVisibility(PermissionLevel.onlyMe)
     setIsOAuthSettingsMounted(true)
     setIsOAuthSettingsOpen(true)
   }, [])
@@ -99,8 +98,9 @@ const AddOAuthButton = ({
       openOAuthPopup(authorization_url, () => onUpdate?.())
     }
   }, [getPluginOAuthUrl, onUpdate, pendingVisibility, isVisibilityPickerSupported])
-  // Configured providers can authorize immediately; providers without a usable
-  // OAuth client first open settings, where the picker is shown inline.
+  // Providers without a usable OAuth client first open settings. Once those
+  // settings are saved, authorization continues through the same visibility
+  // dialog used by configured providers.
   const openVisibilityModal = useCallback(() => {
     if (!isVisibilityPickerSupported) {
       if (isConfigured) handleOAuth()
@@ -114,6 +114,15 @@ const AddOAuthButton = ({
       openOAuthSettings()
     }
   }, [isConfigured, isVisibilityPickerSupported, openOAuthSettings, handleOAuth])
+  const handleAuthorizationRequest = useCallback(async () => {
+    if (!isVisibilityPickerSupported) {
+      await handleOAuth()
+      return
+    }
+
+    setPendingVisibility(PermissionLevel.onlyMe)
+    setIsVisibilityModalOpen(true)
+  }, [handleOAuth, isVisibilityPickerSupported])
   const handleVisibilityConfirm = useCallback(() => {
     setIsVisibilityModalOpen(false)
     handleOAuth()
@@ -287,15 +296,13 @@ const AddOAuthButton = ({
           onClose={() => setIsOAuthSettingsOpen(false)}
           disabled={disabled || isLoading}
           schemas={memorizedSchemas}
-          onAuth={handleOAuth}
+          onRequestAuthorization={handleAuthorizationRequest}
           editValues={{
             ...client_params,
             __oauth_client__: __auth_client__,
           }}
           hasOriginalClientParams={Object.keys(client_params || {}).length > 0}
           onUpdate={onUpdate}
-          visibility={isVisibilityPickerSupported ? pendingVisibility : undefined}
-          onVisibilityChange={isVisibilityPickerSupported ? setPendingVisibility : undefined}
         />
       )}
       <OAuthVisibilityDialog

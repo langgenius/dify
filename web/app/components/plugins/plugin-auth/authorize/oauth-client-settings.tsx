@@ -1,6 +1,5 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -14,7 +13,6 @@ import {
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
-import PermissionSelector from './permission-selector'
 
 export type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -24,16 +22,9 @@ export type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
-  onAuth?: () => Promise<void>
+  onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
-  /**
-   * Inline visibility picker — shown only when the parent passes both a value
-   * and a setter, so callers that just need "Save only" (no credential
-   * created yet) can skip the picker entirely.
-   */
-  visibility?: CredentialPermission
-  onVisibilityChange?: (permission: CredentialPermission) => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -43,11 +34,9 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
-  onAuth,
+  onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
-  visibility,
-  onVisibilityChange,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation()
   const [doingAction, setDoingAction] = useState(false)
@@ -75,7 +64,7 @@ const OAuthClientSettings = ({
   const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current) return
+    if (doingActionRef.current) return false
 
     try {
       const { isCheckValidated, values } = formRef.current?.getFormValues({
@@ -96,6 +85,7 @@ const OAuthClientSettings = ({
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
+      return true
     } finally {
       handleSetDoingAction(false)
     }
@@ -110,9 +100,14 @@ const OAuthClientSettings = ({
   ])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
-    await handleConfirm()
-    if (onAuth) await onAuth()
-  }, [handleConfirm, onAuth])
+    try {
+      const isSaved = await handleConfirm()
+      if (isSaved) await onRequestAuthorization?.()
+    } catch {
+      // The request layer reports the save error. Keep settings open and stop
+      // before opening the permission dialog.
+    }
+  }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =
     useDeletePluginOAuthCustomClientHook(pluginPayload)
   const handleRemove = useCallback(async () => {
@@ -168,18 +163,6 @@ const OAuthClientSettings = ({
               defaultValues={editValues || defaultValues}
               disabled={disabled}
             />
-            {visibility !== undefined && onVisibilityChange && (
-              <div className="mt-4">
-                <div className="mb-1 system-sm-semibold text-text-secondary">
-                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
-                </div>
-                <PermissionSelector
-                  disabled={isDisabled}
-                  permission={visibility}
-                  onChange={onVisibilityChange}
-                />
-              </div>
-            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div>

@@ -1,6 +1,6 @@
 import type { OAuthClientSettingsProps } from '../oauth-client-settings'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,7 +42,7 @@ vi.mock('../../hooks/use-credential', () => ({
 vi.mock('../oauth-client-settings', () => ({
   default: (props: OAuthClientSettingsProps) => {
     mockOAuthClientSettingsProps.push(props)
-    const { open = true, onClose, onOpenChange, schemas } = props
+    const { open = true, onClose, onOpenChange, onRequestAuthorization, schemas } = props
 
     if (!open) return null
 
@@ -50,11 +50,18 @@ vi.mock('../oauth-client-settings', () => ({
       onOpenChange?.(false)
       onClose?.()
     }
+    const handleSaveAndAuthorize = async () => {
+      handleClose()
+      await onRequestAuthorization?.()
+    }
 
     return (
       <div data-testid="oauth-settings-modal">
         <button data-testid="oauth-settings-close" onClick={handleClose}>
           Close
+        </button>
+        <button type="button" onClick={handleSaveAndAuthorize}>
+          plugin.auth.saveAndAuth
         </button>
         {schemas.map((schema) => (
           <div key={schema.name} data-testid={`oauth-schema-${schema.name}`}>
@@ -130,7 +137,7 @@ describe('AddOAuthButton', () => {
     if (button) fireEvent.click(button)
 
     // Confirm the visibility picker to actually kick off OAuth
-    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    const confirmButton = await screen.findByText('plugin.auth.authorize')
     fireEvent.click(confirmButton)
 
     await waitFor(() => {
@@ -155,7 +162,7 @@ describe('AddOAuthButton', () => {
     if (button) fireEvent.click(button)
 
     // Confirm the visibility picker so the OAuth request fires
-    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    const confirmButton = await screen.findByText('plugin.auth.authorize')
     fireEvent.click(confirmButton)
 
     await waitFor(() => {
@@ -181,7 +188,7 @@ describe('AddOAuthButton', () => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith(undefined)
     })
     // No pre-OAuth visibility modal should ever appear for unsupported categories.
-    expect(screen.queryByText('plugin.auth.saveAndAuth')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.auth.authorize')).not.toBeInTheDocument()
   })
 
   it('should show visibility picker for datasource category (backend now supports it)', async () => {
@@ -194,7 +201,7 @@ describe('AddOAuthButton', () => {
     if (button) fireEvent.click(button)
 
     // Visibility picker appears for datasource just like it does for tool.
-    const confirmButton = await screen.findByText('plugin.auth.saveAndAuth')
+    const confirmButton = await screen.findByText('plugin.auth.authorize')
     fireEvent.click(confirmButton)
 
     await waitFor(() => {
@@ -215,7 +222,7 @@ describe('AddOAuthButton', () => {
         name: 'datasetSettings.form.permissionsAllMember',
       }),
     )
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.authorize' }))
 
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({
@@ -240,7 +247,7 @@ describe('AddOAuthButton', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.authorize' }))
 
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({ visibility: 'only_me' })
@@ -274,6 +281,47 @@ describe('AddOAuthButton', () => {
     expect(screen.getByTestId('oauth-settings-modal')).toBeInTheDocument()
     expect(mockOAuthClientSettingsProps.at(-1)?.editValues).toMatchObject({
       __oauth_client__: 'custom',
+    })
+  })
+
+  it('should choose visibility after saving custom OAuth settings for authorization', async () => {
+    const user = userEvent.setup()
+    renderWithAccountProfile(
+      <AddOAuthButton
+        pluginPayload={basePayload}
+        oAuthData={{
+          schema: [],
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: false,
+          client_params: {},
+        }}
+      />,
+    )
+
+    await user.click(screen.getByText('plugin.auth.setupOAuth'))
+    await user.click(
+      within(screen.getByTestId('oauth-settings-modal')).getByRole('button', {
+        name: 'plugin.auth.saveAndAuth',
+      }),
+    )
+
+    expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
+    expect(screen.getByText('plugin.auth.oauthCredentialPermissionDescription')).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(
+      screen.getByRole('menuitemradio', {
+        name: 'datasetSettings.form.permissionsAllMember',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.authorize' }))
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({
+        visibility: 'all_team_members',
+      })
     })
   })
 
