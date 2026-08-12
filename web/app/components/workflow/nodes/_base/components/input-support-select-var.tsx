@@ -58,7 +58,7 @@ const Editor: FC<Props> = ({
   const pipelineId = useStore((s) => s.pipelineId)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
-  const handleKeyDown = useCallback(
+  const handleKeyDownCapture = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (!singleLine || e.key !== 'Enter') return
       // When the variable-insert menu is open, Enter must select the highlighted
@@ -69,7 +69,15 @@ const Editor: FC<Props> = ({
         '[data-prompt-editor-typeahead-menu] > div[data-visible="true"]',
       )
       if (menuOpen) return
+      // Capture phase is required here: Lexical registers a native keydown
+      // listener directly on the contentEditable, which runs before React's
+      // delegated (bubble-phase) synthetic handlers on Chromium and inserts the
+      // paragraph synchronously — too late for a bubble-phase preventDefault.
+      // Intercepting in the capture phase stops the event before it ever
+      // reaches Lexical, so no newline is inserted. WebKit happened to order
+      // the handlers differently, which is why this only misbehaved on Chromium.
       e.preventDefault()
+      e.stopPropagation()
       onCommit?.()
     },
     [singleLine, onCommit],
@@ -79,7 +87,7 @@ const Editor: FC<Props> = ({
     <div
       className={cn(className, 'relative min-h-8')}
       role="presentation"
-      onKeyDown={handleKeyDown}
+      onKeyDownCapture={handleKeyDownCapture}
     >
       <>
         <PromptEditor
