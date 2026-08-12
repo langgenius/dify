@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -326,4 +327,3 @@ describe('ModalContextProvider plugin update modal', () => {
     expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
   })
 })
-import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
