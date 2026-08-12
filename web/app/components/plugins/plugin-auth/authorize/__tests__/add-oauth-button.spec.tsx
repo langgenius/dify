@@ -1,8 +1,10 @@
 import type { OAuthClientSettingsProps } from '../oauth-client-settings'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { AuthCategory } from '../../types'
 
 const mockGetPluginOAuthUrl = vi
@@ -16,14 +18,6 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => (obj: Record<string, string> | string) =>
     typeof obj === 'string' ? obj : obj.en_US || '',
 }))
-
-// The pre-OAuth visibility picker renders PermissionSelector, which reads
-// userProfileAtom via jotai. Stub the account-state module so the atom
-// resolves synchronously in tests without triggering a profile fetch.
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({ userProfile: {} }))
-})
 
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
@@ -103,13 +97,13 @@ describe('AddOAuthButton', () => {
   })
 
   it('should render OAuth button when configured (system params exist)', () => {
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
     expect(screen.getByText('Use OAuth')).toBeInTheDocument()
   })
 
   it('should open OAuth settings modal when settings icon clicked', () => {
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
     fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
@@ -118,7 +112,7 @@ describe('AddOAuthButton', () => {
   })
 
   it('should close OAuth settings modal', () => {
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
     fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
     fireEvent.click(screen.getByTestId('oauth-settings-close'))
@@ -128,7 +122,7 @@ describe('AddOAuthButton', () => {
 
   it('should trigger OAuth flow on main button click', async () => {
     const mockOnUpdate = vi.fn()
-    render(
+    renderWithAccountProfile(
       <AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" onUpdate={mockOnUpdate} />,
     )
 
@@ -155,7 +149,7 @@ describe('AddOAuthButton', () => {
 
   it('should not open OAuth popup when authorization URL is missing', async () => {
     mockGetPluginOAuthUrl.mockResolvedValueOnce({})
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
@@ -176,7 +170,9 @@ describe('AddOAuthButton', () => {
     // credential silently defaults to all_team_members. Tool and datasource
     // are both wired end-to-end so they DO get the picker.
     const triggerPayload = { category: AuthCategory.trigger, provider: 'test-trigger' }
-    render(<AddOAuthButton pluginPayload={triggerPayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(
+      <AddOAuthButton pluginPayload={triggerPayload} buttonText="Use OAuth" />,
+    )
 
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
@@ -190,7 +186,9 @@ describe('AddOAuthButton', () => {
 
   it('should show visibility picker for datasource category (backend now supports it)', async () => {
     const datasourcePayload = { category: AuthCategory.datasource, provider: 'test-datasource' }
-    render(<AddOAuthButton pluginPayload={datasourcePayload} buttonText="Use OAuth" />)
+    renderWithAccountProfile(
+      <AddOAuthButton pluginPayload={datasourcePayload} buttonText="Use OAuth" />,
+    )
 
     const button = screen.getByText('Use OAuth').closest('button')
     if (button) fireEvent.click(button)
@@ -204,15 +202,62 @@ describe('AddOAuthButton', () => {
     })
   })
 
+  it('should pass the selected shared visibility to the OAuth URL request', async () => {
+    const user = userEvent.setup()
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(
+      screen.getByRole('menuitemradio', {
+        name: 'datasetSettings.form.permissionsAllMember',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({
+        visibility: 'all_team_members',
+      })
+    })
+  })
+
+  it('should discard a cancelled visibility selection before the next OAuth attempt', async () => {
+    const user = userEvent.setup()
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(
+      screen.getByRole('menuitemradio', {
+        name: 'datasetSettings.form.permissionsAllMember',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+
+    await waitFor(() => {
+      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({ visibility: 'only_me' })
+    })
+  })
+
   it('should be disabled when disabled prop is true', () => {
-    render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" disabled />)
+    renderWithAccountProfile(
+      <AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" disabled />,
+    )
 
     const button = screen.getByText('Use OAuth').closest('button')
     expect(button).toBeDisabled()
   })
 
   it('should open OAuth settings from setup entry when OAuth is not configured', () => {
-    render(
+    renderWithAccountProfile(
       <AddOAuthButton
         pluginPayload={basePayload}
         oAuthData={{
@@ -233,7 +278,7 @@ describe('AddOAuthButton', () => {
   })
 
   it('should show custom badge when OAuth custom client is enabled', () => {
-    render(
+    renderWithAccountProfile(
       <AddOAuthButton
         pluginPayload={basePayload}
         buttonText="Use OAuth"
@@ -260,7 +305,7 @@ describe('AddOAuthButton', () => {
       },
     ] as FormSchema[]
 
-    render(
+    renderWithAccountProfile(
       <AddOAuthButton
         pluginPayload={basePayload}
         buttonText="Use OAuth"

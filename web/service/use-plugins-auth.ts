@@ -81,19 +81,13 @@ export const useGetPluginCredentialSchema = (url: string) => {
 export const useGetPluginOAuthUrl = (url: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'oauth-url', url],
-    // The optional visibility param is passed through as a query string so the
-    // backend can stash it in the OAuth proxy context and apply it when the
-    // callback creates the credential.
     mutationFn: (params?: { visibility?: CredentialPermission }) => {
       const visibility = params?.visibility
-      const finalUrl = visibility
-        ? `${url}${url.includes('?') ? '&' : '?'}visibility=${encodeURIComponent(visibility)}`
-        : url
       return get<{
         authorization_url: string
         state: string
         context_id: string
-      }>(finalUrl)
+      }>(url, { params: { visibility } })
     },
   })
 }
