@@ -8,6 +8,14 @@ import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentsPage } from '../documents-page'
 import { TaskEventObserver } from '../task-event-observer'
 
+vi.mock('@/app/components/base/file-uploader/dynamic-pdf-preview', () => ({
+  default: ({ onCancel, url }: { onCancel: () => void; url: string }) => (
+    <button type="button" aria-label="PDF preview" data-url={url} onClick={onCancel}>
+      PDF preview
+    </button>
+  ),
+}))
+
 type InfiniteOptions = {
   enabled?: boolean
   getNextPageParam: (lastPage: { next_cursor?: string | null }) => string | null | undefined
@@ -1876,38 +1884,28 @@ describe('DocumentsPage', () => {
   })
 
   it('previews a browser-supported staged document from its local file', async () => {
+    const user = userEvent.setup()
     const file = new File(['local content'], 'handbook.pdf', { type: 'application/pdf' })
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
-    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
-    vi.useFakeTimers()
 
-    try {
-      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
-      fireEvent.change(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), {
-        target: { files: [file] },
-      })
-      await act(async () => {
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
+    await user.upload(screen.getByLabelText('dataset.newKnowledge.uploadDocuments'), file)
+    await waitForDocumentFilesStaged()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
 
-      expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
-      expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('application/pdf')
-      expect(open).toHaveBeenCalledWith('blob:handbook', '_blank', 'noopener,noreferrer')
-      expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
+    const preview = await screen.findByRole('button', { name: 'PDF preview' })
+    expect(preview).toHaveAttribute('data-url', 'blob:handbook')
+    expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
+    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('application/pdf')
+    expect(open).not.toHaveBeenCalled()
+    expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(60_000)
-      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handbook')
-    } finally {
-      vi.useRealTimers()
-      createObjectUrl.mockRestore()
-      revokeObjectUrl.mockRestore()
-      open.mockRestore()
-    }
+    await user.click(preview)
+    await waitFor(() => expect(revokeObjectUrl).toHaveBeenCalledWith('blob:handbook'))
   })
 
   it('does not offer a local preview for an Office document', () => {
