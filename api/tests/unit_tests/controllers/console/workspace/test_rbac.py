@@ -601,6 +601,28 @@ class TestWorkspaceRbacGuards:
 
         mock_catalog.assert_not_called()
 
+    def test_app_whitelist_replace_requires_app_access_config(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/apps/app-1/whitelist",
+                method="PUT",
+                json={"scope": "all"},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist") as mock_replace,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACAppWhitelistApi().put(app_id="app-1")
+
+        mock_replace.assert_not_called()
+
 
 class TestDumpHelper:
     def test_dump_returns_plain_dict(self):
