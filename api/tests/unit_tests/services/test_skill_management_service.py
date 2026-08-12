@@ -2985,6 +2985,43 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
     ]
 
 
+def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="finance-sop", description="Finance SOP"),
+    )
+    service.replace_draft_tree(
+        tenant_id=TENANT,
+        user_id=USER,
+        skill_id=created["id"],
+        payload=SkillDraftTreePayload(files=[{"path": "SKILL.md", "content": _skill_md()}]),
+    )
+    service.publish_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"], payload=SkillPublishPayload())
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_is_published = True
+        session.commit()
+
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        assert agent.active_config_is_published is False
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
+
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_is_published = True
+        session.commit()
+
+    assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
+
+
 def test_runtime_agent_skill_pull_normalizes_archive_identity_to_published_metadata() -> None:
     archive_buffer = io.BytesIO()
     with zipfile.ZipFile(archive_buffer, "w") as archive:

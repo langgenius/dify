@@ -2214,10 +2214,13 @@ class SkillManagementService:
                     select(AgentSkillBinding, Skill, SkillVersion)
                     .join(Skill, Skill.id == AgentSkillBinding.skill_id)
                     .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
+                    .join(Agent, Agent.id == AgentSkillBinding.agent_id)
                     .where(
                         AgentSkillBinding.tenant_id == tenant_id,
                         AgentSkillBinding.agent_id == agent_id,
                         Skill.tenant_id == tenant_id,
+                        Agent.tenant_id == tenant_id,
+                        Agent.active_config_is_published.is_(True),
                     )
                     .order_by(Skill.name)
                 )
@@ -2246,10 +2249,13 @@ class SkillManagementService:
                 select(Skill, SkillVersion)
                 .join(AgentSkillBinding, AgentSkillBinding.skill_id == Skill.id)
                 .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
+                .join(Agent, Agent.id == AgentSkillBinding.agent_id)
                 .where(
                     AgentSkillBinding.tenant_id == tenant_id,
                     AgentSkillBinding.agent_id == agent_id,
                     Skill.tenant_id == tenant_id,
+                    Agent.tenant_id == tenant_id,
+                    Agent.active_config_is_published.is_(True),
                 )
             )
             row = next(
@@ -2407,6 +2413,8 @@ class SkillManagementService:
                         created_by=user_id,
                     )
                 )
+            agent.active_config_is_published = False
+            agent.updated_by = user_id
             session.commit()
             return {"agent_id": agent_id, "skill_ids": skill_ids}
 
