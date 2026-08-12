@@ -9,7 +9,6 @@ from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import (
     DifyGraphInitContext,
@@ -34,12 +33,12 @@ from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filte
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
-from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
+from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer, GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent, is_node_result_event
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
 
@@ -170,7 +169,6 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
-        self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
@@ -546,22 +544,44 @@ class WorkflowEntry:
     @staticmethod
     def _traced_node_run(node: Node) -> Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]:
         """
-        Wraps a node's run method with OpenTelemetry tracing and returns a generator.
+        Run a standalone node with the same observability hooks as GraphEngine.
         """
-        # Wrap node.run() with ObservabilityLayer hooks to produce node-level spans
-        layer = ObservabilityLayer()
-        layer.on_graph_start()
+        layers: Sequence[GraphEngineLayer] = (ObservabilityLayer(),)
+        command_channel = InMemoryChannel()
+        runtime_state = ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state)
+        for layer in layers:
+            layer.initialize(runtime_state, command_channel)
+            layer.on_graph_start()
+
         node.bind_execution_id(str(uuid4()))
 
         def _gen():
             error: Exception | None = None
-            layer.on_node_run_start(node)
+            result_event: GraphNodeEventBase | None = None
+            layers_finished = False
+
+            def finish_layers() -> None:
+                nonlocal layers_finished
+                if layers_finished:
+                    return
+                layers_finished = True
+                for layer in layers:
+                    layer.on_node_run_end(node, error, result_event)
+                for layer in layers:
+                    layer.on_graph_end(error)
+
             try:
-                yield from node.run()
+                for layer in layers:
+                    layer.on_node_run_start(node)
+                for event in node.run():
+                    if isinstance(event, GraphNodeEventBase) and is_node_result_event(event):
+                        result_event = event
+                        finish_layers()
+                    yield event
             except Exception as exc:
                 error = exc
                 raise
             finally:
-                layer.on_node_run_end(node, error)
+                finish_layers()
 
         return _gen()
