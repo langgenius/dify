@@ -275,7 +275,7 @@ def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
 
 def test_reserve_credits_commits_billing_reservation_once() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -315,7 +315,7 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
 
 def test_reserve_credits_releases_billing_reservation() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
