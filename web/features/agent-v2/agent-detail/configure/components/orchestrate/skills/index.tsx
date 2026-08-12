@@ -594,7 +594,6 @@ export function AgentSkills() {
       if (!skill.latest_published_version_id || boundSkillIds.includes(skill.id)) return
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
-        toast.success(t(($) => $['agentDetail.configure.skills.workspaceSelector.addSuccess']))
         promptAddCallbackRef.current?.({
           description: skill.description,
           id: skill.name,
@@ -605,7 +604,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, replaceWorkspaceSkillBindings],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
@@ -615,14 +614,9 @@ export function AgentSkills() {
 
   const handleRemoveWorkspaceSkill = useCallback(
     (skillId: string) => {
-      replaceWorkspaceSkillBindings(
-        boundSkillIds.filter((item) => item !== skillId),
-        () => {
-          toast.success(t(($) => $['agentDetail.configure.skills.workspaceSelector.removeSuccess']))
-        },
-      )
+      replaceWorkspaceSkillBindings(boundSkillIds.filter((item) => item !== skillId))
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, replaceWorkspaceSkillBindings],
   )
 
   const handleRemoveSkill = useCallback(
