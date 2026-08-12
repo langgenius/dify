@@ -1198,9 +1198,7 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
     account = _make_account()
     draft_workflow = _make_workflow(workflow_id="wf-1")
     mocker.patch.object(draft_workflow, "get_node_config_by_id", return_value={"id": "node-1"})
-    mocker.patch.object(
-        draft_workflow, "get_enclosing_node_type_and_id", return_value=("loop", "enclosing-node")
-    )
+    mocker.patch.object(draft_workflow, "get_enclosing_node_type_and_id", return_value=("loop", "enclosing-node"))
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_workflow)
 
     execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
