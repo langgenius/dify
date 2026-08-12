@@ -28,6 +28,7 @@ from controllers.console.knowledge_fs_proxy import (
     proxy_knowledge_fs_write,
 )
 from controllers.console.wraps import RBACPermission
+from models.account import Account, TenantAccountRole
 from services.knowledge_fs_operations import (
     KnowledgeFSMethod,
     KnowledgeFSOperation,
@@ -84,12 +85,17 @@ def _set_current_workspace(
     has_edit_permission: bool = True,
     admin_or_owner: bool = True,
 ) -> None:
-    account = MagicMock(
-        id="account-1",
-        has_edit_permission=has_edit_permission,
-        is_admin_or_owner=admin_or_owner,
-        is_dataset_editor=editor,
-    )
+    if admin_or_owner:
+        role = TenantAccountRole.ADMIN
+    elif editor and has_edit_permission:
+        role = TenantAccountRole.EDITOR
+    elif editor:
+        role = TenantAccountRole.DATASET_OPERATOR
+    else:
+        role = TenantAccountRole.NORMAL
+    account = Account(name="Knowledge User", email="knowledge@example.com")
+    account.id = "account-1"
+    account.role = role
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy.current_account_with_tenant",
         lambda: (account, "tenant-1"),
@@ -286,9 +292,11 @@ def test_read_post_applies_knowledge_rate_limit_once(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", False)
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = Account(name="Knowledge User", email="knowledge@example.com")
+    account.id = "account-1"
+    account.role = TenantAccountRole.DATASET_OPERATOR
 
-    def current_workspace() -> tuple[MagicMock, str]:
+    def current_workspace() -> tuple[Account, str]:
         return account, "tenant-1"
 
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
@@ -323,9 +331,11 @@ def test_denied_write_does_not_consume_the_workspace_rate_limit(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=False)
+    account = Account(name="Knowledge Viewer", email="viewer@example.com")
+    account.id = "account-1"
+    account.role = TenantAccountRole.NORMAL
 
-    def current_workspace() -> tuple[MagicMock, str]:
+    def current_workspace() -> tuple[Account, str]:
         return account, "tenant-1"
 
     monkeypatch.setattr(
@@ -460,9 +470,11 @@ def test_generic_write_forwards_through_the_authorized_production_path(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    account = MagicMock(id="account-1", is_dataset_editor=True)
+    account = Account(name="Knowledge User", email="knowledge@example.com")
+    account.id = "account-1"
+    account.role = TenantAccountRole.DATASET_OPERATOR
 
-    def current_workspace() -> tuple[MagicMock, str]:
+    def current_workspace() -> tuple[Account, str]:
         return account, "tenant-1"
 
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
