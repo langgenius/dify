@@ -18,6 +18,7 @@ from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser, load_annotation_reply_config
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -133,10 +134,12 @@ class AppMeta(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
-        return dump_response(
-            AppMetaResponse,
-            {"tool_icons": application_services().app_definitions.get_tool_icons(app_model.id)},
-        )
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
+        return dump_response(AppMetaResponse, {"tool_icons": tool_icons})
 
 
 @web_ns.route("/webapp/access-mode")

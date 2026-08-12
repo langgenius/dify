@@ -41,6 +41,7 @@ from models.model import (
     TagType,
 )
 from models.workflow import Workflow, WorkflowType
+from services.app_definition_query_service import AppDefinitionUnavailableError
 
 
 @dataclass(frozen=True)
@@ -361,6 +362,29 @@ def test_get_meta_queries_authenticated_app(
 
     app_definitions.get_tool_icons.assert_called_once_with(authenticated_controller.app_id)
     assert response == {"tool_icons": {}}
+
+
+@pytest.mark.usefixtures("authenticated_controller")
+def test_get_meta_maps_unavailable_definition_to_app_unavailable(
+    flask_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_definitions = Mock()
+    app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
+    monkeypatch.setattr(
+        app_controller,
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
+    )
+
+    with flask_app.test_request_context("/meta", headers={"Authorization": "Bearer token"}):
+        with pytest.raises(AppUnavailableError) as raised:
+            AppMetaApi().get()
+
+    assert raised.value.data == {
+        "code": "app_unavailable",
+        "message": "App unavailable, please check your app configurations.",
+        "status": 400,
+    }
 
 
 @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
