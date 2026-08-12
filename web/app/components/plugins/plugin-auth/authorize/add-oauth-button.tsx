@@ -18,7 +18,7 @@ import OAuthClientSettings from './oauth-client-settings'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
-  buttonVariant?: ButtonProps['variant']
+  buttonVariant?: NonNullable<ButtonProps['variant']>
   buttonText?: string
   className?: string
   buttonLeftClassName?: string
@@ -218,11 +218,12 @@ const AddOAuthButton = ({
               dividerClassName,
             )}
           ></div>
-          <Button
+          <IconButton
             variant={buttonVariant}
             aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+            size="lg"
             className={cn(
-              'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
+              'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
               buttonRightClassName,
             )}
             disabled={disabled}
@@ -231,7 +232,7 @@ const AddOAuthButton = ({
             }}
           >
             <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
-          </Button>
+          </IconButton>
         </div>
       )}
       {!renderTrigger && !isConfigured && (
