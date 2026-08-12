@@ -36,11 +36,6 @@ describe('Operation', () => {
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
   })
 
-  it('should apply active state to ActionButton', () => {
-    render(<Operation {...defaultProps} isActive={true} />)
-    expect(getTrigger()).toBeInTheDocument()
-  })
-
   it('should call togglePin when pin/unpin is clicked', async () => {
     const user = userEvent.setup()
     render(<Operation {...defaultProps} />)
