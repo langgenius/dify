@@ -20,7 +20,7 @@ from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 
 
 @dataclass(frozen=True)
@@ -427,10 +427,13 @@ class TestMessageCycleManagerOptimization:
         """
         message_cycle_manager._task_state = SimpleNamespace(metadata=TaskStateMetadata())
 
-        annotation = SimpleNamespace(
-            id="ann-1",
+        annotation = MessageAnnotation(
+            app_id="app-id",
+            question="question",
+            content="answer",
             account_id="acct-1",
         )
+        annotation.id = "ann-1"
         session = unbound_session
 
         with (
