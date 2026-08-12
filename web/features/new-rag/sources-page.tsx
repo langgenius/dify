@@ -1,7 +1,7 @@
 'use client'
 
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
-import type { Source, SourceSyncPolicy } from './source-models'
+import type { Source, SourceDisplayStatus, SourceSyncPolicy } from './source-models'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -37,42 +37,51 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, newKnowledgeAddSourcePath } from './routes'
 import {
+  initialSourcePollingPhase,
+  initialSourceWorkflowId,
+  isInitialSourceForOperation,
+  shouldHidePreviewSource,
+  sourceDisplayStatus,
   sourceFromApi,
+  sourceNeedsPolling,
   sourceStatusWithSyncWorkflow,
   sourceSyncPolicyFromApi,
   sourceWorkflowFromApi,
-  sourceWorkflowStatus,
+  sourceWorkflowIsActive,
 } from './source-models'
 import { normalizeSourceProviderName, sourceProviderPresentation } from './source-provider-options'
 import { SourceProviderIcon } from './source-setup-fields'
 import { SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
-type SourceStatus = Source['status']
-type SourceFilter = SourceStatus | 'all'
+type SourceFilter = SourceDisplayStatus | 'all'
 type SourceSort = 'name-asc' | 'name-desc'
 
 const PAGE_SIZE = 50
 const MAX_AUTO_FILTER_PAGES = 4
+const AWAIT_INITIAL_SOURCE_POLL_INTERVAL = 2000
 const SOURCE_POLL_INTERVAL = 3000
+const INITIAL_SOURCE_POLL_TIMEOUT = 10 * 60 * 1000
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
 
-const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
+const statusDotStatus: Record<SourceDisplayStatus, StatusDotStatus> = {
   active: 'success',
   syncing: 'normal',
+  initializing: 'normal',
   disabled: 'disabled',
   error: 'error',
 }
@@ -204,10 +213,6 @@ type SourceEditValues = {
   syncMode: SourceSyncPolicy['mode']
 }
 
-function isPreviewDraft(source: Source) {
-  return source.metadata.preview === true && source.status === 'disabled'
-}
-
 function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
@@ -227,16 +232,21 @@ function getOpenableSourceUri(uri: string) {
   }
 }
 
-function sourceWorkflowIsActive(workflow?: Source['syncWorkflow']) {
-  return workflow !== undefined && sourceWorkflowStatus(workflow.state) === 'syncing'
-}
-
 function latestSourceWorkflow(
   sourceWorkflow?: Source['syncWorkflow'],
   sourceOverrideWorkflow?: Source['syncWorkflow'],
 ) {
   if (!sourceWorkflow || !sourceOverrideWorkflow) return sourceWorkflow ?? sourceOverrideWorkflow
-  if (sourceWorkflow.id === sourceOverrideWorkflow.id) return sourceWorkflow
+  if (sourceWorkflow.id === sourceOverrideWorkflow.id) {
+    if (sourceWorkflow.executionAttempts !== sourceOverrideWorkflow.executionAttempts)
+      return sourceWorkflow.executionAttempts > sourceOverrideWorkflow.executionAttempts
+        ? sourceWorkflow
+        : sourceOverrideWorkflow
+
+    return sourceWorkflow.updatedAt >= sourceOverrideWorkflow.updatedAt
+      ? sourceWorkflow
+      : sourceOverrideWorkflow
+  }
   const sourceWorkflowIsRunning = sourceWorkflowIsActive(sourceWorkflow)
   const sourceOverrideWorkflowIsRunning = sourceWorkflowIsActive(sourceOverrideWorkflow)
   // The server snapshot ranks active runs first, so an active server run remains authoritative
@@ -287,15 +297,13 @@ function getCurrentSource(source: Source, sourceOverride?: Source) {
   }
 }
 
-function sourceNeedsPolling(source: Source) {
-  return source.status === 'syncing' || sourceWorkflowIsActive(source.syncWorkflow)
-}
-
 type SourceAction = 'edit' | 'remove' | 'sync' | 'toggle'
 
 function SourceActions({
   canEdit,
+  canRemove,
   canSync,
+  canToggle,
   onEdit,
   onRemove,
   onSync,
@@ -304,7 +312,9 @@ function SourceActions({
   source,
 }: {
   canEdit: boolean
+  canRemove: boolean
   canSync: boolean
+  canToggle: boolean
   onEdit: (values: SourceEditValues) => Promise<boolean>
   onRemove: () => Promise<boolean>
   onSync: () => Promise<boolean>
@@ -357,7 +367,7 @@ function SourceActions({
       setEditDialogOpen(false)
   }
 
-  if (!canEdit && !canSync && !sourceUri) return null
+  if (!canEdit && !canRemove && !canSync && !canToggle && !sourceUri) return null
 
   return (
     <>
@@ -402,32 +412,38 @@ function SourceActions({
             </DropdownMenuLinkItem>
           )}
           {canEdit && (
+            <DropdownMenuItem
+              onClick={openEditDialog}
+              className="mb-px h-7 gap-2 px-2 system-sm-medium"
+            >
+              <span aria-hidden className="i-ri-edit-line size-4" />
+              {tCommon(($) => $['operation.edit'])}
+            </DropdownMenuItem>
+          )}
+          {canToggle && (
+            <DropdownMenuItem
+              onClick={() => void onToggle()}
+              className="h-7 gap-2 px-2 system-sm-medium"
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'size-4',
+                  source.status === 'disabled'
+                    ? 'i-ri-checkbox-circle-line'
+                    : 'i-ri-indeterminate-circle-line',
+                )}
+              />
+              {source.status === 'disabled'
+                ? t(($) => $.enable)
+                : t(($) => $['newKnowledge.disableSource'])}
+            </DropdownMenuItem>
+          )}
+          {canRemove && (
             <>
-              <DropdownMenuItem
-                onClick={openEditDialog}
-                className="mb-px h-7 gap-2 px-2 system-sm-medium"
-              >
-                <span aria-hidden className="i-ri-edit-line size-4" />
-                {tCommon(($) => $['operation.edit'])}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => void onToggle()}
-                className="h-7 gap-2 px-2 system-sm-medium"
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-4',
-                    source.status === 'disabled'
-                      ? 'i-ri-checkbox-circle-line'
-                      : 'i-ri-indeterminate-circle-line',
-                  )}
-                />
-                {source.status === 'disabled'
-                  ? t(($) => $.enable)
-                  : t(($) => $['newKnowledge.disableSource'])}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-px" />
+              {(canEdit || canSync || canToggle || sourceUri) && (
+                <DropdownMenuSeparator className="my-px" />
+              )}
               <DropdownMenuItem
                 onClick={() => {
                   setMenuOpen(false)
@@ -573,6 +589,10 @@ function SourceRow({
   const queryClient = useQueryClient()
   const [pendingAction, setPendingAction] = useState<SourceAction>()
   const syncWorkflow = source.syncWorkflow
+  const displayStatus = sourceDisplayStatus(source)
+  const initializing = displayStatus === 'initializing'
+  const initialWorkflowId = initialSourceWorkflowId(source)
+  const initialImportRetrying = Boolean(initialWorkflowId) && displayStatus === 'syncing'
 
   const provider = sourceProviderDetails(source)
   const providerName = provider.name
@@ -647,6 +667,15 @@ function SourceRow({
     }
   }
 
+  const applyAcceptedWorkflow = (workflow: Parameters<typeof sourceWorkflowFromApi>[0]) => {
+    const run = sourceWorkflowFromApi(workflow)
+    onSourceChange({
+      ...source,
+      syncWorkflow: run,
+      status: sourceStatusWithSyncWorkflow(source.status, run),
+    })
+  }
+
   const syncSource = () =>
     runAction(
       'sync',
@@ -655,16 +684,23 @@ function SourceRow({
           headers: { 'Idempotency-Key': createIdempotencyKey() },
           params: { control_space_id: knowledgeSpaceId, source_id: source.id },
         }),
-      (workflow) => {
-        const run = sourceWorkflowFromApi(workflow)
-        onSourceChange({
-          ...source,
-          syncWorkflow: run,
-          status: sourceStatusWithSyncWorkflow(source.status, run),
-        })
-      },
+      applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
+
+  const retrySource = () => {
+    if (!initialWorkflowId) return syncSource()
+
+    return runAction(
+      'sync',
+      () =>
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
+          params: { control_space_id: knowledgeSpaceId, run_id: initialWorkflowId },
+        }),
+      applyAcceptedWorkflow,
+      ensureModelSetupReady,
+    )
+  }
 
   const toggleSource = () =>
     runAction(
@@ -755,7 +791,7 @@ function SourceRow({
     <tr
       className={cn(
         'h-[50px] border-t border-divider-subtle',
-        source.status === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
+        displayStatus === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
       <td className="py-2 pr-3 whitespace-nowrap">
@@ -777,19 +813,28 @@ function SourceRow({
       </td>
       <td className="py-2 pr-3 whitespace-nowrap">
         <span
+          role="status"
           className={cn(
             'inline-flex items-center gap-1.5 system-xs-medium text-text-primary',
-            source.status === 'syncing' && 'text-text-accent',
+            (displayStatus === 'syncing' || initializing) && 'text-text-accent',
           )}
         >
-          <StatusDot
-            status={statusDotStatus[source.status]}
-            className={cn(
-              'shrink-0',
-              source.status === 'syncing' && 'animate-pulse motion-reduce:animate-none',
-            )}
-          />
-          {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
+          {initializing ? (
+            <span
+              aria-hidden
+              className="i-ri-loader-4-line size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+            />
+          ) : (
+            <StatusDot
+              status={statusDotStatus[displayStatus]}
+              className={cn(
+                'shrink-0',
+                displayStatus === 'syncing' && 'animate-pulse motion-reduce:animate-none',
+              )}
+            />
+          )}
+          <span className="sr-only">{source.name}: </span>
+          {t(($) => $[`newKnowledge.sourceStatus.${displayStatus}`])}
         </span>
       </td>
       <td className="py-2 pr-3 system-xs-regular whitespace-nowrap text-text-secondary">
@@ -798,10 +843,10 @@ function SourceRow({
       <td
         className={cn(
           'py-2 pr-3 system-xs-regular whitespace-nowrap',
-          source.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
+          displayStatus === 'error' ? 'text-text-destructive' : 'text-text-secondary',
         )}
       >
-        {source.status === 'syncing' && syncWorkflow ? (
+        {displayStatus === 'syncing' && syncWorkflow ? (
           <span className="inline-flex items-center gap-1.5 text-text-accent">
             <span
               aria-hidden
@@ -815,7 +860,7 @@ function SourceRow({
               total: syncWorkflow.progressTotal ?? '—',
             })}
           </span>
-        ) : source.status === 'error' ? (
+        ) : displayStatus === 'error' ? (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
             {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
@@ -826,20 +871,27 @@ function SourceRow({
       </td>
       <td className="py-2 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-1">
-          {canSync && source.status === 'error' && (
+          {canSync && displayStatus === 'error' && (
             <Button
               size="small"
               variant="secondary"
               loading={pendingAction === 'sync'}
               disabled={Boolean(pendingAction)}
-              onClick={() => void syncSource()}
+              onClick={() => void retrySource()}
             >
               {tCommon(($) => $['operation.retry'])}
             </Button>
           )}
           <SourceActions
-            canEdit={canEdit}
-            canSync={canSync}
+            canEdit={canEdit && !initializing && !initialWorkflowId}
+            canRemove={canEdit && !initializing && !initialImportRetrying}
+            canSync={
+              canSync &&
+              !initializing &&
+              displayStatus !== 'syncing' &&
+              !(displayStatus === 'error' && initialWorkflowId)
+            }
+            canToggle={canEdit && !initializing && !initialWorkflowId}
             source={source}
             pendingAction={pendingAction}
             onEdit={editSource}
@@ -933,6 +985,9 @@ function SourcesEmpty({
 export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     configureModelSetup,
@@ -947,6 +1002,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Source>>({})
   const [removedSourceIds, setRemovedSourceIds] = useState<Set<string>>(() => new Set())
+  const [initialSourcePollingTimedOut, setInitialSourcePollingTimedOut] = useState(false)
+  const initialSourcePollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const normalizedAwaitedOperationId = searchParams.get('awaitInitialSource')?.trim() || null
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.infiniteOptions({
       input: (pageParam) => ({
@@ -958,38 +1018,60 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       }),
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
-      refetchInterval: (query) =>
-        query.state.data?.pages.some((page) =>
-          page.data.some(
-            (source) =>
-              !removedSourceIds.has(source.id) &&
-              sourceNeedsPolling(
-                getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]),
-              ),
-          ),
+      refetchInterval: (query) => {
+        const currentSources =
+          query.state.data?.pages.flatMap((page) =>
+            page.data
+              .filter((source) => !removedSourceIds.has(source.id))
+              .map((source) => getCurrentSource(sourceFromApi(source), sourceOverrides[source.id])),
+          ) ?? []
+        const phase = initialSourcePollingPhase(
+          currentSources,
+          normalizedAwaitedOperationId,
+          initialSourcePollingTimedOut,
+        )
+        if (phase === 'awaiting') return AWAIT_INITIAL_SOURCE_POLL_INTERVAL
+
+        return currentSources.some(
+          (source) =>
+            sourceNeedsPolling(source) &&
+            (!initialSourcePollingTimedOut || sourceDisplayStatus(source) !== 'initializing'),
         )
           ? SOURCE_POLL_INTERVAL
-          : false,
+          : false
+      },
     }),
   )
   const remoteSources = sourcesQuery.data?.pages.flatMap((page) => page.data.map(sourceFromApi))
-  const sources = useMemo(
+  const currentSources = useMemo(
     () =>
       (remoteSources ?? [])
         .filter((source) => !removedSourceIds.has(source.id))
-        .map((source) => getCurrentSource(source, sourceOverrides[source.id]))
-        .filter((source) => !isPreviewDraft(source))
+        .map((source) => getCurrentSource(source, sourceOverrides[source.id])),
+    [remoteSources, removedSourceIds, sourceOverrides],
+  )
+  const pollingPhase = initialSourcePollingPhase(
+    currentSources,
+    normalizedAwaitedOperationId,
+    initialSourcePollingTimedOut,
+  )
+  const initialSourcePollingActive = pollingPhase === 'awaiting' || pollingPhase === 'initializing'
+  const waitingForInitialSource = pollingPhase === 'awaiting'
+  const sources = useMemo(
+    () =>
+      currentSources
+        .filter((source) => !shouldHidePreviewSource(source))
         .sort(
           (left, right) =>
             right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
         ),
-    [remoteSources, removedSourceIds, sourceOverrides],
+    [currentSources],
   )
   const loadedPageCount = sourcesQuery.data?.pages.length ?? 0
   const filteredSources = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     const nextSources = (sources ?? []).filter((source) => {
-      if (filter !== 'all' && source.status !== filter) return false
+      if (filter !== 'all' && sourceDisplayStatus(source) !== filter) return false
       if (!normalizedSearch) return true
       return `${source.name} ${source.uri}`.toLocaleLowerCase().includes(normalizedSearch)
     })
@@ -1006,11 +1088,13 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const needsVisibleSource =
     latestSourcePage !== undefined &&
     latestSourcePage.data.some((source) =>
-      isPreviewDraft(getCurrentSource(sourceFromApi(source), sourceOverrides[source.id])),
+      shouldHidePreviewSource(getCurrentSource(sourceFromApi(source), sourceOverrides[source.id])),
     ) &&
     !latestSourcePage.data.some((source) => {
       if (removedSourceIds.has(source.id)) return false
-      return !isPreviewDraft(getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]))
+      return !shouldHidePreviewSource(
+        getCurrentSource(sourceFromApi(source), sourceOverrides[source.id]),
+      )
     })
   const completingFilteredResults =
     (canAutoCompleteFilteredResults || needsVisibleSource) &&
@@ -1027,6 +1111,36 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     hasNextPage: hasNextSourcePage,
     isFetchingNextPage: isFetchingNextSourcePage,
   } = sourcesQuery
+
+  useEffect(() => {
+    if (
+      normalizedAwaitedOperationId &&
+      currentSources.some((source) =>
+        isInitialSourceForOperation(source, normalizedAwaitedOperationId),
+      )
+    ) {
+      const nextSearchParams = new URLSearchParams(searchParams)
+      nextSearchParams.delete('awaitInitialSource')
+      const queryString = nextSearchParams.toString()
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
+    }
+  }, [currentSources, normalizedAwaitedOperationId, pathname, router, searchParams])
+
+  useEffect(() => {
+    if (!initialSourcePollingActive) {
+      globalThis.clearTimeout(initialSourcePollingTimeoutRef.current)
+      initialSourcePollingTimeoutRef.current = undefined
+      return
+    }
+    if (initialSourcePollingTimeoutRef.current) return
+
+    initialSourcePollingTimeoutRef.current = globalThis.setTimeout(() => {
+      initialSourcePollingTimeoutRef.current = undefined
+      setInitialSourcePollingTimedOut(true)
+    }, INITIAL_SOURCE_POLL_TIMEOUT)
+  }, [initialSourcePollingActive])
+
+  useEffect(() => () => globalThis.clearTimeout(initialSourcePollingTimeoutRef.current), [])
 
   useEffect(() => {
     if (
@@ -1047,7 +1161,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   return (
     <div className="flex min-h-full min-w-0 flex-1 flex-col px-4 py-6 sm:px-8 sm:py-8">
-      <header>
+      <header className="flex items-start justify-between gap-4">
         <div>
           <h2 className="title-xl-semi-bold leading-6 text-text-primary">
             {t(($) => $['newKnowledge.sources'])}
@@ -1056,7 +1170,25 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {t(($) => $['newKnowledge.sourcesDescription'])}
           </p>
         </div>
+        {pollingPhase === 'timed-out' && (
+          <Button onClick={() => void sourcesQuery.refetch()}>
+            <span aria-hidden className="i-ri-refresh-line size-4" />
+            {t(($) => $['newKnowledge.refreshSources'])}
+          </Button>
+        )}
       </header>
+      {waitingForInitialSource && sources.length > 0 && (
+        <div
+          className="mt-4 flex items-center gap-2 rounded-lg bg-background-section-burn px-3 py-2 system-xs-regular text-text-tertiary"
+          role="status"
+        >
+          <span
+            aria-hidden
+            className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
+          />
+          {t(($) => $['newKnowledge.awaitingInitialSource'])}
+        </div>
+      )}
       {sourcesQuery.isPending ? (
         <div className="flex min-h-64 flex-1 items-center justify-center">
           <Loading />
@@ -1073,6 +1205,13 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           <Button className="mt-4" onClick={() => void sourcesQuery.refetch()}>
             {tCommon(($) => $['operation.retry'])}
           </Button>
+        </div>
+      ) : waitingForInitialSource && !sources?.length ? (
+        <div className="flex min-h-64 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <Loading />
+          <p className="body-sm-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.awaitingInitialSource'])}
+          </p>
         </div>
       ) : !sources?.length && !sourcesQuery.hasNextPage ? (
         <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
@@ -1098,14 +1237,16 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                   <SelectItemText>{t(($) => $['newKnowledge.allSources'])}</SelectItemText>
                   <SelectItemIndicator />
                 </SelectItem>
-                {(['active', 'syncing', 'disabled', 'error'] as const).map((status) => (
-                  <SelectItem key={status} value={status}>
-                    <SelectItemText>
-                      {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
-                    </SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
+                {(['active', 'initializing', 'syncing', 'disabled', 'error'] as const).map(
+                  (status) => (
+                    <SelectItem key={status} value={status}>
+                      <SelectItemText>
+                        {t(($) => $[`newKnowledge.sourceStatus.${status}`])}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ),
+                )}
               </SelectContent>
             </Select>
             <SearchInput

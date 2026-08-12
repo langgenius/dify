@@ -402,7 +402,11 @@ export function CreateKnowledgePage() {
       replaceAfterHistoryGuard(
         startMode === 'upload'
           ? newKnowledgeDocumentsPath(created.control_space_id)
-          : newKnowledgeDetailPath(created.control_space_id),
+          : `${newKnowledgeDetailPath(created.control_space_id)}${
+              startMode === 'source'
+                ? `?awaitInitialSource=${encodeURIComponent(created.operation_id)}`
+                : ''
+            }`,
       )
     } catch (error) {
       if (

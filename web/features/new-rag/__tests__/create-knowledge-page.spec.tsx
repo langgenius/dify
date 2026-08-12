@@ -1585,7 +1585,7 @@ describe('CreateKnowledgePage', () => {
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources?awaitInitialSource=operation-1',
       ),
     )
     expect(routerMock.replace).not.toHaveBeenCalledWith(expect.stringContaining('/sources/new'))

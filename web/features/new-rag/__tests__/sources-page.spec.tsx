@@ -1,5 +1,5 @@
 import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-models'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
 import { render } from '@/test/console/render'
@@ -115,10 +115,12 @@ const clientMock = vi.hoisted(() => ({
   deleteSource: vi.fn(),
   patchSource: vi.fn(),
   putSyncPolicy: vi.fn(),
+  retrySourceWorkflow: vi.fn(),
   syncSource: vi.fn(),
 }))
 const invalidateQueriesMock = vi.hoisted(() => vi.fn())
-const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
+const routerMock = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
+const navigationMock = vi.hoisted(() => ({ awaitInitialSource: null as string | null }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
   refetch: vi.fn(),
@@ -151,7 +153,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
-vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/sources',
+  useRouter: () => routerMock,
+  useSearchParams: () => {
+    const searchParams = new URLSearchParams()
+    if (navigationMock.awaitInitialSource)
+      searchParams.set('awaitInitialSource', navigationMock.awaitInitialSource)
+    return searchParams
+  },
+}))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -172,6 +183,11 @@ vi.mock('@/service/client', () => ({
             get: {
               infiniteOptions: infiniteOptionsMock,
               key: vi.fn(() => ['sources']),
+            },
+          },
+          sourceWorkflows: {
+            byRunId: {
+              retry: { post: clientMock.retrySourceWorkflow },
             },
           },
         },
@@ -252,6 +268,14 @@ const sourceWorkflow = (state = 'queued'): SourceWorkflowRun => ({
   updatedAt: '2026-07-20T10:00:00Z',
 })
 
+function currentRefetchInterval(...sources: Source[]) {
+  const options = infiniteOptionsMock.mock.lastCall?.[0]
+  if (!options) throw new Error('Expected source infinite query options')
+  return options.refetchInterval({
+    state: { data: { pages: [{ data: sources.map(sourceApiResponse) }] } },
+  })
+}
+
 describe('SourcesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -261,8 +285,10 @@ describe('SourcesPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    navigationMock.awaitInitialSource = null
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
     clientMock.patchSource.mockResolvedValue(source({}))
+    clientMock.retrySourceWorkflow.mockResolvedValue(workflow())
     invalidateQueriesMock.mockResolvedValue(undefined)
     clientMock.syncSource.mockResolvedValue(workflow())
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
@@ -317,6 +343,108 @@ describe('SourcesPage', () => {
       }),
     ).toBe(false)
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('polls an empty list every two seconds while awaiting the Initial Source', () => {
+    navigationMock.awaitInitialSource = 'operation-1'
+    sourcesQuery.data = { pages: [{ items: [] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(currentRefetchInterval()).toBe(2000)
+    expect(screen.getByText('dataset.newKnowledge.awaitingInitialSource')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+  })
+
+  it('waits for the Initial Source created by the requested operation', () => {
+    navigationMock.awaitInitialSource = 'operation-1'
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                clientRequestId: 'initial-source:older-operation',
+                preview: false,
+              },
+              status: 'active',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(2000)
+    expect(screen.getByText('dataset.newKnowledge.awaitingInitialSource')).toBeInTheDocument()
+  })
+
+  it('clears the one-shot URL signal once the requested Initial Source appears', async () => {
+    navigationMock.awaitInitialSource = 'operation-1'
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                clientRequestId: 'initial-website-source:operation-1',
+                preview: true,
+              },
+              status: 'disabled',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => {
+      expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources', {
+        scroll: false,
+      })
+    })
+  })
+
+  it('stops awaiting the Initial Source after ten minutes and keeps manual refresh available', () => {
+    vi.useFakeTimers()
+    try {
+      navigationMock.awaitInitialSource = 'operation-1'
+      sourcesQuery.data = { pages: [{ items: [] }] }
+
+      const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+      act(() => vi.advanceTimersByTime(10 * 60 * 1000))
+
+      expect(currentRefetchInterval()).toBe(false)
+
+      act(() => screen.getByRole('button', { name: 'dataset.newKnowledge.refreshSources' }).click())
+      expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+
+      sourcesQuery.data = {
+        pages: [
+          {
+            items: [
+              source({
+                metadata: {
+                  clientRequestId: 'initial-source:operation-1',
+                  preview: false,
+                },
+                status: 'active',
+              }),
+            ],
+          },
+        ],
+      }
+      view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+      expect(
+        screen.queryByRole('button', { name: 'dataset.newKnowledge.refreshSources' }),
+      ).not.toBeInTheDocument()
+      expect(currentRefetchInterval(...sourcesQuery.data.pages[0]!.items)).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('renders the designed empty state and exposes source-type shortcuts', () => {
@@ -499,6 +627,218 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('Discarded preview')).not.toBeInTheDocument()
     expect(screen.getByText('Connected source')).toBeInTheDocument()
     expect(screen.getByText('Submitted preview')).toBeInTheDocument()
+  })
+
+  it('shows Initial Sources as initializing or error while keeping ordinary previews hidden', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              id: 'ordinary-preview',
+              metadata: { preview: true },
+              name: 'Ordinary preview',
+              status: 'disabled',
+            }),
+            source({
+              id: 'empty-initial-request',
+              metadata: { clientRequestId: 'initial-source:', preview: true },
+              name: 'Incomplete Initial Source marker',
+              status: 'disabled',
+            }),
+            source({
+              id: 'initializing',
+              metadata: {
+                clientRequestId: 'initial-source:operation-1',
+                preview: true,
+              },
+              name: 'Initial documents',
+              status: 'disabled',
+            }),
+            source({
+              id: 'failed',
+              metadata: {
+                clientRequestId: 'initial-website-source:operation-2',
+                initialImport: { state: 'failed' },
+                preview: false,
+              },
+              name: 'Initial website',
+              status: 'disabled',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByText('Ordinary preview')).not.toBeInTheDocument()
+    expect(screen.queryByText('Incomplete Initial Source marker')).not.toBeInTheDocument()
+    const initializingRow = screen.getByRole('row', { name: /Initial documents/ })
+    expect(within(initializingRow).getByRole('status')).toHaveTextContent(
+      'Initial documents: dataset.newKnowledge.sourceStatus.initializing',
+    )
+    const failedRow = screen.getByRole('row', { name: /Initial website/ })
+    expect(
+      within(failedRow).getByText('dataset.newKnowledge.sourceStatus.error'),
+    ).toBeInTheDocument()
+
+    expect(
+      currentRefetchInterval(
+        source({
+          metadata: {
+            clientRequestId: 'initial-source:operation-1',
+            preview: true,
+          },
+          status: 'disabled',
+        }),
+      ),
+    ).toBe(3000)
+    expect(
+      currentRefetchInterval(
+        source({
+          metadata: {
+            clientRequestId: 'initial-source:operation-1',
+            preview: false,
+          },
+          status: 'active',
+        }),
+      ),
+    ).toBe(false)
+    expect(
+      currentRefetchInterval(
+        source({
+          metadata: {
+            clientRequestId: 'initial-website-source:operation-2',
+            initialImport: { state: 'failed' },
+            preview: false,
+          },
+          status: 'disabled',
+        }),
+      ),
+    ).toBe(false)
+
+    await user.click(
+      within(initializingRow).getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Initial documents"}',
+      }),
+    )
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.openSource' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.operation.edit' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('retries the failed Initial Source workflow instead of starting a generic sync', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              metadata: {
+                clientRequestId: 'initial-source:operation-1',
+                initialImport: {
+                  state: 'failed',
+                  workflowId: 'initial-workflow',
+                },
+                preview: false,
+              },
+              name: 'Failed Initial Source',
+              status: 'disabled',
+            }),
+          ],
+        },
+      ],
+    }
+    clientMock.retrySourceWorkflow.mockResolvedValue({
+      ...workflow(),
+      id: 'initial-workflow',
+    })
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const sourceRow = screen.getByRole('row', { name: /Failed Initial Source/ })
+    await user.click(within(sourceRow).getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => {
+      expect(within(sourceRow).getByRole('status')).toHaveTextContent(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      )
+    })
+    expect(
+      within(sourceRow).queryByRole('button', { name: 'common.operation.retry' }),
+    ).not.toBeInTheDocument()
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'initial-workflow' },
+    })
+    expect(clientMock.syncSource).not.toHaveBeenCalled()
+
+    await user.click(
+      within(sourceRow).getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Failed Initial Source"}',
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps polling when the source list briefly returns the stale failed retry snapshot', async () => {
+    const user = userEvent.setup()
+    const staleFailedWorkflow: SourceWorkflowRun = {
+      ...sourceWorkflow('failed'),
+      executionAttempts: 1,
+      id: 'initial-workflow',
+      lastErrorCode: 'SOURCE_WORKFLOW_FAILED',
+      updatedAt: '2026-07-20T10:00:00Z',
+    }
+    const staleFailedSource = source({
+      metadata: {
+        clientRequestId: 'initial-source:operation-1',
+        initialImport: {
+          state: 'failed',
+          workflowId: 'initial-workflow',
+        },
+        preview: false,
+      },
+      name: 'Failed Initial Source',
+      status: 'disabled',
+      syncWorkflow: staleFailedWorkflow,
+    })
+    sourcesQuery.data = { pages: [{ items: [staleFailedSource] }] }
+    clientMock.retrySourceWorkflow.mockResolvedValue({
+      ...workflow(),
+      execution_attempts: 2,
+      id: 'initial-workflow',
+      updated_at: '2026-07-20T10:01:00Z',
+    })
+
+    const view = render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      )
+    })
+
+    sourcesQuery.data = { pages: [{ items: [staleFailedSource] }] }
+    view.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.sourceStatus.syncing',
+    )
+    expect(currentRefetchInterval(staleFailedSource)).toBe(3000)
   })
 
   it('continues past cursor pages containing only hidden preview drafts', () => {

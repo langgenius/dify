@@ -28,6 +28,14 @@ export type Source = {
   version?: number
 }
 
+export type SourceDisplayStatus = Source['status'] | 'initializing'
+export type InitialSourcePollingPhase =
+  | 'idle'
+  | 'awaiting'
+  | 'initializing'
+  | 'terminal'
+  | 'timed-out'
+
 export type SourceProvider = {
   authKinds: Array<'api-key' | 'endpoint' | 'oauth2'>
   available: boolean
@@ -133,6 +141,90 @@ export function sourceWorkflowStatus(state: string): Source['status'] {
   if (SOURCE_WORKFLOW_FAILURE_STATES.has(normalized)) return 'error'
   if (SOURCE_WORKFLOW_SUCCESS_STATES.has(normalized)) return 'active'
   return 'syncing'
+}
+
+export function sourceWorkflowIsActive(workflow?: SourceWorkflowRun) {
+  return workflow !== undefined && sourceWorkflowStatus(workflow.state) === 'syncing'
+}
+
+export function isInitialSource(source: Source) {
+  const requestId = source.metadata.clientRequestId
+
+  return (
+    typeof requestId === 'string' &&
+    ((requestId.startsWith('initial-source:') && requestId.length > 'initial-source:'.length) ||
+      (requestId.startsWith('initial-website-source:') &&
+        requestId.length > 'initial-website-source:'.length))
+  )
+}
+
+export function isInitialSourceForOperation(source: Source, operationId: string) {
+  const requestId = source.metadata.clientRequestId
+  return (
+    requestId === `initial-source:${operationId}` ||
+    requestId === `initial-website-source:${operationId}`
+  )
+}
+
+export function initialSourceWorkflowId(source: Source) {
+  const initialImport = source.metadata.initialImport
+  if (
+    typeof initialImport !== 'object' ||
+    initialImport === null ||
+    !('workflowId' in initialImport) ||
+    typeof initialImport.workflowId !== 'string'
+  )
+    return undefined
+
+  return initialImport.workflowId
+}
+
+export function sourceDisplayStatus(source: Source): SourceDisplayStatus {
+  if (isInitialSource(source) && source.status === 'disabled' && source.metadata.preview === true)
+    return 'initializing'
+
+  if (isInitialSource(source) && source.status === 'disabled' && source.metadata.initialImport) {
+    if (source.syncWorkflow) {
+      const retryStatus = sourceWorkflowStatus(source.syncWorkflow.state)
+      return retryStatus === 'active' ? source.status : retryStatus
+    }
+
+    return 'error'
+  }
+
+  return source.status
+}
+
+export function shouldHidePreviewSource(source: Source) {
+  return (
+    source.status === 'disabled' && source.metadata.preview === true && !isInitialSource(source)
+  )
+}
+
+export function sourceNeedsPolling(source: Source) {
+  return (
+    sourceDisplayStatus(source) === 'initializing' ||
+    source.status === 'syncing' ||
+    sourceWorkflowIsActive(source.syncWorkflow)
+  )
+}
+
+export function initialSourcePollingPhase(
+  sources: Source[],
+  awaitedOperationId: string | null,
+  timedOut: boolean,
+): InitialSourcePollingPhase {
+  const awaitedSource = awaitedOperationId
+    ? sources.find((source) => isInitialSourceForOperation(source, awaitedOperationId))
+    : undefined
+  const awaitingSource = Boolean(awaitedOperationId && !awaitedSource)
+  const initializing = sources.some((source) => sourceDisplayStatus(source) === 'initializing')
+
+  if (timedOut && (awaitingSource || initializing)) return 'timed-out'
+  if (awaitingSource) return 'awaiting'
+  if (initializing) return 'initializing'
+  if (awaitedSource) return 'terminal'
+  return 'idle'
 }
 
 export function sourceStatusWithSyncWorkflow(
