@@ -190,12 +190,12 @@ export function WebAppAccessPointCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
+          openUrl={webAppUrl}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
           regenerateDisabled={!canEdit}
           regenerating={regenerating}
-          onOpen={() => window.open(webAppUrl, '_blank')}
           onRegenerate={() => setShowRegenerate(true)}
         />
         {showAccessControl && (

@@ -16,14 +16,14 @@ vi.mock('react-i18next', async () => {
 vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
   EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
     mocks.serviceApiCard(props)
-    return <div data-testid="environment-service-api-card" />
+    return null
   },
 }))
 
 vi.mock('../deployed-environment-access-points/environment-web-app-card', () => ({
   EnvironmentWebAppCard: (props: Record<string, unknown>) => {
     mocks.webAppCard(props)
-    return <div data-testid="environment-web-app-card" />
+    return null
   },
 }))
 
