@@ -6,10 +6,9 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
@@ -33,7 +32,10 @@ const PermissionSelector = ({
   onMemberSelect,
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { data: isRbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ rbac_enabled }) => rbac_enabled,

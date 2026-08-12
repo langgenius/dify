@@ -10,10 +10,16 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'user-123' } }).wrapper,
+  })
 
 // Mock external dependencies
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
@@ -41,13 +47,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   })),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-123' },
-    workspacePermissionKeys: [],
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({

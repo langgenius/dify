@@ -4,6 +4,7 @@
   "app.access_config": "Configurează permisiunile de acces ale aplicației",
   "app.acl.access_config": "Configurează permisiunile de acces ale aplicației",
   "app.acl.delete": "Șterge aplicația",
+  "app.acl.deploy": "Implementează aplicația",
   "app.acl.edit": "Editează și orchestrează aplicația",
   "app.acl.import_export_dsl": "Importă / exportă DSL",
   "app.acl.log_and_annotation": "Accesează jurnale și adnotări",

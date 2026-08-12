@@ -633,6 +633,10 @@ class TestMyPermissions:
         assert not any(key.startswith("billing.") for key in out.workspace.permission_keys)
         if role == "editor":
             assert "app.acl.log_and_annotation" in out.app.default_permission_keys
+        if role in {"owner", "admin", "editor"}:
+            assert "app.acl.deploy" in out.app.default_permission_keys
+        else:
+            assert "app.acl.deploy" not in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),

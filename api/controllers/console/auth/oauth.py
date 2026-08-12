@@ -12,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
@@ -301,7 +302,9 @@ def _generate_account(
         normalized_email = user_info.email.lower()
         oauth_new_user = True
         if not FeatureService.get_system_features().is_allow_register:
-            if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
+                normalized_email
+            ):
                 raise AccountRegisterError(
                     description=(
                         "This email account has been deleted within the past "

@@ -9,6 +9,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
+from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1174,7 +1175,9 @@ class DatasetRetrieval:
         attachment_ids: list[str] | None,
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
+        skip_on_error: bool = False,
     ) -> None:
+        """Run one retriever and optionally skip dataset-level failures."""
         try:
             with session_factory.create_session() as session:
                 self._retriever(
@@ -1188,11 +1191,60 @@ class DatasetRetrieval:
                     metadata_condition=metadata_condition,
                     attachment_ids=attachment_ids,
                 )
-        except Exception as e:
+        except Exception as exc:
+            if skip_on_error:
+                logger.warning(
+                    "Skipping dataset retrieval because retriever failed, dataset_id=%s, error_type=%s, error=%s",
+                    dataset_id,
+                    type(exc).__name__,
+                    str(exc),
+                )
+                span = get_current_span()
+                if span and span.is_recording():
+                    span.add_event(
+                        "dataset_retrieval.skipped",
+                        attributes={
+                            "dataset_id": dataset_id,
+                            "error.type": type(exc).__name__,
+                            "error.message": str(exc),
+                        },
+                    )
+                return
+
             if cancel_event:
                 cancel_event.set()
             if thread_exceptions is not None:
-                thread_exceptions.append(e)
+                thread_exceptions.append(exc)
+
+    def _run_retriever_thread_safely(
+        self,
+        *,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str | None,
+        top_k: int,
+        all_documents: list[Document],
+        document_ids_filter: list[str] | None,
+        metadata_condition: MetadataFilteringCondition | None,
+        attachment_ids: list[str] | None,
+        cancel_event: threading.Event | None,
+        thread_exceptions: list[Exception] | None,
+        skip_on_error: bool = False,
+    ) -> None:
+        """Run a retriever while preserving the upstream safe-thread entry point."""
+        self._run_retriever_thread(
+            flask_app=flask_app,
+            dataset_id=dataset_id,
+            query=query,
+            top_k=top_k,
+            all_documents=all_documents,
+            document_ids_filter=document_ids_filter,
+            metadata_condition=metadata_condition,
+            attachment_ids=attachment_ids,
+            cancel_event=cancel_event,
+            thread_exceptions=thread_exceptions,
+            skip_on_error=skip_on_error,
+        )
 
     def to_dataset_retriever_tool(
         self,
@@ -1836,7 +1888,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=self._run_retriever_thread,
+                        target=self._run_retriever_thread_safely,
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,
@@ -1848,6 +1900,7 @@ class DatasetRetrieval:
                             "attachment_ids": [attachment_id] if attachment_id else None,
                             "cancel_event": cancel_event,
                             "thread_exceptions": thread_exceptions,
+                            "skip_on_error": True,
                         },
                     )
                     threads.append(retrieval_thread)

@@ -374,7 +374,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [])
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
-      if (!workflowStore.getState().isWorkflowDataLoaded) return
+      const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = workflowStore.getState()
+      if (!isWorkflowDataLoaded) return
+
+      debouncedSyncWorkflowDraft.cancel?.()
 
       if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
         syncWorkflowDraftWhenPageClose()
@@ -850,8 +853,7 @@ const WorkflowHistoryStoreInitializer = ({
   children,
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
-  const workflowHistory = useStore((state) => state.workflowHistory)
-  const isInitializedRef = useRef(false)
+  const initializedWorkflowHistory = useStore((state) => state.initializedWorkflowHistory)
   const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
     nodes,
     edges,
@@ -862,13 +864,12 @@ const WorkflowHistoryStoreInitializer = ({
   useLayoutEffect(() => {
     const temporalStore = workflowStore.temporal.getState()
     temporalStore.pause()
-    workflowStore.getState().setWorkflowHistory(initialWorkflowHistory)
+    workflowStore.getState().initializeWorkflowHistory(initialWorkflowHistory)
     temporalStore.clear()
     temporalStore.resume()
-    isInitializedRef.current = true
   }, [initialWorkflowHistory, workflowStore])
 
-  if (!isInitializedRef.current && workflowHistory !== initialWorkflowHistory) return null
+  if (initializedWorkflowHistory !== initialWorkflowHistory) return null
 
   return children
 }
