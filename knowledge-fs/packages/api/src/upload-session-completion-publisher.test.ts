@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createInMemoryCapabilityGrantProvenanceRepository,
   createInMemoryDocumentAssetRepository,
-  createInMemoryKnowledgePathRepository,
   createInMemoryLogicalDocumentRepository,
 } from "./index";
 import { createUploadSessionDocumentCompletionPublisher } from "./upload-session-completion-publisher";
@@ -47,15 +46,6 @@ describe("upload session document completion publisher", () => {
       version: 1,
     });
     expect(fixture.releaseDispatch).toHaveBeenCalledWith(ATTEMPT_ID);
-    await expect(
-      fixture.paths.listPhysicalView({
-        knowledgeSpaceId: SPACE_ID,
-        limit: 10,
-        viewName: "docs",
-      }),
-    ).resolves.toMatchObject({
-      items: [expect.objectContaining({ targetId: SESSION_ID })],
-    });
   });
 
   it("replays after publication without creating another compilation attempt", async () => {
@@ -92,10 +82,6 @@ describe("upload session document completion publisher", () => {
 
 async function publisherFixture() {
   const assets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
-  const paths = createInMemoryKnowledgePathRepository({
-    maxListLimit: 20,
-    maxPaths: 20,
-  });
   const logicalDocuments = createInMemoryLogicalDocumentRepository({
     canReadDocument: () => true,
     canReadRevision: () => true,
@@ -134,9 +120,8 @@ async function publisherFixture() {
     grants,
     logicalDocuments,
     now: () => "2026-07-21T01:00:00.000Z",
-    paths,
   });
-  return { assets, grants, paths, publisher, releaseDispatch, start };
+  return { assets, grants, publisher, releaseDispatch, start };
 }
 
 function publishInput() {

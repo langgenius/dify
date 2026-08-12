@@ -895,7 +895,6 @@ const uploadSessions = await createApiUploadSessionAssembly({
       ? { logicalDocuments: repositoryOptions.logicalDocuments }
       : {}),
     manifests: knowledgeSpaceManifests,
-    ...(repositoryOptions.knowledgePaths ? { paths: repositoryOptions.knowledgePaths } : {}),
     ...(databaseRepositories.uploadSessions
       ? { sessions: databaseRepositories.uploadSessions }
       : {}),

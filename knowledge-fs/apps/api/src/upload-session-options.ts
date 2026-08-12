@@ -5,7 +5,6 @@ import {
   type DocumentAssetRepository,
   type DocumentCompilationJobStateMachine,
   type KnowledgeGatewayOptions,
-  type KnowledgePathRepository,
   type KnowledgeSpaceManifestRepository,
   type LogicalDocumentRepository,
   type StorageQuotaRepository,
@@ -72,7 +71,6 @@ export interface ApiUploadSessionRepositories {
   readonly compilationJobs?: DocumentCompilationJobStateMachine | undefined;
   readonly logicalDocuments?: LogicalDocumentRepository | undefined;
   readonly manifests?: KnowledgeSpaceManifestRepository | undefined;
-  readonly paths?: KnowledgePathRepository | undefined;
   readonly sessions?: UploadSessionRepository | undefined;
   readonly usesDatabaseRepositories: boolean;
 }
@@ -186,7 +184,6 @@ export async function createApiUploadSessionAssembly(input: {
     !releaseDispatch ||
     !repositories.logicalDocuments ||
     !repositories.manifests ||
-    !repositories.paths ||
     !repositories.sessions
   ) {
     return unavailableUploadSessionAssembly();
@@ -213,7 +210,6 @@ export async function createApiUploadSessionAssembly(input: {
     },
     grants: repositories.capabilityGrants,
     logicalDocuments: repositories.logicalDocuments,
-    paths: repositories.paths,
   });
   const storageQuotas = createKnowledgeSpaceManifestStorageQuotaRepository({
     manifests: repositories.manifests,

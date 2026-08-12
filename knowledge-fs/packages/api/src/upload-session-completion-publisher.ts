@@ -6,8 +6,6 @@ import type { CapabilityGrantProvenanceRepository } from "./capability-grant-pro
 import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import type { DocumentCompilationJobStateMachine } from "./document-compilation-job";
-import { buildDocumentKnowledgePath } from "./document-knowledge-paths";
-import type { KnowledgePathRepository } from "./knowledge-path-repository";
 import type { LogicalDocumentRepository } from "./logical-document-repository";
 import {
   type UploadSessionCompletionPublisher,
@@ -25,7 +23,6 @@ export interface CreateUploadSessionDocumentCompletionPublisherOptions {
     "bindCompilationAttempt" | "createCandidateRevision"
   >;
   readonly now?: (() => string) | undefined;
-  readonly paths: Pick<KnowledgePathRepository, "upsertMany">;
 }
 
 /**
@@ -38,7 +35,6 @@ export function createUploadSessionDocumentCompletionPublisher({
   grants,
   logicalDocuments,
   now = () => new Date().toISOString(),
-  paths,
 }: CreateUploadSessionDocumentCompletionPublisherOptions): UploadSessionCompletionPublisher {
   return {
     publish: async (input) => {
@@ -92,13 +88,9 @@ export function createUploadSessionDocumentCompletionPublisher({
         title: input.fileName,
       });
 
-      await paths.upsertMany([
-        buildDocumentKnowledgePath({
-          asset,
-          id: input.uploadSessionId,
-          tenantId: input.tenantId,
-        }),
-      ]);
+      // The compilation pipeline materializes the document path with its immutable publication
+      // generation. Writing a generationless path here would make a new upload indistinguishable
+      // from legacy state and fence its own compilation admission.
       const job = await compilationJobs.start({
         capabilityGrantId: grant.grantId,
         deferDispatch: true,
