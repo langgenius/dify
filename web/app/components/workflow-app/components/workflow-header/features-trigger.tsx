@@ -1,4 +1,4 @@
-import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'

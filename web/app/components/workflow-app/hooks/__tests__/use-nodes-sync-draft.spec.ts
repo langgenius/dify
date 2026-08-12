@@ -236,6 +236,57 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
+  it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
+    const draftNode = {
+      id: 'n1',
+      position: { x: 0, y: 0 },
+      data: { type: BlockEnum.Start, label: 'Start' },
+    }
+    const draftEdge = {
+      id: 'edge-1',
+      source: 'n1',
+      target: 'n2',
+      data: { stable: 'keep' },
+    }
+    mockGetNodes.mockReturnValue([draftNode])
+    reactFlowState = {
+      ...reactFlowState,
+      edges: [draftEdge],
+      transform: [10, 20, 1.5],
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+    act(() => {
+      syncPromise = result.current.doSyncWorkflowDraft(false)
+
+      // Simulate ReactFlow clearing its store immediately after the page starts unmounting.
+      mockGetNodes.mockReturnValue([])
+      reactFlowState = {
+        ...reactFlowState,
+        edges: [],
+        transform: [0, 0, 1],
+      }
+    })
+
+    await act(async () => {
+      await syncPromise
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: {
+            nodes: [draftNode],
+            edges: [draftEdge],
+            viewport: { x: 10, y: 20, zoom: 1.5 },
+          },
+        }),
+      }),
+    )
+  })
+
   it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderUseNodesSyncDraft()
 

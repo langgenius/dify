@@ -13,8 +13,7 @@ import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
@@ -22,8 +21,8 @@ import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -124,7 +123,10 @@ export function AgentPreviewChatConversation({
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
   const queryClient = useQueryClient()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const sendInterruptedRef = useRef(false)
   const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {

@@ -12,9 +12,9 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxItem, ComboboxItemText } from '@langgenius/dify-ui/combobox'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { SubjectType } from '@/models/access-control'
 
 export function SubjectItem({
@@ -155,7 +155,10 @@ type MemberItemProps = {
 }
 
 function MemberItem({ member, subject }: MemberItemProps) {
-  const currentUser = useAtomValue(userProfileAtom)
+  const { data: currentUserEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const { t } = useTranslation()
   return (
     <ComboboxBaseItem subject={subject} className="pr-3">
@@ -169,7 +172,7 @@ function MemberItem({ member, subject }: MemberItemProps) {
               </div>
             </div>
             <span className="mr-1 system-sm-medium text-text-secondary">{member.name}</span>
-            {currentUser.email === member.email && (
+            {currentUserEmail === member.email && (
               <span className="system-xs-regular text-text-tertiary">
                 ({t(($) => $.you, { ns: 'common' })})
               </span>

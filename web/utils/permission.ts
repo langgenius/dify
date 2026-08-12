@@ -8,6 +8,7 @@ export const AppACLPermission = {
   ImportExportDSL: 'app.acl.import_export_dsl',
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
+  Deploy: 'app.acl.deploy',
   Monitor: 'app.acl.monitor',
   TracingConfig: 'app.acl.tracing_config',
   LogAndAnnotation: 'app.acl.log_and_annotation',
@@ -45,6 +46,7 @@ type AppACLCapabilities = {
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
+  canDeploy: boolean
   canMonitor: boolean
   canConfigureTracing: boolean
   canAccessLogAndAnnotation: boolean
@@ -151,6 +153,11 @@ export const getAppACLCapabilities = (
     canReleaseAndVersion: hasResourcePermission(
       permissionKeys,
       AppACLPermission.ReleaseAndVersion,
+      hasMaintainerPermissions,
+    ),
+    canDeploy: hasResourcePermission(
+      permissionKeys,
+      AppACLPermission.Deploy,
       hasMaintainerPermissions,
     ),
     canMonitor: hasResourcePermission(

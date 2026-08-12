@@ -492,7 +492,6 @@ const mainNavUserProfile = {
 
 const consoleState: ConsoleStateFixture = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -715,20 +714,8 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders deployments in primary navigation when app deploy is enabled', () => {
+  it('hides deployments in primary navigation when app deploy is enabled', () => {
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
-
-    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
-    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
-  })
-
-  it('hides deployments in primary navigation when app deploy is disabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
 
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
@@ -912,10 +899,9 @@ describe('MainNav', () => {
       expect(
         screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute(
-        'href',
-        '/deployments',
-      )
+      expect(
+        screen.queryByRole('link', { name: /common.menus.deployments/ }),
+      ).not.toBeInTheDocument()
     },
   )
 

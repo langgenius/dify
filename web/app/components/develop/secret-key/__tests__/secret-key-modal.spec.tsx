@@ -1,14 +1,112 @@
 import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
+import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { SecretKeyScope } from '../secret-key-modal'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vitest'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import SecretKeyModal from '../secret-key-modal'
 
-type MutationCallbacks<TData> = {
-  onSuccess?: (data: TData) => void
-}
+const apiMocks = vi.hoisted(() => ({
+  appKeys: [] as AppApiKeyList['data'],
+  datasetKeys: [] as DatasetApiKeyList['data'],
+  environmentKeys: [] as EnvironmentApiKey[],
+  listApp: vi.fn(),
+  createApp: vi.fn(),
+  deleteApp: vi.fn(),
+  listDataset: vi.fn(),
+  createDataset: vi.fn(),
+  deleteDataset: vi.fn(),
+  listEnvironment: vi.fn(),
+  createEnvironment: vi.fn(),
+  deleteEnvironment: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byResourceId: {
+        apiKeys: {
+          get: {
+            queryOptions: ({ input }: { input: unknown }) => ({
+              queryKey: ['apps', 'api-keys', input],
+              queryFn: () => {
+                apiMocks.listApp(input)
+                return Promise.resolve({ data: apiMocks.appKeys })
+              },
+            }),
+          },
+          post: {
+            mutationOptions: () => ({
+              mutationFn: (variables: unknown) => apiMocks.createApp(variables),
+            }),
+          },
+          byApiKeyId: {
+            delete: {
+              mutationOptions: () => ({
+                mutationFn: (variables: unknown) => apiMocks.deleteApp(variables),
+              }),
+            },
+          },
+        },
+      },
+    },
+    datasets: {
+      apiKeys: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['datasets', 'api-keys'],
+            queryFn: () => {
+              apiMocks.listDataset()
+              return Promise.resolve({ data: apiMocks.datasetKeys })
+            },
+          }),
+        },
+        post: {
+          mutationOptions: () => ({
+            mutationFn: () => apiMocks.createDataset(),
+          }),
+        },
+        byApiKeyId: {
+          delete: {
+            mutationOptions: () => ({
+              mutationFn: (variables: unknown) => apiMocks.deleteDataset(variables),
+            }),
+          },
+        },
+      },
+    },
+    enterprise: {
+      appDeploy: {
+        accessService: {
+          listEnvironmentApiKeys: {
+            queryOptions: ({ input, enabled }: { input: unknown; enabled?: boolean }) => ({
+              queryKey: ['environment', 'api-keys', input],
+              queryFn: () => {
+                apiMocks.listEnvironment(input)
+                return Promise.resolve({ data: apiMocks.environmentKeys })
+              },
+              enabled,
+            }),
+          },
+          createEnvironmentApiKey: {
+            mutationOptions: () => ({
+              mutationFn: (variables: unknown) => apiMocks.createEnvironment(variables),
+            }),
+          },
+          deleteEnvironmentApiKey: {
+            mutationOptions: () => ({
+              mutationFn: (variables: unknown) => apiMocks.deleteEnvironment(variables),
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
 
 const mockCurrentWorkspace = vi.fn().mockReturnValue({
   id: 'workspace-1',
@@ -30,45 +128,27 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-let appApiKeys: AppApiKeyList = { data: [] }
-let datasetApiKeys: DatasetApiKeyList = { data: [] }
-let appApiKeysLoading = false
-let datasetApiKeysLoading = false
+const appScope = { type: 'app', appId: 'app-123' } as const
+const datasetScope = { type: 'dataset' } as const
+const environmentScope = {
+  type: 'environment',
+  appId: 'app-123',
+  environmentId: 'staging',
+} as const
 
-const createAppApiKey = vi.fn(
-  (_variables: unknown, callbacks?: MutationCallbacks<{ token: string }>) =>
-    callbacks?.onSuccess?.({ token: 'new-app-token-123' }),
-)
-const deleteAppApiKey = vi.fn()
-const createDatasetApiKey = vi.fn(
-  (_variables: unknown, callbacks?: MutationCallbacks<{ token: string }>) =>
-    callbacks?.onSuccess?.({ token: 'new-dataset-token-123' }),
-)
-const deleteDatasetApiKey = vi.fn()
-
-let mutationHookIndex = 0
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: () => {
-      const mutations = [createAppApiKey, deleteAppApiKey, createDatasetApiKey, deleteDatasetApiKey]
-      const mutate = mutations[mutationHookIndex % mutations.length]
-      mutationHookIndex += 1
-      return { mutate }
-    },
-    useQuery: (options: { queryKey: readonly unknown[] }) => {
-      const isAppQuery = JSON.stringify(options.queryKey).includes('"apps"')
-      return isAppQuery
-        ? { data: appApiKeys, isLoading: appApiKeysLoading }
-        : { data: datasetApiKeys, isLoading: datasetApiKeysLoading }
-    },
-  }
-})
-
-async function renderModal(appId?: string) {
+async function renderModal(scope: SecretKeyScope, overrides: { canManage?: boolean } = {}) {
+  const queryClient = createTestQueryClient()
   const onClose = vi.fn()
-  const result = render(<SecretKeyModal isShow appId={appId} canManage onClose={onClose} />)
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <SecretKeyModal
+        isShow
+        canManage={overrides.canManage ?? true}
+        scope={scope}
+        onClose={onClose}
+      />
+    </QueryClientProvider>,
+  )
   await act(async () => {
     vi.runAllTimers()
   })
@@ -89,11 +169,21 @@ describe('SecretKeyModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    mutationHookIndex = 0
-    appApiKeys = { data: [] }
-    datasetApiKeys = { data: [] }
-    appApiKeysLoading = false
-    datasetApiKeysLoading = false
+    mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
+    apiMocks.appKeys = []
+    apiMocks.datasetKeys = []
+    apiMocks.environmentKeys = []
+    apiMocks.createApp.mockResolvedValue({ token: 'new-app-token-123' })
+    apiMocks.deleteApp.mockResolvedValue(undefined)
+    apiMocks.createDataset.mockResolvedValue({ token: 'new-dataset-token-123' })
+    apiMocks.deleteDataset.mockResolvedValue(undefined)
+    apiMocks.createEnvironment.mockResolvedValue({
+      id: 'environment-key-2',
+      token: 'env-created-secret-key-abcdefghijklmnopqrst',
+      type: 'api',
+      created_at: 1,
+    })
+    apiMocks.deleteEnvironment.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -101,119 +191,202 @@ describe('SecretKeyModal', () => {
     vi.useRealTimers()
   })
 
-  it('renders the app API key dataset selected by appId', async () => {
-    appApiKeys = {
-      data: [
-        {
-          id: 'app-key-1',
-          token: 'app-secret-token-123456789',
-          type: 'app',
-          created_at: 1,
-        },
-      ],
-    }
+  it('loads and renders app API keys through the generated query input', async () => {
+    apiMocks.appKeys = [
+      {
+        id: 'app-key-1',
+        token: 'app-secret-token-123456789',
+        type: 'app',
+        created_at: 1,
+      },
+    ]
 
-    await renderModal('app-123')
+    await renderModal(appScope)
 
-    expect(screen.getByText('app...cret-token-123456789')).toBeInTheDocument()
+    expect(await screen.findByText('app...cret-token-123456789')).toBeInTheDocument()
+    expect(apiMocks.listApp).toHaveBeenCalledWith({
+      params: { resource_id: 'app-123' },
+    })
   })
 
-  it('renders the workspace dataset API keys without an appId', async () => {
-    datasetApiKeys = {
-      data: [
-        {
-          id: 'dataset-key-1',
-          token: 'dataset-secret-token-123456789',
-          type: 'dataset',
-          created_at: 1,
-        },
-      ],
-    }
+  it('loads and renders workspace dataset API keys', async () => {
+    apiMocks.datasetKeys = [
+      {
+        id: 'dataset-key-1',
+        token: 'dataset-secret-token-123456789',
+        type: 'dataset',
+        created_at: 1,
+      },
+    ]
 
-    await renderModal()
+    await renderModal(datasetScope)
 
-    expect(screen.getByText('dat...cret-token-123456789')).toBeInTheDocument()
+    expect(await screen.findByText('dat...cret-token-123456789')).toBeInTheDocument()
+    expect(apiMocks.listDataset).toHaveBeenCalled()
   })
 
   it('creates an app API key through the generated mutation input', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    await renderModal('app-123')
+    await renderModal(appScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
 
-    expect(createAppApiKey).toHaveBeenCalledWith(
-      { params: { resource_id: 'app-123' } },
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
-    )
+    await waitFor(() => {
+      expect(apiMocks.createApp).toHaveBeenCalledWith({
+        params: { resource_id: 'app-123' },
+      })
+    })
     expect(await screen.findByText('new-app-token-123')).toBeInTheDocument()
   })
 
   it('creates a dataset API key through the generated mutation', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    await renderModal()
+    await renderModal(datasetScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
 
-    expect(createDatasetApiKey).toHaveBeenCalledWith(
-      undefined,
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
-    )
+    await waitFor(() => {
+      expect(apiMocks.createDataset).toHaveBeenCalledWith()
+    })
     expect(await screen.findByText('new-dataset-token-123')).toBeInTheDocument()
   })
 
   it('deletes an app API key through the generated mutation input', async () => {
-    appApiKeys = {
-      data: [
-        {
-          id: 'app-key-0',
-          token: 'other-app-secret-token-987654321',
-          type: 'app',
-          created_at: 1,
-        },
-        {
-          id: 'app-key-1',
-          token: 'app-secret-token-123456789',
-          type: 'app',
-          created_at: 1,
-        },
-      ],
-    }
-    await renderModal('app-123')
+    apiMocks.appKeys = [
+      {
+        id: 'app-key-0',
+        token: 'other-app-secret-token-987654321',
+        type: 'app',
+        created_at: 1,
+      },
+      {
+        id: 'app-key-1',
+        token: 'app-secret-token-123456789',
+        type: 'app',
+        created_at: 1,
+      },
+    ]
+    await renderModal(appScope)
+    await screen.findByText('app...cret-token-123456789')
 
     await confirmKeyDeletion('common.operation.delete app...cret-token-123456789')
 
     await waitFor(() => {
-      expect(deleteAppApiKey).toHaveBeenCalledWith({
+      expect(apiMocks.deleteApp).toHaveBeenCalledWith({
         params: { resource_id: 'app-123', api_key_id: 'app-key-1' },
       })
     })
   })
 
   it('deletes a dataset API key through the generated mutation input', async () => {
-    datasetApiKeys = {
-      data: [
-        {
-          id: 'dataset-key-0',
-          token: 'other-dataset-secret-token-987654321',
-          type: 'dataset',
-          created_at: 1,
-        },
-        {
-          id: 'dataset-key-1',
-          token: 'dataset-secret-token-123456789',
-          type: 'dataset',
-          created_at: 1,
-        },
-      ],
-    }
-    await renderModal()
+    apiMocks.datasetKeys = [
+      {
+        id: 'dataset-key-0',
+        token: 'other-dataset-secret-token-987654321',
+        type: 'dataset',
+        created_at: 1,
+      },
+      {
+        id: 'dataset-key-1',
+        token: 'dataset-secret-token-123456789',
+        type: 'dataset',
+        created_at: 1,
+      },
+    ]
+    await renderModal(datasetScope)
+    await screen.findByText('dat...cret-token-123456789')
 
     await confirmKeyDeletion('common.operation.delete dat...cret-token-123456789')
 
     await waitFor(() => {
-      expect(deleteDatasetApiKey).toHaveBeenCalledWith({
+      expect(apiMocks.deleteDataset).toHaveBeenCalledWith({
         params: { api_key_id: 'dataset-key-1' },
       })
     })
+  })
+
+  it('loads environment-scoped keys without requesting built-in app keys', async () => {
+    apiMocks.environmentKeys = [
+      {
+        id: 'environment-key-1',
+        token: 'env-existing-secret-key-abcdefghijklmnopqrst',
+        type: 'api',
+        created_at: 1,
+      },
+    ]
+
+    await renderModal(environmentScope)
+
+    expect(await screen.findByText(/^env\.\.\./)).toBeInTheDocument()
+    expect(apiMocks.listEnvironment).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-123',
+        environment_id: 'staging',
+      },
+    })
+    expect(apiMocks.listApp).not.toHaveBeenCalled()
+  })
+
+  it('creates an environment-scoped API key', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    await renderModal(environmentScope)
+
+    await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
+
+    await waitFor(() => {
+      expect(apiMocks.createEnvironment).toHaveBeenCalledWith({
+        params: {
+          app_id: 'app-123',
+          environment_id: 'staging',
+        },
+      })
+    })
+    expect(
+      await screen.findByText('env-created-secret-key-abcdefghijklmnopqrst'),
+    ).toBeInTheDocument()
+  })
+
+  it('deletes an environment-scoped API key', async () => {
+    apiMocks.environmentKeys = [
+      {
+        id: 'environment-key-1',
+        token: 'env-existing-secret-key-abcdefghijklmnopqrst',
+        type: 'api',
+        created_at: 1,
+      },
+    ]
+    await renderModal(environmentScope)
+
+    await screen.findByText(/^env\.\.\./)
+    await confirmKeyDeletion('common.operation.delete env...abcdefghijklmnopqrst')
+
+    await waitFor(() => {
+      expect(apiMocks.deleteEnvironment).toHaveBeenCalledWith({
+        params: {
+          api_key_id: 'environment-key-1',
+          app_id: 'app-123',
+          environment_id: 'staging',
+        },
+      })
+    })
+  })
+
+  it('disables creation when the caller cannot manage keys', async () => {
+    await renderModal(datasetScope, { canManage: false })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'appApi.apiKeyModal.createNewSecretKey',
+      }),
+    ).toBeDisabled()
+  })
+
+  it('exposes an accessible close button', async () => {
+    const { onClose } = await renderModal(datasetScope)
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onClose).toHaveBeenCalled()
   })
 })

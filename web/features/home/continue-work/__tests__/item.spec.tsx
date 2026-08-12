@@ -164,14 +164,14 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to develop when RBAC is disabled for an access-config-only app', () => {
+  it('should fall back to access point when RBAC is disabled for an access-config-only app', () => {
     renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
       rbac_enabled: false,
     })
 
     expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
       'href',
-      '/app/app-1/develop',
+      '/app/app-1/access-point',
     )
   })
 

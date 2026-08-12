@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Призначення та обмеження параметра",
   "mcp.server.modal.parametersTip": "Додайте описи параметрів, щоб допомогти LLM зрозуміти їх призначення та обмеження.",
   "mcp.server.publishTip": "Додаток не опубліковано. Спочатку опублікуйте додаток.",
-  "mcp.server.reGen": "Згенерувати URL сервера знову?",
+  "mcp.server.reGen": "Згенерувати URL сервера знову? Поточний URL негайно припинить працювати.",
   "mcp.server.title": "Сервер MCP",
   "mcp.server.url": "URL сервера",
   "mcp.toolItem.noDescription": "Немає опису",

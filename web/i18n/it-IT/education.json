@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Lo sconto Education si applica solo al piano Professional annuale. Mantenendo il piano attuale, lo sconto non verrà incluso.",
   "educationPricingConfirm.title": "Il piano selezionato non supporta lo sconto Education",
   "emailLabel": "La tua email attuale",
+  "form.schoolName.noResults": "Nessuna scuola corrispondente trovata. Puoi comunque inserire il nome ufficiale.",
   "form.schoolName.placeholder": "Inserisci il nome ufficiale e completo della tua scuola",
   "form.schoolName.title": "Il Nome della tua Scuola",
   "form.schoolRole.option.administrator": "Amministratore scolastico",

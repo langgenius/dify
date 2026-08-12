@@ -55,6 +55,27 @@ class TestCurrentIds:
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
 
 
+class TestMyPermissions:
+    def test_returns_app_deploy_permission(self, app):
+        permissions = rbac_mod.svc.MyPermissionsResponse(
+            app=rbac_mod.svc.ResourcePermissionSnapshot(
+                default_permission_keys=["app.acl.deploy"],
+            )
+        )
+        with (
+            app.test_request_context("/workspaces/current/rbac/my-permissions"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
+                return_value=permissions,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
+
+        assert response["app"]["default_permission_keys"] == ["app.acl.deploy"]
+        mock_get.assert_called_once()
+
+
 class TestAccessMatrixAccountNames:
     def test_hydrates_missing_account_names(self):
         items = [

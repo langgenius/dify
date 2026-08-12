@@ -52,10 +52,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
   return createVersionStateModuleMock(() => mockConsoleState.current)
@@ -93,6 +89,7 @@ describe('SupportMenu', () => {
 
   const renderSupportMenu = () => {
     const { wrapper } = createConsoleQueryWrapper({
+      accountProfile: mockConsoleState.current.userProfile,
       systemFeatures: { deployment_edition: deploymentEdition },
     })
     return render(
