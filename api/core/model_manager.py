@@ -508,21 +508,29 @@ class QuotaManagedModelInstance(ModelInstance):
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
     ) -> Union[LLMResult, Generator]:
-        invoke = super().invoke_llm
-        invoke_kwargs = {
-            "prompt_messages": list(prompt_messages),
-            "model_parameters": model_parameters,
-            "tools": tools,
-            "stop": list(stop) if stop else None,
-            "callbacks": callbacks,
-            "request_metadata": request_metadata,
-        }
+        normalized_prompt_messages = list(prompt_messages)
+        normalized_stop = list(stop) if stop else None
         if stream:
-            return self._invoke_llm_stream(invoke=invoke, invoke_kwargs=invoke_kwargs)
+            return self._invoke_llm_stream(
+                prompt_messages=normalized_prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=normalized_stop,
+                callbacks=callbacks,
+                request_metadata=request_metadata,
+            )
 
         reservation = self.reserve_quota()
         try:
-            response = invoke(stream=False, **invoke_kwargs)
+            response = super().invoke_llm(
+                prompt_messages=normalized_prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=normalized_stop,
+                stream=False,
+                callbacks=callbacks,
+                request_metadata=request_metadata,
+            )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
             reservation.commit(response.usage)
@@ -530,11 +538,28 @@ class QuotaManagedModelInstance(ModelInstance):
         finally:
             self.release_quota_safely(reservation)
 
-    def _invoke_llm_stream(self, *, invoke: Callable[..., Any], invoke_kwargs: dict[str, Any]) -> Generator:
+    def _invoke_llm_stream(
+        self,
+        *,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any] | None,
+        tools: Sequence[PromptMessageTool] | None,
+        stop: list[str] | None,
+        callbacks: list[Callback] | None,
+        request_metadata: Mapping[str, object] | None,
+    ) -> Generator:
         reservation = self.reserve_quota()
         usage: LLMUsage | None = None
         try:
-            response = invoke(stream=True, **invoke_kwargs)
+            response = super().invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=stop,
+                stream=True,
+                callbacks=callbacks,
+                request_metadata=request_metadata,
+            )
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
 
