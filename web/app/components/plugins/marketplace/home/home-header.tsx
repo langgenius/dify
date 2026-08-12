@@ -45,7 +45,7 @@ const CreatorCenter = () => {
     <Link href={creatorCenterUrl} target="_blank" rel="noopener noreferrer">
       <Button
         variant="ghost"
-        className="flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        className="flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary [html[data-theme=dark]_&]:text-text-primary [html[data-theme=dark]_&]:hover:text-text-primary"
       >
         <span aria-hidden className="i-ri-user-star-line size-4" />
         <span className="hidden system-sm-medium lg:inline">Creator Center</span>
