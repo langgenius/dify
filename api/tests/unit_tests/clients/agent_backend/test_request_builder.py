@@ -468,7 +468,6 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
 
 
 def test_ask_human_layer_injected_when_configured():
-
     from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 
     from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID

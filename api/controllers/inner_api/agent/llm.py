@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
-import time
 from collections.abc import Generator
 
 from flask import Response, stream_with_context
@@ -18,9 +16,6 @@ from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
-
-logger = logging.getLogger(__name__)
-_HEARTBEAT_INTERVAL_SECONDS = 60
 
 
 class AgentLLMInvokeHttpError(BaseHTTPException):
@@ -59,7 +54,6 @@ class AgentLLMInvokeApi(Resource):
         service = AgentLLMInnerService()
         try:
             prepared = service.prepare(payload)
-            service.mark_running(prepared.invocation_id)
         except AgentLLMInnerServiceError as exc:
             raise AgentLLMInvokeHttpError(
                 error_code=exc.error_code,
@@ -80,27 +74,13 @@ class AgentLLMInvokeApi(Resource):
             ) from exc
 
         def generate() -> Generator[str, None, None]:
-            usage = None
-            last_heartbeat = time.monotonic()
             try:
                 for chunk in service.invoke(prepared):
-                    now = time.monotonic()
-                    if now - last_heartbeat >= _HEARTBEAT_INTERVAL_SECONDS:
-                        try:
-                            service.heartbeat(prepared.invocation_id)
-                        except Exception:
-                            logger.exception("Failed to heartbeat Agent LLM invocation %s", prepared.invocation_id)
-                        last_heartbeat = now
-                    if chunk.delta.usage is not None:
-                        usage = chunk.delta.usage
                     envelope = {"code": 0, "message": "", "data": chunk.model_dump(mode="json")}
                     yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
-                service.mark_succeeded(prepared.invocation_id, usage)
-            except GeneratorExit as exc:
-                service.mark_failed(prepared.invocation_id, exc, usage)
+            except GeneratorExit:
                 raise
             except Exception as exc:
-                service.mark_failed(prepared.invocation_id, exc, usage)
                 error = {
                     "error_type": type(exc).__name__,
                     "message": str(exc) or "Agent LLM invocation failed.",

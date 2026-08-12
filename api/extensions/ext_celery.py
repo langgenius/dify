@@ -276,13 +276,6 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
         }
 
-    if dify_config.ENABLE_AGENT_LLM_INVOCATION_RECONCILIATION_TASK:
-        imports.append("schedule.reconcile_agent_llm_invocations_task")
-        beat_schedule["reconcile_agent_llm_invocations"] = {
-            "task": "schedule.reconcile_agent_llm_invocations_task.reconcile_agent_llm_invocations",
-            "schedule": timedelta(minutes=dify_config.AGENT_LLM_INVOCATION_RECONCILIATION_INTERVAL),
-        }
-
     if (
         dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
         and not dify_config.DISABLE_TELEMETRY

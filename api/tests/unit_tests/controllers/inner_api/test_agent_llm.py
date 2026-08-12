@@ -55,7 +55,7 @@ def _app() -> Flask:
     return app
 
 
-def test_post_streams_plugin_compatible_envelope_and_marks_terminal_status() -> None:
+def test_post_streams_plugin_compatible_envelope() -> None:
     payload = _payload()
     request = AgentLLMInvokeRequest.model_validate(payload)
     prepared = PreparedAgentLLMInvocation(request=request, model_instance=MagicMock())
@@ -70,9 +70,7 @@ def test_post_streams_plugin_compatible_envelope_and_marks_terminal_status() -> 
     with (
         _agent_inner_auth(),
         patch("controllers.inner_api.agent.llm.AgentLLMInnerService.prepare", return_value=prepared) as prepare,
-        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.mark_running") as mark_running,
         patch("controllers.inner_api.agent.llm.AgentLLMInnerService.invoke", return_value=iter([chunk])),
-        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.mark_succeeded") as mark_succeeded,
     ):
         response = (
             _app()
@@ -90,8 +88,6 @@ def test_post_streams_plugin_compatible_envelope_and_marks_terminal_status() -> 
         assert envelope["code"] == 0
         assert envelope["data"]["delta"]["message"]["content"] == "done"
         prepare.assert_called_once()
-        mark_running.assert_called_once_with(request.caller.invocation_id)
-        mark_succeeded.assert_called_once_with(request.caller.invocation_id, None)
 
 
 def test_post_rejects_invalid_body_before_model_resolution() -> None:
