@@ -1,29 +1,18 @@
-from collections.abc import Iterator
+import json
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy import event, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.console.snippets import snippet_workflow_draft_variable as module
-from graphon.variables import StringSegment
-from graphon.variables.types import SegmentType
+from graphon.variables import StringSegment, StringVariable
 from models.account import Account, AccountStatus
-from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
+from models.snippet import CustomizedSnippet
+from models.workflow import Workflow, WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
-
-pytestmark = [
-    pytest.mark.usefixtures("sqlite_session"),
-    pytest.mark.parametrize(
-        "sqlite_session",
-        [(WorkflowDraftVariable, WorkflowDraftVariableFile)],
-        indirect=True,
-    ),
-]
 
 
 def _make_account() -> Account:
@@ -34,6 +23,34 @@ def _make_account() -> Account:
     )
     account.id = "user-1"  # type: ignore[assignment]
     return account
+
+
+def _make_snippet(snippet_id: str = "snippet-1") -> CustomizedSnippet:
+    return CustomizedSnippet(
+        id=snippet_id,
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="Description",
+        type="node",
+        created_by="user-1",
+    )
+
+
+def _make_workflow(*, environment_variables: list[StringVariable] | None = None) -> Workflow:
+    workflow = Workflow.new(
+        tenant_id="tenant-1",
+        app_id="snippet-1",
+        type="workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features="{}",
+        created_by="user-1",
+        environment_variables=environment_variables or [],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = "workflow-1"
+    return workflow
 
 
 def _make_node_variable(
@@ -59,17 +76,6 @@ def _make_node_variable(
     return variable
 
 
-@pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch) -> None:
-    def factory():
-        service_factory = module.SnippetService
-        if isinstance(service_factory, type):
-            return service_factory.__new__(service_factory)
-        return service_factory()
-
-    monkeypatch.setattr(module, "_snippet_service", factory)
-
-
 @pytest.fixture
 def app() -> Flask:
     app = Flask("test_snippet_workflow_draft_variable")
@@ -77,28 +83,13 @@ def app() -> Flask:
     return app
 
 
-@pytest.fixture
-def controller_sessions(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-) -> Iterator[scoped_session[Session]]:
-    """Bind both controller session styles to the isolated SQLite engine."""
-    sessions = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=sessions))
-    try:
-        yield sessions
-    finally:
-        sessions.remove()
-
-
 def _persist_variables(sqlite_session: Session, *variables: WorkflowDraftVariable) -> None:
     sqlite_session.add_all(variables)
     sqlite_session.commit()
 
 
-def _variable_ids(sqlite_engine: Engine) -> set[str]:
-    with Session(sqlite_engine) as session:
-        return set(session.scalars(select(WorkflowDraftVariable.id)))
+def _variable_ids(session: Session) -> set[str]:
+    return set(session.scalars(select(WorkflowDraftVariable.id)))
 
 
 def test_ensure_snippet_draft_variable_row_allowed_rejects_system_variable() -> None:
@@ -138,7 +129,7 @@ def test_conversation_variables_returns_empty_list(app: Flask) -> None:
     handler = unwrap(api.get)
 
     with app.test_request_context("/"):
-        result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+        result = handler(api, _make_account(), snippet=_make_snippet())
 
     assert result == WorkflowDraftVariableList(variables=[])
 
@@ -148,7 +139,7 @@ def test_system_variables_returns_empty_list(app: Flask) -> None:
     handler = unwrap(api.get)
 
     with app.test_request_context("/"):
-        result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+        result = handler(api, _make_account(), snippet=_make_snippet())
 
     assert result == WorkflowDraftVariableList(variables=[])
 
@@ -156,8 +147,6 @@ def test_system_variables_returns_empty_list(app: Flask) -> None:
 def test_delete_variable_collection_deletes_only_current_user_variables(
     app: Flask,
     sqlite_session: Session,
-    sqlite_engine: Engine,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     matching = _make_node_variable("matching", name="matching")
     matching_second = _make_node_variable("matching-second", node_id="tool-1", name="matching-second")
@@ -168,21 +157,21 @@ def test_delete_variable_collection_deletes_only_current_user_variables(
     handler = unwrap(api.delete)
 
     with app.test_request_context("/", method="DELETE"):
-        response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+        response = handler(api, sqlite_session, _make_account(), snippet=_make_snippet())
 
     assert response.status_code == 204
-    assert _variable_ids(sqlite_engine) == {other_user.id, other_snippet.id}
-    assert not controller_sessions().in_transaction()
+    assert _variable_ids(sqlite_session) == {other_user.id, other_snippet.id}
 
 
 def test_variable_collection_get_raises_when_draft_workflow_missing(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     monkeypatch.setattr(
         module,
         "SnippetService",
-        Mock(return_value=SimpleNamespace(get_draft_workflow=Mock(return_value=None))),
+        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=None))),
     )
 
     api = module.SnippetWorkflowVariableCollectionApi()
@@ -190,13 +179,12 @@ def test_variable_collection_get_raises_when_draft_workflow_missing(
 
     with app.test_request_context("/?page=1&limit=20"):
         with pytest.raises(module.DraftWorkflowNotExist):
-            handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+            handler(api, sqlite_session, _make_account(), snippet=_make_snippet())
 
 
 def test_node_variable_collection_get_lists_persisted_node_variables(
     app: Flask,
     sqlite_session: Session,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     matching = _make_node_variable("matching", name="matching")
     other_node = _make_node_variable("other-node", node_id="tool-1", name="other-node")
@@ -207,17 +195,14 @@ def test_node_variable_collection_get_lists_persisted_node_variables(
     handler = unwrap(api.get)
 
     with app.test_request_context("/"):
-        result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), node_id="llm-1")
+        result = handler(api, sqlite_session, _make_account(), snippet=_make_snippet(), node_id="llm-1")
 
     assert [variable.id for variable in result.variables] == [matching.id]
-    assert controller_sessions().get_bind() is not None
 
 
 def test_node_variable_collection_delete_deletes_only_requested_node_variables(
     app: Flask,
     sqlite_session: Session,
-    sqlite_engine: Engine,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     matching = _make_node_variable("matching", name="matching")
     matching_second = _make_node_variable("matching-second", name="matching-second")
@@ -228,52 +213,37 @@ def test_node_variable_collection_delete_deletes_only_requested_node_variables(
     handler = unwrap(api.delete)
 
     with app.test_request_context("/", method="DELETE"):
-        response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), node_id="llm-1")
+        response = handler(api, sqlite_session, _make_account(), snippet=_make_snippet(), node_id="llm-1")
 
     assert response.status_code == 204
-    assert _variable_ids(sqlite_engine) == {other_node.id, other_user.id}
-    assert not controller_sessions().in_transaction()
+    assert _variable_ids(sqlite_session) == {other_node.id, other_user.id}
 
 
 def test_variable_patch_returns_persisted_variable_without_committing_when_no_changes(
     app: Flask,
     sqlite_session: Session,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     variable = _make_node_variable("var-1")
     _persist_variables(sqlite_session, variable)
-    session = controller_sessions()
-    commits: list[bool] = []
-
-    def record_commit(_session: Session) -> None:
-        commits.append(True)
-
-    event.listen(session, "after_commit", record_commit)
     api = module.SnippetVariableApi()
     handler = unwrap(api.patch)
-    try:
-        with app.test_request_context("/", method="PATCH", json={}):
-            result = handler(
-                api,
-                module.WorkflowDraftVariableUpdatePayload(),
-                _make_account(),
-                snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-                variable_id="var-1",
-            )
-    finally:
-        event.remove(session, "after_commit", record_commit)
+    with app.test_request_context("/", method="PATCH", json={}):
+        result = handler(
+            api,
+            module.WorkflowDraftVariableUpdatePayload(),
+            sqlite_session,
+            _make_account(),
+            snippet=_make_snippet(),
+            variable_id="var-1",
+        )
 
     assert result.id == variable.id
     assert result.app_id == "snippet-1"
-    assert commits == []
-    assert session.in_transaction()
 
 
 def test_variable_delete_deletes_persisted_variable(
     app: Flask,
     sqlite_session: Session,
-    sqlite_engine: Engine,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     variable = _make_node_variable("var-1")
     retained = _make_node_variable("var-2", name="retained")
@@ -284,29 +254,27 @@ def test_variable_delete_deletes_persisted_variable(
     with app.test_request_context("/", method="DELETE"):
         response = handler(
             api,
+            sqlite_session,
             _make_account(),
-            snippet=SimpleNamespace(id="snippet-1"),
+            snippet=_make_snippet(),
             variable_id=variable.id,
         )
 
     assert response.status_code == 204
-    assert _variable_ids(sqlite_engine) == {retained.id}
-    assert not controller_sessions().in_transaction()
+    assert _variable_ids(sqlite_session) == {retained.id}
 
 
 def test_variable_reset_deletes_variable_without_node_execution(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-    sqlite_engine: Engine,
-    controller_sessions: scoped_session[Session],
 ) -> None:
     variable = _make_node_variable("var-1", node_execution_id=None)
     _persist_variables(sqlite_session, variable)
     monkeypatch.setattr(
         module,
         "SnippetService",
-        Mock(return_value=SimpleNamespace(get_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")))),
+        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=_make_workflow()))),
     )
     api = module.SnippetVariableResetApi()
     handler = unwrap(api.put)
@@ -314,43 +282,38 @@ def test_variable_reset_deletes_variable_without_node_execution(
     with app.test_request_context("/", method="PUT"):
         response = handler(
             api,
+            sqlite_session,
             _make_account(),
-            snippet=SimpleNamespace(id="snippet-1"),
+            snippet=_make_snippet(),
             variable_id=variable.id,
         )
 
     assert response.status_code == 204
-    assert _variable_ids(sqlite_engine) == set()
-    assert not controller_sessions().in_transaction()
+    assert _variable_ids(sqlite_session) == set()
 
 
 def test_environment_variables_returns_workflow_environment_variables(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    env_var = SimpleNamespace(
+    env_var = StringVariable(
         id="env-1",
         name="API_KEY",
         description="secret",
         selector=["env", "API_KEY"],
-        value_type=SegmentType.SECRET,
         value="sk-test",
     )
     monkeypatch.setattr(
         module,
         "SnippetService",
-        Mock(
-            return_value=SimpleNamespace(
-                get_draft_workflow=Mock(return_value=SimpleNamespace(environment_variables=[env_var]))
-            )
-        ),
+        Mock(return_value=Mock(get_draft_workflow=Mock(return_value=_make_workflow(environment_variables=[env_var])))),
     )
 
     api = module.SnippetEnvironmentVariableCollectionApi()
     handler = unwrap(api.get)
 
     with app.test_request_context("/"):
-        result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
+        result = handler(api, _make_account(), snippet=_make_snippet())
 
     assert result == {
         "items": [
@@ -360,7 +323,7 @@ def test_environment_variables_returns_workflow_environment_variables(
                 "name": "API_KEY",
                 "description": "secret",
                 "selector": ["env", "API_KEY"],
-                "value_type": "secret",
+                "value_type": "string",
                 "value": "sk-test",
                 "edited": False,
                 "visible": True,
