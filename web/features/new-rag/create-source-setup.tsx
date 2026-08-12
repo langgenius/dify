@@ -346,8 +346,11 @@ export function CreateSourceSetup({
   }
 
   useEffect(() => {
+    if (draft.sourceType !== 'websiteCrawl') {
+      if (!installedProviderOption || !credential) onInitialSourceChange(undefined)
+      return
+    }
     if (
-      draft.sourceType !== 'websiteCrawl' ||
       crawlState !== 'success' ||
       !selectionPages.length ||
       !installedProviderOption ||

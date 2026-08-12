@@ -1628,7 +1628,7 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByText('workflow.nodes.common.pluginNotInstalled')).not.toBeInTheDocument()
   })
 
-  it('creates a knowledge space atomically with selected online documents', async () => {
+  it('creates a knowledge space with selected online documents after renaming the source', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'
     datasourceQueryMock.plugins.data = [firecrawlDatasourcePlugin, notionDatasourcePlugin]
@@ -1653,12 +1653,17 @@ describe('CreateKnowledgePage', () => {
     renderPage()
     await fillRequiredFields(user)
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
-      'Notion handbook',
-    )
+    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    await user.type(sourceName, 'Notion handbook')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Product handbook' }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
+      ).toBeEnabled(),
+    )
+    await user.clear(sourceName)
+    await user.type(sourceName, 'Renamed handbook')
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
@@ -1674,7 +1679,7 @@ describe('CreateKnowledgePage', () => {
           credentialId: 'notion-credential-1',
           datasource: 'notion',
           kind: 'online_document',
-          name: 'Notion handbook',
+          name: 'Renamed handbook',
           parameters: {},
           pluginId: 'langgenius/notion_datasource',
           provider: 'notion',
