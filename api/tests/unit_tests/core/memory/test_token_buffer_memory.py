@@ -507,6 +507,7 @@ class TestGetHistoryPromptMessages:
 
     @staticmethod
     def _history_scalars_side_effect(
+        messages: list[MagicMock] | None = None,
         user_files: list[MagicMock] | None = None,
         assistant_files: list[MagicMock] | None = None,
     ):
@@ -515,6 +516,8 @@ class TestGetHistoryPromptMessages:
         def scalars_side_effect(_stmt):
             result = MagicMock()
             if call_count["n"] == 0:
+                result.all.return_value = messages or []
+            elif call_count["n"] == 1:
                 result.all.return_value = user_files or []
             else:
                 result.all.return_value = assistant_files or []
@@ -647,6 +650,7 @@ class TestGetHistoryPromptMessages:
         msg.parent_message_id = None
 
         mock_user_file = MagicMock()
+        mock_user_file.message_id = msg.id
         mock_user_prompt = UserPromptMessage(content="from build")
         mock_assistant_prompt = AssistantPromptMessage(content="answer")
 
@@ -666,7 +670,7 @@ class TestGetHistoryPromptMessages:
                 return_value=None,
             ),
         ):
-            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(user_files=[mock_user_file])
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect([msg], user_files=[mock_user_file])
             result = mem.get_history_prompt_messages()
 
         assert mock_build.call_count >= 1
@@ -681,6 +685,7 @@ class TestGetHistoryPromptMessages:
         msg.parent_message_id = None
 
         mock_assistant_file = MagicMock()
+        mock_assistant_file.message_id = msg.id
         mock_user_prompt = UserPromptMessage(content="query")
         mock_assistant_prompt = AssistantPromptMessage(content="built")
 
@@ -697,7 +702,7 @@ class TestGetHistoryPromptMessages:
             ) as mock_build,
         ):
             mock_db.session.scalars.side_effect = self._history_scalars_side_effect(
-                assistant_files=[mock_assistant_file]
+                [msg], assistant_files=[mock_assistant_file]
             )
             result = mem.get_history_prompt_messages()
 
