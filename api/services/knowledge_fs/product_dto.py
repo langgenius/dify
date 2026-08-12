@@ -2537,6 +2537,42 @@ class KnowledgeFSRetrievalTestResponse(ResponseModel):
     trace_id: str = Field(min_length=1, max_length=512, validation_alias=AliasChoices("trace_id", "traceId"))
 
 
+class KnowledgeFSWorkflowFailedRetrievalCapturePayload(BaseModel):
+    event_id: UUID = Field(
+        validation_alias=AliasChoices("event_id", "eventId"),
+        serialization_alias="eventId",
+    )
+    query: str = Field(min_length=1, max_length=16_000)
+    mode: Literal["deep", "fast", "research"]
+    retrieval_trace_id: str = Field(
+        min_length=1,
+        max_length=512,
+        validation_alias=AliasChoices("retrieval_trace_id", "retrievalTraceId"),
+        serialization_alias="retrievalTraceId",
+    )
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
+    @field_validator("query", "retrieval_trace_id", mode="before")
+    @classmethod
+    def normalize_required_text(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Workflow failed-retrieval capture fields must not be empty")
+        return normalized
+
+
+class KnowledgeFSWorkflowFailedRetrievalCaptureResponse(ResponseModel):
+    failed_query_id: UUID = Field(validation_alias=AliasChoices("failed_query_id", "failedQueryId"))
+    verdict: Literal["retrieval-miss", "coverage-gap", "irrelevant", "uncertain"]
+    bad_case_id: UUID | None = Field(
+        default=None,
+        validation_alias=AliasChoices("bad_case_id", "badCaseId"),
+    )
+
+
 class KnowledgeFSResearchTaskLimits(BaseModel):
     max_retrieval_steps: int | None = Field(default=None, ge=1, alias="maxRetrievalSteps")
     max_scanned_resources: int | None = Field(default=None, ge=1, alias="maxScannedResources")
@@ -3357,4 +3393,6 @@ __all__ = [
     "KnowledgeFSUploadSessionMutationResponse",
     "KnowledgeFSUploadSessionPartPayload",
     "KnowledgeFSUploadSessionResponse",
+    "KnowledgeFSWorkflowFailedRetrievalCapturePayload",
+    "KnowledgeFSWorkflowFailedRetrievalCaptureResponse",
 ]

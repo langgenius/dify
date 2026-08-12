@@ -280,12 +280,33 @@ export function createDatabaseQualityControlRepository({
           );
         }
         const candidateGrants = authorization.candidateGrants;
+        const id = input.id ?? generateId();
+        const existing = await selectBadCaseById(
+          database,
+          transaction,
+          input.tenantId,
+          input.knowledgeSpaceId,
+          id,
+          candidateGrants,
+          true,
+        );
+        if (existing) {
+          const badCase = mapBadCase(existing);
+          if (
+            badCase.traceId !== input.traceId ||
+            badCase.reason !== input.reason ||
+            badCase.actorSubjectId !== input.actorSubjectId ||
+            !sameStringSet(badCase.tags, input.tags)
+          ) {
+            throw new QualityControlIdempotencyConflictError();
+          }
+          return badCase;
+        }
         await assertTraceCandidateVisible(database, transaction, {
           ...input,
           candidateGrants,
           timestamp,
         });
-        const id = generateId();
         const revision = 1;
         await transaction.execute({
           maxRows: 0,
@@ -358,10 +379,9 @@ export function createDatabaseQualityControlRepository({
           input.tenantId,
           input.knowledgeSpaceId,
           input.id,
-          input.subjectId,
           JSON.stringify(input.candidateGrants),
         ],
-        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 5))} LIMIT 1;`,
+        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 4))} LIMIT 1;`,
         tableName: "quality_bad_cases",
       });
       return result.rows[0] ? mapBadCase(result.rows[0]) : null;
@@ -372,7 +392,6 @@ export function createDatabaseQualityControlRepository({
       const params: DatabaseQueryValue[] = [
         input.tenantId,
         input.knowledgeSpaceId,
-        input.subjectId,
         JSON.stringify(input.candidateGrants),
       ];
       if (input.status) {
@@ -390,7 +409,7 @@ export function createDatabaseQualityControlRepository({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 4))}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY bad_case.${q(database, "created_at")} DESC, bad_case.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
+        sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 3))}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY bad_case.${q(database, "created_at")} DESC, bad_case.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
         tableName: "quality_bad_cases",
       });
       const items = result.rows.slice(0, input.limit).map(mapBadCase);
@@ -1270,14 +1289,14 @@ async function trends(
       grants,
       input.subjectId,
     ],
-    sql: `SELECT ${countCase(database, `failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)}`)} AS ${q(database, "current_failed")}, ${countCase(database, `failed.${q(database, "created_at")} >= ${p(database, 5)} AND failed.${q(database, "created_at")} < ${p(database, 3)}`)} AS ${q(database, "baseline_failed")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} AND trace.${q(database, "subject_id")} = ${p(database, 7)} INNER JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 7), p(database, 6))} AND failed.${q(database, "created_at")} >= ${p(database, 5)} AND failed.${q(database, "created_at")} < ${p(database, 4)} AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 6))};`,
+    sql: `SELECT ${countCase(database, `failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)}`)} AS ${q(database, "current_failed")}, ${countCase(database, `failed.${q(database, "created_at")} >= ${p(database, 5)} AND failed.${q(database, "created_at")} < ${p(database, 3)}`)} AS ${q(database, "baseline_failed")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} LEFT JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 7), p(database, 6))} AND ${qualityFailedQueryTraceVisibleSql(database, "failed", "trace", "permission", p(database, 7), p(database, 6))} AND failed.${q(database, "created_at")} >= ${p(database, 5)} AND failed.${q(database, "created_at")} < ${p(database, 4)};`,
     tableName: "failed_queries",
   });
   const badCases = await database.execute({
     maxRows: 10,
     operation: "select",
-    params: [input.tenantId, input.knowledgeSpaceId, grants, input.from, input.to, input.subjectId],
-    sql: `SELECT ${q(database, "status")}, ${countAll(database)} AS ${q(database, "count")} FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 6)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 3))} AND bad_case.${q(database, "created_at")} >= ${p(database, 4)} AND bad_case.${q(database, "created_at")} < ${p(database, 5)} GROUP BY ${q(database, "status")};`,
+    params: [input.tenantId, input.knowledgeSpaceId, grants, input.from, input.to],
+    sql: `SELECT ${q(database, "status")}, ${countAll(database)} AS ${q(database, "count")} FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 3))} AND bad_case.${q(database, "created_at")} >= ${p(database, 4)} AND bad_case.${q(database, "created_at")} < ${p(database, 5)} GROUP BY ${q(database, "status")};`,
     tableName: "quality_bad_cases",
   });
   const slices = await database.execute({
@@ -1301,7 +1320,7 @@ async function trends(
     maxRows: 100,
     operation: "select",
     params: [input.tenantId, input.knowledgeSpaceId, input.from, input.to, grants, input.subjectId],
-    sql: `SELECT trace.${q(database, "mode")}, COALESCE(${failedModel}, 'unknown') AS ${q(database, "model")}, COALESCE(${failedProfileRevision}, 0) AS ${q(database, "profile_revision")}, ${countAll(database)} AS ${q(database, "failed_queries")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} AND trace.${q(database, "subject_id")} = ${p(database, 6)} INNER JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 6), p(database, 5))} AND failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)} AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 5))} GROUP BY trace.${q(database, "mode")}, COALESCE(${failedModel}, 'unknown'), COALESCE(${failedProfileRevision}, 0) ORDER BY ${q(database, "failed_queries")} DESC LIMIT 100;`,
+    sql: `SELECT trace.${q(database, "mode")}, COALESCE(${failedModel}, 'unknown') AS ${q(database, "model")}, COALESCE(${failedProfileRevision}, 0) AS ${q(database, "profile_revision")}, ${countAll(database)} AS ${q(database, "failed_queries")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} LEFT JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 6), p(database, 5))} AND ${qualityFailedQueryTraceVisibleSql(database, "failed", "trace", "permission", p(database, 6), p(database, 5))} AND failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)} GROUP BY trace.${q(database, "mode")}, COALESCE(${failedModel}, 'unknown'), COALESCE(${failedProfileRevision}, 0) ORDER BY ${q(database, "failed_queries")} DESC LIMIT 100;`,
     tableName: "failed_queries",
   });
   const top = await database.execute({
@@ -1316,7 +1335,7 @@ async function trends(
       input.topLimit,
       input.subjectId,
     ],
-    sql: `SELECT failed.${q(database, "query")}, ${countAll(database)} AS ${q(database, "count")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} AND trace.${q(database, "subject_id")} = ${p(database, 7)} INNER JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 7), p(database, 5))} AND failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)} AND failed.${q(database, "status")} NOT IN ('dismissed', 'promoted') AND ${permissionScopeSql(database, `permission.${q(database, "permission_scopes")}`, p(database, 5))} GROUP BY failed.${q(database, "query")} ORDER BY ${q(database, "count")} DESC, failed.${q(database, "query")} ASC LIMIT ${p(database, 6)};`,
+    sql: `SELECT failed.${q(database, "query")}, ${countAll(database)} AS ${q(database, "count")} FROM ${q(database, "failed_queries")} failed INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "knowledge_space_id")} = failed.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = failed.${q(database, "answer_trace_id")} LEFT JOIN ${q(database, "knowledge_space_permission_snapshots")} permission ON permission.${q(database, "tenant_id")} = ${p(database, 1)} AND permission.${q(database, "knowledge_space_id")} = trace.${q(database, "knowledge_space_id")} AND permission.${q(database, "id")} = trace.${q(database, "permission_snapshot_id")} WHERE failed.${q(database, "tenant_id")} = ${p(database, 1)} AND failed.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityFailedQueryVisibleSql(database, "failed", p(database, 7), p(database, 5))} AND ${qualityFailedQueryTraceVisibleSql(database, "failed", "trace", "permission", p(database, 7), p(database, 5))} AND failed.${q(database, "created_at")} >= ${p(database, 3)} AND failed.${q(database, "created_at")} < ${p(database, 4)} AND failed.${q(database, "status")} NOT IN ('dismissed', 'promoted') GROUP BY failed.${q(database, "query")} ORDER BY ${q(database, "count")} DESC, failed.${q(database, "query")} ASC LIMIT ${p(database, 6)};`,
     tableName: "failed_queries",
   });
   const row = result.rows[0] ?? {};
@@ -1620,11 +1639,32 @@ async function selectBadCase(
   candidateGrants: readonly string[],
   forUpdate: boolean,
 ) {
+  void actorSubjectId;
+  return selectBadCaseById(
+    database,
+    executor,
+    tenantId,
+    knowledgeSpaceId,
+    id,
+    candidateGrants,
+    forUpdate,
+  );
+}
+
+async function selectBadCaseById(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  tenantId: string,
+  knowledgeSpaceId: string,
+  id: string,
+  candidateGrants: readonly string[],
+  forUpdate: boolean,
+) {
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
-    params: [tenantId, knowledgeSpaceId, id, actorSubjectId, JSON.stringify(candidateGrants)],
-    sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND bad_case.${q(database, "actor_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 5))} LIMIT 1${forUpdate ? " FOR UPDATE" : ""};`,
+    params: [tenantId, knowledgeSpaceId, id, JSON.stringify(candidateGrants)],
+    sql: `SELECT bad_case.*, trace.${q(database, "query")} AS ${q(database, "query")} FROM ${q(database, "quality_bad_cases")} bad_case INNER JOIN ${q(database, "answer_traces")} trace ON trace.${q(database, "tenant_id")} = bad_case.${q(database, "tenant_id")} AND trace.${q(database, "knowledge_space_id")} = bad_case.${q(database, "knowledge_space_id")} AND trace.${q(database, "id")} = bad_case.${q(database, "trace_id")} WHERE bad_case.${q(database, "tenant_id")} = ${p(database, 1)} AND bad_case.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND bad_case.${q(database, "id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, p(database, 4))} LIMIT 1${forUpdate ? " FOR UPDATE" : ""};`,
     tableName: "quality_bad_cases",
   });
   return result.rows[0];
@@ -2028,7 +2068,7 @@ function validateBadCaseTransition(from: QualityBadCaseState, to: QualityBadCase
 }
 
 function historyAggregateVisibleSql(database: DatabaseAdapter, subject: string, grants: string) {
-  return `((history.${q(database, "aggregate_type")} = 'bad-case' AND EXISTS (SELECT 1 FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = history.${q(database, "tenant_id")} AND bad_case.${q(database, "knowledge_space_id")} = history.${q(database, "knowledge_space_id")} AND bad_case.${q(database, "id")} = history.${q(database, "aggregate_id")} AND bad_case.${q(database, "actor_subject_id")} = ${subject} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, grants)})) OR (history.${q(database, "aggregate_type")} = 'missing-evidence' AND EXISTS (SELECT 1 FROM ${q(database, "quality_missing_evidence_reviews")} review WHERE review.${q(database, "tenant_id")} = history.${q(database, "tenant_id")} AND review.${q(database, "knowledge_space_id")} = history.${q(database, "knowledge_space_id")} AND review.${q(database, "id")} = history.${q(database, "aggregate_id")} AND review.${q(database, "actor_subject_id")} = ${subject} AND ${permissionScopeSql(database, `review.${q(database, "required_permission_scope")}`, grants)})))`;
+  return `((history.${q(database, "aggregate_type")} = 'bad-case' AND EXISTS (SELECT 1 FROM ${q(database, "quality_bad_cases")} bad_case WHERE bad_case.${q(database, "tenant_id")} = history.${q(database, "tenant_id")} AND bad_case.${q(database, "knowledge_space_id")} = history.${q(database, "knowledge_space_id")} AND bad_case.${q(database, "id")} = history.${q(database, "aggregate_id")} AND ${permissionScopeSql(database, `bad_case.${q(database, "required_permission_scope")}`, grants)})) OR (history.${q(database, "aggregate_type")} = 'missing-evidence' AND EXISTS (SELECT 1 FROM ${q(database, "quality_missing_evidence_reviews")} review WHERE review.${q(database, "tenant_id")} = history.${q(database, "tenant_id")} AND review.${q(database, "knowledge_space_id")} = history.${q(database, "knowledge_space_id")} AND review.${q(database, "id")} = history.${q(database, "aggregate_id")} AND review.${q(database, "actor_subject_id")} = ${subject} AND ${permissionScopeSql(database, `review.${q(database, "required_permission_scope")}`, grants)})))`;
 }
 
 function permissionScopeSql(database: DatabaseAdapter, column: string, grants: string) {
@@ -2094,7 +2134,23 @@ function qualityFailedQueryVisibleSql(
   grants: string,
 ) {
   const column = (name: string) => `${alias}.${q(database, name)}`;
-  return `${column("requested_by_subject_id")} = ${subject} AND ${column("access_channel")} IN ('interactive', 'service_api', 'mcp', 'agent') AND ${column("permission_snapshot_id")} IS NOT NULL AND ${column("permission_snapshot_revision")} >= 1 AND ${column("revision")} >= 1 AND ${permissionScopeSql(database, column("required_permission_scope"), grants)}`;
+  return `(((${column("capability_grant_id")} IS NULL AND ${column("requested_by_subject_id")} = ${subject} AND ${column("access_channel")} IN ('interactive', 'service_api', 'mcp', 'agent') AND ${column("permission_snapshot_id")} IS NOT NULL AND ${column("permission_snapshot_revision")} >= 1) OR (${column("capability_grant_id")} IS NOT NULL AND ${column("requested_by_subject_id")} IS NULL AND ${column("access_channel")} IS NULL AND ${column("permission_snapshot_id")} IS NULL AND ${column("permission_snapshot_revision")} IS NULL)) AND ${column("revision")} >= 1 AND ${permissionScopeSql(database, column("required_permission_scope"), grants)})`;
+}
+
+function qualityFailedQueryTraceVisibleSql(
+  database: DatabaseAdapter,
+  failedAlias: string,
+  traceAlias: string,
+  permissionAlias: string,
+  subject: string,
+  grants: string,
+) {
+  const failed = (name: string) => `${failedAlias}.${q(database, name)}`;
+  const trace = (name: string) => `${traceAlias}.${q(database, name)}`;
+  const permission = (name: string) => `${permissionAlias}.${q(database, name)}`;
+  const capability = `${trace("capability_grant_id")} = ${failed("capability_grant_id")} AND ${trace("subject_id")} IS NULL AND ${trace("permission_snapshot_id")} IS NULL AND ${trace("permission_snapshot_revision")} IS NULL AND ${trace("access_channel")} IS NULL`;
+  const legacy = `${trace("capability_grant_id")} IS NULL AND ${trace("subject_id")} = ${subject} AND ${trace("subject_id")} = ${failed("requested_by_subject_id")} AND ${trace("permission_snapshot_id")} = ${failed("permission_snapshot_id")} AND ${trace("permission_snapshot_revision")} = ${failed("permission_snapshot_revision")} AND ${trace("access_channel")} = ${failed("access_channel")} AND ${permission("id")} IS NOT NULL AND ${permissionScopeSql(database, permission("permission_scopes"), grants)}`;
+  return `((${failed("capability_grant_id")} IS NOT NULL AND ${capability}) OR (${failed("capability_grant_id")} IS NULL AND ${legacy}))`;
 }
 
 function assertLimit(limit: number, maxListLimit: number) {

@@ -4446,7 +4446,7 @@ const tables = [
     checkConstraints: [
       {
         expression: {
-          postgres: `(("tenant_id" IS NULL AND "requested_by_subject_id" IS NULL AND "access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NULL AND "revision" IS NULL) OR ("tenant_id" IS NOT NULL AND "requested_by_subject_id" IS NOT NULL AND "access_channel" IS NOT NULL AND "access_channel" IN ('interactive', 'service_api', 'mcp', 'agent') AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = 'array' AND "revision" IS NOT NULL AND "revision" >= 1))`,
+          postgres: `(("tenant_id" IS NULL AND "capability_grant_id" IS NULL AND "requested_by_subject_id" IS NULL AND "access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NULL AND "revision" IS NULL) OR ("tenant_id" IS NOT NULL AND "capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = 'array' AND "revision" IS NOT NULL AND "revision" >= 1) OR ("tenant_id" IS NOT NULL AND "capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "access_channel" IS NOT NULL AND "access_channel" IN ('interactive', 'service_api', 'mcp', 'agent') AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = 'array' AND "revision" IS NOT NULL AND "revision" >= 1))`,
           tidb: "`permission_binding_complete` = 1",
         },
         name: "failed_queries_permission_binding_ck",
@@ -4464,6 +4464,12 @@ const tables = [
         onDelete: "CASCADE",
         referencedColumns: ["tenant_id", "id"],
         referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
       },
       {
         columns: [
@@ -4494,6 +4500,7 @@ const tables = [
       textColumn("trigger"),
       textColumn("status"),
       jsonColumn("metadata"),
+      idColumn("capability_grant_id", true),
       varcharColumn("requested_by_subject_id", 255, true),
       varcharColumn("access_channel", 16, true),
       idColumn("permission_snapshot_id", true),
@@ -4505,7 +4512,7 @@ const tables = [
       tidbGeneratedColumn(
         "permission_binding_complete",
         "TINYINT",
-        "CASE WHEN (`tenant_id` IS NULL AND `requested_by_subject_id` IS NULL AND `access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NULL AND `revision` IS NULL) OR (`tenant_id` IS NOT NULL AND `requested_by_subject_id` IS NOT NULL AND `access_channel` IS NOT NULL AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent') AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY' AND `revision` IS NOT NULL AND `revision` >= 1) THEN 1 ELSE 0 END",
+        "CASE WHEN (`tenant_id` IS NULL AND `capability_grant_id` IS NULL AND `requested_by_subject_id` IS NULL AND `access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NULL AND `revision` IS NULL) OR (`tenant_id` IS NOT NULL AND `capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY' AND `revision` IS NOT NULL AND `revision` >= 1) OR (`tenant_id` IS NOT NULL AND `capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `access_channel` IS NOT NULL AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent') AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY' AND `revision` IS NOT NULL AND `revision` >= 1) THEN 1 ELSE 0 END",
       ),
     ],
   },
@@ -7650,6 +7657,12 @@ const indexes = [
     columns: ["tenant_id", "knowledge_space_id", "requested_by_subject_id", "created_at", "id"],
     name: "failed_queries_subject_created_idx",
     purpose: "Apply failed-query subject provenance before keyset pagination and aggregation",
+    tableName: "failed_queries",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+    name: "failed_queries_capability_grant_idx",
+    purpose: "Audit workflow failed-query provenance without scanning a knowledge space",
     tableName: "failed_queries",
   },
   {

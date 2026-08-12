@@ -230,7 +230,7 @@ describe("database quality-control repository", () => {
   );
 
   it.each(["postgres", "tidb"] as const)(
-    "conceals every public quality resource by exact requester before LIMIT or history ordering on %s",
+    "scopes bad cases to the knowledge space while retaining actor isolation for other quality resources on %s",
     async (dialect) => {
       const calls: DatabaseExecuteInput[] = [];
       const database = testDatabase(dialect, async (input) => {
@@ -266,7 +266,16 @@ describe("database quality-control repository", () => {
         ].includes(call.tableName),
       );
       expect(publicReads).toHaveLength(6);
-      for (const call of publicReads) {
+      const badCaseReads = publicReads.filter((call) => call.tableName === "quality_bad_cases");
+      expect(badCaseReads).toHaveLength(2);
+      for (const call of badCaseReads) {
+        expect(call.params).not.toContain("editor-1");
+        expect(call.sql).not.toContain("actor_subject_id");
+      }
+      for (const call of publicReads.filter(
+        (call) =>
+          call.tableName !== "quality_bad_cases" && call.tableName !== "quality_resource_history",
+      )) {
         expect(call.params).toContain("editor-1");
         expect(call.sql).toMatch(/(?:actor_subject_id|requested_by_subject_id|subject_id)/u);
         const boundary = call.sql.includes("LIMIT")
@@ -280,6 +289,11 @@ describe("database quality-control repository", () => {
         expect(subjectIndex).toBeGreaterThanOrEqual(0);
         expect(subjectIndex).toBeLessThan(boundary);
       }
+      const badCaseHistory = publicReads.find(
+        (call) => call.tableName === "quality_resource_history",
+      );
+      expect(badCaseHistory?.sql).toContain("quality_bad_cases");
+      expect(badCaseHistory?.sql).not.toMatch(/quality_bad_cases[^)]*actor_subject_id/u);
       const missingReview = publicReads.find(
         (call) => call.tableName === "quality_missing_evidence_reviews",
       );
@@ -708,6 +722,55 @@ describe("database quality-control repository", () => {
       );
     },
   );
+
+  it("reuses an exact caller-supplied bad-case id and rejects a different payload", async () => {
+    const id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c54";
+    const candidateGrants = ["tenant:tenant-1", "subject:editor-1"];
+    const existing = {
+      actor_subject_id: "editor-1",
+      created_at: NOW,
+      id,
+      knowledge_space_id: SPACE_ID,
+      query: "camera evidence",
+      reason: "bad evidence",
+      replay_run_id: null,
+      revision: 1,
+      status: "open",
+      tags: ["regression"],
+      trace_id: TRACE_ID,
+      updated_at: NOW,
+    };
+    const calls: DatabaseExecuteInput[] = [];
+    const database = testDatabase("postgres", async (input) => {
+      calls.push(input);
+      if (input.tableName === "quality_bad_cases" && input.operation === "select") {
+        return { rows: [existing], rowsAffected: 1 };
+      }
+      return { rows: [], rowsAffected: input.operation === "select" ? 0 : 1 };
+    });
+    const repository = createDatabaseQualityControlRepository({
+      database,
+      maxListLimit: 100,
+      now: () => NOW,
+    });
+    const request = {
+      actorSubjectId: "editor-1",
+      candidateGrants,
+      id,
+      knowledgeSpaceId: SPACE_ID,
+      permission: permissionBinding(),
+      reason: "bad evidence",
+      tags: ["regression"],
+      tenantId: "tenant-1",
+      traceId: TRACE_ID,
+    } as const;
+
+    await expect(repository.createBadCase(request)).resolves.toMatchObject({ id });
+    await expect(
+      repository.createBadCase({ ...request, reason: "different" }),
+    ).rejects.toBeInstanceOf(QualityControlIdempotencyConflictError);
+    expect(calls.some((call) => call.operation === "insert")).toBe(false);
+  });
 
   it.each(["postgres", "tidb"] as const)(
     "creates and CAS-updates a missing-evidence review behind the final trace fence on %s",
@@ -1517,7 +1580,7 @@ describe("database quality-control repository", () => {
     },
   );
 
-  it("bounds trend slices by tenant, subject, candidate grants, and the requested window", async () => {
+  it("bounds trend failed queries across legacy and workflow capability provenance", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase("postgres", async (input) => {
       calls.push(input);
@@ -1539,6 +1602,8 @@ describe("database quality-control repository", () => {
     expect(failedCalls).toHaveLength(3);
     for (const call of failedCalls) {
       expect(call.sql).toContain("answer_traces");
+      expect(call.sql).toContain("capability_grant_id");
+      expect(call.sql).toContain('LEFT JOIN "knowledge_space_permission_snapshots"');
       expect(call.sql).toContain("subject_id");
       expect(call.sql).toContain("permission_scopes");
       expect(call.sql).toContain("requested_by_subject_id");
@@ -1552,6 +1617,7 @@ describe("database quality-control repository", () => {
         : call.sql.indexOf(";");
       expect(call.sql.indexOf("requested_by_subject_id")).toBeLessThan(boundary);
       expect(call.sql.indexOf("required_permission_scope")).toBeLessThan(boundary);
+      expect(call.sql).not.toContain('INNER JOIN "knowledge_space_permission_snapshots"');
     }
   });
 

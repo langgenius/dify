@@ -540,6 +540,13 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         "job",
     )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["createQuery"].action == "queries.create"
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["captureWorkflowFailedRetrieval"] == (
+        "queries.failed_retrieval.capture",
+        ("workflow",),
+        "POST",
+        "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+        "knowledge_space",
+    )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["cancelResearchTask"].resource_type == "research_task"
     stream = KNOWLEDGE_FS_CAPABILITY_OPERATIONS["streamResearchTaskProgress"]
     assert stream.action == "research_tasks.stream"

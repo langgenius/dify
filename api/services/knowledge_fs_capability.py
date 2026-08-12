@@ -266,6 +266,7 @@ _STANDARD_CALLERS: Final[tuple[CapabilityCallerKind, ...]] = (
     "agent",
     "workflow",
 )
+_WORKFLOW_CALLERS: Final[tuple[CapabilityCallerKind, ...]] = ("workflow",)
 _CONTROL_PLANE_CALLERS: Final[tuple[CapabilityCallerKind, ...]] = ("interactive", "service")
 _LIST_CALLERS: Final[tuple[CapabilityCallerKind, ...]] = (*_CONTROL_PLANE_CALLERS, "internal_worker")
 _PROVISION_CALLERS: Final[tuple[CapabilityCallerKind, ...]] = ("service", "internal_worker")
@@ -933,6 +934,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             _STANDARD_CALLERS,
             "POST",
             "/knowledge-spaces/{id}/retrieval-tests",
+            "knowledge_space",
+        ),
+        "captureWorkflowFailedRetrieval": KnowledgeFSCapabilityOperation(
+            "queries.failed_retrieval.capture",
+            _WORKFLOW_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
             "knowledge_space",
         ),
         "getAnswerTrace": KnowledgeFSCapabilityOperation(

@@ -232,6 +232,7 @@ export interface QualityControlRepository {
     readonly actorSubjectId: string;
     readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
+    readonly id?: string | undefined;
     readonly knowledgeSpaceId: string;
     readonly permission?: QualityPermissionBinding | undefined;
     readonly reason: string;

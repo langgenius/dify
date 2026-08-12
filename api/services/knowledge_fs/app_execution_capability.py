@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Literal, Protocol, cast
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
@@ -15,6 +15,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskResponse,
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
+    KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
 from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERATIONS, is_product_operation_ready
 from services.knowledge_fs.product_remote import (
@@ -39,6 +41,17 @@ class KnowledgeResourceRef(BaseModel):
         if not normalized:
             raise ValueError("KnowledgeFS control-space reference is required")
         return normalized
+
+
+class KnowledgeFSWorkflowFailedRetrievalCaptureCapability(Protocol):
+    def capture_workflow_failed_retrieval(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        resource: KnowledgeResourceRef,
+        payload: KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    ) -> KnowledgeFSWorkflowFailedRetrievalCaptureResponse: ...
 
 
 class KnowledgeFSAppExecutionCapabilityService:
@@ -168,5 +181,55 @@ class KnowledgeFSAppExecutionCapabilityService:
         )
         return KnowledgeFSRetrievalTestResponse.model_validate(raw)
 
+    def capture_workflow_failed_retrieval(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        resource: KnowledgeResourceRef,
+        payload: KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    ) -> KnowledgeFSWorkflowFailedRetrievalCaptureResponse:
+        """Capture and classify one empty Workflow retrieval outside the node hot path."""
 
-__all__ = ["KnowledgeFSAppExecutionCapabilityService", "KnowledgeResourceRef"]
+        operation_id = "captureWorkflowFailedRetrieval"
+        operation = KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation_id]
+        expected_path = "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses"
+        if (
+            not is_product_operation_ready(operation_id)
+            or operation.transport != "json"
+            or operation.kfs_path != expected_path
+        ):
+            raise KnowledgeFSOperationUnavailableError("KnowledgeFS Workflow failed-retrieval capture is unavailable")
+        # Use a fresh transport trace for each task attempt. ``event_id`` remains the durable,
+        # retry-safe business idempotency key owned by KnowledgeFS.
+        issued = self.issue(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            control_space_id=resource.control_space_id,
+            caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            operation_id=operation_id,
+        )
+        remote_payload = cast(
+            dict[str, JsonValue],
+            payload.model_dump(mode="json", exclude_none=True, by_alias=True),
+        )
+        raw = self._remote.execute_json(
+            KnowledgeFSRemoteJSONRequest(
+                operation_id=operation_id,
+                method=operation.method,
+                path=expected_path.replace("{id}", issued.knowledge_space_id),
+                namespace_id=tenant_id,
+                knowledge_space_id=issued.knowledge_space_id,
+                capability_token=issued.token,
+                trace_id=issued.trace_id,
+                payload=remote_payload,
+            )
+        )
+        return KnowledgeFSWorkflowFailedRetrievalCaptureResponse.model_validate(raw)
+
+
+__all__ = [
+    "KnowledgeFSAppExecutionCapabilityService",
+    "KnowledgeFSWorkflowFailedRetrievalCaptureCapability",
+    "KnowledgeResourceRef",
+]

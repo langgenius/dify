@@ -125,6 +125,7 @@ import type { TidbFtsPostingBackfillService } from "./tidb-fts-posting-backfill-
 import type { TraceRecorder } from "./tracing";
 import type { UploadSessionService } from "./upload-session";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
+import type { WorkflowFailedRetrievalTriage } from "./workflow-failed-retrieval";
 
 export type GatewayReadinessCheck = () => Promise<boolean> | boolean;
 export type GatewayReadinessChecks = Readonly<Record<string, GatewayReadinessCheck>>;
@@ -363,4 +364,5 @@ export interface KnowledgeGatewayOptions {
   visualEmbeddingModel?: string;
   visualEmbeddingProvider?: VisualEmbeddingProvider;
   websiteCrawlConnector?: WebsiteCrawlConnector;
+  workflowFailedRetrievalTriage?: WorkflowFailedRetrievalTriage;
 }

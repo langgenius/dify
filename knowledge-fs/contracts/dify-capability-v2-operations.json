@@ -177,6 +177,20 @@
       "resourceType": "job"
     },
     {
+      "action": "queries.failed_retrieval.capture",
+      "allowedCallerKinds": [
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "captureWorkflowFailedRetrieval",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_fs.cat",
       "allowedCallerKinds": [
         "interactive",

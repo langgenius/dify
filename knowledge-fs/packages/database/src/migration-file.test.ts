@@ -142,7 +142,33 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0040_knowledge_space_metadata.tidb.sql",
       "packages/database/migrations/0041_logical_document_availability.postgres.sql",
       "packages/database/migrations/0041_logical_document_availability.tidb.sql",
+      "packages/database/migrations/0042_workflow_failed_retrieval_capture.postgres.sql",
+      "packages/database/migrations/0042_workflow_failed_retrieval_capture.tidb.sql",
     ]);
+    const workflowCapturePostgres = artifacts.find(
+      (artifact) =>
+        artifact.path ===
+        "packages/database/migrations/0042_workflow_failed_retrieval_capture.postgres.sql",
+    );
+    const workflowCaptureTidb = artifacts.find(
+      (artifact) =>
+        artifact.path ===
+        "packages/database/migrations/0042_workflow_failed_retrieval_capture.tidb.sql",
+    );
+    expect(workflowCapturePostgres?.content).toContain('"access_channel" IS NOT NULL');
+    expect(workflowCapturePostgres?.content).toContain(
+      'CONSTRAINT "failed_queries_capability_grant_fk"',
+    );
+    expect(workflowCapturePostgres?.content).toContain(
+      'CREATE INDEX IF NOT EXISTS "failed_queries_capability_grant_idx"',
+    );
+    expect(workflowCaptureTidb?.content).toContain("`permission_binding_complete` TINYINT");
+    expect(workflowCaptureTidb?.content).toContain(
+      "CONSTRAINT `failed_queries_capability_grant_fk`",
+    );
+    expect(workflowCaptureTidb?.content).toContain(
+      "CREATE INDEX IF NOT EXISTS `failed_queries_capability_grant_idx`",
+    );
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
     expect(artifacts[2]?.content).not.toContain("vector_cosine_ops");
@@ -865,6 +891,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0039_document_semantic_enrichment.postgres.sql",
       "packages/database/migrations/0040_knowledge_space_metadata.postgres.sql",
       "packages/database/migrations/0041_logical_document_availability.postgres.sql",
+      "packages/database/migrations/0042_workflow_failed_retrieval_capture.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -910,6 +937,7 @@ describe("migration file rendering", () => {
           "0039_document_semantic_enrichment",
           "0040_knowledge_space_metadata",
           "0041_logical_document_availability",
+          "0042_workflow_failed_retrieval_capture",
         ],
         dialect: "postgres",
       }),

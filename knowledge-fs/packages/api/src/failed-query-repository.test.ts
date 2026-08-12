@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   FailedQueryCapacityExceededError,
   FailedQueryPromotionConflictError,
+  FailedQueryWorkflowReplayConflictError,
   createDatabaseFailedQueryRepository,
   createInMemoryFailedQueryRepository,
 } from "./failed-query-repository";
@@ -463,6 +464,138 @@ describe("createInMemoryFailedQueryRepository", () => {
 });
 
 describe("createDatabaseFailedQueryRepository", () => {
+  it("persists workflow Capability provenance and reuses an exact event across fresh grants", async () => {
+    const eventId = "10000000-0000-4000-8000-000000000077";
+    const traceGrantId = "10000000-0000-4000-8000-000000000078";
+    const retryGrantId = "10000000-0000-4000-8000-000000000079";
+    let durable: Record<string, unknown> | undefined;
+    const calls: DatabaseExecuteInput[] = [];
+    const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+      calls.push(input);
+      if (input.tableName === "knowledge_spaces") {
+        return {
+          rows: [{ deletion_job_id: null, id: SPACE_A, lifecycle_state: "active" }],
+          rowsAffected: 1,
+        };
+      }
+      if (input.tableName === "capability_grants") {
+        return {
+          rows: [
+            {
+              action: "queries.failed_retrieval.capture",
+              content_scope_ids: [...CANDIDATE_GRANTS],
+              resource_id: SPACE_A,
+              resource_parent_id: null,
+              resource_type: "knowledge_space",
+              space_tombstoned: false,
+              subject_id: "dify-app:workflow-app",
+            },
+          ],
+          rowsAffected: 1,
+        };
+      }
+      if (input.tableName === "failed_queries" && input.operation === "select") {
+        return { rows: durable ? [durable] : [], rowsAffected: durable ? 1 : 0 };
+      }
+      if (input.tableName === "failed_queries" && input.operation === "insert") {
+        durable = {
+          access_channel: null,
+          answer_trace_id: eventId,
+          capability_grant_id: traceGrantId,
+          created_at: "2026-08-12T00:00:00.000Z",
+          id: eventId,
+          knowledge_space_id: SPACE_A,
+          metadata: {
+            source: "workflow",
+            workflowCapture: {
+              actorSubjectId: "dify-app:workflow-app",
+              eventId,
+              retrievalTraceId: "retrieval-trace-1",
+            },
+          },
+          mode: "deep",
+          permission_snapshot_id: null,
+          permission_snapshot_revision: null,
+          query: "发票号码在哪里？",
+          requested_by_subject_id: null,
+          required_permission_scope: [...CANDIDATE_GRANTS],
+          revision: 1,
+          status: "pending-triage",
+          tenant_id: TENANT_ID,
+          trigger: "no-retrieval-evidence",
+          updated_at: "2026-08-12T00:00:00.000Z",
+        };
+        return { rows: [durable], rowsAffected: 1 };
+      }
+      if (input.tableName === "failed_queries" && input.operation === "update") {
+        durable = {
+          ...durable,
+          metadata: JSON.parse(String(input.params[1])) as unknown,
+          revision: 2,
+          status: input.params[0],
+          updated_at: input.params[2],
+        };
+        return { rows: [], rowsAffected: 1 };
+      }
+      return { rows: [], rowsAffected: 0 };
+    };
+    const database = createSchemaDatabaseAdapter({
+      executor,
+      kind: "postgres",
+      transaction: async (callback) => callback({ execute: executor }),
+    });
+    const repository = createDatabaseFailedQueryRepository({
+      database,
+      now: () => "2026-08-12T00:00:00.000Z",
+    });
+    const capture = (capabilityGrantId: string, query = "发票号码在哪里？") =>
+      repository.captureWorkflowFailedRetrieval({
+        actorSubjectId: "dify-app:workflow-app",
+        answerTraceId: eventId,
+        candidateGrants: CANDIDATE_GRANTS,
+        capabilityGrantId,
+        id: eventId,
+        knowledgeSpaceId: SPACE_A,
+        mode: "deep",
+        query,
+        retrievalTraceId: "retrieval-trace-1",
+        subjectId: "dify-app:workflow-app",
+        tenantId: TENANT_ID,
+        traceCapabilityGrantId: traceGrantId,
+      });
+
+    await expect(capture(traceGrantId)).resolves.toMatchObject({ id: eventId });
+    await expect(capture(retryGrantId)).resolves.toMatchObject({ id: eventId });
+    await expect(capture(retryGrantId, "different payload")).rejects.toBeInstanceOf(
+      FailedQueryWorkflowReplayConflictError,
+    );
+    const insert = calls.find(
+      (call) => call.tableName === "failed_queries" && call.operation === "insert",
+    );
+    expect(insert?.params).toContain(traceGrantId);
+    expect(insert?.params).toContain(JSON.stringify(CANDIDATE_GRANTS));
+    expect(insert?.sql).toContain("capability_grant_id");
+    expect(calls.filter((call) => call.tableName === "capability_grants")).toHaveLength(3);
+
+    const triageInput = {
+      actorSubjectId: "dify-app:workflow-app",
+      candidateGrants: CANDIDATE_GRANTS,
+      capabilityGrantId: retryGrantId,
+      id: eventId,
+      knowledgeSpaceId: SPACE_A,
+      subjectId: "dify-app:workflow-app",
+      tenantId: TENANT_ID,
+      triagedAt: "2026-08-12T00:01:00.000Z",
+      verdict: "retrieval-miss" as const,
+    };
+    await expect(
+      repository.completeWorkflowFailedRetrievalTriage(triageInput),
+    ).resolves.toMatchObject({ status: "pending-annotation" });
+    await expect(
+      repository.completeWorkflowFailedRetrievalTriage(triageInput),
+    ).resolves.toMatchObject({ status: "pending-annotation" });
+  });
+
   it.each(["postgres", "tidb"] as const)(
     "applies tenant, exact subject, complete provenance and candidate ACL before LIMIT/GROUP BY on %s",
     async (kind) => {
@@ -550,7 +683,8 @@ describe("createDatabaseFailedQueryRepository", () => {
     expect(insert?.sql).toContain("permission_snapshot_revision");
     expect(insert?.params).toContain("no-retrieval-evidence");
     expect(insert?.params).toContain("pending-triage");
-    expect(insert?.params.slice(9, 15)).toEqual([
+    expect(insert?.params.slice(9, 16)).toEqual([
+      null,
       SUBJECT_ID,
       "interactive",
       permissionBinding().permissionSnapshotId,

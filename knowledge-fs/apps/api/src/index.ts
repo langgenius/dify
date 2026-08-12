@@ -80,7 +80,11 @@ import { createApiDocumentParser } from "./parser-options";
 import { createApiQueryImageExpansionProvider } from "./query-image-expansion-options";
 import { createApiQueryImageResolver } from "./query-image-options";
 import { createApiDeploymentReadinessChecks } from "./readiness-options";
-import { createApiRelevanceTriageOptions } from "./relevance-triage-signals";
+import {
+  createApiRelevanceTriageOptions,
+  createApiTriageCorpusLoader,
+  createApiWorkflowFailedRetrievalTriage,
+} from "./relevance-triage-signals";
 import {
   assertApiAgentWorkspaceSnapshotDurability,
   assertApiKnowledgeFsDurability,
@@ -435,6 +439,20 @@ const relevanceTriageOptions = createApiRelevanceTriageOptions({
     ? { documentOutlines: repositoryOptions.documentOutlines }
     : {}),
   ...(repositoryOptions.graphIndex ? { graphIndex: repositoryOptions.graphIndex } : {}),
+});
+const workflowFailedRetrievalTriage = createApiWorkflowFailedRetrievalTriage({
+  loadCorpus: createApiTriageCorpusLoader({
+    ...(repositoryOptions.documentAssets
+      ? { documentAssets: repositoryOptions.documentAssets }
+      : {}),
+    ...(repositoryOptions.documentOutlines
+      ? { documentOutlines: repositoryOptions.documentOutlines }
+      : {}),
+    ...(repositoryOptions.graphIndex ? { graphIndex: repositoryOptions.graphIndex } : {}),
+  }),
+  manifests: knowledgeSpaceManifests,
+  maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 32),
+  providerFactory: profileReasoningCapability.providerFactory,
 });
 const publishedPageIndex =
   repositoryOptions.projectionSetPublications && repositoryOptions.projectionSetPublicationMembers
@@ -1008,6 +1026,7 @@ const app = createKnowledgeGateway({
   ...onlineDriveOptions,
   ...sourceCredentialTesterOptions,
   ...relevanceTriageOptions,
+  workflowFailedRetrievalTriage,
   ...(tracingOptions ?? {}),
 });
 

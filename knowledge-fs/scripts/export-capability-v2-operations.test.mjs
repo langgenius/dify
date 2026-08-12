@@ -20,7 +20,22 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 113);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 114);
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "captureWorkflowFailedRetrieval",
+      ),
+      {
+        action: "queries.failed_retrieval.capture",
+        allowedCallerKinds: ["workflow"],
+        method: "POST",
+        operationId: "captureWorkflowFailedRetrieval",
+        parentResourceBinding: null,
+        path: "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+        resourceBinding: { pathParameter: "id" },
+        resourceType: "knowledge_space",
+      },
+    );
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "createSourceCrawlImportWorkflow",

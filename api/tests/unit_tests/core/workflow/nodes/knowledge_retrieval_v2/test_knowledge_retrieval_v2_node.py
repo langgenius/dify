@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.nodes.knowledge_retrieval_v2 import knowledge_retrieval_v2_node as node_module
 from core.workflow.nodes.knowledge_retrieval_v2.entities import KnowledgeRetrievalV2NodeData
 from core.workflow.nodes.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from core.workflow.system_variables import build_system_variables
@@ -48,6 +49,17 @@ def _response(*, mode: str, score: float, space: str, text: str) -> KnowledgeFSR
                 }
             ],
             "metrics": {"degradationFlags": [f"degraded-{space}"], "totalMs": 12},
+            "mode": mode,
+            "traceId": f"trace-{space}",
+        }
+    )
+
+
+def _empty_response(*, mode: str, space: str) -> KnowledgeFSRetrievalTestResponse:
+    return KnowledgeFSRetrievalTestResponse.model_validate(
+        {
+            "items": [],
+            "metrics": {"degradationFlags": [], "totalMs": 4},
             "mode": mode,
             "traceId": f"trace-{space}",
         }
@@ -251,24 +263,88 @@ def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics(
     )
 
 
-def test_empty_retrieval_is_a_successful_bounded_result() -> None:
-    response = KnowledgeFSRetrievalTestResponse.model_validate(
-        {
-            "items": [],
-            "metrics": {"degradationFlags": [], "totalMs": 4},
-            "mode": "fast",
-            "traceId": "trace-empty",
-        }
+def test_empty_retrieval_is_successful_and_dispatches_quality_capture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        node_module,
+        "enqueue_workflow_failed_retrieval_capture",
+        lambda **kwargs: dispatched.append(kwargs),
     )
 
     result = _node(
-        service=RecordingCapabilityService({"space-a": response}),
+        service=RecordingCapabilityService({"space-a": _empty_response(mode="fast", space="empty")}),
         spaces=["space-a"],
     )._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["result"].value == []
     assert result.outputs["metrics"].value["candidate_counts"] == {"space-a": 0}
+    assert dispatched == [
+        {
+            "tenant_id": "tenant-1",
+            "app_id": "app-1",
+            "control_space_id": "space-a",
+            "query": "camera",
+            "mode": "fast",
+            "retrieval_trace_id": "trace-empty",
+        }
+    ]
+
+
+def test_quality_capture_runs_per_space_only_when_the_merged_result_is_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        node_module,
+        "enqueue_workflow_failed_retrieval_capture",
+        lambda **kwargs: dispatched.append(kwargs),
+    )
+    partial_result = _node(
+        service=RecordingCapabilityService(
+            {
+                "space-a": _empty_response(mode="fast", space="a"),
+                "space-b": _response(mode="fast", score=0.8, space="b", text="evidence"),
+            }
+        ),
+        spaces=["space-a", "space-b"],
+    )._run()
+
+    assert partial_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert dispatched == []
+
+    empty_result = _node(
+        service=RecordingCapabilityService(
+            {
+                "space-a": _empty_response(mode="fast", space="a"),
+                "space-b": _empty_response(mode="deep", space="b"),
+            }
+        ),
+        spaces=["space-a", "space-b"],
+    )._run()
+
+    assert empty_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [call["control_space_id"] for call in dispatched] == ["space-a", "space-b"]
+    assert [call["retrieval_trace_id"] for call in dispatched] == ["trace-a", "trace-b"]
+
+
+def test_quality_capture_dispatch_failure_never_fails_an_empty_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_dispatch(**_kwargs: object) -> None:
+        raise RuntimeError("broker unavailable")
+
+    monkeypatch.setattr(node_module, "enqueue_workflow_failed_retrieval_capture", fail_dispatch)
+
+    result = _node(
+        service=RecordingCapabilityService({"space-a": _empty_response(mode="fast", space="a")}),
+        spaces=["space-a"],
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["result"].value == []
 
 
 def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> None:

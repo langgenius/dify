@@ -17,6 +17,7 @@ from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapa
 from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSRetrievalTestPayload,
+    KnowledgeFSWorkflowFailedRetrievalCapturePayload,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSOperationUnavailableError, KnowledgeFSRemoteJSONRequest
 
@@ -53,6 +54,12 @@ class Remote:
 
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest) -> dict[str, object]:
         self.calls.append(request)
+        if request.operation_id == "captureWorkflowFailedRetrieval":
+            return {
+                "failedQueryId": "019fac9f-bfb0-75ee-9af5-252ebafbac1c",
+                "verdict": "retrieval-miss",
+                "badCaseId": "019fac9f-bfb0-75ee-9af5-252ebafbac1d",
+            }
         if request.operation_id == "retrieveEvidence":
             return {
                 "items": [
@@ -315,5 +322,66 @@ def test_run_retrieval_issues_read_capability_and_calls_bounded_product_operatio
             capability_token="token",
             trace_id="trace-1",
             payload={"includeText": True, "mode": "fast", "query": "camera"},
+        )
+    ]
+
+
+def test_capture_workflow_failed_retrieval_uses_fresh_transport_trace_and_business_event_id() -> None:
+    admission = Admission()
+    broker = Broker()
+    remote = Remote()
+    service = KnowledgeFSAppExecutionCapabilityService(  # type: ignore[arg-type]
+        admission=admission,
+        broker=broker,
+        remote=remote,
+    )
+
+    result = service.capture_workflow_failed_retrieval(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        resource=KnowledgeResourceRef(kind="knowledge_fs", control_space_id="control-1"),
+        payload=KnowledgeFSWorkflowFailedRetrievalCapturePayload(
+            event_id="019fac9f-bfb0-75ee-9af5-252ebafbac1e",
+            query="  missing answer  ",
+            mode="fast",
+            retrieval_trace_id=" trace-retrieval-1 ",
+        ),
+    )
+
+    assert str(result.failed_query_id) == "019fac9f-bfb0-75ee-9af5-252ebafbac1c"
+    assert result.verdict == "retrieval-miss"
+    assert str(result.bad_case_id) == "019fac9f-bfb0-75ee-9af5-252ebafbac1d"
+    assert admission.calls == [
+        {
+            "tenant_id": "tenant-1",
+            "app_id": "app-1",
+            "control_space_id": "control-1",
+            "caller_kind": KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            "operation_id": "captureWorkflowFailedRetrieval",
+        }
+    ]
+    assert broker.calls == [
+        {
+            "profile": admission.profile,
+            "operation_id": "captureWorkflowFailedRetrieval",
+            "resource_id": None,
+            "trace_id": None,
+        }
+    ]
+    assert remote.calls == [
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="captureWorkflowFailedRetrieval",
+            method="POST",
+            path="/knowledge-spaces/space-1/failed-queries/workflow-retrieval-misses",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="token",
+            trace_id="trace-1",
+            payload={
+                "eventId": "019fac9f-bfb0-75ee-9af5-252ebafbac1e",
+                "query": "missing answer",
+                "mode": "fast",
+                "retrievalTraceId": "trace-retrieval-1",
+            },
         )
     ]

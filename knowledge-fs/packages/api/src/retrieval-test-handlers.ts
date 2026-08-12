@@ -46,6 +46,7 @@ export function registerRetrievalTestHandlers({
     }
 
     const permissionScope = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId,
       subject,

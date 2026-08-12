@@ -263,6 +263,11 @@ describe("Dify Capability v2 request guard", () => {
         "/knowledge-spaces/{id}/retrieval-tests",
         "queries.retrieval_test",
       ],
+      captureWorkflowFailedRetrieval: [
+        "POST",
+        "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+        "queries.failed_retrieval.capture",
+      ],
       listKnowledgeSpaceResearchTasks: [
         "GET",
         "/knowledge-spaces/{id}/research-tasks",
@@ -297,6 +302,9 @@ describe("Dify Capability v2 request guard", () => {
         resourceType: "knowledge_space",
       });
     }
+    expect(operations.get("captureWorkflowFailedRetrieval")?.allowedCallerKinds).toEqual([
+      "workflow",
+    ]);
   });
 
   it("registers advanced Document, Source, Research, and Trace operations exactly", () => {

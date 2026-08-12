@@ -41,6 +41,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRequestRejectedError,
 )
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+from tasks.knowledge_fs_failed_retrieval_tasks import enqueue_workflow_failed_retrieval_capture
 
 from .entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE, KnowledgeRetrievalV2NodeData
 from .exc import (
@@ -119,6 +120,12 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             self._ensure_draft_bindings(run_context)
             responses = self._retrieve_all_spaces(run_context=run_context, query=query)
             result_items = self._merge_items(responses)
+            if not result_items:
+                self._enqueue_failed_retrieval_captures(
+                    run_context=run_context,
+                    query=query,
+                    responses=responses,
+                )
             metrics = self._aggregate_metrics(responses, started_at=started_at)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -269,6 +276,39 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             self._output_item(control_space_id=control_space_id, item=item)
             for _, _, _, control_space_id, item in candidates[: self._node_data.top_n]
         ]
+
+    @staticmethod
+    def _enqueue_failed_retrieval_captures(
+        *,
+        run_context: DifyRunContext,
+        query: str,
+        responses: Sequence[tuple[str, KnowledgeFSRetrievalTestResponse]],
+    ) -> None:
+        """Best-effort quality capture after every selected space returned no evidence."""
+
+        for control_space_id, response in responses:
+            try:
+                enqueue_workflow_failed_retrieval_capture(
+                    tenant_id=run_context.tenant_id,
+                    app_id=run_context.app_id,
+                    control_space_id=control_space_id,
+                    query=query,
+                    mode=response.mode,
+                    retrieval_trace_id=response.trace_id,
+                )
+            except Exception:
+                # The helper owns broker failures in production. Keep a second boundary here so a
+                # custom/instrumented dispatcher can never turn a successful empty retrieval into
+                # a failed Workflow node.
+                logger.exception(
+                    "KnowledgeFS empty-retrieval quality capture dispatch failed",
+                    extra={
+                        "app_id": run_context.app_id,
+                        "control_space_id": control_space_id,
+                        "retrieval_trace_id": response.trace_id,
+                        "tenant_id": run_context.tenant_id,
+                    },
+                )
 
     @staticmethod
     def _output_item(

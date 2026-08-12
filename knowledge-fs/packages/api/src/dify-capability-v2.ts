@@ -1307,6 +1307,15 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "knowledge_space",
   },
   {
+    action: "queries.failed_retrieval.capture",
+    allowedCallerKinds: ["workflow"],
+    method: "POST",
+    operationId: "captureWorkflowFailedRetrieval",
+    pathTemplate: "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
+    resource: { pathParameter: "id" },
+    resourceType: "knowledge_space",
+  },
+  {
     action: "queries.read",
     allowedCallerKinds: STANDARD_CALLERS,
     method: "GET",

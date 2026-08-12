@@ -59,6 +59,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSUploadPartPresignPayload,
     KnowledgeFSUploadSessionCompletePayload,
     KnowledgeFSUploadSessionCreatePayload,
+    KnowledgeFSWorkflowFailedRetrievalCapturePayload,
+    KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
 
 
@@ -94,6 +96,46 @@ def test_settings_response_serializes_rerank_plugin_id_with_its_public_alias() -
         "pluginId": "langgenius/jina",
         "provider": "jina",
     }
+
+
+def test_workflow_failed_retrieval_capture_dto_is_bounded_and_alias_safe() -> None:
+    payload = KnowledgeFSWorkflowFailedRetrievalCapturePayload.model_validate(
+        {
+            "eventId": "019fac9f-bfb0-75ee-9af5-252ebafbac1e",
+            "query": "  missing answer  ",
+            "mode": "deep",
+            "retrievalTraceId": "trace-1",
+        }
+    )
+
+    assert payload.model_dump(mode="json", by_alias=True) == {
+        "eventId": "019fac9f-bfb0-75ee-9af5-252ebafbac1e",
+        "query": "missing answer",
+        "mode": "deep",
+        "retrievalTraceId": "trace-1",
+    }
+    response = KnowledgeFSWorkflowFailedRetrievalCaptureResponse.model_validate(
+        {
+            "failedQueryId": "019fac9f-bfb0-75ee-9af5-252ebafbac1c",
+            "verdict": "coverage-gap",
+        }
+    )
+    assert response.verdict == "coverage-gap"
+    assert response.bad_case_id is None
+
+    unicode_trace = KnowledgeFSWorkflowFailedRetrievalCapturePayload.model_validate(
+        {**payload.model_dump(mode="json", by_alias=True), "retrievalTraceId": "追踪-" + "x" * 509}
+    )
+    assert len(unicode_trace.retrieval_trace_id) == 512
+
+    for invalid in (
+        {**payload.model_dump(mode="json", by_alias=True), "eventId": "not-a-uuid"},
+        {**payload.model_dump(mode="json", by_alias=True), "query": "   "},
+        {**payload.model_dump(mode="json", by_alias=True), "mode": "auto"},
+        {**payload.model_dump(mode="json", by_alias=True), "retrievalTraceId": "x" * 513},
+    ):
+        with pytest.raises(ValidationError):
+            KnowledgeFSWorkflowFailedRetrievalCapturePayload.model_validate(invalid)
 
 
 def test_public_failure_accepts_only_allowlisted_bounded_parameters() -> None:

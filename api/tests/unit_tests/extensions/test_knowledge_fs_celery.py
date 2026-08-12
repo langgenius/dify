@@ -53,6 +53,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
 
     assert "tasks.knowledge_fs_initial_source_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_initial_source_preview_tasks" in celery_app.conf["imports"]
+    assert "tasks.knowledge_fs_failed_retrieval_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" in celery_app.conf["imports"]
     assert celery_app.conf["beat_schedule"]["knowledge_fs_staged_upload_cleanup"] == {
         "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
@@ -69,5 +70,6 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
         preview_only_app = init_app(DifyApp(f"{__name__}.preview_only"))
 
     assert "tasks.knowledge_fs_initial_source_preview_tasks" in preview_only_app.conf["imports"]
+    assert "tasks.knowledge_fs_failed_retrieval_tasks" in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_initial_source_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" not in preview_only_app.conf["imports"]

@@ -190,6 +190,9 @@ export * from "./failed-query-handlers";
 export * from "./failed-query-recorder";
 export * from "./failed-query-repository";
 export * from "./failed-query-routes";
+export * from "./workflow-failed-retrieval";
+export * from "./workflow-failed-retrieval-handlers";
+export * from "./workflow-failed-retrieval-routes";
 export * from "./final-rerank-retrieval";
 export * from "./freshness-checking";
 export * from "./gateway-app";
@@ -641,6 +644,8 @@ import { type StorageQuotaRepository, createStaticStorageQuotaRepository } from 
 import { registerTidbFtsPostingBackfillHandlers } from "./tidb-fts-posting-backfill-handlers";
 import { type TraceRecorder, createNoopTraceRecorder } from "./tracing";
 import { registerUploadSessionHandlers } from "./upload-session-handlers";
+import { createWorkflowFailedRetrievalCaptureService } from "./workflow-failed-retrieval";
+import { registerWorkflowFailedRetrievalHandlers } from "./workflow-failed-retrieval-handlers";
 
 import type { ComputeRuntime } from "@knowledge/compute";
 import {
@@ -832,6 +837,7 @@ export function createKnowledgeGateway({
   visualEmbeddingModel,
   visualEmbeddingProvider,
   websiteCrawlConnector,
+  workflowFailedRetrievalTriage,
 }: KnowledgeGatewayOptions) {
   if (allowLocalQueryFallback && process.env.NODE_ENV === "production") {
     throw new Error("Local query fallback is forbidden in production");
@@ -1031,6 +1037,15 @@ export function createKnowledgeGateway({
   const failedQueryRecorder = createFailedQueryRecorder({
     repository: failedQueryRepository,
   });
+  const workflowFailedRetrievalCapture = workflowFailedRetrievalTriage
+    ? createWorkflowFailedRetrievalCaptureService({
+        answerTraceRecorder,
+        answerTraces: answerTraceRepository,
+        failedQueries: failedQueryRepository,
+        ...(qualityControl?.repository ? { qualityControl: qualityControl.repository } : {}),
+        triage: workflowFailedRetrievalTriage,
+      })
+    : undefined;
   const failedQueryTriageRunner = relevanceTriageSignals
     ? createFailedQueryTriageRunner({
         failedQueries: failedQueryRepository,
@@ -1877,6 +1892,12 @@ export function createKnowledgeGateway({
     ...(failedQueryTriageRunner ? { failedQueryTriageRunner } : {}),
     now,
     nodes,
+    spaces,
+  });
+
+  registerWorkflowFailedRetrievalHandlers({
+    app,
+    ...(workflowFailedRetrievalCapture ? { service: workflowFailedRetrievalCapture } : {}),
     spaces,
   });
 
