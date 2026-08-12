@@ -5494,11 +5494,6 @@
       "count": 1
     }
   },
-  "web/app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signin/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1

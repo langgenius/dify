@@ -62,7 +62,10 @@ export function proxy(request: NextRequest) {
     return wrapResponseWithFrameProtection(response, pathname)
   }
 
-  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
+  const turnstileOrigin = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    ? ' https://challenges.cloudflare.com'
+    : ''
+  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
