@@ -231,45 +231,29 @@ def test_safety_margin_bounds_cache_lifetime(
         assert cache.set_calls[0][2] == expected_ttl
 
 
-def test_cache_identity_uses_all_credentials_without_raw_material(monkeypatch: pytest.MonkeyPatch) -> None:
-    credential_sets = [
+def test_cache_identity_uses_only_client_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    credential_sets = (
         _credentials(),
         _credentials(corp_id="sanitized-other-corp"),
-        _credentials(client_id="sanitized-other-client"),
         _credentials(client_secret="sanitized-other-secret"),
-    ]
-    clients = iter(_FakeOAuthClient(_token_response()) for _ in credential_sets)
-    monkeypatch.setattr(dingtalk_redis, "_new_oauth_client", lambda: next(clients))
-    cache = _FakeCache()
+        _credentials(client_id="sanitized-other-client"),
+    )
+    cache_keys: list[str] = []
 
     for credentials in credential_sets:
-        provider = dingtalk_redis.RedisCacheAccessTokenProvider(credentials, cache)
+        cache = _FakeCache()
+        provider, _client = _provider(
+            monkeypatch,
+            cache,
+            _token_response(),
+            credentials=credentials,
+        )
+
         assert provider.get() == "sanitized-fresh-token"
+        cache_keys.append(cache.get_calls[0])
 
-    keys = [name for name, _value, _ttl in cache.set_calls]
-    assert len(set(keys)) == len(credential_sets)
-    for key in keys:
-        for credentials in credential_sets:
-            for sensitive_value in credentials.model_dump().values():
-                assert str(sensitive_value) not in key
-
-
-def test_cache_identity_frames_credential_parts_without_concatenation_ambiguity() -> None:
-    first = _credentials(
-        corp_id="sanitized-alpha",
-        client_id="sanitized-beta-X",
-        client_secret="sanitized-gamma",
-    )
-    second = _credentials(
-        corp_id="sanitized-alphasanitized-beta",
-        client_id="-X",
-        client_secret="sanitized-gamma",
-    )
-
-    assert "".join((first.corp_id, first.client_id, first.client_secret)) == "".join(
-        (second.corp_id, second.client_id, second.client_secret)
-    )
-    assert dingtalk_redis._cache_key(first) != dingtalk_redis._cache_key(second)
+    assert cache_keys[0] == cache_keys[1] == cache_keys[2]
+    assert cache_keys[0] != cache_keys[3]
 
 
 @pytest.mark.parametrize("failure_operation", ["get", "ttl"])

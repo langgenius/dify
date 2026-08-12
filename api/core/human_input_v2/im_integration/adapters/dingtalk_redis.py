@@ -38,7 +38,7 @@ class RedisCacheAccessTokenProvider:
         self._credentials = credentials
         self._cache = cache
         self._client: _OAuthClient = _new_oauth_client()
-        self._cache_key = _cache_key(credentials)
+        self._cache_key = _cache_key(credentials.client_id)
 
     def get(self) -> str:
         cached_token = self._read_cached_token()
@@ -73,13 +73,9 @@ class RedisCacheAccessTokenProvider:
         return None
 
 
-def _cache_key(credentials: DingTalkIMIntegrationCredentials) -> str:
-    digest = hashlib.sha256()
-    for identity_part in (credentials.corp_id, credentials.client_id, credentials.client_secret):
-        encoded_part = identity_part.encode()
-        digest.update(len(encoded_part).to_bytes(8, byteorder="big"))
-        digest.update(encoded_part)
-    return f"{_CACHE_KEY_PREFIX}{digest.hexdigest()}"
+def _cache_key(client_id: str) -> str:
+    digest = hashlib.sha256(client_id.encode()).hexdigest()
+    return f"{_CACHE_KEY_PREFIX}{digest}"
 
 
 def _decode_cached_token(value: object) -> str | None:

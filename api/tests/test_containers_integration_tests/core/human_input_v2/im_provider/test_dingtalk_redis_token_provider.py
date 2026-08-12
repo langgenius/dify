@@ -31,7 +31,7 @@ def _token_response(token: str, *, expires_in: int = 180) -> GetTokenResponse:
     )
 
 
-def test_real_redis_reuses_tokens_across_instances_and_isolates_secret_changes(
+def test_real_redis_reuses_tokens_for_the_same_client_id(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     redis_url = os.getenv("REDIS_URL")
@@ -46,10 +46,10 @@ def test_real_redis_reuses_tokens_across_instances_and_isolates_secret_changes(
         client_secret=f"fake-secret-{identity}",
     )
     changed_credentials = credentials.model_copy(update={"client_secret": f"fake-changed-secret-{identity}"})
-    short_lived_credentials = credentials.model_copy(update={"client_secret": f"fake-short-secret-{identity}"})
+    short_lived_credentials = credentials.model_copy(update={"client_id": f"fake-short-client-{identity}"})
     first_client = _FakeOAuthClient(_token_response("fake-fresh-token-primary"))
     cached_client = _FakeOAuthClient()
-    changed_client = _FakeOAuthClient(_token_response("fake-fresh-token-changed"))
+    changed_client = _FakeOAuthClient()
     text_cached_client = _FakeOAuthClient()
     malformed_client = _FakeOAuthClient(_token_response("fake-recovered-token-malformed"))
     persistent_client = _FakeOAuthClient(_token_response("fake-recovered-token-persistent"))
@@ -68,9 +68,9 @@ def test_real_redis_reuses_tokens_across_instances_and_isolates_secret_changes(
     monkeypatch.setattr(dingtalk_redis, "_new_oauth_client", lambda: next(clients))
     cache = Redis.from_url(redis_url, decode_responses=False)
     text_cache = Redis.from_url(redis_url, decode_responses=True)
-    primary_key = dingtalk_redis._cache_key(credentials)
-    changed_key = dingtalk_redis._cache_key(changed_credentials)
-    short_lived_key = dingtalk_redis._cache_key(short_lived_credentials)
+    primary_key = dingtalk_redis._cache_key(credentials.client_id)
+    changed_key = dingtalk_redis._cache_key(changed_credentials.client_id)
+    short_lived_key = dingtalk_redis._cache_key(short_lived_credentials.client_id)
 
     try:
         first_provider = dingtalk_redis.RedisCacheAccessTokenProvider(credentials, cache)
@@ -83,10 +83,10 @@ def test_real_redis_reuses_tokens_across_instances_and_isolates_secret_changes(
         assert cached_provider.get() == "fake-fresh-token-primary"
         assert cached_client.calls == []
 
-        assert changed_provider.get() == "fake-fresh-token-changed"
-        assert len(changed_client.calls) == 1
+        assert changed_provider.get() == "fake-fresh-token-primary"
+        assert changed_client.calls == []
+        assert changed_key == primary_key
         assert cache.get(primary_key) == b"fake-fresh-token-primary"
-        assert cache.get(changed_key) == b"fake-fresh-token-changed"
 
         text_cached_provider = dingtalk_redis.RedisCacheAccessTokenProvider(credentials, text_cache)
         assert text_cached_provider.get() == "fake-fresh-token-primary"
@@ -107,7 +107,7 @@ def test_real_redis_reuses_tokens_across_instances_and_isolates_secret_changes(
         assert len(short_lived_client.calls) == 1
         assert cache.exists(short_lived_key) == 0
     finally:
-        cache.delete(primary_key, changed_key, short_lived_key)
-        assert cache.exists(primary_key, changed_key, short_lived_key) == 0
+        cache.delete(primary_key, short_lived_key)
+        assert cache.exists(primary_key, short_lived_key) == 0
         text_cache.close()
         cache.close()
