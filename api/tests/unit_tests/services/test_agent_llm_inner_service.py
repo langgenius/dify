@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.model_entities import ModelStatus
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from libs.datetime_utils import naive_utc_now
 from models import (
@@ -46,8 +47,9 @@ def _request(*, invocation_id: str | None = None, agent_run_id: str | None = Non
     )
 
 
-def _model_instance() -> MagicMock:
+def _model_instance(*, status: ModelStatus = ModelStatus.ACTIVE) -> MagicMock:
     provider_model = MagicMock()
+    provider_model.status = status
     configuration = MagicMock()
     configuration.get_provider_model.return_value = provider_model
     model_instance = MagicMock()
@@ -61,10 +63,11 @@ def _prepare_with_plan(
     plan: _BillingPlan,
     *,
     session: Session,
+    model_status: ModelStatus = ModelStatus.ACTIVE,
 ) -> None:
     _persist_app(session, request=request)
     manager = MagicMock()
-    manager.get_model_instance.return_value = _model_instance()
+    manager.get_model_instance.return_value = _model_instance(status=model_status)
     with (
         patch("services.agent_llm_inner_service.create_plugin_provider_manager"),
         patch("services.agent_llm_inner_service.ModelManager", return_value=manager),
@@ -214,7 +217,13 @@ def test_insufficient_credits_reject_before_model_invocation(
     )
 
     with pytest.raises(AgentLLMInnerServiceError) as exc_info:
-        _prepare_with_plan(service, request, plan, session=sqlite_session)
+        _prepare_with_plan(
+            service,
+            request,
+            plan,
+            session=sqlite_session,
+            model_status=ModelStatus.QUOTA_EXCEEDED,
+        )
 
     assert exc_info.value.error_code == "agent_llm_quota_exceeded"
     assert exc_info.value.status_code == 429

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory as default_session_factory
+from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance, ModelManager
@@ -94,7 +95,12 @@ class AgentLLMInnerService:
                 f"Model {target.model} does not exist for provider {target.provider}.",
                 status_code=404,
             )
-        provider_model.raise_for_status()
+        # Let the authoritative quota reservation below decide whether the
+        # request can be charged. Provider model status is assembled from a
+        # cached balance and may otherwise turn an exhausted pool into a 400
+        # before we can persist the rejected invocation.
+        if provider_model.status != ModelStatus.QUOTA_EXCEEDED:
+            provider_model.raise_for_status()
 
         plan = self._build_billing_plan(model_instance)
         created = self._create_ledger(request=request, plan=plan)
