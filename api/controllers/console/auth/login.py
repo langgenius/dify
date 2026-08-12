@@ -25,6 +25,8 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    TurnstileServiceUnavailableError,
+    TurnstileVerificationFailedError,
 )
 from controllers.console.error import (
     AccountBannedError,
@@ -42,6 +44,7 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -66,6 +69,11 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.turnstile_service import (
+    TurnstileChallengeRejectedError,
+    TurnstileService,
+    TurnstileUpstreamError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +86,13 @@ class LoginPayload(LoginPayloadBase):
 class EmailPayload(BaseModel):
     email: EmailStr = Field(...)
     language: str | None = Field(default=None)
+
+
+class EmailCodeSendPayload(EmailPayload):
+    turnstile_token: str | None = Field(
+        default=None,
+        description="Cloudflare Turnstile token. Required at runtime for Dify Cloud.",
+    )
 
 
 class EmailCodeLoginPayload(BaseModel):
@@ -95,7 +110,7 @@ class EmailCodeLoginPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
+register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload)
 register_response_schema_models(
     console_ns,
     SimpleResultDataResponse,
@@ -241,15 +256,25 @@ class ResetPasswordSendEmailApi(Resource):
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
-    @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.expect(console_ns.models[EmailCodeSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
-        args = EmailPayload.model_validate(console_ns.payload)
+        args = EmailCodeSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
+
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            try:
+                TurnstileService.verify(token=args.turnstile_token, remote_ip=ip_address)
+            except TurnstileChallengeRejectedError as exc:
+                logger.info("Turnstile rejected an email-code login challenge")
+                raise TurnstileVerificationFailedError() from exc
+            except TurnstileUpstreamError as exc:
+                logger.warning("Turnstile verification is unavailable", exc_info=True)
+                raise TurnstileServiceUnavailableError() from exc
 
         if args.language is not None and args.language == "zh-Hans":
             language = "zh-Hans"
