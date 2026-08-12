@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Propósito y restricciones del parámetro",
   "mcp.server.modal.parametersTip": "Añade descripciones de cada parámetro para ayudar al LLM a entender su propósito y restricciones.",
   "mcp.server.publishTip": "App no publicada. Publícala primero.",
-  "mcp.server.reGen": "¿Regenerar URL del servidor?",
+  "mcp.server.reGen": "¿Regenerar la URL del servidor? La URL actual dejará de funcionar inmediatamente.",
   "mcp.server.title": "Servidor MCP",
   "mcp.server.url": "URL del servidor",
   "mcp.toolItem.noDescription": "Sin descripción",

@@ -83,7 +83,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(loginRedirect.appCode, access_token)
+        setWebAppPassport(loginRedirect.address, access_token)
         replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       } else {
         toast.error(res.data)

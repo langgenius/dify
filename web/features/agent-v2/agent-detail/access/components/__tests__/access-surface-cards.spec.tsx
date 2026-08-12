@@ -511,6 +511,23 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it('should not show the multi-environment settings notice', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
+    })
+
     it('should keep embedded disabled until the backing app id and web app token are available', () => {
       renderWithQueryClient(
         <WebAppAccessCard

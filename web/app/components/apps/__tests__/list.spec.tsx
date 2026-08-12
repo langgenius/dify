@@ -414,18 +414,21 @@ vi.mock('../app-card', () => ({
       }),
     )
   },
-  AppCardActionBar: ({ app }: { app: { id: string } }) => {
-    return React.createElement('button', {
-      'data-testid': `app-card-action-bar-${app.id}`,
-      type: 'button',
-    })
-  },
   default: ({ app }: { app: { id: string; name: string } }) => {
     return React.createElement(
       'div',
       { 'data-testid': `app-card-${app.id}`, role: 'article' },
       app.name,
     )
+  },
+}))
+
+vi.mock('../app-card/action-bar', () => ({
+  AppCardActionBar: ({ app }: { app: { id: string } }) => {
+    return React.createElement('button', {
+      'data-testid': `app-card-action-bar-${app.id}`,
+      type: 'button',
+    })
   },
 }))
 

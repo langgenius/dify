@@ -736,7 +736,11 @@ class Document(Base):
                 select(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
                 .where(
-                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                    DatasetMetadata.tenant_id == self.tenant_id,
+                    DatasetMetadata.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.tenant_id == self.tenant_id,
+                    DatasetMetadataBinding.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.document_id == self.id,
                 )
             ).all()
             metadata_list: list[DocMetadataDetailItem] = []
