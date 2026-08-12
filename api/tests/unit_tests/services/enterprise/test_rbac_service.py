@@ -16,7 +16,6 @@ from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from enums import DeploymentEdition
 from models import TenantAccountJoin
 from services.enterprise import rbac_service as svc
 
@@ -618,10 +617,7 @@ class TestMyPermissions:
             TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole(role))
         )
         sqlite_session.commit()
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
-        ):
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
             out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
 
         mock_send.assert_not_called()
@@ -640,35 +636,7 @@ class TestMyPermissions:
         assert not any(key.startswith("billing.") for key in out.workspace.permission_keys)
         if role == "editor":
             assert "app.acl.log_and_annotation" in out.app.default_permission_keys
-        if role in {"owner", "admin", "editor"}:
-            assert "app.acl.deploy" in out.app.default_permission_keys
-        else:
-            assert "app.acl.deploy" not in out.app.default_permission_keys
-
-    def test_get_excludes_deploy_permission_in_community_edition(
-        self,
-        mock_send: MagicMock,
-        sqlite_session: Session,
-    ):
-        sqlite_session.add(
-            TenantAccountJoin(
-                tenant_id="tenant-1",
-                account_id="acct-1",
-                role=svc.TenantAccountRole.EDITOR,
-            )
-        )
-        sqlite_session.commit()
-
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
-        ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=sqlite_session)
-
-        mock_send.assert_not_called()
-        assert out.app.default_permission_keys == [
-            key for key in svc._LEGACY_APP_EDITOR_KEYS if key != "app.acl.deploy"
-        ]
+        assert "app.acl.deploy" not in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),
@@ -758,10 +726,7 @@ class TestMemberRoles:
         )
         sqlite_session.commit()
 
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
-        ):
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
             out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=sqlite_session)
 
         mock_send.assert_not_called()
@@ -779,24 +744,6 @@ class TestMemberRoles:
         assert "snippets.create_and_modify" in out.roles[0].permission_keys
         assert "app.acl.preview" in out.roles[0].permission_keys
         assert "dataset.acl.preview" in out.roles[0].permission_keys
-
-    def test_get_legacy_role_excludes_deploy_permission_in_community_edition(
-        self,
-        mock_send: MagicMock,
-        sqlite_session: Session,
-    ):
-        sqlite_session.add(
-            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.EDITOR)
-        )
-        sqlite_session.commit()
-
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
-        ):
-            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=sqlite_session)
-
-        mock_send.assert_not_called()
         assert "app.acl.deploy" not in out.roles[0].permission_keys
 
     def test_replace(self, mock_send: MagicMock, sqlite_session: Session):
@@ -893,7 +840,10 @@ class TestResourcePermissions:
     def test_app_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "data": [
-                {"resource_id": "app-1", "permission_keys": ["app.acl.view_layout", "app.acl.edit"]},
+                {
+                    "resource_id": "app-1",
+                    "permission_keys": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
+                },
                 {"resource_id": "app-2", "permission_keys": []},
             ]
         }
@@ -908,7 +858,7 @@ class TestResourcePermissions:
         assert call.endpoint == "/rbac/apps/permission-keys/batch"
         assert call.json == {"app_ids": ["app-1", "app-2"]}
         assert out == {
-            "app-1": ["app.acl.view_layout", "app.acl.edit"],
+            "app-1": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
             "app-2": [],
         }
 
@@ -919,10 +869,7 @@ class TestResourcePermissions:
             TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole.EDITOR)
         )
         sqlite_session.commit()
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
-        ):
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
             out = svc.RBACService.AppPermissions.batch_get(
                 "tenant-1", "acct-1", ["app-1", "app-2"], session=sqlite_session
             )
@@ -932,27 +879,7 @@ class TestResourcePermissions:
             "app-1": svc._LEGACY_APP_EDITOR_KEYS,
             "app-2": svc._LEGACY_APP_EDITOR_KEYS,
         }
-
-    def test_app_permissions_batch_get_excludes_deploy_permission_in_community_edition(
-        self,
-        mock_send: MagicMock,
-        sqlite_session: Session,
-    ):
-        sqlite_session.add(
-            TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role=svc.TenantAccountRole.EDITOR)
-        )
-        sqlite_session.commit()
-
-        with (
-            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
-            patch(f"{MODULE}.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
-        ):
-            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1"], session=sqlite_session)
-
-        mock_send.assert_not_called()
-        assert out == {
-            "app-1": [key for key in svc._LEGACY_APP_EDITOR_KEYS if key != "app.acl.deploy"],
-        }
+        assert all("app.acl.deploy" not in permission_keys for permission_keys in out.values())
 
     def test_dataset_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
