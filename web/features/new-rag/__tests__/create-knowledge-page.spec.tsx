@@ -2268,7 +2268,7 @@ describe('CreateKnowledgePage', () => {
 
   it('previews a selected file locally without claiming it', async () => {
     navigationMock.startMode = 'upload'
-    const file = new File(['local content'], 'handbook.md', { type: 'text/markdown' })
+    const file = new File(['# 让状态可分析'], 'handbook.md', { type: 'text/markdown' })
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:handbook')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL')
     const open = vi.spyOn(globalThis, 'open').mockReturnValue(null)
@@ -2288,7 +2288,7 @@ describe('CreateKnowledgePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' }))
 
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
-    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('text/plain')
+    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('text/plain;charset=utf-8')
     expect(open).toHaveBeenCalledWith('blob:handbook', '_blank', 'noopener,noreferrer')
     expect(serviceMock.upload).not.toHaveBeenCalled()
     expect(revokeObjectUrl).not.toHaveBeenCalled()

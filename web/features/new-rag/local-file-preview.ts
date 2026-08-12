@@ -1,11 +1,11 @@
 import { documentUploadFileExtension } from './document-upload-policy'
 
 const LOCAL_PREVIEW_MIME_TYPES = new Map([
-  ['html', 'text/plain'],
-  ['markdown', 'text/plain'],
-  ['md', 'text/plain'],
+  ['html', 'text/plain;charset=utf-8'],
+  ['markdown', 'text/plain;charset=utf-8'],
+  ['md', 'text/plain;charset=utf-8'],
   ['pdf', 'application/pdf'],
-  ['txt', 'text/plain'],
+  ['txt', 'text/plain;charset=utf-8'],
 ])
 const LOCAL_PREVIEW_URL_LIFETIME_MS = 60_000
 
