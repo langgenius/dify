@@ -65,10 +65,11 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse
 from pydantic_ai.profiles import ModelProfileSpec
+from pydantic_ai.providers import Provider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
-from .provider import DifyPluginDaemonLLMClient, DifyPluginDaemonProvider
+from .provider import DifyLLMClient
 
 _THINK_START = "<think>\n"
 _THINK_END = "\n</think>"
@@ -88,7 +89,7 @@ class _DifyRequestInput:
 
 
 @dataclass(slots=True)
-class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
+class DifyLLMAdapterModel(Model[DifyLLMClient]):
     """Use a Dify plugin-daemon transport and retain complete usage for one Agent run.
 
     A model instance belongs to one runner invocation. Pydantic AI may call it repeatedly while
@@ -97,7 +98,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     """
 
     model: str
-    daemon_provider: DifyPluginDaemonProvider
+    daemon_provider: Provider[DifyLLMClient]
     _: KW_ONLY
     model_provider: str
     credentials: dict[str, object] = field(default_factory=dict, repr=False)
@@ -118,7 +119,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
     @property
     @override
-    def provider(self) -> DifyPluginDaemonProvider:
+    def provider(self) -> Provider[DifyLLMClient]:
         return self.daemon_provider
 
     @property

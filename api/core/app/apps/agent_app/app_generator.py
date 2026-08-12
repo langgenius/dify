@@ -219,6 +219,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
             agent_session_scope_config_version_id=session_scope_config_version_id,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(
@@ -349,6 +350,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(

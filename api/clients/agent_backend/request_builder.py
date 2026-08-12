@@ -414,7 +414,9 @@ class AgentBackendRunRequestBuilder:
                     plugin_id=run_input.model.plugin_id,
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
-                    credentials=run_input.model.credentials,
+                    # The API gateway resolves live model credentials for every
+                    # invocation; do not transmit them to the Agent runtime.
+                    credentials={},
                     model_settings=_agent_model_settings(run_input.model.model_settings),
                 ),
             )
@@ -607,7 +609,7 @@ class AgentBackendRunRequestBuilder:
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
-                        credentials=run_input.model.credentials,
+                        credentials={},
                         model_settings=_agent_model_settings(run_input.model.model_settings),
                     ),
                 ),

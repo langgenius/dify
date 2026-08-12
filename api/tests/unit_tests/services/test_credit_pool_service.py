@@ -309,6 +309,45 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
     quota_release.assert_not_called()
 
 
+def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> None:
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        result = CreditPoolService.check_and_deduct_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            pool_type="trial",
+            request_id="invocation-1",
+            metadata={"agent_run_id": "run-1"},
+        )
+
+    assert result == 3
+    expected_metadata = {
+        "source": "credit_pool.check_and_deduct",
+        "agent_run_id": "run-1",
+    }
+    quota_reserve.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        request_id="invocation-1",
+        amount=3,
+        meta=expected_metadata,
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+        actual_amount=3,
+        meta=expected_metadata,
+    )
+
+
 def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() -> None:
     with (
         patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),

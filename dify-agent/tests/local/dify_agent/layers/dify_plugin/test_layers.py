@@ -297,14 +297,14 @@ def test_dify_plugin_llm_layer_builds_adapter_model_from_direct_dependency() -> 
                 execution_context = run.get_layer("renamed-execution-context", DifyExecutionContextLayer)
                 llm = run.get_layer("llm", DifyPluginLLMLayer)
 
-                model = llm.get_model(http_client=client)
+                model = llm.get_model(http_client=client, agent_run_id="00000000-0000-0000-0000-000000000001")
 
                 assert llm.deps.execution_context is execution_context
                 assert isinstance(model, DifyLLMAdapterModel)
                 assert model.model_name == "demo-model"
                 assert model.model_provider == "openai"
-                assert model.credentials == {"api_key": "secret"}
-                assert model.provider.name == "DifyPlugin/langgenius/openai"
+                assert model.credentials == {}
+                assert model.provider.name == "DifyAPI/langgenius/openai"
                 assert model.provider.client.http_client is client
 
     asyncio.run(scenario())

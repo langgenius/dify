@@ -1,6 +1,6 @@
 """LLM adapters for Dify plugin-daemon integrations."""
 
 from .model import DifyLLMAdapterModel
-from .provider import DifyPluginDaemonProvider
+from .provider import DifyApiLLMProvider, DifyPluginDaemonProvider
 
-__all__ = ["DifyLLMAdapterModel", "DifyPluginDaemonProvider"]
+__all__ = ["DifyApiLLMProvider", "DifyLLMAdapterModel", "DifyPluginDaemonProvider"]

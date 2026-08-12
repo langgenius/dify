@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, Index, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -135,6 +136,26 @@ class AgentConfigVersionKind(StrEnum):
     SNAPSHOT = "snapshot"
     DRAFT = "draft"
     BUILD_DRAFT = "build_draft"
+
+
+class AgentLLMCredentialSource(StrEnum):
+    SYSTEM = "system"
+    CUSTOM = "custom"
+
+
+class AgentLLMBillingStatus(StrEnum):
+    PENDING = "pending"
+    REJECTED = "rejected"
+    INDETERMINATE = "indeterminate"
+    NOT_BILLABLE = "not_billable"
+    CHARGED = "charged"
+
+
+class AgentLLMExecutionStatus(StrEnum):
+    PREPARED = "prepared"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
 
 
 class Agent(DefaultFieldsMixin, Base):
@@ -536,6 +557,66 @@ class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AgentLLMInvocation(DefaultFieldsMixin, Base):
+    """API-owned ledger for one model request made by a dify-agent run."""
+
+    __tablename__ = "agent_llm_invocations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_llm_invocation_pkey"),
+        UniqueConstraint("invocation_id", name="agent_llm_invocation_id_unique"),
+        UniqueConstraint("agent_run_id", "call_index", name="agent_llm_invocation_run_call_unique"),
+        Index("agent_llm_invocation_tenant_created_idx", "tenant_id", "created_at"),
+        Index("agent_llm_invocation_billing_status_idx", "billing_status", "updated_at"),
+        Index("agent_llm_invocation_execution_status_idx", "execution_status", "updated_at"),
+    )
+
+    invocation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    call_index: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    agent_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    invoke_from: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    user_from: Mapped[str] = mapped_column(String(16), nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    agent_config_version_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    agent_config_version_kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    provider: Mapped[str] = mapped_column(String(255), nullable=False)
+    model: Mapped[str] = mapped_column(String(255), nullable=False)
+    credential_source: Mapped[AgentLLMCredentialSource] = mapped_column(
+        EnumText(AgentLLMCredentialSource, length=16), nullable=False
+    )
+    quota_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    pool_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    credits: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default="0")
+    billing_status: Mapped[AgentLLMBillingStatus] = mapped_column(
+        EnumText(AgentLLMBillingStatus, length=24),
+        nullable=False,
+        default=AgentLLMBillingStatus.PENDING,
+        server_default=AgentLLMBillingStatus.PENDING.value,
+    )
+    execution_status: Mapped[AgentLLMExecutionStatus] = mapped_column(
+        EnumText(AgentLLMExecutionStatus, length=16),
+        nullable=False,
+        default=AgentLLMExecutionStatus.PREPARED,
+        server_default=AgentLLMExecutionStatus.PREPARED.value,
+    )
+    usage: Mapped[LLMUsage | None] = mapped_column(JSONModelColumn(LLMUsage), nullable=True)
+    error_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class AgentDriveFileKind(StrEnum):

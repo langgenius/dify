@@ -1423,6 +1423,23 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=30,
     )
 
+    ENABLE_AGENT_LLM_INVOCATION_RECONCILIATION_TASK: bool = Field(
+        description="Enable reconciliation for interrupted Agent LLM gateway invocations",
+        default=True,
+    )
+    AGENT_LLM_INVOCATION_RECONCILIATION_INTERVAL: PositiveInt = Field(
+        description="Agent LLM invocation reconciliation interval in minutes",
+        default=5,
+    )
+    AGENT_LLM_INVOCATION_STALE_AFTER_SECONDS: PositiveInt = Field(
+        description="Age in seconds after which a non-terminal Agent LLM invocation is considered interrupted",
+        default=900,
+    )
+    AGENT_LLM_INVOCATION_RECONCILIATION_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum interrupted Agent LLM invocations reconciled per task run",
+        default=100,
+    )
+
     # Trigger provider refresh (simple version)
     ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
         description="Enable trigger provider refresh poller",
