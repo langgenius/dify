@@ -1,7 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 
 export type HomeCatalogTab = 'plugins' | 'templates'
 export type HomeCatalogTabLabels = Record<HomeCatalogTab, string>
@@ -34,7 +33,7 @@ const HomeCatalogTabs = ({
     pluginsHrefOverride ??
     (isMarketplacePlatform
       ? getRelativeCatalogHref('/plugins')
-      : getMarketplaceUrl('/plugins', catalogParams))
+      : getRelativeCatalogHref('/marketplace'))
   const templatesHref = getRelativeCatalogHref('/templates')
   const isPluginsActive = activeTab === 'plugins'
   const isTemplatesActive = activeTab === 'templates'

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HomeHeader from '../home-header'
 
 const mocks = vi.hoisted(() => ({
+  marketplaceUrlPrefix: 'https://marketplace.dify.ai',
   useDocLink: vi.fn(() => () => 'https://docs.dify.ai/en/home'),
 }))
 
@@ -24,6 +25,12 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: mocks.useDocLink,
 }))
 
+vi.mock('@/config', () => ({
+  get MARKETPLACE_URL_PREFIX() {
+    return mocks.marketplaceUrlPrefix
+  },
+}))
+
 vi.mock('../home-sticky-state-provider', () => ({
   HomeStickyCatalogTabs: ({ children }: { children: React.ReactNode }) => children,
 }))
@@ -31,6 +38,43 @@ vi.mock('../home-sticky-state-provider', () => ({
 describe('HomeHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.marketplaceUrlPrefix = 'https://marketplace.dify.ai'
+  })
+
+  it('shows Creator Center before Guide', () => {
+    render(<HomeHeader isMarketplacePlatform />)
+
+    const creatorCenterLink = screen.getByRole('link', { name: 'Creator Center' })
+    const guideLink = screen.getByRole('link', { name: 'marketplace.home.guide' })
+
+    expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
+    expect(creatorCenterLink).toHaveAttribute('target', '_blank')
+    expect(creatorCenterLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(creatorCenterLink.compareDocumentPosition(guideLink)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it('links Creator Center to the staging Creators site in staging', () => {
+    mocks.marketplaceUrlPrefix = 'https://marketplace-staging.dify.dev'
+
+    render(<HomeHeader isMarketplacePlatform />)
+
+    expect(screen.getByRole('link', { name: 'Creator Center' })).toHaveAttribute(
+      'href',
+      'https://creators-staging.dify.dev/',
+    )
+  })
+
+  it('falls back to the public Creator Center for a custom Marketplace origin', () => {
+    mocks.marketplaceUrlPrefix = 'http://localhost:3000'
+
+    render(<HomeHeader isMarketplacePlatform />)
+
+    expect(screen.getByRole('link', { name: 'Creator Center' })).toHaveAttribute(
+      'href',
+      'https://creators.dify.ai/',
+    )
   })
 
   it('links the Guide action to Dify documentation', () => {
