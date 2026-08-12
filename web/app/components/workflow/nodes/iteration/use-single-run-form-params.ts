@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { useIsNodeInIteration, useWorkflow } from '../../hooks'
+import { useIsNodeInIteration, useWorkflow } from '../../hooks/use-workflow'
 import {
   getNodeInfoById,
   getNodeUsedVarPassToServerKey,

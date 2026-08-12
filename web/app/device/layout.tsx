@@ -16,10 +16,8 @@ export default function DeviceLayout({ children }: { children: React.ReactNode }
         )}
       >
         <Header />
-        <div
-          className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]')}
-        >
-          <div className="flex flex-col md:w-[400px]">{children}</div>
+        <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-27')}>
+          <div className="flex flex-col md:w-100">{children}</div>
         </div>
         {systemFeatures.branding.enabled === false && (
           <div className="px-8 py-6 system-xs-regular text-text-tertiary">

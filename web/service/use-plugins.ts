@@ -1,10 +1,17 @@
-import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  GetWorkspacesCurrentPluginByCategoryListData,
+  PluginCategoryInstalledPluginResponse,
+  PluginCategoryListResponse,
+  PluginEntity,
+  PluginInstallationItemResponse,
+  PluginListResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   PluginInfoFromMarketPlace,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
-import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -14,8 +21,6 @@ import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstalledPluginCategoryListResponse,
-  InstalledPluginListWithTotalResponse,
   InstallPackageResponse,
   InstallStatusResponse,
   MetaData,
@@ -31,6 +36,7 @@ import type {
   VersionInfo,
   VersionListResponse,
 } from '@/app/components/plugins/types'
+import type { Collection } from '@/app/components/tools/types'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useAtomValue } from 'jotai'
@@ -49,7 +55,6 @@ import { consoleQuery } from './client'
 import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
-const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 
 type PluginTaskListResponse = {
@@ -127,6 +132,7 @@ const normalizeI18nObject = (
     'id-ID': en,
     'nl-NL': en,
     'ar-TN': en,
+    'lo-LA': en,
     en_US: en,
     zh_Hans: zhHans,
     ja_JP: ja,
@@ -415,7 +421,12 @@ const normalizePluginTriggerDeclaration = (
   }
 }
 
-const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): PluginDeclaration => {
+type InstalledPluginResponse =
+  | PluginCategoryInstalledPluginResponse
+  | PluginEntity
+  | PluginInstallationItemResponse
+
+const normalizePluginDeclaration = (plugin: InstalledPluginResponse): PluginDeclaration => {
   const { declaration } = plugin
   return {
     plugin_unique_identifier: plugin.plugin_unique_identifier,
@@ -445,9 +456,7 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
   }
 }
 
-export const normalizeInstalledPluginDetail = (
-  plugin: PluginInstallationItemResponse,
-): PluginDetail => {
+export const normalizeInstalledPluginDetail = (plugin: InstalledPluginResponse): PluginDetail => {
   const declaration = normalizePluginDeclaration(plugin)
 
   return {
@@ -603,64 +612,125 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
 
 type UseInstalledPluginListOptions = {
   category?: PluginCategoryEnum
-  refetchOnMount?: boolean | 'always'
+  enabled?: boolean
+  filters?: InstalledPluginListFilters
+  gcTime?: number
+  pageSize?: number
+  staleTime?: number
 }
 
-export const useInstalledPluginList = (
-  disable?: boolean,
-  pageSize = 100,
-  options?: UseInstalledPluginListOptions,
-) => {
-  const category = options?.category
-  const fetchPlugins = async ({ pageParam = 1 }) => {
-    const path = category
-      ? `/workspaces/current/plugin/${category}/list`
-      : '/workspaces/current/plugin/list'
+type PluginCategoryListLanguage = NonNullable<
+  NonNullable<GetWorkspacesCurrentPluginByCategoryListData['query']>['language']
+>
 
-    if (category)
-      return get<InstalledPluginCategoryListResponse>(
-        `${path}?page=${pageParam}&page_size=${pageSize}`,
-      )
+type InstalledPluginListFilters = {
+  language?: PluginCategoryListLanguage
+  query?: string
+  tags?: string[]
+}
 
-    return get<InstalledPluginListWithTotalResponse>(
-      `${path}?page=${pageParam}&page_size=${pageSize}`,
-    )
+export const normalizePluginCategoryListLanguage = (locale: string): PluginCategoryListLanguage => {
+  switch (locale) {
+    case 'zh_Hans':
+    case 'ja_JP':
+    case 'pt_BR':
+    case 'en_US':
+      return locale
+    default:
+      return 'en_US'
   }
+}
 
-  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
-    useInfiniteQuery({
-      enabled: !disable,
-      queryKey: category ? [...useInstalledPluginListKey, category] : useInstalledPluginListKey,
-      queryFn: fetchPlugins,
-      getNextPageParam: (lastPage, pages) => {
-        if (category)
-          return 'has_more' in lastPage && lastPage.has_more ? pages.length + 1 : undefined
-
-        const totalItems = 'total' in lastPage ? lastPage.total : 0
-        const currentPage = pages.length
-        const itemsLoaded = currentPage * pageSize
-
-        if (itemsLoaded >= totalItems) return
-
-        return currentPage + 1
+const getInstalledPluginCategoryListInfiniteOptions = ({
+  category,
+  filters,
+  pageSize,
+}: {
+  category: PluginCategoryEnum
+  filters?: InstalledPluginListFilters
+  pageSize: number
+}) => {
+  return consoleQuery.workspaces.current.plugin.byCategory.list.get.infiniteOptions({
+    input: (pageParam) => ({
+      params: { category },
+      query: {
+        page: Number(pageParam),
+        page_size: pageSize,
+        ...(filters?.query ? { query: filters.query } : {}),
+        ...(filters?.tags?.length ? { tags: filters.tags } : {}),
+        ...(filters?.language ? { language: filters.language } : {}),
       },
-      initialPageParam: 1,
-      refetchOnMount: options?.refetchOnMount,
-    })
+    }),
+    getNextPageParam: (lastPage, pages) => (lastPage.has_more ? pages.length + 1 : undefined),
+    initialPageParam: 1,
+  })
+}
 
-  const plugins = data?.pages.flatMap((page) => page.plugins) ?? []
-  const firstPage = data?.pages[0]
-  const builtinTools = firstPage && 'builtin_tools' in firstPage ? firstPage.builtin_tools : []
-  const total = data?.pages[0] && 'total' in data.pages[0] ? data.pages[0].total : plugins.length
+const getInstalledPluginCategoryListQueryKey = (
+  category: PluginCategoryEnum,
+  pageSize: number,
+  filters?: InstalledPluginListFilters,
+) => {
+  return getInstalledPluginCategoryListInfiniteOptions({
+    category,
+    filters,
+    pageSize,
+  }).queryKey
+}
+
+export const useInstalledPluginList = (options: UseInstalledPluginListOptions = {}) => {
+  const { category, enabled = true, filters, gcTime, pageSize = 100, staleTime } = options
+  const categoryQuery = useInfiniteQuery({
+    ...getInstalledPluginCategoryListInfiniteOptions({
+      category: category ?? PluginCategoryEnum.tool,
+      filters,
+      pageSize,
+    }),
+    enabled: enabled && !!category,
+    gcTime,
+    staleTime,
+  })
+  const legacyQuery = useInfiniteQuery({
+    ...consoleQuery.workspaces.current.plugin.list.get.infiniteOptions({
+      input: (pageParam) => ({
+        query: {
+          page: Number(pageParam),
+          page_size: pageSize,
+        },
+      }),
+      getNextPageParam: (lastPage, pages) =>
+        pages.length * pageSize < lastPage.total ? pages.length + 1 : undefined,
+      initialPageParam: 1,
+    }),
+    enabled: enabled && !category,
+    gcTime,
+    staleTime,
+  })
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
+    category ? categoryQuery : legacyQuery
+
+  const categoryData = category
+    ? (data as InfiniteData<PluginCategoryListResponse, number> | undefined)
+    : undefined
+  const legacyData = category
+    ? undefined
+    : (data as InfiniteData<PluginListResponse, number> | undefined)
+  const plugins: PluginDetail[] = categoryData
+    ? categoryData.pages.flatMap((page) => page.plugins.map(normalizeInstalledPluginDetail))
+    : (legacyData?.pages.flatMap((page) => page.plugins.map(normalizeInstalledPluginDetail)) ?? [])
+  // The Built-in Tools panel still consumes its legacy Collection model. Keep the
+  // API-contract boundary narrow until that presentation model is migrated.
+  const builtinTools = categoryData?.pages[0]?.builtin_tools as Collection[] | undefined
+  const total = legacyData?.pages[0]?.total ?? plugins.length
 
   return {
-    data: disable
-      ? undefined
-      : {
+    data: enabled
+      ? {
           plugins,
-          builtin_tools: builtinTools,
+          builtin_tools: builtinTools ?? [],
           total,
-        },
+        }
+      : undefined,
     isLastPage: !hasNextPage,
     loadNextPage: () => {
       fetchNextPage()
@@ -672,14 +742,65 @@ export const useInstalledPluginList = (
   }
 }
 
+export const useRemoveFilteredInstalledPluginPageOnUnmount = (
+  category: PluginCategoryEnum | undefined,
+  pageSize: number,
+  filters?: InstalledPluginListFilters,
+) => {
+  const queryClient = useQueryClient()
+  const hasActiveFilters = !!filters?.query || !!filters?.tags?.length
+
+  useEffect(() => {
+    if (!category || !hasActiveFilters) return
+
+    const queryKey = getInstalledPluginCategoryListQueryKey(category, pageSize, filters)
+
+    return () => queryClient.removeQueries({ queryKey, exact: true })
+  }, [category, filters, hasActiveFilters, pageSize, queryClient])
+}
+
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: useInstalledPluginListKey,
-    })
-    invalidateAllBuiltInTools()
+  return (category?: PluginCategoryEnum) => {
+    if (category) {
+      const invalidateCategoryPluginList = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+          type: 'infinite',
+          input: { params: { category } },
+        }),
+      })
+      const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
+          type: 'query',
+          input: { query: { category } },
+        }),
+      })
+
+      if (category === PluginCategoryEnum.tool)
+        return Promise.all([
+          invalidateCategoryPluginList,
+          invalidateCategoryInstalledIds,
+          invalidateAllBuiltInTools(),
+        ]).then(() => undefined)
+
+      return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
+        () => undefined,
+      )
+    }
+
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
+      }),
+      invalidateAllBuiltInTools(),
+    ]).then(() => undefined)
   }
 }
 
@@ -730,9 +851,9 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
   })
 }
 
-export const useVersionListOfPlugin = (pluginID: string) => {
+export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
   return useQuery<{ data: VersionListResponse }>({
-    enabled: !!pluginID,
+    enabled: enabled && !!pluginID,
     queryKey: [NAME_SPACE, 'versions', pluginID],
     queryFn: () =>
       getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
@@ -919,7 +1040,7 @@ export const useInstallOrUpdate = ({
             }
             if (isInstalled) {
               if (item.type === 'package') {
-                await uninstallPlugin(installedPayload.installedId)
+                await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
                 const response = await post<InstallPackageResponse>(
                   '/workspaces/current/plugin/install/pkg',
                   {
@@ -1328,7 +1449,10 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category } : undefined, !category)
+      refreshPluginList(
+        category ? { category: category as PluginCategoryEnum } : undefined,
+        !category,
+      )
   }, [category, data, isRefetching, refreshPluginList])
 
   const handleRefetch = useCallback(() => {

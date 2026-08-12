@@ -7,21 +7,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
 } from '@/features/agent-v2/agent-composer/conversions'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
+import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 
@@ -77,9 +76,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const queryClient = useQueryClient()
   const configsMap = useHooksStore((state) => state.configsMap)
   const store = useJotaiStore()
-  const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
-  const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
-  const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
+  const setSavedDraft = useSetAtom(agentComposerSavedDraftAtom)
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
@@ -92,10 +89,12 @@ export function useWorkflowInlineAgentConfigureSync({
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
-  baseConfigRef.current = baseConfig
-  currentModelRef.current = currentModel
-  enabledRef.current = enabled
-  onDraftSavedRef.current = onDraftSaved
+  useEffect(() => {
+    baseConfigRef.current = baseConfig
+    currentModelRef.current = currentModel
+    enabledRef.current = enabled
+    onDraftSavedRef.current = onDraftSaved
+  }, [baseConfig, currentModel, enabled, onDraftSaved])
 
   const getAgentSoulDraft = useCallback(
     () =>
@@ -165,9 +164,7 @@ export function useWorkflowInlineAgentConfigureSync({
           composerState,
         )
       }
-      setOriginalConfig(composerState.agent_soul)
-      setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
-      setDraftSavedAt(Date.now())
+      setSavedDraft(agentSoulConfigToFormState(composerState.agent_soul))
       lastAutosavedDraftKeyRef.current = savedDraftKey
       onDraftSavedRef.current?.(composerState)
       return composerState
@@ -175,9 +172,11 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
-  latestDraftSaveRef.current = () => {
-    void saveComposer(getAgentSoulDraft())
-  }
+  useEffect(() => {
+    latestDraftSaveRef.current = () => {
+      void saveComposer(getAgentSoulDraft())
+    }
+  }, [getAgentSoulDraft, saveComposer])
 
   const debouncedSaveDraft = useMemo(
     () =>
@@ -230,7 +229,6 @@ export function useWorkflowInlineAgentConfigureSync({
   }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
-    draftSavedAt,
     saveAgentSoulConfig,
     saveDraft,
   }

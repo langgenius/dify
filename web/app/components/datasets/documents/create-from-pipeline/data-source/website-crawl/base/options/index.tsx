@@ -89,10 +89,10 @@ const Options = ({ variables, step, runDisabled, onSubmit }: OptionsProps) => {
           onClick={form.handleSubmit}
           disabled={runDisabled || isRunning}
           loading={isRunning}
-          className="shrink-0 gap-x-0.5"
+          className="shrink-0"
         >
           <RiPlayLargeLine className="size-4" />
-          <span className="px-0.5">
+          <span>
             {!isRunning
               ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' })
               : t(($) => $[`${I18N_PREFIX}.running`], { ns: 'datasetCreation' })}

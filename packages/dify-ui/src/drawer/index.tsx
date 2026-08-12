@@ -4,28 +4,35 @@ import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
 
-export const Drawer = BaseDrawer.Root
-export const DrawerProvider = BaseDrawer.Provider
-export const DrawerIndent = BaseDrawer.Indent
-export const DrawerIndentBackground = BaseDrawer.IndentBackground
-export const DrawerTrigger = BaseDrawer.Trigger
-export const DrawerSwipeArea = BaseDrawer.SwipeArea
-export const DrawerPortal = BaseDrawer.Portal
-export const DrawerTitle = BaseDrawer.Title
-export const DrawerDescription = BaseDrawer.Description
-export const DrawerClose = BaseDrawer.Close
-export const createDrawerHandle = BaseDrawer.createHandle
+const Drawer = BaseDrawer.Root
+const DrawerProvider = BaseDrawer.Provider
+const DrawerIndent = BaseDrawer.Indent
+const DrawerIndentBackground = BaseDrawer.IndentBackground
+const DrawerTrigger = BaseDrawer.Trigger
+const DrawerSwipeArea = BaseDrawer.SwipeArea
+const DrawerPortal = BaseDrawer.Portal
+const DrawerTitle = BaseDrawer.Title
+const DrawerDescription = BaseDrawer.Description
+const DrawerClose = BaseDrawer.Close
+const createDrawerHandle = BaseDrawer.createHandle
 
-export type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
-export type DrawerActions = BaseDrawer.Root.Actions
-export type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
-export type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
-export type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
-export type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
-export type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
-export type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
+type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
+type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
+type DrawerProviderProps = BaseDrawer.Provider.Props
+type DrawerIndentProps = BaseDrawer.Indent.Props
+type DrawerIndentBackgroundProps = BaseDrawer.IndentBackground.Props
+type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
+type DrawerSwipeAreaProps = BaseDrawer.SwipeArea.Props
+type DrawerPortalProps = BaseDrawer.Portal.Props
+type DrawerTitleProps = BaseDrawer.Title.Props
+type DrawerDescriptionProps = BaseDrawer.Description.Props
+type DrawerCloseProps = BaseDrawer.Close.Props
 
-export function DrawerBackdrop({ className, ...props }: BaseDrawer.Backdrop.Props) {
+type DrawerBackdropProps = Omit<BaseDrawer.Backdrop.Props, 'className'> & {
+  className?: string
+}
+
+function DrawerBackdrop({ className, ...props }: DrawerBackdropProps) {
   return (
     <BaseDrawer.Backdrop
       className={cn(
@@ -38,7 +45,11 @@ export function DrawerBackdrop({ className, ...props }: BaseDrawer.Backdrop.Prop
   )
 }
 
-export function DrawerViewport({ className, ...props }: BaseDrawer.Viewport.Props) {
+type DrawerViewportProps = Omit<BaseDrawer.Viewport.Props, 'className'> & {
+  className?: string
+}
+
+function DrawerViewport({ className, ...props }: DrawerViewportProps) {
   return (
     <BaseDrawer.Viewport
       className={cn(
@@ -50,7 +61,11 @@ export function DrawerViewport({ className, ...props }: BaseDrawer.Viewport.Prop
   )
 }
 
-export function DrawerPopup({ className, ...props }: BaseDrawer.Popup.Props) {
+type DrawerPopupProps = Omit<BaseDrawer.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function DrawerPopup({ className, ...props }: DrawerPopupProps) {
   return (
     <BaseDrawer.Popup
       className={cn(
@@ -71,7 +86,11 @@ export function DrawerPopup({ className, ...props }: BaseDrawer.Popup.Props) {
   )
 }
 
-export function DrawerContent({ className, ...props }: BaseDrawer.Content.Props) {
+type DrawerContentProps = Omit<BaseDrawer.Content.Props, 'className'> & {
+  className?: string
+}
+
+function DrawerContent({ className, ...props }: DrawerContentProps) {
   return (
     <BaseDrawer.Content
       className={cn(
@@ -83,11 +102,12 @@ export function DrawerContent({ className, ...props }: BaseDrawer.Content.Props)
   )
 }
 
-type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children'> & {
+type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children' | 'className'> & {
   children?: React.ReactNode
+  className?: string
 }
 
-export function DrawerCloseButton({
+function DrawerCloseButton({
   className,
   children,
   type = 'button',
@@ -107,4 +127,42 @@ export function DrawerCloseButton({
       {children ?? <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />}
     </BaseDrawer.Close>
   )
+}
+
+export {
+  createDrawerHandle,
+  Drawer,
+  DrawerBackdrop,
+  DrawerClose,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerDescription,
+  DrawerIndent,
+  DrawerIndentBackground,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerProvider,
+  DrawerSwipeArea,
+  DrawerTitle,
+  DrawerTrigger,
+  DrawerViewport,
+}
+
+export type {
+  DrawerBackdropProps,
+  DrawerCloseButtonProps,
+  DrawerCloseProps,
+  DrawerContentProps,
+  DrawerDescriptionProps,
+  DrawerHandle,
+  DrawerIndentBackgroundProps,
+  DrawerIndentProps,
+  DrawerPopupProps,
+  DrawerPortalProps,
+  DrawerProps,
+  DrawerProviderProps,
+  DrawerSwipeAreaProps,
+  DrawerTitleProps,
+  DrawerTriggerProps,
+  DrawerViewportProps,
 }

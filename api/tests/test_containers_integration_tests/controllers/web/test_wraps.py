@@ -18,6 +18,7 @@ from controllers.web.wraps import (
     _validate_webapp_token,
     decode_jwt_token,
 )
+from models.enums import EndUserType
 
 pytestmark = pytest.mark.usefixtures("db_session_with_containers")
 
@@ -189,7 +190,6 @@ class TestDecodeJwtToken:
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
-        from models.enums import EndUserType
         from models.model import App, AppMode, CustomizeTokenStrategy, EndUser, Site
 
         tenant_id = str(uuid4())

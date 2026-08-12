@@ -23,7 +23,11 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
+import { useFileUploadConfig } from '@/service/use-common'
 import { formatFileSize } from '@/utils/format'
 import { getFileIconType } from './file-icon'
 
@@ -46,14 +50,48 @@ function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
 
 function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: File) => void }) {
   const { t } = useTranslation('agentV2')
+  const { t: tAppDebug } = useTranslation('appDebug')
+  const { t: tCommon } = useTranslation('common')
+  const { data: fileUploadConfig } = useFileUploadConfig()
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
+    useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
+
+  const getSizeLimit = (uploadFile: File) => {
+    const fileType = getSupportFileType(uploadFile.name, uploadFile.type)
+
+    switch (fileType) {
+      case SupportUploadFileTypes.image:
+        return { fileType, sizeLimit: imgSizeLimit }
+      case SupportUploadFileTypes.audio:
+        return { fileType, sizeLimit: audioSizeLimit }
+      case SupportUploadFileTypes.video:
+        return { fileType, sizeLimit: videoSizeLimit }
+      default:
+        return {
+          fileType: SupportUploadFileTypes.document,
+          sizeLimit: docSizeLimit,
+        }
+    }
+  }
 
   const setUploadFiles = (files: File[]) => {
     const [uploadFile] = files
     if (files.length !== 1 || !uploadFile) {
       toast.error(t(($) => $['agentDetail.configure.files.upload.invalidFile']))
+      return
+    }
+
+    const { fileType, sizeLimit } = getSizeLimit(uploadFile)
+    if (uploadFile.size > sizeLimit) {
+      toast.error(
+        tCommon(($) => $['fileUploader.uploadFromComputerLimit'], {
+          type: fileType,
+          size: formatFileSize(sizeLimit),
+        }),
+      )
       return
     }
 
@@ -145,7 +183,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
             <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
               {file.name}
             </span>
-            <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
+            <div className="flex h-3 items-center gap-1 self-stretch text-2xs leading-3 font-medium text-text-tertiary uppercase">
               <span>{t(($) => $['agentDetail.configure.files.upload.fileType'])}</span>
               <span className="text-text-quaternary">·</span>
               <span>{formatFileSize(file.size)}</span>
@@ -158,6 +196,14 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
           </div>
         </div>
       )}
+      <p className="mt-2 system-xs-regular text-text-tertiary">
+        {tAppDebug(($) => $['variableConfig.maxNumberTip'], {
+          docLimit: formatFileSize(docSizeLimit),
+          imgLimit: formatFileSize(imgSizeLimit),
+          audioLimit: formatFileSize(audioSizeLimit),
+          videoLimit: formatFileSize(videoSizeLimit),
+        })}
+      </p>
     </div>
   )
 }

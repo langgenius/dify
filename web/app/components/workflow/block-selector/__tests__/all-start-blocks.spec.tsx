@@ -5,13 +5,13 @@ import userEvent from '@testing-library/user-event'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
-import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
 import useNodes from '../../store/workflow/use-nodes'
 import { BlockEnum } from '../../types'
 import AllStartBlocks from '../all-start-blocks'
@@ -43,7 +43,7 @@ vi.mock('../../store/workflow/use-nodes', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../../workflow-app/hooks', () => ({
+vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: vi.fn(),
 }))
 

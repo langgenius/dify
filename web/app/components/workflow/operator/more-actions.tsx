@@ -14,7 +14,7 @@ import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
-import { useNodesReadOnly } from '../hooks'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
 
 function MoreActions() {
@@ -166,8 +166,7 @@ function MoreActions() {
                 focusableWhenDisabled
                 className={cn(
                   'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  isReadOnly &&
-                    'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+                  'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
                 )}
               />
             }

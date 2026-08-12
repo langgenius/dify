@@ -22,14 +22,7 @@ const isTheme = (value: string): value is Theme => {
 export default function ThemeSelector() {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
-
-  const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme)
-  }
-
-  const handleThemeValueChange = (value: string) => {
-    if (isTheme(value)) handleThemeChange(value)
-  }
+  const currentTheme: Theme = theme && isTheme(theme) ? theme : 'system'
 
   const getCurrentIcon = () => {
     switch (theme) {
@@ -48,29 +41,32 @@ export default function ThemeSelector() {
         render={
           <ActionButton
             aria-label={t(($) => $['theme.theme'], { ns: 'common' })}
-            className="h-8 w-8 p-[6px] data-popup-open:bg-state-base-hover"
+            className="h-8 w-8 p-1.5 data-popup-open:bg-state-base-hover"
           />
         }
       >
         {getCurrentIcon()}
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={6} popupClassName="w-[144px]">
-        <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={handleThemeValueChange}>
-          <DropdownMenuRadioItem value="light" closeOnClick>
+        <DropdownMenuRadioGroup<Theme>
+          value={currentTheme}
+          onValueChange={(nextTheme) => setTheme(nextTheme)}
+        >
+          <DropdownMenuRadioItem<Theme> value="light" closeOnClick>
             <span className="i-ri-sun-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.light'], { ns: 'common' })}
             </span>
             <DropdownMenuRadioItemIndicator data-testid="light-icon" />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark" closeOnClick>
+          <DropdownMenuRadioItem<Theme> value="dark" closeOnClick>
             <span className="i-ri-moon-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.dark'], { ns: 'common' })}
             </span>
             <DropdownMenuRadioItemIndicator data-testid="dark-icon" />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system" closeOnClick>
+          <DropdownMenuRadioItem<Theme> value="system" closeOnClick>
             <span className="i-ri-computer-line size-4 text-text-tertiary" />
             <span className="grow px-1 system-md-regular">
               {t(($) => $['theme.auto'], { ns: 'common' })}

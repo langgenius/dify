@@ -77,7 +77,7 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
                   aria-label={t(($) => $['nodes.iteration.parallelModeEnableTitle'], {
                     ns: 'workflow',
                   })}
-                  className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning"
+                  className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-1.25 py-0.75 system-2xs-medium-uppercase text-text-warning"
                 >
                   {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
                 </PopoverTrigger>

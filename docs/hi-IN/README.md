@@ -75,7 +75,7 @@ Dify एक मुक्त-स्रोत प्लेटफ़ॉर्म �
 
 <br/>
 
-Dify सर्वर शुरू करने का सबसे आसान तरीका [Docker Compose](../..docker/docker-compose.yaml) के माध्यम से है। नीचे दिए गए कमांड्स से Dify चलाने से पहले, सुनिश्चित करें कि आपकी मशीन पर [Docker] (https://docs.docker.com/get-docker/) और [Docker Compose] (https://docs.docker.com/compose/install/) इंस्टॉल हैं।:
+Dify सर्वर शुरू करने का सबसे आसान तरीका [Docker Compose](../../docker/docker-compose.yaml) के माध्यम से है। नीचे दिए गए कमांड्स से Dify चलाने से पहले, सुनिश्चित करें कि आपकी मशीन पर [Docker] (https://docs.docker.com/get-docker/) और [Docker Compose] (https://docs.docker.com/compose/install/) इंस्टॉल हैं।:
 
 ```bash
 cd dify

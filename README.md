@@ -209,12 +209,11 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ## Star History
 
-<!-- GitHub token name: star-history -->
-<a href="https://www.star-history.com/?repos=langgenius%2Fdify&type=date&legend=top-left">
+<a href="https://star-history.dera.page/#langgenius/dify&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&theme=dark&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=langgenius/dify&type=date&legend=top-left&sealed_token=p-SWD-UXZEDc5a2d0EMfgMmyCwVyRlSof0Qox68v7k4PvQPKRlCx0jDIlNztw7mbA6DEn96R50DojO9pCi5LQUlDBAoIhRswt8-GuC8K3rZQ3naJUXbuHqR_oItIW2F0NNM-7npevzw5SXp7L5mwixgqJncAvAGzuGq5zmhQfiDRSW_Jd6y8TQCZMJbt" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
  </picture>
 </a>
 

@@ -142,7 +142,6 @@ class TestAppDslService:
             mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
-
             yield {
                 "workflow_service": mock_workflow_service,
                 "dependencies_service": mock_dependencies_service,
@@ -492,6 +491,9 @@ class TestAppDslService:
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{result.id}"
         stored = redis_client.get(redis_key)
         assert stored is not None
+        pending = PendingData.model_validate_json(stored)
+        assert pending.tenant_id == _DEFAULT_TENANT_ID
+        assert pending.account_id == _DEFAULT_ACCOUNT_ID
 
     def test_import_app_completed_uses_declared_dependencies(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -607,7 +609,11 @@ class TestAppDslService:
             icon_background="#fff",
             app_id=None,
         )
-        redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
+        redis_client.setex(
+            redis_key,
+            IMPORT_INFO_REDIS_EXPIRY,
+            pending.model_dump_json(exclude={"tenant_id", "account_id"}),
+        )
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
@@ -1034,7 +1040,9 @@ class TestAppDslService:
             )
         )
 
-        imported_graph, warnings = AgentDslService(db_session_with_containers).import_workflow_packages(
+        imported_graph, warnings, retirement_candidates = AgentDslService(
+            db_session_with_containers
+        ).import_workflow_packages(
             workflow=workflow,
             portable_graph=graph,
             raw_packages={"agent_1": package.model_dump(mode="json")},
@@ -1043,6 +1051,7 @@ class TestAppDslService:
         db_session_with_containers.commit()
 
         assert warnings == []
+        assert retirement_candidates == set()
         graph_bindings = [node["data"]["agent_binding"] for node in imported_graph["nodes"]]
         assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in graph_bindings)
         assert len({binding["agent_id"] for binding in graph_bindings}) == 2
@@ -1199,6 +1208,10 @@ class TestAppDslService:
         )
         assert imported_agent is not None
         assert imported_agent.active_config_is_published is False
+        imported_app = db_session_with_containers.get(App, result.app_id)
+        assert imported_app is not None
+        assert imported_app.enable_site is False
+        assert imported_app.enable_api is False
         draft = db_session_with_containers.scalar(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.agent_id == imported_agent.id,
@@ -1305,7 +1318,7 @@ class TestAppDslService:
 
         with pytest.raises(
             WorkflowNotFoundError,
-            match="Missing draft workflow configuration, please check.",
+            match="Workflow version not found. Workflow ID:",
         ):
             AppDslService.export_dsl(
                 app, include_secret=False, workflow_id=str(uuid4()), session=db_session_with_containers

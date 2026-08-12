@@ -1,8 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContext } from '@/context/modal-context'
 import { ApiBasedExtensionSelector } from '../selector'
 
 const { mockApiBasedExtensionsQuery, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } =
@@ -12,9 +9,11 @@ const { mockApiBasedExtensionsQuery, mockCreateApiBasedExtension, mockUpdateApiB
     mockUpdateApiBasedExtension: vi.fn(),
   }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink:
@@ -51,11 +50,8 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
-  const mockSetShowAccountSettingModal = vi.fn()
 
   const mockData: ApiBasedExtensionResponse[] = [
     { id: '1', name: 'Extension 1', api_endpoint: 'https://api1.test', api_key: 'key1' },
@@ -64,9 +60,6 @@ describe('ApiBasedExtensionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useModalContext).mockReturnValue({
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    } as unknown as ModalContextState)
     mockApiBasedExtensionsQuery.mockReturnValue({
       data: mockData,
       isPending: false,
@@ -99,6 +92,7 @@ describe('ApiBasedExtensionSelector', () => {
       // Act
       render(<ApiBasedExtensionSelector value="" onChange={mockOnChange} />)
       const trigger = screen.getByText('common.apiBasedExtension.selector.placeholder')
+
       fireEvent.click(trigger)
 
       // Assert
@@ -131,9 +125,7 @@ describe('ApiBasedExtensionSelector', () => {
       fireEvent.click(manageButton)
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('custom-endpoint')
     })
 
     it('should open add modal when clicking add button and close it after save', async () => {

@@ -3,6 +3,8 @@
 import ssl
 from unittest.mock import MagicMock, patch
 
+from enums import DeploymentEdition
+
 
 class TestCelerySSLConfiguration:
     """Test suite for Celery SSL configuration."""
@@ -193,7 +195,7 @@ class TestCelerySSLConfiguration:
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-    def test_celery_init_applies_global_keyprefix_to_broker_and_backend_transport(self):
+    def test_celery_init_applies_global_keyprefix_and_registers_agent_resource_collector(self):
         mock_config = MagicMock()
         mock_config.BROKER_USE_SSL = False
         mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -226,7 +228,7 @@ class TestCelerySSLConfiguration:
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
-        mock_config.ENTERPRISE_ENABLED = False
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
 
         with patch("extensions.ext_celery.dify_config", mock_config):
@@ -238,3 +240,4 @@ class TestCelerySSLConfiguration:
 
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
+        assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]

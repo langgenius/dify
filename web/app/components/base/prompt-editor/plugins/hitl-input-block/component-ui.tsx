@@ -133,7 +133,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
   return (
     <div className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none">
-      <div className="absolute top-[-12px] left-2.5">
+      <div className="absolute -top-3 left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
           <VariableX className="size-3" />
@@ -190,7 +190,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             if (!open) hideEditModal()
           }}
         >
-          <DialogContent className="w-full max-w-[372px] overflow-hidden! border-none p-0! text-left align-middle">
+          <DialogContent className="w-full max-w-93 overflow-hidden! border-none p-0! text-left align-middle">
             <InputField
               nodeId={nodeId}
               isEdit

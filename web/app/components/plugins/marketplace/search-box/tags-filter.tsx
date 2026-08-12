@@ -30,7 +30,6 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
       {usedInMarketplace && (
         <MarketplaceTrigger
           selectedTagsLength={selectedTagsLength}
-          open={open}
           tags={tags}
           tagsMap={tagsMap}
           onTagsChange={onTagsChange}
@@ -39,7 +38,6 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
       {!usedInMarketplace && (
         <ToolSelectorTrigger
           selectedTagsLength={selectedTagsLength}
-          open={open}
           tags={tags}
           tagsMap={tagsMap}
           onTagsChange={onTagsChange}
@@ -51,7 +49,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
         alignOffset={-6}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <div className="relative">
               <span
@@ -74,7 +72,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}
             value={tags}
             onValueChange={(nextTags) => onTagsChange(nextTags)}
-            className="max-h-[448px] overflow-y-auto p-1"
+            className="max-h-112 overflow-y-auto p-1"
           >
             {filteredOptions.map((option) => (
               <label

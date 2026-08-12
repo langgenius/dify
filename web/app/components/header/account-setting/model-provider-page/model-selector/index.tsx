@@ -6,7 +6,7 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelStatusEnum } from '../declarations'
-import { useCurrentProviderAndModel } from '../hooks'
+import { getCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
@@ -33,7 +33,6 @@ type ModelSelectorProps = {
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
   onOpenMarketplace?: () => void
-  providerSettingsSource?: 'agent'
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -52,7 +51,6 @@ function ModelSelector({
   hideProviderSettingsFooter,
   onConfigureEmptyState,
   onOpenMarketplace,
-  providerSettingsSource,
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
@@ -60,7 +58,7 @@ function ModelSelector({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(modelList, defaultModel)
   const currentValue = useMemo<ModelSelectorValue | null>(() => {
     if (!currentProvider || !currentModel) return null
 
@@ -144,7 +142,7 @@ function ModelSelector({
       <ComboboxTrigger
         aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
         icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-popup-open:bg-transparent"
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
         disabled={readonly}
       >
         <ModelSelectorTrigger
@@ -167,7 +165,7 @@ function ModelSelector({
       <ComboboxContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('w-[432px] max-w-[432px] overflow-hidden rounded-xl', popupClassName)}
+        popupClassName={cn('w-108 max-w-108 overflow-hidden rounded-xl', popupClassName)}
       >
         <Popup
           defaultModel={defaultModel}
@@ -175,7 +173,6 @@ function ModelSelector({
           modelList={modelList}
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
-          providerSettingsSource={providerSettingsSource}
           modelPredicate={modelPredicate}
           modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}

@@ -31,7 +31,7 @@ const HistoryPanel: FC<Props> = ({ showWarning, onShowEditModal }) => {
           <div className="text-xs text-text-tertiary">
             {t(($) => $['feature.conversationHistory.description'], { ns: 'appDebug' })}
           </div>
-          <div className="ml-3 h-[14px] w-px bg-divider-regular"></div>
+          <div className="ml-3 h-3.5 w-px bg-divider-regular"></div>
           <OperationButton operation="edit" onClick={onShowEditModal} />
         </div>
       }

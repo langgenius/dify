@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxInput, ComboboxInputGroup } from '@langgenius/dify-ui/combobox'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -75,18 +75,19 @@ type ModelSelectorScrollBodyProps = {
 
 export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
-    <ScrollAreaRoot className="relative min-h-0 overflow-hidden overscroll-contain">
+    <ScrollArea className="relative min-h-0 overflow-hidden">
       <ScrollAreaViewport
         aria-label={label}
-        className="max-h-[calc(min(624px,var(--available-height,624px))-84px)] overflow-x-hidden overscroll-contain"
+        style={{ overflowX: 'hidden' }}
+        className="max-h-[calc(min(624px,var(--available-height,624px))-84px)] overscroll-contain"
         role="region"
       >
-        <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
+        <ScrollAreaContent style={{ minWidth: 0 }}>{children}</ScrollAreaContent>
       </ScrollAreaViewport>
       <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
+    </ScrollArea>
   )
 }
 

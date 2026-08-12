@@ -4,7 +4,7 @@ from collections.abc import Callable
 from functools import cached_property
 from typing import Any, ClassVar
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)

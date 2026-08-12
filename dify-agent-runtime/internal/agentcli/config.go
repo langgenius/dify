@@ -74,9 +74,13 @@ func RunConfigSkillsPull(env *Environment, names []string, localDir string, json
 	var items []pullItem
 
 	for _, name := range names {
-		archiveBytes, err := client.PullConfigSkill(ctx, name)
+		download, err := client.CreateConfigDownloadURL(ctx, "skill", name)
 		if err != nil {
 			return err
+		}
+		archiveBytes, err := client.DownloadFromURL(download.DownloadURL)
+		if err != nil {
+			return fmt.Errorf("download config skill %q: %w", name, err)
 		}
 
 		archivePath := filepath.Join(targetDir, name+".zip")
@@ -168,9 +172,13 @@ func RunConfigFilesPull(env *Environment, names []string, localDir string, jsonO
 	var items []fileItem
 
 	for _, name := range names {
-		payload, err := client.PullConfigFile(ctx, name)
+		download, err := client.CreateConfigDownloadURL(ctx, "file", name)
 		if err != nil {
 			return err
+		}
+		payload, err := client.DownloadFromURL(download.DownloadURL)
+		if err != nil {
+			return fmt.Errorf("download config file %q: %w", name, err)
 		}
 
 		targetPath := filepath.Join(targetDir, name)

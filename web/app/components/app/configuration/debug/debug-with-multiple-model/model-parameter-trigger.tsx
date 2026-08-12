@@ -80,7 +80,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({ modelAndParamet
 
         return (
           <div
-            className={`flex h-8 max-w-[200px] cursor-pointer items-center rounded-lg px-2 ${open && 'bg-state-base-hover'} ${!isEmpty && !isActive && 'bg-[#FFFAEB]!'} `}
+            className={`flex h-8 max-w-50 cursor-pointer items-center rounded-lg px-2 ${open && 'bg-state-base-hover'} ${!isEmpty && !isActive && 'bg-[#FFFAEB]!'} `}
           >
             {iconProvider && !isEmpty && (
               <ModelIcon

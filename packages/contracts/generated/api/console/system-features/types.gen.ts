@@ -18,7 +18,6 @@ export type SystemFeatureModel = {
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
-  enable_trial_app: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
@@ -26,12 +25,13 @@ export type SystemFeatureModel = {
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
 }
 
 export type LicenseModel = {
   expired_at: string
+  license_expiry_notice_enabled: boolean
   seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel
@@ -55,6 +55,8 @@ export type PluginInstallationPermissionModel = {
   plugin_installation_scope: PluginInstallationScope
   restrict_to_marketplace_only: boolean
 }
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
@@ -80,7 +82,7 @@ export type PluginInstallationScope =
   | 'official_only'
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
 }
 
 export type GetSystemFeaturesData = {

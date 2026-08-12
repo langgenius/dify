@@ -3,6 +3,7 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode, Ref } from 'react'
+import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   checkoutBuildDraft: vi.fn(),
   completeBuildConversation: undefined as (() => void) | undefined,
   deleteBuildDraft: vi.fn(),
+  downloadAgentSandboxFile: vi.fn(),
+  downloadWorkflowSandboxFile: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
   finalizeBuildChat: vi.fn(),
@@ -79,6 +82,7 @@ vi.mock(
   '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar',
   () => ({
     AgentBuildDraftBar: (props: {
+      changeSummary?: AgentBuildDraftChangeSummary
       changesCount: number
       disabled?: boolean
       onApply: () => void
@@ -86,6 +90,9 @@ vi.mock(
     }) => (
       <div role="region" aria-label="build-draft-bar">
         <span>{`changes:${props.changesCount}`}</span>
+        <span>
+          {`summary:${props.changeSummary?.files.map((file) => file.name).join(',') ?? 'none'}`}
+        </span>
         <button type="button" disabled={props.disabled} onClick={props.onApply}>
           apply build draft
         </button>
@@ -183,7 +190,6 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-c
 
 vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   useWorkflowInlineAgentConfigureSync: () => ({
-    draftSavedAt: undefined,
     saveAgentSoulConfig: mocks.saveAgentSoulConfig,
     saveDraft: mocks.saveDraft,
   }),
@@ -303,6 +309,7 @@ vi.mock('@/service/client', async () => {
             },
             files: {
               get: {
+                key: () => ['agent-sandbox-files'],
                 queryOptions: () => ({
                   queryKey: ['sandbox-files'],
                   queryFn: () =>
@@ -326,6 +333,11 @@ vi.mock('@/service/client', async () => {
                         text: 'result',
                       }),
                   }),
+                },
+              },
+              download: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.downloadAgentSandboxFile }),
                 },
               },
               upload: {
@@ -369,6 +381,13 @@ vi.mock('@/service/client', async () => {
                               Promise.resolve({
                                 text: 'result',
                               }),
+                          }),
+                        },
+                      },
+                      download: {
+                        post: {
+                          mutationOptions: () => ({
+                            mutationFn: mocks.downloadWorkflowSandboxFile,
                           }),
                         },
                       },
@@ -472,7 +491,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
-      draft: {},
+      draft: {
+        id: 'build-draft-1',
+      },
       variant: 'agent_app',
     })
     mocks.deleteBuildDraft.mockResolvedValue({ result: 'success' })
@@ -494,7 +515,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           system_prompt: 'Help with workflow tasks.',
         },
       },
-      draft: {},
+      draft: {
+        id: 'build-draft-1',
+      },
       variant: 'agent_app',
     })
     mocks.saveDraft.mockResolvedValue(createInlineComposerState())
@@ -857,6 +880,12 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         }),
       })
 
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.workingDirectory.open',
+        }),
+      ).not.toBeInTheDocument()
+
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'send build message',
@@ -876,11 +905,6 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'complete build conversation',
-        }),
-      )
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'send build message',
         }),
       )
       expect(
@@ -1068,6 +1092,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+        'summary:build_note.md',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:inline-debug-conversation-1',
       )

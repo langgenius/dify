@@ -41,7 +41,7 @@ describe('VersionInfoModal', () => {
 
     const [titleInput] = screen.getAllByRole('textbox')
     fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(toast.error).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)versionHistory\.editField\.titleLengthLimit(?=$|:)/),
@@ -71,7 +71,7 @@ describe('VersionInfoModal', () => {
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
     fireEvent.change(titleInput!, { target: { value: 'Release 2' } })
     fireEvent.change(notesInput!, { target: { value: 'Updated notes' } })
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(handlePublish).toHaveBeenCalledWith({
       title: 'Release 2',
@@ -123,20 +123,20 @@ describe('VersionInfoModal', () => {
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
 
     fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
     expect(toast.error).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)versionHistory\.editField\.titleLengthLimit(?=$|:)/),
     )
 
     fireEvent.change(titleInput!, { target: { value: 'Release 3' } })
     fireEvent.change(notesInput!, { target: { value: 'b'.repeat(101) } })
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
     expect(toast.error).toHaveBeenCalledWith(
       expect.stringMatching(/(?:^|\.)versionHistory\.editField\.releaseNotesLengthLimit(?=$|:)/),
     )
 
     fireEvent.change(notesInput!, { target: { value: 'Stable release notes' } })
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)common\.publish(?=$|:)/ }))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.save(?=$|:)/ }))
 
     expect(handlePublish).toHaveBeenCalledWith({
       title: 'Release 3',

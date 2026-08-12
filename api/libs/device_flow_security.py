@@ -17,7 +17,8 @@ from werkzeug.exceptions import NotFound
 
 from libs import jws
 from libs.token import is_secure
-from services.feature_service import FeatureService, LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 

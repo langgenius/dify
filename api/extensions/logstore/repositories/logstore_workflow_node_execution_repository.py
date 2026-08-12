@@ -278,6 +278,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 # Don't raise - LogStore write succeeded, SQL is just a backup
 
     @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Create the SQL caller row required by Agent v2 participant ownership."""
+
+        self.sql_repository.save_synchronously(execution)
+
+    @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update the inputs, process_data, or outputs associated with a specific

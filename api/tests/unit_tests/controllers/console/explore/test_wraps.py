@@ -255,11 +255,9 @@ def test_trial_feature_enable_disabled():
     def view():
         return "ok"
 
-    features = MagicMock(enable_trial_app=False)
-
     with patch(
-        "controllers.console.explore.wraps.FeatureService.get_system_features",
-        return_value=features,
+        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
+        return_value=False,
     ):
         with pytest.raises(Forbidden):
             view()
@@ -270,11 +268,9 @@ def test_trial_feature_enable_enabled():
     def view():
         return "ok"
 
-    features = MagicMock(enable_trial_app=True)
-
     with patch(
-        "controllers.console.explore.wraps.FeatureService.get_system_features",
-        return_value=features,
+        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
+        return_value=True,
     ):
         assert view() == "ok"
 
@@ -285,5 +281,9 @@ def test_installed_app_resource_decorators():
 
 
 def test_trial_app_resource_decorators():
-    decorators = TrialAppResource.method_decorators
-    assert len(decorators) == 3
+    assert TrialAppResource.method_decorators == [
+        trial_app_required,
+        trial_feature_enable,
+        wraps_module.account_initialization_required,
+        wraps_module.login_required,
+    ]

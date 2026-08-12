@@ -54,11 +54,7 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
             requirement_name(requirement)
             for requirement in pyproject["project"].get("optional-dependencies", {}).get("server", [])
         }
-        grpc_dependency_names = {
-            requirement_name(requirement)
-            for requirement in pyproject["project"].get("optional-dependencies", {}).get("grpc", [])
-        }
-        server_only_dependency_names = (server_dependency_names | grpc_dependency_names) - default_dependency_names
+        server_only_dependency_names = server_dependency_names - default_dependency_names
 
         agenton_layers = importlib.import_module("agenton.layers")
         agenton_compositor = importlib.import_module("agenton.compositor")

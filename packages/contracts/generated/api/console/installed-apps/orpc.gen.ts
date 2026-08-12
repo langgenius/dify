@@ -24,6 +24,8 @@ import {
   zGetInstalledAppsByInstalledAppIdMetaResponse,
   zGetInstalledAppsByInstalledAppIdParametersPath,
   zGetInstalledAppsByInstalledAppIdParametersResponse,
+  zGetInstalledAppsByInstalledAppIdPath,
+  zGetInstalledAppsByInstalledAppIdResponse,
   zGetInstalledAppsByInstalledAppIdSavedMessagesPath,
   zGetInstalledAppsByInstalledAppIdSavedMessagesQuery,
   zGetInstalledAppsByInstalledAppIdSavedMessagesResponse,
@@ -520,6 +522,17 @@ export const delete3 = oc
   .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
   .output(zDeleteInstalledAppsByInstalledAppIdResponse)
 
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppId',
+    path: '/installed-apps/{installed_app_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetInstalledAppsByInstalledAppIdPath }))
+  .output(zGetInstalledAppsByInstalledAppIdResponse)
+
 export const patch3 = oc
   .route({
     inputStructure: 'detailed',
@@ -538,6 +551,7 @@ export const patch3 = oc
 
 export const byInstalledAppId = {
   delete: delete3,
+  get: get8,
   patch: patch3,
   audioToText,
   chatMessages,
@@ -551,7 +565,7 @@ export const byInstalledAppId = {
   workflows,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -574,7 +588,7 @@ export const post12 = oc
   .output(zPostInstalledAppsResponse)
 
 export const installedApps = {
-  get: get8,
+  get: get9,
   post: post12,
   byInstalledAppId,
 }

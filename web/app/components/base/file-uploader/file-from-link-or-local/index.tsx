@@ -1,3 +1,4 @@
+import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,7 +14,7 @@ import { useStore } from '../store'
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
   showFromLocal?: boolean
-  trigger: (open: boolean) => React.ReactNode
+  trigger: NonNullable<PopoverTriggerProps['render']>
   fileConfig: FileUpload
 }
 const FileFromLinkOrLocal = ({
@@ -24,7 +25,6 @@ const FileFromLinkOrLocal = ({
 }: FileFromLinkOrLocalProps) => {
   const { t } = useTranslation()
   const files = useStore((s) => s.files)
-  const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [showError, setShowError] = useState(false)
   const { handleLoadFileFromLink } = useFile(fileConfig)
@@ -48,14 +48,14 @@ const FileFromLinkOrLocal = ({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={trigger(open) as React.ReactElement} />
+    <Popover>
+      <PopoverTrigger render={trigger} />
       <PopoverContent
         placement="top"
         sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
+        <div className="w-70 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {showFromLink && (
             <>
               <div
@@ -93,14 +93,14 @@ const FileFromLinkOrLocal = ({
           )}
           {showFromLink && showFromLocal && (
             <div className="flex h-7 items-center p-2 system-2xs-medium-uppercase text-text-quaternary">
-              <div className="mr-2 h-px w-[93px] bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
+              <div className="mr-2 h-px w-23.25 bg-linear-to-l from-[rgba(16,24,40,0.08)]" />
               OR
-              <div className="ml-2 h-px w-[93px] bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
+              <div className="ml-2 h-px w-23.25 bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
             </div>
           )}
           {showFromLocal && (
             <Button className="relative w-full" variant="secondary-accent" disabled={disabled}>
-              <RiUploadCloud2Line className="mr-1 size-4" />
+              <RiUploadCloud2Line className="size-4" />
               {t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
               <FileInput fileConfig={fileConfig} />
             </Button>

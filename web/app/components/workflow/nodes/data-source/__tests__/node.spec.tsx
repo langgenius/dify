@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useNodePluginInstallation } from '../../../hooks/use-node-plugin-installation'
 import Node from '../node'
 
 const mockInstallPluginButton = vi.hoisted(() =>
@@ -10,7 +10,7 @@ const mockInstallPluginButton = vi.hoisted(() =>
   )),
 )
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: vi.fn(),
 }))
 

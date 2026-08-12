@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useToolIcon } from '@/app/components/workflow/hooks'
+import { useToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type OptionCardProps = {

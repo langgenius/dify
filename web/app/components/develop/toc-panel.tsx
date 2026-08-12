@@ -43,8 +43,8 @@ const TocPanel = ({ toc, activeSection, isTocExpanded, onToggle, onItemClick }: 
         </button>
       </div>
 
-      <div className="pointer-events-none absolute top-[41px] right-0 left-0 z-10 h-2 bg-linear-to-b from-components-panel-border-subtle/20 to-transparent"></div>
-      <div className="pointer-events-none absolute top-[43px] right-0 left-0 z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
+      <div className="pointer-events-none absolute top-10.25 right-0 left-0 z-10 h-2 bg-linear-to-b from-components-panel-border-subtle/20 to-transparent"></div>
+      <div className="pointer-events-none absolute top-10.75 right-0 left-0 z-10 h-3 bg-linear-to-b from-background-default-hover to-transparent"></div>
 
       <div className="relative flex-1 overflow-y-auto p-3 pt-1">
         {toc.length === 0 ? (

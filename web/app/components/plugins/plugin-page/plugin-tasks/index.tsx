@@ -125,23 +125,28 @@ const PluginTasks = ({
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           nativeButton={false}
-          render={<div className={canOpenMenu ? 'cursor-pointer' : 'cursor-default'} />}
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn('cursor-pointer data-disabled:cursor-default', props.className)}
+            >
+              <TaskStatusIndicator
+                tip={tip}
+                isInstalling={isInstalling}
+                isInstallingWithSuccess={isInstallingWithSuccess}
+                isInstallingWithError={isInstallingWithError}
+                isSuccess={isSuccess}
+                isFailed={isFailed}
+                isOpen={state.open}
+                successPluginsLength={successPluginsLength}
+                runningPluginsLength={runningPluginsLength}
+                totalPluginsLength={totalPluginsLength}
+                onClick={() => {}}
+              />
+            </div>
+          )}
           disabled={!canOpenMenu}
-        >
-          <TaskStatusIndicator
-            tip={tip}
-            isInstalling={isInstalling}
-            isInstallingWithSuccess={isInstallingWithSuccess}
-            isInstallingWithError={isInstallingWithError}
-            isSuccess={isSuccess}
-            isFailed={isFailed}
-            isOpen={open}
-            successPluginsLength={successPluginsLength}
-            runningPluginsLength={runningPluginsLength}
-            totalPluginsLength={totalPluginsLength}
-            onClick={() => {}}
-          />
-        </DropdownMenuTrigger>
+        />
         <DropdownMenuContent
           placement={dropdownPlacement}
           sideOffset={4}

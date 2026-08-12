@@ -98,20 +98,19 @@ function Operation({
   const [feedbackContent, setFeedbackContent] = useState('')
   const { id, isOpeningStatement, annotation, feedback, adminFeedback, humanInputFormDataList } =
     item
-  const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
-  const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
+  const [userFeedbackOverride, setUserFeedbackOverride] = useState<Feedback>()
+  const [adminFeedbackOverride, setAdminFeedbackOverride] = useState<Feedback>()
   const [feedbackTarget, setFeedbackTarget] = useState<'user' | 'admin'>('user')
   const feedbackTextareaId = useId()
-
-  const userFeedback = feedback
 
   const content = getPublicResponseContent(item)
   const hasPublicContent = !!content.trim()
 
-  const displayUserFeedback = userLocalFeedback ?? userFeedback
+  const displayUserFeedback = userFeedbackOverride ?? feedback
+  const displayAdminFeedback = adminFeedbackOverride ?? adminFeedback
 
   const hasUserFeedback = !!displayUserFeedback?.rating
-  const hasAdminFeedback = !!adminLocalFeedback?.rating
+  const hasAdminFeedback = !!displayAdminFeedback?.rating
 
   const shouldShowUserFeedbackBar =
     !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
@@ -155,18 +154,23 @@ function Operation({
     content?: string,
     target: 'user' | 'admin' = 'user',
   ) => {
-    if (!config?.supportFeedback || !onFeedback) return
+    if (!config?.supportFeedback || !onFeedback) return false
 
-    await onFeedback?.(id, { rating, content })
+    try {
+      await onFeedback(id, { rating, content })
 
-    const nextFeedback = rating === null ? { rating: null } : { rating, content }
+      const nextFeedback = rating === null ? { rating: null } : { rating, content }
 
-    if (target === 'admin') setAdminLocalFeedback(nextFeedback)
-    else setUserLocalFeedback(nextFeedback)
+      if (target === 'admin') setAdminFeedbackOverride(nextFeedback)
+      else setUserFeedbackOverride(nextFeedback)
+      return true
+    } catch {
+      return false
+    }
   }
 
   const handleLikeClick = (target: 'user' | 'admin') => {
-    handleFeedback('like', undefined, target)
+    void handleFeedback('like', undefined, target)
   }
 
   const handleDislikeClick = (target: 'user' | 'admin') => {
@@ -175,7 +179,9 @@ function Operation({
   }
 
   const handleFeedbackSubmit = async () => {
-    await handleFeedback('dislike', feedbackContent, feedbackTarget)
+    const succeeded = await handleFeedback('dislike', feedbackContent, feedbackTarget)
+    if (!succeeded) return
+
     setFeedbackContent('')
     setIsShowFeedbackModal(false)
   }
@@ -220,7 +226,7 @@ function Operation({
           'absolute flex justify-end gap-1',
           hasWorkflowProcess && 'right-2 -bottom-4',
           !positionRight && 'right-2 -bottom-4',
-          !hasWorkflowProcess && positionRight && 'top-[9px]!',
+          !hasWorkflowProcess && positionRight && 'top-2.25!',
         )}
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
         data-testid="operation-bar"
@@ -291,21 +297,26 @@ function Operation({
               <FeedbackTooltip
                 content={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
               >
-                {displayUserFeedback.rating === 'like' ? (
-                  <ActionButton
-                    aria-label={`${userFeedbackLabel}: ${likeLabel}`}
-                    state={ActionButtonState.Active}
-                  >
-                    <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
-                  </ActionButton>
-                ) : (
-                  <ActionButton
-                    aria-label={`${userFeedbackLabel}: ${dislikeLabel}`}
-                    state={ActionButtonState.Destructive}
-                  >
-                    <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
-                  </ActionButton>
-                )}
+                <span
+                  role="img"
+                  aria-label={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
+                  className={cn(
+                    'inline-flex size-6 items-center justify-center rounded-lg p-0.5',
+                    displayUserFeedback.rating === 'like'
+                      ? 'bg-state-accent-active text-text-accent'
+                      : 'bg-state-destructive-hover text-text-destructive',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'size-4',
+                      displayUserFeedback.rating === 'like'
+                        ? 'i-ri-thumb-up-line'
+                        : 'i-ri-thumb-down-line',
+                    )}
+                  />
+                </span>
               </FeedbackTooltip>
             )}
 
@@ -314,18 +325,18 @@ function Operation({
             )}
             {hasAdminFeedback ? (
               <FeedbackTooltip
-                content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
               >
                 <ActionButton
                   aria-label={`${adminFeedbackLabel}: ${removeFeedbackLabel}`}
                   state={
-                    adminLocalFeedback?.rating === 'like'
+                    displayAdminFeedback?.rating === 'like'
                       ? ActionButtonState.Active
                       : ActionButtonState.Destructive
                   }
                   onClick={() => handleFeedback(null, undefined, 'admin')}
                 >
-                  {adminLocalFeedback?.rating === 'like' ? (
+                  {displayAdminFeedback?.rating === 'like' ? (
                     <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
                   ) : (
                     <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
@@ -335,12 +346,12 @@ function Operation({
             ) : (
               <>
                 <FeedbackTooltip
-                  content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <ActionButton
                     aria-label={`${adminFeedbackLabel}: ${likeLabel}`}
                     state={
-                      adminLocalFeedback?.rating === 'like'
+                      displayAdminFeedback?.rating === 'like'
                         ? ActionButtonState.Active
                         : ActionButtonState.Default
                     }
@@ -350,12 +361,12 @@ function Operation({
                   </ActionButton>
                 </FeedbackTooltip>
                 <FeedbackTooltip
-                  content={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  content={buildFeedbackTooltip(displayAdminFeedback, adminFeedbackLabel)}
                 >
                   <ActionButton
                     aria-label={`${adminFeedbackLabel}: ${dislikeLabel}`}
                     state={
-                      adminLocalFeedback?.rating === 'dislike'
+                      displayAdminFeedback?.rating === 'dislike'
                         ? ActionButtonState.Destructive
                         : ActionButtonState.Default
                     }

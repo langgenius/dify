@@ -1,6 +1,5 @@
 import contextlib
 import json
-import os
 import time
 from collections.abc import Callable
 from functools import wraps
@@ -19,8 +18,7 @@ from controllers.common.wraps import (
 )
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
@@ -30,7 +28,8 @@ from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.billing_service import BillingService
-from services.feature_service import FeatureService, LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -141,7 +140,7 @@ def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             abort(404)
 
         return view(*args, **kwargs)
@@ -155,16 +154,6 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             abort(404)
 
-        return view(*args, **kwargs)
-
-    return decorated
-
-
-def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not dify_config.BILLING_ENABLED:
-            abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
 
     return decorated
@@ -191,7 +180,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
         def decorated(*args: P.args, **kwargs: P.kwargs):
             _, current_tenant_id = current_account_with_tenant()
             if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
+                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(current_tenant_id)
@@ -215,7 +204,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
-                    source = request.args.get("source")
+                    source = request.args.get("source") or request.form.get("source")
                     if source == "datasets":
                         abort(403, "The number of documents has reached the limit of your subscription.")
                     else:
@@ -259,35 +248,35 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
+def check_knowledge_rate_limit() -> None:
+    _, current_tenant_id = current_account_with_tenant()
+    knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
+    if not knowledge_rate_limit.enabled:
+        return
+
+    current_time = int(time.time() * 1000)
+    key = f"rate_limit_{current_tenant_id}"
+    redis_client.zadd(key, {current_time: current_time})
+    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+    if redis_client.zcard(key) > knowledge_rate_limit.limit:
+        db.session.add(  # guard-ignore: no-new-controller-sqlalchemy -- existing decorator audit write
+            RateLimitLog(
+                tenant_id=current_tenant_id,
+                subscription_plan=knowledge_rate_limit.subscription_plan,
+                operation="knowledge",
+            )
+        )
+        db.session.commit()
+        abort(403, "Sorry, you have reached the knowledge base request rate limit of your subscription.")
+
+
 def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
-                _, current_tenant_id = current_account_with_tenant()
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{current_tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        # add ratelimit record
-                        rate_limit_log = RateLimitLog(
-                            tenant_id=current_tenant_id,
-                            subscription_plan=knowledge_rate_limit.subscription_plan,
-                            operation="knowledge",
-                        )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
-                        abort(
-                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
+                check_knowledge_rate_limit()
             return view(*args, **kwargs)
 
         return decorated
@@ -300,7 +289,7 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
             utm_info = request.cookies.get("utm_info")
-            if dify_config.BILLING_ENABLED and utm_info:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and utm_info:
                 _, current_tenant_id = current_account_with_tenant()
                 utm_info_dict: UtmInfo = json.loads(utm_info)
                 OperationService.record_utm(current_tenant_id, utm_info_dict)
@@ -329,7 +318,7 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
         # preserving support for plain functions used in tests and utilities.
         # check setup
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and not _is_setup_completed():
-            if os.environ.get("INIT_PASSWORD"):
+            if dify_config.INIT_PASSWORD:
                 raise NotInitValidateError()
             raise NotSetupError()
 

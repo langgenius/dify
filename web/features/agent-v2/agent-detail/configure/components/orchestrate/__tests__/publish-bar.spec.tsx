@@ -10,8 +10,7 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { AgentConfigurePublishBar } from '../publish-bar'
@@ -46,6 +45,11 @@ const toastMock = vi.hoisted(() => ({
 const workflowReferences = vi.hoisted(() => ({
   fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
+  shouldFail: false,
+}))
+const composerQuery = vi.hoisted(() => ({
+  data: undefined as unknown,
+  shouldFail: false,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -92,22 +96,39 @@ vi.mock('@/service/client', () => ({
               'agent-composer',
               input,
             ],
+            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+              queryKey: ['agent-composer', input],
+              queryFn: async () => {
+                if (composerQuery.shouldFail) throw new Error('Composer query failed')
+
+                return composerQuery.data
+              },
+            }),
           },
         },
         referencingWorkflows: {
           get: {
             queryOptions: ({
+              context,
               enabled = true,
               input,
             }: {
+              context?: { silent?: boolean }
               enabled?: boolean
               input: { params: { agent_id: string } }
             }) => ({
               queryKey: ['agent-referencing-workflows', input],
               enabled,
-              queryFn: async () => ({
-                data: (workflowReferences.fetchCount++, workflowReferences.data),
-              }),
+              context,
+              queryFn: async () => {
+                workflowReferences.fetchCount++
+                if (workflowReferences.shouldFail)
+                  throw new Error('Workflow references query failed')
+
+                return {
+                  data: workflowReferences.data,
+                }
+              },
             }),
           },
         },
@@ -135,7 +156,7 @@ const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   created_at: 1710000000,
 }
 
-const originalDraftWithFile = {
+const savedDraftWithFile = {
   ...defaultAgentSoulConfigFormState,
   tools: [
     {
@@ -184,6 +205,8 @@ function renderPublishBar({
   activeConfigIsPublished,
   activeConfigSnapshot,
   draftSavedAt,
+  composerQueryAvailable = true,
+  composerQueryFails = false,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   onExitVersions = vi.fn(),
@@ -192,11 +215,12 @@ function renderPublishBar({
   selectedVersionSnapshot,
   setupStore,
   usedByAppReferences = [],
-  workflowReferencesEnabled,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
+  composerQueryAvailable?: boolean
+  composerQueryFails?: boolean
   isPublishing?: boolean
   onPublish?: PublishMock
   onExitVersions?: Mock<() => void>
@@ -205,9 +229,9 @@ function renderPublishBar({
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
-  workflowReferencesEnabled?: boolean
 } = {}) {
   workflowReferences.data = usedByAppReferences
+  composerQuery.shouldFail = composerQueryFails
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -217,31 +241,41 @@ function renderPublishBar({
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
+  const composerQueryKey = ['agent-composer', { params: { agent_id: 'agent-1' } }]
+  const composerState = {
+    active_config_is_published: activeConfigIsPublished ?? false,
+    active_config_snapshot: activeConfigSnapshot,
+    agent: {
+      id: 'agent-1',
+      name: 'Iris',
+    },
+    agent_soul: {
+      schema_version: 1,
+    },
+    draft: draftSavedAt
+      ? {
+          agent_id: 'agent-1',
+          draft_type: 'draft',
+          id: 'draft-1',
+          updated_at: draftSavedAt / 1000,
+        }
+      : null,
+    save_options: ['save_to_current_version'],
+    variant: 'agent_app',
+  }
+  composerQuery.data = composerState
+  if (composerQueryAvailable) {
+    queryClient.setQueryData(composerQueryKey, composerState)
+  }
 
-  const renderPublishBarTree = (nextProps?: {
-    activeConfigIsPublished?: boolean
-    activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
-    isPublishing?: boolean
-  }) => (
+  const renderPublishBarTree = (nextProps?: { isPublishing?: boolean }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
           agentId="agent-1"
-          activeConfigIsPublished={
-            nextProps && 'activeConfigIsPublished' in nextProps
-              ? nextProps.activeConfigIsPublished
-              : activeConfigIsPublished
-          }
-          activeConfigSnapshot={
-            nextProps && 'activeConfigSnapshot' in nextProps
-              ? nextProps.activeConfigSnapshot
-              : activeConfigSnapshot
-          }
-          draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
-          workflowReferencesEnabled={workflowReferencesEnabled}
           onPublish={onPublish}
           onExitVersions={onExitVersions}
           onOpenVersions={vi.fn()}
@@ -272,6 +306,9 @@ describe('AgentConfigurePublishBar', () => {
     })
     workflowReferences.data = []
     workflowReferences.fetchCount = 0
+    workflowReferences.shouldFail = false
+    composerQuery.data = undefined
+    composerQuery.shouldFail = false
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
@@ -412,25 +449,35 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
-    const { rerender, rerenderPublishBar } = renderPublishBar({
-      activeConfigIsPublished: true,
-      activeConfigSnapshot: null,
+  it('should fail closed while the Composer Query is unavailable', async () => {
+    renderPublishBar({
+      composerQueryAvailable: false,
+      composerQueryFails: true,
     })
 
-    rerender(
-      rerenderPublishBar({
-        activeConfigIsPublished: undefined,
-        activeConfigSnapshot: undefined,
-      }),
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
+    })
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
+  })
 
-    expect(
-      screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
-    ).toBeDisabled()
+  it('should fail closed when refreshing cached Composer state fails', async () => {
+    renderPublishBar({
+      activeConfigIsPublished: false,
+      activeConfigSnapshot,
+      composerQueryFails: true,
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+        }),
+      ).toBeDisabled()
+    })
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
@@ -512,16 +559,15 @@ describe('AgentConfigurePublishBar', () => {
     })
   })
 
-  it('should publish without loading workflow references when references are disabled', async () => {
+  it('should fail closed and show feedback when workflow references cannot be loaded', async () => {
+    workflowReferences.shouldFail = true
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
-      usedByAppReferences: publishedReferences,
-      workflowReferencesEnabled: false,
     })
 
     await waitFor(() => {
-      expect(workflowReferences.fetchCount).toBe(0)
+      expect(workflowReferences.fetchCount).toBe(1)
     })
     fireEvent.click(
       screen.getByRole('button', {
@@ -530,24 +576,18 @@ describe('AgentConfigurePublishBar', () => {
     )
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledTimes(1)
+      expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
     })
-    expect(workflowReferences.fetchCount).toBe(0)
-    expect(
-      screen.queryByRole('region', {
-        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
-      }),
-    ).not.toBeInTheDocument()
+    expect(onPublish).not.toHaveBeenCalled()
   })
 
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, originalDraftWithFile)
-        store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
+        store.set(agentComposerSavedDraftAtom, savedDraftWithFile)
         store.set(agentComposerDraftAtom, {
-          ...originalDraftWithFile,
+          ...savedDraftWithFile,
           tools: [],
         })
       },
@@ -559,20 +599,16 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should keep unpublished state after draft autosave updates the saved draft baseline', () => {
-    const publishedDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Published prompt',
-    }
     const savedDraft = {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Autosaved draft prompt',
     }
 
     renderPublishBar({
+      activeConfigIsPublished: false,
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, publishedDraft)
-        store.set(agentComposerOriginalDraftAtom, savedDraft)
+        store.set(agentComposerSavedDraftAtom, savedDraft)
         store.set(agentComposerDraftAtom, savedDraft)
       },
     })
@@ -588,10 +624,6 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
-    const stalePublishedDraftBaseline = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Old unpublished normal draft',
-    }
     const savedDraftMatchingActiveSnapshot = {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Published prompt',
@@ -601,8 +633,7 @@ describe('AgentConfigurePublishBar', () => {
       activeConfigIsPublished: true,
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
-        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerSavedDraftAtom, savedDraftMatchingActiveSnapshot)
         store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
       },
     })
@@ -755,6 +786,42 @@ describe('AgentConfigurePublishBar', () => {
         }),
       ).not.toBeInTheDocument()
     })
+  })
+
+  it('should keep impact confirmation open without leaking a rejected publish command', async () => {
+    const onPublish = vi.fn<PublishHandler>(() => Promise.reject(new Error('publish failed')))
+    renderPublishBar({
+      activeConfigSnapshot,
+      onPublish,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+    expect(
+      await screen.findByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(
+      screen.getByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('should collapse affected workflow details from the expanded footer cancel action', async () => {

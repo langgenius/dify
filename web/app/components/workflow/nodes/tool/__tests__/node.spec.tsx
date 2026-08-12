@@ -7,7 +7,7 @@ import Node from '../node'
 const mockUseNodePluginInstallation = vi.hoisted(() => vi.fn())
 const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: mockUseNodePluginInstallation,
 }))
 

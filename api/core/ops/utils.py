@@ -34,6 +34,7 @@ def measure_time():
     try:
         yield timing_info
     finally:
+        # pyrefly: ignore [bad-assignment]
         timing_info["end"] = datetime.now()
 
 

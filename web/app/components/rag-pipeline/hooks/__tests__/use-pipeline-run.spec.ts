@@ -41,7 +41,7 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
 }))
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
-vi.mock('@/app/components/workflow/hooks/use-workflow-interactions', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({
     handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas,
   }),

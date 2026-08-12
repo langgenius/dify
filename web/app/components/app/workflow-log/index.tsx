@@ -19,6 +19,12 @@ import { useWorkflowLogs } from '@/service/use-log'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
+import {
+  resolveLogTimePeriod,
+  resolveLogTimePeriodOption,
+  useCloudSandboxPlanStatus,
+} from '../log/cloud-sandbox-retention'
+import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -43,26 +49,35 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   })
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const cloudSandboxPlanState = useCloudSandboxPlanStatus()
+  const effectivePeriod = resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState)
+  const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+  const requestTimePeriod = resolveLogTimePeriodOption(
+    requestQueryParams.period,
+    TIME_PERIOD_MAPPING[requestQueryParams.period]!,
+    cloudSandboxPlanState,
+  )
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
   const query = {
     page: currPage + 1,
     detail: true,
     limit,
-    ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
-    ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
-    ...(debouncedQueryParams.period !== '9'
+    ...(requestQueryParams.status !== 'all' ? { status: requestQueryParams.status } : {}),
+    ...(requestQueryParams.keyword ? { keyword: requestQueryParams.keyword } : {}),
+    ...(requestQueryParams.period !== '9'
       ? {
           created_at__after: dayjs()
-            .subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day')
+            .subtract(requestTimePeriod.value, 'day')
             .startOf('day')
             .tz(timezone)
             .format('YYYY-MM-DDTHH:mm:ssZ'),
           created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
         }
       : {}),
-    ...omit(debouncedQueryParams, ['period', 'status']),
+    ...omit(requestQueryParams, ['period', 'status']),
   }
 
   const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
@@ -72,7 +87,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const total = workflowLogs?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   const showArchivedLogsNotice = shouldShowArchivedLogsNotice(
-    queryParams.period,
+    effectiveQueryParams.period,
     TIME_PERIOD_MAPPING,
   )
 
@@ -83,7 +98,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         description={t(($) => $.workflowSubtitle, { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter queryParams={effectiveQueryParams} setQueryParams={setQueryParams} />
+        <RetentionUpgradeNotice />
         {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {/* workflow log */}
         {total === undefined ? (

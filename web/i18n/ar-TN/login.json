@@ -91,6 +91,7 @@
   "timezone": "المنطقة الزمنية",
   "tos": "شروط الخدمة",
   "tosDesc": "بالتسجيل، فإنك توافق على",
+  "turnstile.loadError": "تعذر تحميل التحقق الأمني.",
   "usePassword": "استخدام كلمة المرور",
   "useVerificationCode": "استخدام رمز التحقق",
   "validate": "تحقق",

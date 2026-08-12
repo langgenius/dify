@@ -197,4 +197,30 @@ describe('GeneralChunkingOptions', () => {
       expect(onSummaryIndexSettingChange).toHaveBeenCalledWith({ enable: true })
     })
   })
+
+  // Regression: dify issue 39592 — the delimiter/max-length/overlap row must
+  // stack (one field per row) in a narrow card and sit three-across when wide,
+  // driven by a container query rather than the viewport. Fails before this
+  // change (row was flex-wrap; no @container ancestor).
+  describe('#39592 narrow-container regression', () => {
+    it('stacks by default and becomes a row across the 552px container query', () => {
+      render(<GeneralChunkingOptions {...defaultProps} />)
+      const delimiterLabel = screen.getByText(`${ns}.stepTwo.separator`)
+      const row = delimiterLabel.closest('.gap-3')
+      expect(row).not.toBeNull()
+      // stacked by default (below threshold)
+      expect(row!.className).toContain('flex-col')
+      // three-across at/above the container threshold
+      expect(row!.className).toContain('@min-[552px]/chunkfields:flex-row')
+      // the previous flex-wrap approach is gone
+      expect(row!.className).not.toContain('flex-wrap')
+    })
+
+    it('marks an ancestor as the query container', () => {
+      render(<GeneralChunkingOptions {...defaultProps} />)
+      const delimiterLabel = screen.getByText(`${ns}.stepTwo.separator`)
+      const container = delimiterLabel.closest('[class*="@container/chunkfields"]')
+      expect(container).not.toBeNull()
+    })
+  })
 })

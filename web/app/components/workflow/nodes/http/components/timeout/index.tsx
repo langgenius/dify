@@ -29,7 +29,7 @@ const InputField: FC<{
 }> = ({ title, description, placeholder, value, onChange, readOnly, min, max }) => {
   return (
     <div className="space-y-1">
-      <div className="flex h-[18px] items-center space-x-2">
+      <div className="flex h-4.5 items-center space-x-2">
         <span className="text-[13px] font-medium text-text-primary">{title}</span>
         <span className="text-xs font-normal text-text-tertiary">{description}</span>
       </div>

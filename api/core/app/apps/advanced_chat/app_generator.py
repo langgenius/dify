@@ -616,23 +616,34 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message_snapshot = MessageSnapshot.from_message(message)
             session.close()
 
-            # return response or stream generator
-            response = self._handle_advanced_chat_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow_snapshot,
-                queue_manager=queue_manager,
-                conversation=conversation_snapshot,
-                message=message_snapshot,
-                user=user,
-                stream=stream,
-                draft_var_saver_factory=self._get_draft_var_saver_factory(
-                    invoke_from,
-                    account=user,
-                    tenant_id=application_generate_entity.app_config.tenant_id,
-                ),
-            )
+            try:
+                response = self._handle_advanced_chat_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow_snapshot,
+                    queue_manager=queue_manager,
+                    conversation=conversation_snapshot,
+                    message=message_snapshot,
+                    user=user,
+                    stream=stream,
+                    draft_var_saver_factory=self._get_draft_var_saver_factory(
+                        invoke_from,
+                        account=user,
+                        tenant_id=application_generate_entity.app_config.tenant_id,
+                    ),
+                )
+                converted_response = AdvancedChatAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return AdvancedChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def _generate_worker(
         self,
@@ -674,6 +685,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_run_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

@@ -182,7 +182,7 @@ function AppIconPickerContent({
       className={cn(
         'w-full overflow-hidden! border-none text-left align-middle',
         s.container,
-        'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-[362px]! p-0!',
+        'h-[min(462px,calc(100dvh-2rem))]! max-h-none! w-90.5! p-0!',
         className,
       )}
     >

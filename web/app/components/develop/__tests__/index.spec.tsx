@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { AppACLPermission } from '@/utils/permission'
 import DevelopMain from '../index'
 
 const mockAppDetailValue: { current: unknown } = { current: undefined }
@@ -24,8 +25,16 @@ vi.mock('@/app/components/develop/doc', () => ({
 }))
 
 vi.mock('@/app/components/develop/ApiServer', () => ({
-  default: ({ apiBaseUrl, appId }: { apiBaseUrl: string; appId: string }) => (
-    <div data-testid="api-server">
+  default: ({
+    apiBaseUrl,
+    appId,
+    canManageApiKey,
+  }: {
+    apiBaseUrl: string
+    appId: string
+    canManageApiKey: boolean
+  }) => (
+    <div data-testid="api-server" data-can-manage-api-key={canManageApiKey}>
       API Server -{apiBaseUrl} -{appId}
     </div>
   ),
@@ -102,6 +111,16 @@ describe('DevelopMain', () => {
     it('should pass appId to ApiServer', () => {
       render(<DevelopMain appId="app-123" />)
       expect(screen.getByTestId('api-server')).toHaveTextContent('app-123')
+    })
+
+    it.each([
+      [[AppACLPermission.ReleaseAndVersion], 'true'],
+      [[AppACLPermission.Edit], 'false'],
+    ])('should gate API key management by release permission', (permissionKeys, canManage) => {
+      mockAppDetailValue.current = { ...mockAppDetail, permission_keys: permissionKeys }
+      render(<DevelopMain appId="app-123" />)
+
+      expect(screen.getByTestId('api-server')).toHaveAttribute('data-can-manage-api-key', canManage)
     })
 
     it('should render Doc component', () => {

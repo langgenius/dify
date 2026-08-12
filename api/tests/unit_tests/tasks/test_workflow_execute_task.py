@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Generator, Mapping
 from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
+from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message
@@ -36,6 +38,7 @@ from tasks.app_generate.workflow_execute_task import (
 class _StreamEventModel(BaseModel):
     event: object | None = None
     task_id: object | None = None
+    message: object | None = None
 
 
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
@@ -246,6 +249,21 @@ def test_get_event_name(event: object, expected: str | None):
 )
 def test_get_task_id(event: object, expected: str | None):
     assert workflow_execute_task_module._get_task_id(event) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"message": "workflow error"}, "workflow error"),
+        (_StreamEventModel(message="workflow error"), "workflow error"),
+        ({"message": ""}, None),
+        ({"message": 123}, None),
+        ({}, None),
+        ("workflow error", None),
+    ],
+)
+def test_get_error_message(event: str | Mapping[str, object] | BaseModel, expected: str | None):
+    assert workflow_execute_task_module._get_error_message(event) == expected
 
 
 @pytest.fixture
@@ -486,6 +504,38 @@ def test_publish_streaming_response_publishes_failed_terminal_on_exhaustion_with
     assert "ended without a terminal event" in caplog.text
 
 
+def test_publish_streaming_response_uses_error_message_for_failed_terminal(mock_topic: MagicMock):
+    def response_stream() -> Generator[str | Mapping[str, object] | BaseModel, None, None]:
+        yield {
+            "event": "error",
+            "workflow_run_id": "workflow-run-id",
+            "code": "invalid_param",
+            "message": "LLM provider and model are required.",
+            "status": 400,
+        }
+
+    _publish_streaming_response(
+        response_stream(),
+        "workflow-run-id",
+        app_mode=AppMode.WORKFLOW,
+        workflow_id="workflow-id",
+        inputs={},
+        started_reason=WorkflowStartReason.INITIAL,
+    )
+
+    payloads = _published_payloads(mock_topic)
+    error_payload = payloads[0]
+    finished_payload = payloads[-1]
+    assert isinstance(error_payload, dict)
+    assert isinstance(finished_payload, dict)
+    assert error_payload["status"] == 400
+    assert error_payload["message"] == "LLM provider and model are required."
+    finished_data = finished_payload["data"]
+    assert isinstance(finished_data, dict)
+    assert finished_data["status"] == WorkflowExecutionStatus.FAILED
+    assert finished_data["error"] == "LLM provider and model are required."
+
+
 def test_publish_streaming_response_does_not_publish_synthetic_failure_after_terminal_event(mock_topic: MagicMock):
     response_stream = iter(
         [
@@ -583,44 +633,50 @@ def test_app_runner_streaming_failure_publishes_started_then_failed_workflow_fin
     assert finished_payload["data"]["files"] == []
 
 
-def test_app_runner_resolves_account_without_switching_tenant(monkeypatch: pytest.MonkeyPatch):
+def test_app_runner_resolves_account_without_switching_tenant(
+    sqlite_session_factory: sessionmaker[Session],
+):
+    account_id = str(uuid.uuid4())
     exec_params = AppExecutionParams(
         app_id="app-id",
         workflow_id="workflow-id",
         tenant_id="resource-tenant-id",
         app_mode=AppMode.WORKFLOW,
-        user={"TYPE": "account", "user_id": "user-id"},
+        user={"TYPE": "account", "user_id": account_id},
         args={"inputs": {}},
         invoke_from=InvokeFrom.EXPLORE,
         streaming=True,
         workflow_run_id="workflow-run-id",
     )
-    runner = _AppRunner(session_factory=MagicMock(), exec_params=exec_params)
-    account = MagicMock()
-    session = MagicMock()
-    session.get.return_value = account
-    monkeypatch.setattr(runner, "_session", lambda: nullcontext(session))
+    with sqlite_session_factory() as session:
+        account = Account(name="Runner Account", email="runner@example.com")
+        account.id = account_id
+        session.add(account)
+        session.commit()
+    runner = _AppRunner(session_factory=sqlite_session_factory, exec_params=exec_params)
 
     resolved_user = runner._resolve_user()
 
-    assert resolved_user is account
-    account.set_tenant_id_with_session.assert_not_called()
+    assert resolved_user.id == account_id
+    assert resolved_user.current_tenant is None
 
 
-def test_resolve_account_for_run_without_switching_tenant():
-    account = MagicMock()
-    session = MagicMock()
-    session.get.return_value = account
+def test_resolve_account_for_run_without_switching_tenant(sqlite_session: Session):
+    account_id = str(uuid.uuid4())
+    account = Account(name="Run Account", email="run@example.com")
+    account.id = account_id
+    sqlite_session.add(account)
+    sqlite_session.commit()
     workflow_run = MagicMock(
         created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-id",
+        created_by=account_id,
         tenant_id="resource-tenant-id",
     )
 
-    resolved_user = workflow_execute_task_module._resolve_user_for_run(session, workflow_run)
+    resolved_user = workflow_execute_task_module._resolve_user_for_run(sqlite_session, workflow_run)
 
     assert resolved_user is account
-    account.set_tenant_id_with_session.assert_not_called()
+    assert account.current_tenant is None
 
 
 def test_app_runner_streaming_failure_keeps_existing_pre_runtime_helper_behavior(
@@ -798,6 +854,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
 
 def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ):
     generate_entity = _build_advanced_chat_generate_entity(conversation_id="conversation-id")
@@ -824,8 +881,6 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
-    session = MagicMock()
-
     _resume_advanced_chat(
         app_model=SimpleNamespace(id="app-id", tenant_id="resource-tenant-id"),
         workflow=workflow,
@@ -839,12 +894,12 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
         pause_state_config=MagicMock(),
         workflow_run_id="workflow-run-id",
         workflow_run=SimpleNamespace(triggered_from="app_run"),
-        session=session,
+        session=sqlite_session,
     )
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
-    assert generator_instance.resume.call_args.kwargs["session"] is session
+    assert generator_instance.resume.call_args.kwargs["session"] is sqlite_session
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",

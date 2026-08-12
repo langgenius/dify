@@ -207,6 +207,26 @@ class TestNotionDatabase:
         mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
         assert extractor._get_notion_database_data("db-1") == []
 
+    def test_requests_use_bounded_timeout(self, mocker: MockerFixture):
+        """All outbound Notion API calls must carry a bounded timeout so a hanging endpoint cannot block extraction."""
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="database",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+        mock_post = mocker.patch("httpx.post", return_value=_mock_response({"results": None}))
+        extractor._get_notion_database_data("db-1")
+        assert mock_post.call_args.kwargs["timeout"] == notion_extractor._REQUEST_TIMEOUT
+
+        mock_request = mocker.patch(
+            "httpx.request", return_value=_mock_response({"last_edited_time": "2024-01-01T00:00:00.000Z"})
+        )
+        extractor.get_notion_last_edited_time()
+        assert mock_request.call_args.kwargs["timeout"] == notion_extractor._REQUEST_TIMEOUT
+
     def test_get_notion_database_data_requires_access_token(self):
         extractor = notion_extractor.NotionExtractor(
             notion_workspace_id="ws",

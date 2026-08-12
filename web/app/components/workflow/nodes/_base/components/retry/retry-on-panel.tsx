@@ -66,7 +66,7 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 {maxRetriesLabel}
               </div>
               <Slider
-                className="mr-3 w-[108px]"
+                className="mr-3 w-27"
                 value={retry_config?.max_retries || 3}
                 onValueChange={handleMaxRetriesChange}
                 min={1}
@@ -93,7 +93,7 @@ const RetryOnPanel = ({ id, data }: RetryOnPanelProps) => {
                 {retryIntervalLabel}
               </div>
               <Slider
-                className="mr-3 w-[108px]"
+                className="mr-3 w-27"
                 value={retry_config?.retry_interval || 1000}
                 onValueChange={handleRetryIntervalChange}
                 min={100}

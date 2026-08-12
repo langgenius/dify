@@ -73,14 +73,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  __esModule: true,
-  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
-    open !== false ? <div data-testid="base-modal">{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
   FieldCollapse: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
     <div>

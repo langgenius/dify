@@ -6,9 +6,9 @@ import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datas
 import { sleep } from '@/utils'
 import WaterCrawl from '../index'
 
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,12 +26,10 @@ vi.mock('@/utils', () => ({
   sleep: vi.fn(() => Promise.resolve()),
 }))
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock i18n context
 vi.mock('@/context/i18n', () => ({
@@ -396,14 +394,14 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(1)
       expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<WaterCrawl {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(2)
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
@@ -448,7 +446,7 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 

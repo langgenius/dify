@@ -25,6 +25,12 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+)
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -32,7 +38,7 @@ from extensions.ext_redis import redis_client
 from factories import variable_factory
 from graphon.enums import BuiltinNodeTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.entities import LLMNodeData, ModelConfig
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.entities import ToolNodeData
@@ -41,16 +47,24 @@ from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.enterprise.rbac_service import RBACService
-from services.entities.dsl_entities import CheckDependenciesResult, DslImportWarning, ImportMode, ImportStatus
+from services.entities.dsl_entities import (
+    CheckDependenciesResult,
+    DslImportWarning,
+    ImportMode,
+    ImportStatus,
+    PendingImportOwner,
+)
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +86,7 @@ class Import(BaseModel):
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
-class PendingData(BaseModel):
+class PendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     name: str | None = None
@@ -233,6 +247,8 @@ class AppDslService:
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 pending_data = PendingData(
+                    tenant_id=account.current_tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     name=name,
@@ -338,6 +354,15 @@ class AppDslService:
                     error="Invalid import information",
                 )
             pending_data = PendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return Import(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             app = None
@@ -474,8 +499,8 @@ class AppDslService:
             app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
-            app.enable_site = True
-            app.enable_api = True
+            app.enable_site = app_mode != AppMode.AGENT
+            app.enable_api = app_mode != AppMode.AGENT
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
             app.maintainer = account.id
@@ -546,7 +571,7 @@ class AppDslService:
                     sync_agent_bindings=not raw_agent_packages,
                 )
                 if raw_agent_packages:
-                    _, warnings = AgentDslService(self._session).import_workflow_packages(
+                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
                         workflow=draft_workflow,
                         portable_graph=graph,
                         raw_packages=raw_agent_packages,
@@ -556,6 +581,17 @@ class AppDslService:
                     WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
                         session=self._session,
                         draft_workflow=draft_workflow,
+                    )
+                    self._session.commit()
+                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                        tenant_id=app.tenant_id,
+                        agent_ids=retirement_candidates,
+                        account_id=account.id,
+                    )
+                    enqueue_agent_resource_collection(
+                        tenant_id=app.tenant_id,
+                        binding_ids=binding_ids,
+                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
@@ -616,6 +652,9 @@ class AppDslService:
         :param app_model: App instance
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export
+        :raises WorkflowNotFoundError: If the selected workflow version does not exist
+        :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
@@ -675,10 +714,13 @@ class AppDslService:
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
+        :param workflow_id: Optional published workflow version to export
         """
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id, session=session)
         if not workflow:
+            if workflow_id:
+                raise WorkflowNotFoundError(f"Workflow version not found. Workflow ID: {workflow_id}.")
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
@@ -776,6 +818,34 @@ class AppDslService:
         :return: dependencies list format like ["langgenius/google"]
         """
         graph = workflow.graph_dict
+        referenced_llm_nodes = [
+            node.get("data", {})
+            for node in graph.get("nodes", [])
+            if node.get("data", {}).get("type") == BuiltinNodeTypes.LLM
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+        ]
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if referenced_llm_nodes else {}
+        )
+        for node_data in referenced_llm_nodes:
+            try:
+                selector = parse_llm_model_selector(node_data["model_selector"])
+                variable = environment_variables.get(selector[1])
+                if not isinstance(variable, LLMEnvironmentVariable):
+                    raise ValueError(
+                        f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                    )
+                node_data["model"] = resolve_llm_model_config(
+                    node_model=ModelConfig.model_validate(node_data.get("model", {})),
+                    variable_name=selector[1],
+                    variable_value=variable.value,
+                ).model_dump(mode="json")
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping unresolved LLM environment model while extracting dependencies for selector %r: %s",
+                    node_data.get("model_selector"),
+                    exc,
+                )
         dependencies = cls._extract_dependencies_from_workflow_graph(graph)
         return dependencies
 

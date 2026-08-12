@@ -96,9 +96,7 @@ describe('PublishToast', () => {
     it('should have correct toast width', () => {
       render(<PublishToast />)
 
-      const toastContainer = screen
-        .getByText('pipeline.publishToast.title')
-        .closest('.w-\\[420px\\]')
+      const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.w-105')
       expect(toastContainer).toBeInTheDocument()
     })
 

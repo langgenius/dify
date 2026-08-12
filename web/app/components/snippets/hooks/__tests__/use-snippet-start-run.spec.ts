@@ -15,7 +15,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({
     handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
   }),

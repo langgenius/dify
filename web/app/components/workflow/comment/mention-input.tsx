@@ -619,9 +619,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                   size="small"
                   disabled={loading || !value.trim()}
                   onClick={() => handleSubmit()}
-                  className="gap-1"
                 >
-                  {loading && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
+                  {loading && <RiLoader2Line className="size-3.5 animate-spin" />}
                   <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
                   {!loading && <EnterKey className="size-4" />}
                 </Button>
@@ -635,7 +634,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           typeof document !== 'undefined' &&
           createPortal(
             <div
-              className="fixed z-50 max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
+              className="fixed z-50 max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
               style={{
                 left: dropdownPosition.x,
                 [dropdownPosition.placement === 'top' ? 'bottom' : 'top']:

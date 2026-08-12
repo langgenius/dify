@@ -4,10 +4,16 @@ Loads deployment-wide capabilities for server prefetching, client hydration, and
 
 ## Internal Modules
 
-None.
+- `bootstrap-boundary.tsx`
+- `client.ts`
+- `server.ts`
+- `state.ts`
 
 ## External Modules
 
+- `app/get-query-client`
 - `app/components/full-screen-loading`
-- `context/server-console-client`
+- `service/client`
+- `service/server`
 - `utils/client`
+- `utils/query-atoms`

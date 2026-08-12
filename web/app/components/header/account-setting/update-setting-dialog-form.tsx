@@ -1,21 +1,24 @@
-import type { ReactElement, ReactNode } from 'react'
-import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import type { ReactNode } from 'react'
+import type { TimePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type { dayjsToTimeOfDay } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import PluginsPicker from '@/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker'
 import {
   AUTO_UPDATE_MODE,
   AUTO_UPDATE_STRATEGY,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { convertLocalSecondsToUTCDaySeconds } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { useModalContextSelector } from '@/context/modal-context'
 import UpdateSettingOptionCard from './update-setting-option-card'
 
 type Option<Value extends string> = {
@@ -36,7 +39,7 @@ type UpdateSettingDialogFormProps = {
   onPluginsChange: (newPlugins: string[]) => void
   onRequestClose: () => void
   onUpdateTimeChange: (value: Parameters<typeof dayjsToTimeOfDay>[0]) => void
-  renderTimePickerTrigger: (params: TriggerParams) => ReactElement
+  renderTimePickerTrigger: NonNullable<TimePickerProps['renderTrigger']>
 }
 
 const updateSettingFormLabelClassName =
@@ -49,7 +52,10 @@ function SettingTimeZone({
   children?: ReactNode
   onRequestClose: () => void
 }) {
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
 
   return (
     <button
@@ -57,7 +63,9 @@ function SettingTimeZone({
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       onClick={() => {
         onRequestClose()
-        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
+        if (settingsDestination)
+          setSettingsDestination('preferences', { history: 'replace', shallow: true })
+        else setSettingsDestination('preferences')
       }}
     >
       {children}
@@ -159,7 +167,7 @@ const UpdateSettingDialogForm = ({
             />
           </div>
           <div className="flex w-full flex-col items-start gap-2">
-            <div className="flex h-[60px] w-full flex-col items-start gap-1">
+            <div className="flex h-15 w-full flex-col items-start gap-1">
               <div className={updateSettingFormLabelClassName}>
                 {t(($) => $['autoUpdate.scope'], { ns: 'plugin' })}
               </div>

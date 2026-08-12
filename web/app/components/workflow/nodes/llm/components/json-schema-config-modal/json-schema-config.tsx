@@ -208,7 +208,7 @@ function JsonSchemaConfigContent({ defaultSchema, onSave, onClose }: JsonSchemaC
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
-          <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
+          <span className="i-ri-close-line h-4.5 w-4.5 text-text-tertiary" />
         </button>
       </div>
       <div className="flex items-center justify-between px-6 py-2">
