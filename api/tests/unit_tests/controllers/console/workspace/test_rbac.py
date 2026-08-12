@@ -623,6 +623,30 @@ class TestWorkspaceRbacGuards:
 
         mock_replace.assert_not_called()
 
+    def test_dataset_whitelist_replace_requires_dataset_access_config(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/ds-1/whitelist",
+                method="PUT",
+                json={"scope": "all"},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist"
+            ) as mock_replace,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACDatasetWhitelistApi().put(dataset_id="ds-1")
+
+        mock_replace.assert_not_called()
+
 
 class TestDumpHelper:
     def test_dump_returns_plain_dict(self):
