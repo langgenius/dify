@@ -28,6 +28,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
+from models.account import Account, TenantAccountRole
 
 
 @pytest.fixture
@@ -667,6 +668,50 @@ class TestWorkspaceRbacGuards:
         ):
             with pytest.raises(Forbidden):
                 rbac_mod.RBACWorkspaceAppBindingsApi().put(policy_id="policy-1")
+
+        mock_replace.assert_not_called()
+
+    def test_member_role_replace_requires_member_manage(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/member-1/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-owner"]},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+            ),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace") as mock_replace,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACMemberRolesApi().put(member_id="member-1")
+
+        mock_replace.assert_not_called()
+
+    def test_member_role_replace_requires_admin_when_rbac_disabled(self, app):
+        # `rbac_permission_required` is inert when RBAC is off, so the legacy admin guard is the
+        # only thing standing between a normal member and `TenantAccountJoin.role`.
+        normal_member = Account(name="Normal", email="normal@example.com")
+        normal_member.role = TenantAccountRole.NORMAL
+
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/member-1/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["owner"]},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", False),
+            patch("libs.login._get_user", return_value=normal_member),
+            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace") as mock_replace,
+        ):
+            assert normal_member.is_admin_or_owner is False
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACMemberRolesApi().put(member_id="member-1")
 
         mock_replace.assert_not_called()
 

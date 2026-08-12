@@ -11,7 +11,13 @@ from werkzeug.exceptions import NotFound
 from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+)
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
 from enums import DeploymentEdition
@@ -979,12 +985,19 @@ register_schema_models(console_ns, _ReplaceMemberRolesRequest)
 @console_ns.route("/workspaces/current/rbac/members/<uuid:member_id>/rbac-roles")
 class RBACMemberRolesApi(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_MEMBER_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
     def get(self, member_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id), session=db.session()))
 
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_MEMBER_MANAGE, resource_required=False
+    )
     @console_ns.expect(console_ns.models[_ReplaceMemberRolesRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
     def put(self, member_id):
@@ -1004,6 +1017,9 @@ class RBACMemberRolesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
 class ListMembersByRole(Resource):
     @login_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     @console_ns.response(200, "Success", console_ns.models[_MembersInRoleList.__name__])
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
