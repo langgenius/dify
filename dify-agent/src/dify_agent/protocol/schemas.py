@@ -36,6 +36,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_serializer, model_validator
@@ -57,6 +58,16 @@ RunEventType = Literal[
     "run_failed",
     "run_cancelled",
 ]
+
+
+class RunFailureType(StrEnum):
+    """Stable machine-readable categories for failed Dify Agent runs.
+
+    Run-limit failures cover execution budgets enforced by Dify Agent, not
+    provider, connection, or wall-clock timeouts.
+    """
+
+    AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
 
 
 def utc_now() -> datetime:
@@ -213,6 +224,7 @@ class RunStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     error: str | None = None
+    error_type: RunFailureType | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -315,6 +327,7 @@ class RunFailedEventData(BaseModel):
     """Terminal failure payload shown to polling and SSE consumers."""
 
     error: str
+    error_type: RunFailureType | None = None
     reason: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -416,6 +429,7 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
+    "RunFailureType",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",

@@ -100,7 +100,7 @@ const FileFromLinkOrLocal = ({
           )}
           {showFromLocal && (
             <Button className="relative w-full" variant="secondary-accent" disabled={disabled}>
-              <RiUploadCloud2Line className="mr-1 size-4" />
+              <RiUploadCloud2Line className="size-4" />
               {t(($) => $['fileUploader.uploadFromComputer'], { ns: 'common' })}
               <FileInput fileConfig={fileConfig} />
             </Button>

@@ -6,8 +6,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EducationExpireNotice } from '@/app/education-apply/expire-notice'
-import { EducationExternalActionBoundary } from '@/app/education-apply/external-action-boundary'
+import { EducationExpireNotice } from '@/app/education/expire-notice'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -18,7 +17,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
-import List from './list'
+import { List } from './list'
 
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), {
   ssr: false,
@@ -29,6 +28,7 @@ const ImportFromMarketplaceTemplateModal = dynamic(
   () => import('./import-from-marketplace-template-modal'),
   { ssr: false },
 )
+const AppListProvider = AppListContext.Provider
 
 const AppsContent = () => {
   const { t } = useTranslation()
@@ -95,11 +95,6 @@ const AppsContent = () => {
     [],
   )
 
-  const [controlRefreshList, setControlRefreshList] = useState(0)
-  const onSuccess = useCallback(() => {
-    setControlRefreshList((prev) => prev + 1)
-  }, [])
-
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
   const handleCloseTemplateModal = useCallback(() => {
@@ -116,10 +111,9 @@ const AppsContent = () => {
     await handleImportDSLConfirm({
       onSuccess: (response) => {
         trackCurrentCreateApp(response.app_mode)
-        onSuccess()
       },
     })
-  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+  }, [handleImportDSLConfirm, trackCurrentCreateApp])
 
   const handleMarketplaceTemplateConfirm = useCallback(
     async (dslContent: string) => {
@@ -139,7 +133,6 @@ const AppsContent = () => {
           onSuccess: (response) => {
             trackCurrentCreateApp(response.app_mode)
             handleCloseTemplateModal()
-            onSuccess()
           },
           onPending: () => {
             handleCloseTemplateModal()
@@ -148,14 +141,7 @@ const AppsContent = () => {
         },
       )
     },
-    [
-      canCreateApp,
-      handleImportDSL,
-      handleCloseTemplateModal,
-      onSuccess,
-      templateId,
-      trackCurrentCreateApp,
-    ],
+    [canCreateApp, handleImportDSL, handleCloseTemplateModal, templateId, trackCurrentCreateApp],
   )
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
@@ -191,17 +177,13 @@ const AppsContent = () => {
   return (
     <>
       <EducationExpireNotice />
-      <AppListContext.Provider
+      <AppListProvider
         value={{
           openTryAppPanel,
         }}
       >
-        <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
-          <List
-            controlRefreshList={controlRefreshList}
-            onCreateLearnDify={handleCreateLearnDify}
-            onTryLearnDify={handleTryLearnDify}
-          />
+        <div className="relative flex h-0 shrink-0 grow flex-col overflow-hidden bg-background-body">
+          <List onCreateLearnDify={handleCreateLearnDify} onTryLearnDify={handleTryLearnDify} />
           {isShowTryAppPanel && currentTryAppParams && (
             <TryApp
               appId={currentTryAppParams.appId}
@@ -244,15 +226,11 @@ const AppsContent = () => {
             />
           )}
         </div>
-      </AppListContext.Provider>
+      </AppListProvider>
     </>
   )
 }
 
-const Apps = () => (
-  <EducationExternalActionBoundary>
-    <AppsContent />
-  </EducationExternalActionBoundary>
-)
-
-export default Apps
+export function Apps() {
+  return <AppsContent />
+}

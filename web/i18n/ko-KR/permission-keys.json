@@ -4,6 +4,7 @@
   "app.access_config": "앱 접근 권한 구성",
   "app.acl.access_config": "앱 접근 권한 구성",
   "app.acl.delete": "앱 삭제",
+  "app.acl.deploy": "앱 배포",
   "app.acl.edit": "앱 편집 및 오케스트레이션",
   "app.acl.import_export_dsl": "DSL 가져오기 / 내보내기",
   "app.acl.log_and_annotation": "로그 및 주석 접근",

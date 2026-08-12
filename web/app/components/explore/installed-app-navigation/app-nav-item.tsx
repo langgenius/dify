@@ -1,15 +1,13 @@
 'use client'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
+import { useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import ItemOperation from '@/app/components/explore/item-operation'
 import Link from '@/next/link'
 
 type IAppNavItemProps = {
-  variant?: 'default' | 'mainNav'
-  ariaLabel?: string
+  ariaLabel: string
   app: InstalledAppResponse
   isSelected: boolean
   onTogglePin: (id: string, isPinned: boolean) => void
@@ -17,13 +15,13 @@ type IAppNavItemProps = {
 }
 
 export default function AppNavItem({
-  variant = 'default',
   ariaLabel,
   app: installedApp,
   isSelected,
   onTogglePin,
   onDelete,
 }: IAppNavItemProps) {
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const {
     id,
     is_pinned: isPinned,
@@ -31,55 +29,35 @@ export default function AppNavItem({
     app: { name, icon_type, icon, icon_background, icon_url },
   } = installedApp
   const url = buildInstalledAppPath(id)
-  const isMainNav = variant === 'mainNav'
 
   return (
     <div
       key={id}
-      className={cn(
-        isMainNav
-          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active'
-          : cn(
-              'group flex h-8 items-center rounded-lg system-sm-medium text-sm font-normal text-components-menu-item-text transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover not-has-[>a[aria-current=page]]:hover:text-components-menu-item-text-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active has-[>a[aria-current=page]]:text-components-menu-item-text-active',
-              'w-full justify-start px-2 group-data-[folded=true]/sidebar:justify-center group-data-[folded=true]/sidebar:px-1',
-            ),
-      )}
+      className="group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active"
     >
       <Link
         href={url}
+        prefetch={isPrefetchEnabled ? null : false}
+        onMouseEnter={() => setIsPrefetchEnabled(true)}
+        onFocus={() => setIsPrefetchEnabled(true)}
         aria-current={isSelected ? 'page' : undefined}
-        aria-label={ariaLabel ?? name}
+        aria-label={ariaLabel}
         title={name}
-        className={cn(
-          isMainNav
-            ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden'
-            : 'flex w-0 grow items-center space-x-2 outline-hidden group-data-[folded=true]/sidebar:w-auto group-data-[folded=true]/sidebar:justify-center group-data-[folded=true]/sidebar:space-x-0',
-        )}
+        className="flex min-w-0 flex-1 items-center gap-2 outline-hidden"
       >
         <AppIcon
           size="tiny"
-          className={cn(isMainNav && 'size-5 rounded-md text-sm')}
+          className="size-5 rounded-md text-sm"
           iconType={icon_type}
           icon={icon ?? undefined}
           background={icon_background}
           imageUrl={icon_url}
         />
-        <div
-          className={cn(
-            isMainNav
-              ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular'
-              : 'truncate system-sm-regular text-components-menu-item-text group-data-[folded=true]/sidebar:hidden',
-          )}
-          title={name}
-        >
+        <div className="min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular" title={name}>
           {name}
         </div>
       </Link>
-      <div
-        className={cn(
-          isMainNav ? 'h-6 shrink-0' : 'h-6 shrink-0 group-data-[folded=true]/sidebar:hidden',
-        )}
-      >
+      <div className="h-6 shrink-0">
         <ItemOperation
           isPinned={isPinned}
           togglePin={() => onTogglePin(id, !isPinned)}

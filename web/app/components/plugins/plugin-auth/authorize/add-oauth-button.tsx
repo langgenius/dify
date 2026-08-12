@@ -146,12 +146,13 @@ const AddOAuthButton = ({
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
                   <ActionButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="shrink-0"
                     onClick={() => {
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <span className="i-ri-clipboard-line size-4" />
+                    <span aria-hidden className="i-ri-clipboard-line size-4" />
                   </ActionButton>
                 </div>
               )}
@@ -247,7 +248,7 @@ const AddOAuthButton = ({
             {is_oauth_custom_client_enabled && (
               <Badge
                 className={cn(
-                  'mr-0.5 ml-1',
+                  'mr-0.5',
                   buttonVariant === 'primary' &&
                     'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                 )}
@@ -285,7 +286,7 @@ const AddOAuthButton = ({
           disabled={disabled}
           className="w-full"
         >
-          <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
+          <span className="i-ri-equalizer-2-line size-4" />
           {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
         </Button>
       )}

@@ -1,8 +1,10 @@
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
+from flask import has_app_context
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,6 +19,7 @@ from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -290,6 +293,46 @@ def test_to_system_configuration_never_returns_hosting_credentials_for_package_w
 
     assert configuration.enabled is False
     assert configuration.credentials is None
+
+
+def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    trial_pool = SimpleNamespace(quota_used=0, quota_limit=100)
+    paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
+
+    with (
+        patch.object(provider_manager_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_hosting_provider()},
+        ),
+        patch(
+            "core.plugin.plugin_service.PluginService.is_plugin_verified",
+            return_value=True,
+        ),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            side_effect=[trial_pool, paid_pool],
+        ) as get_pool,
+    ):
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            assert executor.submit(has_app_context).result() is False
+            configuration = executor.submit(
+                manager._to_system_configuration,
+                "tenant-id",
+                provider_entity,
+                [_build_trial_provider_record()],
+            ).result()
+
+    assert configuration.enabled is True
+    assert [call.kwargs["pool_type"] for call in get_pool.call_args_list] == [
+        ProviderQuotaType.TRIAL,
+        ProviderQuotaType.PAID,
+    ]
+    owned_sessions = [call.kwargs["session"] for call in get_pool.call_args_list]
+    assert all(isinstance(session, Session) for session in owned_sessions)
+    assert owned_sessions[0] is owned_sessions[1]
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
@@ -666,6 +709,63 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
         manager.get_configurations("tenant-id")
 
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
+
+
+@pytest.mark.parametrize(
+    ("quota_is_valid", "has_custom_provider", "has_custom_model", "expected_using_provider_type"),
+    [
+        (True, False, False, ProviderType.SYSTEM),
+        (False, False, False, ProviderType.SYSTEM),
+        (False, True, False, ProviderType.CUSTOM),
+        (False, False, True, ProviderType.CUSTOM),
+        (None, False, False, ProviderType.CUSTOM),
+    ],
+)
+def test_get_configurations_resolves_system_preference_with_quota_and_custom_fallback(
+    mock_provider_entity,
+    quota_is_valid: bool | None,
+    has_custom_provider: bool,
+    has_custom_model: bool,
+    expected_using_provider_type: ProviderType,
+):
+    manager = _build_provider_manager()
+    provider_configuration = Mock()
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [mock_provider_entity]
+    custom_configuration = SimpleNamespace(
+        provider=Mock() if has_custom_provider else None,
+        models=[Mock()] if has_custom_model else [],
+    )
+    system_configuration = SimpleNamespace(
+        enabled=True,
+        quota_configurations=[] if quota_is_valid is None else [SimpleNamespace(is_valid=quota_is_valid)],
+        current_quota_type=None,
+    )
+    preferred_provider_records = {
+        "openai": SimpleNamespace(preferred_provider_type=ProviderType.SYSTEM),
+    }
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={"openai": []}),
+        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value=preferred_provider_records),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch(
+            "core.provider_manager.ProviderConfiguration",
+            return_value=provider_configuration,
+        ) as mock_provider_configuration,
+    ):
+        manager.get_configurations("tenant-id")
+
+    assert mock_provider_configuration.call_args.kwargs["using_provider_type"] == expected_using_provider_type
 
 
 def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity):

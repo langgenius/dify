@@ -62,6 +62,7 @@ const RunMode = ({ text }: RunModeProps) => {
       {isRunning && (
         <button
           type="button"
+          aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflow' })}
           className="flex size-7 items-center justify-center rounded-r-md bg-state-accent-active"
           onClick={handleStop}
         >

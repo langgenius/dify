@@ -450,6 +450,11 @@ class FileUploadConfig(BaseSettings):
         default=15,
     )
 
+    KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN: NonNegativeInt = Field(
+        description="Maximum allowed file size for knowledge uploads on paid cloud plans in megabytes",
+        default=15,
+    )
+
     UPLOAD_FILE_BATCH_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a single upload batch",
         default=5,
@@ -801,17 +806,6 @@ class ModelLoadBalanceConfig(BaseSettings):
 
     PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(
         description="Enable or disable plugin based token counting. If disabled, token counting will return 0.",
-        default=False,
-    )
-
-
-class BillingConfig(BaseSettings):
-    """
-    Configuration for platform billing features
-    """
-
-    BILLING_ENABLED: bool = Field(
-        description="Enable or disable billing functionality",
         default=False,
     )
 
@@ -1616,7 +1610,6 @@ class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
-    BillingConfig,
     CodeExecutionSandboxConfig,
     CreatorsPlatformConfig,
     TriggerConfig,

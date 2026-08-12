@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -32,6 +33,7 @@ export type SyncDraftResult = {
 }
 
 export type SyncDraftOptions = {
+  environmentVariablePatch?: EnvironmentVariablePatch
   forceLocal?: boolean
 }
 

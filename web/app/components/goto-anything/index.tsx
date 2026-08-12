@@ -79,7 +79,7 @@ const slashCommandDescriptionKeys = {
 const actionDescriptionKeys = {
   '@app': 'gotoAnything.actions.searchApplicationsDesc',
   '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+  '@kb': 'gotoAnything.actions.searchKnowledgeBasesDesc',
   '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
 } as const
 

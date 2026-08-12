@@ -11,7 +11,7 @@ from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID, RunFailureType
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
@@ -26,7 +26,7 @@ from dify_agent.runtime.event_sink import (
     TerminalRunEvent,
     emit_run_failed,
     emit_run_succeeded,
-    terminal_event_status_and_error,
+    terminal_event_status_fields,
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.schemas import RunRecord
@@ -93,6 +93,7 @@ class FakeStore:
     events: dict[str, list[RunEvent]]
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
+    error_types: dict[str, RunFailureType | None]
     terminal_changes: dict[str, asyncio.Event]
 
     def __init__(self) -> None:
@@ -100,6 +101,7 @@ class FakeStore:
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
+        self.error_types = {}
         self.terminal_changes = {}
 
     async def create_run(self) -> RunRecord:
@@ -117,7 +119,11 @@ class FakeStore:
 
     async def get_run(self, run_id: str) -> RunRecord:
         return self.records[run_id].model_copy(
-            update={"status": self.statuses[run_id], "error": self.errors.get(run_id)},
+            update={
+                "status": self.statuses[run_id],
+                "error": self.errors.get(run_id),
+                "error_type": self.error_types.get(run_id),
+            },
         )
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
@@ -125,11 +131,12 @@ class FakeStore:
         if current_status != "running":
             return RunFinalizationResult(applied=False, status=current_status)
 
-        status, error = terminal_event_status_and_error(event)
+        status, error, error_type = terminal_event_status_fields(event)
         event_id = str(len(self.events[event.run_id]) + 1)
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         self.statuses[event.run_id] = status
         self.errors[event.run_id] = error
+        self.error_types[event.run_id] = error_type
         self.terminal_changes[event.run_id].set()
         return RunFinalizationResult(applied=True, status=status, event_id=event_id)
 

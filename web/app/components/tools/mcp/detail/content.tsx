@@ -199,7 +199,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!canManageMCP}
             >
-              <StatusDot className="mr-2" status="success" />
+              <StatusDot status="success" />
               {t(($) => $['auth.authorized'], { ns: 'tools' })}
             </Button>
           )}
@@ -215,7 +215,7 @@ const MCPDetailContent: FC<Props> = ({
           )}
           {isAuthorizing && (
             <Button variant="primary" className="w-full" disabled>
-              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $['mcp.authorizing'], { ns: 'tools' })}
             </Button>
           )}
@@ -271,7 +271,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm} disabled={!canManageMCP}>
-                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
+                  <span aria-hidden className="i-ri-loop-left-line size-3.5" />
                   {t(($) => $['mcp.update'], { ns: 'tools' })}
                 </Button>
               </div>

@@ -171,6 +171,12 @@ class AgentLogConversationItemResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class AgentLogFeedbackResponse(ResponseModel):
+    rating: Literal["like", "dislike"]
+    content: str | None = None
+    from_source: Literal["user", "admin"]
+
+
 class AgentLogMessageItemResponse(ResponseModel):
     id: str
     message_id: str
@@ -181,6 +187,8 @@ class AgentLogMessageItemResponse(ResponseModel):
     error: str | None = None
     from_end_user_id: str | None = None
     from_account_id: str | None = None
+    feedback_enabled: bool = False
+    feedbacks: list[AgentLogFeedbackResponse] = Field(default_factory=list)
     message_tokens: int
     answer_tokens: int
     total_tokens: int

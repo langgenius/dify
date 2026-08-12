@@ -7,10 +7,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: style-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 permissions:
   checks: write
   statuses: write
@@ -48,7 +44,7 @@ jobs:
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: false
-          python-version: "3.12"
+          python-version: '3.12'
           cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
@@ -109,6 +105,8 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
+            knip.config.ts
+            scripts/check-web-production-unused-after-knip-fix.mjs
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
@@ -125,14 +123,17 @@ jobs:
 
       - name: Web dead code check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip
 
       - name: Web dead code check production
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip:production
 
       - name: Web production unused declarations check
         if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: .
         run: vp run knip:production-unused-check
 
   ts-common-style:
@@ -168,9 +169,7 @@ jobs:
             oxlint-suppressions.json
             eslint-suppressions.json
             .vscode/**
-            .github/workflows/autofix.yml
-            .github/workflows/style.yml
-            .github/actions/setup-web/**
+            .github/**
 
       - name: Setup web environment
         if: steps.changed-files.outputs.any_changed == 'true'

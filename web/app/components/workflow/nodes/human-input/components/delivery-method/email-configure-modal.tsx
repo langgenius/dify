@@ -5,11 +5,11 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
@@ -33,7 +33,10 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-  const email = useAtomValue(userProfileEmailAtom)
+  const { data: email } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const [recipients, setRecipients] = useState(
     config?.recipients || { whole_workspace: false, items: [] },
   )

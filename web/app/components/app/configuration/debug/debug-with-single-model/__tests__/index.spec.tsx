@@ -127,7 +127,6 @@ function createMockProviderContext(
     updateModelList: vi.fn(),
     onPlanInfoChanged: vi.fn(),
     refreshModelProviders: vi.fn(),
-    refreshLicenseLimit: vi.fn(),
     ...overrides,
   } as ProviderContextState
 }
@@ -137,8 +136,15 @@ function createMockProviderContext(
 // ============================================================================
 
 // Mock service layer (API calls)
-const { mockSsePost } = vi.hoisted(() => ({
+const { mockSsePost, mockToastError } = vi.hoisted(() => ({
   mockSsePost: vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve()),
+  mockToastError: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
 }))
 
 vi.mock('@/service/base', () => ({
@@ -319,7 +325,6 @@ const mockConsoleState = {
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceDatasetOperator: false,
-  refreshUserProfile: vi.fn(),
 }
 
 const { mockConsoleStateReader } = vi.hoisted(() => ({
@@ -673,6 +678,17 @@ describe('DebugWithSingleModel', () => {
       })
 
       expect(mockSsePost.mock.calls[0]![0]).toBe('apps/test-app-id/chat-messages')
+      expect(mockSsePost.mock.calls[0]![2]).toEqual(
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
+      )
+
+      const callbacks = mockSsePost.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should prevent send when checkCanSend returns false', async () => {

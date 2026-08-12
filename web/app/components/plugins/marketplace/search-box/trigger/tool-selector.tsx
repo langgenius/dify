@@ -50,7 +50,7 @@ function ToolSelectorTrigger({
               !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className={cn('shrink-0', !!selectedTagsLength && 'p-0.5')}>
+            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 pl-0.5')}>
               <span
                 aria-hidden
                 className={cn(
@@ -60,7 +60,7 @@ function ToolSelectorTrigger({
               />
             </span>
             {!!selectedTagsLength && (
-              <span className="flex min-w-0 items-center gap-x-0.5 px-0.5 py-1 system-sm-medium">
+              <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
                 <span className="truncate text-text-secondary">
                   {tags
                     .map((tag) => tagsMap[tag]?.label)

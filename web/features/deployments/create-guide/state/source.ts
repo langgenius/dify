@@ -8,7 +8,6 @@ import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
 import { dslAppName, isWorkflowDsl } from '@/features/deployments/shared/domain/dsl'
 import { consoleQuery } from '@/service/client'
-import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import {
   dslFileAtom,
@@ -95,10 +94,6 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: 1,
     placeholderData: keepPreviousData,
-    select: (data) => ({
-      ...data,
-      pages: data.pages.map(normalizeAppPagination),
-    }),
     enabled: get(effectiveMethodAtom) === 'bindApp',
   })
 })
@@ -124,8 +119,12 @@ export const sourceAppsIsPlaceholderDataAtom = selectAtom(
   (query) => query.isPlaceholderData,
 )
 
-export const sourceAppsAtom = atom((get) => {
-  return (get(sourceAppsDataAtom)?.pages.flatMap((page) => page.data) ?? []) as WorkflowSourceApp[]
+export const sourceAppsAtom = atom((get): WorkflowSourceApp[] => {
+  const apps = get(sourceAppsDataAtom)?.pages.flatMap((page) => page.data) ?? []
+
+  return apps.flatMap((app) =>
+    app.mode === AppModeEnum.WORKFLOW ? [{ ...app, mode: 'workflow' as const }] : [],
+  )
 })
 
 export const effectiveSelectedAppAtom = atom((get) => {

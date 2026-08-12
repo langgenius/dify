@@ -106,12 +106,20 @@ const Sidebar = ({ isPanel }: Props) => {
           {appData?.site.title}
         </div>
         {!isMobile && isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
+          <ActionButton
+            aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+            size="l"
+            onClick={() => handleSidebarCollapse(false)}
+          >
             <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
           </ActionButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
+          <ActionButton
+            aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
+            size="l"
+            onClick={() => handleSidebarCollapse(true)}
+          >
             <span aria-hidden className="i-ri-layout-left-2-line h-4.5 w-4.5" />
           </ActionButton>
         )}
@@ -123,7 +131,7 @@ const Sidebar = ({ isPanel }: Props) => {
           className="w-full justify-center"
           onClick={handleNewConversation}
         >
-          <span aria-hidden className="mr-1 i-ri-edit-box-line size-4" />
+          <span aria-hidden className="i-ri-edit-box-line size-4" />
           {t(($) => $['chat.newChat'], { ns: 'share' })}
         </Button>
       </div>

@@ -44,6 +44,13 @@ export const zBatchImportPayload = z.object({
 
 /**
  * ExternalDatasetCreatePayload
+ *
+ * Validated fields required to create an external dataset binding.
+ *
+ * The console controller owns HTTP concerns, but the service also needs this
+ * contract when creating the tenant-scoped dataset and external knowledge
+ * binding. Keep it outside controllers so service imports do not depend on
+ * Flask blueprint initialization.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -861,7 +868,7 @@ export const zProcessRule = z.object({
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -870,7 +877,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })

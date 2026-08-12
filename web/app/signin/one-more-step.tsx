@@ -122,9 +122,9 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">
+        <h1 className="title-4xl-semi-bold text-text-secondary">
           {t(($) => $.oneMoreStep, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 body-md-regular text-text-tertiary">
           {t(($) => $.createSample, { ns: 'login' })}
         </p>

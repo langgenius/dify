@@ -69,8 +69,11 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
           {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
         </Badge>
-        <ActionButton onClick={onClose}>
-          <span className="i-ri-close-line size-5 text-text-tertiary" />
+        <ActionButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={onClose}
+        >
+          <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
         </ActionButton>
       </div>
       <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">

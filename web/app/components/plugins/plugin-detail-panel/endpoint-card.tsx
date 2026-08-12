@@ -154,11 +154,15 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
             <span aria-hidden className="i-ri-login-circle-line size-4" />
             <div>{data.name}</div>
           </div>
-          <div className="hidden items-center group-hover:flex">
-            <ActionButton onClick={showEndpointModalConfirm}>
+          <div className="flex w-0 items-center overflow-hidden opacity-0 group-hover:w-auto group-hover:overflow-visible group-hover:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100">
+            <ActionButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={showEndpointModalConfirm}
+            >
               <span aria-hidden className="i-ri-edit-line size-4" />
             </ActionButton>
             <ActionButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
               onClick={showDeleteConfirm}
               className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
             >

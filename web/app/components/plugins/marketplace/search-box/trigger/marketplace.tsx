@@ -49,7 +49,7 @@ function MarketplaceTrigger({
               !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className="p-0.5">
+            <span className="py-0.5">
               <span
                 aria-hidden
                 className={cn(
@@ -58,7 +58,7 @@ function MarketplaceTrigger({
                 )}
               />
             </span>
-            <span className="flex items-center gap-x-1 p-1 system-sm-medium">
+            <span className="flex items-center gap-x-1 py-1 system-sm-medium">
               {!selectedTagsLength && <span>{t(($) => $.allTags, { ns: 'pluginTags' })}</span>}
               {!!selectedTagsLength && (
                 <span className="text-text-secondary">
@@ -76,7 +76,7 @@ function MarketplaceTrigger({
               )}
             </span>
             {!selectedTagsLength && (
-              <span className="p-0.5">
+              <span className="py-0.5">
                 <span
                   aria-hidden
                   className="i-ri-arrow-down-s-line block size-4 text-text-tertiary"

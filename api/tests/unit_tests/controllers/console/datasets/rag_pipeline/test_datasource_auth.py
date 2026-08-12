@@ -14,9 +14,15 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourceAuthListApi,
     DatasourceAuthOauthCustomClient,
     DatasourceAuthUpdateApi,
+    DatasourceCredentialDeletePayload,
+    DatasourceCredentialPayload,
+    DatasourceCredentialUpdatePayload,
+    DatasourceCustomClientPayload,
+    DatasourceDefaultPayload,
     DatasourceHardCodeAuthListApi,
     DatasourceOAuthCallback,
     DatasourcePluginOAuthAuthorizationUrl,
+    DatasourceUpdateNamePayload,
     DatasourceUpdateProviderNameApi,
 )
 from core.plugin.impl.oauth import OAuthHandler
@@ -412,7 +418,8 @@ class TestDatasourceAuth:
                 return_value=None,
             ) as add_api_key_provider,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceCredentialPayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -438,7 +445,7 @@ class TestDatasourceAuth:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_success(self, app: Flask):
         api = DatasourceAuth()
@@ -469,7 +476,7 @@ class TestDatasourceAuth:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_empty_list(self, app: Flask):
         api = DatasourceAuth()
@@ -506,7 +513,8 @@ class TestDatasourceAuthDeleteApi:
                 return_value=None,
             ) as remove_datasource_credentials,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceCredentialDeletePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -529,7 +537,7 @@ class TestDatasourceAuthDeleteApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
 
 
 class TestDatasourceAuthUpdateApi:
@@ -552,7 +560,8 @@ class TestDatasourceAuthUpdateApi:
                 return_value=None,
             ) as update_datasource_credentials,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceCredentialUpdatePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 201
@@ -580,7 +589,8 @@ class TestDatasourceAuthUpdateApi:
                 return_value=None,
             ) as update_mock,
         ):
-            response, status = method(api, "tenant-1", "notion")
+            req_data = DatasourceCredentialUpdatePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", "notion")
 
         assert response == _success_response()
         update_mock.assert_called_once()
@@ -602,7 +612,8 @@ class TestDatasourceAuthUpdateApi:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "tenant-1", "notion")
+            req_data = DatasourceCredentialUpdatePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", "notion")
 
         assert response == _success_response()
         assert status == 201
@@ -622,7 +633,8 @@ class TestDatasourceAuthUpdateApi:
                 return_value=None,
             ) as update_mock,
         ):
-            response, status = method(api, "tenant-1", "notion")
+            req_data = DatasourceCredentialUpdatePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", "notion")
 
         assert response == _success_response()
         update_mock.assert_called_once()
@@ -731,7 +743,8 @@ class TestDatasourceAuthOauthCustomClient:
                 return_value=None,
             ) as setup_custom_client,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceCustomClientPayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -775,7 +788,8 @@ class TestDatasourceAuthOauthCustomClient:
                 return_value=None,
             ),
         ):
-            response, status = method(api, "tenant-1", "notion")
+            req_data = DatasourceCustomClientPayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", "notion")
 
         assert response == _success_response()
         assert status == 200
@@ -798,7 +812,8 @@ class TestDatasourceAuthOauthCustomClient:
                 return_value=None,
             ) as setup_mock,
         ):
-            response, status = method(api, "tenant-1", "notion")
+            req_data = DatasourceCustomClientPayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", "notion")
 
         assert response == _success_response()
         setup_mock.assert_called_once()
@@ -823,7 +838,8 @@ class TestDatasourceAuthDefaultApi:
                 return_value=None,
             ) as set_default_datasource_provider,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceDefaultPayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -843,7 +859,7 @@ class TestDatasourceAuthDefaultApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceDefaultPayload.model_validate(payload), "tenant-1", "notion")
 
 
 class TestDatasourceUpdateProviderNameApi:
@@ -862,7 +878,8 @@ class TestDatasourceUpdateProviderNameApi:
                 return_value=None,
             ) as update_datasource_provider_name,
         ):
-            response, status = method(api, "tenant-1", _PROVIDER_ID)
+            req_data = DatasourceUpdateNamePayload.model_validate(payload)
+            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -886,7 +903,7 @@ class TestDatasourceUpdateProviderNameApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
 
     def test_update_name_missing_credential_id(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
@@ -899,4 +916,4 @@ class TestDatasourceUpdateProviderNameApi:
             patch.object(type(console_ns), "payload", payload),
         ):
             with pytest.raises(ValueError):
-                method(api, "tenant-1", "notion")
+                method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")

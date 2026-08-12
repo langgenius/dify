@@ -1,14 +1,16 @@
 import pytest
 
+from enums import DeploymentEdition
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, LicenseModel, LicenseStatus
+from services.entities.feature_entities import LicenseModel, LicenseStatus
+from services.feature_service import FeatureService
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
 
 def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
     """The authenticated license accessor copies the licensed-seat quota out of the enterprise payload."""
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",
@@ -25,7 +27,7 @@ def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
 
 def test_get_license_non_enterprise_is_unconstrained(monkeypatch: pytest.MonkeyPatch):
     """Non-enterprise deployments have no license; seat allocation is unconstrained."""
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     license_model = FeatureService.get_license()
 

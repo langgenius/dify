@@ -36,10 +36,11 @@ from typing import Any, Literal, Protocol, cast, runtime_checkable
 import httpx
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 
 from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
@@ -54,6 +55,7 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     DIFY_AGENT_MODEL_LAYER_ID,
     DeferredToolCallPayload,
+    RunFailureType,
     normalize_composition,
 )
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
@@ -79,6 +81,7 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
+_MAX_AGENT_STEPS_PER_RUN = 100
 
 
 @runtime_checkable
@@ -111,13 +114,16 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
-def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
-    """Return the public failed-run error text and structured reason."""
+def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None, str | None]:
+    """Return the public failed-run error text, type, and structured reason."""
     message = str(exc) or type(exc).__name__
     reason: str | None = None
 
+    if isinstance(exc, UsageLimitExceeded):
+        return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
+
     if isinstance(exc, BindingLostError):
-        return message, "binding_lost"
+        return message, None, "binding_lost"
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
@@ -136,7 +142,7 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
     if isinstance(exc, DifyKnowledgeBaseClientError):
         reason = exc.error_code or "DifyKnowledgeBaseClientError"
 
-    return message, reason
+    return message, None, reason
 
 
 def _has_model_layer(request: CreateRunRequest) -> bool:
@@ -206,8 +212,14 @@ class AgentRunRunner:
         except Exception as exc:
             if self.is_cancelled():
                 return
-            message, reason = _run_failed_error_payload(exc)
-            finalization = await emit_run_failed(self.sink, run_id=self.run_id, error=message, reason=reason)
+            message, error_type, reason = _run_failed_error_payload(exc)
+            finalization = await emit_run_failed(
+                self.sink,
+                run_id=self.run_id,
+                error=message,
+                error_type=error_type,
+                reason=reason,
+            )
             if finalization.applied:
                 raise
             return
@@ -324,6 +336,7 @@ class AgentRunRunner:
                     message_history=message_history,
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
+                    usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
                 )
                 complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
                 usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))

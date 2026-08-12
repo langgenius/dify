@@ -21,6 +21,7 @@ from models.dataset import Dataset
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
+from services.app_service import AppService
 
 from . import console_ns
 from .wraps import (
@@ -103,7 +104,9 @@ class BaseApiKeyListResource(Resource):
 
     def _create_api_key(self, resource_id: str, current_tenant_id: str, *, session: Session) -> ApiToken:
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        resource = _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        if isinstance(resource, App):
+            AppService.ensure_agent_app_access_ready(resource, session=session)
         current_key_count: int = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(
@@ -201,7 +204,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Get all API keys for an app"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         )
 
     @console_ns.doc("create_app_api_key")
@@ -218,7 +221,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         ), 201
 
     resource_type = ApiTokenType.APP
@@ -248,7 +251,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for an app"""
         self._delete_api_key(
-            str(resource_id),
+            str(resource_id),  # pyrefly: ignore[unnecessary-type-conversion]
             str(api_key_id),
             current_tenant_id,
             current_user,
@@ -273,7 +276,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Get all API keys for a dataset"""
         return dump_response(
             ApiKeyList,
-            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),
+            self._get_api_key_list(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         )
 
     @console_ns.doc("create_dataset_api_key")
@@ -289,7 +292,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(resource_id), current_tenant_id, session=session),
+            self._create_api_key(str(resource_id), current_tenant_id, session=session),  # pyrefly: ignore[unnecessary-type-conversion]
         ), 201
 
     resource_type = ApiTokenType.DATASET
@@ -318,7 +321,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     ) -> tuple[str, int]:
         """Delete an API key for a dataset"""
         self._delete_api_key(
-            str(resource_id),
+            str(resource_id),  # pyrefly: ignore[unnecessary-type-conversion]
             str(api_key_id),
             current_tenant_id,
             current_user,

@@ -29,9 +29,9 @@ const SnippetCreateButton = () => {
         <PopoverTrigger
           render={
             <Button disabled={isSubmitting}>
-              <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
+              <span aria-hidden className="i-ri-add-line size-4" />
               <span>{t(($) => $.create)}</span>
-              <span aria-hidden className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
             </Button>
           }
         />

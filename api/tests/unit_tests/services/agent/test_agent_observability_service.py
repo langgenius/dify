@@ -1,12 +1,19 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Protocol
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.enums import WorkflowNodeExecutionStatus
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageStatus,
+)
 from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 
@@ -278,7 +285,8 @@ def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: py
         {"id": "workflow-only", "created_at": 20, "updated_at": 10},
     ]
     monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
-    monkeypatch.setattr(service, "serialize_log_message", lambda message: webapp_row)
+    monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
+    monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
     monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
 
     payload = service.list_log_messages(
@@ -299,6 +307,60 @@ def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: py
         "total": 2,
         "has_more": False,
     }
+
+
+def test_list_webapp_conversation_logs_includes_feedback_rates(monkeypatch: pytest.MonkeyPatch) -> None:
+    timestamp = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    conversation = SimpleNamespace(
+        id="conversation-1",
+        name="Feedback conversation",
+        from_end_user_id="end-user-1",
+        read_at=None,
+    )
+
+    class FakeRow:
+        message_count = 2
+        paused_count = 0
+        failed_count = 0
+        created_at = timestamp
+        updated_at = timestamp
+
+        def __getitem__(self, index: int) -> SimpleNamespace:
+            if index != 0:
+                raise IndexError(index)
+            return conversation
+
+    class FakeResult:
+        def all(self) -> list[FakeRow]:
+            return [FakeRow()]
+
+    class FakeSession:
+        def execute(self, stmt: object) -> FakeResult:
+            str(stmt)
+            return FakeResult()
+
+    app = SimpleNamespace(
+        id="app-1",
+        name="Agent WebApp",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+    service = AgentObservabilityService(FakeSession())
+    monkeypatch.setattr(
+        service,
+        "_list_conversation_feedback_rates",
+        lambda **kwargs: {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}},
+    )
+
+    rows = service._list_webapp_conversation_logs(
+        app=app,  # type: ignore[arg-type]
+        params=AgentLogQueryParams(),
+        source_filter=AgentObservabilityService.resolve_source_filter("webapp"),
+    )
+
+    assert rows[0]["user_rate"] == 0.5
+    assert rows[0]["operation_rate"] == 1.0
 
 
 def test_list_workflow_logs_uses_node_executions_without_messages() -> None:
@@ -551,8 +613,24 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
         updated_at=updated_at,
     )
     conversation = SimpleNamespace(name="Debug conversation")
+    feedbacks = [
+        SimpleNamespace(
+            rating=FeedbackRating.LIKE,
+            content="Useful",
+            from_source=FeedbackFromSource.USER,
+        ),
+        SimpleNamespace(
+            rating=FeedbackRating.DISLIKE,
+            content="Needs more detail",
+            from_source=FeedbackFromSource.ADMIN,
+        ),
+    ]
 
-    payload = AgentObservabilityService.serialize_log_message(message, conversation)  # type: ignore[arg-type]
+    payload = AgentObservabilityService.serialize_log_message(  # type: ignore[arg-type]
+        message,
+        conversation,
+        feedbacks,
+    )
 
     assert payload == {
         "id": "message-1",
@@ -567,6 +645,11 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
         "from_source": "console",
         "from_end_user_id": None,
         "from_account_id": "account-1",
+        "feedback_enabled": True,
+        "feedbacks": [
+            {"rating": "like", "content": "Useful", "from_source": "user"},
+            {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
+        ],
         "message_tokens": 3,
         "answer_tokens": 4,
         "total_tokens": 7,
@@ -615,6 +698,8 @@ def test_serialize_workflow_node_message_returns_frontend_log_shape() -> None:
         "error": None,
         "from_end_user_id": "end-user-1",
         "from_account_id": None,
+        "feedback_enabled": False,
+        "feedbacks": [],
         "message_tokens": 10,
         "answer_tokens": 5,
         "total_tokens": 15,
@@ -674,6 +759,97 @@ def test_serialize_workflow_node_message_handles_sparse_runtime_data() -> None:
     assert payload["currency"] == ""
     assert payload["latency"] == 2.0
     assert payload["updated_at"] == int(created_at.timestamp())
+
+
+def test_positive_feedback_rate_uses_rated_messages_as_denominator() -> None:
+    assert AgentObservabilityService._positive_feedback_rate(like_count=2, total_count=4) == 0.5
+    assert AgentObservabilityService._positive_feedback_rate(like_count=0, total_count=1) == 0
+    assert AgentObservabilityService._positive_feedback_rate(like_count=None, total_count=0) is None
+
+
+def test_list_message_feedbacks_groups_feedbacks_by_message() -> None:
+    feedbacks = [
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-2"),
+    ]
+
+    class Compilable(Protocol):
+        def compile(self) -> object: ...
+
+    class FakeScalarResult:
+        def all(self) -> list[SimpleNamespace]:
+            return feedbacks
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.scalar_calls = 0
+
+        def scalars(self, stmt: Compilable) -> FakeScalarResult:
+            stmt.compile()
+            self.scalar_calls += 1
+            return FakeScalarResult()
+
+    session = FakeSession()
+    service = AgentObservabilityService(session)  # type: ignore[arg-type]
+
+    grouped_feedbacks = service._list_message_feedbacks(
+        app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+        messages=[SimpleNamespace(id="message-1"), SimpleNamespace(id="message-2")],  # type: ignore[list-item]
+    )
+
+    assert grouped_feedbacks == {
+        "message-1": feedbacks[:2],
+        "message-2": feedbacks[2:],
+    }
+    assert service._list_message_feedbacks(app=SimpleNamespace(id="app-1"), messages=[]) == {}  # type: ignore[arg-type]
+    assert session.scalar_calls == 1
+
+
+def test_list_conversation_feedback_rates_maps_user_and_admin_sources() -> None:
+    class FakeResult:
+        def all(self):
+            return [
+                SimpleNamespace(
+                    conversation_id="conversation-1",
+                    from_source=FeedbackFromSource.USER,
+                    like_count=2,
+                    total_count=4,
+                ),
+                SimpleNamespace(
+                    conversation_id="conversation-1",
+                    from_source=FeedbackFromSource.ADMIN,
+                    like_count=1,
+                    total_count=1,
+                ),
+                SimpleNamespace(
+                    conversation_id="conversation-without-ratings",
+                    from_source=FeedbackFromSource.USER,
+                    like_count=0,
+                    total_count=0,
+                ),
+            ]
+
+    class FakeSession:
+        def execute(self, stmt):
+            stmt.compile()
+            return FakeResult()
+
+    service = AgentObservabilityService(FakeSession())
+
+    rates = service._list_conversation_feedback_rates(
+        app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+        conversation_ids=["conversation-1"],
+    )
+
+    assert rates == {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}}
+    assert (
+        service._list_conversation_feedback_rates(
+            app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+            conversation_ids=[],
+        )
+        == {}
+    )
 
 
 def test_workflow_node_serialization_helpers_handle_invalid_values() -> None:

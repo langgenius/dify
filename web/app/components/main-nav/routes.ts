@@ -31,7 +31,6 @@ export type DetailSidebarVisibilityOptions = Pick<
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
-const CAN_USE_APP_DEPLOY: MainNavRouteVisibility = (options) => options.canUseAppDeploy
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -42,7 +41,7 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/' || path === '/explore/apps',
+    active: (path: string) => path === '/',
     icon: 'i-custom-vender-main-nav-home',
     activeIcon: 'i-custom-vender-main-nav-home-active',
     visibility: VISIBLE_TO_ALL,
@@ -98,15 +97,6 @@ export const MAIN_NAV_ROUTES = [
     activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
-  },
-  {
-    key: 'deployments',
-    href: '/deployments',
-    labelKey: 'menus.deployments',
-    active: (path: string) => isPathUnderRoute(path, '/deployments'),
-    icon: 'i-ri-rocket-line',
-    activeIcon: 'i-ri-rocket-fill',
-    visibility: CAN_USE_APP_DEPLOY,
   },
 ] as const satisfies readonly MainNavRouteConfig[]
 

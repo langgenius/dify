@@ -92,6 +92,7 @@ function sourceApp(
     id: 'source-app-1',
     name: 'Source App',
     mode: 'workflow',
+    icon_url: null,
     ...overrides,
   }
 }
@@ -264,6 +265,7 @@ describe('create release state', () => {
       id: 'default-source-app',
       name: 'Default Source App',
       mode: 'workflow',
+      icon_url: null,
     })
     expect(store.get(state.createReleaseSelectedSourceAppAtom)?.id).toBe('default-source-app')
 

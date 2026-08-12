@@ -9,6 +9,7 @@ describe('generated sandbox contracts', () => {
   ])('exposes the %s file operations', (_, sandbox) => {
     expect(sandbox.files.get).toBeDefined()
     expect(sandbox.files.read.get).toBeDefined()
-    expect(sandbox.files.upload.post).toBeDefined()
+    expect(sandbox.files.download.post).toBeDefined()
+    expect('upload' in sandbox.files).toBe(false)
   })
 })

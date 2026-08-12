@@ -1,9 +1,12 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
+from models.model import App, AppMode
 from services.plugin.plugin_migration import PluginMigration
 
 MIGRATION_MODULE = "services.plugin.plugin_migration"
@@ -33,24 +36,28 @@ def test_fetch_latest_package_identifier_calls_marketplace_when_enabled(mocker: 
     assert result == "langgenius/openai:1.0.0@abc"
 
 
-def test_extract_app_tables_checks_agent_mode_with_its_session(mocker: MockerFixture) -> None:
-    app = mocker.MagicMock(app_model_config_id=None, mode="chat")
-    app.is_agent_with_session.return_value = False
-    apps_result = mocker.MagicMock()
-    apps_result.all.return_value = [app]
-    configs_result = mocker.MagicMock()
-    configs_result.all.return_value = []
-    session = mocker.MagicMock()
-    session.scalars.side_effect = [apps_result, configs_result]
-    session_context = mocker.MagicMock()
-    session_context.__enter__.return_value = session
-    mocker.patch(f"{MIGRATION_MODULE}.Session", return_value=session_context)
-    mocker.patch(f"{MIGRATION_MODULE}.db")
+def test_extract_app_tables_checks_agent_mode_with_its_session(mocker: MockerFixture, sqlite_session: Session) -> None:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Chat app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=None,
+        icon="",
+        icon_background=None,
+        enable_site=False,
+        enable_api=False,
+        created_by="account-1",
+        max_active_requests=0,
+    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
+    mocker.patch(f"{MIGRATION_MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind()))
 
     result = PluginMigration.extract_app_tables("tenant-1")
 
     assert result == []
-    app.is_agent_with_session.assert_called_once_with(session=session)
 
 
 class TestHandlePluginInstanceInstall:

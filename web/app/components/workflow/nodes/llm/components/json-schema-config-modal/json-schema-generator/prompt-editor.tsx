@@ -105,7 +105,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <Button variant="secondary" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="flex items-center gap-x-0.5" onClick={onGenerate}>
+        <Button variant="primary" className="flex items-center" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
           <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflow' })}</span>
         </Button>
