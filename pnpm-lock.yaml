@@ -1248,9 +1248,6 @@ importers:
       '@tailwindcss/typography':
         specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.3)
-      '@tanstack/form-core':
-        specifier: 'catalog:'
-        version: 1.33.3
       '@tanstack/query-core':
         specifier: 'catalog:'
         version: 5.101.4
@@ -1347,9 +1344,6 @@ importers:
       jotai-scope:
         specifier: 'catalog:'
         version: 0.11.0(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
-      jotai-tanstack-form:
-        specifier: workspace:*
-        version: link:../packages/jotai-tanstack-form
       jotai-tanstack-query:
         specifier: 'catalog:'
         version: 0.11.0(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.101.4(react@19.2.8))(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)

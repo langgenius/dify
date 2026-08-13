@@ -12,7 +12,7 @@ class FeatureResponseModel(BaseModel):
 
 
 class SubscriptionModel(FeatureResponseModel):
-    plan: str = CloudPlan.SANDBOX
+    plan: CloudPlan = CloudPlan.SANDBOX
     interval: str = ""
 
 

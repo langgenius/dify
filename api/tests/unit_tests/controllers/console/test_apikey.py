@@ -3,14 +3,25 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
+from flask import Flask
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.console.apikey import BaseApiKeyListResource, BaseApiKeyResource
+from configs import dify_config
+from controllers.console.agent.roster import AgentApiKeyListApi
+from controllers.console.apikey import (
+    AppApiKeyListResource,
+    BaseApiKeyListResource,
+    BaseApiKeyResource,
+)
+from controllers.console.datasets.datasets import DatasetApiKeyApi
+from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import ApiTokenType
@@ -79,14 +90,22 @@ def test_list_api_keys_uses_injected_session_and_tenant_id(sqlite_session: Sessi
     )
     api_key.id = "key-1"
     session.add(api_key)
+    session.add(
+        ApiToken(
+            type=ApiTokenType.APP,
+            token="foreign-app-token",
+            app_id="app-1",
+            tenant_id="tenant-2",
+        )
+    )
+    legacy_api_key = ApiToken(type=ApiTokenType.APP, token="legacy-app-token", app_id="app-1", tenant_id=None)
+    session.add(legacy_api_key)
     session.commit()
 
     result = raw_get(resource, session, "app-1", "tenant-1")
     data = cast(list[dict[str, object]], result["data"])
 
-    assert len(data) == 1
-    assert data[0]["id"] == "key-1"
-    assert data[0]["token"] == "app-token"
+    assert {item["token"] for item in data} == {"app-token", "legacy-app-token"}
 
 
 def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Session) -> None:
@@ -97,6 +116,13 @@ def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Sess
     )
     session = sqlite_session
     _persist_app(session)
+    session.add_all(
+        [
+            ApiToken(type=ApiTokenType.APP, token=f"foreign-token-{index}", app_id="app-1", tenant_id="tenant-2")
+            for index in range(resource.max_keys)
+        ]
+    )
+    session.commit()
     commits: list[str] = []
     event.listen(session, "after_commit", lambda _session: commits.append("commit"))
 
@@ -114,6 +140,21 @@ def test_create_api_key_uses_injected_session_and_tenant_id(sqlite_session: Sess
     assert api_token.type == ApiTokenType.APP
     generate_api_key.assert_called_once_with("app-", 24, session=session)
     assert commits == ["commit"]
+
+
+def test_create_api_key_counts_legacy_tokens(sqlite_session: Session) -> None:
+    resource = _make_list_resource()
+    _persist_app(sqlite_session)
+    sqlite_session.add_all(
+        [
+            ApiToken(type=ApiTokenType.APP, token=f"legacy-token-{index}", app_id="app-1", tenant_id=None)
+            for index in range(resource.max_keys)
+        ]
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(BadRequest):
+        resource._create_api_key("app-1", "tenant-1", session=sqlite_session)
 
 
 def test_create_agent_api_key_requires_published_access(sqlite_session: Session) -> None:
@@ -160,7 +201,7 @@ def test_delete_api_key_uses_injected_session_user_and_tenant(sqlite_session: Se
     )
     session = sqlite_session
     _persist_app(session)
-    api_key = ApiToken(type=ApiTokenType.APP, token="app-token", app_id="app-1", tenant_id="tenant-1")
+    api_key = ApiToken(type=ApiTokenType.APP, token="app-token", app_id="app-1", tenant_id=None)
     api_key.id = "key-1"
     session.add(api_key)
     session.commit()
@@ -182,3 +223,101 @@ def test_delete_api_key_uses_injected_session_user_and_tenant(sqlite_session: Se
     assert commits == ["commit"]
     assert result == ""
     assert status == 204
+
+
+def test_delete_api_key_rejects_foreign_tenant_token(sqlite_session: Session) -> None:
+    resource = _make_key_resource()
+    session = sqlite_session
+    _persist_app(session)
+    api_key = ApiToken(type=ApiTokenType.APP, token="foreign-token", app_id="app-1", tenant_id="tenant-2")
+    api_key.id = "key-1"
+    session.add(api_key)
+    session.commit()
+
+    with patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache:
+        with pytest.raises(NotFound):
+            resource._delete_api_key(
+                "app-1",
+                "key-1",
+                "tenant-1",
+                _make_account(TenantAccountRole.OWNER),
+                session=session,
+            )
+
+    delete_cache.assert_not_called()
+    assert session.get(ApiToken, "key-1") is api_key
+
+
+def test_api_key_lists_require_matching_rbac_permission() -> None:
+    app = Flask(__name__)
+    account = _make_account(TenantAccountRole.OWNER)
+    api_id = UUID("00000000-0000-0000-0000-000000000001")
+    cases = [
+        (
+            lambda: AppApiKeyListResource().get(resource_id=api_id),
+            [(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True)],
+        ),
+        (
+            lambda: AgentApiKeyListApi().get(agent_id=api_id),
+            [
+                (RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, False),
+                (RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION, True),
+            ],
+        ),
+        (
+            lambda: DatasetApiKeyApi().get(),
+            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
+        ),
+    ]
+
+    with (
+        app.test_request_context("/"),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch.object(dify_config, "LOGIN_DISABLED", True),
+        patch.object(dify_config, "RBAC_ENABLED", True),
+        patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch("controllers.common.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
+    ):
+        for invoke, expected_gates in cases:
+            with patch(
+                "controllers.common.wraps.enforce_rbac_access",
+                side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
+            ) as enforce_rbac_access:
+                with pytest.raises(Forbidden):
+                    invoke()
+
+            assert [
+                (kwargs["resource_type"], kwargs["scene"], kwargs["resource_required"])
+                for _, kwargs in enforce_rbac_access.call_args_list
+            ] == expected_gates
+
+    get_api_key_list.assert_not_called()
+
+
+def test_api_key_lists_reject_legacy_read_only_members() -> None:
+    app = Flask(__name__)
+    account = _make_account(TenantAccountRole.NORMAL)
+    api_id = UUID("00000000-0000-0000-0000-000000000001")
+    current_user = MagicMock()
+    current_user._get_current_object.return_value = account
+    current_user.has_edit_permission = False
+
+    with (
+        app.test_request_context("/"),
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch.object(dify_config, "LOGIN_DISABLED", True),
+        patch.object(dify_config, "RBAC_ENABLED", False),
+        patch("libs.login.current_user", current_user),
+        patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, "tenant-1")),
+        patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
+    ):
+        for invoke in (
+            lambda: AppApiKeyListResource().get(resource_id=api_id),
+            lambda: AgentApiKeyListApi().get(agent_id=api_id),
+            lambda: DatasetApiKeyApi().get(),
+        ):
+            with pytest.raises(Forbidden):
+                invoke()
+
+    get_api_key_list.assert_not_called()

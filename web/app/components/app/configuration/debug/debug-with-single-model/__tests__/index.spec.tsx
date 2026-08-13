@@ -127,7 +127,6 @@ function createMockProviderContext(
     updateModelList: vi.fn(),
     onPlanInfoChanged: vi.fn(),
     refreshModelProviders: vi.fn(),
-    refreshLicenseLimit: vi.fn(),
     ...overrides,
   } as ProviderContextState
 }

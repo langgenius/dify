@@ -171,7 +171,9 @@ def _extract_resource_id(
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == str(pipeline_id)))
+            dataset = db.session.scalar(
+                select(Dataset).where(Dataset.pipeline_id == str(pipeline_id), Dataset.tenant_id == tenant_id)
+            )
             if not dataset:
                 raise NotFound("Dataset not found for pipeline")
             return str(dataset.id)  # pyrefly: ignore[unnecessary-type-conversion]

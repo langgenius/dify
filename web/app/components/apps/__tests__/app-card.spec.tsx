@@ -1,5 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
@@ -883,6 +884,24 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
       fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    })
+
+    it('should autofill the app name for delete confirmation', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.click(getOperationsTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const deleteInput = await screen.findByRole('textbox')
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+
+      expect(confirmButton).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+
+      expect(deleteInput).toHaveValue(mockApp.name)
+      expect(confirmButton).toBeEnabled()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {

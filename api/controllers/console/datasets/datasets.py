@@ -1106,6 +1106,8 @@ class DatasetApiKeyApi(Resource):
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
