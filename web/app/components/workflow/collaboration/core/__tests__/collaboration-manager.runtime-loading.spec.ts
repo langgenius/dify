@@ -74,6 +74,33 @@ describe('CollaborationManager CRDT runtime loading', () => {
     manager.disconnect(connectionId)
   })
 
+  it('keeps editing blocked when the runtime fails to load on a configured socket URL', async () => {
+    const { CollaborationManager } = await loadCollaborationModules()
+    const websocketManager = await import('../websocket-manager')
+    vi.spyOn(websocketManager, 'isDefaultSocketUrl').mockReturnValue(false)
+    const manager = new CollaborationManager()
+    const runtimeError = new Error('runtime-load-failed')
+    const loadRuntimeSpy = vi
+      .spyOn(
+        manager as unknown as {
+          loadCrdtRuntime: () => Promise<(typeof import('../crdt-runtime'))['crdtRuntime']>
+        },
+        'loadCrdtRuntime',
+      )
+      .mockRejectedValueOnce(runtimeError)
+    const connectSpy = vi.spyOn(websocketManager.webSocketClient, 'connect')
+
+    const connectionId = await manager.connect('app-runtime-failure-configured-socket')
+
+    expect(loadRuntimeSpy).toHaveBeenCalledTimes(1)
+    expect(connectSpy).not.toHaveBeenCalled()
+    expect(manager.isConnected()).toBe(false)
+    expect(manager.canApplyLocalGraphMutation()).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+
+    manager.disconnect(connectionId)
+  })
+
   it('initializes one session for concurrent consumers of the same app', async () => {
     const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
     const manager = new CollaborationManager()

@@ -671,7 +671,11 @@ export class CollaborationManager {
         console.error('Failed to load collaboration runtime, falling back to local editing:', error)
         if (connectGeneration === this.connectGeneration && this.targetAppId === appId) {
           this.currentAppId = appId
-          this.localDraftFallbackActive = true
+          // Mirrors activateLocalDraftFallback(): only degrade to local-only editing on the
+          // default self-hosted socket URL. A configured (Cloud/Enterprise) socket implies a real
+          // collaboration server may have other users editing live, so editing stays blocked here.
+          if (isDefaultSocketUrl() && !this.hasEstablishedConnection)
+            this.localDraftFallbackActive = true
           this.activeConnections.add(connectionId)
           this.emitGraphReadyState()
         }
