@@ -59,6 +59,7 @@ import {
 } from './document-models'
 import { DocumentUploadForm } from './document-upload-form'
 import { documentUploadIssue } from './document-upload-policy'
+import { knowledgeFsTaskFailureMessageKey } from './knowledge-fs-task-error'
 import {
   discardKnowledgeFsStagedUpload,
   stageKnowledgeFsDocument,
@@ -784,6 +785,29 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         ]),
       ),
     [documents, taskByDocument],
+  )
+  const documentFailureReasons = useMemo(
+    () =>
+      new Map(
+        documents.flatMap((document) => {
+          if (documentStatuses.get(document.id) !== 'failed') return []
+          const task = taskByDocument.get(document.id)
+          const messageKey =
+            knowledgeFsTaskFailureMessageKey(
+              task?.failure,
+              task?.errorCode ?? (task?.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
+            ) ?? 'newKnowledge.taskFailure.internal'
+          const message = t(($) => $[messageKey])
+          const reference =
+            task?.failure?.traceId && task.failure.category === 'internal'
+              ? t(($) => $['newKnowledge.taskFailure.reference'], {
+                  traceId: task.failure.traceId,
+                })
+              : undefined
+          return [[document.id, reference ? `${message}\n${reference}` : message] as const]
+        }),
+      ),
+    [documentStatuses, documents, t, taskByDocument],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const statusFilterActive = filter !== 'all'
@@ -2849,6 +2873,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             canUpload={canUpload}
             completingResults={completingFilteredResults}
             documents={filteredDocuments}
+            failureReasons={documentFailureReasons}
             filter={filter}
             getDocumentHref={(documentId) =>
               newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)

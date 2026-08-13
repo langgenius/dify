@@ -199,6 +199,7 @@ const taskApiResponse = vi.hoisted(() => (item: BackgroundTask) => ({
   document_revision: item.documentRevision ?? null,
   error_code: item.errorCode ?? null,
   error_message: item.errorMessage ?? null,
+  failure: item.failure ?? null,
   id: item.id,
   knowledge_space_id: item.knowledgeSpaceId,
   operation: item.operation ?? 'document_processing',
@@ -1008,6 +1009,46 @@ describe('DocumentsPage', () => {
     )
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
     expect(screen.queryByText('Ready handbook.pdf')).not.toBeInTheDocument()
+  })
+
+  it('reveals the latest document task failure reason from the failed status', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'failed-document', title: 'Failed report.pdf' })] }],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              documentId: 'failed-document',
+              failure: {
+                action: 'configure_model',
+                category: 'configuration',
+                code: 'MODEL_SELECTION_NOT_FOUND',
+                message: 'Select another model.',
+                retryPolicy: 'after_configuration',
+              },
+              id: 'failed-task',
+              state: 'failed',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const failedStatus = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.configuration',
+    })
+    expect(screen.queryByText('dataset.newKnowledge.taskFailure.configuration')).toBeNull()
+
+    await user.hover(failedStatus)
+
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.configuration'),
+    ).toBeInTheDocument()
   })
 
   it('downloads the active revision from the document action menu', async () => {
