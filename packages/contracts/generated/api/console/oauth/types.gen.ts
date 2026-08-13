@@ -154,7 +154,9 @@ export type GetOauthPluginByProviderToolAuthorizationUrlData = {
   path: {
     provider: string
   }
-  query?: never
+  query?: {
+    visibility?: 'all_team_members' | 'only_me'
+  }
   url: '/oauth/plugin/{provider}/tool/authorization-url'
 }
 

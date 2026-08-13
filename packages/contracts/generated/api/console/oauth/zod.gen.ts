@@ -146,6 +146,10 @@ export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
   provider: z.string(),
 })
 
+export const zGetOauthPluginByProviderToolAuthorizationUrlQuery = z.object({
+  visibility: z.enum(['all_team_members', 'only_me']).optional(),
+})
+
 /**
  * Tool OAuth authorization URL generated successfully
  */

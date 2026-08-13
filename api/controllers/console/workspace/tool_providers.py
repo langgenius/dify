@@ -98,6 +98,13 @@ class ToolProviderListQuery(BaseModel):
     type: Literal["builtin", "model", "api", "workflow", "mcp"] | None = None
 
 
+class ToolOAuthAuthorizationQuery(BaseModel):
+    visibility: Literal["only_me", "all_team_members"] | None = Field(
+        default=None,
+        description="Visibility for the OAuth credential. Defaults to 'only_me'.",
+    )
+
+
 class BuiltinToolCredentialDeletePayload(BaseModel):
     credential_id: str
 
@@ -437,6 +444,7 @@ class WorkflowToolDetailResponse(ResponseModel):
 register_schema_models(
     console_ns,
     ToolProviderListQuery,
+    ToolOAuthAuthorizationQuery,
     UrlQuery,
     ProviderQuery,
     BuiltinCredentialListQuery,
@@ -1106,6 +1114,7 @@ class ToolLabelsApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/tool/authorization-url")
 class ToolPluginOAuthApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ToolOAuthAuthorizationQuery))
     @console_ns.response(
         200,
         "Tool OAuth authorization URL generated successfully",

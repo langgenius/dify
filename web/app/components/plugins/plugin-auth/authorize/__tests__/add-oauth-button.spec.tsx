@@ -1,6 +1,6 @@
 import type { OAuthClientSettingsProps } from '../oauth-client-settings'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -24,9 +24,21 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('../../hooks/use-credential', () => ({
-  useGetPluginOAuthUrlHook: () => ({
-    mutateAsync: mockGetPluginOAuthUrl,
-  }),
+  useGetPluginOAuthUrlHook: () => {
+    const [isPending, setIsPending] = React.useState(false)
+
+    return {
+      isPending,
+      mutateAsync: async (params?: { visibility?: string }) => {
+        setIsPending(true)
+        try {
+          return await mockGetPluginOAuthUrl(params)
+        } finally {
+          setIsPending(false)
+        }
+      },
+    }
+  },
   useGetPluginOAuthClientSchemaHook: () => ({
     data: {
       schema: [],
@@ -167,20 +179,100 @@ describe('AddOAuthButton', () => {
   })
 
   it('should not open OAuth popup when authorization URL is missing', async () => {
+    const user = userEvent.setup()
     mockGetPluginOAuthUrl.mockResolvedValueOnce({})
     renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    const button = screen.getByText('Use OAuth').closest('button')
-    if (button) fireEvent.click(button)
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
 
-    // Confirm the visibility picker so the OAuth request fires
-    const confirmButton = await screen.findByText('plugin.auth.authorize')
-    fireEvent.click(confirmButton)
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' })
+    expect(dialog).toHaveAccessibleDescription('plugin.auth.oauthCredentialPermissionDescription')
+
+    const confirmButton = within(dialog).getByRole('button', { name: 'plugin.auth.authorize' })
+    await user.click(confirmButton)
 
     await waitFor(() => {
       expect(mockGetPluginOAuthUrl).toHaveBeenCalled()
     })
     expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
+    expect(confirmButton).toBeEnabled()
+  })
+
+  it('should lock the visibility dialog while requesting an OAuth URL', async () => {
+    const user = userEvent.setup()
+    let resolveOAuthRequest: ((value: { authorization_url: string }) => void) | undefined
+    mockGetPluginOAuthUrl.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveOAuthRequest = resolve
+        }),
+    )
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' })
+    const confirmButton = within(dialog).getByRole('button', { name: 'plugin.auth.authorize' })
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
+    })
+    expect(confirmButton).toHaveAttribute('aria-busy', 'true')
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', {
+        name: /datasetSettings\.form\.permissionsOnlyMe/,
+      }),
+    ).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDisabled()
+
+    await act(async () => {
+      resolveOAuthRequest?.({ authorization_url: 'https://auth.example.com' })
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'plugin.auth.whoCanUse' }),
+      ).not.toBeInTheDocument()
+    })
+    expect(mockOpenOAuthPopup).toHaveBeenCalledWith(
+      'https://auth.example.com',
+      expect.any(Function),
+    )
+  })
+
+  it('should preserve the visibility selection when the OAuth URL request fails', async () => {
+    const user = userEvent.setup()
+    mockGetPluginOAuthUrl.mockRejectedValueOnce(new Error('OAuth URL request failed'))
+    renderWithAccountProfile(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
+
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' })
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: /datasetSettings\.form\.permissionsOnlyMe/,
+      }),
+    )
+    await user.click(
+      screen.getByRole('menuitemradio', {
+        name: 'datasetSettings.form.permissionsAllMember',
+      }),
+    )
+    const confirmButton = within(dialog).getByRole('button', { name: 'plugin.auth.authorize' })
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(confirmButton).toBeEnabled()
+    })
+    expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith({ visibility: 'all_team_members' })
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', {
+        name: /datasetSettings\.form\.permissionsAllMember/,
+      }),
+    ).toBeEnabled()
   })
 
   it('should skip visibility picker for categories without backend visibility support', async () => {

@@ -71,7 +71,8 @@ const AddOAuthButton = ({
   const [pendingVisibility, setPendingVisibility] = useState<CredentialPermission>(
     PermissionLevel.onlyMe,
   )
-  const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
+  const { mutateAsync: getPluginOAuthUrl, isPending: isGettingOAuthUrl } =
+    useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload, !oAuthData)
   const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData) return oAuthData
@@ -91,12 +92,19 @@ const AddOAuthButton = ({
     setIsOAuthSettingsOpen(true)
   }, [])
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl(
-      isVisibilityPickerSupported ? { visibility: pendingVisibility } : undefined,
-    )
+    try {
+      const { authorization_url } = await getPluginOAuthUrl(
+        isVisibilityPickerSupported ? { visibility: pendingVisibility } : undefined,
+      )
 
-    if (authorization_url) {
+      if (!authorization_url) return false
+
       openOAuthPopup(authorization_url, () => onUpdate?.())
+      return true
+    } catch {
+      // The request layer surfaces the error. Keep the current UI state so the
+      // user can retry without losing their visibility selection.
+      return false
     }
   }, [getPluginOAuthUrl, onUpdate, pendingVisibility, isVisibilityPickerSupported])
   // Providers without a usable OAuth client first open settings. Once those
@@ -104,7 +112,7 @@ const AddOAuthButton = ({
   // dialog used by configured providers.
   const openVisibilityModal = useCallback(() => {
     if (!isVisibilityPickerSupported) {
-      if (isConfigured) handleOAuth()
+      if (isConfigured) void handleOAuth()
       else openOAuthSettings()
       return
     }
@@ -124,9 +132,9 @@ const AddOAuthButton = ({
     setPendingVisibility(PermissionLevel.onlyMe)
     setIsVisibilityModalOpen(true)
   }, [handleOAuth, isVisibilityPickerSupported])
-  const handleVisibilityConfirm = useCallback(() => {
-    setIsVisibilityModalOpen(false)
-    handleOAuth()
+  const handleVisibilityConfirm = useCallback(async () => {
+    const didOpenOAuthPopup = await handleOAuth()
+    if (didOpenOAuthPopup) setIsVisibilityModalOpen(false)
   }, [handleOAuth])
 
   const renderCustomLabel = useCallback(
@@ -313,6 +321,7 @@ const AddOAuthButton = ({
         permission={pendingVisibility}
         onPermissionChange={setPendingVisibility}
         onConfirm={handleVisibilityConfirm}
+        loading={isGettingOAuthUrl}
       />
     </>
   )
