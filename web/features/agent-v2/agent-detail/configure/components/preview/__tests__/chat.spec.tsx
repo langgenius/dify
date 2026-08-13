@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -14,6 +15,7 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
@@ -56,7 +58,7 @@ vi.mock('@/next/dynamic', async () => {
     default: () =>
       function MockChat(props: {
         answerActionPosition?: 'auto' | 'below'
-        onSend: (message: string) => unknown
+        onSend: (message: string, files?: FileEntity[]) => unknown
         onStopResponding: () => void
         sendButtonLabel?: string
         sendButtonLoading?: boolean
@@ -111,6 +113,26 @@ vi.mock('@/next/dynamic', async () => {
               }}
             >
               send
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSent(true)
+                sendResultRef.current = props.onSend('read this file', [
+                  {
+                    id: 'file-1',
+                    name: 'brief.docx',
+                    size: 1024,
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    progress: 100,
+                    transferMethod: TransferMethod.local_file,
+                    supportFileType: 'document',
+                    uploadedId: 'uploaded-file-1',
+                  },
+                ])
+              }}
+            >
+              send with document
             </button>
             <button type="button" onClick={props.onStopResponding}>
               stop
@@ -188,16 +210,6 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     textGenerationModelList: [
@@ -239,6 +251,13 @@ vi.mock('@/service/client', async () => {
       },
     },
     consoleQuery: {
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       agent: {
         byAgentId: {
           chatMessages: {
@@ -275,6 +294,7 @@ function renderPreviewChat(
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -349,6 +369,7 @@ function renderPreviewChatWithConversationHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -374,6 +395,7 @@ function renderPreviewChatWithClearCommandHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -716,6 +738,21 @@ describe('AgentPreviewChat', () => {
     )
     expect(screen.getByRole('textbox', { name: 'chat draft' })).toHaveValue(
       'Keep this footer draft',
+    )
+  })
+
+  it('should deliver non-image attachments even when the selected model does not support vision', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send with document' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      expect.objectContaining({
+        files: [expect.objectContaining({ id: 'file-1', name: 'brief.docx' })],
+      }),
+      expect.any(Object),
     )
   })
 

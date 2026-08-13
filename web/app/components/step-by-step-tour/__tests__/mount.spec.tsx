@@ -10,7 +10,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -212,7 +211,7 @@ vi.mock('@/context/modal-context', () => ({
     }),
 }))
 
-vi.mock('@/app/education-apply/use-expire-notice', () => ({
+vi.mock('@/app/education/expire-notice/use-expire-notice', () => ({
   useEducationExpireNotice: () => [
     mockEducationExpireNotice.value
       ? { accountId: 'user-1', expireAt: 1, expired: false, phase: 'expiring' }
@@ -401,7 +400,7 @@ function getMockAppContextState() {
     currentWorkspace: {
       id: 'workspace-1',
       name: 'Solar Studio',
-      plan: Plan.sandbox,
+      plan: 'sandbox',
       role: mockCurrentWorkspaceRole.value,
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,

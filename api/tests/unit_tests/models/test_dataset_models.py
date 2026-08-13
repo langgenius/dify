@@ -18,6 +18,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -111,6 +112,32 @@ class TestDatasetModelValidation:
 
         session.get.assert_called_once_with(Account, dataset.created_by)
         assert session.scalar.call_count == 2
+
+    def test_get_doc_form_ignores_foreign_tenant_document(self, sqlite_session: Session) -> None:
+        dataset_id = str(uuid4())
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
+        dataset = Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name="Dataset",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            created_by=created_by,
+        )
+        foreign_document = Document(
+            tenant_id=str(uuid4()),
+            dataset_id=dataset_id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="foreign",
+            name="Foreign",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=created_by,
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+        )
+        sqlite_session.add_all([dataset, foreign_document])
+
+        assert dataset.get_doc_form(session=sqlite_session) is None
 
     def test_get_dataset_keyword_table_uses_caller_session(self):
         dataset = Dataset(

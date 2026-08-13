@@ -91,6 +91,7 @@
   "timezone": "Zaman dilimi",
   "tos": "Hizmet Şartları",
   "tosDesc": "Kaydolarak, Hizmet Şartlarımızı kabul etmiş olursunuz",
+  "turnstile.loadError": "Güvenlik doğrulaması yüklenemedi.",
   "usePassword": "Şifre Kullan",
   "useVerificationCode": "Doğrulama Kodunu Kullan",
   "validate": "Doğrula",

@@ -245,7 +245,7 @@
 
 # Frontend - Billing and Education
 /web/app/components/billing/ @iamjoel @zxhlyh
-/web/app/education-apply/ @iamjoel @zxhlyh
+/web/app/education/ @iamjoel @zxhlyh
 
 # Frontend - Workspace
 /web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh

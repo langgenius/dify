@@ -3,7 +3,6 @@ import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  FetchWorkflowDraftResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
@@ -13,17 +12,14 @@ import type {
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post, put } from './base'
-import { useInvalid, useReset } from './use-base'
+import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
+import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
 
 export const useAppWorkflow = (appID: string) => {
-  return useQuery<FetchWorkflowDraftResponse | null>({
-    enabled: !!appID,
-    queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse | null>(`/apps/${appID}/workflows/publish`),
-  })
+  return useQuery(appWorkflowQueryOptions(appID))
 }
 
 const WorkflowRunHistoryKey = [NAME_SPACE, 'runHistory']
@@ -49,8 +45,8 @@ export const useInvalidateWorkflowRunHistory = () => {
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'publish', appID],
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowQueryOptions(appID).queryKey,
     })
   }
 }
@@ -93,10 +89,17 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
 }
 
 export const useResetWorkflowVersionHistory = () => {
-  return useReset([...WorkflowVersionHistoryKey])
+  const queryClient = useQueryClient()
+
+  return () =>
+    Promise.all([
+      queryClient.resetQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+      queryClient.resetQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+    ])
 }
 
 export const useUpdateWorkflow = () => {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (params: UpdateWorkflowParams) =>
@@ -106,6 +109,11 @@ export const useUpdateWorkflow = () => {
           marked_comment: params.releaseNotes,
         },
       }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...WorkflowVersionHistoryKey] }),
+        queryClient.invalidateQueries({ queryKey: appWorkflowVersionsInfiniteQueryKey() }),
+      ]),
   })
 }
 

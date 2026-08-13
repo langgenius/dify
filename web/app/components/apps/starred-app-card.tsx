@@ -17,7 +17,7 @@ import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
-import { AppCardActionBar } from './app-card'
+import { AppCardActionBar } from './app-card/action-bar'
 
 type StarredAppCardProps = {
   app: AppPartial

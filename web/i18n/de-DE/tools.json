@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Zweck und Einschränkungen des Parameters",
   "mcp.server.modal.parametersTip": "Fügen Sie Beschreibungen für jeden Parameter hinzu, um dem LLM Zweck und Einschränkungen zu verdeutlichen.",
   "mcp.server.publishTip": "App nicht veröffentlicht. Bitte zuerst die App veröffentlichen.",
-  "mcp.server.reGen": "Server-URL neu generieren?",
+  "mcp.server.reGen": "Server-URL neu generieren? Die aktuelle URL funktioniert sofort nicht mehr.",
   "mcp.server.title": "MCP-Server",
   "mcp.server.url": "Server-URL",
   "mcp.toolItem.noDescription": "Keine Beschreibung",

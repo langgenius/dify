@@ -91,6 +91,7 @@
   "timezone": "Fuso orario",
   "tos": "Termini di servizio",
   "tosDesc": "Iscrivendoti, accetti i nostri",
+  "turnstile.loadError": "Impossibile caricare la verifica di sicurezza.",
   "usePassword": "Usa password",
   "useVerificationCode": "Usa il codice di verifica",
   "validate": "Convalida",

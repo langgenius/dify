@@ -30,6 +30,7 @@ from models.dataset import (
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
 
@@ -95,6 +96,10 @@ def _make_pipeline(
     return pipeline
 
 
+def _make_template_args(name: str = "New Template") -> dict[str, object]:
+    return {"name": name, "description": "Desc", "icon_info": {"icon": "star"}}
+
+
 def _make_workflow(
     *,
     workflow_id: str = "wf-1",
@@ -103,13 +108,14 @@ def _make_workflow(
     graph: dict[str, object] | None = None,
     features: dict[str, object] | None = None,
     created_by: str = "u1",
+    version: str = Workflow.VERSION_DRAFT,
 ) -> Workflow:
     workflow = Workflow(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
         type="workflow",
-        version="draft",
+        version=version,
         marked_name="",
         marked_comment="",
         graph=json.dumps(graph or {"nodes": []}),
@@ -267,12 +273,12 @@ def test_get_pipeline_template_detail_uses_expected_mode(
     factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory_mock.get_pipeline_template_factory.return_value.return_value = retrieval
 
-    result = RagPipelineService.get_pipeline_template_detail("tpl-1", type=template_type, session=session)
+    result = RagPipelineService.get_pipeline_template_detail("tpl-1", "tenant-1", type=template_type, session=session)
 
     assert result == {"id": "tpl-1"}
     expected_mode = "remote" if template_type == "built-in" else "customized"
     factory_mock.get_pipeline_template_factory.assert_called_with(expected_mode)
-    retrieval.get_pipeline_template_detail.assert_called_once_with("tpl-1", session=session)
+    retrieval.get_pipeline_template_detail.assert_called_once_with("tpl-1", "tenant-1", session=session)
 
 
 def test_get_published_workflow_returns_none_when_pipeline_has_no_workflow_id(
@@ -884,8 +890,9 @@ def test_publish_customized_pipeline_template_success(
 
     account = _make_account(account_id="user-123")
 
-    args = {"name": "New Template", "description": "Desc", "icon_info": {"icon": "star"}, "tags": ["tag1"]}
-    rag_pipeline_service.service.publish_customized_pipeline_template("p1", args, account, "t1", session=session)
+    rag_pipeline_service.service.publish_customized_pipeline_template(
+        pipeline, dataset, _make_template_args(), account, session=session
+    )
 
     mock_dsl_service.export_rag_pipeline_dsl.assert_called_once_with(pipeline=pipeline, include_secret=True)
     templates = session.query(PipelineCustomizedTemplate).all()
@@ -1847,24 +1854,15 @@ def test_run_datasource_node_preview_raises_for_unsupported_provider(
         )
 
 
-def test_publish_customized_pipeline_template_raises_for_missing_pipeline(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-) -> None:
-    with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.service.publish_customized_pipeline_template(
-            "p1", {}, _make_account(), "t1", session=rag_pipeline_service.session
-        )
-
-
 def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(
     rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     pipeline = _make_pipeline(workflow_id=None)
     _persist(rag_pipeline_service.session, pipeline)
 
-    with pytest.raises(ValueError, match="Pipeline workflow not found"):
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Pipeline workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
-            "p1", {"name": "template-name"}, _make_account(), "t1", session=rag_pipeline_service.session
+            pipeline, _make_dataset(), _make_template_args(), _make_account(), session=rag_pipeline_service.session
         )
 
 
@@ -2153,29 +2151,68 @@ def test_run_free_workflow_node_delegates_to_handle_result(
     handle.assert_called_once()
 
 
-def test_publish_customized_pipeline_template_raises_when_workflow_missing(
+@pytest.mark.parametrize(("workflow_tenant_id", "workflow_app_id"), [("t2", "p1"), ("t1", "p2")])
+def test_publish_customized_pipeline_template_rejects_unowned_workflow_before_export(
+    mocker: MockerFixture,
     rag_pipeline_service: RagPipelineServiceTestContext,
+    workflow_tenant_id: str,
+    workflow_app_id: str,
 ) -> None:
     pipeline = _make_pipeline(workflow_id="wf-1")
-    _persist(rag_pipeline_service.session, pipeline)
-
-    with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.service.publish_customized_pipeline_template(
-            "p1", {}, _make_account(), "t1", session=rag_pipeline_service.session
-        )
-
-
-def test_publish_customized_pipeline_template_raises_when_dataset_missing(
-    rag_pipeline_service: RagPipelineServiceTestContext,
-) -> None:
-    pipeline = _make_pipeline(workflow_id="wf-1")
-    workflow = _make_workflow(workflow_id="wf-1")
+    workflow = _make_workflow(workflow_id="wf-1", tenant_id=workflow_tenant_id, app_id=workflow_app_id)
     _persist(rag_pipeline_service.session, pipeline, workflow)
+    dsl_service = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService")
 
-    with pytest.raises(ValueError, match="Dataset not found"):
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Workflow not found"):
         rag_pipeline_service.service.publish_customized_pipeline_template(
-            "p1", {}, _make_account(), "t1", session=rag_pipeline_service.session
+            pipeline,
+            _make_dataset(),
+            _make_template_args(),
+            _make_account(),
+            session=rag_pipeline_service.session,
         )
+
+    dsl_service.assert_not_called()
+    assert rag_pipeline_service.session.query(PipelineCustomizedTemplate).count() == 0
+
+
+def test_pipeline_retrieve_dataset_rejects_unowned_dataset(
+    rag_pipeline_service: RagPipelineServiceTestContext,
+) -> None:
+    pipeline = _make_pipeline(workflow_id="wf-1")
+    other_tenant_dataset = _make_dataset(tenant_id="t2")
+    _persist(rag_pipeline_service.session, pipeline, other_tenant_dataset)
+
+    assert pipeline.retrieve_dataset(session=rag_pipeline_service.session) is None
+
+
+@pytest.mark.parametrize(
+    ("draft_tenant_id", "draft_app_id"),
+    [(None, None), ("t2", "p1"), ("t1", "p2")],
+)
+def test_publish_customized_pipeline_template_rejects_missing_or_unowned_draft_before_side_effects(
+    mocker: MockerFixture,
+    rag_pipeline_service: RagPipelineServiceTestContext,
+    draft_tenant_id: str | None,
+    draft_app_id: str | None,
+) -> None:
+    session = rag_pipeline_service.session
+    pipeline = _make_pipeline(workflow_id="wf-published")
+    published_workflow = _make_workflow(workflow_id="wf-published", version="published")
+    dataset = _make_dataset()
+    resources = [pipeline, published_workflow, dataset]
+    if draft_tenant_id and draft_app_id:
+        resources.append(_make_workflow(workflow_id="wf-draft", tenant_id=draft_tenant_id, app_id=draft_app_id))
+    _persist(session, *resources)
+    dsl_service = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService")
+
+    with pytest.raises(RagPipelineResourceNotFoundError, match="Draft workflow not found"):
+        rag_pipeline_service.service.publish_customized_pipeline_template(
+            pipeline, dataset, _make_template_args(), _make_account(), session=session
+        )
+
+    dsl_service.assert_not_called()
+    assert session.query(PipelineCustomizedTemplate).count() == 0
 
 
 def test_get_recommended_plugins_skips_manifest_when_missing(
