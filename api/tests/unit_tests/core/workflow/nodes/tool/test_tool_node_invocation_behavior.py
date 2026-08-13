@@ -1,3 +1,5 @@
+"""Unit coverage for tool-node invocation with the tool boundary patched."""
+
 import time
 import uuid
 from unittest.mock import MagicMock, patch
