@@ -12,8 +12,6 @@ import services
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.datasets.external import (
-    BedrockRetrievalApi,
-    BedrockRetrievalPayload,
     ExternalApiTemplateApi,
     ExternalApiTemplateListApi,
     ExternalApiTemplateListQuery,
@@ -28,7 +26,6 @@ from services.dataset_service import DatasetService
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
-from services.knowledge_service import ExternalDatasetTestService
 
 
 @pytest.fixture
@@ -539,52 +536,6 @@ class TestExternalKnowledgeHitTestingApi(_UsesSQLiteSession):
         )
 
 
-class TestBedrockRetrievalApi:
-    def test_bedrock_retrieval(self, app: Flask):
-        api = BedrockRetrievalApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {
-            "retrieval_setting": {"top_k": 5, "score_threshold": 0.72},
-            "query": "hello bedrock",
-            "knowledge_id": "knowledge-base-1",
-        }
-        retrieval_response = {
-            "records": [
-                {
-                    "metadata": {"source": "bedrock", "uri": "s3://bucket/doc.txt"},
-                    "score": 0.8,
-                    "title": "doc",
-                    "content": "answer",
-                },
-                {
-                    "metadata": {"source": "bedrock", "uri": "s3://bucket/other.txt"},
-                    "score": 0.65,
-                    "title": None,
-                    "content": None,
-                },
-            ]
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-            patch.object(
-                ExternalDatasetTestService,
-                "knowledge_retrieval",
-                return_value=retrieval_response,
-            ) as knowledge_retrieval,
-        ):
-            resp, status = method(api, BedrockRetrievalPayload.model_validate(payload))
-
-        assert status == 200
-        assert resp == retrieval_response
-        retrieval_setting, query, knowledge_id = knowledge_retrieval.call_args.args
-        assert retrieval_setting.model_dump() == payload["retrieval_setting"]
-        assert query == "hello bedrock"
-        assert knowledge_id == "knowledge-base-1"
-
-
 class TestExternalApiTemplateListApiAdvanced(_UsesSQLiteSession):
     def test_post_duplicate_name_error(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
@@ -733,26 +684,3 @@ class TestExternalKnowledgeHitTestingApiAdvanced(_UsesSQLiteSession):
             external_retrieval_model={"type": "bm25"},
             metadata_filtering_conditions={"status": "active"},
         )
-
-
-class TestBedrockRetrievalApiAdvanced:
-    def test_bedrock_retrieval_with_invalid_setting(self, app: Flask):
-        api = BedrockRetrievalApi()
-        method = inspect.unwrap(api.post)
-
-        payload = {
-            "retrieval_setting": {},
-            "query": "test",
-            "knowledge_id": "k-1",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.external.ExternalDatasetTestService.knowledge_retrieval",
-                side_effect=ValueError("Invalid settings"),
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, BedrockRetrievalPayload.model_validate(payload))
