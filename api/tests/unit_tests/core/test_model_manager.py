@@ -345,7 +345,7 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
 def test_quota_managed_non_llm_invocation_finalizes_reservation(
     model_type: ModelType,
     method_name: str,
-    invoke_model: Callable[[QuotaManagedModelInstance], object],
+    invoke_model: Callable[[ModelInstance], object],
 ) -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
