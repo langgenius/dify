@@ -36,7 +36,7 @@ Then(
 
     await expect(advancedSettings).toBeVisible()
     await expect(
-      advancedSettings.getByText('For power users, such as environment variables.'),
+      advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
     ).toBeVisible()
     await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).not.toBeVisible()
   },
