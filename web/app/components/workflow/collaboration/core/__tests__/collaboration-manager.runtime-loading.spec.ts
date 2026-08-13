@@ -49,11 +49,10 @@ describe('CollaborationManager CRDT runtime loading', () => {
     expect(manager.isConnected()).toBe(false)
   })
 
-  it('does not create connection state when the runtime fails to load and allows a retry', async () => {
+  it('falls back to local editing instead of leaving the UI stuck when the runtime fails to load', async () => {
     const { CollaborationManager, webSocketClient } = await loadCollaborationModules()
     const manager = new CollaborationManager()
     const runtimeError = new Error('runtime-load-failed')
-    const retryError = new Error('runtime-retry-failed')
     const loadRuntimeSpy = vi
       .spyOn(
         manager as unknown as {
@@ -62,19 +61,17 @@ describe('CollaborationManager CRDT runtime loading', () => {
         'loadCrdtRuntime',
       )
       .mockRejectedValueOnce(runtimeError)
-      .mockRejectedValueOnce(retryError)
     const connectSpy = vi.spyOn(webSocketClient, 'connect')
 
-    await expect(manager.connect('app-runtime-failure')).rejects.toBe(runtimeError)
+    const connectionId = await manager.connect('app-runtime-failure')
 
     expect(loadRuntimeSpy).toHaveBeenCalledTimes(1)
     expect(connectSpy).not.toHaveBeenCalled()
     expect(manager.isConnected()).toBe(false)
+    expect(manager.canApplyLocalGraphMutation()).toBe(true)
+    expect(manager.canPersistLocalGraph()).toBe(true)
 
-    await expect(manager.connect('app-runtime-failure')).rejects.toBe(retryError)
-
-    expect(loadRuntimeSpy).toHaveBeenCalledTimes(2)
-    expect(connectSpy).not.toHaveBeenCalled()
+    manager.disconnect(connectionId)
   })
 
   it('initializes one session for concurrent consumers of the same app', async () => {

@@ -664,7 +664,20 @@ export class CollaborationManager {
     }
     const connectGeneration = this.connectGeneration
 
-    if (!this.crdtRuntime) await this.ensureCrdtRuntime()
+    if (!this.crdtRuntime) {
+      try {
+        await this.ensureCrdtRuntime()
+      } catch (error) {
+        console.error('Failed to load collaboration runtime, falling back to local editing:', error)
+        if (connectGeneration === this.connectGeneration && this.targetAppId === appId) {
+          this.currentAppId = appId
+          this.localDraftFallbackActive = true
+          this.activeConnections.add(connectionId)
+          this.emitGraphReadyState()
+        }
+        return connectionId
+      }
+    }
 
     if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
       return connectionId
