@@ -1,4 +1,4 @@
-from tests.integration_tests.utils.parent_class import ParentClass
+from tests.unit_tests.utils.module_import_fixtures.parent_class import ParentClass
 
 
 class LazyLoadChildClass(ParentClass):
