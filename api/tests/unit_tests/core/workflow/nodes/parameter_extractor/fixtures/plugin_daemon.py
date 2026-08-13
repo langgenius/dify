@@ -1,10 +1,9 @@
-import os
 from collections.abc import Callable
 
 import pytest
 
 from core.plugin.impl.model import PluginModelClient
-from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
+from tests.unit_tests.core.workflow.nodes.parameter_extractor.fixtures.plugin_model import MockModelClass
 
 
 def mock_plugin_daemon(
@@ -27,15 +26,8 @@ def mock_plugin_daemon(
     return unpatch
 
 
-MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
-
-
 @pytest.fixture
 def setup_model_mock(monkeypatch: pytest.MonkeyPatch):
-    if MOCK:
-        unpatch = mock_plugin_daemon(monkeypatch)
-
+    unpatch = mock_plugin_daemon(monkeypatch)
     yield
-
-    if MOCK:
-        unpatch()
+    unpatch()

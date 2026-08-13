@@ -1,3 +1,5 @@
+"""Model-instance builders for parameter-extractor unit tests."""
+
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
