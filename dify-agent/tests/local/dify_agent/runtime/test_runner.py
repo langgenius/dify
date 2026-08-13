@@ -311,7 +311,6 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
             ),
         ),
     ]
@@ -485,7 +484,7 @@ class FakeAgentRunResult:
 def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_clients: list[httpx.AsyncClient] = []
 
-    def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert self.config.model == "demo-model"
         assert self.config.plugin_id == "langgenius/openai"
         seen_clients.append(http_client)
@@ -558,7 +557,7 @@ def test_runner_emits_complete_plugin_usage_in_terminal_event(monkeypatch: pytes
         def accumulated_usage(self) -> LLMUsage:
             return complete_usage
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return PricedTestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -592,7 +591,7 @@ def test_runner_emits_complete_plugin_usage_in_terminal_event(monkeypatch: pytes
 
 
 def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -625,7 +624,7 @@ def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPa
 
 
 def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -666,7 +665,7 @@ def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatc
         tool_call_id="tool-call-1",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -743,7 +742,7 @@ def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatc
         tool_call_id="tool-call-1",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -848,7 +847,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
         tool_call_id="tool-call-2",
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -947,7 +946,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
 
 
 def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -991,7 +990,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
 ) -> None:
     agent_run_called = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -1038,7 +1037,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
 
 
 def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -1076,7 +1075,7 @@ def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyP
 
 
 def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
@@ -1120,7 +1119,7 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
     async def plugin_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1180,7 +1179,6 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1229,7 +1227,7 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
     async def knowledge_tool() -> str:
         return "knowledge"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1285,7 +1283,6 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1335,7 +1332,7 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
     async def core_tool() -> str:
         return "core"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1392,7 +1389,6 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1442,7 +1438,7 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
     async def duplicate_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1492,7 +1488,6 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1566,7 +1561,7 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
     async def dynamic_duplicate_tool() -> str:
         return "tool"
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1623,7 +1618,6 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1676,7 +1670,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     create_agent_called = False
     shell_client = FakeRunnerShellctlClient()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -1749,7 +1743,6 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1801,7 +1794,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
 def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monkeypatch: pytest.MonkeyPatch) -> None:
     model = RecordingTestModel(custom_output_text="done")
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1843,7 +1836,7 @@ def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_onl
         ModelResponse(parts=[TextPart(content="old assistant")]),
     ]
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1894,7 +1887,7 @@ def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_onl
 ) -> None:
     model = RecordingTestModel(custom_output_text="done")
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -1944,7 +1937,7 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
         ModelResponse(parts=[TextPart(content="old assistant")]),
     ]
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2004,7 +1997,7 @@ def test_runner_persists_usage_limit_failure_type_in_event_and_status(
 
 
 def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
@@ -2070,7 +2063,7 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
         }
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2165,7 +2158,7 @@ def test_runner_retries_invalid_structured_output_and_eventually_succeeds(monkey
         ]
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2218,7 +2211,7 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
         }
     )
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         return model  # pyright: ignore[reportReturnType]
 
@@ -2263,7 +2256,7 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
 def test_runner_rejects_invalid_output_layer_before_model_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     model_requested = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2323,7 +2316,6 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2344,7 +2336,7 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
     )
     sink = InMemoryRunEventSink()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2398,7 +2390,6 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2431,7 +2422,7 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
     )
     sink = InMemoryRunEventSink()
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2462,7 +2453,7 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
 ) -> None:
     model_requested = False
 
-    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         del http_client
         nonlocal model_requested
         model_requested = True
@@ -2495,7 +2486,6 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2777,7 +2767,6 @@ def test_runner_treats_missing_runtime_dependency_as_validation_error() -> None:
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]
@@ -2830,7 +2819,6 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]
