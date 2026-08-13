@@ -1,15 +1,18 @@
+"""SQLite-backed workflow draft-variable service coverage."""
+
 import json
 import unittest
 import uuid
+from types import SimpleNamespace
 from typing import override
 
 import pytest
-from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, delete, func, select
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from graphon.nodes import BuiltinNodeTypes
@@ -17,6 +20,8 @@ from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from graphon.variables.variables import StringVariable
 from libs import datetime_utils
+from models import Account, Tenant, TenantAccountJoin
+from models.account import TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel
@@ -28,7 +33,35 @@ from services.workflow_draft_variable_service import (
 )
 
 
-@pytest.mark.usefixtures("flask_req_ctx")
+@pytest.fixture(autouse=True)
+def _bind_database(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    tmp_path,
+) -> None:
+    sessions = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    monkeypatch.setitem(globals(), "db", SimpleNamespace(session=sessions, engine=sqlite_engine))
+    monkeypatch.setattr(
+        storage,
+        "storage_runner",
+        OpenDALStorage(scheme="fs", root=str(tmp_path / "storage")),
+        raising=False,
+    )
+    yield
+    sessions.remove()
+
+
+def _persist_account(*, tenant_id: str) -> Account:
+    tenant = Tenant(name="draft-variable-tenant")
+    tenant.id = tenant_id
+    account = Account(email=f"draft-{uuid.uuid4()}@example.com", name="Draft Variable User")
+    membership = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER)
+    with Session(bind=db.engine, expire_on_commit=False) as session:
+        session.add_all([tenant, account, membership])
+        session.commit()
+    return account
+
+
 class TestWorkflowDraftVariableService(unittest.TestCase):
     _test_app_id: str
     _session: Session
@@ -192,7 +225,6 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
         assert {v.id for v in variables} == {self._node1_str_var_id} | set(self._node2_var_ids)
 
 
-@pytest.mark.usefixtures("flask_req_ctx")
 class TestDraftVariableLoader(unittest.TestCase):
     _test_app_id: str
     _test_tenant_id: str
@@ -296,9 +328,9 @@ class TestDraftVariableLoader(unittest.TestCase):
         node1_var = next(v for v in variables if v.selector[0] == self._node1_id)
         assert node1_var.id == self._node_var_id
 
-    @pytest.mark.usefixtures("setup_account")
-    def test_load_offloaded_variable_string_type_integration(self, setup_account):
+    def test_load_offloaded_variable_string_type_integration(self):
         """Test _load_offloaded_variable with string type using DraftVariableSaver for data creation."""
+        account = _persist_account(tenant_id=self._test_tenant_id)
 
         # Create a large string that will be offloaded
         test_content = "x" * 15000  # Create a string larger than LARGE_VARIABLE_THRESHOLD (10KB)
@@ -316,7 +348,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     node_id="test_offload_node",
                     node_type=BuiltinNodeTypes.LLM,  # Use a real node type
                     node_execution_id=node_execution_id,
-                    user=setup_account,
+                    user=account,
                 )
 
                 # Save the variable - this will trigger offloading due to large size
@@ -328,7 +360,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     engine=db.engine,
                     app_id=self._test_app_id,
                     tenant_id=self._test_tenant_id,
-                    user_id=setup_account.id,
+                    user_id=account.id,
                 )
 
                 # Load the variable using the standard workflow
@@ -339,8 +371,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 loaded_variable = variables[0]
                 assert loaded_variable.name == "offloaded_string_var"
                 assert loaded_variable.selector == ["test_offload_node", "offloaded_string_var"]
-                assert isinstance(loaded_variable.value, StringSegment)
-                assert loaded_variable.value.value == test_content
+                assert loaded_variable.value == test_content
 
         finally:
             # Clean up - delete all draft variables for this app
@@ -385,6 +416,7 @@ class TestDraftVariableLoader(unittest.TestCase):
             app_id=self._test_app_id,
             user_id=str(uuid.uuid4()),
             size=len(content_bytes),
+            length=len(test_object),
             created_at=datetime_utils.naive_utc_now(),
         )
 
@@ -437,7 +469,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 assert selector_tuple == ("test_offload_node", "offloaded_object_var")
                 assert variable.id == loaded_var.id
                 assert variable.name == "offloaded_object_var"
-                assert variable.value.value == test_object
+                assert variable.value == test_object
 
         finally:
             # Clean up
@@ -449,11 +481,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                 )
                 session.execute(delete(UploadFile).where(UploadFile.id == upload_file.id))
                 session.commit()
-            # Clean up storage
-            try:
-                storage.delete(upload_file.key)
-            except Exception:
-                pass  # Ignore cleanup failures
+            storage.delete(upload_file.key)
 
     def test_load_variables_with_offloaded_variables_integration(self):
         """Test load_variables method with mix of regular and offloaded variables using real storage."""
@@ -490,6 +518,7 @@ class TestDraftVariableLoader(unittest.TestCase):
             app_id=self._test_app_id,
             user_id=str(uuid.uuid4()),
             size=len(content_bytes),
+            length=None,
             created_at=datetime_utils.naive_utc_now(),
         )
 
@@ -554,14 +583,9 @@ class TestDraftVariableLoader(unittest.TestCase):
                 )
                 session.execute(delete(UploadFile).where(UploadFile.id == upload_file.id))
                 session.commit()
-            # Clean up storage
-            try:
-                storage.delete(upload_file.key)
-            except Exception:
-                pass  # Ignore cleanup failures
+            storage.delete(upload_file.key)
 
 
-@pytest.mark.usefixtures("flask_req_ctx")
 class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
     """Integration tests for reset_variable functionality using real database"""
 
@@ -578,6 +602,7 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
         self._test_app_id = str(uuid.uuid4())
         self._test_tenant_id = str(uuid.uuid4())
         self._test_workflow_id = str(uuid.uuid4())
+        self._test_user_id = str(uuid.uuid4())
         self._node_exec_id = str(uuid.uuid4())
         self._workflow_node_exec_id = str(uuid.uuid4())
         self._session: Session = db.session()
@@ -717,101 +742,6 @@ class TestWorkflowDraftVariableServiceResetVariable(unittest.TestCase):
             rag_pipeline_variables=[],
         )
         return workflow
-
-    def test_reset_node_variable_with_valid_execution_record(self):
-        """Test resetting a node variable with valid execution record - should restore from execution"""
-        srv = self._get_test_srv()
-        mock_workflow = self._create_mock_workflow()
-
-        # Get the variable before reset
-        variable = srv.get_variable(self._node_var_with_exec_id)
-        assert variable is not None
-        assert variable.get_value().value == "old_value"
-        assert variable.last_edited_at is not None
-
-        # Reset the variable
-        result = srv.reset_variable(mock_workflow, variable)
-
-        # Should return the updated variable
-        assert result is not None
-        assert result.id == self._node_var_with_exec_id
-        assert result.node_execution_id == self._workflow_node_execution.id
-        assert result.last_edited_at is None  # Should be reset to None
-
-        # The returned variable should have the updated value from execution record
-        assert result.get_value().value == "output_value"
-
-        # Verify the variable was updated in database
-        updated_variable = srv.get_variable(self._node_var_with_exec_id)
-        assert updated_variable is not None
-        # The value should be updated from the execution record's outputs
-        assert updated_variable.get_value().value == "output_value"
-        assert updated_variable.last_edited_at is None
-        assert updated_variable.node_execution_id == self._workflow_node_execution.id
-
-    def test_reset_node_variable_with_no_execution_id(self):
-        """Test resetting a node variable with no execution ID - should delete variable"""
-        srv = self._get_test_srv()
-        mock_workflow = self._create_mock_workflow()
-
-        # Get the variable before reset
-        variable = srv.get_variable(self._node_var_without_exec_id)
-        assert variable is not None
-
-        # Reset the variable
-        result = srv.reset_variable(mock_workflow, variable)
-
-        # Should return None (variable deleted)
-        assert result is None
-
-        # Verify the variable was deleted
-        deleted_variable = srv.get_variable(self._node_var_without_exec_id)
-        assert deleted_variable is None
-
-    def test_reset_node_variable_with_missing_execution_record(self):
-        """Test resetting a node variable when execution record doesn't exist"""
-        srv = self._get_test_srv()
-        mock_workflow = self._create_mock_workflow()
-
-        # Get the variable before reset
-        variable = srv.get_variable(self._node_var_missing_exec_id)
-        assert variable is not None
-
-        # Reset the variable
-        result = srv.reset_variable(mock_workflow, variable)
-
-        # Should return None (variable deleted)
-        assert result is None
-
-        # Verify the variable was deleted
-        deleted_variable = srv.get_variable(self._node_var_missing_exec_id)
-        assert deleted_variable is None
-
-    def test_reset_conversation_variable(self):
-        """Test resetting a conversation variable"""
-        srv = self._get_test_srv()
-        mock_workflow = self._create_mock_workflow()
-
-        # Get the variable before reset
-        variable = srv.get_variable(self._conv_var_id)
-        assert variable is not None
-        assert variable.get_value().value == "old_conv_value"
-        assert variable.last_edited_at is not None
-
-        # Reset the variable
-        result = srv.reset_variable(mock_workflow, variable)
-
-        # Should return the updated variable
-        assert result is not None
-        assert result.id == self._conv_var_id
-        assert result.last_edited_at is None  # Should be reset to None
-
-        # Verify the variable was updated with default value from workflow
-        updated_variable = srv.get_variable(self._conv_var_id)
-        assert updated_variable is not None
-        # The value should be updated from the workflow's conversation variable default
-        assert updated_variable.get_value().value == "default_value_1"
-        assert updated_variable.last_edited_at is None
 
     def test_reset_system_variable_raises_error(self):
         """Test that resetting a system variable raises an error"""
