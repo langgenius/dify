@@ -262,6 +262,32 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
 
 
+def test_normalizes_fully_qualified_builtin_plugin_provider_for_daemon_transport():
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "plugin_id": "langgenius/google",
+                    "provider_id": "langgenius/google/google",
+                    "provider": "langgenius/google/google",
+                    "provider_type": "builtin",
+                    "tool_name": "google_search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.plugin_id == "langgenius/google"
+    assert prepared.provider == "google"
+
+
 def test_builds_core_tool_with_file_llm_parameter():
     runtime_provider = FakeRuntimeProvider(_file_tool())
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)

@@ -108,7 +108,6 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
             captured["path"] = path
             captured["overwrite"] = overwrite
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationExportService", FakeMigrationExportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 
@@ -153,7 +152,6 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path, sqli
             captured["path"] = path
             return package
 
-    monkeypatch.setattr(data_migration.session_factory, "create_session", lambda: Session(sqlite_engine))
     monkeypatch.setattr(data_migration, "MigrationImportService", FakeMigrationImportService)
     monkeypatch.setattr(data_migration, "MigrationPackageService", FakeMigrationPackageService)
 

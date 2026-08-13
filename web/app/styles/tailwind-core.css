@@ -25,7 +25,6 @@
 @import './monaco-sticky-fix.css' layer(base);
 
 /* Component CSS using @apply / @utility. */
-@import '../components/base/action-button/index.css';
 @import '../components/base/badge/index.css';
 @import '../components/base/premium-badge/index.css';
 @import './glass-surface.css';

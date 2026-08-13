@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -71,14 +72,16 @@ export function OperationDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={cn(
-          'action-btn data-popup-open:bg-state-base-hover',
-          triggerSize === 'xs' ? 'action-btn-xs' : 'action-btn-m',
-        )}
-        aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
+        render={
+          <IconButton
+            aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
+            size={triggerSize === 'xs' ? 'xs' : 'md'}
+            className="data-popup-open:bg-state-base-hover"
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
+        }
+      />
       <DropdownMenuContent
         placement={placement}
         sideOffset={sideOffset}

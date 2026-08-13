@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Węzły",
   "agentDetail.access.workflow.table.version": "Wersja",
   "agentDetail.access.workflow.title": "Dostęp do workflow",
-  "agentDetail.configure.advancedSettings.description": "Dla zaawansowanych użytkowników. Zmienne środowiskowe, sandbox i pamięć.",
+  "agentDetail.configure.advancedSettings.description": "Dla zaawansowanych użytkowników, np. zmienne środowiskowe.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Dodaj zmienną środowiskową",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Usuń {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Ukryj wartość {{key}}",

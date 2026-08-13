@@ -25,6 +25,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
@@ -32,7 +33,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -301,12 +301,12 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <ActionButton
+                      <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
                       >
                         <RiCloseLine className="size-4" />
-                      </ActionButton>
+                      </IconButton>
                     </div>
                   </div>
                 </div>
