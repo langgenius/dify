@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Calitatea interogării trebuie verificată",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Indexul publicat nu este asociat configurării active a modelelor. Reconstruiește sau republică indexul.",
   "newKnowledge.overview.attention.modelReadiness.description": "Profilurile de model obligatorii lipsesc sau nu sunt asociate indexului publicat în prezent.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Modelele selectate vor fi validate la procesarea primului document.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Configurația modelelor așteaptă validarea",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configurează și publică modelele obligatorii de embedding, raționament și rerank.",
   "newKnowledge.overview.attention.modelReadiness.title": "Configurarea modelelor este incompletă",
   "newKnowledge.overview.attention.staleSource.description": "Această sursă nu s-a sincronizat niciodată cu succes sau ultima sincronizare reușită a avut loc acum mai mult de 7 zile.",

@@ -426,7 +426,12 @@ describe('RetrievalTestPage', () => {
       expect(apiMock.queryAdmission).not.toHaveBeenCalled()
       expect(apiMock.planResearch).not.toHaveBeenCalled()
       expect(apiMock.createResearch).not.toHaveBeenCalled()
-      const dialog = screen.getByRole('dialog', { name: 'common.provider.validating' })
+      const dialog = screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.overview.attention.modelReadiness.pendingTitle',
+      })
+      expect(dialog).toHaveTextContent(
+        'dataset.newKnowledge.overview.attention.modelReadiness.pendingDescription',
+      )
       expect(dialog).not.toHaveTextContent(
         'dataset.newKnowledge.overview.attention.modelReadiness.profilesMissing',
       )

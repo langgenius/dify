@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Якість запиту потребує перевірки",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Опублікований індекс не пов’язаний з активною конфігурацією моделей. Перебудуйте або повторно опублікуйте індекс.",
   "newKnowledge.overview.attention.modelReadiness.description": "Обов’язкові профілі моделей відсутні або не пов’язані з поточним опублікованим індексом.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Вибрані моделі буде перевірено під час обробки першого документа.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Конфігурація моделей очікує на перевірку",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Налаштуйте й опублікуйте обов’язкові моделі ембедингів, міркування та реранжування.",
   "newKnowledge.overview.attention.modelReadiness.title": "Конфігурацію моделей не завершено",
   "newKnowledge.overview.attention.staleSource.description": "Це джерело ще жодного разу не синхронізувалося успішно або від останньої успішної синхронізації минуло понад 7 днів.",

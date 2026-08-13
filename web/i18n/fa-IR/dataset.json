@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "کیفیت پرس‌وجو نیاز به بررسی دارد",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "نمایه منتشرشده به پیکربندی فعال مدل متصل نیست. نمایه را دوباره بسازید یا منتشر کنید.",
   "newKnowledge.overview.attention.modelReadiness.description": "پروفایل‌های مدل ضروری وجود ندارند یا به نمایه منتشرشده فعلی متصل نیستند.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "مدل‌های انتخاب‌شده هنگام پردازش اولین سند اعتبارسنجی می‌شوند.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "پیکربندی مدل در انتظار اعتبارسنجی است",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "مدل‌های ضروری تعبیه‌سازی، استدلال و بازرتبه‌بندی را پیکربندی و منتشر کنید.",
   "newKnowledge.overview.attention.modelReadiness.title": "پیکربندی مدل ناقص است",
   "newKnowledge.overview.attention.staleSource.description": "این منبع هرگز با موفقیت همگام‌سازی نشده یا بیش از ۷ روز از آخرین همگام‌سازی موفق آن گذشته است.",

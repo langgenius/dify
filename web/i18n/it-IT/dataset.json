@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "La qualità della query richiede una verifica",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "L’indice pubblicato non è associato alla configurazione dei modelli attiva. Ricrea o ripubblica l’indice.",
   "newKnowledge.overview.attention.modelReadiness.description": "Mancano profili di modello obbligatori oppure non sono associati all’indice attualmente pubblicato.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "I modelli selezionati verranno convalidati durante l’elaborazione del primo documento.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "La configurazione dei modelli è in attesa di convalida",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configura e pubblica i modelli di embedding, ragionamento e rerank obbligatori.",
   "newKnowledge.overview.attention.modelReadiness.title": "La configurazione dei modelli è incompleta",
   "newKnowledge.overview.attention.staleSource.description": "Questa fonte non è mai stata sincronizzata correttamente oppure l’ultima sincronizzazione riuscita risale a più di 7 giorni fa.",

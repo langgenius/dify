@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Querykwaliteit moet worden gecontroleerd",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "De gepubliceerde index is niet gekoppeld aan de actieve modelconfiguratie. Bouw of publiceer de index opnieuw.",
   "newKnowledge.overview.attention.modelReadiness.description": "Vereiste modelprofielen ontbreken of zijn niet gekoppeld aan de huidige gepubliceerde index.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "De geselecteerde modellen worden gevalideerd wanneer het eerste document wordt verwerkt.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "De modelconfiguratie wacht op validatie",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configureer en publiceer de vereiste embedding-, redeneer- en rerankmodellen.",
   "newKnowledge.overview.attention.modelReadiness.title": "Modelconfiguratie is onvolledig",
   "newKnowledge.overview.attention.staleSource.description": "Deze bron is nooit met succes gesynchroniseerd of de laatste succesvolle synchronisatie was meer dan 7 dagen geleden.",

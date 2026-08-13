@@ -442,12 +442,18 @@ class ActiveSettingsRemote(RecordingRemote):
         self,
         *,
         active_profile_available: bool | None = None,
+        active_profile_revisions: dict[str, int] | None = None,
         configuration_state: str = "active",
         rerank_enabled: bool = True,
     ) -> None:
         super().__init__()
         self.active_profile_available = (
             configuration_state == "active" if active_profile_available is None else active_profile_available
+        )
+        self.active_profile_revisions = (
+            {"embedding": 3, "retrieval": 4}
+            if active_profile_revisions is None and self.active_profile_available
+            else active_profile_revisions or {}
         )
         self.configuration_state = configuration_state
         self.rerank_enabled = rerank_enabled
@@ -457,7 +463,7 @@ class ActiveSettingsRemote(RecordingRemote):
             self.requests.append(request)
             return {
                 "activeProfileAvailable": self.active_profile_available,
-                "activeProfileRevisions": ({"embedding": 3, "retrieval": 4} if self.active_profile_available else {}),
+                "activeProfileRevisions": self.active_profile_revisions,
                 "capabilities": {
                     "deep": self.active_profile_available,
                     "index": self.active_profile_available,
@@ -1350,6 +1356,57 @@ def test_setup_required_settings_without_active_profile_use_product_settings_rou
             "topK": 3,
         },
     }
+
+
+def test_setup_required_settings_with_existing_profiles_use_migration_route() -> None:
+    remote = ActiveSettingsRemote(
+        active_profile_available=False,
+        active_profile_revisions={"embedding": 1, "retrieval": 1},
+        configuration_state="setup-required",
+        rerank_enabled=False,
+    )
+    facade = KnowledgeFSDataFacade(
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    result = facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            expected_revision=9,
+            retrieval=KnowledgeFSProductRetrievalProfile(
+                default_mode="fast",
+                reasoning_model=KnowledgeFSProfileModelSelection(
+                    model="reason-v1",
+                    plugin_id="plugin-1",
+                    provider="provider-1",
+                ),
+                rerank=KnowledgeFSProductRerankProfile(
+                    enabled=True,
+                    model=KnowledgeFSProfileModelSelection(
+                        model="rerank-v1",
+                        plugin_id="plugin-1",
+                        provider="provider-1",
+                    ),
+                ),
+                score_threshold=KnowledgeFSProductScoreThreshold(
+                    enabled=False,
+                    stage="rerank",
+                    value=0.5,
+                ),
+                top_k=3,
+            ),
+        ),
+    )
+
+    assert result.migration is not None
+    assert [request.operation_id for request in remote.requests] == [
+        "getSettings",
+        "updateRetrievalProfile",
+    ]
+    assert remote.requests[1].payload["expectedRevision"] == 1
 
 
 def test_failed_candidate_with_active_profiles_uses_the_migration_route() -> None:

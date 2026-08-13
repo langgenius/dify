@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "クエリ品質の確認が必要です",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "公開済みインデックスが現在のモデル設定に関連付けられていません。インデックスを再構築または再公開してください。",
   "newKnowledge.overview.attention.modelReadiness.description": "必須のモデルプロファイルが不足しているか、現在の公開済みインデックスに関連付けられていません。",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "選択したモデルは、最初のドキュメントを処理するときに検証されます。",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "モデル設定は検証待ちです",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "必須の Embedding、推論、Rerank モデルを設定して公開してください。",
   "newKnowledge.overview.attention.modelReadiness.title": "モデル設定が未完了です",
   "newKnowledge.overview.attention.staleSource.description": "このソースは一度も正常に同期されていないか、最後の正常な同期から 7 日以上経過しています。",

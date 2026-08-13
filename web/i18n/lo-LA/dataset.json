@@ -330,6 +330,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "ຄຸນນະພາບຄຳຖາມຕ້ອງການການກວດສອບ",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "ດັດຊະນີທີ່ເຜີຍແຜ່ຍັງບໍ່ໄດ້ເຊື່ອມກັບການຕັ້ງຄ່າໂມເດວທີ່ໃຊ້ງານ. ສ້າງ ຫຼືເຜີຍແຜ່ດັດຊະນີອີກຄັ້ງ.",
   "newKnowledge.overview.attention.modelReadiness.description": "ໂປຣໄຟລ໌ໂມເດວທີ່ຈຳເປັນຂາດຫາຍ ຫຼືຍັງບໍ່ໄດ້ເຊື່ອມກັບດັດຊະນີທີ່ເຜີຍແຜ່ປັດຈຸບັນ.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "ໂມເດວທີ່ເລືອກຈະຖືກກວດສອບເມື່ອປະມວນຜົນເອກະສານທຳອິດ.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "ການກຳນົດຄ່າໂມເດວກຳລັງລໍຖ້າການກວດສອບ",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "ຕັ້ງຄ່າ ແລະເຜີຍແຜ່ໂມເດວ embedding, reasoning ແລະ rerank ທີ່ຈຳເປັນ.",
   "newKnowledge.overview.attention.modelReadiness.title": "ການຕັ້ງຄ່າໂມເດວຍັງບໍ່ສຳເລັດ",
   "newKnowledge.overview.attention.staleSource.description": "ແຫຼ່ງຂໍ້ມູນນີ້ບໍ່ເຄີຍຊິງຄ໌ສຳເລັດ ຫຼືການຊິງຄ໌ສຳເລັດລ່າສຸດຜ່ານມາຫຼາຍກວ່າ 7 ມື້.",
