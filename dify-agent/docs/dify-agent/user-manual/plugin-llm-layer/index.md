@@ -1,11 +1,11 @@
 # Plugin LLM layer
 
 The plugin LLM layer selects the plugin package, model provider, model name,
-provider credentials, and optional model settings for the current run. Dify
-Agent reads the model from the reserved layer name `llm`.
+and optional model settings for the current run. Dify Agent reads the model
+from the reserved layer name `llm`; Dify API resolves model credentials.
 
 It must depend on an [execution context layer](../execution-context-layer/index.md),
-because that layer supplies the daemon identity and transport context.
+because that layer supplies the caller identity required by the API gateway.
 
 ## Config fields
 
@@ -14,7 +14,6 @@ because that layer supplies the daemon identity and transport context.
 | `plugin_id` | `str` | Plugin package id, for example `langgenius/openai`. |
 | `model_provider` | `str` | Provider name inside `plugin_id`. Use the value of `DIFY_AGENT_PROVIDER` from `dify-agent/.env`. |
 | `model` | `str` | Model name. Use the value of `DIFY_AGENT_MODEL_NAME` from `dify-agent/.env`. |
-| `credentials` | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific credential object. |
 | `model_settings` | `ModelSettings \| None` | Optional pydantic-ai model settings. |
 
 The plugin LLM layer type id is `dify.plugin.llm`.
@@ -38,7 +37,6 @@ llm_layer = RunLayerSpec(
         plugin_id=PLUGIN_ID,
         model_provider=MODEL_PROVIDER,
         model=MODEL_NAME,
-        credentials={"api_key": "replace-with-provider-key"},
     ),
 )
 ```
@@ -80,7 +78,11 @@ composition = RunComposition(
             type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
             config=DifyExecutionContextLayerConfig(
                 tenant_id="replace-with-tenant-id",
-                invoke_from="workflow_run",
+                user_id="replace-with-user-id",
+                user_from="account",
+                app_id="replace-with-app-id",
+                agent_mode="single_step",
+                invoke_from="debugger",
             ),
         ),
         RunLayerSpec(
@@ -91,7 +93,6 @@ composition = RunComposition(
                 plugin_id=PLUGIN_ID,
                 model_provider=MODEL_PROVIDER,
                 model=MODEL_NAME,
-                credentials={"api_key": "replace-with-provider-key"},
             ),
         ),
     ]
@@ -102,9 +103,6 @@ composition = RunComposition(
 
 - The model layer must use the reserved name `llm` (`DIFY_AGENT_MODEL_LAYER_ID`).
 - `plugin_id` belongs here because model calls are plugin-specific business
-  calls. The shared execution-context layer only carries Dify run and
-  tenant/user daemon context.
-- Credential shape depends on the selected plugin provider; the OpenAI-style
-  `api_key` field above is only an example.
-- Client-submitted model credentials remain in the scheduled request memory and
-  are not part of run records or session snapshots.
+  calls. The shared execution-context layer carries the Dify caller context.
+- Model credentials are never accepted from the Agent request. Dify API resolves
+  the tenant's current provider configuration and owns quota accounting.

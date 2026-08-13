@@ -9615,21 +9615,6 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
 
-### [POST] /test/retrieval
-Bedrock retrieval test (internal use only)
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [BedrockRetrievalPayload](#bedrockretrievalpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Bedrock retrieval test completed | **application/json**: [BedrockRetrievalResponse](#bedrockretrievalresponse)<br> |
-
 ### [GET] /trial-apps/{app_id}
 **Get app detail**
 
@@ -15904,38 +15889,6 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | upload_file_id | string |  | Yes |
-
-#### BedrockRetrievalPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| knowledge_id | string |  | Yes |
-| query | string |  | Yes |
-| retrieval_setting | [BedrockRetrievalSetting](#bedrockretrievalsetting) |  | Yes |
-
-#### BedrockRetrievalRecordResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| metadata | object |  | No |
-| score | number |  | Yes |
-| title | string |  | No |
-
-#### BedrockRetrievalResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| records | [ [BedrockRetrievalRecordResponse](#bedrockretrievalrecordresponse) ] |  | Yes |
-
-#### BedrockRetrievalSetting
-
-Retrieval settings for Amazon Bedrock knowledge base queries.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number | Minimum relevance score threshold | No |
-| top_k | integer | Maximum number of results to retrieve | No |
 
 #### BillingInvoiceResponse
 

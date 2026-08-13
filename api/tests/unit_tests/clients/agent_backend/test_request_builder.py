@@ -53,7 +53,6 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
             plugin_id="langgenius/openai",
             model_provider="openai",
             model="gpt-test",
-            credentials={"api_key": "secret-key"},
         ),
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
@@ -126,7 +125,6 @@ def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body(
                 plugin_id="langgenius/tongyi",
                 model_provider="tongyi",
                 model="qwen-plus-latest",
-                credentials={"api_key": "secret-key"},
                 model_settings={"temperature": 0.7, "enable_thinking": True, "thinking_budget": 4096},
             )
         }
@@ -207,7 +205,9 @@ def test_request_builder_sets_model_and_output_layer_contract_ids():
     assert execution_context_config.invoke_from == "debugger"
     assert layers[DIFY_AGENT_HISTORY_LAYER_ID].type == PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].type == DIFY_PLUGIN_LLM_LAYER_TYPE_ID
-    assert cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config).plugin_id == "langgenius/openai"
+    model_config = cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+    assert model_config.plugin_id == "langgenius/openai"
+    assert "credentials" not in model_config.model_dump(mode="json")
     assert layers[DIFY_AGENT_MODEL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     assert layers[DIFY_AGENT_OUTPUT_LAYER_ID].type == DIFY_OUTPUT_LAYER_TYPE_ID
 
@@ -309,12 +309,12 @@ def test_request_builder_rejects_blank_prompts():
         )
 
 
-def test_redact_for_agent_backend_log_hides_credentials():
+def test_agent_backend_request_does_not_contain_llm_credentials():
     request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
 
     redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
 
-    assert redacted["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    assert "credentials" not in redacted["composition"]["layers"][5]["config"]
 
 
 def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunInput:
@@ -323,7 +323,6 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
             plugin_id="langgenius/openai",
             model_provider="openai",
             model="gpt-test",
-            credentials={"api_key": "secret-key"},
         ),
         execution_context=DifyExecutionContextLayerConfig(
             tenant_id="tenant-1",
@@ -466,7 +465,6 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
 
 
 def test_ask_human_layer_injected_when_configured():
-
     from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 
     from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID
