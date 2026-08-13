@@ -322,12 +322,22 @@ def test_build_includes_core_tools_layer_returned_by_injected_builder():
     assert DIFY_PLUGIN_TOOLS_LAYER_ID not in layers
 
 
-def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
+@pytest.mark.parametrize(
+    "plugin_id",
+    [
+        pytest.param(
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            id="marketplace-unique-identifier",
+        ),
+        pytest.param("langgenius/openai/openai", id="legacy-three-segment-provider-id"),
+    ],
+)
+def test_normalizes_langgenius_model_provider_for_agent_backend_transport(plugin_id: str):
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "You are careful."},
         model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            plugin_id=plugin_id,
             model_provider="langgenius/openai/openai",
             model="gpt-test",
         ),

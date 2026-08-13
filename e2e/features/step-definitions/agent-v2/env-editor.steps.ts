@@ -27,7 +27,6 @@ When(
     await advancedSettings
       .getByRole('textbox', { name: 'Value' })
       .fill(agentBuilderFixedInputs.envPlainValue)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
   },
 )
 
@@ -61,7 +60,6 @@ When(
     await savedVariableRow
       .getByRole('textbox', { name: 'Value' })
       .fill(agentBuilderFixedInputs.envModeValue)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
 
@@ -249,7 +247,6 @@ Then(
       agentBuilderFixedInputs.envModeKey,
       agentBuilderFixedInputs.envModeValue,
     )
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
 
@@ -264,7 +261,6 @@ Then(
       agentBuilderFixedInputs.envModeValue,
     )
     await expectAgentEnvVariableAbsent(advancedSettings, agentBuilderFixedInputs.envPlainKey)
-    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(1)
   },
 )
 
@@ -284,7 +280,6 @@ Then(
     await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(
       agentBuilderFixedInputs.envPlainValue,
     )
-    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
   },
 )

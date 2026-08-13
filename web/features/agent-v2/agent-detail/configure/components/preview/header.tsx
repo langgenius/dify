@@ -239,7 +239,7 @@ export function AgentPreviewHeader({
             <SegmentedControlDivider className="mx-3" />
             <button
               type="button"
-              aria-pressed={isChatFeaturesOpen}
+              aria-expanded={isChatFeaturesOpen}
               onClick={onToggleChatFeatures}
               className={cn(
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',

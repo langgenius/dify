@@ -13,7 +13,7 @@ import {
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
-import { CONVERSATION_ID_INFO } from '../../constants'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
 import { useEmbeddedChatbot } from '../hooks'
 
 type InputForm = {
@@ -162,6 +162,7 @@ describe('useEmbeddedChatbot', () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
     mockGetProcessedUserVariablesFromUrlParams.mockResolvedValue({})
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     mockStoreState.appInfo = {
       app_id: 'app-1',
       custom_config: null,
@@ -182,6 +183,7 @@ describe('useEmbeddedChatbot', () => {
 
   afterEach(() => {
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
@@ -367,9 +369,9 @@ describe('useEmbeddedChatbot', () => {
     })
   })
 
-  // Scenario: conversation id updates persist to localStorage.
+  // Scenario: conversation id updates persist to tab and cross-tab storage.
   describe('Conversation id persistence', () => {
-    it('should store new conversation id in localStorage after completion', async () => {
+    it('should store the current and last conversation after completion', async () => {
       // Arrange
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
@@ -389,11 +391,19 @@ describe('useEmbeddedChatbot', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
-        const parsed = storedValue ? JSON.parse(storedValue) : {}
-        const storedUserId = parsed['app-1']?.['embedded-user-1']
-        const storedDefaultId = parsed['app-1']?.DEFAULT
-        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+        const lastStoredValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const lastConversationIdInfo = lastStoredValue ? JSON.parse(lastStoredValue) : {}
+        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
+        const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
+
+        expect([
+          lastConversationIdInfo['app-1']?.['embedded-user-1'],
+          lastConversationIdInfo['app-1']?.DEFAULT,
+        ]).toContain('conversation-new')
+        expect([
+          tabConversationIdInfo['app-1']?.['embedded-user-1'],
+          tabConversationIdInfo['app-1']?.DEFAULT,
+        ]).toContain('conversation-new')
       })
     })
   })
@@ -434,6 +444,10 @@ describe('useEmbeddedChatbot', () => {
         CONVERSATION_ID_INFO,
         JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }),
       )
+      sessionStorage.setItem(
+        TAB_CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -445,6 +459,9 @@ describe('useEmbeddedChatbot', () => {
         const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
         const parsed = storedValue ? JSON.parse(storedValue) : {}
         expect(parsed['app-1']).toBeUndefined()
+        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
+        const tabParsed = tabStoredValue ? JSON.parse(tabStoredValue) : {}
+        expect(Object.values(tabParsed['app-1'] ?? {})).toContain('')
       })
     })
   })

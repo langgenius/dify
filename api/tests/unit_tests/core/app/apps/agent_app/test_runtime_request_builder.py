@@ -312,6 +312,19 @@ class TestAgentAppRuntimeRequestBuilder:
         assert llm.config.plugin_id == "langgenius/openai"
         assert llm.config.model_provider == "openai"
 
+    def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
+        soul = _soul_with_model()
+        soul.model.plugin_id = "langgenius/openai/openai"
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
+        assert llm.config.plugin_id == "langgenius/openai"
+        assert llm.config.model_provider == "openai"
+
     def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
         soul = AgentSoulConfig.model_validate(
             {
