@@ -8,6 +8,7 @@ from services.entities.oauth_server_entities import (
     OAuthGrantType,
     OAuthProviderAccount,
     OAuthProviderAccountRecord,
+    OAuthProviderAccountStatus,
     OAuthProviderAppPresentation,
     OAuthProviderAppRecord,
     OAuthTokenSet,
@@ -130,8 +131,10 @@ class OAuthServerService:
         account = self._repository.get_account_by_id(account_id)
         if account is None:
             raise OAuthServerUnauthorizedError("access_token or client_id is invalid")
-        if account.is_banned:
-            raise OAuthServerUnauthorizedError("Account is banned.")
+        if account.status != OAuthProviderAccountStatus.ACTIVE:
+            if account.status == OAuthProviderAccountStatus.BANNED:
+                raise OAuthServerUnauthorizedError("Account is banned.")
+            raise OAuthServerUnauthorizedError("Account is not active.")
         return OAuthProviderAccount(
             id=account.id,
             name=account.name,

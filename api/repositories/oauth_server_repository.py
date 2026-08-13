@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import RedisClientWrapper
 from models import Account
-from models.account import AccountStatus
 from models.model import OAuthProviderApp
-from services.entities.oauth_server_entities import OAuthProviderAccountRecord, OAuthProviderAppRecord
+from services.entities.oauth_server_entities import (
+    OAuthProviderAccountRecord,
+    OAuthProviderAccountStatus,
+    OAuthProviderAppRecord,
+)
 from services.oauth_server_service import (
     OAUTH_ACCESS_TOKEN_EXPIRES_IN,
     OAUTH_AUTHORIZATION_CODE_EXPIRES_IN,
@@ -80,7 +83,7 @@ class SQLAlchemyOAuthServerRepository(OAuthServerRepository):
                 avatar=row.avatar,
                 interface_language=row.interface_language,
                 timezone=row.timezone,
-                is_banned=row.status == AccountStatus.BANNED,
+                status=OAuthProviderAccountStatus(row.status.value),
             )
 
 

@@ -6,6 +6,7 @@ from machinery.context import RequestContext
 from services.entities.oauth_server_entities import (
     OAuthProviderAccount,
     OAuthProviderAccountRecord,
+    OAuthProviderAccountStatus,
     OAuthProviderAppRecord,
 )
 from services.oauth_server_service import (
@@ -168,7 +169,7 @@ def test_refresh_token_grant_delegates_to_repository(
     tokens.refresh_access_token.assert_called_once_with("client-1", "refresh-1")
 
 
-def test_get_account_resolves_token_and_returns_account_contract(
+def test_get_account_returns_active_account_without_requiring_workspace_membership(
     service: tuple[OAuthServerService, MagicMock, MagicMock],
 ) -> None:
     oauth_server, repository, tokens = service
@@ -180,7 +181,7 @@ def test_get_account_resolves_token_and_returns_account_contract(
         avatar=None,
         interface_language="en-US",
         timezone="UTC",
-        is_banned=False,
+        status=OAuthProviderAccountStatus.ACTIVE,
     )
 
     assert oauth_server.get_account(client_id="client-1", access_token="access-1") == OAuthProviderAccount(
@@ -217,8 +218,19 @@ def test_get_account_validates_client_before_missing_token(
     tokens.resolve_account_id.assert_not_called()
 
 
-def test_get_account_rejects_banned_account(
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [
+        (OAuthProviderAccountStatus.PENDING, "Account is not active"),
+        (OAuthProviderAccountStatus.UNINITIALIZED, "Account is not active"),
+        (OAuthProviderAccountStatus.BANNED, "Account is banned"),
+        (OAuthProviderAccountStatus.CLOSED, "Account is not active"),
+    ],
+)
+def test_get_account_rejects_inactive_account(
     service: tuple[OAuthServerService, MagicMock, MagicMock],
+    status: OAuthProviderAccountStatus,
+    message: str,
 ) -> None:
     oauth_server, repository, tokens = service
     tokens.resolve_account_id.return_value = "account-1"
@@ -229,8 +241,8 @@ def test_get_account_rejects_banned_account(
         avatar=None,
         interface_language=None,
         timezone=None,
-        is_banned=True,
+        status=status,
     )
 
-    with pytest.raises(OAuthServerUnauthorizedError, match="Account is banned"):
+    with pytest.raises(OAuthServerUnauthorizedError, match=message):
         oauth_server.get_account(client_id="client-1", access_token="access-1")

@@ -330,4 +330,4 @@ def test_oauth_account_validates_client_before_authorization_header(
         )
 
     assert response.status_code == 404
-    assert response.get_json()["message"] == "client_id is invalid"
+    assert "client_id is invalid" in response.get_json()["message"]

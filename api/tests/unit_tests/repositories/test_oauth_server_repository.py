@@ -9,7 +9,11 @@ from models import Account
 from models.account import AccountStatus
 from models.model import OAuthProviderApp
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
-from services.entities.oauth_server_entities import OAuthProviderAccountRecord, OAuthProviderAppRecord
+from services.entities.oauth_server_entities import (
+    OAuthProviderAccountRecord,
+    OAuthProviderAccountStatus,
+    OAuthProviderAppRecord,
+)
 from services.oauth_server_service import (
     OAUTH_ACCESS_TOKEN_EXPIRES_IN,
     OAUTH_AUTHORIZATION_CODE_EXPIRES_IN,
@@ -53,16 +57,19 @@ def test_get_provider_app_by_client_id_returns_none_for_unknown_client(
 
 
 @pytest.mark.parametrize(
-    ("status", "is_banned"),
+    ("status", "expected_status"),
     [
-        (AccountStatus.ACTIVE, False),
-        (AccountStatus.BANNED, True),
+        (AccountStatus.PENDING, OAuthProviderAccountStatus.PENDING),
+        (AccountStatus.UNINITIALIZED, OAuthProviderAccountStatus.UNINITIALIZED),
+        (AccountStatus.ACTIVE, OAuthProviderAccountStatus.ACTIVE),
+        (AccountStatus.BANNED, OAuthProviderAccountStatus.BANNED),
+        (AccountStatus.CLOSED, OAuthProviderAccountStatus.CLOSED),
     ],
 )
 def test_get_account_by_id_maps_record(
     sqlite_session_factory: sessionmaker[Session],
     status: AccountStatus,
-    is_banned: bool,
+    expected_status: OAuthProviderAccountStatus,
 ) -> None:
     account = Account(
         name="Test User",
@@ -86,7 +93,7 @@ def test_get_account_by_id_maps_record(
         avatar="avatar",
         interface_language="en-US",
         timezone="UTC",
-        is_banned=is_banned,
+        status=expected_status,
     )
 
 

@@ -10,6 +10,14 @@ class OAuthGrantType(StrEnum):
     REFRESH_TOKEN = "refresh_token"
 
 
+class OAuthProviderAccountStatus(StrEnum):
+    PENDING = "pending"
+    UNINITIALIZED = "uninitialized"
+    ACTIVE = "active"
+    BANNED = "banned"
+    CLOSED = "closed"
+
+
 @dataclass(frozen=True, slots=True)
 class OAuthProviderAppRecord:
     app_icon: str
@@ -58,4 +66,4 @@ class OAuthProviderAccountRecord:
     avatar: str | None
     interface_language: str | None
     timezone: str | None
-    is_banned: bool
+    status: OAuthProviderAccountStatus
