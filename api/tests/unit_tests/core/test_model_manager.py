@@ -353,9 +353,7 @@ def test_quota_managed_non_llm_invocation_releases_when_provider_fails() -> None
         restrict_models=[RestrictModel(model="embedding-model", model_type=ModelType.TEXT_EMBEDDING)],
         model_type=ModelType.TEXT_EMBEDDING,
     )
-    model_instance = manager.get_model_instance(
-        "tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model"
-    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model")
     reservation = MagicMock()
 
     with (
@@ -429,9 +427,7 @@ def test_quota_managed_non_inference_helper_does_not_reserve_quota() -> None:
         restrict_models=[RestrictModel(model="embedding-model", model_type=ModelType.TEXT_EMBEDDING)],
         model_type=ModelType.TEXT_EMBEDDING,
     )
-    model_instance = manager.get_model_instance(
-        "tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model"
-    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model")
 
     with (
         patch.object(model_instance, "reserve_quota") as reserve,
