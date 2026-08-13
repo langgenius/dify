@@ -12,7 +12,7 @@ from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 
 
 class PreSegmentData(TypedDict):
@@ -115,15 +115,36 @@ class Jieba(BaseKeyword):
 
         documents = []
 
+        child_query_stmt = select(ChildChunk).where(
+            ChildChunk.dataset_id == self.dataset.id, ChildChunk.index_node_id.in_(sorted_chunk_indices)
+        )
         segment_query_stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
         )
         if document_ids_filter:
+            child_query_stmt = child_query_stmt.where(ChildChunk.document_id.in_(document_ids_filter))
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
 
+        child_chunks = session.scalars(child_query_stmt).all()
+        child_chunk_map = {child_chunk.index_node_id: child_chunk for child_chunk in child_chunks}
         segments = session.scalars(segment_query_stmt).all()
         segment_map = {segment.index_node_id: segment for segment in segments}
         for chunk_index in sorted_chunk_indices:
+            child_chunk = child_chunk_map.get(chunk_index)
+            if child_chunk:
+                documents.append(
+                    Document(
+                        page_content=child_chunk.content,
+                        metadata={
+                            "doc_id": chunk_index,
+                            "doc_hash": child_chunk.index_node_hash,
+                            "document_id": child_chunk.document_id,
+                            "dataset_id": child_chunk.dataset_id,
+                        },
+                    )
+                )
+                continue
+
             segment = segment_map.get(chunk_index)
 
             if segment:
