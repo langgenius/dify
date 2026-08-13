@@ -107,18 +107,21 @@ vi.mock('@/utils/get-icon', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 
