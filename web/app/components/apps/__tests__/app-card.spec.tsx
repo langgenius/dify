@@ -1,5 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
@@ -681,9 +682,13 @@ describe('AppCard', () => {
     })
 
     it('should star the app from the card action without navigating', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockStarAppMutation).toHaveBeenCalledWith({
@@ -694,10 +699,14 @@ describe('AppCard', () => {
     })
 
     it('should unstar the app from the filled star action', async () => {
+      const user = userEvent.setup()
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockUnstarAppMutation).toHaveBeenCalledWith({
@@ -723,13 +732,15 @@ describe('AppCard', () => {
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(getOperationsTrigger())
+      await user.click(getOperationsTrigger())
 
       await waitFor(() => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
+      expect(mockPush).not.toHaveBeenCalled()
     })
 
     it('should show duplicate option when dropdown menu is opened', async () => {
@@ -883,6 +894,24 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
       fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    })
+
+    it('should autofill the app name for delete confirmation', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.click(getOperationsTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const deleteInput = await screen.findByRole('textbox')
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+
+      expect(confirmButton).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+
+      expect(deleteInput).toHaveValue(mockApp.name)
+      expect(confirmButton).toBeEnabled()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {

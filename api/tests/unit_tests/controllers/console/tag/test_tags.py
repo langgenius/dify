@@ -198,7 +198,7 @@ class TestTagListApi:
                 patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
                 patch(
                     "controllers.console.tag.tags.current_account_with_tenant",
-                    return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+                    return_value=(admin_user, "tenant-1"),
                 ),
                 patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
                 patch(
@@ -301,7 +301,7 @@ class TestTagUpdateDeleteApi:
             patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+                return_value=(admin_user, "tenant-1"),
             ),
             patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
@@ -346,7 +346,7 @@ class TestTagUpdateDeleteApi:
             patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.tag.tags.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+                return_value=(admin_user, "tenant-1"),
             ),
             patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
             patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,

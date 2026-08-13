@@ -85,6 +85,19 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
+    it('should only expose plain environment variables', () => {
+      renderAgentEnvEditor()
+
+      expect(
+        screen.queryByText('agentV2.agentDetail.configure.advancedSettings.envEditor.scopeColumn'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('combobox', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.scopeSelector',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should edit the initial environment variable row directly', async () => {
       const user = userEvent.setup()
       renderAgentEnvEditor()

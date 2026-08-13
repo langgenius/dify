@@ -1,9 +1,9 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { Mock } from 'vitest'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { Plan } from '@/app/components/billing/type'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -37,7 +37,7 @@ vi.mock('@/next/link', () => ({
 
 // Mock provider context
 let mockEnableBilling = false
-let mockPlanType: Plan = Plan.sandbox
+let mockPlanType: CloudPlan = 'sandbox'
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     enableBilling: mockEnableBilling,
@@ -159,7 +159,7 @@ describe('EmbeddingProcess', () => {
 
     // Reset mock states
     mockEnableBilling = false
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
     mockIndexingStatusData = []
 
     // Setup default mock for fetchIndexingStatus
@@ -211,7 +211,7 @@ describe('EmbeddingProcess', () => {
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
       mockEnableBilling = true
-      mockPlanType = Plan.sandbox
+      mockPlanType = 'sandbox'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -223,7 +223,7 @@ describe('EmbeddingProcess', () => {
 
     it('should not show upgrade banner when plan is team', () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -235,7 +235,7 @@ describe('EmbeddingProcess', () => {
 
     it('should show upgrade banner for professional plan', () => {
       mockEnableBilling = true
-      mockPlanType = Plan.professional
+      mockPlanType = 'professional'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -387,7 +387,7 @@ describe('EmbeddingProcess', () => {
 
     it('should not suggest an upgrade to team users', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.team
+      mockPlanType = 'team'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({
@@ -1074,7 +1074,7 @@ describe('EmbeddingProcess', () => {
     // Tests for priority label display
     it('should show priority label when billing is enabled', async () => {
       mockEnableBilling = true
-      mockPlanType = Plan.sandbox
+      mockPlanType = 'sandbox'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),

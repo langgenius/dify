@@ -145,7 +145,7 @@ const baseConsoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
+    plan: null,
     role: 'owner',
   },
   isCurrentWorkspaceManager: true,

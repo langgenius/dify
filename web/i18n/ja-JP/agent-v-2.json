@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "ノード",
   "agentDetail.access.workflow.table.version": "バージョン",
   "agentDetail.access.workflow.title": "ワークフローアクセス",
-  "agentDetail.configure.advancedSettings.description": "上級ユーザー向け。環境変数、サンドボックスとメモリ。",
+  "agentDetail.configure.advancedSettings.description": "上級ユーザー向け（環境変数など）。",
   "agentDetail.configure.advancedSettings.envEditor.add": "環境変数を追加",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} を削除",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} の値を隠す",

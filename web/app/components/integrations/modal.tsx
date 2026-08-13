@@ -1,7 +1,7 @@
 'use client'
 
 import type { IntegrationSection } from './routes'
-import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
@@ -38,15 +38,14 @@ export default function IntegrationsSettingModal({
             onSwitchToMarketplace={handleSwitchToMarketplace}
           />
           <div className="fixed top-6 right-6 flex shrink-0 flex-col items-center">
-            <Button
+            <IconButton
               variant="tertiary"
-              size="large"
-              className="px-2"
+              size="xl"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
               <span className="i-ri-close-line h-5 w-5" />
-            </Button>
+            </IconButton>
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
         </div>

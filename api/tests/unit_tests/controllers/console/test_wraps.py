@@ -925,17 +925,18 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 1
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+    def test_should_not_cache_missing_setup(self, mock_db):
         """Test that first-time bootstrap completion can be observed later in the same process"""
         mock_db.session.scalar.side_effect = [None, MagicMock()]
-        mock_environ_get.return_value = None
 
         @setup_required
         def admin_view():
             return "admin_success"
 
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
             assert admin_view() == "admin_success"
@@ -943,36 +944,38 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_init_validate_error_with_init_password(self, mock_db: MagicMock):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = "some_password"
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", "some_password"),
+        ):
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_setup_error_without_init_password(self, mock_db: MagicMock):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = None  # No INIT_PASSWORD
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
 

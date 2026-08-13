@@ -5,7 +5,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -28,7 +27,7 @@ export function ArchivedLogsNotice() {
     deploymentEdition !== 'CLOUD' ||
     !isCurrentWorkspaceManager ||
     !enableBilling ||
-    plan.type === Plan.sandbox
+    plan.type === 'sandbox'
   )
     return null
 

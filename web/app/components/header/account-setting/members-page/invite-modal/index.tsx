@@ -13,11 +13,10 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { commonQueryKeys } from '@/service/use-common'
 import { mergeEmailRecipients } from './email-recipients'
@@ -49,15 +48,18 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const { t } = useTranslation()
   const locale = useLocale()
   const queryClient = useQueryClient()
-  const licenseLimit = useProviderContextSelector((state) => state.licenseLimit)
-  const refreshLicenseLimit = useProviderContextSelector((state) => state.refreshLicenseLimit)
+  const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
   const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
   const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
-  const currentSize = licenseLimit.workspace_members.size ?? 0
-  const memberLimit = licenseLimit.workspace_members.limit
-  const remainingSeats = memberLimit > 0 ? Math.max(memberLimit - currentSize, 0) : null
+  const memberLimit = features?.workspace_members.enabled
+    ? features.workspace_members
+    : features?.billing.enabled && features.members.limit > 0
+      ? features.members
+      : undefined
+  const remainingSeats =
+    memberLimit && memberLimit.limit > 0 ? Math.max(memberLimit.limit - memberLimit.size, 0) : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)
   const validRecipientCount = effectiveRecipients.filter(({ isValid }) => isValid).length
   const exceedsRemainingSeats = remainingSeats !== null && validRecipientCount > remainingSeats
@@ -88,7 +90,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
       },
       {
         onSuccess: (response) => {
-          refreshLicenseLimit()
+          void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
           void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
           onOpenChange(false)
           onSend(response.invitation_results)

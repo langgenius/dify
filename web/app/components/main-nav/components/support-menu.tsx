@@ -2,7 +2,6 @@ import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/drop
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { Plan } from '@/app/components/billing/type'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
@@ -29,11 +28,11 @@ export default function SupportMenu() {
     }),
   })
   const { setShowPricingModal } = useModalContext()
-  const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
+  const hasDedicatedChannel = plan.type !== 'sandbox' || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
   const shouldShowUpgradeContact =
     deploymentEdition === 'CLOUD' &&
     enableBilling &&
-    plan.type === Plan.sandbox &&
+    plan.type === 'sandbox' &&
     !hasDedicatedChannel
   const hasZendeskWidget = deploymentEdition === 'CLOUD' && Boolean(ZENDESK_WIDGET_KEY.trim())
 
