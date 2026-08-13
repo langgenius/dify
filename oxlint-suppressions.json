@@ -979,14 +979,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
