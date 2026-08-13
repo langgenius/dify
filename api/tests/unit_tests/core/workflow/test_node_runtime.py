@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
 import pytest
@@ -406,6 +406,35 @@ def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
 
     reservation.commit.assert_called_once_with(usage)
     reservation.release.assert_not_called()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_success_has_no_result() -> None:
+    succeeded_result = LLMPollingResult.model_construct(status=LLMPollingStatus.SUCCEEDED, result=None)
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=succeeded_result),
+        check_llm_polling=Mock(),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    with (
+        patch.object(node_runtime.QuotaManagedModelInstance, "release_quota_safely") as release_quota_safely,
+        pytest.raises(ValueError, match="must include a model result"),
+    ):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    release_quota_safely.assert_called_once_with(reservation)
 
 
 def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
