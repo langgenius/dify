@@ -520,23 +520,15 @@ function PaginationPageSize<Value extends number = number>({
         {label}
       </div>
       <SegmentedControl
-        value={[String(value)]}
+        value={value}
         aria-label={ariaLabel}
-        onValueChange={(nextValue) => {
-          const [selectedValue] = nextValue
-
-          if (!selectedValue) return
-
-          const selectedOption = options.find((option) => String(option) === selectedValue)
-
-          if (selectedOption !== undefined) onValueChange(selectedOption)
-        }}
+        onValueChange={(value) => onValueChange(value)}
       >
         {options.map((option) => (
-          <SegmentedControlItem
+          <SegmentedControlItem<Value>
             key={option}
-            value={String(option)}
-            className="min-w-9 data-pressed:text-text-primary"
+            value={option}
+            className="min-w-9 data-checked:text-text-primary"
           >
             {option}
           </SegmentedControlItem>

@@ -86,8 +86,8 @@ export const Playground: Story = {
       canvas.getByRole('button', { name: 'Edit page number, current page 3 of 200' }),
     ).toBeVisible()
 
-    await userEvent.click(canvas.getByRole('button', { name: '50' }))
-    await expect(canvas.getByRole('button', { name: '50' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(canvas.getByRole('radio', { name: '50' }))
+    await expect(canvas.getByRole('radio', { name: '50' })).toHaveAttribute('aria-checked', 'true')
   },
 }
 
