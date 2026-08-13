@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -305,26 +306,46 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
 
 
 @pytest.mark.parametrize(
-    ("model_type", "method_name", "kwargs"),
+    ("model_type", "method_name", "invoke_model"),
     [
-        (ModelType.TEXT_EMBEDDING, "invoke_text_embedding", {"texts": ["hello"]}),
+        (
+            ModelType.TEXT_EMBEDDING,
+            "invoke_text_embedding",
+            lambda model_instance: model_instance.invoke_text_embedding(texts=["hello"]),
+        ),
         (
             ModelType.TEXT_EMBEDDING,
             "invoke_multimodal_embedding",
-            {"multimodel_documents": [{"content": "image"}]},
+            lambda model_instance: model_instance.invoke_multimodal_embedding(
+                multimodel_documents=[{"content": "image"}]
+            ),
         ),
-        (ModelType.RERANK, "invoke_rerank", {"query": "hello", "docs": ["document"]}),
+        (
+            ModelType.RERANK,
+            "invoke_rerank",
+            lambda model_instance: model_instance.invoke_rerank(query="hello", docs=["document"]),
+        ),
         (
             ModelType.RERANK,
             "invoke_multimodal_rerank",
-            {"query": MagicMock(), "docs": [MagicMock()]},
+            lambda model_instance: model_instance.invoke_multimodal_rerank(query=MagicMock(), docs=[MagicMock()]),
         ),
-        (ModelType.MODERATION, "invoke_moderation", {"text": "hello"}),
-        (ModelType.SPEECH2TEXT, "invoke_speech2text", {"file": BytesIO(b"audio")}),
+        (
+            ModelType.MODERATION,
+            "invoke_moderation",
+            lambda model_instance: model_instance.invoke_moderation(text="hello"),
+        ),
+        (
+            ModelType.SPEECH2TEXT,
+            "invoke_speech2text",
+            lambda model_instance: model_instance.invoke_speech2text(file=BytesIO(b"audio")),
+        ),
     ],
 )
 def test_quota_managed_non_llm_invocation_finalizes_reservation(
-    model_type: ModelType, method_name: str, kwargs: dict
+    model_type: ModelType,
+    method_name: str,
+    invoke_model: Callable[[QuotaManagedModelInstance], object],
 ) -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
@@ -339,7 +360,7 @@ def test_quota_managed_non_llm_invocation_finalizes_reservation(
         patch.object(model_instance, "reserve_quota", return_value=reservation),
         patch.object(ModelInstance, method_name, return_value=result) as invoke,
     ):
-        response = getattr(model_instance, method_name)(**kwargs)
+        response = invoke_model(model_instance)
 
     assert response is result
     invoke.assert_called_once()
