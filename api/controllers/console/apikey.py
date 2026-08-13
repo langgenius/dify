@@ -229,6 +229,8 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc(params={"resource_id": "Dataset ID"})
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @with_current_tenant_id
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
     def get(self, current_tenant_id: str, resource_id: UUID) -> dict[str, object]:
         """Get all API keys for a dataset"""
         return dump_response(ApiKeyList, self._get_api_key_list(str(resource_id), current_tenant_id))
