@@ -107,6 +107,10 @@ Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is o
 
 `IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
 
+Do not layer `IconButton` over compound controls that already own button behavior and a specialized recipe, such as Number Field increment/decrement, Combobox clear, or Pagination navigation. Those controls keep their Base UI owner and domain-specific styling.
+
+Dify-authored icon-only compound parts, such as dialog, drawer, and toast close controls, also keep their own Base UI semantic part. They reuse the private icon-button visual recipe directly instead of rendering the public `IconButton` component, so dependency direction and DOM ownership stay unchanged.
+
 ## Segmented control contract
 
 `SegmentedControl` is Dify's design-system primitive for mode, filter, and view selection. It is built on Base UI `ToggleGroup` + `Toggle`, so use `Tabs` instead when the UI needs `tablist` / `tabpanel` semantics.
