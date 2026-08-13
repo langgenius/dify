@@ -10,9 +10,8 @@ used by workflow runs.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -58,10 +57,6 @@ class AgentAppRuntimeRequestBuildError(ValueError):
         super().__init__(message)
 
 
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
-
-
 @dataclass(frozen=True, slots=True)
 class AgentAppRuntimeBuildContext:
     dify_context: DifyRunContext
@@ -93,11 +88,9 @@ class AgentAppRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -110,7 +103,6 @@ class AgentAppRuntimeRequestBuilder:
             )
 
         metadata = self._build_metadata(context)
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -148,7 +140,6 @@ class AgentAppRuntimeRequestBuilder:
                     plugin_id=model_plugin_id,
                     model_provider=model_provider,
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
@@ -221,16 +212,6 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
-
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
 
 
 __all__ = [

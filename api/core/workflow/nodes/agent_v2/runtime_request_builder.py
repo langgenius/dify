@@ -121,10 +121,6 @@ class VariablePoolReader(Protocol):
     def get_by_prefix(self, prefix: str, /) -> Mapping[str, object]: ...
 
 
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
-
-
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentRuntimeBuildContext:
     dify_context: DifyRunContext
@@ -165,11 +161,9 @@ class WorkflowAgentRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -190,7 +184,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
         workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
         user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -229,15 +222,14 @@ class WorkflowAgentRuntimeRequestBuilder:
                     plugin_id=model_plugin_id,
                     model_provider=model_provider,
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` and
                 # ``user_from`` must be forwarded here because downstream plugin-
-                # daemon provider/tool clients and knowledge-base layers read
-                # caller identity from this layer rather than from any parallel
-                # top-level request field.
+                # API model gateway, daemon tool clients, and knowledge-base
+                # layers read caller identity from this layer rather than from
+                # any parallel top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
@@ -715,16 +707,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         schema["properties"] = properties
         if required:
             schema["required"] = required
-
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
 
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:

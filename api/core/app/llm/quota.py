@@ -115,7 +115,12 @@ def _get_current_quota_configuration(system_configuration):
 
 
 def reserve_model_quota_for_model(
-    *, tenant_id: str, provider: str, model_type: ModelType, model: str
+    *,
+    tenant_id: str,
+    provider: str,
+    model_type: ModelType,
+    model: str,
+    request_id: str | None = None,
 ) -> ModelQuotaReservation:
     """Reserve system-hosted model quota before invoking the provider."""
     provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
@@ -165,7 +170,7 @@ def reserve_model_quota_for_model(
             tenant_id=tenant_id,
             credits_required=amount,
             pool_type="paid" if quota_type == ProviderQuotaType.PAID else "trial",
-            request_id=str(uuid4()),
+            request_id=request_id or str(uuid4()),
             session_factory=db.session,
             meta=reservation_meta,
         )
@@ -177,13 +182,16 @@ def reserve_model_quota_for_model(
     return reservation
 
 
-def reserve_llm_quota_for_model(*, tenant_id: str, provider: str, model: str) -> ModelQuotaReservation:
+def reserve_llm_quota_for_model(
+    *, tenant_id: str, provider: str, model: str, request_id: str | None = None
+) -> ModelQuotaReservation:
     """Reserve system-hosted LLM quota before invoking the provider."""
     return reserve_model_quota_for_model(
         tenant_id=tenant_id,
         provider=provider,
         model_type=ModelType.LLM,
         model=model,
+        request_id=request_id,
     )
 
 
