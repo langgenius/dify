@@ -175,21 +175,23 @@ def regenerate_segment_summary_task(
                 .limit(1)
             )
 
-            can_regenerate = (
-                dataset is not None
-                and segment is not None
-                and summary_record is not None
-                and dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-                and dataset.summary_index_setting is not None
-                and dataset.summary_index_setting.get("enable") is True
-                and segment.document_id == document_id
-                and segment.status == SegmentStatus.COMPLETED
-                and segment.enabled is True
-                and summary_record.enabled is True
-                and segment.index_node_hash == expected_index_node_hash
-                and _token_is_current(segment_id, execution_token)
-            )
-            if not can_regenerate:
+            if dataset is None or segment is None or summary_record is None:
+                _clear_token_if_current(segment_id, execution_token)
+                logger.info("Skipping missing summary regeneration dependencies for segment %s", segment_id)
+                return
+
+            summary_index_setting = dataset.summary_index_setting
+            if (
+                dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY
+                or summary_index_setting is None
+                or summary_index_setting.get("enable") is not True
+                or segment.document_id != document_id
+                or segment.status != SegmentStatus.COMPLETED
+                or segment.enabled is not True
+                or summary_record.enabled is not True
+                or segment.index_node_hash != expected_index_node_hash
+                or not _token_is_current(segment_id, execution_token)
+            ):
                 _clear_token_if_current(segment_id, execution_token)
                 logger.info("Skipping ineligible summary regeneration for segment %s", segment_id)
                 return
@@ -202,7 +204,7 @@ def regenerate_segment_summary_task(
             summary_content, usage = SummaryIndexService.generate_summary_for_segment(
                 segment,
                 dataset,
-                dataset.summary_index_setting,
+                summary_index_setting,
                 session=session,
             )
 

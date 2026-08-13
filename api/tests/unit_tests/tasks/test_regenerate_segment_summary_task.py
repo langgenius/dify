@@ -1,8 +1,9 @@
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.enums import SegmentStatus, SummaryStatus
 from tasks.regenerate_segment_summary_task import (
     SUMMARY_REGENERATION_DELAY_SECONDS,
@@ -12,11 +13,17 @@ from tasks.regenerate_segment_summary_task import (
 )
 
 
-def test_schedule_segment_summary_regeneration_marks_pending_and_uses_ten_minute_countdown():
+def test_schedule_segment_summary_regeneration_marks_pending_and_uses_ten_minute_countdown() -> None:
     session = MagicMock()
-    segment = SimpleNamespace(id="segment-1", document_id="document-1", index_node_hash="hash-1")
-    dataset = SimpleNamespace(id="dataset-1")
-    summary_record = SimpleNamespace(status=SummaryStatus.COMPLETED, error="old error")
+    segment = cast(
+        DocumentSegment,
+        SimpleNamespace(id="segment-1", document_id="document-1", index_node_hash="hash-1"),
+    )
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1"))
+    summary_record = cast(
+        DocumentSegmentSummary,
+        SimpleNamespace(status=SummaryStatus.COMPLETED, error="old error"),
+    )
 
     with (
         patch("tasks.regenerate_segment_summary_task.secrets.token_urlsafe", return_value="token-1"),
@@ -53,7 +60,7 @@ def test_schedule_segment_summary_regeneration_marks_pending_and_uses_ten_minute
     assert SUMMARY_REGENERATION_DELAY_SECONDS == 600
 
 
-def test_regenerate_segment_summary_task_skips_superseded_edit():
+def test_regenerate_segment_summary_task_skips_superseded_edit() -> None:
     with (
         patch("tasks.regenerate_segment_summary_task.redis_client") as redis,
         patch("tasks.regenerate_segment_summary_task.session_factory") as session_factory,
@@ -71,7 +78,7 @@ def test_regenerate_segment_summary_task_skips_superseded_edit():
     session_factory.create_session.assert_not_called()
 
 
-def test_regenerate_segment_summary_task_discards_result_if_segment_changes_during_generation():
+def test_regenerate_segment_summary_task_discards_result_if_segment_changes_during_generation() -> None:
     session = MagicMock()
     dataset = SimpleNamespace(
         id="dataset-1",
@@ -117,7 +124,7 @@ def test_regenerate_segment_summary_task_discards_result_if_segment_changes_duri
     update_summary.assert_not_called()
 
 
-def test_regenerate_segment_summary_task_updates_latest_segment_and_clears_token():
+def test_regenerate_segment_summary_task_updates_latest_segment_and_clears_token() -> None:
     session = MagicMock()
     dataset = SimpleNamespace(
         id="dataset-1",
