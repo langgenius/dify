@@ -1384,7 +1384,11 @@ class DatasetService:
                 if dataset.maintainer != user.id:
                     user_permission = session.scalar(
                         select(DatasetPermission)
-                        .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
+                        .where(
+                            DatasetPermission.dataset_id == dataset.id,
+                            DatasetPermission.account_id == user.id,
+                            DatasetPermission.tenant_id == dataset.tenant_id,
+                        )
                         .limit(1)
                     )
                     if not user_permission:
@@ -1407,12 +1411,16 @@ class DatasetService:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-                if not any(
-                    dp.dataset_id == dataset.id
-                    for dp in session.scalars(
-                        select(DatasetPermission).where(DatasetPermission.account_id == user.id)
-                    ).all()
-                ):
+                user_permission = session.scalar(
+                    select(DatasetPermission.id)
+                    .where(
+                        DatasetPermission.dataset_id == dataset.id,
+                        DatasetPermission.account_id == user.id,
+                        DatasetPermission.tenant_id == dataset.tenant_id,
+                    )
+                    .limit(1)
+                )
+                if user_permission is None:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod

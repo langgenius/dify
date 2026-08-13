@@ -5,6 +5,8 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge/index'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
@@ -45,7 +47,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   hideActionMenu,
 }) => {
   const { t } = useTranslation()
-  const [isHovering, setIsHovering] = useState(false)
   const [open, setOpen] = useState(false)
 
   const formatTime = (time: number) => dayjs.unix(time).format('YYYY-MM-DD HH:mm')
@@ -53,10 +54,16 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   const isSelected = item.version === currentVersion?.version
   const isDraft = formattedVersion === WorkflowVersion.Draft
   const isLatest = formattedVersion === WorkflowVersion.Latest
+  const deployedEnvironments = item.environments || []
+  const titleId = React.useId()
+  const didSelectDraftRef = React.useRef(false)
 
   useEffect(() => {
-    if (isDraft) onClick(item)
-  }, [])
+    if (!isDraft || didSelectDraftRef.current) return
+
+    didSelectDraftRef.current = true
+    onClick(item)
+  }, [isDraft, item, onClick])
 
   const handleClickItem = () => {
     if (isSelected) return
@@ -67,16 +74,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
     <div
       className={cn(
         'group relative flex gap-x-1 rounded-lg p-2',
-        isSelected
-          ? 'cursor-not-allowed bg-state-accent-active'
-          : 'cursor-pointer hover:bg-state-base-hover',
+        isSelected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
-      onClick={handleClickItem}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => {
-        setIsHovering(false)
-        setOpen(false)
-      }}
+      onMouseLeave={() => setOpen(false)}
       onContextMenu={(e) => {
         if (hideActionMenu) return
 
@@ -84,20 +84,35 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(true)
       }}
     >
+      <button
+        type="button"
+        aria-labelledby={titleId}
+        aria-current={isSelected ? 'true' : undefined}
+        className={cn(
+          'absolute inset-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          isSelected ? 'cursor-default' : 'cursor-pointer',
+        )}
+        onClick={handleClickItem}
+      />
       {!isLast && (
-        <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />
-      )}
-      <div className="flex h-5 w-4.5 shrink-0 items-center justify-center">
         <div
+          aria-hidden
+          className="pointer-events-none absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle"
+        />
+      )}
+      <div className="pointer-events-none relative z-[1] flex h-5 w-4.5 shrink-0 items-center justify-center">
+        <div
+          aria-hidden
           className={cn(
             'size-2 rounded-lg border-2',
             isSelected ? 'border-text-accent' : 'border-text-quaternary',
           )}
         />
       </div>
-      <div className="flex grow flex-col gap-y-0.5 overflow-hidden">
+      <div className="pointer-events-none relative z-[1] flex grow flex-col gap-y-0.5 overflow-hidden">
         <div className="mr-6 flex h-5 items-center gap-x-1">
           <div
+            id={titleId}
             className={cn(
               'truncate py-px system-sm-semibold',
               isSelected ? 'text-text-accent' : 'text-text-secondary',
@@ -105,7 +120,10 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           >
             {isDraft
               ? t(($) => $['versionHistory.currentDraft'], { ns: 'workflow' })
-              : item.marked_name || t(($) => $['versionHistory.defaultName'], { ns: 'workflow' })}
+              : getWorkflowVersionName(
+                  item,
+                  t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+                )}
           </div>
           {isLatest && (
             <div className="flex h-5 shrink-0 items-center rounded-md border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 system-2xs-medium-uppercase text-text-accent-secondary">
@@ -123,11 +141,30 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
             {`${formatTime(item.created_at)} · ${item.created_by.name}`}
           </div>
         )}
+        {!isDraft && deployedEnvironments.length > 0 && (
+          <div className="flex w-full flex-wrap content-start items-start gap-x-1 gap-y-2 pt-0.5">
+            {deployedEnvironments.map((environment) => (
+              <Badge
+                key={environment.id}
+                size="s"
+                className="h-4.5 shrink-0 bg-components-badge-bg-dimm py-0!"
+              >
+                {environment.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
       {/* Action Menu */}
-      {!hideActionMenu && !isDraft && isHovering && (
-        <div className="absolute top-1 right-1">
+      {!hideActionMenu && !isDraft && (
+        <div
+          className={cn(
+            'invisible absolute top-1 right-1 z-10 group-focus-within:visible group-hover:visible',
+            open && 'visible',
+          )}
+        >
           <ActionMenu
+            workflowId={item.id}
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
             canImportExportDSL={canImportExportDSL}

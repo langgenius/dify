@@ -7,6 +7,10 @@ with a non-LLM model.
 """
 
 import warnings
+from dataclasses import dataclass, field
+from enum import StrEnum, auto
+from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -23,6 +27,68 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
+from services.credit_pool_service import CreditPoolReservation, CreditPoolService
+
+
+class LLMQuotaReservationState(StrEnum):
+    RESERVED = auto()
+    COMMITTED = auto()
+    RELEASED = auto()
+
+
+@dataclass
+class LLMQuotaReservation:
+    """Quota reserved for one system-hosted LLM invocation."""
+
+    tenant_id: str
+    provider: str
+    model: str
+    provider_configuration: Any
+    quota_unit: QuotaUnit | None = None
+    credit_pool_reservation: CreditPoolReservation | None = None
+    requires_usage: bool = False
+    _state: LLMQuotaReservationState = field(default=LLMQuotaReservationState.RESERVED, init=False, repr=False)
+
+    @property
+    def state(self) -> LLMQuotaReservationState:
+        return self._state
+
+    @property
+    def commit_before_delivery(self) -> bool:
+        return self.credit_pool_reservation is not None
+
+    def commit(self, usage: LLMUsage | None = None) -> None:
+        if self._state == LLMQuotaReservationState.COMMITTED:
+            return
+        if self._state == LLMQuotaReservationState.RELEASED:
+            raise RuntimeError("Cannot commit a released LLM quota reservation.")
+
+        if self.credit_pool_reservation is not None:
+            self.credit_pool_reservation.commit()
+        elif self.requires_usage:
+            if usage is None:
+                raise ValueError("Accurate terminal usage is required for token-based LLM quota settlement.")
+            used_quota = _resolve_llm_used_quota(
+                system_configuration=self.provider_configuration.system_configuration,
+                model=self.model,
+                usage=usage,
+            )
+            _deduct_used_llm_quota(
+                tenant_id=self.tenant_id,
+                provider=self.provider,
+                provider_configuration=self.provider_configuration,
+                used_quota=used_quota,
+            )
+
+        self._state = LLMQuotaReservationState.COMMITTED
+
+    def release(self) -> None:
+        if self._state in {LLMQuotaReservationState.COMMITTED, LLMQuotaReservationState.RELEASED}:
+            return
+
+        if self.credit_pool_reservation is not None:
+            self.credit_pool_reservation.release()
+        self._state = LLMQuotaReservationState.RELEASED
 
 
 def _get_provider_configuration(*, tenant_id: str, provider: str):
@@ -32,6 +98,67 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     if provider_configuration is None:
         raise ValueError(f"Provider {provider} does not exist.")
     return provider_configuration
+
+
+def _get_current_quota_configuration(system_configuration):
+    return next(
+        (
+            quota_configuration
+            for quota_configuration in system_configuration.quota_configurations
+            if quota_configuration.quota_type == system_configuration.current_quota_type
+        ),
+        None,
+    )
+
+
+def reserve_llm_quota_for_model(*, tenant_id: str, provider: str, model: str) -> LLMQuotaReservation:
+    """Reserve system-hosted LLM quota before invoking the provider."""
+    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    reservation = LLMQuotaReservation(
+        tenant_id=tenant_id,
+        provider=provider,
+        model=model,
+        provider_configuration=provider_configuration,
+    )
+    if provider_configuration.using_provider_type != ProviderType.SYSTEM:
+        return reservation
+
+    provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model=model)
+    if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+        raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
+
+    system_configuration = provider_configuration.system_configuration
+    quota_configuration = _get_current_quota_configuration(system_configuration)
+    if quota_configuration is None or quota_configuration.quota_limit == -1:
+        return reservation
+
+    reservation.quota_unit = quota_configuration.quota_unit
+    quota_type = system_configuration.current_quota_type
+    if quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+        match quota_configuration.quota_unit:
+            case QuotaUnit.CREDITS:
+                amount = dify_config.get_model_credits(model)
+            case QuotaUnit.TIMES:
+                amount = 1
+            case QuotaUnit.TOKENS:
+                # Token usage is unknown before invocation. Enabling TOKENS for a hosted
+                # credit pool requires accurate terminal usage and an upper-bound reservation strategy.
+                raise ValueError("Token-based hosted credit pools do not support pre-invocation reservation.")
+            case _:
+                raise ValueError(f"Unsupported hosted credit pool quota unit: {quota_configuration.quota_unit}")
+
+        reservation.credit_pool_reservation = CreditPoolService.reserve_credits(
+            tenant_id=tenant_id,
+            credits_required=amount,
+            pool_type="paid" if quota_type == ProviderQuotaType.PAID else "trial",
+            request_id=str(uuid4()),
+            session_factory=db.session,
+            meta={"source": "llm.invoke", "provider": provider, "model": model},
+        )
+    elif quota_type == ProviderQuotaType.FREE:
+        reservation.requires_usage = True
+
+    return reservation
 
 
 def ensure_llm_quota_available_for_model(*, tenant_id: str, provider: str, model: str) -> None:

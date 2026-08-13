@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -10,12 +10,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import {
-  fetchNodesDefaultConfigs,
-  fetchPublishedWorkflow,
-  fetchWorkflowDraft,
-  syncWorkflowDraft,
-} from '@/service/workflow'
+import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -59,6 +55,7 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
 }
 
 export const useWorkflowInit = () => {
+  const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
   const appDetail = useAppStore((state) => state.appDetail)!
@@ -196,13 +193,13 @@ export const useWorkflowInit = () => {
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
-    try {
-      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(
-        `/apps/${appDetail?.id}/workflows/default-workflow-block-configs`,
-      )
-      const publishedWorkflow = await fetchPublishedWorkflow(
-        `/apps/${appDetail?.id}/workflows/publish`,
-      )
+    const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
+      fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
+      queryClient.fetchQuery(appWorkflowQueryOptions(appDetail.id)),
+    ])
+
+    if (nodesDefaultConfigsResult.status === 'fulfilled') {
+      const nodesDefaultConfigsData = nodesDefaultConfigsResult.value
       workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce(
           (acc, block) => {
@@ -212,16 +209,22 @@ export const useWorkflowInit = () => {
           {} as Record<string, unknown>,
         ),
       })
+    } else {
+      console.error(nodesDefaultConfigsResult.reason)
+    }
+
+    if (publishedWorkflowResult.status === 'fulfilled') {
+      const publishedWorkflow = publishedWorkflowResult.value
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at ?? 0)
       const graph = publishedWorkflow?.graph
-      workflowStore
-        .getState()
-        .setLastPublishedHasUserInput(hasConnectedUserInput(graph?.nodes, graph?.edges))
-    } catch (e) {
-      console.error(e)
+      const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : undefined
+      const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : undefined
+      workflowStore.getState().setLastPublishedHasUserInput(hasConnectedUserInput(nodes, edges))
+    } else {
+      console.error(publishedWorkflowResult.reason)
       workflowStore.getState().setLastPublishedHasUserInput(false)
     }
-  }, [workflowStore, appDetail])
+  }, [workflowStore, appDetail, queryClient])
 
   useEffect(() => {
     handleFetchPreloadData()

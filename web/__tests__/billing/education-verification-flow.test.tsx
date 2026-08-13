@@ -5,7 +5,6 @@ import { cleanup, screen } from '@testing-library/react'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
-import { Plan } from '@/app/components/billing/type'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
@@ -32,6 +31,7 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile as { email?: string },
+    accountProfileMeta: { currentVersion: '1.0.0' },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -50,11 +50,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
@@ -165,7 +160,7 @@ describe('Education Verification Flow', () => {
   // ─── 2. Education + Upgrade Coexistence ─────────────────────────────────
   describe('Education and upgrade button coexistence', () => {
     it('should show both education verify and upgrade buttons for sandbox user', () => {
-      setupContexts({ type: Plan.sandbox }, { enableEducationPlan: true })
+      setupContexts({ type: 'sandbox' }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 
@@ -173,18 +168,8 @@ describe('Education Verification Flow', () => {
       expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
     })
 
-    it('should not show upgrade button for enterprise plan', () => {
-      setupContexts({ type: Plan.enterprise }, { enableEducationPlan: true })
-
-      render(<PlanComp loc="test" />)
-
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
-      expect(screen.queryByText(/upgradeBtn\.encourageShort/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/upgradeBtn\.plain/i)).not.toBeInTheDocument()
-    })
-
     it('should show team plan with plain upgrade button and education button', () => {
-      setupContexts({ type: Plan.team }, { enableEducationPlan: true })
+      setupContexts({ type: 'team' }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 

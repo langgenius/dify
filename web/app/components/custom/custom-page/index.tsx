@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -15,9 +14,8 @@ const CustomPage = () => {
   })
   const { plan, enableBilling } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const showBillingTip =
-    deploymentEdition === 'CLOUD' && enableBilling && plan.type === Plan.sandbox
-  const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
+  const showBillingTip = deploymentEdition === 'CLOUD' && enableBilling && plan.type === 'sandbox'
+  const showContact = enableBilling && (plan.type === 'professional' || plan.type === 'team')
 
   return (
     <div className="flex flex-col overflow-x-hidden">

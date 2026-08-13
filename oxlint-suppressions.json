@@ -145,16 +145,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/app-info/app-info-modals.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app-sidebar/app-info/app-operations.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -546,14 +536,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/app/overview/app-card-sections.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
@@ -1856,7 +1838,7 @@
   },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/billing/pricing/assets/index.tsx": {
@@ -1880,11 +1862,6 @@
   "web/app/components/billing/pricing/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/app/components/billing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
     }
   },
   "web/app/components/datasets/chunk.tsx": {
@@ -3452,22 +3429,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/tools/workflow-tool/__tests__/configure-button.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/configure-button.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/tools/workflow-tool/index.tsx": {
@@ -5046,22 +5007,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/panel/version-history-panel/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/panel/version-history-panel/version-history-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 4
@@ -5438,11 +5383,6 @@
       "count": 1
     }
   },
-  "web/app/signin/check-code/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signin/layout.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -5635,11 +5575,6 @@
       "count": 3
     }
   },
-  "web/service/billing.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/common.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -5662,11 +5597,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 6
-    }
-  },
-  "web/service/fetch.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/fetch.ts": {
