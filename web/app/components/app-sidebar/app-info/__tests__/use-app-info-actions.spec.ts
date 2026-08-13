@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { useAppInfoActions } from '../use-app-info-actions'
 
@@ -16,7 +17,7 @@ const toastMocks = vi.hoisted(() => {
 })
 const mockReplace = vi.fn()
 const mockOnPlanInfoChanged = vi.fn()
-const mockInvalidateAppList = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
 const mockCopyApp = vi.fn()
@@ -78,17 +79,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  appDetailQueryKeyPrefix: ['apps', 'detail'],
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
-
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: <TOptions>(options: TOptions) => options,
   useSuspenseQuery: () => ({
     data: { rbac_enabled: true },
   }),
   useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
     setQueryData: mockSetQueryData,
   }),
 }))
@@ -125,7 +122,6 @@ describe('useAppInfoActions', () => {
     mockExportWorkflowAppDsl.mockResolvedValue({ status: 'downloaded' })
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
-    mockSetQueryData.mockReset()
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',
@@ -140,39 +136,12 @@ describe('useAppInfoActions', () => {
     it('should return initial state correctly', () => {
       const { result } = renderHook(() => useAppInfoActions({}))
       expect(result.current.appDetail).toEqual(mockAppDetail)
-      expect(result.current.panelOpen).toBe(false)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
   })
 
-  describe('Panel management', () => {
-    it('should toggle panelOpen', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
-
-      expect(result.current.panelOpen).toBe(true)
-    })
-
-    it('should close panel and call onDetailExpand', () => {
-      const onDetailExpand = vi.fn()
-      const { result } = renderHook(() => useAppInfoActions({ onDetailExpand }))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
-
-      act(() => {
-        result.current.closePanel()
-      })
-
-      expect(result.current.panelOpen).toBe(false)
-      expect(onDetailExpand).toHaveBeenCalledWith(false)
-    })
-
+  describe('App-scoped state', () => {
     it('should reset app-scoped state when resetKey changes', () => {
       const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
         initialProps: { resetKey: 'app-1' },
@@ -180,34 +149,26 @@ describe('useAppInfoActions', () => {
 
       act(() => {
         result.current.openModal('delete')
-        result.current.setPanelOpen(true)
       })
 
-      expect(result.current.panelOpen).toBe(true)
       expect(result.current.activeModal).toBe('delete')
 
       rerender({ resetKey: 'app-2' })
 
-      expect(result.current.panelOpen).toBe(false)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
   })
 
   describe('Modal management', () => {
-    it('should open modal and close panel', () => {
+    it('should open modal', () => {
       const { result } = renderHook(() => useAppInfoActions({}))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
 
       act(() => {
         result.current.openModal('edit')
       })
 
       expect(result.current.activeModal).toBe('edit')
-      expect(result.current.panelOpen).toBe(false)
     })
 
     it('should close modal', () => {
@@ -244,6 +205,25 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockUpdateAppInfo).toHaveBeenCalled()
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
+        expect.any(Function),
+      )
+      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
+      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
+        expect.objectContaining({ id: 'app-1', name: 'Updated' }),
+      )
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.get.key(),
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.starred.get.key(),
+      })
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.apps.recent.get.key(),
+      })
       expect(mockSetAppDetail).toHaveBeenCalledWith(updatedApp)
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
@@ -333,6 +313,7 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockCopyApp).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'success',
         message: 'app.newApp.appCreated',
@@ -519,7 +500,7 @@ describe('useAppInfoActions', () => {
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
-      expect(mockInvalidateAppList).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })
@@ -572,6 +553,16 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        consoleQuery.apps.byAppId.get.queryKey({
+          input: { params: { app_id: 'app-1' } },
+        }),
+        expect.any(Function),
+      )
+      const updateCachedApp = mockSetQueryData.mock.calls[0]![1]
+      expect(updateCachedApp({ id: 'app-1', name: 'Old name' })).toEqual(
+        expect.objectContaining({ id: 'app-1', name: 'Remote Updated' }),
+      )
       expect(mockSetAppDetail).toHaveBeenCalledWith(updated)
 
       unmount()

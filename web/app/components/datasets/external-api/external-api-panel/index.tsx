@@ -1,10 +1,10 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -71,16 +71,19 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
             </a>
           </div>
           <div className="flex items-center">
-            <ActionButton onClick={() => onClose()}>
-              <RiCloseLine className="size-4 text-text-tertiary" />
-            </ActionButton>
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={() => onClose()}
+            >
+              <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
+            </IconButton>
           </div>
         </div>
         {canManageExternalKnowledgeApi && (
           <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
             <Button
               variant="primary"
-              className="flex items-center justify-center gap-0.5 px-3 py-2"
+              className="flex items-center justify-center px-3 py-2"
               onClick={handleOpenExternalAPIModal}
             >
               <RiAddLine className="size-4 text-components-button-primary-text" />
@@ -94,11 +97,12 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           {isLoading ? (
             <Loading />
           ) : (
-            externalKnowledgeApiList.map((api) => (
+            externalKnowledgeApiList.map((api, index) => (
               <ExternalKnowledgeAPICard
                 key={api.id}
                 api={api}
                 canManageExternalKnowledgeApi={canManageExternalKnowledgeApi}
+                position={index + 1}
               />
             ))
           )}

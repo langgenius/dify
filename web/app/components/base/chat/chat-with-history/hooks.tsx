@@ -1,6 +1,6 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
-import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
+import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -9,7 +9,7 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useConversationIdInfo,
+  useConversationSelection,
   useWebAppSidebarCollapseState,
 } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -185,27 +185,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [appId, setStoredSidebarCollapseState],
   )
-  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
-  const currentConversationId = useMemo(
-    () => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
-    [appId, conversationIdInfo, userId],
-  )
-  const handleConversationIdInfoChange = useCallback(
-    (changeConversationId: string) => {
-      if (appId) {
-        let prevValue = conversationIdInfo?.[appId || '']
-        if (typeof prevValue === 'string') prevValue = {}
-        setConversationIdInfo({
-          ...conversationIdInfo,
-          [appId || '']: {
-            ...prevValue,
-            [userId || 'DEFAULT']: changeConversationId,
-          },
-        })
-      }
-    },
-    [appId, conversationIdInfo, setConversationIdInfo, userId],
-  )
+  const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
+    appId,
+    userId,
+  })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -585,8 +568,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     },
     [handleConversationIdInfoChange, invalidateShareConversations],
   )
-  const handleFeedback = useCallback(
-    async (messageId: string, feedback: Feedback) => {
+  const handleFeedback: OnFeedback = useCallback(
+    async (messageId, feedback) => {
       await updateFeedback(
         {
           url: `/messages/${messageId}/feedbacks`,

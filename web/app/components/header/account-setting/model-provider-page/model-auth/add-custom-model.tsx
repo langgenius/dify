@@ -26,9 +26,16 @@ const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  open: controlledOpen,
+  onOpenChange,
 }: AddCustomModelProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
@@ -66,7 +73,7 @@ const AddCustomModel = ({
             disabled && 'cursor-not-allowed opacity-50',
           )}
         >
-          <span className="mr-1 i-ri-add-circle-fill size-3.5" />
+          <span className="i-ri-add-circle-fill size-3.5" />
           {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
         </Button>
       )

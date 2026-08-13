@@ -1,12 +1,12 @@
 name: autofix.ci
 on:
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   merge_group:
-    branches: ["main"]
+    branches: ['main']
     types: [checks_requested]
   push:
-    branches: ["main"]
+    branches: ['main']
 permissions:
   contents: read
 
@@ -53,8 +53,7 @@ jobs:
             oxlint-suppressions.json
             eslint-suppressions.json
             .vscode/**
-            .github/workflows/autofix.yml
-            .github/workflows/style.yml
+            .github/**
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
@@ -86,7 +85,7 @@ jobs:
       - if: github.event_name != 'merge_group'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - if: github.event_name != 'merge_group'
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0

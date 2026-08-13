@@ -6,8 +6,8 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
@@ -27,7 +27,10 @@ export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWit
     ...systemFeaturesQueryOptions(),
     select: (systemFeatures) => systemFeatures.webapp_auth.enabled,
   })
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { canReleaseAndVersion: canManageWebAppAccessControl } = getAppACLCapabilities(
     agent?.permission_keys,
@@ -45,7 +48,7 @@ export function WebAppAccessControlButton({ agent }: { agent?: AgentAppDetailWit
       <Button
         variant="secondary"
         size="medium"
-        className="gap-1.5 px-3"
+        className="px-3"
         onClick={() => setShowAccessControl(true)}
       >
         <span aria-hidden className="i-ri-lock-2-line size-4" />

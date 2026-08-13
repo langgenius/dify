@@ -97,6 +97,10 @@ const clientSchema = {
   NEXT_PUBLIC_LOOP_NODE_MAX_COUNT: coercedNumber.default(100),
   NEXT_PUBLIC_MAINTENANCE_NOTICE: z.string().optional(),
   /**
+   * Additional literal characters allowed in Markdown form field names.
+   */
+  NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: z.string().default(''),
+  /**
    * The API PREFIX for MARKETPLACE
    */
   NEXT_PUBLIC_MARKETPLACE_API_PREFIX: z.url().optional(),
@@ -142,6 +146,10 @@ const clientSchema = {
    * The maximum number of top-k value for RAG.
    */
   NEXT_PUBLIC_TOP_K_MAX_VALUE: coercedNumber.default(10),
+  /**
+   * Cloudflare Turnstile site key for Dify Cloud sign-in verification.
+   */
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   /**
    * Disable Upload Image as WebApp icon default is false
    */
@@ -249,6 +257,9 @@ export const env = createEnv({
     NEXT_PUBLIC_MAINTENANCE_NOTICE: isServer
       ? process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE
       : getRuntimeEnvFromBody('maintenanceNotice'),
+    NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS: isServer
+      ? process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
+      : getRuntimeEnvFromBody('markdownFormFieldNameExtraChars'),
     NEXT_PUBLIC_MARKETPLACE_API_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
       : getRuntimeEnvFromBody('marketplaceApiPrefix'),
@@ -291,6 +302,9 @@ export const env = createEnv({
     NEXT_PUBLIC_TOP_K_MAX_VALUE: isServer
       ? process.env.NEXT_PUBLIC_TOP_K_MAX_VALUE
       : getRuntimeEnvFromBody('topKMaxValue'),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : getRuntimeEnvFromBody('turnstileSiteKey'),
     NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: isServer
       ? process.env.NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('uploadImageAsIcon'),

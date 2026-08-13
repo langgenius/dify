@@ -21,12 +21,8 @@ vi.mock('@/service/log', () => ({
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({ userProfile: { id: 'account-1' } }))
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

@@ -168,7 +168,7 @@ function SelectContent({
       >
         <BaseSelect.Popup
           className={cn(
-            'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
             floatingPopupAnimationClassName,
             popupClassName,
           )}

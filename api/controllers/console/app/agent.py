@@ -21,6 +21,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -211,12 +212,12 @@ def _upload_skill_for_app(*, session: Session, current_user: Account, app_model:
 
 
 def _commit_drive_file_for_app(*, session: Session, current_user: Account, app_model: App, allow_node_id: bool = True):
+    payload = AgentDriveFilePayload.model_validate(console_ns.payload or {})
     query = query_params_from_request(AgentDriveMutationQuery)
     node_id = query.node_id if allow_node_id else None
     agent_id = _resolve_agent_id(session, app_model, node_id)
     if not agent_id:
         return _agent_not_bound()
-    payload = AgentDriveFilePayload.model_validate(console_ns.payload or {})
 
     upload_file = session.scalar(
         select(UploadFile).where(
@@ -341,11 +342,11 @@ class AgentLogApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_session(write=False)
     @get_app_model(mode=[AppMode.AGENT_CHAT])
-    def get(self, session: Session, app_model: App):
+    @model_validate(AgentLogQuery)
+    def get(self, req_data: AgentLogQuery, session: Session, app_model: App):
         """Get agent logs"""
-        args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))
 
-        return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id, session)
+        return AgentService.get_agent_logs(app_model, req_data.conversation_id, req_data.message_id, session)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/skills/upload")

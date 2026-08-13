@@ -84,18 +84,6 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
-    expect(document.querySelector('.i-custom-vender-plugin-box-sparkle-fill')).toHaveClass(
-      'size-4',
-      'shrink-0',
-    )
-    expect(document.querySelector('.i-custom-vender-solid-general-github')).toHaveClass(
-      'size-4',
-      'shrink-0',
-    )
-    expect(document.querySelector('.i-custom-vender-solid-files-file-zip')).toHaveClass(
-      'size-4',
-      'shrink-0',
-    )
   })
 
   it('applies custom trigger label and presentation props', () => {
@@ -115,8 +103,8 @@ describe('InstallPluginDropdown', () => {
 
     expect(container.querySelector('.custom-root')).toBeInTheDocument()
     expect(trigger).toHaveTextContent('Install')
-    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
-    expect(screen.getByTestId('arrow-down-icon')).toHaveClass('ml-1', 'size-4')
+    expect(screen.getByTestId('add-circle-fill-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('arrow-down-icon')).toBeInTheDocument()
     expect(trigger).toHaveClass('custom-trigger')
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
@@ -128,7 +116,7 @@ describe('InstallPluginDropdown', () => {
   })
 
   it('can hide the trigger arrow for compact integrations placement', () => {
-    const { container } = render(
+    render(
       <InstallPluginDropdown
         onSwitchToMarketplaceTab={vi.fn()}
         triggerLabel="Install"
@@ -139,9 +127,8 @@ describe('InstallPluginDropdown', () => {
     const trigger = getTrigger('Install')
 
     expect(trigger).toHaveTextContent('Install')
-    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
+    expect(screen.getByTestId('add-circle-fill-icon')).toBeInTheDocument()
     expect(screen.queryByTestId('arrow-down-icon')).not.toBeInTheDocument()
-    expect(container.querySelector('.px-0\\.5')).toHaveClass('min-w-0', 'flex-1', 'text-left')
   })
 
   it('keeps the trigger visible but disabled when install is unavailable', () => {

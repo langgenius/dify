@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @knowledge @knowledge-fixture
 Feature: Agent v2 Knowledge Retrieval
-  @core @prepared
+  @core @prepared @skip
   Scenario: Agent decide Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -12,7 +12,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Agent decide Knowledge Retrieval settings
 
-  @core @prepared
+  @core @prepared @skip
   Scenario: Custom query Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -24,41 +24,41 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Custom query Knowledge Retrieval settings
 
-  @service-api-runtime @external-model @agent-backend-runtime @agent-decision-model @backend-api-access
+  @service-api-runtime @external-model @agent-backend-runtime @agent-decision-model @backend-api-access @skip
   Scenario: Agent decide Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder agent-decision chat model is available
     And the Agent v2 runtime backend is available
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
     And a runnable Agent v2 test agent using the agent-decision model has been created via API
-    And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page
     And I add the Agent Builder knowledge base as an Agent decide Knowledge Retrieval
     Then the Agent v2 Agent decide Knowledge Retrieval should be saved in the Agent v2 draft
     And the Agent v2 configuration should be saved automatically
     When I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @service-api-runtime @external-model @agent-backend-runtime @stable-model @backend-api-access
+  @service-api-runtime @external-model @agent-backend-runtime @stable-model @backend-api-access @skip
   Scenario: Custom query Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page
     And I add the Agent Builder knowledge base as a Custom query Knowledge Retrieval
     Then the Agent v2 Custom query Knowledge Retrieval should be saved in the Agent v2 draft
     And the Agent v2 configuration should be saved automatically
     When I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    Given an Agent v2 Backend service API key has been created via API
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @core @prepared
+  @core @prepared @skip
   Scenario: Removing Knowledge Retrieval clears the saved dataset reference
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready

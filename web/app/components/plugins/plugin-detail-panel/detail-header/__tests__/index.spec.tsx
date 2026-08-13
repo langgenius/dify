@@ -44,14 +44,6 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) => (
-    <button data-testid="close-button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
   default: ({ text, children }: { text?: React.ReactNode; children?: React.ReactNode }) => (
     <div data-testid="badge">{text ?? children}</div>
@@ -219,7 +211,7 @@ describe('DetailHeader', () => {
     render(<DetailHeader detail={createDetail()} onHide={onHide} onUpdate={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.detailPanel.operation.update'))
-    fireEvent.click(screen.getByTestId('close-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(onHide).toHaveBeenCalled()

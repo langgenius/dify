@@ -7,12 +7,67 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
+from core.app.entities.app_invoke_entities import InvokeFrom
+from models.enums import ConversationFromSource
+from models.model import AppMode, Conversation, Message
 
 
-def test_app_message_routes_pass_injected_session(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
+def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
+    conversation = Conversation(
+        app_id=app_id,
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.CHAT,
+        name="Conversation",
+        inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="account-1",
+    )
+    conversation.id = "conversation-1"
+    message = Message(
+        app_id=app_id,
+        conversation_id=conversation.id,
+        inputs={},
+        query="query",
+        message="",
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer="answer",
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        provider_response_latency=0,
+        total_price=0,
+        currency="USD",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="account-1",
+        app_mode=AppMode.CHAT,
+    )
+    message.id = message_id
+    session.add_all([conversation, message])
+    session.flush()
+    return message
+
+
+def test_app_message_routes_pass_injected_session(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+) -> None:
+    session = unbound_session
     current_user = SimpleNamespace(id="account-1")
     app_model = SimpleNamespace(id="app-1", mode="chat")
     message_id = "550e8400-e29b-41d4-a716-446655440000"
@@ -44,17 +99,15 @@ def test_app_message_routes_pass_injected_session(app: Flask, monkeypatch: pytes
     assert get_message_detail.call_args.kwargs["session"] is session
 
 
-def test_update_message_feedback_commits_injected_session(app: Flask) -> None:
+def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_session: Session) -> None:
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     feedback = SimpleNamespace(rating="dislike", content=None)
     get_admin_feedback = MagicMock(return_value=feedback)
-    message = SimpleNamespace(
-        id=message_id,
-        conversation_id="conversation-1",
-        admin_feedback_with_session=get_admin_feedback,
-    )
-    session = MagicMock()
-    session.scalar.return_value = message
+    message = _persist_message(sqlite_session, message_id=message_id)
+    message.admin_feedback_with_session = get_admin_feedback
+    session = sqlite_session
+    commits: list[str] = []
+    event.listen(session, "after_commit", lambda _session: commits.append("commit"))
 
     with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
         result = message_module._update_message_feedback(
@@ -67,16 +120,15 @@ def test_update_message_feedback_commits_injected_session(app: Flask) -> None:
     assert feedback.rating == "like"
     assert feedback.content == "helpful"
     get_admin_feedback.assert_called_once_with(session=session)
-    session.commit.assert_called_once_with()
+    assert commits == ["commit"]
 
 
-def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     message_id = "550e8400-e29b-41d4-a716-446655440000"
-    message = SimpleNamespace(id=message_id)
+    message = _persist_message(sqlite_session, message_id=message_id)
     response_source = object()
     response_source_factory = MagicMock(return_value=response_source)
-    session = MagicMock()
-    session.scalar.return_value = message
+    session = sqlite_session
     monkeypatch.setattr(message_module, "attach_message_extra_contents", MagicMock())
     monkeypatch.setattr(message_module, "MessageResponseSource", response_source_factory)
     monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
@@ -89,11 +141,10 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     assert result is response_source
     response_source_factory.assert_called_once_with(message, session=session)
-    session.scalar.assert_called_once()
 
 
-def test_message_response_source_uses_caller_session_for_nested_fields() -> None:
-    session = MagicMock()
+def test_message_response_source_uses_caller_session_for_nested_fields(unbound_session: Session) -> None:
+    session = unbound_session
     account = object()
     feedback = MagicMock()
     feedback.from_account_with_session.return_value = account

@@ -191,11 +191,12 @@ class TestAppModelValidation:
             enable_site=True,
             enable_api=False,
             created_by=str(uuid4()),
+            app_model_config_id="config-1",
         )
-        app.app_model_config_id = "config-1"
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.agent_mode = "agent"
-        app_model_config.agent_mode_dict = {"enabled": True, "strategy": "react"}
+        app_model_config = AppModelConfig(
+            app_id="app-id",
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
         session = MagicMock()
         session.get.return_value = app_model_config
 
@@ -582,18 +583,19 @@ class TestConversationModel:
             model_id="model-1",
             model_provider="provider-1",
         )
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.app_id = "app-1"
-        app_model_config.to_dict.return_value = {}
+        app_model_config = AppModelConfig(app_id="app-1")
         session = MagicMock()
         session.scalar.return_value = app_model_config
         annotation_reply = {"enabled": False}
 
-        with patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config:
+        with (
+            patch.object(AppModelConfig, "to_dict", return_value={}) as to_dict,
+            patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
+        ):
             result = conversation.model_config_with_session(session=session)
 
         load_config.assert_called_once_with(session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert result["model_id"] == "model-1"
         assert result["provider"] == "provider-1"
 
@@ -607,20 +609,19 @@ class TestConversationModel:
             from_end_user_id=str(uuid4()),
             override_model_configs=json.dumps({"model": {}}),
         )
-        app_model_config = MagicMock(spec=AppModelConfig)
-        app_model_config.app_id = "app-1"
-        app_model_config.to_dict.return_value = {}
+        app_model_config = AppModelConfig(app_id="app-1")
         session = MagicMock()
         annotation_reply = {"enabled": False}
 
         with (
             patch.object(AppModelConfig, "from_model_config_dict", return_value=app_model_config),
+            patch.object(AppModelConfig, "to_dict", return_value={}) as to_dict,
             patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
         ):
             conversation.model_config_with_session(session=session)
 
         load_config.assert_called_once_with(session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         session.scalar.assert_not_called()
 
     def test_conversation_in_debug_mode(self):
@@ -718,8 +719,8 @@ class TestMessageModel:
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
             from_source=ConversationFromSource.API,
+            _inputs=inputs,
         )
-        message._inputs = inputs
 
         # Act
         result = message.inputs
@@ -835,11 +836,11 @@ class TestMessageModel:
             currency="USD",
             from_source=ConversationFromSource.API,
             status="normal",
+            id=str(uuid4()),
+            _inputs={"query": "test"},
+            created_at=now,
+            updated_at=now,
         )
-        message.id = str(uuid4())
-        message._inputs = {"query": "test"}
-        message.created_at = now
-        message.updated_at = now
 
         # Act
         result = message.to_dict()
@@ -1178,8 +1179,8 @@ class TestModelIntegration:
             enable_site=True,
             enable_api=True,
             created_by=created_by,
+            id=app_id,
         )
-        app.id = app_id
 
         # Create conversation
         conversation = Conversation(
@@ -1203,8 +1204,8 @@ class TestModelIntegration:
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
             from_source=ConversationFromSource.API,
+            id=message_id,
         )
-        message.id = message_id
 
         # Assert
         assert app.id == app_id
@@ -1229,8 +1230,8 @@ class TestModelIntegration:
             enable_site=True,
             enable_api=True,
             created_by=created_user_id,
+            id=app_id,
         )
-        app.id = app_id
 
         # Create annotation setting
         setting = AppAnnotationSetting(
@@ -1264,8 +1265,8 @@ class TestModelIntegration:
             answer_unit_price=Decimal("0.0002"),
             currency="USD",
             from_source=ConversationFromSource.API,
+            id=message_id,
         )
-        message.id = message_id
 
         # Create annotation
         annotation = MessageAnnotation(
@@ -1332,8 +1333,8 @@ class TestModelIntegration:
             enable_site=True,
             enable_api=True,
             created_by=str(uuid4()),
+            id=app_id,
         )
-        app.id = app_id
 
         # Create site
         site = Site(

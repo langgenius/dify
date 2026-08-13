@@ -4,8 +4,8 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { Plan } from '../../type'
 import Pricing from '../index'
 
 let mockConsoleState: Record<string, unknown> = {}
@@ -60,8 +60,9 @@ describe('Pricing dialog lifecycle', () => {
       isCurrentWorkspaceManager: true,
     }
     ;(useProviderContext as Mock).mockReturnValue({
+      enableEducationPlan: false,
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: buildUsage(),
         total: buildUsage(),
       },
@@ -72,7 +73,8 @@ describe('Pricing dialog lifecycle', () => {
   it('should call onCancel when the pricing dialog is closed', async () => {
     const user = userEvent.setup()
     const onCancel = vi.fn()
-    render(<Pricing onCancel={onCancel} />)
+    const { wrapper } = createConsoleQueryWrapper()
+    render(<Pricing onCancel={onCancel} />, { wrapper })
 
     await user.click(screen.getByRole('button', { name: 'close' }))
 

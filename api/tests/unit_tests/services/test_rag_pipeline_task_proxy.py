@@ -6,7 +6,7 @@ import pytest
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 

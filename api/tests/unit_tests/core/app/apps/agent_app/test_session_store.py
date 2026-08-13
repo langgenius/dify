@@ -77,7 +77,7 @@ def test_load_or_create_persists_new_binding_on_caller(monkeypatch, home_snapsho
     session.commit.assert_called_once_with()
 
 
-def test_load_or_create_uses_exact_caller_binding(monkeypatch) -> None:
+def test_load_or_create_uses_exact_caller_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     caller = SimpleNamespace(agent_workspace_binding_id="binding-1")
     context = MagicMock()
     context.__enter__.return_value = MagicMock()
@@ -97,7 +97,7 @@ def test_load_or_create_uses_exact_caller_binding(monkeypatch) -> None:
     create.assert_not_called()
 
 
-def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeypatch) -> None:
+def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     caller = SimpleNamespace(agent_workspace_binding_id="unavailable-binding")
     context = MagicMock()
     get_binding = MagicMock(return_value=None)
@@ -115,7 +115,7 @@ def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeyp
     create.assert_not_called()
 
 
-def test_save_snapshot_targets_binding(monkeypatch) -> None:
+def test_save_snapshot_targets_binding(monkeypatch: pytest.MonkeyPatch) -> None:
     save = MagicMock()
     monkeypatch.setattr(AgentWorkspaceService, "save_binding_session_snapshot", save)
     snapshot = CompositorSessionSnapshot(layers=[])

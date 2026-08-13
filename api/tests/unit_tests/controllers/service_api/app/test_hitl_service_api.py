@@ -36,11 +36,12 @@ from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserA
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
+from enums import DeploymentEdition
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowRun
@@ -117,10 +118,8 @@ def _build_service_api_pause_converter() -> WorkflowResponseConverter:
         workflow_id="workflow-id",
         workflow_execution_id="run-id",
     )
-    user = MagicMock(spec=Account)
+    user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
-    user.name = "Tester"
-    user.email = "tester@example.com"
     return WorkflowResponseConverter(
         application_generate_entity=application_generate_entity,
         user=user,
@@ -380,7 +379,7 @@ class TestHitlServiceApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ) -> None:
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
 
         workflow = MagicMock()
@@ -455,7 +454,6 @@ class TestHitlServiceApi:
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
         from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
-        from models.enums import MessageStatus
         from models.model import EndUser
 
         app_config = WorkflowUIBasedAppConfig(
@@ -617,7 +615,6 @@ class TestHitlServiceApi:
         assert response.data.paused_nodes == ["node-1"]
         assert response.data.reasons == [{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
 
-    @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
     def test_service_api_pause_event_serializes_hitl_reason(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -632,7 +629,7 @@ class TestHitlServiceApi:
             reason=WorkflowStartReason.INITIAL,
         )
 
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
 
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
@@ -695,7 +692,6 @@ class TestHitlServiceApi:
         assert hi_resp.data.expiration_time == int(expiration_time.timestamp())
 
     # Snapshot payload contract
-    @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
     def test_snapshot_events_include_pause_payload_contract(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -705,7 +701,7 @@ class TestHitlServiceApi:
         workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
