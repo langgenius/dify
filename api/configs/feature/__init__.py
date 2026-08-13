@@ -1324,6 +1324,17 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class NewAgentBetaConfig(BaseSettings):
+    NEW_AGENT_BETA_ACTIVITY_START_AT: datetime | None = Field(
+        description="New Agent Beta Publish window start in RFC3339 UTC (inclusive)",
+        default=None,
+    )
+    NEW_AGENT_BETA_ACTIVITY_END_AT: datetime | None = Field(
+        description="New Agent Beta Publish window end in RFC3339 UTC (exclusive)",
+        default=None,
+    )
+
+
 class OpsTraceConfig(BaseSettings):
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
@@ -1629,6 +1640,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    NewAgentBetaConfig,
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
