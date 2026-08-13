@@ -55,10 +55,6 @@ class TestDispatchTriggeredWorkflow:
         (``get_workflows``, ``reserve``, ``create_end_user_batch``, ...) to
         drive the path it targets.
         """
-        session_cm = MagicMock()
-        session_cm.__enter__.return_value = MagicMock()
-        session_cm.__exit__.return_value = False
-
         invoke_response = MagicMock()
         invoke_response.cancelled = False
         invoke_response.variables = {}
@@ -105,11 +101,6 @@ class TestDispatchTriggeredWorkflow:
                 "create_end_user_batch",
                 return_value={},
             ) as create_end_user_batch,
-            patch.object(
-                trigger_processing_tasks_module.session_factory,
-                "create_session",
-                return_value=session_cm,
-            ),
             patch.object(
                 trigger_processing_tasks_module.QuotaService,
                 "reserve",

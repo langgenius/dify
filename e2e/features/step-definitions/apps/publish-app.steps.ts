@@ -7,9 +7,8 @@ When('I open the publish panel', async function (this: DifyWorld) {
 })
 
 When('I publish the app', async function (this: DifyWorld) {
-  await this.getPage()
-    .getByRole('button', { name: /Publish Update/ })
-    .click()
+  const publishPanel = this.getPage().getByRole('dialog')
+  await publishPanel.getByRole('button', { name: 'Publish', exact: true }).click()
 })
 
 Then('the app should be marked as published', async function (this: DifyWorld) {

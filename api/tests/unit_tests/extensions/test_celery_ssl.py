@@ -3,6 +3,8 @@
 import ssl
 from unittest.mock import MagicMock, patch
 
+from enums import DeploymentEdition
+
 
 class TestCelerySSLConfiguration:
     """Test suite for Celery SSL configuration."""
@@ -226,7 +228,7 @@ class TestCelerySSLConfiguration:
         mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
-        mock_config.ENTERPRISE_ENABLED = False
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
 
         with patch("extensions.ext_celery.dify_config", mock_config):

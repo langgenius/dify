@@ -87,6 +87,17 @@ describe('NormalForm', () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams())
   })
 
+  it('exposes the page title as the main heading', () => {
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Default Redirects', () => {
     it('should send logged-in visitors without a redirect target to the console home', async () => {
       const searchParams = new URLSearchParams()

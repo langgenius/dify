@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 from controllers.openapi.auth.conditions import (
-    EDITION_CE,
-    EDITION_EE,
-    EDITION_SAAS,
+    EDITION_CLOUD,
+    EDITION_COMMUNITY,
+    EDITION_ENTERPRISE,
     HAS_ALLOWED_ROLES,
     HAS_RBAC,
     LOADED_APP_IS_PRIVATE,
@@ -18,8 +18,9 @@ from controllers.openapi.auth.conditions import (
     data_cond,
     request_cond,
 )
-from controllers.openapi.auth.data import AuthData, Edition, RBACRequirement, RequestContext
+from controllers.openapi.auth.data import AuthData, RBACRequirement, RequestContext
 from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -115,22 +116,31 @@ def test_path_has_app_id_false():
     assert PATH_HAS_APP_ID(_ctx(path_params={})) is False
 
 
-def test_edition_ce():
-    with patch("controllers.openapi.auth.conditions.current_edition", return_value=Edition.CE):
-        assert EDITION_CE(_ctx()) is True
-        assert EDITION_EE(_ctx()) is False
-        assert EDITION_SAAS(_ctx()) is False
+def test_edition_community():
+    with patch(
+        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    ):
+        assert EDITION_COMMUNITY(_ctx()) is True
+        assert EDITION_ENTERPRISE(_ctx()) is False
+        assert EDITION_CLOUD(_ctx()) is False
 
 
-def test_edition_ee():
-    with patch("controllers.openapi.auth.conditions.current_edition", return_value=Edition.EE):
-        assert EDITION_EE(_ctx()) is True
-        assert EDITION_CE(_ctx()) is False
+def test_edition_enterprise():
+    with patch(
+        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.ENTERPRISE,
+    ):
+        assert EDITION_ENTERPRISE(_ctx()) is True
+        assert EDITION_COMMUNITY(_ctx()) is False
 
 
-def test_edition_saas():
-    with patch("controllers.openapi.auth.conditions.current_edition", return_value=Edition.SAAS):
-        assert EDITION_SAAS(_ctx()) is True
+def test_edition_cloud():
+    with patch(
+        "controllers.openapi.auth.conditions.dify_config.DEPLOYMENT_EDITION",
+        DeploymentEdition.CLOUD,
+    ):
+        assert EDITION_CLOUD(_ctx()) is True
 
 
 def test_webapp_auth_enabled():

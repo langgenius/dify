@@ -1,10 +1,11 @@
 'use client'
 
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type {
   ModelProviderPluginSummaryResponse,
   ModelProviderSummaryResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
+import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
@@ -21,7 +22,7 @@ export type ProviderContextState = {
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
-    type: Plan
+    type: CloudPlan
     usage: UsagePlanInfo
     total: UsagePlanInfo
     reset: UsageResetInfo
@@ -32,17 +33,8 @@ export type ProviderContextState = {
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
-  datasetOperatorEnabled: boolean
   enableEducationPlan: boolean
-  isEducationWorkspace: boolean
   webappCopyrightEnabled: boolean
-  licenseLimit: {
-    workspace_members: {
-      size: number
-      limit: number
-    }
-  }
-  refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
   humanInputEmailDeliveryEnabled: boolean
@@ -64,17 +56,8 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
-  isEducationWorkspace: false,
   webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,

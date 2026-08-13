@@ -10,11 +10,10 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -73,29 +72,29 @@ const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, edita
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
         {editable && !readonly && (
-          <ActionButton
+          <IconButton
+            aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
             onClick={(e) => {
               e.stopPropagation()
               setShowSettingsModal(true)
             }}
           >
-            <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-          </ActionButton>
+            <span
+              aria-hidden="true"
+              className="i-ri-edit-line size-4 shrink-0 text-text-tertiary"
+            />
+          </IconButton>
         )}
         {!readonly && (
-          <ActionButton
+          <IconButton
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+            tone="destructive"
             onClick={() => onRemove(config.id)}
-            state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
-            <RiDeleteBinLine
-              className={cn(
-                'size-4 shrink-0 text-text-tertiary',
-                isDeleting && 'text-text-destructive',
-              )}
-            />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-delete-bin-line size-4 shrink-0" />
+          </IconButton>
         )}
       </div>
       {!!config.indexing_technique && (

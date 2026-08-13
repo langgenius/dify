@@ -1,8 +1,8 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isServer } from '@/utils/client'
 
@@ -18,7 +18,7 @@ type TriggerEventsLimitModalState = TriggerEventsLimitModalContent & {
 }
 
 type TriggerPlanInfo = {
-  type: Plan
+  type: CloudPlan
   usage: { triggerEvents: number }
   total: { triggerEvents: number }
   reset: { triggerEvents?: number | null }
@@ -63,19 +63,19 @@ export const useTriggerEventsLimitModal = ({
     const isUnlimited = total.triggerEvents === NUM_INFINITE
     const reachedLimit = total.triggerEvents > 0 && usage.triggerEvents >= total.triggerEvents
 
-    if (type === Plan.team || isUnlimited || !reachedLimit) {
+    if (type === 'team' || isUnlimited || !reachedLimit) {
       if (triggerEventsLimitModal) setTriggerEventsLimitModal(null)
       return
     }
 
     const triggerResetInDays =
-      type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+      type === 'professional' && total.triggerEvents !== NUM_INFINITE
         ? (reset.triggerEvents ?? undefined)
         : undefined
     const cycleTag = (() => {
       if (typeof reset.triggerEvents === 'number')
         return dayjs().startOf('day').add(reset.triggerEvents, 'day').format('YYYY-MM-DD')
-      if (type === Plan.sandbox) return dayjs().endOf('month').format('YYYY-MM-DD')
+      if (type === 'sandbox') return dayjs().endOf('month').format('YYYY-MM-DD')
       return 'none'
     })()
     const storageKey = `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${type}-${total.triggerEvents}-${cycleTag}`

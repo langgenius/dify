@@ -17,10 +17,6 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -81,7 +77,11 @@ const renderItem = (
   systemFeatures: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['systemFeatures'] = {
     rbac_enabled: true,
   },
-) => renderWithConsoleQuery(<ContinueWorkItem app={app} />, { systemFeatures })
+) =>
+  renderWithConsoleQuery(<ContinueWorkItem app={app} />, {
+    accountProfile: mockConsoleState.userProfile,
+    systemFeatures,
+  })
 
 describe('ContinueWorkItem', () => {
   beforeEach(() => {
@@ -164,14 +164,14 @@ describe('ContinueWorkItem', () => {
     )
   })
 
-  it('should fall back to develop when RBAC is disabled for an access-config-only app', () => {
+  it('should fall back to access point when RBAC is disabled for an access-config-only app', () => {
     renderItem(createApp({ permission_keys: [AppACLPermission.AccessConfig] }), {
       rbac_enabled: false,
     })
 
     expect(screen.getByRole('link', { name: /Continue App/ })).toHaveAttribute(
       'href',
-      '/app/app-1/develop',
+      '/app/app-1/access-point',
     )
   })
 

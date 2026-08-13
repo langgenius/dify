@@ -6,7 +6,6 @@ import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { Plan } from '../../type'
 import Pricing from '../index'
 
 let mockConsoleState: Record<string, unknown> = {}
@@ -63,7 +62,7 @@ describe('Pricing dialog lifecycle', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableEducationPlan: false,
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: buildUsage(),
         total: buildUsage(),
       },

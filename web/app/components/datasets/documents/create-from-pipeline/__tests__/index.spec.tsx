@@ -30,16 +30,6 @@ vi.mock('@/context/provider-context', () => ({
   ) => selector({ plan: mockPlan, enableBilling: true }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-    isLoadingWorkspacePermissionKeys: false,
-  }))
-})
-
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 

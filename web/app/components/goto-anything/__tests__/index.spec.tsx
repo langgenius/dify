@@ -443,6 +443,23 @@ describe('GotoAnything', () => {
       expect(input).toHaveValue('test query')
     })
 
+    it('should show the localized description for the knowledge scope', async () => {
+      const user = userEvent.setup()
+      renderGotoAnything(<GotoAnything />)
+      triggerSearchShortcut()
+      const input = await screen.findByRole('combobox', {
+        name: 'app.gotoAnything.searchTitle',
+      })
+
+      await user.type(input, '@')
+
+      expect(
+        screen.getByRole('option', {
+          name: /@kb app\.gotoAnything\.actions\.searchKnowledgeBasesDesc/,
+        }),
+      ).toBeInTheDocument()
+    })
+
     it('should not search providers with a stale scope prefix', async () => {
       const user = userEvent.setup()
       matchActionMock.mockImplementation((query: string) =>

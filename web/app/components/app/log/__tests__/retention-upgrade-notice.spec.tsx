@@ -1,9 +1,9 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -36,12 +36,12 @@ describe('RetentionUpgradeNotice', () => {
     enableBilling = true,
     isFetchedPlan = true,
     isFetchedPlanInfo = true,
-    planType = Plan.sandbox,
+    planType = 'sandbox',
   }: {
     enableBilling?: boolean
     isFetchedPlan?: boolean
     isFetchedPlanInfo?: boolean
-    planType?: Plan
+    planType?: CloudPlan
   } = {}) {
     mockUseProviderContext.mockReturnValue(
       createMockProviderContextValue({
@@ -89,12 +89,12 @@ describe('RetentionUpgradeNotice', () => {
   it.each([
     {
       name: 'paid Cloud workspaces',
-      provider: { planType: Plan.professional },
+      provider: { planType: 'professional' },
       deploymentEdition: 'CLOUD',
     },
     {
       name: 'self-hosted sandbox workspaces',
-      provider: { planType: Plan.sandbox },
+      provider: { planType: 'sandbox' },
       deploymentEdition: 'COMMUNITY',
     },
     {

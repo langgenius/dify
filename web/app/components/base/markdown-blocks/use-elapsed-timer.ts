@@ -11,9 +11,12 @@ export const useElapsedTimer = (complete: boolean) => {
   const [elapsedTime, setElapsedTime] = useState(0)
   // Latch completion so a transient flip back to "not complete" never restarts the timer.
   const completedRef = useRef(complete)
-  if (complete) completedRef.current = true
-  const isComplete = completedRef.current
+  const isComplete = complete || completedRef.current
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (complete) completedRef.current = true
+  }, [complete])
 
   useEffect(() => {
     if (isComplete) return

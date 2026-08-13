@@ -34,6 +34,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -330,7 +331,7 @@ class IndexingRunner:
         Estimate the indexing for the document.
         """
         # check document limit
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             count = len(extract_settings)
             batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:

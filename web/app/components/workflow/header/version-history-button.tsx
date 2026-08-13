@@ -25,6 +25,8 @@ function PopupContent() {
 
 export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
   const { theme } = useTheme()
+  const { t } = useTranslation()
+  const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 
   useHotkey(
     VERSION_HISTORY_HOTKEY,
@@ -41,13 +43,17 @@ export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
       <TooltipTrigger
         render={
           <Button
+            aria-label={label}
             className={cn(
               'rounded-lg p-2 inset-ring-1 inset-ring-transparent',
               theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
             )}
             onClick={onClick}
           >
-            <span className="i-ri-history-line size-4 text-components-button-secondary-text" />
+            <span
+              aria-hidden
+              className="i-ri-history-line size-4 text-components-button-secondary-text"
+            />
           </Button>
         }
       />
