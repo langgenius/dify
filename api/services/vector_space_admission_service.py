@@ -15,8 +15,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
@@ -248,7 +247,6 @@ class VectorSpaceAdmissionService:
     ) -> None:
         if (
             dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or not dify_config.BILLING_ENABLED
             or dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY
             or workload.total_points == 0
             or workload.probe_text is None

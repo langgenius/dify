@@ -132,12 +132,6 @@ vp test run
 
 If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
-### Example Code
-
-If you are not familiar with writing tests, refer to:
-
-- [index.spec.tsx] - Component test example
-
 ## Documentation
 
 Visit <https://docs.dify.ai> to view the full documentation.
@@ -155,7 +149,6 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/action-button/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
 [web/docs/test.md]: ./docs/test.md

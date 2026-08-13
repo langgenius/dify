@@ -18,6 +18,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ENABLE_AGENT_KNOWLEDGE_RETRIEVAL } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
@@ -164,7 +165,7 @@ export function AgentOrchestratePanel({
                       <AgentSkills />
                       <AgentFiles />
                       <AgentTools />
-                      <AgentKnowledgeRetrieval />
+                      {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
                       <AgentAdvancedSettings />
                     </AgentBuildDraftChangedKeysProvider>
                   </AgentOrchestrateAddActionsProvider>

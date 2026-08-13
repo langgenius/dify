@@ -1,5 +1,6 @@
 import type { SiteInfo } from '@/models/share'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
@@ -40,12 +41,7 @@ const baseProps = {
   className: 'custom-modal',
 }
 
-const getCopyButton = () => {
-  const buttons = screen.getAllByRole('button')
-  const actionButton = buttons.find((button) => button.className.includes('action-btn'))
-  expect(actionButton).toBeDefined()
-  return actionButton!
-}
+const getCopyButton = () => screen.getByRole('button', { name: /copy/i })
 
 describe('Embedded', () => {
   beforeAll(() => {
@@ -75,6 +71,8 @@ describe('Embedded', () => {
   })
 
   it('copies iframe snippet', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
@@ -88,11 +86,8 @@ describe('Embedded', () => {
       ).toBeInTheDocument()
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
@@ -192,6 +187,8 @@ describe('Embedded', () => {
   })
 
   it('copies script content when scripts option is selected', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
@@ -207,11 +204,8 @@ describe('Embedded', () => {
       expect(codeBlock?.textContent ?? '').toContain('background-color: #000000')
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining("token: 'token'"))
@@ -219,6 +213,8 @@ describe('Embedded', () => {
   })
 
   it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {
+    const user = userEvent.setup()
+
     await act(async () => {
       render(<Embedded {...baseProps} />)
     })
@@ -233,11 +229,8 @@ describe('Embedded', () => {
       expect(codeBlock?.textContent ?? '').toContain('ChatBot URL:')
     })
 
-    const actionButton = getCopyButton()
-    const innerDiv = actionButton.querySelector('div')
-    await act(async () => {
-      fireEvent.click(innerDiv ?? actionButton)
-    })
+    const copyButton = getCopyButton()
+    await user.click(copyButton)
 
     await waitFor(() => {
       expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))

@@ -26,6 +26,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -43,7 +44,6 @@ import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
-import ActionButton from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
@@ -475,13 +475,13 @@ function DetailPanel({ appDetail, detail, onClose, onFeedback }: IDetailPanel) {
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton
-          size="l"
+        <IconButton
+          size="lg"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onClose}
         >
           <RiCloseLine className="size-4 text-text-tertiary" />
-        </ActionButton>
+        </IconButton>
       </div>
       {/* Panel Body */}
       <div className="shrink-0 px-1 pt-1">

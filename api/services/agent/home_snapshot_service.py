@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from dify_agent.client import Client, DifyAgentNotFoundError
 from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
@@ -25,8 +23,6 @@ from models.agent import (
 )
 from services.agent.errors import AgentBuildSandboxNotFoundError
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
-
-logger = logging.getLogger(__name__)
 
 
 class AgentHomeSnapshotUnavailableError(RuntimeError):
@@ -122,16 +118,6 @@ class AgentHomeSnapshotService:
 
     @classmethod
     def collect_retired_home_snapshot(cls, *, tenant_id: str, home_snapshot_id: str) -> None:
-        try:
-            cls._collect_retired_home_snapshot(tenant_id=tenant_id, home_snapshot_id=home_snapshot_id)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Home Snapshot",
-                extra={"tenant_id": tenant_id, "home_snapshot_id": home_snapshot_id},
-            )
-
-    @classmethod
-    def _collect_retired_home_snapshot(cls, *, tenant_id: str, home_snapshot_id: str) -> None:
         with session_factory.create_session() as session:
             snapshot = session.scalar(
                 select(AgentHomeSnapshot).where(
@@ -150,14 +136,7 @@ class AgentHomeSnapshotService:
             if referenced is not None:
                 return
             snapshot_ref = snapshot.snapshot_ref
-        try:
-            cls.delete(snapshot_ref=snapshot_ref)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Home Snapshot",
-                extra={"tenant_id": tenant_id, "home_snapshot_id": home_snapshot_id},
-            )
-            return
+        cls.delete(snapshot_ref=snapshot_ref)
         with session_factory.create_session() as session:
             snapshot = session.scalar(
                 select(AgentHomeSnapshot).where(

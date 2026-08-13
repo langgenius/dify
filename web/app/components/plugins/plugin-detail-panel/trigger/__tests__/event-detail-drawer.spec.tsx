@@ -1,6 +1,7 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { EventDetailDrawer } from '../event-detail-drawer'
 
@@ -188,7 +189,9 @@ describe('EventDetailDrawer', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when close button clicked', () => {
+    it('should call onClose when close button clicked', async () => {
+      const user = userEvent.setup()
+
       render(
         <EventDetailDrawer
           eventInfo={mockEventInfo}
@@ -197,11 +200,7 @@ describe('EventDetailDrawer', () => {
         />,
       )
 
-      // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen
-        .getAllByRole('button')
-        .find((btn) => btn.classList.contains('action-btn'))
-      if (closeButton) fireEvent.click(closeButton)
+      await user.click(screen.getByRole('button', { name: /operation\.close|close/i }))
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })

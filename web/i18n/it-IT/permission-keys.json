@@ -4,6 +4,7 @@
   "app.access_config": "Configura i permessi di accesso all'app",
   "app.acl.access_config": "Configura i permessi di accesso all'app",
   "app.acl.delete": "Elimina app",
+  "app.acl.deploy": "Distribuisci app",
   "app.acl.edit": "Modifica e orchestra l'app",
   "app.acl.import_export_dsl": "Importa / esporta DSL",
   "app.acl.log_and_annotation": "Accedi a log e annotazioni",

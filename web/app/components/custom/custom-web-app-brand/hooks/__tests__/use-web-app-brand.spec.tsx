@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
@@ -6,8 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
-import { initialLangGeniusVersionInfo } from '@/context/app-context-defaults'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
@@ -100,13 +99,6 @@ vi.mock('@/service/client', async (importOriginal) => {
     consoleQuery,
   }
 })
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    ...consoleStateRef.value,
-    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -121,14 +113,6 @@ vi.mock('@/context/permission-state', async () => {
     refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
   }))
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    ...consoleStateRef.value,
-    refreshCurrentWorkspace: consoleStateRef.value?.refreshCurrentWorkspace,
-  }))
-})
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
@@ -152,10 +136,10 @@ const testUserProfile = {
 
 const createProviderContext = ({
   enableBilling = false,
-  planType = Plan.professional,
+  planType = 'professional',
 }: {
   enableBilling?: boolean
-  planType?: Plan
+  planType?: CloudPlan
 } = {}) => {
   return createMockProviderContextValue({
     enableBilling,
@@ -169,14 +153,12 @@ const createProviderContext = ({
 const createConsoleState = (overrides: Partial<ConsoleStateFixture> = {}): ConsoleStateFixture => {
   return {
     userProfile: testUserProfile,
-    refreshUserProfile: vi.fn(),
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
     isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
     workspacePermissionKeys: ['customization.manage'],
     refreshCurrentWorkspace: vi.fn(),
-    langGeniusVersionInfo: initialLangGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     ...overrides,
   }
@@ -249,7 +231,7 @@ describe('useWebAppBrand', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.sandbox,
+          planType: 'sandbox',
         }),
       )
       customConfig = { ...customConfig, remove_webapp_brand: true }

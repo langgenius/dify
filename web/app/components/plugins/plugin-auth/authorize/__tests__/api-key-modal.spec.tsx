@@ -6,7 +6,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AuthCategory } from '../../types'
 
 const { mockToast } = vi.hoisted(() => {
@@ -32,10 +32,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({ userProfile: {} }))
-})
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const defaultCredentialSchemas = [

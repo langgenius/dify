@@ -2,11 +2,11 @@
 
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import CommentPreview from './comment-preview'
 
 type CommentIconProps = {
@@ -20,7 +20,10 @@ export const CommentIcon: FC<CommentIconProps> = memo(
   ({ comment, onClick, isActive = false, onPositionUpdate }) => {
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
     const viewport = useViewport()
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const isAuthor = comment.created_by_account?.id === currentUserId
     const [showPreview, setShowPreview] = useState(false)
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)

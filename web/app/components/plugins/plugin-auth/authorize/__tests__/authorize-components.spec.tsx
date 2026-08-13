@@ -1,22 +1,12 @@
 import type { PluginPayload } from '../../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { AuthCategory } from '../../types'
 
-const createWrapper = () =>
-  createQueryClientWrapper(
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          gcTime: 0,
-        },
-      },
-    }),
-  )
+const createWrapper = () => createQueryClientWrapper(createAccountProfileQueryClient())
 
 // Mock API hooks - these make network requests so must be mocked
 const mockGetPluginOAuthUrl = vi.fn()
@@ -111,10 +101,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({ userProfile: {} }))
-})
 // Factory function for creating test PluginPayload
 const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayload => ({
   category: AuthCategory.tool,

@@ -66,7 +66,7 @@ export default function CheckCode() {
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(loginRedirect.appCode, access_token)
+        setWebAppPassport(loginRedirect.address, access_token)
         replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       }
     } catch (error) {
