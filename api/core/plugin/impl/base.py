@@ -287,8 +287,8 @@ class BasePluginClient:
         if rep.code != 0:
             try:
                 error = PluginDaemonError.model_validate(json.loads(rep.message))
-            except Exception:
-                raise ValueError(f"{rep.message}, code: {rep.code}")
+            except Exception as e:
+                raise ValueError(f"{rep.message}, code: {rep.code}") from e
 
             self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
@@ -328,8 +328,8 @@ class BasePluginClient:
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError.model_validate(json.loads(rep.message))
-                    except Exception:
-                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+                    except Exception as e:
+                        raise PluginDaemonInnerError(code=rep.code, message=rep.message) from e
 
                     logger.error("Error in stream response for plugin %s", rep.__dict__)
                     self._handle_plugin_daemon_error(error.error_type, error.message)
