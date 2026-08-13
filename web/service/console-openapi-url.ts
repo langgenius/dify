@@ -15,7 +15,7 @@ const repeatedQueryArrayRules: readonly QueryArrayCompatibilityRule[] = [
   { path: /\/datasets$/, fields: ['ids', 'tag_ids'] },
   { path: /\/datasets\/[^/]+\/documents\/[^/]+\/segment\/[^/]+$/, fields: ['segment_id'] },
   { path: /\/datasets\/[^/]+\/documents\/[^/]+\/segments$/, fields: ['segment_id', 'status'] },
-  { path: /\/knowledge-fs\/spaces$/, fields: ['creator_ids'] },
+  { path: /\/knowledge-fs\/spaces$/, fields: ['creator_ids', 'tag_ids'] },
   { path: /\/trial-apps\/[^/]+\/datasets$/, fields: ['ids'] },
   { path: /\/workspaces\/current\/customized-snippets$/, fields: ['tag_ids', 'creators'] },
   { path: /\/workspaces\/current\/plugin\/[^/]+\/list$/, fields: ['tags'] },

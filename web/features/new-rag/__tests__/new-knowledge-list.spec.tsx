@@ -18,6 +18,7 @@ type KnowledgeSpaceList = {
     revision: number
     slug: string
     tenantId: string
+    tags?: Array<{ id: string; name: string }>
     updatedAt: string
     documentCount?: number
   }>
@@ -33,6 +34,7 @@ type ListKnowledgeSpacesInfiniteOptions = {
       limit: number
       page: number
       query?: string
+      tag_ids?: string[]
     }
   }
 }
@@ -57,6 +59,7 @@ const knowledgeSpaceApiResponse = vi.hoisted(
     permission_keys: space.permissionKeys ?? ['knowledge_space_read'],
     resource_version: space.revision,
     state: 'active',
+    tags: space.tags?.map((tag) => ({ ...tag, type: 'knowledge' as const })),
     technical_status: 'available',
     technical_summary: {
       description: space.description ?? null,
@@ -213,6 +216,35 @@ vi.mock('@/features/system-features/state', () => ({
   knowledgeFsUploadEnabledAtom: systemFeaturesStateMock.knowledgeFsUploadEnabledAtom,
 }))
 
+vi.mock('@/features/tag-management/components/tag-filter', () => ({
+  TagFilter: ({ onChange, value }: { onChange: (value: string[]) => void; value: string[] }) => (
+    <button
+      type="button"
+      aria-label="dataset.newKnowledge.tags"
+      onClick={() => onChange(value.length ? [] : ['tag-1', 'tag-2'])}
+    >
+      dataset.newKnowledge.tags
+    </button>
+  ),
+}))
+
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: () => null,
+}))
+
+vi.mock('../components/knowledge-space-card-tags', () => ({
+  KnowledgeSpaceCardTags: ({
+    knowledgeSpace,
+  }: {
+    knowledgeSpace: { tags?: Array<{ id: string; name: string }> }
+  }) => (
+    <div>
+      <span>dataset.newKnowledge.tags</span>
+      {knowledgeSpace.tags?.map((tag) => tag.name).join(', ')}
+    </div>
+  ),
+}))
+
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({}),
 }))
@@ -308,6 +340,10 @@ describe('NewKnowledgeList', () => {
         name: 'Support knowledge',
         revision: 1,
         slug: 'support-knowledge',
+        tags: [
+          { id: 'tag-1', name: 'Customer support' },
+          { id: 'tag-2', name: 'Public docs' },
+        ],
         tenantId: 'tenant-1',
         updatedAt: '2026-07-18T00:00:00Z',
       },
@@ -327,6 +363,8 @@ describe('NewKnowledgeList', () => {
     const supportCard = within(list).getByRole('link', {
       name: 'Support knowledge',
     })
+    const supportCardItem = supportCard.closest('li')
+    expect(supportCardItem).not.toBeNull()
     expect(supportCard).toHaveAttribute('href', '/datasets/new/space-1')
     expect(supportCard).toBeInTheDocument()
     expect(
@@ -339,7 +377,8 @@ describe('NewKnowledgeList', () => {
     expect(within(supportCard).getByLabelText('camera')).toBeInTheDocument()
     expect(within(list).getAllByText('dataset.newKnowledge.cardType')).toHaveLength(2)
     expect(within(list).getAllByText('dataset.newKnowledge.tags')).toHaveLength(2)
-    expect(within(supportCard).getByText('12')).toBeInTheDocument()
+    expect(within(list).getByText('Customer support, Public docs')).toBeInTheDocument()
+    expect(within(supportCardItem!).getByText('12')).toBeInTheDocument()
     expect(supportCard).toHaveAccessibleDescription('dataset.newKnowledge.overview.linkedApps: 0')
     expect(
       within(list).getByRole('link', { name: 'Engineering handbook' }),
@@ -453,7 +492,7 @@ describe('NewKnowledgeList', () => {
     expect(toastMock.success).toHaveBeenCalledWith('dataset.datasetDeleted')
   })
 
-  it('keeps backend-dependent metadata filters interactive and sends search to the collection API', async () => {
+  it('syncs tag filters to the URL and collection API while keeping search interactive', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -493,18 +532,41 @@ describe('NewKnowledgeList', () => {
     expect(tags).toBeEnabled()
     expect(creators).toBeEnabled()
     await user.click(tags)
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('tag_ids')).toBe('tag-1;tag-2')
+    })
+    let options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1)).toEqual({
+      query: { limit: 30, page: 1, tag_ids: ['tag-1', 'tag-2'] },
+    })
+    await user.click(tags)
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('tag_ids')).toBe(false)
+    })
     expect(search).toBeEnabled()
     expect(create).toHaveAttribute('href', '/datasets/new/create')
 
     await user.type(search, 'customer support')
     await waitFor(() => {
-      const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+      options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
       expect(options?.input(1)).toEqual({
         query: { limit: 30, page: 1, query: 'customer support' },
       })
     })
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('query')).toBe('customer support')
+  })
+
+  it('restores tag filters from the URL and sends match-any IDs to the collection API', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
+      searchParams: '?tag_ids=tag-1%3Btag-2',
+    })
+
+    const options = consoleQueryMock.infiniteOptions.mock.calls.at(-1)?.[0]
+    expect(options?.input(1)).toEqual({
+      query: { limit: 30, page: 1, tag_ids: ['tag-1', 'tag-2'] },
+    })
   })
 
   it('restores server search from the URL and shows its empty state', async () => {

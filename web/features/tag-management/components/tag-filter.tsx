@@ -139,6 +139,7 @@ export const TagFilter = ({
             type={type}
             inputValue={inputValue}
             onInputValueChange={setInputValue}
+            canBindOrUnbindTags
             onOpenTagManagement={onOpenTagManagement}
             onClose={() => setOpen(false)}
           />

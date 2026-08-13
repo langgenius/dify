@@ -550,6 +550,13 @@ export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
 })
 
 /**
+ * KnowledgeFSSpaceTagsReplacePayload
+ */
+export const zKnowledgeFsSpaceTagsReplacePayload = z.object({
+  tag_ids: z.array(z.string()).max(100).optional(),
+})
+
+/**
  * KnowledgeFSUploadSessionCreatePayload
  */
 export const zKnowledgeFsUploadSessionCreatePayload = z.object({
@@ -865,34 +872,6 @@ export const zKnowledgeFsSpaceDetailResponse = z.object({
   technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
   updated_at: z.iso.datetime(),
   visibility: zKnowledgeFsControlSpaceVisibility,
-})
-
-/**
- * KnowledgeFSSpaceListItemResponse
- */
-export const zKnowledgeFsSpaceListItemResponse = z.object({
-  control_space_id: z.string(),
-  created_at: z.iso.datetime(),
-  knowledge_space_id: z.string().nullable(),
-  linked_apps: z.int().gte(0),
-  owner_account_id: z.string(),
-  permission_keys: z.array(zKnowledgeFsProductPermission),
-  resource_version: z.int(),
-  state: zKnowledgeFsControlSpaceState,
-  technical_status: z.enum(['available', 'not_ready', 'unavailable']),
-  technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
-  updated_at: z.iso.datetime(),
-  visibility: zKnowledgeFsControlSpaceVisibility,
-})
-
-/**
- * KnowledgeFSSpaceListResponse
- */
-export const zKnowledgeFsSpaceListResponse = z.object({
-  data: z.array(zKnowledgeFsSpaceListItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
 })
 
 /**
@@ -1998,6 +1977,51 @@ export const zKnowledgeFsSourceImportFilesPayload = z.object({
 })
 
 /**
+ * KnowledgeFSSpaceTagResponse
+ */
+export const zKnowledgeFsSpaceTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.literal('knowledge').optional().default('knowledge'),
+})
+
+/**
+ * KnowledgeFSSpaceTagListResponse
+ */
+export const zKnowledgeFsSpaceTagListResponse = z.object({
+  data: z.array(zKnowledgeFsSpaceTagResponse),
+})
+
+/**
+ * KnowledgeFSSpaceListItemResponse
+ */
+export const zKnowledgeFsSpaceListItemResponse = z.object({
+  control_space_id: z.string(),
+  created_at: z.iso.datetime(),
+  knowledge_space_id: z.string().nullable(),
+  linked_apps: z.int().gte(0),
+  owner_account_id: z.string(),
+  permission_keys: z.array(zKnowledgeFsProductPermission),
+  resource_version: z.int(),
+  state: zKnowledgeFsControlSpaceState,
+  tags: z.array(zKnowledgeFsSpaceTagResponse).optional(),
+  technical_status: z.enum(['available', 'not_ready', 'unavailable']),
+  technical_summary: zKnowledgeFsTechnicalSummary.nullish(),
+  updated_at: z.iso.datetime(),
+  visibility: zKnowledgeFsControlSpaceVisibility,
+})
+
+/**
+ * KnowledgeFSSpaceListResponse
+ */
+export const zKnowledgeFsSpaceListResponse = z.object({
+  data: z.array(zKnowledgeFsSpaceListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * KnowledgeFSAnswerTraceStepResponse
  */
 export const zKnowledgeFsAnswerTraceStepResponse = z.object({
@@ -2837,6 +2861,7 @@ export const zGetKnowledgeFsSpacesQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
   query: z.string().max(255).optional(),
+  tag_ids: z.array(z.string().min(1).max(255)).max(100).optional(),
 })
 
 /**
@@ -4181,6 +4206,26 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImpo
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
   zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS space tags
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdTagsBody = zKnowledgeFsSpaceTagsReplacePayload
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdTagsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFS space tags replaced
+ */
+export const zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse = zKnowledgeFsSpaceTagListResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
   control_space_id: z.string(),
