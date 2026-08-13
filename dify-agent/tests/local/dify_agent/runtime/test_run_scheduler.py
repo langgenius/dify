@@ -57,7 +57,6 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
             ),
         ),
     ]

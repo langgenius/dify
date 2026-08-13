@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Вузли",
   "agentDetail.access.workflow.table.version": "Версія",
   "agentDetail.access.workflow.title": "Доступ до робочого процесу",
-  "agentDetail.configure.advancedSettings.description": "Для досвідчених користувачів. Змінні середовища, пісочниця та пам'ять.",
+  "agentDetail.configure.advancedSettings.description": "Для досвідчених користувачів, наприклад змінні середовища.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Додати змінну середовища",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Видалити {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Сховати значення {{key}}",

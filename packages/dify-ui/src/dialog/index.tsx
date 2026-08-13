@@ -3,6 +3,7 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button/variants'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
 const Dialog = BaseDialog.Root
@@ -66,11 +67,12 @@ function DialogCloseButton({
       aria-label={ariaLabel}
       {...props}
       className={cn(
-        'absolute inset-e-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        iconButtonVariants({ size: 'sm' }),
+        'absolute inset-e-6 top-6 z-10 rounded-2xl disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >
-      <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+      <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
     </BaseDialog.Close>
   )
 }

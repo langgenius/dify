@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "节点",
   "agentDetail.access.workflow.table.version": "版本",
   "agentDetail.access.workflow.title": "工作流访问",
-  "agentDetail.configure.advancedSettings.description": "面向高级用户。环境变量、沙箱与记忆。",
+  "agentDetail.configure.advancedSettings.description": "面向高级用户，如环境变量。",
   "agentDetail.configure.advancedSettings.envEditor.add": "添加环境变量",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "删除 {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "隐藏 {{key}} 的值",

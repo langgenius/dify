@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Nœuds",
   "agentDetail.access.workflow.table.version": "Version",
   "agentDetail.access.workflow.title": "Accès par workflow",
-  "agentDetail.configure.advancedSettings.description": "Pour les utilisateurs avancés. Variables d’environnement, sandbox et mémoire.",
+  "agentDetail.configure.advancedSettings.description": "Pour les utilisateurs avancés, par exemple les variables d’environnement.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Ajouter une variable d’environnement",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Supprimer {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Masquer la valeur de {{key}}",

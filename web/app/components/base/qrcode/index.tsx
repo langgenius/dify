@@ -1,10 +1,10 @@
 'use client'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { downloadUrl } from '@/utils/download'
 
 type Props = Readonly<{
@@ -52,9 +52,9 @@ const ShareQRCode = ({ content }: Props) => {
       <div className="relative size-6">
         <TooltipTrigger
           render={
-            <ActionButton aria-label={safeTooltipText} onClick={toggleQRCode}>
+            <IconButton aria-label={safeTooltipText} onClick={toggleQRCode}>
               <span className="i-ri-qr-code-line size-4" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
           }
         />
         {isShow && (
