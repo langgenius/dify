@@ -21,7 +21,6 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
-import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -41,7 +40,6 @@ type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
   onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
-  shouldUpdateDocumentTitle?: boolean
 }
 
 const headerDescriptionDocPaths = {
@@ -113,17 +111,10 @@ function ToolsDisclosureIcon({ className }: { className?: string }) {
   )
 }
 
-function IntegrationDocumentTitle({ title }: { title: string }) {
-  useDocumentTitle(title)
-
-  return null
-}
-
 export default function IntegrationsPage({
   onSectionChange,
   onSwitchToMarketplace,
   section: routeSection,
-  shouldUpdateDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -156,7 +147,6 @@ export default function IntegrationsPage({
   } = useIntegrationNav(section)
   const integrationsTitle = t(($) => $['mainNav.integrations'], { ns: 'common' })
   const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
-  const documentTitle = `${sectionTitle} · ${integrationsTitle}`
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   useEffect(() => {
@@ -251,7 +241,6 @@ export default function IntegrationsPage({
       className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg"
       style={sidebarWidthStyle}
     >
-      {shouldUpdateDocumentTitle && <IntegrationDocumentTitle title={documentTitle} />}
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',

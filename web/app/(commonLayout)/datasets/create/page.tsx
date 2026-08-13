@@ -1,16 +1,12 @@
-'use client'
-
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+/* oxlint-disable react/only-export-components -- Next.js requires metadata and page exports in the route file. */
 import DatasetUpdateForm from '@/app/components/datasets/create'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { getRouteMetadata } from '@/app/route-metadata'
+
+export function generateMetadata() {
+  return getRouteMetadata('common', ($) => $['stepByStepTour.guides.knowledge.empty.create.title'])
+}
 
 const DatasetCreation = () => {
-  const { t } = useTranslation()
-  useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.create.title'], { ns: 'common' }),
-  )
-
   return <DatasetUpdateForm />
 }
 

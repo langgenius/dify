@@ -1,12 +1,11 @@
-'use client'
-
-import { useTranslation } from 'react-i18next'
+/* oxlint-disable react/only-export-components -- Next.js requires metadata and page exports in the route file. */
+import { getRouteMetadata } from '@/app/route-metadata'
 import { CreateKnowledgePage } from '@/features/new-rag/create-knowledge-page'
-import useDocumentTitle from '@/hooks/use-document-title'
+
+export function generateMetadata() {
+  return getRouteMetadata('dataset', ($) => $['newKnowledge.createTitle'])
+}
 
 export default function Page() {
-  const { t } = useTranslation('dataset')
-  useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
-
   return <CreateKnowledgePage />
 }

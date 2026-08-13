@@ -117,13 +117,19 @@ export default function InviteSettingsPage() {
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
   const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
+  const workspaceInvitationTitle = checkRes?.data?.workspace_name
+    ? t(($) => $.joinWorkspace, {
+        ns: 'login',
+        workspaceName: checkRes.data.workspace_name,
+      })
+    : setupAccountTitle
   const documentTitle = !checkRes
     ? setupAccountTitle
     : !checkRes.is_valid
       ? t(($) => $.invalid, { ns: 'login' })
       : requiresAccountSetup || !checkRes.data?.workspace_name
         ? setupAccountTitle
-        : `${t(($) => $.join, { ns: 'login' })}${checkRes.data.workspace_name}`
+        : workspaceInvitationTitle
   useDocumentTitle(documentTitle)
 
   useEffect(() => {
@@ -208,7 +214,7 @@ export default function InviteSettingsPage() {
         <h1 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
             ? t(($) => $.setYourAccount, { ns: 'login' })
-            : `${t(($) => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
+            : workspaceInvitationTitle}
         </h1>
       </div>
       <form onSubmit={noop}>
@@ -294,7 +300,7 @@ export default function InviteSettingsPage() {
             loading={isActivating}
             disabled={isActivating}
           >
-            {`${t(($) => $.join, { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {workspaceInvitationTitle}
           </Button>
         </div>
       </form>

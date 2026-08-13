@@ -96,7 +96,6 @@ describe('Signup Set Password Page', () => {
     renderWithQueryClient(<ChangePasswordForm />)
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(document.title).toBe('login.changePassword - Dify')
   })
 
   describe('Registration payload', () => {

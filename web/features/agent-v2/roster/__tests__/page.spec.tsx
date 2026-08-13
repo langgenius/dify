@@ -1,12 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import useDocumentTitle from '@/hooks/use-document-title'
 import RosterPage from '../page'
-
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => path,
@@ -64,10 +57,9 @@ describe('RosterPage', () => {
     vi.clearAllMocks()
   })
 
-  it('uses the localized roster title for the page and document', () => {
+  it('uses the localized roster title for the page heading', () => {
     render(<RosterPage />)
 
     expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toBeInTheDocument()
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('agentV2.roster.title')
   })
 })

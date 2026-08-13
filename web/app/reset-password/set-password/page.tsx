@@ -14,7 +14,6 @@ import { changePasswordWithToken } from '@/service/common'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $.changePassword, { ns: 'login' }))
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
@@ -24,6 +23,7 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  useDocumentTitle(showSuccess ? t(($) => $.passwordChangedTip, { ns: 'login' }) : null)
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)

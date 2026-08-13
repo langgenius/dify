@@ -1,16 +1,12 @@
-'use client'
-
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+/* oxlint-disable react/only-export-components -- Next.js requires metadata and page exports in the route file. */
 import ExternalKnowledgeBaseConnector from '@/app/components/datasets/external-knowledge-base/connector'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { getRouteMetadata } from '@/app/route-metadata'
+
+export function generateMetadata() {
+  return getRouteMetadata('common', ($) => $['stepByStepTour.guides.knowledge.empty.connect.title'])
+}
 
 const ExternalKnowledgeBaseCreation = () => {
-  const { t } = useTranslation()
-  useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'common' }),
-  )
-
   return <ExternalKnowledgeBaseConnector />
 }
 

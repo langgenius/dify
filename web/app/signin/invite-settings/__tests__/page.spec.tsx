@@ -9,6 +9,18 @@ import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
 
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'login.joinWorkspace': 'Rejoindre {{workspaceName}}',
+    }),
+  }
+})
+
 vi.mock('@tanstack/react-query', async () => {
   const actual =
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
@@ -139,7 +151,7 @@ describe('InviteSettingsPage', () => {
 
     render(<InviteSettingsPage />)
 
-    expect(document.title).toBe('login.joinAcme - Acme AI')
+    expect(document.title).toBe('Rejoindre Acme - Acme AI')
   })
 
   describe('Activation payload', () => {
@@ -149,7 +161,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -172,7 +184,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -205,7 +217,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -234,7 +246,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -266,7 +278,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -295,7 +307,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/')
@@ -321,7 +333,7 @@ describe('InviteSettingsPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/signin?invite_token=invite-token')
       })
-      expect(screen.queryByRole('button', { name: 'login.join Acme' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Rejoindre Acme' })).not.toBeInTheDocument()
       expect(mockActivateMember).not.toHaveBeenCalled()
     })
 
@@ -339,7 +351,7 @@ describe('InviteSettingsPage', () => {
 
       render(<InviteSettingsPage />)
 
-      expect(screen.getByRole('button', { name: 'login.join Acme' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Rejoindre Acme' })).toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
     })
   })

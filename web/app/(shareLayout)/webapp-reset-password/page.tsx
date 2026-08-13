@@ -9,14 +9,12 @@ import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
-import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $.resetPassword, { ns: 'login' }))
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')

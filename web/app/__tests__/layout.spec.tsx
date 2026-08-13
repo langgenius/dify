@@ -1,6 +1,4 @@
-import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
-import { isValidElement } from 'react'
 
 let queryClient: QueryClient
 
@@ -35,20 +33,6 @@ vi.mock('@/next/headers', () => ({
   headers: async () => mocks.requestHeaders,
 }))
 
-function findDocumentTitle(node: ReactNode): string | undefined {
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const title = findDocumentTitle(child)
-      if (title !== undefined) return title
-    }
-    return undefined
-  }
-  if (!isValidElement<{ children?: ReactNode }>(node)) return undefined
-  if (node.type === 'title') return String(node.props.children)
-
-  return findDocumentTitle(node.props.children)
-}
-
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,9 +47,15 @@ describe('Root layout System Features bootstrap', () => {
       },
       deployment_edition: 'CLOUD',
     })
-    const { default: RootLayout } = await import('../layout')
+    const { default: RootLayout, generateMetadata } = await import('../layout')
 
-    const layout = await RootLayout({ children: <div>App</div> })
+    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
+    await expect(generateMetadata()).resolves.toMatchObject({
+      title: {
+        default: 'Acme AI',
+        template: '%s - Acme AI',
+      },
+    })
 
     expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
     expect(queryClient.getQueryData(['console', 'system-features'])).toEqual({
@@ -75,16 +65,20 @@ describe('Root layout System Features bootstrap', () => {
       },
       deployment_edition: 'CLOUD',
     })
-    expect(findDocumentTitle(layout)).toBe('Acme AI')
   })
 
   it('renders the client recovery path when the server prefetch fails', async () => {
     mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
-    const { default: RootLayout } = await import('../layout')
+    const { default: RootLayout, generateMetadata } = await import('../layout')
 
-    const layout = await RootLayout({ children: <div>App</div> })
+    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
+    await expect(generateMetadata()).resolves.toMatchObject({
+      title: {
+        default: 'Dify',
+        template: '%s - Dify',
+      },
+    })
 
     expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
-    expect(findDocumentTitle(layout)).toBe('Dify')
   })
 })

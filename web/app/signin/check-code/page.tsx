@@ -14,7 +14,6 @@ import { TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
@@ -26,7 +25,6 @@ import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
-  useDocumentTitle(t(($) => $['checkCode.checkYourEmail'], { ns: 'login' }))
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

@@ -1,4 +1,6 @@
-import type { Viewport } from '@/next'
+import type { ThemeProviderProps } from 'next-themes'
+/* oxlint-disable react/only-export-components -- Next.js requires metadata and layout exports in the route file. */
+import type { Metadata, Viewport } from '@/next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
@@ -14,6 +16,7 @@ import {
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
+import { getApplicationTitle } from '@/utils/document-title'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -29,39 +32,56 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+const ensureSystemFeatures = async () => {
+  const queryClient = getSystemFeaturesQueryClient()
+  const queryOptions = systemFeaturesServerQueryOptions()
+  const queryState = queryClient.getQueryState(queryOptions.queryKey)
+
+  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
+
+  return { queryClient, queryOptions }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { queryClient, queryOptions } = await ensureSystemFeatures()
+  const systemFeatures = queryClient.getQueryData(queryOptions.queryKey)
+  const applicationTitle = getApplicationTitle(systemFeatures?.branding)
+
+  return {
+    title: {
+      default: applicationTitle,
+      template: `%s - ${applicationTitle}`,
+    },
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const queryClient = getSystemFeaturesQueryClient()
-  const systemFeaturesQuery = systemFeaturesServerQueryOptions()
-  const [locale, requestHeaders] = await Promise.all([
+  const [locale, requestHeaders, { queryClient }] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    queryClient.prefetchQuery(systemFeaturesQuery),
+    ensureSystemFeatures(),
   ])
   const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
-  const documentTitle =
-    systemFeatures?.branding.enabled && systemFeatures.branding.application_title
-      ? systemFeatures.branding.application_title
-      : 'Dify'
+  const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
+    attribute: 'data-theme',
+    defaultTheme: 'system',
+    enableSystem: true,
+    disableTransitionOnChange: true,
+  }
+  if (nonce !== undefined) themeProviderProps.nonce = nonce
+
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
-        <title>{documentTitle}</title>
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
         <CloudAnalytics />
         <div className="isolate h-full">
           <JotaiProvider>
-            <ThemeProvider
-              attribute="data-theme"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-              nonce={nonce}
-            >
+            <ThemeProvider {...themeProviderProps}>
               <NuqsAdapter>
                 <TanStackQueryProvider>
                   <HydrationBoundary state={dehydratedState}>

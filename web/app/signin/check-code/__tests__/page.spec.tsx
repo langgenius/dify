@@ -128,7 +128,6 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    document.title = ''
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
       redirect_url: '/apps',
@@ -169,7 +168,6 @@ describe('CheckCode', () => {
     )
 
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(document.title).toBe('login.checkCode.checkYourEmail - Dify')
   })
 
   it.each([

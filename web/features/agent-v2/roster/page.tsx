@@ -14,7 +14,6 @@ import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
 import { RosterToolbar } from './components/roster-toolbar'
@@ -83,8 +82,6 @@ export default function RosterPage() {
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
   const pageTitle = t(($) => $['roster.title'])
-
-  useDocumentTitle(pageTitle)
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">

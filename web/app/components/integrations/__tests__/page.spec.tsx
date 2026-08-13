@@ -369,18 +369,6 @@ describe('IntegrationsPage', () => {
     expect(container.querySelector('aside')).toHaveClass('bg-components-panel-bg')
   })
 
-  it.each([
-    ['provider', 'common.settings.provider'],
-    ['mcp', 'MCP'],
-    ['workflow-tool', 'workflow.common.workflowAsTool'],
-  ] as const)('identifies the %s section in the document title', async (section, title) => {
-    renderIntegrationsPage(undefined, { section, shouldUpdateDocumentTitle: true })
-
-    await waitFor(() => {
-      expect(document.title).toBe(`${title} · common.mainNav.integrations - Dify`)
-    })
-  })
-
   it('does not replace the document title when embedded in a modal', () => {
     document.title = 'Workspace settings - Dify'
 

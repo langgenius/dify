@@ -61,6 +61,7 @@ const completePasswordChange = async () => {
     expect(screen.getByRole('button', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
+  expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
 }
 
 describe('Reset Password Set Password Page', () => {
@@ -74,10 +75,10 @@ describe('Reset Password Set Password Page', () => {
     setSearchParams({ token: 'reset-token' })
   })
 
-  it('uses the password-setting document title', () => {
+  it('leaves the initial title to route metadata', () => {
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith(null)
   })
 
   describe('Post-reset navigation', () => {

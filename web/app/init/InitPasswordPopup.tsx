@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
 import { basePath } from '@/utils/var'
@@ -17,7 +16,6 @@ const InitPasswordPopup = () => {
   const router = useRouter()
 
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $.adminInitPassword, { ns: 'login' }))
 
   const handleValidation = async () => {
     setLoading(true)

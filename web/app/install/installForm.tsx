@@ -13,7 +13,6 @@ import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
-import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -38,7 +37,6 @@ const accountFormSchema = z.object({
 
 const InstallForm = () => {
   const { t, i18n } = useTranslation()
-  useDocumentTitle(t(($) => $.setAdminAccount, { ns: 'login' }))
   const router = useRouter()
   const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)

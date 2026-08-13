@@ -12,7 +12,6 @@ import Input from '@/app/components/base/input'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
@@ -35,7 +34,6 @@ const parseUtmInfo = () => {
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $.changePassword, { ns: 'login' }))
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()

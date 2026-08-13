@@ -1,40 +1,23 @@
-import type { ComponentType } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import ConnectPage from '../connect/page'
-import CreateFromPipelinePage from '../create-from-pipeline/page'
-import CreatePage from '../create/page'
-import CreateKnowledgePage from '../new/create/page'
+import { describe, expect, it, vi } from 'vitest'
+import { generateMetadata as generateConnectMetadata } from '../connect/page'
+import { generateMetadata as generatePipelineMetadata } from '../create-from-pipeline/page'
+import { generateMetadata as generateCreateMetadata } from '../create/page'
+import { generateMetadata as generateNewKnowledgeMetadata } from '../new/create/page'
 
-vi.mock('@/app/components/datasets/external-knowledge-base/connector', () => ({
-  default: () => <div />,
-}))
+vi.mock('server-only', () => ({}))
 
-vi.mock('@/app/components/datasets/create', () => ({
-  default: () => <div />,
-}))
-
-vi.mock('@/app/components/datasets/create-from-pipeline', () => ({
-  default: () => <div />,
-}))
-
-vi.mock('@/features/new-rag/create-knowledge-page', () => ({
-  CreateKnowledgePage: () => <div />,
+vi.mock('@/i18n-config/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n-config/server')>()),
+  getLocaleOnServer: async () => 'en-US',
 }))
 
 describe('dataset creation document titles', () => {
-  beforeEach(() => {
-    document.title = ''
-  })
-
-  it.each<[ComponentType, string]>([
-    [ConnectPage, 'common.stepByStepTour.guides.knowledge.empty.connect.title - Dify'],
-    [CreatePage, 'common.stepByStepTour.guides.knowledge.empty.create.title - Dify'],
-    [CreateFromPipelinePage, 'common.stepByStepTour.guides.knowledge.empty.pipeline.title - Dify'],
-    [CreateKnowledgePage, 'dataset.newKnowledge.createTitle - Dify'],
-  ])('sets a semantic title for the route', (Page, expectedTitle) => {
-    renderWithConsoleQuery(<Page />)
-
-    expect(document.title).toBe(expectedTitle)
+  it.each([
+    [generateConnectMetadata, 'Connect to an external knowledge base'],
+    [generateCreateMetadata, 'Create a ready-to-use knowledge base'],
+    [generatePipelineMetadata, 'Build a custom knowledge base'],
+    [generateNewKnowledgeMetadata, 'Create Knowledge'],
+  ])('provides localized route metadata', async (generateMetadata, expectedTitle) => {
+    await expect(generateMetadata()).resolves.toMatchObject({ title: expectedTitle })
   })
 })

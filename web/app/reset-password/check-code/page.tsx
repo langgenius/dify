@@ -7,13 +7,11 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['checkCode.checkYourEmail'], { ns: 'login' }))
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)

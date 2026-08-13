@@ -2,9 +2,7 @@
 import type { AppData } from '@/models/share'
 import type { TryAppInfo } from '@/service/try-app'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
 import { FileUploadContext } from '@/app/components/base/file-uploader/upload-context'
-import useDocumentTitle from '@/hooks/use-document-title'
 import Chat from './chat'
 import TextGeneration from './text-generation'
 
@@ -14,12 +12,10 @@ type Props = Readonly<{
 }>
 
 function TryApp({ appId, appDetail }: Props) {
-  const { t } = useTranslation()
   const mode = appDetail?.mode
   const isChat = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
   const isCompletion = !isChat
 
-  useDocumentTitle(appDetail?.site?.title || t(($) => $.explore, { ns: 'login' }))
   return (
     <FileUploadContext
       value={{
