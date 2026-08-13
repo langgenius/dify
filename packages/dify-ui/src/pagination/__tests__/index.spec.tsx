@@ -243,14 +243,14 @@ describe('Pagination primitive', () => {
     expect(onPageChange).not.toHaveBeenCalled()
   })
 
-  it('uses segmented control semantics for page size', async () => {
+  it('uses required single-choice semantics for page size', async () => {
     const { screen, onPageSizeChange } = await renderPagination()
 
     await expect
-      .element(screen.getByRole('button', { name: '25' }))
-      .toHaveAttribute('aria-pressed', 'true')
+      .element(screen.getByRole('radio', { name: '25' }))
+      .toHaveAttribute('aria-checked', 'true')
 
-    await screen.getByRole('button', { name: '50' }).click()
+    await screen.getByRole('radio', { name: '50' }).click()
 
     expect(onPageSizeChange).toHaveBeenCalledWith(50)
   })
@@ -273,7 +273,9 @@ describe('Pagination primitive', () => {
     await expect
       .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 10' }))
       .toBeInTheDocument()
-    await expect.element(screen.getByRole('group', { name: 'Items per page' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('radiogroup', { name: 'Items per page' }))
+      .toBeInTheDocument()
   })
 
   it('uses a localized action label for editing the page number', async () => {

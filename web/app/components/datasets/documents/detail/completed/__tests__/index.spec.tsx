@@ -523,8 +523,10 @@ describe('Completed Component', () => {
     it('should expose page-size controls', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('group', { name: 'common.pagination.perPage' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: '10' })).toHaveAttribute('aria-pressed', 'true')
+      expect(
+        screen.getByRole('radiogroup', { name: 'common.pagination.perPage' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 
