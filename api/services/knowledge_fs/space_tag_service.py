@@ -130,8 +130,7 @@ class KnowledgeFSSpaceTagService:
 
             tags_by_id = {tag.id: tag for tag in tags}
             return [
-                KnowledgeFSSpaceTagResponse(id=tag_id, name=tags_by_id[tag_id].name)
-                for tag_id in requested_tag_ids
+                KnowledgeFSSpaceTagResponse(id=tag_id, name=tags_by_id[tag_id].name) for tag_id in requested_tag_ids
             ]
 
 
@@ -142,7 +141,9 @@ def load_space_tags(
     control_space_ids: tuple[str, ...],
 ) -> dict[str, list[KnowledgeFSSpaceTagResponse]]:
     """Load one page of control-space tags in one query."""
-    result = {control_space_id: [] for control_space_id in control_space_ids}
+    result: dict[str, list[KnowledgeFSSpaceTagResponse]] = {
+        control_space_id: [] for control_space_id in control_space_ids
+    }
     if not control_space_ids:
         return result
     rows = session.execute(
