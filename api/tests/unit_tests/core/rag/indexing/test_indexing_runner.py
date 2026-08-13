@@ -817,6 +817,42 @@ class TestIndexingRunnerLoad:
         # Verify no keyword thread for parent-child index
         mock_dependencies["thread"].assert_not_called()
 
+    def test_load_with_parent_child_economy_indexes_child_documents(
+        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
+    ):
+        runner = IndexingRunner()
+        sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        sample_dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        for doc in sample_documents:
+            doc.children = [
+                ChildDocument(
+                    page_content=f"Child of {doc.page_content}",
+                    metadata={"doc_id": f"child_{doc.metadata['doc_id']}", "doc_hash": "child_hash"},
+                )
+            ]
+
+        mock_thread_instance = MagicMock()
+        mock_dependencies["thread"].return_value = mock_thread_instance
+
+        with patch.object(runner, "_update_document_index_status"):
+            runner._load(
+                session=mock_dependencies["session"],
+                dataset=sample_dataset,
+                dataset_document=sample_dataset_document,
+                documents=sample_documents,
+                total_tokens=0,
+            )
+
+        thread_args = mock_dependencies["thread"].call_args.kwargs["args"]
+        keyword_documents = thread_args[3]
+        assert [document.page_content for document in keyword_documents] == [
+            f"Child of {document.page_content}" for document in sample_documents
+        ]
+        assert all(type(document) is Document for document in keyword_documents)
+        assert thread_args[4] == [document.metadata["doc_id"] for document in sample_documents]
+        mock_thread_instance.start.assert_called_once()
+        mock_thread_instance.join.assert_called_once()
+
 
 class TestIndexingRunnerRun:
     """Unit tests for IndexingRunner.run method.

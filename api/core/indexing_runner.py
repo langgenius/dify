@@ -646,14 +646,25 @@ class IndexingRunner:
         # Build indexes using the existing hash-based worker groups.
         indexing_start_at = time.perf_counter()
         create_keyword_thread = None
-        if (
-            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
-        ):
+        if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+            keyword_documents = documents
+            segment_node_ids = [document.metadata["doc_id"] for document in documents]
+            if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                keyword_documents = [
+                    Document.model_validate(child_document.model_dump())
+                    for document in documents
+                    for child_document in document.children or []
+                ]
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+                args=(
+                    current_app._get_current_object(),  # type: ignore
+                    dataset.id,
+                    dataset_document.id,
+                    keyword_documents,
+                    segment_node_ids,
+                ),
             )
             create_keyword_thread.start()
 
@@ -686,11 +697,7 @@ class IndexingRunner:
 
                 for future in futures:
                     future.result()
-        if (
-            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == IndexTechniqueType.ECONOMY
-            and create_keyword_thread is not None
-        ):
+        if dataset.indexing_technique == IndexTechniqueType.ECONOMY and create_keyword_thread is not None:
             create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
@@ -708,7 +715,13 @@ class IndexingRunner:
         )
 
     @staticmethod
-    def _process_keyword_index(flask_app: Flask, dataset_id: str, document_id: str, documents: list[Document]):
+    def _process_keyword_index(
+        flask_app: Flask,
+        dataset_id: str,
+        document_id: str,
+        documents: list[Document],
+        segment_node_ids: list[str],
+    ):
         with flask_app.app_context():
             with session_factory.create_session() as session:
                 dataset = session.get(Dataset, dataset_id)
@@ -717,13 +730,12 @@ class IndexingRunner:
                 keyword = Keyword(dataset)
                 keyword.create(documents, session)
                 if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
-                    document_ids = [document.metadata["doc_id"] for document in documents]
                     session.execute(
                         update(DocumentSegment)
                         .where(
                             DocumentSegment.document_id == document_id,
                             DocumentSegment.dataset_id == dataset_id,
-                            DocumentSegment.index_node_id.in_(document_ids),
+                            DocumentSegment.index_node_id.in_(segment_node_ids),
                             DocumentSegment.status == SegmentStatus.INDEXING,
                         )
                         .values(

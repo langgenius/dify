@@ -284,9 +284,10 @@ class VectorService:
 
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset, *, session: Session):
-        vector = Vector(dataset=dataset, session=session)
         assert child_chunk.index_node_id
-        vector.delete_by_ids([child_chunk.index_node_id])
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            vector = Vector(dataset=dataset, session=session)
+            vector.delete_by_ids([child_chunk.index_node_id])
         Keyword(dataset).delete_by_ids([child_chunk.index_node_id], session)
 
     @classmethod

@@ -647,6 +647,22 @@ def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch
     keyword_instance.delete_by_ids.assert_called_once_with(["cid"], sqlite_session)
 
 
+def test_delete_child_chunk_vector_economy_skips_vector(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    dataset = _make_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
+    child_chunk = MagicMock(index_node_id="cid")
+    vector_cls = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Vector", vector_cls)
+    keyword_instance = MagicMock()
+    monkeypatch.setattr(vector_service_module, "Keyword", MagicMock(return_value=keyword_instance))
+
+    VectorService.delete_child_chunk_vector(child_chunk, dataset, session=sqlite_session)
+
+    vector_cls.assert_not_called()
+    keyword_instance.delete_by_ids.assert_called_once_with(["cid"], sqlite_session)
+
+
 # ---------------------------------------------------------------------------
 # update_multimodel_vector (missing coverage in previous suites)
 # ---------------------------------------------------------------------------

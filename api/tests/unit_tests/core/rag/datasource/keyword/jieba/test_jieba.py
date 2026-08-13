@@ -1,6 +1,6 @@
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 import core.rag.datasource.keyword.jieba.jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
 from core.rag.models.document import Document
-from models.dataset import ChildChunk, DatasetKeywordTable, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
 
 
 class _DummyLock:
@@ -29,12 +29,15 @@ def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dic
     )
 
 
-def _dataset(dataset_keyword_table=None, keyword_number=None):
-    return SimpleNamespace(
-        id="dataset-1",
-        tenant_id="tenant-1",
-        keyword_number=keyword_number,
-        get_dataset_keyword_table=MagicMock(return_value=dataset_keyword_table),
+def _dataset(dataset_keyword_table=None, keyword_number=None) -> Dataset:
+    return cast(
+        Dataset,
+        SimpleNamespace(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            keyword_number=keyword_number,
+            get_dataset_keyword_table=MagicMock(return_value=dataset_keyword_table),
+        ),
     )
 
 
@@ -146,6 +149,25 @@ def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch: pyte
     handler.extract_keywords.assert_called_once_with("content", 1)
     assert set(keyword._update_segment_keywords.call_args.args[2]) == {"from-extractor"}
     assert keyword._update_segment_keywords.call_args.args[3] is patched_runtime.session
+
+
+def test_add_texts_persists_child_node_id_in_keyword_table(monkeypatch: pytest.MonkeyPatch, patched_runtime):
+    keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=1))
+    handler = MagicMock()
+    handler.extract_keywords.return_value = {"child-keyword"}
+
+    monkeypatch.setattr(jieba_module, "JiebaKeywordTableHandler", lambda: handler)
+    monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
+    monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
+
+    keyword.add_texts(
+        [Document(page_content="child content", metadata={"doc_id": "child-node-1"})],
+        patched_runtime.session,
+    )
+
+    keyword._save_dataset_keyword_table.assert_called_once_with(
+        {"child-keyword": {"child-node-1"}}, patched_runtime.session
+    )
 
 
 def test_text_exists_handles_missing_and_existing_keyword_table(
