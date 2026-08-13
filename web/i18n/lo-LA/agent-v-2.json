@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "ໂນດ",
   "agentDetail.access.workflow.table.version": "ເວີຊັນ",
   "agentDetail.access.workflow.title": "ການເຂົ້າເຖິງເວີກໂຟລ",
-  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ: ຕົວປ່ຽນສະພາບແວດລ້ອມ, ແຊນບ໋ອກຊ໌ ແລະ ໜ່ວຍຄວາມຈຳ.",
+  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ ເຊັ່ນ ຕົວປ່ຽນສະພາບແວດລ້ອມ.",
   "agentDetail.configure.advancedSettings.envEditor.add": "ເພີ່ມຕົວປ່ຽນສະພາບແວດລ້ອມ",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "ລຶບ {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "ເຊື່ອງຄ່າ {{key}}",

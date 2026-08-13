@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Düğümler",
   "agentDetail.access.workflow.table.version": "Sürüm",
   "agentDetail.access.workflow.title": "İş akışı erişimi",
-  "agentDetail.configure.advancedSettings.description": "Güç kullanıcıları için. Çevre değişkenleri, sandbox ve bellek.",
+  "agentDetail.configure.advancedSettings.description": "Güç kullanıcıları için, ör. ortam değişkenleri.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Çevre değişkeni ekle",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} sil",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} değerini gizle",

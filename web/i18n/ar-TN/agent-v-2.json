@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "العقد",
   "agentDetail.access.workflow.table.version": "الإصدار",
   "agentDetail.access.workflow.title": "وصول سير العمل",
-  "agentDetail.configure.advancedSettings.description": "للمستخدمين المتقدمين. متغيرات البيئة، sandbox والذاكرة.",
+  "agentDetail.configure.advancedSettings.description": "للمستخدمين المتقدمين، مثل متغيرات البيئة.",
   "agentDetail.configure.advancedSettings.envEditor.add": "إضافة متغير بيئة",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "حذف {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "إخفاء قيمة {{key}}",
