@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import inspect
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from graphon.enums import BuiltinNodeTypes
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models import Workflow, WorkflowRun
 
@@ -561,7 +562,6 @@ class TestBaseAppGeneratorExtras:
 
     def test_get_draft_var_saver_factory_debugger(self):
         from core.app.entities.app_invoke_entities import InvokeFrom
-        from graphon.enums import BuiltinNodeTypes
         from models import Account
 
         base_app_generator = BaseAppGenerator()

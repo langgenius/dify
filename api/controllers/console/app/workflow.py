@@ -315,6 +315,9 @@ class WorkflowResponse(ResponseModel):
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
     version: str
+    # NULL for drafts and for versions published before numbering was introduced; those
+    # render as "Untitled Version" instead of `#N`. Never 0, so clients must test for null.
+    version_number: int | None = None
     marked_name: str
     marked_comment: str
     created_by: SimpleAccount | None = Field(

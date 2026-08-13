@@ -75,6 +75,21 @@ const createConversationData = (
   ...overrides,
 })
 
+describe('shareQueryKeys', () => {
+  it('should isolate web app metadata by complete address', () => {
+    const firstAddress = { kind: 'environment' as const, code: 'webapp' }
+    const secondAddress = { kind: 'default' as const, code: 'webapp' }
+    expect(shareQueryKeys.appAccessMode(firstAddress, 'webapp')).not.toEqual(
+      shareQueryKeys.appAccessMode(secondAddress, 'webapp'),
+    )
+    expect(shareQueryKeys.appInfo(firstAddress)).not.toEqual(shareQueryKeys.appInfo(secondAddress))
+    expect(shareQueryKeys.appParams(firstAddress)).not.toEqual(
+      shareQueryKeys.appParams(secondAddress),
+    )
+    expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
+  })
+})
+
 // Scenario: share conversation list queries behave consistently with params and enablement.
 describe('useShareConversations', () => {
   beforeEach(() => {

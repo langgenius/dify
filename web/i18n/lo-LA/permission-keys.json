@@ -4,6 +4,7 @@
   "app.access_config": "ຕັ້ງຄ່າສິດການເຂົ້າເຖິງແອັບ",
   "app.acl.access_config": "ຕັ້ງຄ່າສິດການເຂົ້າເຖິງແອັບ",
   "app.acl.delete": "ລຶບແອັບ",
+  "app.acl.deploy": "ຕິດຕັ້ງແອັບ",
   "app.acl.edit": "ແກ້ໄຂ ແລະ ຈັດການລະບົບແອັບ",
   "app.acl.import_export_dsl": "ນຳເຂົ້າ / ສົ່ງອອກ DSL",
   "app.acl.log_and_annotation": "ເຂົ້າເຖິງບັນທຶກ ແລະ ຄຳອະທິບາຍ (Logs & Annotations)",

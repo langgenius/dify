@@ -10,7 +10,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.file import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -100,15 +100,21 @@ class TestMessagesCleanServiceIntegration:
             yield mock
 
     @pytest.fixture
-    def mock_billing_enabled(self):
-        """Mock BILLING_ENABLED to be True."""
-        with patch("services.retention.conversation.messages_clean_policy.dify_config.BILLING_ENABLED", True):
+    def cloud_edition(self):
+        """Use the Cloud deployment edition."""
+        with patch(
+            "services.retention.conversation.messages_clean_policy.dify_config.DEPLOYMENT_EDITION",
+            DeploymentEdition.CLOUD,
+        ):
             yield
 
     @pytest.fixture
-    def mock_billing_disabled(self):
-        """Mock BILLING_ENABLED to be False."""
-        with patch("services.retention.conversation.messages_clean_policy.dify_config.BILLING_ENABLED", False):
+    def non_cloud_edition(self):
+        """Use a non-Cloud deployment edition."""
+        with patch(
+            "services.retention.conversation.messages_clean_policy.dify_config.DEPLOYMENT_EDITION",
+            DeploymentEdition.COMMUNITY,
+        ):
             yield
 
     def _create_account_and_tenant(self, db_session_with_containers: Session, plan: str = CloudPlan.SANDBOX):
@@ -311,11 +317,11 @@ class TestMessagesCleanServiceIntegration:
         )
         db_session_with_containers.add(resource)
 
-    def test_billing_disabled_deletes_all_messages_in_time_range(
-        self, db_session_with_containers: Session, mock_billing_disabled
+    def test_non_cloud_edition_deletes_all_messages_in_time_range(
+        self, db_session_with_containers: Session, non_cloud_edition
     ):
         """Test that BillingDisabledPolicy deletes all messages within time range regardless of tenant plan."""
-        # Arrange - Create tenant with messages (plan doesn't matter for billing disabled)
+        # Arrange - Create tenant with messages; plans do not apply outside Cloud.
         account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
         app = self._create_app(db_session_with_containers, tenant, account)
         conv = self._create_conversation(db_session_with_containers, app)
@@ -378,9 +384,7 @@ class TestMessagesCleanServiceIntegration:
             == 1
         )
 
-    def test_no_messages_returns_empty_stats(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_no_messages_returns_empty_stats(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test cleaning when there are no messages to delete (B1)."""
         # Arrange
         end_before = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -405,9 +409,7 @@ class TestMessagesCleanServiceIntegration:
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
 
-    def test_mixed_sandbox_and_paid_tenants(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_mixed_sandbox_and_paid_tenants(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test cleaning with mixed sandbox and paid tenants (B2)."""
         # Arrange - Create sandbox tenants with expired messages
         sandbox_tenants = []
@@ -501,7 +503,7 @@ class TestMessagesCleanServiceIntegration:
         )
 
     def test_cursor_pagination_multiple_batches(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+        self, db_session_with_containers: Session, cloud_edition, mock_whitelist
     ):
         """Test cursor pagination works correctly across multiple batches (B3)."""
         # Arrange - Create sandbox tenant with messages that will span multiple batches
@@ -550,7 +552,7 @@ class TestMessagesCleanServiceIntegration:
         # All messages should be deleted
         assert db_session_with_containers.query(Message).where(Message.id.in_(message_ids)).count() == 0
 
-    def test_dry_run_does_not_delete(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
+    def test_dry_run_does_not_delete(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test dry_run mode does not delete messages (B4)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
@@ -599,9 +601,7 @@ class TestMessagesCleanServiceIntegration:
             == 3
         )
 
-    def test_partial_plan_data_safe_default(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_partial_plan_data_safe_default(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test when billing returns partial data, unknown tenants are preserved (B5)."""
         # Arrange - Create 3 tenants
         tenants_data = []
@@ -668,9 +668,7 @@ class TestMessagesCleanServiceIntegration:
             db_session_with_containers.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 1
         )  # Unknown tenant's message preserved (safe default)
 
-    def test_empty_plan_data_skips_deletion(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_empty_plan_data_skips_deletion(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test when billing returns empty data, skip deletion entirely (B6)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
@@ -705,9 +703,7 @@ class TestMessagesCleanServiceIntegration:
         # Message should still exist (safe default - don't delete if plan is unknown)
         assert db_session_with_containers.query(Message).where(Message.id == msg_id).count() == 1
 
-    def test_time_range_boundary_behavior(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_time_range_boundary_behavior(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test that messages are correctly filtered by [start_from, end_before) time range (B7)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
@@ -798,7 +794,7 @@ class TestMessagesCleanServiceIntegration:
         # After range, kept
         assert db_session_with_containers.query(Message).where(Message.id == msg_after_id).count() == 1
 
-    def test_grace_period_scenarios(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
+    def test_grace_period_scenarios(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test cleaning with different graceful period scenarios (B8)."""
         # Arrange - Create 5 different tenants with different plan and expiration scenarios
         now_timestamp = int(datetime.datetime.now(datetime.UTC).timestamp())
@@ -920,7 +916,7 @@ class TestMessagesCleanServiceIntegration:
         )  # Professional plan, kept
         assert db_session_with_containers.query(Message).where(Message.id == msg5_id).count() == 1  # At boundary, kept
 
-    def test_tenant_whitelist(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
+    def test_tenant_whitelist(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test that whitelisted tenants' messages are not deleted (B9)."""
         # Arrange - Create 3 sandbox tenants with expired messages
         tenants_data = []
@@ -989,9 +985,7 @@ class TestMessagesCleanServiceIntegration:
         # Verify tenant2's message was deleted (not whitelisted)
         assert db_session_with_containers.query(Message).where(Message.id == tenants_data[2]["message_id"]).count() == 0
 
-    def test_from_days_cleans_old_messages(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
-    ):
+    def test_from_days_cleans_old_messages(self, db_session_with_containers: Session, cloud_edition, mock_whitelist):
         """Test from_days correctly cleans messages older than N days (B11)."""
         # Arrange
         account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
@@ -1054,7 +1048,7 @@ class TestMessagesCleanServiceIntegration:
         assert db_session_with_containers.query(Message).where(Message.id.in_(recent_msg_ids)).count() == 2
 
     def test_whitelist_precedence_over_grace_period(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+        self, db_session_with_containers: Session, cloud_edition, mock_whitelist
     ):
         """Test that whitelist takes precedence over grace period logic."""
         # Arrange - Create 2 sandbox tenants
@@ -1123,7 +1117,7 @@ class TestMessagesCleanServiceIntegration:
         )  # Within grace period
 
     def test_empty_whitelist_deletes_eligible_messages(
-        self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
+        self, db_session_with_containers: Session, cloud_edition, mock_whitelist
     ):
         """Test that empty whitelist behaves as no whitelist (all eligible messages deleted)."""
         # Arrange - Create sandbox tenant with expired messages

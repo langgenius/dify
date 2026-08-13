@@ -44,6 +44,7 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
 - `@browser-smoke` runs focused keyboard and navigation coverage in Chromium and WebKit CI lanes.
+- `@skip` temporarily excludes a scenario from every runner profile. Remove it as soon as the covered product behavior is available again; do not use it for permanent or environment-dependent suppression.
 - Feature-owned services use their own tags. Agent v2 runtime scenarios use `@agent-backend-runtime` and require the explicit runtime-availability step. Set `E2E_START_AGENT_BACKEND=1` to start it locally, or provide `E2E_AGENT_BACKEND_URL` / `AGENT_BACKEND_BASE_URL`.
 
 Seed and Cucumber must share one runtime lifecycle. Combined commands own reset, middleware, services, seed, Cucumber, and teardown; CI must not reproduce that lifecycle in workflow YAML. `E2E_START_AGENT_BACKEND=1` starts a managed local backend before the API; it is mutually exclusive with an explicit Agent backend URL.

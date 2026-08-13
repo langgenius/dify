@@ -7,7 +7,9 @@ from piling up database transactions while preserving cross-tenant concurrency.
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import StrEnum, auto
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -15,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
@@ -42,6 +45,77 @@ class CreditPoolBalance:
 
     def has_sufficient_credits(self, required_credits: int) -> bool:
         return self.quota_limit == -1 or self.remaining_credits >= required_credits
+
+
+class CreditPoolReservationState(StrEnum):
+    RESERVED = auto()
+    COMMITTED = auto()
+    RELEASED = auto()
+
+
+@dataclass
+class CreditPoolReservation:
+    """A strict credit-pool reservation spanning one billable operation."""
+
+    tenant_id: str
+    pool_type: str
+    amount: int
+    request_id: str
+    reservation_id: str | None
+    meta: dict[str, Any] = field(default_factory=dict)
+    _session_factory: Callable[[], Session] | None = field(default=None, repr=False)
+    _state: CreditPoolReservationState = field(default=CreditPoolReservationState.RESERVED, init=False, repr=False)
+
+    @property
+    def state(self) -> CreditPoolReservationState:
+        return self._state
+
+    def commit(self) -> None:
+        if self._state == CreditPoolReservationState.COMMITTED:
+            return
+        if self._state == CreditPoolReservationState.RELEASED:
+            raise RuntimeError("Cannot commit a released credit reservation.")
+
+        if self.reservation_id is not None:
+            from services.billing_service import BillingService
+
+            BillingService.quota_commit(
+                tenant_id=self.tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=self.pool_type,
+                reservation_id=self.reservation_id,
+                actual_amount=self.amount,
+                meta={**self.meta, "request_id": self.request_id},
+            )
+
+        # The database fallback reserves by deducting under the tenant lock, so
+        # commit only makes that already durable reservation final.
+        self._state = CreditPoolReservationState.COMMITTED
+
+    def release(self) -> None:
+        if self._state in {CreditPoolReservationState.COMMITTED, CreditPoolReservationState.RELEASED}:
+            return
+
+        if self.reservation_id is not None:
+            from services.billing_service import BillingService
+
+            BillingService.quota_release(
+                tenant_id=self.tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=self.pool_type,
+                reservation_id=self.reservation_id,
+            )
+        else:
+            if self._session_factory is None:
+                raise RuntimeError("Database credit reservation requires a session factory.")
+            CreditPoolService._release_database_reservation(
+                tenant_id=self.tenant_id,
+                pool_type=self.pool_type,
+                credits=self.amount,
+                session=self._session_factory(),
+            )
+
+        self._state = CreditPoolReservationState.RELEASED
 
 
 class CreditPoolService:
@@ -161,6 +235,110 @@ class CreditPoolService:
         if not pool:
             return False
         return pool.has_sufficient_credits(credits_required)
+
+    @classmethod
+    def reserve_credits(
+        cls,
+        tenant_id: str,
+        credits_required: int,
+        pool_type: str | ProviderQuotaType = "trial",
+        *,
+        request_id: str,
+        session_factory: Callable[[], Session] | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> CreditPoolReservation:
+        """Reserve the full amount or raise before the billable operation starts."""
+        if credits_required <= 0:
+            raise ValueError("credits_required must be greater than 0")
+        if not request_id:
+            raise ValueError("request_id is required")
+
+        normalized_pool_type = cls._normalize_pool_type(pool_type)
+        reservation_meta = {"source": "credit_pool.reservation", **(meta or {})}
+        if cls._use_billing_quota():
+            from services.billing_service import BillingService
+
+            result = BillingService.quota_reserve(
+                tenant_id=tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=normalized_pool_type,
+                request_id=request_id,
+                amount=credits_required,
+                meta=reservation_meta,
+            )
+            reservation_id = result.get("reservation_id", "")
+            if not reservation_id:
+                raise QuotaExceededError("Insufficient credits remaining")
+            return CreditPoolReservation(
+                tenant_id=tenant_id,
+                pool_type=normalized_pool_type,
+                amount=credits_required,
+                request_id=request_id,
+                reservation_id=reservation_id,
+                meta=reservation_meta,
+            )
+
+        if session_factory is None:
+            raise ValueError("session_factory is required when billing quota is disabled")
+
+        session = session_factory()
+
+        def reserve() -> int:
+            pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
+            if not pool:
+                raise QuotaExceededError("Credit pool not found")
+            if not pool.has_sufficient_credits(credits_required):
+                raise QuotaExceededError("Insufficient credits remaining")
+
+            pool.quota_used += credits_required
+            session.commit()
+            return credits_required
+
+        try:
+            cls._deduct_with_tenant_lock(tenant_id, reserve)
+        except QuotaExceededError:
+            session.rollback()
+            raise
+        except Exception:
+            session.rollback()
+            logger.exception("Failed to reserve credits for tenant %s", tenant_id)
+            raise QuotaExceededError("Failed to reserve credits")
+
+        return CreditPoolReservation(
+            tenant_id=tenant_id,
+            pool_type=normalized_pool_type,
+            amount=credits_required,
+            request_id=request_id,
+            reservation_id=None,
+            meta=reservation_meta,
+            _session_factory=session_factory,
+        )
+
+    @classmethod
+    def _release_database_reservation(
+        cls,
+        *,
+        tenant_id: str,
+        pool_type: str,
+        credits: int,
+        session: Session,
+    ) -> None:
+        def release() -> int:
+            pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
+            if not pool:
+                raise QuotaExceededError("Credit pool not found")
+            if pool.quota_used < credits:
+                raise RuntimeError("Reserved credits exceed recorded usage.")
+
+            pool.quota_used -= credits
+            session.commit()
+            return credits
+
+        try:
+            cls._deduct_with_tenant_lock(tenant_id, release)
+        except Exception:
+            session.rollback()
+            raise
 
     @classmethod
     def check_and_deduct_credits(

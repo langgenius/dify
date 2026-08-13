@@ -4,6 +4,7 @@ import pytest
 from werkzeug.exceptions import Unauthorized
 
 from core.logging.context import clear_request_context, get_identity_context
+from models import App, EndUser
 
 
 @pytest.fixture(autouse=True)
@@ -16,8 +17,8 @@ def _reset_logging_context():
 def test_validate_jwt_token_sets_logging_identity_before_view() -> None:
     from controllers.web import wraps
 
-    app_model = mock.Mock()
-    end_user = mock.Mock(id="end-user-id", tenant_id="tenant-id", type=None)
+    app_model = App(id="app-id", tenant_id="tenant-id")
+    end_user = EndUser(id="end-user-id", tenant_id="tenant-id", type=None)
     clear_request_context()
 
     @wraps.validate_jwt_token

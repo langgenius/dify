@@ -31,6 +31,7 @@ from uuid import UUID
 import pytest
 
 from controllers.console.app import workflow_node_output_inspector as ctrl
+from graphon.enums import WorkflowExecutionStatus
 from services.workflow.inspector_events import InspectorMessage
 from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorError,
@@ -61,8 +62,6 @@ def run_id() -> UUID:
 
 
 def _snapshot_view(*, status: str, node_id: str = "agent-1") -> WorkflowRunSnapshotView:
-    from graphon.enums import WorkflowExecutionStatus
-
     return WorkflowRunSnapshotView(
         workflow_run_id="00000000-0000-0000-0000-0000000000aa",
         workflow_run_status=WorkflowExecutionStatus(status),

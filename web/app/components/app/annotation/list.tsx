@@ -2,9 +2,9 @@
 import type { AnnotationItem } from './type'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
 import BatchAction from './batch-action'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
@@ -54,18 +54,18 @@ function AnnotationTableRow({
       <td className="p-3 pr-2">{item.hit_count}</td>
       <td className="w-24 p-3 pr-2" onClick={(e) => e.stopPropagation()}>
         <div className="flex space-x-1 text-text-tertiary">
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
             onClick={() => onView(item)}
           >
             <span aria-hidden className="i-ri-edit-line size-4" />
-          </ActionButton>
-          <ActionButton
+          </IconButton>
+          <IconButton
             aria-label={t(($) => $['feature.annotation.remove'], { ns: 'appDebug' })}
             onClick={() => onRemoveClick(item.id)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </ActionButton>
+          </IconButton>
         </div>
       </td>
     </tr>

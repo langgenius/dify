@@ -50,7 +50,7 @@ from core.workflow.system_variables import build_bootstrap_variables, build_syst
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -142,6 +142,7 @@ HumanInputNode = _DebugHumanInputNode
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_version_number_service import allocate_version_number
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .human_input_delivery_test_service import (
@@ -356,7 +357,16 @@ class WorkflowService:
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
-            .order_by(Workflow.version.desc())
+            # The draft leads the list; its `created_at` is the app's creation time, so it would
+            # otherwise sort last. Published versions then order by publish time: `version` is a
+            # stringified timestamp whose microseconds are omitted when zero, so ordering by it
+            # misplaces versions across second boundaries, and `version_number` is NULL for
+            # versions published before numbering was introduced.
+            .order_by(
+                (Workflow.version == Workflow.VERSION_DRAFT).desc(),
+                Workflow.created_at.desc(),
+                Workflow.id.desc(),
+            )
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )
@@ -700,7 +710,7 @@ class WorkflowService:
         )
 
         # billing check
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
@@ -720,6 +730,7 @@ class WorkflowService:
             app_id=app_model.id,
             type=draft_workflow.type,
             version=Workflow.version_from_datetime(naive_utc_now()),
+            version_number=allocate_version_number(session=session, app_id=app_model.id),
             graph=draft_workflow.graph,
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,

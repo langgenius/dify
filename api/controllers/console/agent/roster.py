@@ -3,7 +3,7 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
@@ -484,12 +484,13 @@ def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_
     return _agent_roster_service(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
 
 
-def _agent_api_key_count(session: Session, app_id: str) -> int:
+def _agent_api_key_count(session: Session, app_model: App) -> int:
     return (
         session.scalar(
             select(func.count(ApiToken.id)).where(
+                or_(ApiToken.tenant_id == app_model.tenant_id, ApiToken.tenant_id.is_(None)),
                 ApiToken.type == ApiTokenType.APP,
-                ApiToken.app_id == app_id,
+                ApiToken.app_id == app_model.id,
             )
         )
         or 0
@@ -940,6 +941,8 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.AGENT_MANAGE, resource_required=False)
     @with_current_tenant_id
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)

@@ -1,5 +1,6 @@
 import type { StrategyDetail as StrategyDetailType } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StrategyDetail from '../strategy-detail'
 
@@ -116,14 +117,12 @@ describe('StrategyDetail', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onHide when close button clicked', () => {
+    it('should call onHide when close button clicked', async () => {
+      const user = userEvent.setup()
+
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
-      // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen
-        .getAllByRole('button')
-        .find((btn) => btn.classList.contains('action-btn'))
-      if (closeButton) fireEvent.click(closeButton)
+      await user.click(screen.getByRole('button', { name: /operation\.close|close/i }))
 
       expect(mockOnHide).toHaveBeenCalledTimes(1)
     })

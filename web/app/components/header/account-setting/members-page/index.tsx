@@ -10,13 +10,12 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -35,7 +34,10 @@ const MembersPage = () => {
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -47,8 +49,7 @@ const MembersPage = () => {
   >(null)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan =
-    enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== 'team'
   const isMemberFull =
     enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)

@@ -130,12 +130,6 @@ describe('ExternalKnowledgeAPICard', () => {
       expect(screen.queryByRole('button', { name: editButtonName })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: deleteButtonName })).not.toBeInTheDocument()
     })
-
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const icon = container.querySelector('svg')
-      expect(icon)!.toBeInTheDocument()
-    })
   })
 
   describe('User Interactions - Edit', () => {

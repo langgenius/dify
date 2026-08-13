@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -316,14 +317,16 @@ class RBACRolesApi(Resource):
         options = req_data.to_inner_options()
         if not dify_config.RBAC_ENABLED:
             result = _legacy_workspace_roles(
-                options, include_owner=req_data.include_owner, billing_enabled=dify_config.BILLING_ENABLED
+                options,
+                include_owner=req_data.include_owner,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
             )
         else:
             result = svc.RBACService.Roles.list(
                 tenant_id,
                 account_id,
                 include_owner=req_data.include_owner,
-                biiling_enabled=dify_config.BILLING_ENABLED,
+                biiling_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
                 options=options,
             )
 
@@ -351,7 +354,12 @@ class RBACRoleItemApi(Resource):
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(
-            svc.RBACService.Roles.get(tenant_id, account_id, role_id, billing_enabled=dify_config.BILLING_ENABLED)
+            svc.RBACService.Roles.get(
+                tenant_id,
+                account_id,
+                role_id,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+            )
         )
 
     @login_required
@@ -719,14 +727,17 @@ class RBACDatasetWhitelistApi(Resource):
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(dataset_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value),
-            )
+        result = svc.RBACService.DatasetAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(dataset_id),
+            svc.ReplaceMemberBindings(scope=request.scope.value),
         )
+        # Widening the scope only records it: the members still need the default access policy
+        # before they can reach the dataset, same as the app whitelist route above.
+        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")

@@ -36,7 +36,7 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client

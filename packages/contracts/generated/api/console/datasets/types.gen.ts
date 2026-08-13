@@ -1677,6 +1677,10 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   url: '/datasets/{dataset_id}/documents/metadata'
 }
 
+export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
+  404: unknown
+}
+
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   204: void
 }

@@ -151,6 +151,26 @@ describe('ConfigVar', () => {
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
     })
+
+    it('should ignore sortable updates when the variable order is unchanged', () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      act(() => {
+        latestSortableProps?.setList([
+          { id: 'first', variable: firstVar },
+          { id: 'second', variable: secondVar },
+        ])
+      })
+
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+    })
   })
 
   // Variable creation flows using the add menu.

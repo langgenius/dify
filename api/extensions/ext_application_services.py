@@ -10,7 +10,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
@@ -20,6 +20,7 @@ from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.init_validation_service import InitValidationService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -37,6 +38,7 @@ class ApplicationServices:
     schema_definitions: SchemaDefinitionService
     setup: SetupService
     feature_queries: FeatureQueryService
+    init_validation: InitValidationService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
 
@@ -45,6 +47,7 @@ def build_application_services(
     *,
     database_client: sessionmaker[Session],
     deployment_edition: DeploymentEdition,
+    initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
@@ -65,6 +68,11 @@ def build_application_services(
             trial_models=FeatureService.get_trial_models(),
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
+        init_validation=InitValidationService(
+            state=installation_state,
+            validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
+            expected_password=initialization_password,
+        ),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
@@ -84,6 +92,7 @@ def init_app(app: Flask) -> None:
     app.extensions[_EXTENSION_KEY] = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        initialization_password=dify_config.INIT_PASSWORD,
         redis=redis_client,
     )
 

@@ -91,6 +91,7 @@
   "timezone": "Fus orar",
   "tos": "Termeni și condiții",
   "tosDesc": "Prin înregistrarea, ești de acord cu",
+  "turnstile.loadError": "Verificarea de securitate nu a putut fi încărcată.",
   "usePassword": "Utilizați parola",
   "useVerificationCode": "Utilizarea codului de verificare",
   "validate": "Validează",

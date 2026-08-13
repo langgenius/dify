@@ -1,5 +1,6 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
@@ -103,15 +104,6 @@ vi.mock('@/app/components/app/use-export-app-dsl', () => ({
   useExportWorkflowAppDsl: () => mockWorkflowAppDslExport,
 }))
 
-const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      branding: { enabled: false },
-      rbac_enabled: mockRbacEnabled,
-    },
-  })
-
 const getOperationsTrigger = () =>
   screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })
 
@@ -173,12 +165,18 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
 
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfile: mockConsoleState.userProfile,
+    systemFeatures: {
+      webapp_auth: { enabled: mockWebappAuthEnabled },
+      branding: { enabled: false },
+      rbac_enabled: mockRbacEnabled,
+    },
+  })
+
 // Mock app context
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -376,30 +374,6 @@ vi.mock('@/next/dynamic', () => ({
             'button',
             { onClick: () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' },
             'Export without secrets',
-          ),
-        )
-      }
-    }
-    if (fnString.includes('app-access-control')) {
-      return function MockAccessControl({
-        onClose,
-        onConfirm,
-      }: {
-        onClose: () => void
-        onConfirm: () => void
-      }) {
-        return React.createElement(
-          'div',
-          { 'data-testid': 'access-control-modal' },
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'close-access-control' },
-            'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onConfirm, 'data-testid': 'confirm-access-control' },
-            'Confirm',
           ),
         )
       }
@@ -681,37 +655,13 @@ describe('AppCard', () => {
     })
   })
 
-  describe('Access Mode Icons', () => {
-    it('should show public icon on the bottom right of the card', () => {
-      const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
-      render(<AppCard app={publicApp} />)
-      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.anyone' })
-      expect(icon).toBeInTheDocument()
-      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
-    })
+  describe('Web app access control entry points', () => {
+    it('should not render the access mode icon or tooltip trigger', () => {
+      render(<AppCard app={mockApp} />)
 
-    it('should show lock icon on the bottom right of the card', () => {
-      const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
-      render(<AppCard app={specificApp} />)
-      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.specific' })
-      expect(icon).toBeInTheDocument()
-      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
-    })
-
-    it('should show organization icon on the bottom right of the card', () => {
-      const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
-      render(<AppCard app={orgApp} />)
-      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.organization' })
-      expect(icon).toBeInTheDocument()
-      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
-    })
-
-    it('should show external icon on the bottom right of the card', () => {
-      const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
-      render(<AppCard app={externalApp} />)
-      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.external' })
-      expect(icon).toBeInTheDocument()
-      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('img', { name: 'app.accessItemsDescription.anyone' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -732,9 +682,13 @@ describe('AppCard', () => {
     })
 
     it('should star the app from the card action without navigating', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockStarAppMutation).toHaveBeenCalledWith({
@@ -745,10 +699,14 @@ describe('AppCard', () => {
     })
 
     it('should unstar the app from the filled star action', async () => {
+      const user = userEvent.setup()
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockUnstarAppMutation).toHaveBeenCalledWith({
@@ -774,13 +732,15 @@ describe('AppCard', () => {
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(getOperationsTrigger())
+      await user.click(getOperationsTrigger())
 
       await waitFor(() => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
+      expect(mockPush).not.toHaveBeenCalled()
     })
 
     it('should show duplicate option when dropdown menu is opened', async () => {
@@ -934,6 +894,24 @@ describe('AppCard', () => {
       fireEvent.click(getOperationsTrigger())
       fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    })
+
+    it('should autofill the app name for delete confirmation', async () => {
+      const user = userEvent.setup()
+      render(<AppCard app={mockApp} />)
+
+      await user.click(getOperationsTrigger())
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      const deleteInput = await screen.findByRole('textbox')
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+
+      expect(confirmButton).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+
+      expect(deleteInput).toHaveValue(mockApp.name)
+      expect(confirmButton).toBeEnabled()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
@@ -1613,28 +1591,30 @@ describe('AppCard', () => {
       mockWebappAuthEnabled = true
     })
 
-    it('should show access control option when webapp_auth is enabled', async () => {
+    it('should omit web app access control when webapp_auth is enabled', async () => {
       render(<AppCard app={mockApp} />)
 
       fireEvent.click(getOperationsTrigger())
       await waitFor(() => {
-        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
+      expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
     })
 
-    it('should show access control option when user has app release and version permission', async () => {
+    it('should omit web app access control for release-and-version permission', async () => {
       const appWithReleasePermission = createMockApp({
         created_by: 'another-user',
         maintainer: 'another-user',
-        permission_keys: [AppACLPermission.ReleaseAndVersion],
+        permission_keys: [AppACLPermission.ReleaseAndVersion, AppACLPermission.Delete],
       })
       render(<AppCard app={appWithReleasePermission} />)
 
       fireEvent.click(getOperationsTrigger())
 
       await waitFor(() => {
-        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
+      expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
     })
 
     it('should show resource access option when user only has app access config permission', async () => {
@@ -1687,39 +1667,6 @@ describe('AppCard', () => {
       expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/access-config')
     })
 
-    it('should click access control button', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        const accessControlBtn = screen.getByText('app.accessControl')
-        fireEvent.click(accessControlBtn)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close access control modal after confirmation', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.accessControl'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('confirm-access-control'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
-      })
-    })
-
     it('should show open in explore when userCanAccessApp is true', async () => {
       render(<AppCard app={mockApp} />)
 
@@ -1751,26 +1698,6 @@ describe('AppCard', () => {
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'app.notPublishedYet',
-      })
-    })
-
-    it('should close access control modal when onClose is called', async () => {
-      render(<AppCard app={mockApp} />)
-
-      fireEvent.click(getOperationsTrigger())
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('app.accessControl'))
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
-      })
-
-      // Click close button to trigger onClose
-      fireEvent.click(screen.getByTestId('close-access-control'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
       })
     })
   })

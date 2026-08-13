@@ -1,7 +1,8 @@
-import type { FC } from 'react'
+import type { FC, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentInput } from './comment-input'
 
 type MentionInputProps = {
@@ -26,6 +27,11 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
+
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
@@ -33,11 +39,6 @@ vi.mock('react-i18next', async () => {
       t: withSelectorKey(stableT),
     }),
   }
-})
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('./mention-input', () => ({

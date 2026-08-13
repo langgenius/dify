@@ -4,6 +4,7 @@
   "app.access_config": "アプリアクセス権限を設定",
   "app.acl.access_config": "アプリアクセス権限を設定",
   "app.acl.delete": "アプリを削除",
+  "app.acl.deploy": "アプリをデプロイ",
   "app.acl.edit": "アプリの編集とオーケストレーション",
   "app.acl.import_export_dsl": "DSLのインポート / エクスポート",
   "app.acl.log_and_annotation": "ログと注釈へのアクセス",

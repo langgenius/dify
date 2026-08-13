@@ -9,7 +9,6 @@ from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.node_factory import (
     DifyGraphInitContext,
@@ -170,7 +169,6 @@ class WorkflowEntry:
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
         self.graph_engine.layer(limits_layer)
-        self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
@@ -550,10 +548,7 @@ class WorkflowEntry:
         """
         Run a standalone node with the same quota and observability hooks as GraphEngine.
         """
-        layers: Sequence[GraphEngineLayer] = (
-            LLMQuotaLayer(tenant_id=tenant_id),
-            ObservabilityLayer(),
-        )
+        layers: Sequence[GraphEngineLayer] = (ObservabilityLayer(),)
         command_channel = InMemoryChannel()
         runtime_state = ReadOnlyGraphRuntimeStateWrapper(node.graph_runtime_state)
         for layer in layers:

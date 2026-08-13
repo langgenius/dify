@@ -4,7 +4,7 @@ Initializes the EnterpriseExporter singleton during ``create_app()``
 (single-threaded), registers blinker event handlers, and hooks atexit
 for graceful shutdown.
 
-Skipped entirely when either ``ENTERPRISE_ENABLED`` or ``ENTERPRISE_TELEMETRY_ENABLED``
+Skipped entirely outside the Enterprise edition or when ``ENTERPRISE_TELEMETRY_ENABLED``
 is false (``is_enabled()`` gate).
 """
 
@@ -15,6 +15,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from configs import dify_config
+from enums import DeploymentEdition
 
 if TYPE_CHECKING:
     from dify_app import DifyApp

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -60,8 +61,10 @@ from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
@@ -1016,19 +1019,31 @@ class RagPipelineWorkflowLastRunApi(Resource):
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
 class RagPipelineTransformApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
+    @console_ns.response(404, "Dataset or pipeline not found")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID):
-        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
-            raise Forbidden()
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = DatasetService.get_dataset_for_tenant(str(dataset_id), current_tenant_id, session=session)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
 
-        dataset_id_str = str(dataset_id)
-        rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, session)
-        return result
+        if not dify_config.RBAC_ENABLED:
+            if not (current_user.has_edit_permission or current_user.is_dataset_operator):
+                raise Forbidden()
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as exc:
+                raise Forbidden(str(exc)) from exc
+
+        try:
+            return RagPipelineTransformService().transform_dataset(dataset, current_user.id, session)
+        except RagPipelineResourceNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")

@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from enums import DeploymentEdition
 from services.workflow.queue_dispatcher import (
     ProfessionalQueueDispatcher,
     QueueDispatcherManager,
@@ -36,8 +37,8 @@ class TestDispatchers:
 class TestQueueDispatcherManager:
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_enabled_professional_plan(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+    def test_cloud_edition_professional_plan(self, mock_config, mock_billing):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.return_value = {"subscription": {"plan": "professional"}}
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
@@ -46,8 +47,8 @@ class TestQueueDispatcherManager:
 
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_enabled_team_plan(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+    def test_cloud_edition_team_plan(self, mock_config, mock_billing):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.return_value = {"subscription": {"plan": "team"}}
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
@@ -56,8 +57,8 @@ class TestQueueDispatcherManager:
 
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_enabled_sandbox_plan(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+    def test_cloud_edition_sandbox_plan(self, mock_config, mock_billing):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.return_value = {"subscription": {"plan": "sandbox"}}
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
@@ -66,8 +67,8 @@ class TestQueueDispatcherManager:
 
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_enabled_unknown_plan_defaults_to_sandbox(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+    def test_cloud_edition_unknown_plan_defaults_to_sandbox(self, mock_config, mock_billing):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.return_value = {"subscription": {"plan": "enterprise"}}
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
@@ -76,8 +77,8 @@ class TestQueueDispatcherManager:
 
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_enabled_service_failure_defaults_to_sandbox(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+    def test_cloud_edition_billing_failure_defaults_to_sandbox(self, mock_config, mock_billing):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.side_effect = Exception("billing unavailable")
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
@@ -85,8 +86,8 @@ class TestQueueDispatcherManager:
         assert isinstance(dispatcher, SandboxQueueDispatcher)
 
     @patch("services.workflow.queue_dispatcher.dify_config")
-    def test_billing_disabled_defaults_to_team(self, mock_config):
-        mock_config.BILLING_ENABLED = False
+    def test_non_cloud_edition_defaults_to_team(self, mock_config):
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")
 
@@ -95,7 +96,7 @@ class TestQueueDispatcherManager:
     @patch("services.workflow.queue_dispatcher.BillingService")
     @patch("services.workflow.queue_dispatcher.dify_config")
     def test_missing_subscription_key_defaults_to_sandbox(self, mock_config, mock_billing):
-        mock_config.BILLING_ENABLED = True
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         mock_billing.get_info.return_value = {}
 
         dispatcher = QueueDispatcherManager.get_dispatcher("tenant-1")

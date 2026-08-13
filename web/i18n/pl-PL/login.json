@@ -91,6 +91,7 @@
   "timezone": "Strefa czasowa",
   "tos": "Warunki świadczenia usług",
   "tosDesc": "Założeniem konta zgadzasz się z naszymi",
+  "turnstile.loadError": "Nie udało się załadować weryfikacji bezpieczeństwa.",
   "usePassword": "Użyj hasła",
   "useVerificationCode": "Użyj kodu weryfikacyjnego",
   "validate": "Sprawdź",

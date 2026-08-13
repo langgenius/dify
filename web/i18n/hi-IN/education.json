@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "शिक्षा छूट केवल Professional वार्षिक प्लान पर लागू होती है। अपना वर्तमान प्लान रखने पर छूट शामिल नहीं होगी।",
   "educationPricingConfirm.title": "आपका चुना हुआ प्लान शिक्षा छूट का समर्थन नहीं करता",
   "emailLabel": "आपका वर्तमान ईमेल",
+  "form.schoolName.noResults": "कोई मिलता-जुलता स्कूल नहीं मिला। आप फिर भी स्कूल का आधिकारिक नाम दर्ज कर सकते हैं।",
   "form.schoolName.placeholder": "अपनी स्कूल का आधिकारिक, बिना संक्षिप्त नाम दर्ज करें",
   "form.schoolName.title": "आपके स्कूल का नाम",
   "form.schoolRole.option.administrator": "स्कूल प्रशासक",
