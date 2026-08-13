@@ -1398,6 +1398,47 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
     assert "...[truncated]" not in _workflow_user_prompt(result)
 
 
+def test_previous_node_long_text_output_is_not_truncated_under_default_limit():
+    long_text = "a" * 2500
+
+    class LongTextVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "text"]:
+                return StringSegment(value=long_text)
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=LongTextVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.text#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+    assert f"  - previous-node.text: {long_text}" in user_prompt
+    assert "...[truncated]" not in user_prompt
+
+
+def test_previous_node_text_output_respects_configured_max_length(monkeypatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.WORKFLOW_AGENT_V2_CONTEXT_VALUE_MAX_LENGTH",
+        10,
+    )
+    context = _context()
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.text#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+    assert "  - previous-node.text: Previous r...[truncated]" in user_prompt
+
+
 # ── Agent config declaration layer ────────────────────────────────────────────
 
 
