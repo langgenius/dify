@@ -39,14 +39,13 @@ def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.Monk
     )
 
 
-def test_collection_continues_in_workspace_binding_snapshot_order(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_collection_runs_in_workspace_binding_snapshot_order(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
-
-    def collect_workspace(**_kwargs: object) -> None:
-        calls.append("workspace")
-        raise RuntimeError("workspace failed")
-
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect_workspace)
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "collect_retired_workspace",
+        lambda **_kwargs: calls.append("workspace"),
+    )
     monkeypatch.setattr(
         AgentWorkspaceService,
         "collect_retired_binding",
@@ -66,6 +65,48 @@ def test_collection_continues_in_workspace_binding_snapshot_order(monkeypatch: p
     )
 
     assert calls == ["workspace", "binding", "home"]
+
+
+def test_collection_failure_propagates_and_stops_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    error = RuntimeError("workspace failed")
+    log_exception = MagicMock()
+
+    def collect_workspace(**_kwargs: object) -> None:
+        calls.append("workspace")
+        raise error
+
+    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect_workspace)
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "collect_retired_binding",
+        lambda **_kwargs: calls.append("binding"),
+    )
+    monkeypatch.setattr(
+        AgentHomeSnapshotService,
+        "collect_retired_home_snapshot",
+        lambda **_kwargs: calls.append("home"),
+    )
+    monkeypatch.setattr("tasks.collect_agent_resources_task.logger.exception", log_exception)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        collect_agent_resources.run(
+            tenant_id="tenant-1",
+            workspace_ids=["workspace-1"],
+            binding_ids=["binding-1"],
+            home_snapshot_ids=["home-1"],
+        )
+
+    assert exc_info.value is error
+    assert calls == ["workspace"]
+    log_exception.assert_called_once_with(
+        "Failed to collect retired Agent resource",
+        extra={
+            "tenant_id": "tenant-1",
+            "resource_type": "workspace",
+            "resource_id": "workspace-1",
+        },
+    )
 
 
 def test_enqueue_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
