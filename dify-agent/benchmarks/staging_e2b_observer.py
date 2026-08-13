@@ -43,11 +43,15 @@ E2B_OBSERVER_STOP_FILE_ENV = "BENCH_E2B_OBSERVER_STOP_FILE"
 E2B_FREE_RUNNING_LIMIT = 20
 E2B_LIMIT_CONSECUTIVE_SECONDS = 3
 E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS = 1
-# The local observer polls a remote Vendor API.  A few milliseconds of process
-# scheduling or request jitter must not turn an otherwise contiguous one-Hz
-# window into a false coverage gap; a missing sample is still roughly 2s.
+# The local observer polls a remote Vendor API synchronously. A capacity window
+# remains useful when the remote list call occasionally spans more than one
+# clock tick, but not when sampling becomes sparse or disappears for a long
+# interval. Missing samples always break the three-consecutive-sample limit
+# detector; these constants only decide whether count coverage is sufficient.
 E2B_WINDOW_CADENCE_TOLERANCE_SECONDS = 0.25
-E2B_WINDOW_MINIMUM_SECONDS_FOR_ONE_MISSED_SAMPLE = 60
+E2B_WINDOW_MINIMUM_SECONDS_FOR_PARTIAL_COVERAGE = 60
+E2B_WINDOW_MINIMUM_COVERAGE_RATIO = 0.90
+E2B_WINDOW_MAX_CONSECUTIVE_MISSED_SAMPLES = 2
 E2B_OBSERVER_MAX_DURATION_SECONDS = 6 * 60 * 60
 E2B_LIST_REQUEST_TIMEOUT_SECONDS = 0.8
 E2B_LIST_PAGE_SIZE = 100
@@ -850,10 +854,13 @@ def _window_has_cadence_coverage(
         1,
         math.floor(window_duration_seconds / E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS),
     )
-    allowed_missed_samples = (
-        1 if window_duration_seconds >= E2B_WINDOW_MINIMUM_SECONDS_FOR_ONE_MISSED_SAMPLE else 0
+    long_window = window_duration_seconds >= E2B_WINDOW_MINIMUM_SECONDS_FOR_PARTIAL_COVERAGE
+    minimum_sample_count = (
+        math.ceil(nominal_sample_count * E2B_WINDOW_MINIMUM_COVERAGE_RATIO)
+        if long_window
+        else nominal_sample_count
     )
-    if len(samples) < nominal_sample_count - allowed_missed_samples:
+    if len(samples) < minimum_sample_count:
         return False
     timestamps = [
         _as_utc(sample.timestamp, field_name="E2B sample timestamp")
@@ -862,7 +869,12 @@ def _window_has_cadence_coverage(
     if timestamps[0] - started_at > cadence or ended_at - timestamps[-1] > cadence:
         return False
     maximum_gap = cadence + timedelta(
-        seconds=allowed_missed_samples * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
+        seconds=(
+            E2B_WINDOW_MAX_CONSECUTIVE_MISSED_SAMPLES
+            if long_window
+            else 0
+        )
+        * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
     )
     return all(
         timedelta(0) < current - previous <= maximum_gap
