@@ -10,7 +10,7 @@ import type {
 import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
-import { fetchDefaultModal, fetchModelList } from '@/service/common'
+import { fetchDefaultModal } from '@/service/common'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -56,7 +56,6 @@ vi.mock('@/service/common', () => ({
 
 vi.mock('@/service/use-common', () => ({
   commonQueryKeys: {
-    modelList: (type: string) => ['model-list', type],
     modelProviders: ['model-providers'],
     modelProviderDetails: ['model-provider-details'],
     defaultModel: (type: string) => ['default-model', type],
@@ -92,6 +91,15 @@ const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
   await import('@/app/components/plugins/marketplace/hooks')
 const { useExpandModelProviderList } = await import('../atoms')
+
+const getModelListQueryKey = (modelType: ModelTypeEnum) =>
+  consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+    input: {
+      params: {
+        model_type: modelType,
+      },
+    },
+  })
 
 describe('hooks', () => {
   beforeEach(() => {
@@ -252,7 +260,7 @@ describe('hooks', () => {
       { provider: 'anthropic', models: [{ model: 'claude-3' }] },
     ]
 
-    it('should fetch model list successfully', async () => {
+    it('should use the generated model list key and expose the result', () => {
       const refetch = vi.fn()
       ;(useQuery as Mock).mockReturnValue({
         data: { data: mockModelData },
@@ -264,15 +272,11 @@ describe('hooks', () => {
 
       expect(result.current.data).toEqual(mockModelData)
       expect(result.current.isLoading).toBe(false)
-
-      // Coverage for queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(
-        (call) => Array.isArray(call[0].queryKey) && call[0].queryKey[0] === 'model-list',
+      expect(useQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
+        }),
       )
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchModelList).toHaveBeenCalled()
-      }
     })
 
     it('should return empty array when data is undefined', () => {
@@ -299,7 +303,7 @@ describe('hooks', () => {
       expect(useQuery).toHaveBeenCalledWith(
         expect.objectContaining({
           enabled: false,
-          queryKey: ['model-list', ModelTypeEnum.textEmbedding],
+          queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
         }),
       )
     })
@@ -542,7 +546,7 @@ describe('hooks', () => {
     it('should return all text generation model lists', () => {
       const modelList = createModelList()
       ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
+        data: { data: modelList },
         isPending: false,
         refetch: vi.fn(),
       })
@@ -560,7 +564,7 @@ describe('hooks', () => {
     it('should filter active models correctly', () => {
       const modelList = createModelList()
       ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
+        data: { data: modelList },
         isPending: false,
         refetch: vi.fn(),
       })
@@ -574,7 +578,7 @@ describe('hooks', () => {
     it('should find current provider and model', () => {
       const modelList = createModelList()
       ;(useQuery as Mock).mockReturnValue({
-        data: modelList,
+        data: { data: modelList },
         isPending: false,
         refetch: vi.fn(),
       })
@@ -590,7 +594,7 @@ describe('hooks', () => {
 
     it('should handle empty model list', () => {
       ;(useQuery as Mock).mockReturnValue({
-        data: [],
+        data: { data: [] },
         isPending: false,
         refetch: vi.fn(),
       })
@@ -709,7 +713,7 @@ describe('hooks', () => {
       })
 
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textGeneration],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
       })
     })
 
@@ -1082,10 +1086,10 @@ describe('hooks', () => {
         queryKey: ['model-provider-details'],
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textGeneration],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textEmbedding],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
       })
     })
 
@@ -1122,7 +1126,7 @@ describe('hooks', () => {
         refetchType: 'active',
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textGeneration],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
       })
     })
 
@@ -1201,11 +1205,11 @@ describe('hooks', () => {
         result.current.handleRefreshModel(provider, customFields, true)
       })
 
-      // When __model_type is undefined, all supported model types are invalidated.
-      const modelListCalls = invalidateQueries.mock.calls.filter(
-        (call) => call[0]?.queryKey?.[0] === 'model-list',
-      )
-      expect(modelListCalls).toHaveLength(provider.supported_model_types.length)
+      provider.supported_model_types.forEach((modelType) => {
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: getModelListQueryKey(modelType),
+        })
+      })
     })
 
     it('should handle provider with single model type', () => {
@@ -1230,10 +1234,10 @@ describe('hooks', () => {
         queryKey: ['model-provider-details'],
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textGeneration],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
       })
       expect(invalidateQueries).not.toHaveBeenCalledWith({
-        queryKey: ['model-list', ModelTypeEnum.textEmbedding],
+        queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
       })
     })
   })

@@ -81,7 +81,13 @@ type UseModelListOptions = {
 
 export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelListOptions = {}) => {
   const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.modelList(type),
+    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: {
+        params: {
+          model_type: type,
+        },
+      },
+    }),
     queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
     enabled,
   })
@@ -132,16 +138,7 @@ export { getCurrentProviderAndModel as useCurrentProviderAndModel }
 export const useTextGenerationCurrentProviderAndModelAndModelList = (
   defaultModel?: DefaultModel,
 ) => {
-  const { data: textGenerationModelList = [] } = useQuery({
-    ...consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-      input: {
-        params: {
-          model_type: ModelTypeEnum.textGeneration,
-        },
-      },
-    }),
-    select: ({ data }) => data,
-  })
+  const { data: textGenerationModelList } = useModelList(ModelTypeEnum.textGeneration)
   const activeTextGenerationModelList = textGenerationModelList.filter(
     (model) => model.status === ModelStatusEnum.active,
   )
@@ -188,7 +185,15 @@ export const useUpdateModelList = () => {
 
   const updateModelList = useCallback(
     (type: ModelTypeEnum | ModelType) => {
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+          input: {
+            params: {
+              model_type: type,
+            },
+          },
+        }),
+      })
     },
     [queryClient],
   )
