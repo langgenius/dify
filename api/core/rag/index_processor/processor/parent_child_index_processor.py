@@ -345,11 +345,13 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             )
             session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-                all_child_documents = []
+                all_child_documents: list[Document] = []
                 all_multimodal_documents = []
                 for doc in documents:
                     if doc.children:
-                        all_child_documents.extend(doc.children)
+                        all_child_documents.extend(
+                            Document.model_validate(child_document.model_dump()) for child_document in doc.children
+                        )
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
                 vector = Vector(dataset, session=session)

@@ -512,9 +512,12 @@ class TestParentChildIndexProcessor:
             save_child=True,
         )
         mock_vector_cls.assert_called_once_with(dataset, session=session)
-        assert mock_vector_cls.return_value.create.call_count == 1
+        indexed_child_documents = mock_vector_cls.return_value.create.call_args.args[0]
+        assert [document.page_content for document in indexed_child_documents] == ["child-1", "child-2"]
+        assert all(type(document) is Document for document in indexed_child_documents)
+        mock_vector_cls.return_value.create.assert_called_once_with(indexed_child_documents)
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
-        mock_keyword_cls.return_value.add_texts.assert_called_once()
+        mock_keyword_cls.return_value.add_texts.assert_called_once_with(indexed_child_documents, session)
 
     def test_index_uses_content_files_when_files_missing(
         self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
