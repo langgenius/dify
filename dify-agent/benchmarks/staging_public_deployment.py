@@ -800,6 +800,11 @@ def _run_argv(argv: Sequence[str]) -> str:
 _WORKER_PROBE = """import glob,json,os
 count=0
 for path in glob.glob('/proc/[0-9]*/cmdline'):
+    if int(path.split('/')[2]) == os.getpid():
+        # This probe's own ``python -c`` command embeds the marker below.
+        # Counting it would turn the expected two spawned Uvicorn children
+        # into a false three-worker deployment observation.
+        continue
     try:
         command=open(path,'rb').read()
     except OSError:

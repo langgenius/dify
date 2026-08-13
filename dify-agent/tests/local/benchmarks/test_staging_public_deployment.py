@@ -208,6 +208,13 @@ def test_valid_replica_stage_requires_fixed_resources_workers_and_topology() -> 
     assert len(evidence.effective_agent_config_fingerprint) == 64
 
 
+def test_worker_probe_excludes_its_own_marker_bearing_python_process() -> None:
+    source = __import__("benchmarks.staging_public_deployment", fromlist=["_WORKER_PROBE"])._WORKER_PROBE
+
+    assert "os.getpid()" in source
+    assert "from multiprocessing.spawn import spawn_main" in source
+
+
 def test_effective_config_fingerprint_detects_template_configmap_and_secret_drift() -> None:
     deployment = _configured_deployment(1)
     baseline = _evaluate(
