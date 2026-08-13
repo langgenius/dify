@@ -403,14 +403,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   if (goldenQuery.isLoading || badCaseQuery.isLoading)
     return (
-      <div className="flex min-h-105 items-center justify-center">
+      <div className="flex min-h-105 min-w-0 flex-1 items-center justify-center">
         <Loading />
       </div>
     )
 
   if (goldenQuery.isError || badCaseQuery.isError)
     return (
-      <div className="flex min-h-105 flex-col items-center justify-center gap-3 text-center">
+      <div className="flex min-h-105 min-w-0 flex-1 flex-col items-center justify-center gap-3 text-center">
         <span aria-hidden className="i-ri-error-warning-line size-8 text-text-warning" />
         <p role="alert" className="system-sm-medium text-text-primary">
           {t(($) => $.unknownError)}
