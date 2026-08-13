@@ -281,12 +281,20 @@ function publishedProfileApp(
     },
     knowledgeSpaceProfiles: profiles,
     modelCapabilityPreflight: {
-      verify: async (input) =>
+      resolveConfigured: async (input) =>
         capability(input.kind, {
           model: input.selection.model,
           pluginId: input.selection.pluginId,
           provider: input.selection.provider,
         }),
+      verify: async (input) =>
+        input.kind === "embedding"
+          ? capability(input.kind, {
+              model: input.selection.model,
+              pluginId: input.selection.pluginId,
+              provider: input.selection.provider,
+            })
+          : Promise.reject(new Error("Retrieval settings must not invoke configured models")),
     },
   });
 }

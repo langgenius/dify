@@ -2173,14 +2173,14 @@ async function preflightKnowledgeSpaceModels({
   const [embeddingSnapshot, reasoningSnapshot, rerankSnapshot] = await Promise.all([
     embedding ? preflight.verify({ kind: "embedding", selection: embedding, tenantId }) : undefined,
     retrievalProfile
-      ? preflight.verify({
+      ? resolveConfiguredModelCapability(preflight, {
           kind: "reasoning",
           selection: retrievalProfile.reasoningModel,
           tenantId,
         })
       : undefined,
     retrievalProfile?.rerank.enabled && retrievalProfile.rerank.model
-      ? preflight.verify({
+      ? resolveConfiguredModelCapability(preflight, {
           kind: "rerank",
           selection: retrievalProfile.rerank.model,
           tenantId,
@@ -2192,6 +2192,13 @@ async function preflightKnowledgeSpaceModels({
     ...(reasoningSnapshot ? { reasoning: reasoningSnapshot } : {}),
     ...(rerankSnapshot ? { rerank: rerankSnapshot } : {}),
   };
+}
+
+function resolveConfiguredModelCapability(
+  preflight: ModelCapabilityPreflight,
+  input: Parameters<ModelCapabilityPreflight["verify"]>[0],
+): Promise<ModelCapabilitySnapshot> {
+  return preflight.resolveConfigured ? preflight.resolveConfigured(input) : preflight.verify(input);
 }
 
 function embeddingVectorSpaceIdentityFromSnapshot(snapshot: ModelCapabilitySnapshot) {
