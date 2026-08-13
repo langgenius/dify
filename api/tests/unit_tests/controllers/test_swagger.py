@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Iterator
-
+from pathlib import Path
 import pytest
 from flask import Flask
 
@@ -623,7 +623,7 @@ def test_console_member_invite_documents_bad_request_response(monkeypatch: pytes
     }
 
 
-def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path):
+def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 
     written_paths = generate_specs(tmp_path)
@@ -664,7 +664,7 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
         assert field in builtin_tool_schema["properties"]
 
 
-def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path):
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 
     written_paths = generate_specs(tmp_path)
@@ -697,7 +697,7 @@ def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path):
     }
 
 
-def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path):
+def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 
     written_paths = generate_specs(tmp_path)
