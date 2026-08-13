@@ -79,12 +79,32 @@ class PluginInstaller(BasePluginClient):
     def list_plugins_by_category(
         self, tenant_id: str, category: PluginCategory, page: int, page_size: int
     ) -> PluginListWithoutTotalResponse:
-        return self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/{category.value}/list",
-            PluginListWithoutTotalResponse,
-            params={"page": page, "page_size": page_size, "response_type": "paged"},
-        )
+        try:
+            return self._request_with_plugin_daemon_response(
+                "GET",
+                f"plugin/{tenant_id}/management/{category.value}/list",
+                PluginListWithoutTotalResponse,
+                params={"page": page, "page_size": page_size, "response_type": "paged"},
+            )
+        except HTTPError as e:
+            # Local plugin daemons (e.g. 0.6.x) don't expose the
+            # category-segmented route. Fall back to the generic listing and
+            # filter by declaration.category on the API side.
+            message = e.args[0] if e.args else ""
+            if "404" not in message:
+                raise
+            all_plugins = self.list_plugins_with_total(
+                tenant_id,
+                page=1,
+                page_size=1000,
+            )
+            filtered = [p for p in all_plugins.list if p.declaration.category == category]
+            start = (page - 1) * page_size
+            end = start + page_size
+            return PluginListWithoutTotalResponse(
+                list=filtered[start:end],
+                has_more=end < len(filtered),
+            )
 
     def upload_pkg(
         self,

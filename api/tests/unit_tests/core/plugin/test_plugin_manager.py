@@ -144,6 +144,40 @@ class TestPluginDiscovery:
             assert result.list == [mock_plugin_entity]
             assert result.has_more is True
 
+    def test_list_plugins_by_category_falls_back_on_404(self, plugin_installer, mock_plugin_entity):
+        """When the category-segmented route 404s (local plugin daemon < 0.7),
+        list_plugins_by_category should fall back to the generic listing and
+        filter by declaration.category on the API side. Regression for #40683.
+        """
+        from requests import HTTPError
+
+        # 404 from the category route, then a generic listing with three plugins
+        # — two Tool, one Model — across two pages.
+        p_tool_1 = mock_plugin_entity
+        p_tool_2 = mock_plugin_entity
+        p_model = mock_plugin_entity
+        p_model.declaration.category = PluginCategory.Model
+
+        with patch.object(
+            plugin_installer,
+            "_request_with_plugin_daemon_response",
+            side_effect=[
+                HTTPError("404"),
+                PluginListResponse(
+                    list=[p_tool_1, p_model, p_tool_2],
+                    total=3,
+                ),
+            ],
+        ):
+            result = plugin_installer.list_plugins_by_category(
+                "test-tenant", category=PluginCategory.Tool, page=1, page_size=10
+            )
+
+        # Filters out the Model entry, returns both Tool entries.
+        assert result.list == [p_tool_1, p_tool_2]
+        assert result.has_more is False
+        assert result.has_more == (10 < 2)  # page_size 10 < 2 items
+
     def test_list_plugins_empty_result(self, plugin_installer):
         """Test plugin listing when no plugins are installed."""
         # Arrange: Mock empty response
