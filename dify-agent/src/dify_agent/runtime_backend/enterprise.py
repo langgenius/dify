@@ -31,7 +31,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -254,10 +253,6 @@ class EnterpriseRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
-
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
 
 
 def _is_missing_sandbox(exc: ShellProviderError) -> bool:

@@ -48,10 +48,6 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
-  default: () => <div data-testid="time-picker" />,
-}))
-
 vi.mock(
   '@/app/components/plugins/reference-setting-modal/auto-update-setting/plugins-picker',
   () => ({

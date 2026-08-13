@@ -62,8 +62,8 @@ const renderAccountDropdown = () => {
 
   return renderWithConsoleQuery(
     <AccountDropdown
-      trigger={({ isOpen, ariaLabel }) => (
-        <button type="button" aria-label={ariaLabel} data-open={isOpen}>
+      trigger={({ ariaLabel }) => (
+        <button type="button" aria-label={ariaLabel}>
           Current account
         </button>
       )}
@@ -79,7 +79,7 @@ describe('AccountDropdown', () => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ push: mockPush })
     vi.mocked(useProviderContext).mockReturnValue({
-      isEducationAccount: false,
+      enableEducationPlan: false,
     } as ProviderContextState)
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
@@ -120,12 +120,12 @@ describe('AccountDropdown', () => {
     renderAccountDropdown()
 
     const trigger = screen.getByRole('button', { name: 'common.account.account' })
-    expect(trigger).toHaveAttribute('data-open', 'false')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     await user.click(trigger)
 
     expect(await screen.findByText('current@example.com')).toBeInTheDocument()
-    expect(trigger).toHaveAttribute('data-open', 'true')
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByText('common.settings.preferences')).toBeInTheDocument()
     expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
   })

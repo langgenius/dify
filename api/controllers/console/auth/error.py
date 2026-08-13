@@ -95,6 +95,18 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
     code = 429
 
 
+class TurnstileVerificationFailedError(BaseHTTPException):
+    error_code = "turnstile_verification_failed"
+    description = "Turnstile verification failed. Please try again."
+    code = 400
+
+
+class TurnstileServiceUnavailableError(BaseHTTPException):
+    error_code = "turnstile_service_unavailable"
+    description = "Turnstile verification is temporarily unavailable. Please try again later."
+    code = 503
+
+
 class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     error_code = "email_code_login_rate_limit_exceeded"
     description = "Too many login emails have been sent. Please try again in {minutes} minutes."

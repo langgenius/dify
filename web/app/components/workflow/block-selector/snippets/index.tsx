@@ -1,15 +1,15 @@
 import type { OnNodeAdd } from '../../types'
 import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   createPreviewCardHandle,
   PreviewCard,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -131,15 +131,15 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             onChange={(event) => onSearchTextChange?.(event.target.value)}
           />
           {!!searchText && (
-            <Button
+            <IconButton
               variant="ghost"
-              size="small"
+              size="md"
               aria-label={t(($) => $['tabs.clearSnippetSearch'], { ns: 'workflow' })}
-              className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
+              className="shrink-0 focus-visible:ring-inset"
               onClick={() => onSearchTextChange?.('')}
             >
               <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-            </Button>
+            </IconButton>
           )}
         </div>
         <div className="mx-0 mr-0.5 h-3.5 w-px bg-divider-regular" />
@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {
@@ -183,7 +183,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
         <ScrollAreaScrollbar orientation="vertical">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     )
 
   return (

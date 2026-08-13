@@ -64,6 +64,7 @@ describe('PdfPreview', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
+    expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
@@ -136,12 +137,10 @@ describe('PdfPreview', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 
-  it('should render the overlay and keep backdrop clicks from closing', () => {
+  it('should keep preview content clicks from closing', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const overlay = screen.getByRole('dialog')
-    expect(overlay).toBeInTheDocument()
-    fireEvent.click(overlay)
+    fireEvent.click(getScaleContainer())
     expect(mockOnCancel).not.toHaveBeenCalled()
   })
 })

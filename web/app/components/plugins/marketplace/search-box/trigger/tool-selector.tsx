@@ -1,13 +1,13 @@
 import type { Tag } from '../../../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 
 type ToolSelectorTriggerProps = {
   selectedTagsLength: number
-  open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
@@ -15,7 +15,6 @@ type ToolSelectorTriggerProps = {
 
 function ToolSelectorTrigger({
   selectedTagsLength,
-  open,
   tags,
   tagsMap,
   onTagsChange,
@@ -49,10 +48,10 @@ function ToolSelectorTrigger({
               !selectedTagsLength && 'size-7 min-h-0 justify-center p-0',
               !!selectedTagsLength &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-7 pl-1 shadow-xs shadow-shadow-shadow-3',
-              open && !selectedTagsLength && 'bg-state-base-hover',
+              !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className={cn('shrink-0', !!selectedTagsLength && 'p-0.5')}>
+            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 pl-0.5')}>
               <span
                 aria-hidden
                 className={cn(
@@ -62,7 +61,7 @@ function ToolSelectorTrigger({
               />
             </span>
             {!!selectedTagsLength && (
-              <span className="flex min-w-0 items-center gap-x-0.5 px-0.5 py-1 system-sm-medium">
+              <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
                 <span className="truncate text-text-secondary">
                   {tags
                     .map((tag) => tagsMap[tag]?.label)
@@ -81,21 +80,21 @@ function ToolSelectorTrigger({
         }
       />
       {!!selectedTagsLength && (
-        <Button
+        <IconButton
           variant="ghost"
-          size="small"
+          size="md"
           aria-label={t(($) => $.clearSelectedTags, {
             ns: 'pluginTags',
             tags: triggerLabel,
           })}
-          className="absolute right-0.5 size-6 min-h-0 p-0 focus-visible:ring-inset"
+          className="absolute right-0.5 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
             onTagsChange([])
           }}
         >
           <span aria-hidden className="i-ri-close-circle-fill size-4 text-text-quaternary" />
-        </Button>
+        </IconButton>
       )}
     </div>
   )

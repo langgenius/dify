@@ -343,12 +343,22 @@ def test_build_includes_core_tools_layer_returned_by_injected_builder():
     assert DIFY_PLUGIN_TOOLS_LAYER_ID not in layers
 
 
-def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
+@pytest.mark.parametrize(
+    "plugin_id",
+    [
+        pytest.param(
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            id="marketplace-unique-identifier",
+        ),
+        pytest.param("langgenius/openai/openai", id="legacy-three-segment-provider-id"),
+    ],
+)
+def test_normalizes_langgenius_model_provider_for_agent_backend_transport(plugin_id: str):
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "You are careful."},
         model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            plugin_id=plugin_id,
             model_provider="langgenius/openai/openai",
             model="gpt-test",
         ),
@@ -432,7 +442,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert "never invent the `reference` value" in output_description
     assert "Do not call `final_output` before the upload command succeeds" in output_description
     assert "accepted file-mapping shape and the returned `reference`" in output_description
-    assert "include the returned `download_url` in that reply" in output_description
+    assert "include the returned `public_download_url` in that reply" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
@@ -744,7 +754,13 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "conditions": {
                                     "logical_operator": "and",
                                     "conditions": [
-                                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
+                                        {
+                                            "id": "cond-1",
+                                            "metadata_id": "meta-1",
+                                            "name": "category",
+                                            "comparison_operator": "contains",
+                                            "value": "auth",
+                                        }
                                     ],
                                 },
                             },

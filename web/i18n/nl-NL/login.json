@@ -91,6 +91,7 @@
   "timezone": "Time zone",
   "tos": "Terms of Service",
   "tosDesc": "By signing up, you agree to our",
+  "turnstile.loadError": "De beveiligingsverificatie kon niet worden geladen.",
   "usePassword": "Use Password",
   "useVerificationCode": "Use Verification Code",
   "validate": "Validate",

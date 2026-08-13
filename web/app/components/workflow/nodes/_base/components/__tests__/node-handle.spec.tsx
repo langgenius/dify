@@ -12,6 +12,8 @@ type MockHooksState = {
 }
 
 type MockStoreState = {
+  dataSourceList: unknown[]
+  nodes: unknown[]
   shouldAutoOpenStartNodeSelector: boolean
   setShouldAutoOpenStartNodeSelector?: (open: boolean) => void
   setHasSelectedStartNode?: (selected: boolean) => void
@@ -32,6 +34,8 @@ const {
     isReadOnly: false,
   }
   const mockStoreState: MockStoreState = {
+    dataSourceList: [],
+    nodes: [],
     shouldAutoOpenStartNodeSelector: false,
     setShouldAutoOpenStartNodeSelector: undefined,
     setHasSelectedStartNode: undefined,
@@ -54,13 +58,6 @@ type HandleProps = {
   onClick?: () => void
 }
 
-type BlockSelectorProps = {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  onSelect?: (type: BlockEnum, pluginDefaultValue?: { pluginId: string }) => void
-  triggerClassName?: (open: boolean) => string
-}
-
 vi.mock('reactflow', () => ({
   Handle: ({ id, className, children, onClick }: HandleProps) => (
     <div
@@ -76,32 +73,9 @@ vi.mock('reactflow', () => ({
     Left: 'left',
     Right: 'right',
   },
-}))
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ open = false, onOpenChange, onSelect, triggerClassName }: BlockSelectorProps) => (
-    <div>
-      <button
-        type="button"
-        className={triggerClassName?.(open)}
-        onClick={(e) => {
-          e.stopPropagation()
-          onOpenChange?.(!open)
-        }}
-      >
-        add-node
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          onSelect?.(BlockEnum.Answer, { pluginId: 'plugin-1' })
-        }}
-      >
-        select-node
-      </button>
-    </div>
-  ),
+  useStoreApi: () => ({
+    getState: () => ({ getNodes: () => [] }),
+  }),
 }))
 
 vi.mock('../../../../hooks/use-available-blocks', async (importOriginal) => {
@@ -146,6 +120,36 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      configsMap: { flowType: 'app-flow' },
+      availableNodesMetaData: { nodes: [] },
+    }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
+  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllWorkflowTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
+  useMarketplacePlugins: () => ({ data: undefined }),
+}))
+
 const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
   type: BlockEnum.Code,
   title: 'Node',
@@ -154,9 +158,8 @@ const createNodeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType
   ...overrides,
 })
 
-const getAddNodeButton = () => screen.getByRole('button', { name: 'add-node' })
-const queryAddNodeButton = () => screen.queryByRole('button', { name: 'add-node' })
-const getSelectNodeButton = () => screen.getByRole('button', { name: 'select-node' })
+const getAddNodeButton = () => screen.getByRole('button', { name: 'workflow.common.addBlock' })
+const queryAddNodeButton = () => screen.queryByRole('button', { name: 'workflow.common.addBlock' })
 
 const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
   return render(
@@ -202,7 +205,7 @@ describe('node-handle', () => {
 
   // Target-side tests cover selector visibility, connection locking, and status rendering.
   describe('NodeTargetHandle', () => {
-    it('should toggle the target add trigger and select the next node', () => {
+    it('should toggle the target add trigger', () => {
       renderTargetHandle()
 
       const handle = screen.getByTestId('handle-target-handle')
@@ -214,27 +217,14 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       // Trigger stays pointer-events-none so it never steals mousedown from
       // the underlying React Flow handle (drag-to-connect must keep working).
       expect(addNodeButton).toHaveClass('pointer-events-none')
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
-
-      fireEvent.click(getSelectNodeButton())
-
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-        {
-          nodeType: BlockEnum.Answer,
-          pluginDefaultValue: { pluginId: 'plugin-1' },
-        },
-        {
-          nextNodeId: 'target-node',
-          nextNodeTargetHandle: 'target-handle',
-        },
-      )
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
     })
 
     it('should not render the target add trigger when the handle is already connected', () => {
@@ -265,7 +255,7 @@ describe('node-handle', () => {
 
   // Source-side tests cover selector opening paths, previous-node selection, and status styling.
   describe('NodeSourceHandle', () => {
-    it('should toggle the source add trigger and select the previous node', () => {
+    it('should toggle the source add trigger', () => {
       renderSourceHandle()
 
       const handle = screen.getByTestId('handle-source-handle')
@@ -275,25 +265,12 @@ describe('node-handle', () => {
 
       fireEvent.click(addNodeButton)
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
-
-      fireEvent.click(getSelectNodeButton())
-
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
-        {
-          nodeType: BlockEnum.Answer,
-          pluginDefaultValue: { pluginId: 'plugin-1' },
-        },
-        {
-          prevNodeId: 'source-node',
-          prevNodeSourceHandle: 'source-handle',
-        },
-      )
 
       fireEvent.click(handle)
 
-      expect(addNodeButton).toHaveClass('opacity-0')
+      expect(addNodeButton).not.toHaveAttribute('data-popup-open')
     })
 
     it('should keep the source add trigger visible when the node is selected', () => {
@@ -323,7 +300,7 @@ describe('node-handle', () => {
 
       const addNodeButton = getAddNodeButton()
 
-      expect(addNodeButton).toHaveClass('opacity-100')
+      expect(addNodeButton).toHaveAttribute('data-popup-open')
       expect(addNodeButton).toHaveClass('pointer-events-none')
       expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)

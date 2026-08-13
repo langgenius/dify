@@ -37,27 +37,22 @@ describe('SavedItems', () => {
     expect(markdownElement)!.toBeInTheDocument()
     expect(screen.getByText('11 common.unit.char'))!.toBeInTheDocument()
 
-    const actionArea = container.querySelector('[class*="bg-components-actionbar-bg"]')
-    const actionButtons = actionArea?.querySelectorAll('button') ?? []
-    expect(actionButtons.length).toBeGreaterThanOrEqual(3)
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeInTheDocument()
   })
 
   it('copies content and notifies, and triggers remove callback', () => {
     const handleRemove = vi.fn()
-    const { container } = render(<SavedItems {...baseProps} onRemove={handleRemove} />)
+    render(<SavedItems {...baseProps} onRemove={handleRemove} />)
 
-    const actionArea = container.querySelector('[class*="bg-components-actionbar-bg"]')
-    const actionButtons = actionArea?.querySelectorAll('button') ?? []
-    expect(actionButtons.length).toBeGreaterThanOrEqual(3)
+    const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.delete' })
 
-    const copyButton = actionButtons[1]
-    const deleteButton = actionButtons[2]
-
-    fireEvent.click(copyButton!)
+    fireEvent.click(copyButton)
     expect(mockCopy).toHaveBeenCalledWith('hello world')
     expect(toastSuccessSpy).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
 
-    fireEvent.click(deleteButton!)
+    fireEvent.click(deleteButton)
     expect(handleRemove).toHaveBeenCalledWith('1')
   })
 })

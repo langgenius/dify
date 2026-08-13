@@ -15,7 +15,12 @@ from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from dify_app import DifyApp
 from libs.passport import PassportService
-from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
+from libs.token import (
+    extract_access_token,
+    extract_console_cookie_token,
+    extract_webapp_passport,
+    is_admin_api_key_request,
+)
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
@@ -66,24 +71,22 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
     auth_token = extract_access_token(request)
 
     # Check for admin API key authentication first
-    if dify_config.ADMIN_API_KEY_ENABLE and auth_token:
-        admin_api_key = dify_config.ADMIN_API_KEY
-        if admin_api_key and admin_api_key == auth_token:
-            workspace_id = request.headers.get("X-WORKSPACE-ID")
-            if workspace_id:
-                tenant_account_join = session.execute(
-                    select(Tenant, TenantAccountJoin).where(
-                        Tenant.id == workspace_id,
-                        TenantAccountJoin.tenant_id == Tenant.id,
-                        TenantAccountJoin.role == "owner",
-                    )
-                ).one_or_none()
-                if tenant_account_join:
-                    tenant, ta = tenant_account_join
-                    account = session.scalar(select(Account).where(Account.id == ta.account_id))
-                    if account:
-                        account.set_current_tenant_with_session(tenant, session=session)
-                        return account
+    if is_admin_api_key_request(request):
+        workspace_id = request.headers.get("X-WORKSPACE-ID")
+        if workspace_id:
+            tenant_account_join = session.execute(
+                select(Tenant, TenantAccountJoin).where(
+                    Tenant.id == workspace_id,
+                    TenantAccountJoin.tenant_id == Tenant.id,
+                    TenantAccountJoin.role == "owner",
+                )
+            ).one_or_none()
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = session.scalar(select(Account).where(Account.id == ta.account_id))
+                if account:
+                    account.set_current_tenant_with_session(tenant, session=session)
+                    return account
 
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:

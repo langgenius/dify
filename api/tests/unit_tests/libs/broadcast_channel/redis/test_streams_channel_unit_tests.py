@@ -12,6 +12,7 @@ from libs.broadcast_channel.redis.streams_channel import (
     StreamsTopic,
     _StreamsSubscription,
 )
+from libs.broadcast_channel.signals import SIG_CLOSE
 
 
 class FakeStreamsRedis:
@@ -281,6 +282,34 @@ class TestStreamsSubscription:
             received.append(bytes(item))
 
         assert received == case.expected_messages
+
+    def test_listener_ignores_close_signal_from_another_subscription(self):
+        class OneShotRedis:
+            def __init__(self) -> None:
+                self._calls = 0
+
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+                self._calls += 1
+                if self._calls == 1:
+                    key = next(iter(streams))
+                    return [
+                        (
+                            key,
+                            [
+                                ("1-0", {b"data": SIG_CLOSE}),
+                                ("2-0", {b"data": b"next-event"}),
+                            ],
+                        )
+                    ]
+                subscription._closed = True
+                return []
+
+        subscription = _StreamsSubscription(OneShotRedis(), "stream:close-signal")
+        subscription._listen()
+
+        assert subscription._queue.get_nowait() == b"next-event"
+        assert subscription._queue.get_nowait() is subscription._SENTINEL
+        assert subscription._queue.empty()
 
     def test_iterator_yields_messages_until_subscription_is_closed(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("iter")

@@ -4,12 +4,12 @@ import enum
 import logging
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from services.enterprise.base import (
     EnterpriseRequest,
@@ -17,12 +17,10 @@ from services.enterprise.base import (
     MCPNoRefreshTokenError,
     MCPTokenError,
 )
+from services.entities.feature_entities import LicenseStatus
 from services.errors.enterprise import (
     EnterpriseServiceError,
 )
-
-if TYPE_CHECKING:
-    from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +96,7 @@ def try_join_default_workspace(account_id: str) -> None:
     This is a best-effort integration. Failures must not block user registration.
     """
 
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     try:
@@ -376,9 +374,9 @@ class EnterpriseService:
         caching, every request on an expired license would hit the enterprise API.
 
         Returns:
-            LicenseStatus enum value, or None if enterprise is disabled / unreachable.
+            LicenseStatus enum value, or None outside the Enterprise edition or when unreachable.
         """
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return None
 
         cached = cls._read_cached_license_status()
@@ -390,8 +388,6 @@ class EnterpriseService:
     @classmethod
     def _read_cached_license_status(cls) -> LicenseStatus | None:
         """Read license status from Redis cache, returning None on miss or failure."""
-        from services.feature_service import LicenseStatus
-
         try:
             raw = redis_client.get(LICENSE_STATUS_CACHE_KEY)
             if raw:
@@ -404,8 +400,6 @@ class EnterpriseService:
     @classmethod
     def _fetch_and_cache_license_status(cls) -> LicenseStatus | None:
         """Fetch license status from enterprise API and cache the result."""
-        from services.feature_service import LicenseStatus
-
         try:
             info = cls.get_info()
             license_info = info.get("License")

@@ -1,5 +1,5 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
-import type { CSSProperties, KeyboardEvent, MouseEventHandler, ReactElement } from 'react'
+import type { Placement, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
+import type { CSSProperties, KeyboardEvent, MouseEventHandler } from 'react'
 import type {
   CommonNodeType,
   NodeDefault,
@@ -8,8 +8,8 @@ import type {
   ToolWithProvider,
 } from '../types'
 import type { TabType } from './types'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
   PopoverClose,
@@ -32,13 +32,13 @@ export type BlockSelectorProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onSelect: OnSelectBlock
-  trigger?: (open: boolean) => ReactElement
+  trigger?: NonNullable<PopoverTriggerProps['render']>
   triggerTooltip?: string
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
   triggerStyle?: CSSProperties
-  triggerClassName?: (open: boolean) => string
+  triggerClassName?: string
   triggerAriaLabel?: string
   popupClassName?: string
   availableBlocksTypes?: BlockEnum[]
@@ -125,25 +125,25 @@ function BlockSelector({
     <PopoverTrigger
       aria-label={triggerAriaLabel}
       disabled={disabled}
-      render={trigger(open)}
+      render={trigger}
       onClick={handleTrigger}
     />
   ) : (
     <PopoverTrigger
-      aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
       disabled={disabled}
       render={
-        <Button
+        <IconButton
+          aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
           variant="primary"
-          size="small"
-          className={cn('z-10 size-4 rounded-full p-0', triggerClassName?.(open))}
+          size="xs"
+          className={cn('z-10 rounded-full', triggerClassName)}
           style={triggerStyle}
-        />
+        >
+          <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
+        </IconButton>
       }
       onClick={handleTrigger}
-    >
-      <span aria-hidden className="i-custom-vender-line-general-plus-02 size-2.5" />
-    </PopoverTrigger>
+    />
   )
   const triggerWithTooltip = triggerTooltip ? (
     <TipPopup title={triggerTooltip}>{triggerControl}</TipPopup>

@@ -1,3 +1,4 @@
+import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -27,7 +28,6 @@ let workflowStoreState: {
   appId: string
   isWorkflowDataLoaded: boolean
   syncWorkflowDraftHash: string | null
-  environmentVariables: Array<Record<string, unknown>>
   conversationVariables: Array<Record<string, unknown>>
   setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
   setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
@@ -117,7 +117,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       appId: 'app-1',
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'hash-123',
-      environmentVariables: [],
       conversationVariables: [],
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
@@ -237,6 +236,57 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
+  it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
+    const draftNode = {
+      id: 'n1',
+      position: { x: 0, y: 0 },
+      data: { type: BlockEnum.Start, label: 'Start' },
+    }
+    const draftEdge = {
+      id: 'edge-1',
+      source: 'n1',
+      target: 'n2',
+      data: { stable: 'keep' },
+    }
+    mockGetNodes.mockReturnValue([draftNode])
+    reactFlowState = {
+      ...reactFlowState,
+      edges: [draftEdge],
+      transform: [10, 20, 1.5],
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+    act(() => {
+      syncPromise = result.current.doSyncWorkflowDraft(false)
+
+      // Simulate ReactFlow clearing its store immediately after the page starts unmounting.
+      mockGetNodes.mockReturnValue([])
+      reactFlowState = {
+        ...reactFlowState,
+        edges: [],
+        transform: [0, 0, 1],
+      }
+    })
+
+    await act(async () => {
+      await syncPromise
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: {
+            nodes: [draftNode],
+            edges: [draftEdge],
+            viewport: { x: 10, y: 20, zoom: 1.5 },
+          },
+        }),
+      }),
+    )
+  })
+
   it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderUseNodesSyncDraft()
 
@@ -293,7 +343,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     workflowStoreState = {
       ...workflowStoreState,
       syncWorkflowDraftHash: 'latest-hash',
-      environmentVariables: [{ id: 'env-1', value: 'env' }],
       conversationVariables: [{ id: 'conversation-1', value: 'conversation' }],
     }
     featuresState = {
@@ -340,7 +389,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
           sensitive_word_avoidance: { enabled: false },
           file_upload: { enabled: true },
         },
-        environment_variables: [{ id: 'env-1', value: 'env' }],
         conversation_variables: [{ id: 'conversation-1', value: 'conversation' }],
         hash: 'latest-hash',
       },
@@ -350,6 +398,42 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSuccess).toHaveBeenCalled()
     expect(callbacks.onError).not.toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('should include an environment variable patch in a full draft sync', async () => {
+    const environmentVariablePatch: EnvironmentVariablePatch = {
+      environmentVariables: [
+        {
+          id: 'env-1',
+          name: 'for_summarize',
+          description: '',
+          value_type: 'llm',
+          value: {
+            provider: 'langgenius/openai/openai',
+            name: 'gpt-4.1',
+            mode: 'chat',
+          },
+        },
+      ],
+      deletedEnvironmentVariableIds: ['env-2'],
+    }
+    const { result } = renderUseNodesSyncDraft()
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, undefined, { environmentVariablePatch })
+    })
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          environment_variable_patch: {
+            environment_variables: environmentVariablePatch.environmentVariables,
+            deleted_environment_variable_ids:
+              environmentVariablePatch.deletedEnvironmentVariableIds,
+          },
+        }),
+      }),
+    )
   })
 
   it('should keep pending inline Agent v2 nodes in draft without incomplete bindings', async () => {
@@ -440,7 +524,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     }
     workflowStoreState = {
       ...workflowStoreState,
-      environmentVariables: [{ id: 'env-1' }],
       conversationVariables: [{ id: 'conversation-1' }],
     }
 

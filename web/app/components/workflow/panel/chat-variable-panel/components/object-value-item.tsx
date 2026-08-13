@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
@@ -136,13 +136,14 @@ const ObjectValueItem: FC<Props> = ({ index, list, onChange }) => {
         />
         {list.length > 1 && !isFocus && (
           <div className="absolute top-0.5 right-1 z-10">
-            <ActionButton
-              size="m"
-              className="group hover:bg-state-destructive-hover!"
+            <IconButton
+              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+              size="md"
+              tone="destructive"
               onClick={handleItemRemove(index)}
             >
-              <span className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         )}
       </div>

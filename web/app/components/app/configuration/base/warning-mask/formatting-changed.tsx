@@ -31,7 +31,7 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({ onConfirm, onCancel })
       description={t(($) => $.formattingChangedText, { ns: 'appDebug' })}
       footer={
         <div className="flex space-x-2">
-          <Button variant="primary" className="flex space-x-2" onClick={onConfirm}>
+          <Button variant="primary" className="flex" onClick={onConfirm}>
             {icon}
             <span>{t(($) => $['operation.refresh'], { ns: 'common' })}</span>
           </Button>

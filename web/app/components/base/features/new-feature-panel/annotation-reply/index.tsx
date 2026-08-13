@@ -36,7 +36,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         draft.annotationReply = newConfig
       })
       setFeatures(newFeatures)
-      if (onChange) onChange(newFeatures)
+      onChange?.()
     },
     [featuresStore, onChange],
   )
@@ -123,7 +123,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                     onClick={() => setIsShowAnnotationConfigInit(true)}
                     disabled={disabled}
                   >
-                    <RiEqualizer2Line className="mr-1 size-4" />
+                    <RiEqualizer2Line className="size-4" />
                     {t(($) => $['operation.params'], { ns: 'common' })}
                   </Button>
                   <Button
@@ -132,7 +132,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                       router.push(`/app/${appId}/annotations`)
                     }}
                   >
-                    <RiExternalLinkLine className="mr-1 size-4" />
+                    <RiExternalLinkLine className="size-4" />
                     {t(($) => $['feature.annotation.cacheManagement'], { ns: 'appDebug' })}
                   </Button>
                 </div>

@@ -26,6 +26,7 @@ type Props = Readonly<{
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
+  usageUnknown?: boolean
 }>
 
 const UsageInfo: FC<Props> = ({
@@ -44,11 +45,12 @@ const UsageInfo: FC<Props> = ({
   storageThreshold = 50,
   storageTooltip,
   isSandboxPlan = false,
+  usageUnknown = false,
 }) => {
   const { t } = useTranslation()
 
-  const isBelowThreshold = storageMode && usage < storageThreshold
-  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
+  const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
+  const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
 
   // Single source of truth: sandbox full is visually clamped to 100%; all other
   // determinate cases show the real percent capped at 100. Tone derives from
@@ -79,6 +81,8 @@ const UsageInfo: FC<Props> = ({
   ) : null
 
   const usageDisplay: ReactNode = (() => {
+    if (usageUnknown) return <span>--</span>
+
     if (storageMode) {
       if (isSandboxFull) {
         return (
@@ -142,7 +146,7 @@ const UsageInfo: FC<Props> = ({
   )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (storageMode && storageTooltip) {
+    if (!usageUnknown && storageMode && storageTooltip) {
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
@@ -177,7 +181,7 @@ const UsageInfo: FC<Props> = ({
           {rightInfo}
         </dd>
       </dl>
-      {wrapWithStorageTooltip(bar)}
+      {!usageUnknown && wrapWithStorageTooltip(bar)}
     </div>
   )
 }

@@ -86,6 +86,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -284,10 +285,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: any) => {
+      if (!(await prepareHumanInputSubmission())) return
+
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
     },
-    [isInstalledApp],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)

@@ -13,7 +13,6 @@ import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/re
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { Plan } from '@/app/components/billing/type'
 import { API_PREFIX } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -73,7 +72,7 @@ export default function WorkflowLogArchivesPage() {
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const canViewArchiveContent =
-    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== Plan.sandbox
+    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== 'sandbox'
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
       enabled: canViewArchiveContent,
@@ -399,7 +398,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 variant="secondary"
                 loading={isPreparing}
                 disabled={isPreparing}
-                className="gap-1 px-2"
+                className="px-2"
                 aria-label={buttonAriaLabel}
                 onClick={onAction}
               >

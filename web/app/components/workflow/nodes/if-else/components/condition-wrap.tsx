@@ -188,7 +188,7 @@ const ConditionWrap: FC<Props> = ({
                       className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                     >
                       <Button size="small" disabled={readOnly}>
-                        <RiAddLine className="mr-1 size-3.5" />
+                        <RiAddLine className="size-3.5" />
                         {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                       </Button>
                     </SelectTrigger>
@@ -219,7 +219,7 @@ const ConditionWrap: FC<Props> = ({
                     onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                     onMouseLeave={() => setWillDeleteCaseId('')}
                   >
-                    <RiDeleteBinLine className="mr-1 size-3.5" />
+                    <RiDeleteBinLine className="size-3.5" />
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                 )}
@@ -235,7 +235,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 size-3.5" />
+          <RiAddLine className="size-3.5" />
           {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
         </Button>
       )}

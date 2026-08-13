@@ -109,6 +109,12 @@ class EducationActivateLimitError(BaseHTTPException):
     code = 429
 
 
+class EducationDiscountTemporarilyPausedError(BaseHTTPException):
+    error_code = "education_discount_temporarily_paused"
+    description = "Education discount temporarily paused, while we upgrade our security measures."
+    code = 503
+
+
 class ComplianceRateLimitError(BaseHTTPException):
     error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."

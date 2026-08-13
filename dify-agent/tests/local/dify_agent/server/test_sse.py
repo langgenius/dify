@@ -3,6 +3,8 @@ import json
 from collections.abc import AsyncGenerator
 from typing import cast
 
+import pytest
+
 from dify_agent.protocol.schemas import RunFailedEvent, RunFailedEventData, RunStartedEvent
 from dify_agent.server.sse import format_sse_event, sse_event_stream
 
@@ -47,5 +49,18 @@ def test_sse_event_stream_emits_heartbeats_while_waiting() -> None:
         _ = release.set()
         assert (await anext(stream)).startswith("id: 1-0\nevent: run_started")
         await stream.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_sse_event_stream_ends_after_finite_terminal_event_iterator() -> None:
+    async def scenario() -> None:
+        async def events():
+            yield RunFailedEvent(id="2-0", run_id="run-1", data=RunFailedEventData(error="model failed"))
+
+        stream = cast(AsyncGenerator[str, None], sse_event_stream(events(), heartbeat_interval_seconds=0.001))
+        assert (await anext(stream)).startswith("id: 2-0\nevent: run_failed")
+        with pytest.raises(StopAsyncIteration):
+            _ = await asyncio.wait_for(anext(stream), timeout=0.1)
 
     asyncio.run(scenario())

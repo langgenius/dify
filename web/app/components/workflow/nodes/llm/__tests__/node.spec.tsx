@@ -70,4 +70,20 @@ describe('llm/node', () => {
 
     expect(screen.queryByText('openai:gpt-4o')).not.toBeInTheDocument()
   })
+
+  it('renders a cached environment model without requiring workflow context', () => {
+    const data = createData({
+      model: {
+        provider: 'anthropic',
+        name: 'claude-sonnet',
+        mode: AppModeEnum.CHAT,
+        completion_params: {},
+      },
+      model_selector: ['env', 'for_summarize'],
+    })
+
+    render(<Node id="llm-node" data={data} />)
+
+    expect(screen.getByText('anthropic:claude-sonnet')).toBeInTheDocument()
+  })
 })

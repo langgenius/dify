@@ -119,7 +119,7 @@ const LearnDifyContent = ({
           {onHide && (
             <button
               type="button"
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+              className="flex size-8 shrink-0 touch-manipulation items-center justify-center rounded-lg text-text-tertiary outline-hidden transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
               aria-label={t(($) => $['learnDify.hide'], { ns: 'explore' })}
               onClick={handleHide}
             >

@@ -5,6 +5,13 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 
 from core.logging.context import clear_request_context
+from models import Account
+
+
+def _user() -> Account:
+    user = Account(name="Test User", email="otel@example.com")
+    user.id = "user-id"
+    return user
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +26,7 @@ def test_on_user_loaded_does_not_write_to_non_recording_span() -> None:
 
     span = mock.MagicMock()
     span.is_recording.return_value = False
-    user = mock.Mock(id="user-id")
+    user = _user()
 
     with (
         mock.patch.object(runtime.dify_config, "ENABLE_OTEL", True),
@@ -39,7 +46,7 @@ def test_on_user_loaded_sets_attributes_on_recording_span() -> None:
 
     span = mock.MagicMock()
     span.is_recording.return_value = True
-    user = mock.Mock(id="user-id")
+    user = _user()
 
     with (
         mock.patch.object(runtime.dify_config, "ENABLE_OTEL", True),
@@ -62,7 +69,7 @@ def test_on_user_loaded_ignores_ended_sdk_span(caplog) -> None:
     tracer_provider = TracerProvider()
     span = tracer_provider.get_tracer(__name__).start_span("ended")
     span.end()
-    user = mock.Mock(id="user-id")
+    user = _user()
 
     with (
         trace.use_span(span, end_on_exit=False),
