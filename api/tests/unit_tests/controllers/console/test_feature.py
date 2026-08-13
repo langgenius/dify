@@ -18,6 +18,7 @@ from services.entities.feature_entities import (
 )
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
+from services.init_validation_service import InitValidationService
 from services.oauth_server_service import OAuthServerService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_service import SetupService
@@ -43,6 +44,7 @@ def _install_application_services(mocker: MockerFixture):
         setup=create_autospec(SetupService, instance=True, spec_set=True),
         feature_queries=feature_queries,
         oauth_server=create_autospec(OAuthServerService, instance=True, spec_set=True),
+        init_validation=create_autospec(InitValidationService, instance=True, spec_set=True),
         workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
         workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),
     )

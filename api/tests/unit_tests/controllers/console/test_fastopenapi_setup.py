@@ -80,7 +80,7 @@ def test_console_setup_fastopenapi_post_success(
     deployment_edition: DeploymentEdition,
 ) -> None:
     monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
-    monkeypatch.setattr(setup_controller, "get_init_validate_status", lambda: True)
+    monkeypatch.setattr(setup_controller, "is_init_validated", lambda: True)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)
     payload = {
@@ -197,7 +197,7 @@ def test_console_setup_translates_service_errors_to_controller_errors(
     expected_controller_error: type[Exception],
 ) -> None:
     monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
-    monkeypatch.setattr(setup_controller, "get_init_validate_status", lambda: False)
+    monkeypatch.setattr(setup_controller, "is_init_validated", lambda: False)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)
     setup_service.initialize.side_effect = service_error
@@ -228,7 +228,7 @@ def test_console_setup_fastopenapi_does_not_mark_setup_completed_when_service_fa
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
-    monkeypatch.setattr(setup_controller, "get_init_validate_status", lambda: True)
+    monkeypatch.setattr(setup_controller, "is_init_validated", lambda: True)
     mark_setup_completed = Mock()
     monkeypatch.setattr(setup_controller, "mark_setup_completed", mark_setup_completed)
     setup_service.initialize.side_effect = RuntimeError("provision failed")

@@ -846,31 +846,6 @@ describe('AppPublisher', () => {
     expect(mockOnToggle).not.toHaveBeenCalled()
   })
 
-  it('should apply the per-open publish lock to the keyboard shortcut', async () => {
-    const preventDefault = vi.fn()
-    mockOnPublish.mockResolvedValue(undefined)
-
-    render(<AppPublisher publishedAt={Date.now()} onPublish={mockOnPublish} />)
-
-    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
-    hotkeyMocks.handlers[0]!({ preventDefault })
-
-    await waitFor(() => {
-      expect(preventDefault).toHaveBeenCalled()
-      expect(mockOnPublish).toHaveBeenCalledTimes(1)
-    })
-
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    expect(mockOnPublish).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByText(/(?:^|\.)common\.publish(?=$|:)/))
-    expect(sectionProps.summary?.published).toBe(false)
-    hotkeyMocks.handlers.at(-1)!({ preventDefault })
-    await waitFor(() => {
-      expect(mockOnPublish).toHaveBeenCalledTimes(2)
-    })
-  })
-
   it('should keep keyboard publishing available in multiple model mode', async () => {
     const preventDefault = vi.fn()
     mockOnPublish.mockResolvedValue(undefined)

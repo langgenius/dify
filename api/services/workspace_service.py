@@ -15,7 +15,7 @@ from services.feature_service import FeatureService
 
 @dataclass(frozen=True)
 class EffectiveCreditPool:
-    plan: str | None = None
+    plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
@@ -56,7 +56,7 @@ class WorkspaceService:
             return EffectiveCreditPool()
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        subscription_plan: str = billing_info["subscription"]["plan"]
+        subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
 
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 

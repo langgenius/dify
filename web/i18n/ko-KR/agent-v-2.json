@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "노드",
   "agentDetail.access.workflow.table.version": "버전",
   "agentDetail.access.workflow.title": "워크플로 액세스",
-  "agentDetail.configure.advancedSettings.description": "고급 사용자용. 환경 변수, 샌드박스 및 메모리.",
+  "agentDetail.configure.advancedSettings.description": "고급 사용자용(예: 환경 변수).",
   "agentDetail.configure.advancedSettings.envEditor.add": "환경 변수 추가",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} 삭제",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} 값 숨기기",

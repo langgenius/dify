@@ -424,11 +424,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/debug/__tests__/index.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/debug/chat-user-input.tsx": {
     "jsx_a11y/no-autofocus": {
       "count": 2
@@ -1174,7 +1169,7 @@
   },
   "web/app/components/base/icons/src/public/other/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 6
+      "count": 4
     }
   },
   "web/app/components/base/icons/src/public/tracing/index.ts": {
@@ -1838,7 +1833,7 @@
   },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/billing/pricing/assets/index.tsx": {
@@ -1862,11 +1857,6 @@
   "web/app/components/billing/pricing/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/app/components/billing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 4
     }
   },
   "web/app/components/datasets/chunk.tsx": {
@@ -5578,11 +5568,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/service/billing.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/common.ts": {

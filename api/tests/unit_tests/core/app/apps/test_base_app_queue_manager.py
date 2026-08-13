@@ -6,6 +6,7 @@ import pytest
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueErrorEvent
+from models import Tenant
 
 
 class DummyQueueManager(AppQueueManager):
@@ -56,7 +57,7 @@ class TestBaseAppQueueManager:
             mock_redis.setex.return_value = True
             manager = DummyQueueManager(task_id="t1", user_id="u1", invoke_from=InvokeFrom.SERVICE_API)
 
-        bad = SimpleNamespace(_sa_instance_state=True)
+        bad = Tenant(name="Queued ORM model")
         with pytest.raises(TypeError):
             manager._check_for_sqlalchemy_models(bad)
 

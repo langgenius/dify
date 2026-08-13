@@ -40,7 +40,7 @@ from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.dataset import RateLimitLog
+from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 
 
@@ -440,6 +440,36 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
             assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+
+    def test_extract_resource_id_scopes_pipeline_resolution_to_the_calling_tenant(self, sqlite_session: Session):
+        app = Flask(__name__)
+        pipeline_id = "00000000-0000-0000-0000-000000000001"
+        current_tenant_id = "00000000-0000-0000-0000-000000000002"
+        foreign_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000003",
+            tenant_id="00000000-0000-0000-0000-000000000004",
+            name="Foreign decoy",
+            created_by="00000000-0000-0000-0000-000000000005",
+            pipeline_id=pipeline_id,
+        )
+        current_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000006",
+            tenant_id=current_tenant_id,
+            name="Current tenant dataset",
+            created_by="00000000-0000-0000-0000-000000000007",
+            pipeline_id=pipeline_id,
+        )
+        sqlite_session.add_all([foreign_dataset, current_dataset])
+
+        unscoped_dataset = sqlite_session.scalar(select(Dataset).where(Dataset.pipeline_id == pipeline_id))
+        assert unscoped_dataset is foreign_dataset
+
+        with (
+            app.test_request_context("/rag/pipelines/pipeline-1"),
+            patch("controllers.common.wraps.db", SimpleNamespace(session=sqlite_session)),
+        ):
+            request.view_args = {"pipeline_id": pipeline_id}
+            assert _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id) == current_dataset.id
 
     def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
         app = Flask(__name__)
@@ -940,17 +970,18 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 1
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+    def test_should_not_cache_missing_setup(self, mock_db):
         """Test that first-time bootstrap completion can be observed later in the same process"""
         mock_db.session.scalar.side_effect = [None, MagicMock()]
-        mock_environ_get.return_value = None
 
         @setup_required
         def admin_view():
             return "admin_success"
 
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
             assert admin_view() == "admin_success"
@@ -958,36 +989,38 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_init_validate_error_with_init_password(self, mock_db: MagicMock):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = "some_password"
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", "some_password"),
+        ):
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_setup_error_without_init_password(self, mock_db: MagicMock):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = None  # No INIT_PASSWORD
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
 

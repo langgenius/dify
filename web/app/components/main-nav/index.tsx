@@ -10,10 +10,7 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import {
-  isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
-} from '@/context/workspace-state'
+import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
@@ -34,7 +31,6 @@ export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -43,7 +39,6 @@ export function MainNav({ className }: MainNavProps) {
   const agentV2Enabled = isAgentV2Enabled()
   const canManageAgents = useCanManageAgents()
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
-  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
@@ -51,7 +46,6 @@ export function MainNav({ className }: MainNavProps) {
         isMainNavRouteVisible(route, {
           agentV2Enabled,
           canManageAgents,
-          canUseAppDeploy,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
         }),
@@ -65,7 +59,6 @@ export function MainNav({ className }: MainNavProps) {
     [
       agentV2Enabled,
       canManageAgents,
-      canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
       t,

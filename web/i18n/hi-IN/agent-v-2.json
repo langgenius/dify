@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "नोड",
   "agentDetail.access.workflow.table.version": "संस्करण",
   "agentDetail.access.workflow.title": "वर्कफ़्लो एक्सेस",
-  "agentDetail.configure.advancedSettings.description": "उन्नत उपयोगकर्ताओं के लिए। पर्यावरण चर, सैंडबॉक्स और मेमोरी।",
+  "agentDetail.configure.advancedSettings.description": "उन्नत उपयोगकर्ताओं के लिए, जैसे पर्यावरण चर।",
   "agentDetail.configure.advancedSettings.envEditor.add": "पर्यावरण चर जोड़ें",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} हटाएँ",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} मान छुपाएँ",
