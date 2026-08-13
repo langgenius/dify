@@ -44,11 +44,11 @@ export function AgentModelField({
           modelPredicate={isAgentCompatibleModel}
           modelSuggestionPredicate={isAgentSuggestedModel}
           placement="bottom-end"
-          setModel={({ modelId, provider }) => {
+          setModel={({ modelId, provider, plugin_id }) => {
             onSelect({
-              ...currentModel,
               provider,
               model: modelId,
+              plugin_id,
             })
           }}
           onCompletionParamsChange={(modelSettings) => {

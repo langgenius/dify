@@ -98,10 +98,18 @@ vi.mock('../../model-selector', () => {
     onValueChange,
   }: {
     onHide?: () => void
-    onValueChange: (value: { provider: string; model: string }) => void
+    onValueChange: (value: { provider: string; model: string; plugin_id?: string }) => void
   }) => (
     <div data-testid="model-selector">
-      <button onClick={() => onValueChange({ provider: 'openai', model: 'gpt-4.1' })}>
+      <button
+        onClick={() =>
+          onValueChange({
+            provider: 'openai',
+            model: 'gpt-4.1',
+            plugin_id: 'langgenius/openai',
+          })
+        }
+      >
         Select GPT-4.1
       </button>
       {onHide && <button onClick={onHide}>hide</button>}
@@ -223,6 +231,7 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
@@ -311,6 +320,7 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })

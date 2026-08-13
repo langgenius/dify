@@ -32,12 +32,13 @@ export type ModelParameterModalProps = {
   isAdvancedMode: boolean
   modelId: string
   provider: string
-  setModel: (model: {
-    modelId: string
-    provider: string
-    mode?: string
-    features?: string[]
-  }) => void
+  setModel: (
+    model: Omit<ModelSelectorValue, 'model'> & {
+      modelId: ModelSelectorValue['model']
+      mode?: string
+      features?: string[]
+    },
+  ) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
@@ -100,12 +101,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const handleChangeModel = ({ provider, model }: ModelSelectorValue) => {
+  const handleChangeModel = ({ provider, model, plugin_id }: ModelSelectorValue) => {
     const targetProvider = selectableModelList.find((modelItem) => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
     setModel({
       modelId: model,
       provider,
+      plugin_id,
       mode: targetModelItem?.model_properties.mode as string,
       features: [...(targetModelItem?.features ?? [])],
     })
