@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import io
+import json
 from pathlib import Path
 import threading
 from typing import Iterator
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import zipfile
 
 import pytest
@@ -42,6 +43,17 @@ def _get(url: str) -> tuple[int, str, bytes]:
         return response.status, response.headers.get_content_type(), response.read()
 
 
+def _post_json(url: str, payload: object) -> tuple[int, str, bytes]:
+    request = Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request, timeout=5) as response:  # noqa: S310 - loopback test server
+        return response.status, response.headers.get_content_type(), response.read()
+
+
 def test_source_path_points_to_the_standalone_script() -> None:
     assert E2B_CONFIG_STUB_SOURCE_PATH == Path(__file__).parents[3] / "benchmarks" / "e2b_config_stub.py"
 
@@ -68,24 +80,50 @@ def test_item_bytes_rejects_invalid_environment_values(monkeypatch: pytest.Monke
         configured_item_bytes()
 
 
-def test_health_and_file_pull_are_served_from_the_local_stub() -> None:
+def test_health_and_current_file_download_contract_are_served_from_the_local_stub() -> None:
     name = "file-7-block-run_123.bin"
     with _running_server(item_bytes=73) as base_url:
         health = _get(f"{base_url}/health")
-        first = _get(f"{base_url}/agent-stub/config/files/{name}/pull")
+        allocation_status, allocation_type, allocation_body = _post_json(
+            f"{base_url}/agent-stub/files/download-request",
+            {"config": {"kind": "file", "name": name}, "for_frontend": False},
+        )
+        allocation = json.loads(allocation_body)
+        downloaded = _get(allocation["download_url"])
 
     assert health == (200, "application/json", b'{"status":"ok"}')
-    assert first == (200, "application/octet-stream", fixed_payload(f"config:{name}", 73))
+    assert allocation_status == 200
+    assert allocation_type == "application/json"
+    assert allocation == {
+        "download_url": f"{base_url}/files/benchmarks/config/file/{name}",
+        "filename": name,
+        "mime_type": "application/octet-stream",
+        "size": 73,
+    }
+    assert downloaded == (200, "application/octet-stream", fixed_payload(f"config:{name}", 73))
 
 
-def test_skill_pull_is_a_deterministic_zip_containing_skill_markdown() -> None:
+def test_current_skill_download_is_a_deterministic_zip_containing_skill_markdown() -> None:
     name = "skill-2-block-run_123"
     with _running_server(item_bytes=89) as base_url:
-        first = _get(f"{base_url}/agent-stub/config/skills/{name}/pull")
+        first_allocation = _post_json(
+            f"{base_url}/agent-stub/files/download-request",
+            {"config": {"kind": "skill", "name": name}, "for_frontend": False},
+        )
+        first_metadata = json.loads(first_allocation[2])
+        first = _get(first_metadata["download_url"])
     with _running_server(item_bytes=89) as base_url:
-        second = _get(f"{base_url}/agent-stub/config/skills/{name}/pull")
+        second_allocation = _post_json(
+            f"{base_url}/agent-stub/files/download-request",
+            {"config": {"kind": "skill", "name": name}, "for_frontend": False},
+        )
+        second_metadata = json.loads(second_allocation[2])
+        second = _get(second_metadata["download_url"])
 
     assert first == second
+    assert first_metadata["filename"] == f"{name}.zip"
+    assert first_metadata["mime_type"] == "application/zip"
+    assert first_metadata["size"] == len(first[2])
     status, content_type, archive_bytes = first
     assert status == 200
     assert content_type == "application/zip"
@@ -95,40 +133,61 @@ def test_skill_pull_is_a_deterministic_zip_containing_skill_markdown() -> None:
 
 
 @pytest.mark.parametrize(
-    ("path", "expected_status"),
+    ("kind", "name"),
     [
-        ("/agent-stub/config/skills/skill-0-block-run_123/pull", 409),
-        ("/agent-stub/config/files/file-0-block-run_123.bin/pull", 409),
-        ("/agent-stub/config/skills/skill-3-block-run_123/pull", 400),
-        ("/agent-stub/config/files/file-10-block-run_123.bin/pull", 400),
+        ("skill", "skill-0-block-run_123"),
+        ("file", "file-0-block-run_123.bin"),
     ],
 )
-def test_pull_routes_enforce_one_request_per_fixed_scenario_item(path: str, expected_status: int) -> None:
+def test_data_routes_require_allocation_and_enforce_one_download(kind: str, name: str) -> None:
     with _running_server(item_bytes=16) as base_url:
-        if expected_status == 409:
-            assert _get(f"{base_url}{path}")[0] == 200
-        with pytest.raises(HTTPError) as exc_info:
-            _get(f"{base_url}{path}")
+        data_url = f"{base_url}/files/benchmarks/config/{kind}/{name}"
+        with pytest.raises(HTTPError) as missing_allocation:
+            _get(data_url)
+        assert missing_allocation.value.code == 409
 
-    assert exc_info.value.code == expected_status
+        allocation = _post_json(
+            f"{base_url}/agent-stub/files/download-request",
+            {"config": {"kind": kind, "name": name}, "for_frontend": False},
+        )
+        assert allocation[0] == 200
+        assert _get(data_url)[0] == 200
+        with pytest.raises(HTTPError) as exc_info:
+            _get(data_url)
+
+    assert exc_info.value.code == 409
+
+
+def test_legacy_direct_pull_routes_are_not_exposed() -> None:
+    with _running_server(item_bytes=16) as base_url:
+        with pytest.raises(HTTPError) as exc_info:
+            _get(f"{base_url}/agent-stub/config/files/file-0-block-run.bin/pull")
+
+    assert exc_info.value.code == 404
 
 
 @pytest.mark.parametrize(
-    "path",
+    ("kind", "name", "for_frontend"),
     [
-        "/agent-stub/config/skills/%2e%2e/pull",
-        "/agent-stub/config/skills/skill-0%2Fetc/pull",
-        "/agent-stub/config/skills/skill-0%00/pull",
-        "/agent-stub/config/files/%2e%2e/pull",
-        "/agent-stub/config/files/file-0%2Fetc.bin/pull",
-        "/agent-stub/config/files/file-0%20bad.bin/pull",
-        f"/agent-stub/config/files/file-0-{'a' * 256}.bin/pull",
-        f"/agent-stub/config/files/{'file-0-' * 128}/pull",
+        ("skill", "..", False),
+        ("skill", "skill-0/etc", False),
+        ("skill", "skill-0\x00", False),
+        ("file", "..", False),
+        ("file", "file-0/etc.bin", False),
+        ("file", "file-0 bad.bin", False),
+        ("file", f"file-0-{'a' * 256}.bin", False),
+        ("file", "file-10-block-run.bin", False),
+        ("skill", "skill-3-block-run", False),
+        ("file", "file-0-block-run.bin", True),
+        ("drive", "file-0-block-run.bin", False),
     ],
 )
-def test_pull_routes_reject_invalid_or_traversal_names(path: str) -> None:
+def test_download_request_rejects_invalid_sources(kind: str, name: str, for_frontend: bool) -> None:
     with _running_server(item_bytes=16) as base_url:
         with pytest.raises(HTTPError) as exc_info:
-            _get(f"{base_url}{path}")
+            _post_json(
+                f"{base_url}/agent-stub/files/download-request",
+                {"config": {"kind": kind, "name": name}, "for_frontend": for_frontend},
+            )
 
     assert exc_info.value.code == 400

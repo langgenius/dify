@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import hashlib
+import io
+import zipfile
 
 from fastapi.testclient import TestClient
 
@@ -112,6 +114,110 @@ def test_signed_upload_response_matches_strict_workspace_uploader_contract() -> 
     assert prepared.is_success
     assert response.is_success
     assert set(response.json()) == {"reference"}
+
+
+def test_current_config_download_contract_serves_three_skills_and_ten_files() -> None:
+    scenario = load_scenario_manifest().get("config")
+    with TestClient(app) as client:
+        assert client.post("/__bench/reset").is_success
+        prepared = client.post(
+            "/__bench/prepare",
+            json={
+                "benchmark_run_id": "run",
+                "scenario_id": scenario.id,
+                "scenario_version": scenario.version,
+            },
+        )
+        assert prepared.is_success
+        for kind, count in (("skill", scenario.config_skill_count), ("file", scenario.config_file_count)):
+            for index in range(count):
+                name = f"skill-{index}-run" if kind == "skill" else f"file-{index}-run.bin"
+                allocation = client.post(
+                    "/inner/api/agent-config/run/download-request",
+                    json={
+                        "tenant_id": "benchmark-tenant",
+                        "user_id": "run",
+                        "config_version_id": "benchmark-config",
+                        "config_version_kind": "snapshot",
+                        "config": {"kind": kind, "name": name},
+                    },
+                )
+                assert allocation.is_success
+                metadata = allocation.json()
+                assert metadata["download_uri"].startswith("/files/benchmarks/config/run/")
+                downloaded = client.get(metadata["download_uri"])
+                assert downloaded.is_success
+                if kind == "skill":
+                    with zipfile.ZipFile(io.BytesIO(downloaded.content)) as archive:
+                        assert archive.namelist() == ["SKILL.md"]
+                        assert archive.read("SKILL.md").startswith(b"# Benchmark skill\n\n")
+                else:
+                    assert len(downloaded.content) == scenario.item_bytes
+        ledger = client.get("/__bench/ledgers/run").json()
+
+    assert ledger["stub_calls"] == {
+        "config_skill_pull": scenario.config_skill_count,
+        "config_file_pull": scenario.config_file_count,
+    }
+    assert ledger["payload_bytes"] == (scenario.config_skill_count + scenario.config_file_count) * scenario.item_bytes
+
+
+def test_current_file_contract_roundtrips_payload_with_canonical_reference() -> None:
+    payload = bytes(range(256)) * 4
+    scenario = load_scenario_manifest().get("file")
+    with TestClient(app) as client:
+        assert client.post("/__bench/reset").is_success
+        prepared = client.post(
+            "/__bench/prepare",
+            json={
+                "benchmark_run_id": "run",
+                "scenario_id": scenario.id,
+                "scenario_version": scenario.version,
+                "payload_bytes": len(payload),
+            },
+        )
+        assert prepared.is_success
+        upload_allocation = client.post(
+            "/inner/api/agent/files/upload-request",
+            json={
+                "tenant_id": "benchmark-tenant",
+                "user_id": "run",
+                "user_from": "account",
+                "filename": "payload.bin",
+                "mimetype": "application/octet-stream",
+            },
+        )
+        assert upload_allocation.is_success
+        uploaded = client.post(
+            upload_allocation.json()["upload_uri"],
+            files={"file": ("payload.bin", payload, "application/octet-stream")},
+        )
+        assert uploaded.is_success
+        reference = uploaded.json()["reference"]
+        assert reference.startswith("dify-file-ref:")
+        download_allocation = client.post(
+            "/inner/api/agent/files/download-request",
+            json={
+                "tenant_id": "benchmark-tenant",
+                "user_id": "run",
+                "user_from": "account",
+                "invoke_from": "service-api",
+                "file": {"transfer_method": "tool_file", "reference": reference},
+                "for_frontend": True,
+            },
+        )
+        assert download_allocation.is_success
+        downloaded = client.get(download_allocation.json()["download_uri"])
+        ledger = client.get("/__bench/ledgers/run").json()
+
+    assert downloaded.content == payload
+    assert ledger["stub_calls"] == {
+        "file_upload_request": 1,
+        "signed_upload": 1,
+        "file_download_request": 1,
+        "signed_download": 1,
+    }
+    assert ledger["payload_sha256"] == [hashlib.sha256(payload).hexdigest()] * 2
 
 
 def test_fake_service_has_no_drive_routes() -> None:

@@ -37,6 +37,7 @@ def test_compose_uses_fixed_local_capacity_resources() -> None:
     agent = cast(dict[str, object], services["agent"])
     driver = cast(dict[str, object], services["driver"])
     agent_command = cast(list[str], agent["command"])
+    agent_environment = cast(dict[str, str], agent["environment"])
     driver_environment = cast(dict[str, str], driver["environment"])
 
     assert runtime["cpus"] == 2.0
@@ -44,6 +45,9 @@ def test_compose_uses_fixed_local_capacity_resources() -> None:
     assert agent["cpus"] == 2.0
     assert agent["mem_limit"] == "2g"
     assert agent_command[agent_command.index("--workers") + 1] == "2"
+    assert agent_environment["DIFY_AGENT_SANDBOX_FILES_BASE_URL"] == (
+        "${BENCH_SANDBOX_FILES_BASE_URL:?BENCH_SANDBOX_FILES_BASE_URL is required}"
+    )
     assert "BENCH_MINIMUM_MEASUREMENT_RUNS" in driver_environment
     assert "BENCH_MAXIMUM_MEASUREMENT_SECONDS" in driver_environment
 

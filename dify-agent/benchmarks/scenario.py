@@ -34,7 +34,19 @@ class CapacityScenario(BaseModel):
 
     @property
     def tool_rounds(self) -> int:
-        return 1 if self.workload in {"shell", "resume", "config", "file"} else 0
+        return 1 if self.uses_runtime else 0
+
+    @property
+    def uses_runtime(self) -> bool:
+        return self.workload != "basic"
+
+    @property
+    def is_file_workload(self) -> bool:
+        return self.workload == "file"
+
+    @property
+    def prepares_warm_binding(self) -> bool:
+        return self.workload == "resume"
 
     @property
     def expected_model_stream_items(self) -> int:
@@ -47,7 +59,7 @@ class CapacityScenario(BaseModel):
             raise ValueError(f"{self.workload} requires {expected_model_rounds} model rounds")
         if self.workload == "config" and (self.config_skill_count <= 0 or self.config_file_count <= 0):
             raise ValueError("config requires skill and file counts")
-        if self.workload == "file" and self.payload_bytes <= 0:
+        if self.is_file_workload and self.payload_bytes <= 0:
             raise ValueError("file requires payload_bytes")
         return self
 
