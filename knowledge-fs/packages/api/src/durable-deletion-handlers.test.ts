@@ -13,6 +13,7 @@ const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const SOURCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 const DOCUMENT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
 const JOB_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
+const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
 const NOW = "2026-07-14T12:00:00.000Z";
 
 describe("durable deletion handlers", () => {
@@ -116,6 +117,7 @@ describe("durable deletion handlers", () => {
     );
     expect(service.requestDocumentDeletion).not.toHaveBeenCalled();
     await expect(bulkOperations.get({ id: JOB_ID, tenantId: "tenant-1" })).resolves.toMatchObject({
+      capabilityGrantId: CAPABILITY_GRANT_ID,
       items: [expect.objectContaining({ deletionJobId: JOB_ID, documentId: DOCUMENT_ID })],
       type: "document_delete",
     });
@@ -145,6 +147,7 @@ describe("durable deletion handlers", () => {
       }),
     );
     await expect(bulkOperations.get({ id: JOB_ID, tenantId: "tenant-1" })).resolves.toMatchObject({
+      capabilityGrantId: CAPABILITY_GRANT_ID,
       items: [expect.objectContaining({ deletionJobId: JOB_ID, documentId: DOCUMENT_ID })],
       type: "document_delete",
     });
@@ -204,6 +207,12 @@ function testApp(
   const app = createKnowledgeGatewayApp();
   app.use("*", async (context, next) => {
     context.set("callerKind", callerKind);
+    if (callerKind === "interactive") {
+      context.set("capabilityV2Grant", {
+        contentScopeIds: [],
+        grantId: CAPABILITY_GRANT_ID,
+      } as never);
+    }
     context.set("subject", {
       scopes: ["knowledge-spaces:read", "knowledge-spaces:write"],
       subjectId: "owner-1",

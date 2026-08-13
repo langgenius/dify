@@ -194,6 +194,7 @@ export function registerDurableDeletionHandlers({
           knowledgeSpaceId: params.id,
           requestedBySubjectId: subject.subjectId,
           tenantId: subject.tenantId,
+          ...(principal.capability ? { capabilityGrantId: principal.capability.grantId } : {}),
         });
         context.header("Location", `/knowledge-spaces/${params.id}/background-tasks`);
         return context.json(accepted, 202);
@@ -238,8 +239,9 @@ export function registerDurableDeletionHandlers({
       const body = context.req.valid("json") as DeleteLogicalDocumentBody;
       const headers = context.req.valid("header") as DurableDeletionIdempotencyHeaders;
       try {
+        const principal = deletionPrincipal(context);
         const accepted = await service.requestLogicalDocumentDeletion({
-          ...deletionPrincipal(context),
+          ...principal,
           documentId: params.documentId,
           expectedRevision: body.expectedRevision,
           idempotencyKey: headers["idempotency-key"],
@@ -253,6 +255,7 @@ export function registerDurableDeletionHandlers({
           knowledgeSpaceId: params.id,
           requestedBySubjectId: subject.subjectId,
           tenantId: subject.tenantId,
+          ...(principal.capability ? { capabilityGrantId: principal.capability.grantId } : {}),
         });
         context.header("Location", accepted.statusUrl);
         return context.json(accepted, 202);
@@ -301,6 +304,7 @@ export function registerDurableDeletionHandlers({
 }
 
 async function ensureLogicalDeletionBackgroundTask(input: {
+  readonly capabilityGrantId?: string | undefined;
   readonly bulkOperations: BulkOperationRepository;
   readonly id: string;
   readonly items: readonly {
@@ -315,6 +319,7 @@ async function ensureLogicalDeletionBackgroundTask(input: {
   const existing = await input.bulkOperations.get({ id: input.id, tenantId: input.tenantId });
   if (existing) return;
   await input.bulkOperations.create({
+    ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
     id: input.id,
     items: input.items.map((item) => ({ ...item, status: "queued" as const })),
     knowledgeSpaceId: input.knowledgeSpaceId,
