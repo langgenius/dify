@@ -582,11 +582,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/action-button/index.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/base/agent-log-modal/detail.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -723,11 +718,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
@@ -1194,7 +1184,7 @@
   },
   "web/app/components/base/icons/src/vender/line/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 4
     }
   },
   "web/app/components/base/icons/src/vender/line/communication/index.ts": {
@@ -1244,7 +1234,7 @@
   },
   "web/app/components/base/icons/src/vender/line/others/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 5
     }
   },
   "web/app/components/base/icons/src/vender/line/time/index.ts": {

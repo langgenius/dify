@@ -14,11 +14,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -70,6 +70,7 @@ function AgentSkillPackageUploader({
   showWarning: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { skillSizeLimit } = useFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -193,9 +194,12 @@ function AgentSkillPackageUploader({
             </div>
           </div>
           <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}

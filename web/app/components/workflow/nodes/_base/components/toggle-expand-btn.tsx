@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback } from 'react'
-import ActionButton from '@/app/components/base/action-button'
 
 type Props = Readonly<{
   isExpand: boolean
@@ -13,13 +13,18 @@ type Props = Readonly<{
 const ExpandBtn: FC<Props> = ({ isExpand, onExpandChange }) => {
   const handleToggle = useCallback(() => {
     onExpandChange(!isExpand)
-  }, [isExpand])
+  }, [isExpand, onExpandChange])
 
-  const Icon = isExpand ? RiCollapseDiagonalLine : RiExpandDiagonalLine
   return (
-    <ActionButton onClick={handleToggle}>
-      <Icon className="size-4" />
-    </ActionButton>
+    <IconButton aria-label={isExpand ? 'Collapse' : 'Expand'} onClick={handleToggle}>
+      <span
+        aria-hidden="true"
+        className={cn(
+          'size-4',
+          isExpand ? 'i-ri-collapse-diagonal-line' : 'i-ri-expand-diagonal-line',
+        )}
+      />
+    </IconButton>
   )
 }
 export default React.memo(ExpandBtn)
