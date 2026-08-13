@@ -63,12 +63,6 @@ vi.mock('@/service/use-common', () => ({
   },
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    textGenerationModelList: [],
-  })),
-}))
-
 vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: vi.fn((selector) => {
     const state = { setShowModelModal: vi.fn() }
@@ -94,7 +88,6 @@ vi.mock('../atoms', () => ({
 }))
 
 const { useQuery, useQueryClient } = await import('@tanstack/react-query')
-const { useProviderContext } = await import('@/context/provider-context')
 const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
   await import('@/app/components/plugins/marketplace/hooks')
@@ -548,8 +541,10 @@ describe('hooks', () => {
 
     it('should return all text generation model lists', () => {
       const modelList = createModelList()
-      ;(useProviderContext as Mock).mockReturnValue({
-        textGenerationModelList: modelList,
+      ;(useQuery as Mock).mockReturnValue({
+        data: modelList,
+        isPending: false,
+        refetch: vi.fn(),
       })
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
@@ -564,8 +559,10 @@ describe('hooks', () => {
 
     it('should filter active models correctly', () => {
       const modelList = createModelList()
-      ;(useProviderContext as Mock).mockReturnValue({
-        textGenerationModelList: modelList,
+      ;(useQuery as Mock).mockReturnValue({
+        data: modelList,
+        isPending: false,
+        refetch: vi.fn(),
       })
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
@@ -576,8 +573,10 @@ describe('hooks', () => {
 
     it('should find current provider and model', () => {
       const modelList = createModelList()
-      ;(useProviderContext as Mock).mockReturnValue({
-        textGenerationModelList: modelList,
+      ;(useQuery as Mock).mockReturnValue({
+        data: modelList,
+        isPending: false,
+        refetch: vi.fn(),
       })
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
@@ -590,8 +589,10 @@ describe('hooks', () => {
     })
 
     it('should handle empty model list', () => {
-      ;(useProviderContext as Mock).mockReturnValue({
-        textGenerationModelList: [],
+      ;(useQuery as Mock).mockReturnValue({
+        data: [],
+        isPending: false,
+        refetch: vi.fn(),
       })
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())

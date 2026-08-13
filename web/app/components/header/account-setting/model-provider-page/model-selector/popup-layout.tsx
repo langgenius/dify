@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ComboboxInput, ComboboxInputGroup } from '@langgenius/dify-ui/combobox'
+import {
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemText,
+} from '@langgenius/dify-ui/combobox'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -9,18 +15,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-
-type ModelSelectorPopupFrameProps = {
-  children: ReactNode
-}
-
-export function ModelSelectorPopupFrame({ children }: ModelSelectorPopupFrameProps) {
-  return (
-    <div className="flex max-h-[min(624px,var(--available-height,624px))] flex-col overflow-hidden rounded-xl bg-components-panel-bg">
-      {children}
-    </div>
-  )
-}
+import { MODEL_PROVIDER_SETTINGS_ACTION } from './types'
 
 type ModelSelectorSearchHeaderProps = {
   inputValue: string
@@ -127,25 +122,23 @@ export function ShowIncompatibleModelsButton({
   )
 }
 
-type ModelProviderSettingsFooterProps = {
-  onOpenSettings: () => void
-}
-
-export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
+export function ModelProviderSettingsFooter() {
   const { t } = useTranslation()
 
   return (
-    <div className="shrink-0 border-t border-divider-subtle p-1">
-      <button
-        type="button"
-        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-        onClick={onOpenSettings}
+    <ComboboxGroup
+      className="shrink-0 border-t border-divider-subtle p-1"
+      items={[MODEL_PROVIDER_SETTINGS_ACTION]}
+    >
+      <ComboboxItem
+        className="flex min-h-8 w-full grid-cols-none gap-2 px-3 text-text-tertiary"
+        value={MODEL_PROVIDER_SETTINGS_ACTION}
       >
-        <span className="i-ri-equalizer-2-line size-4 shrink-0" />
-        <span className="system-xs-medium">
+        <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
+        <ComboboxItemText className="px-0 system-xs-medium">
           {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
-        </span>
-      </button>
-    </div>
+        </ComboboxItemText>
+      </ComboboxItem>
+    </ComboboxGroup>
   )
 }

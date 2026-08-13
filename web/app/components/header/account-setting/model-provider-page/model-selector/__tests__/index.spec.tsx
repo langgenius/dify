@@ -1,26 +1,35 @@
 import type { ReactNode } from 'react'
-import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import type { Model, ModelItem } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
-import ModelSelector from '../index'
+import { ModelSelector, SplitModelSelector } from '../index'
 
-vi.mock('../model-selector-trigger', () => ({
-  default: ({
-    currentProvider,
-    currentModel,
-    defaultModel,
-  }: {
-    currentProvider?: Model
-    currentModel?: ModelItem
-    defaultModel?: DefaultModel
-  }) => {
-    if (currentProvider && currentModel) return <div>model-trigger</div>
+const mockModelProviders = vi.hoisted(() => ({ current: [] as Model[] }))
 
-    if (defaultModel) return <div>{`deprecated:${defaultModel.model}`}</div>
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return {
+    ...actual,
+    useQueryState: () => [null, vi.fn()],
+  }
+})
 
-    return <div>empty-trigger</div>
-  },
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({ modelProviders: mockModelProviders.current }),
+}))
+vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
+  useCredentialPanelState: () => ({
+    variant: 'credits-active',
+    priority: 'credits',
+    supportsCredits: true,
+    showPrioritySwitcher: true,
+    hasCredentials: false,
+    isCreditsExhausted: false,
+    credentialName: undefined,
+    credits: 100,
+  }),
 }))
 
 vi.mock('../popup', async () => {
@@ -38,6 +47,7 @@ vi.mock('../popup', async () => {
     }) => (
       <>
         <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
+        <ComboboxItem value="model-provider-settings">provider-settings</ComboboxItem>
         <button type="button" onClick={onHide}>
           hide
         </button>
@@ -87,10 +97,11 @@ const renderWithQueryClient = (node: ReactNode) => {
 describe('ModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockModelProviders.current = [makeModel()]
   })
 
   it('should toggle popup and close it after selecting a model', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
     const triggerButton = screen.getByRole('combobox')
 
@@ -102,14 +113,14 @@ describe('ModelSelector', () => {
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('should call onSelect when provided', () => {
-    const onSelect = vi.fn()
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
+  it('should call onValueChange when provided', () => {
+    const onValueChange = vi.fn()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
     fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByText('select'))
 
-    expect(onSelect).toHaveBeenCalledWith({
+    expect(onValueChange).toHaveBeenCalledWith({
       provider: 'openai',
       model: 'gpt-4',
       plugin_id: 'langgenius/openai',
@@ -117,7 +128,7 @@ describe('ModelSelector', () => {
   })
 
   it('should close popup when popup requests hide', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
     const triggerButton = screen.getByRole('combobox')
     fireEvent.click(triggerButton)
@@ -131,7 +142,7 @@ describe('ModelSelector', () => {
   it('should close popup before running the empty-state configure action', () => {
     const onConfigureEmptyState = vi.fn()
     renderWithQueryClient(
-      <ModelSelector modelList={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
+      <ModelSelector models={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
     const triggerButton = screen.getByRole('combobox')
@@ -144,54 +155,49 @@ describe('ModelSelector', () => {
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
-  it('should use the default model settings popup width when the trigger is narrow', () => {
-    renderWithQueryClient(
-      <div className="w-88.75">
-        <ModelSelector modelList={[makeModel()]} />
-      </div>,
-    )
+  it('should reach the provider settings action with combobox keyboard navigation', async () => {
+    const user = userEvent.setup()
+    const onHide = vi.fn()
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} onHide={onHide} />)
 
-    fireEvent.click(screen.getByRole('combobox'))
+    const triggerButton = screen.getByRole('combobox')
+    await user.click(triggerButton)
+    await user.keyboard('{End}{Enter}')
 
-    expect(
-      Array.from(document.body.querySelectorAll('[class]')).some(
-        (element) => element.className.includes('w-108') && element.className.includes('max-w-108'),
-      ),
-    ).toBe(true)
+    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+    expect(onHide).toHaveBeenCalledTimes(1)
   })
 
-  it('should not open popup when readonly', () => {
-    renderWithQueryClient(<ModelSelector modelList={[makeModel()]} readonly />)
+  it('should not open popup when disabled', () => {
+    renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
+    fireEvent.click(screen.getByRole('combobox'))
     expect(screen.queryByText('select')).not.toBeInTheDocument()
   })
 
-  it('should render deprecated trigger when defaultModel is not in list', () => {
-    const { unmount } = renderWithQueryClient(
-      <ModelSelector
-        defaultModel={{ provider: 'openai', model: 'missing-model' }}
-        modelList={[makeModel()]}
-      />,
-    )
+  it('should let the split trigger own the combobox interaction', () => {
+    renderWithQueryClient(<SplitModelSelector models={[makeModel()]} />)
 
-    expect(screen.getByText('deprecated:missing-model')).toBeInTheDocument()
-
-    unmount()
-    renderWithQueryClient(
-      <ModelSelector defaultModel={{ provider: '', model: '' }} modelList={[makeModel()]} />,
-    )
-    expect(screen.getByText('deprecated:')).toBeInTheDocument()
+    const trigger = screen.getByRole('combobox')
+    expect(trigger).toHaveAttribute('data-shape', 'split')
   })
 
-  it('should render model trigger when defaultModel matches', () => {
+  it('should render deprecated trigger when value is not in list', () => {
     renderWithQueryClient(
       <ModelSelector
-        defaultModel={{ provider: 'openai', model: 'gpt-4' }}
-        modelList={[makeModel()]}
+        value={{ provider: 'openai', model: 'missing-model' }}
+        models={[makeModel()]}
       />,
     )
 
-    expect(screen.getByText('model-trigger')).toBeInTheDocument()
+    expect(screen.getByText('missing-model')).toBeInTheDocument()
+  })
+
+  it('should render model trigger when value matches', () => {
+    renderWithQueryClient(
+      <ModelSelector value={{ provider: 'openai', model: 'gpt-4' }} models={[makeModel()]} />,
+    )
+
+    expect(screen.getByText('GPT-4')).toBeInTheDocument()
   })
 })

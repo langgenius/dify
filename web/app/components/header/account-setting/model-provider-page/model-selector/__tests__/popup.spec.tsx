@@ -17,21 +17,6 @@ import Popup from '../popup'
 
 let mockLanguage = 'en_US'
 
-const mockSearchParams = vi.hoisted(() => ({
-  current: new URLSearchParams(),
-}))
-const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [mockSearchParams.current.get('settings'), mockSetSettingsDestination],
-  }
-})
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => mockSearchParams.current,
-}))
-
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
   () => ({
@@ -250,7 +235,6 @@ describe('Popup', () => {
     mockContextModelProviders.current = []
     mockContextModelProviderPlugins.current = {}
     mockTrialModels.current = ['test-openai', 'test-anthropic']
-    mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
       credits: 200,
       totalCredits: 200,
@@ -894,13 +878,13 @@ describe('Popup', () => {
 
     const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
     const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
-    const settingsButton = screen.getByRole('button', {
+    const settingsAction = screen.getByRole('option', {
       name: /common\.modelProvider\.selector\.modelProviderSettings/,
     })
 
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
-    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).not.toContainElement(settingsAction)
     expect(scrollRegion).toContainElement(
       screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
     )
@@ -1098,29 +1082,13 @@ describe('Popup', () => {
     expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
   })
 
-  it('should open provider settings when clicking footer link', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[makeModel()]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should hide provider settings footer when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-
-    renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
-
-    expect(
-      screen.queryByText('common.modelProvider.selector.modelProviderSettings'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should hide provider settings footer when requested by the caller', () => {
+  it('should hide the provider settings action when requested by the owner', () => {
     renderPopup(
-      <PopupHarness hideProviderSettingsFooter modelList={[makeModel()]} onHide={vi.fn()} />,
+      <PopupHarness
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+        showProviderSettingsAction={false}
+      />,
     )
 
     expect(
@@ -1129,8 +1097,14 @@ describe('Popup', () => {
   })
 
   it('should open provider settings from empty state when no providers are configured', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
+    const onConfigureEmptyState = vi.fn()
+    renderPopup(
+      <PopupHarness
+        modelList={[]}
+        onConfigureEmptyState={onConfigureEmptyState}
+        onHide={vi.fn()}
+      />,
+    )
 
     expect(
       screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/),
@@ -1140,19 +1114,7 @@ describe('Popup', () => {
     )!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should only close the empty state selector when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
   it('should render marketplace providers that are not installed', () => {
