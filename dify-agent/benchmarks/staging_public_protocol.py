@@ -298,12 +298,12 @@ class StagingPublicServiceClient:
                                 ) from exc
                     elif event_conversation_id != self._conversation_id:
                         raise StagingPublicValidationError("SSE conversation identity changed within the chain")
-                    event_task_id = _required_event_identifier(event, "task_id")
-                    if task_id is None:
-                        task_id = event_task_id
-                    elif event_task_id != task_id:
-                        raise StagingPublicValidationError("SSE task identity changed within one turn")
 
+                    # AgentChatAppGenerateResponseConverter intentionally omits
+                    # task_id from ErrorStreamResponse payloads. Classify that
+                    # public contract before applying normal-event task identity
+                    # checks, otherwise capacity-side SSE failures become false
+                    # correctness failures.
                     event_type = event.get("event")
                     if event_type == "error":
                         sample.terminal_e2e_ms = (received_ns - started_ns) / 1_000_000
@@ -312,6 +312,13 @@ class StagingPublicServiceClient:
                             error_type,
                             f"public SSE error ({error_type})",
                         )
+
+                    event_task_id = _required_event_identifier(event, "task_id")
+                    if task_id is None:
+                        task_id = event_task_id
+                    elif event_task_id != task_id:
+                        raise StagingPublicValidationError("SSE task identity changed within one turn")
+
                     answer = _answer_delta(event)
                     if answer is not None:
                         sample.answer_bytes += len(answer.encode("utf-8"))

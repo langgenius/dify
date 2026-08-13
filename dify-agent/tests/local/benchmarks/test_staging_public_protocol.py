@@ -676,6 +676,9 @@ def test_sse_operational_failures_are_distinct_from_contract_failures(
     events = [
         _event("error", message=message),
     ]
+    # The target Agent Chat converter's ErrorStreamResponse deliberately omits
+    # task_id even though normal streamed events include it.
+    del events[0]["task_id"]
     with _client(settings=settings, handler=lambda _request: _sse_response(events)) as client:
         observation = client.run_once(
             benchmark_run_id="invocation.basic.sse-operational",
