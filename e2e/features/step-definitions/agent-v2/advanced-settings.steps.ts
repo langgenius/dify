@@ -53,6 +53,9 @@ Then(
     await expect(envEditor.getByRole('button', { name: 'Add environment variable' })).toBeVisible()
     await expect(envEditor.getByText('Key', { exact: true })).toBeVisible()
     await expect(envEditor.getByText('Value', { exact: true })).toBeVisible()
-    await expect(envEditor.getByText('Scope', { exact: true })).toBeVisible()
+    await expect(envEditor.getByText('Scope', { exact: true })).toHaveCount(0)
+    await expect(
+      envEditor.getByRole('combobox', { name: 'Select environment variable scope' }),
+    ).toHaveCount(0)
   },
 )

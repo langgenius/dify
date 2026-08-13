@@ -298,16 +298,6 @@ class AgentWorkspaceService:
 
     @classmethod
     def collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
-        try:
-            cls._collect_retired_binding(tenant_id=tenant_id, binding_id=binding_id)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace Binding",
-                extra={"tenant_id": tenant_id, "binding_id": binding_id},
-            )
-
-    @classmethod
-    def _collect_retired_binding(cls, *, tenant_id: str, binding_id: str) -> None:
         with session_factory.create_session() as session:
             binding = session.scalar(
                 select(AgentWorkspaceBinding).where(
@@ -332,20 +322,13 @@ class AgentWorkspaceService:
         if workspace_id is not None:
             cls.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
             return
-        try:
-            with cls._client() as client:
-                client.destroy_execution_binding_sync(
-                    DestroyExecutionBindingRequest(
-                        binding_ref=backend_binding_ref,
-                        destroy_workspace=False,
-                    )
+        with cls._client() as client:
+            client.destroy_execution_binding_sync(
+                DestroyExecutionBindingRequest(
+                    binding_ref=backend_binding_ref,
+                    destroy_workspace=False,
                 )
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace Binding",
-                extra={"tenant_id": tenant_id, "binding_id": binding_id},
             )
-            return
         with session_factory.create_session() as session:
             binding = session.scalar(
                 select(AgentWorkspaceBinding).where(
@@ -360,16 +343,6 @@ class AgentWorkspaceService:
 
     @classmethod
     def collect_retired_workspace(cls, *, tenant_id: str, workspace_id: str) -> None:
-        try:
-            cls._collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace",
-                extra={"tenant_id": tenant_id, "workspace_id": workspace_id},
-            )
-
-    @classmethod
-    def _collect_retired_workspace(cls, *, tenant_id: str, workspace_id: str) -> None:
         with session_factory.create_session() as session:
             workspace = session.scalar(
                 select(AgentWorkspace).where(
@@ -400,21 +373,14 @@ class AgentWorkspaceService:
             workspace_ref = workspace.backend_workspace_ref
             binding_ref = anchor.backend_binding_ref
             anchor_id = anchor.id
-        try:
-            with cls._client() as client:
-                client.destroy_execution_binding_sync(
-                    DestroyExecutionBindingRequest(
-                        binding_ref=binding_ref,
-                        workspace_ref=workspace_ref,
-                        destroy_workspace=True,
-                    )
+        with cls._client() as client:
+            client.destroy_execution_binding_sync(
+                DestroyExecutionBindingRequest(
+                    binding_ref=binding_ref,
+                    workspace_ref=workspace_ref,
+                    destroy_workspace=True,
                 )
-        except Exception:
-            logger.exception(
-                "Failed to collect retired Agent Workspace",
-                extra={"tenant_id": tenant_id, "workspace_id": workspace_id, "binding_id": anchor_id},
             )
-            return
         with session_factory.create_session() as session:
             stored_workspace = session.scalar(
                 select(AgentWorkspace).where(
