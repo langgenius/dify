@@ -2,7 +2,6 @@ import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
-  ModelSelectorOption,
   ModelSelectorProvider,
   ModelSelectorValue,
 } from './types'
@@ -17,11 +16,7 @@ import { ModelStatusEnum } from '../declarations'
 import { getCurrentProviderAndModel } from '../hooks'
 import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
-import {
-  getModelSelectorOptionLabel,
-  isModelSelectorAction,
-  isSameModelSelectorOption,
-} from './types'
+import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
@@ -132,12 +127,8 @@ function ModelSelectorRoot({
   }, [handleHide, setSettingsDestination])
 
   const handleValueChange = useCallback(
-    (value: ModelSelectorOption | null) => {
+    (value: ModelSelectorValue | null) => {
       if (!value) return
-      if (isModelSelectorAction(value)) {
-        handleOpenSettings()
-        return
-      }
 
       const provider = models.find((model) => model.provider === value.provider)
       const model = provider?.models.find((model) => model.model === value.model)
@@ -147,7 +138,7 @@ function ModelSelectorRoot({
 
       handleSelect(provider.provider, model)
     },
-    [handleOpenSettings, handleSelect, models],
+    [handleSelect, models],
   )
 
   const handleInputValueChange = useCallback(
@@ -172,12 +163,12 @@ function ModelSelectorRoot({
   }, [handleHide, handleOpenSettings, onConfigureEmptyState, settingsDestination])
 
   return (
-    <Combobox<ModelSelectorOption>
+    <Combobox<ModelSelectorValue>
       disabled={disabled}
       filter={null}
       inputValue={inputValue}
-      isItemEqualToValue={isSameModelSelectorOption}
-      itemToStringLabel={getModelSelectorOptionLabel}
+      isItemEqualToValue={isSameModelSelectorValue}
+      itemToStringLabel={getModelSelectorValueLabel}
       open={open}
       value={currentValue}
       onInputValueChange={handleInputValueChange}
@@ -209,8 +200,10 @@ function ModelSelectorRoot({
           scopeFeatures={scopeFeatures}
           modelPredicate={modelPredicate}
           modelSuggestionPredicate={modelSuggestionPredicate}
-          showProviderSettingsAction={
+          onOpenProviderSettings={
             !hideProviderSettingsFooter && settingsDestination !== 'provider'
+              ? handleOpenSettings
+              : undefined
           }
           onConfigureEmptyState={handleConfigureEmptyState}
           onOpenMarketplace={onOpenMarketplace}

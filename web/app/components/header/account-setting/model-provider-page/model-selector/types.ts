@@ -9,10 +9,6 @@ export type ModelSelectorValue = {
   plugin_id?: string
 }
 
-export const MODEL_PROVIDER_SETTINGS_ACTION = 'model-provider-settings' as const
-
-export type ModelSelectorOption = ModelSelectorValue | typeof MODEL_PROVIDER_SETTINGS_ACTION
-
 export type ModelSelectorModel = Pick<
   ProviderModelWithStatusEntity,
   | 'deprecated'
@@ -40,18 +36,9 @@ export type ModelSelectorModelPredicate = (
   modelItem: ModelSelectorModel,
 ) => boolean
 
-export const isModelSelectorAction = (
-  option: ModelSelectorOption,
-): option is typeof MODEL_PROVIDER_SETTINGS_ACTION => option === MODEL_PROVIDER_SETTINGS_ACTION
+export const isSameModelSelectorValue = (
+  itemValue: ModelSelectorValue,
+  value: ModelSelectorValue,
+) => itemValue.provider === value.provider && itemValue.model === value.model
 
-export const isSameModelSelectorOption = (
-  itemValue: ModelSelectorOption,
-  value: ModelSelectorOption,
-) => {
-  if (isModelSelectorAction(itemValue) || isModelSelectorAction(value)) return itemValue === value
-
-  return itemValue.provider === value.provider && itemValue.model === value.model
-}
-
-export const getModelSelectorOptionLabel = (option: ModelSelectorOption) =>
-  isModelSelectorAction(option) ? option : option.model
+export const getModelSelectorValueLabel = (value: ModelSelectorValue) => value.model

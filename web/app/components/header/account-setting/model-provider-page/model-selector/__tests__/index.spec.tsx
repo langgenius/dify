@@ -7,12 +7,13 @@ import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../d
 import { ModelSelector, SplitModelSelector } from '../index'
 
 const mockModelProviders = vi.hoisted(() => ({ current: [] as Model[] }))
+const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
 
 vi.mock('nuqs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('nuqs')>()
   return {
     ...actual,
-    useQueryState: () => [null, vi.fn()],
+    useQueryState: () => [null, mockSetSettingsDestination],
   }
 })
 
@@ -41,16 +42,22 @@ vi.mock('../popup', async () => {
     default: ({
       onConfigureEmptyState,
       onHide,
+      onOpenProviderSettings,
     }: {
       onConfigureEmptyState?: () => void
       onHide: () => void
+      onOpenProviderSettings?: () => void
     }) => (
       <>
         <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
-        <ComboboxItem value="model-provider-settings">provider-settings</ComboboxItem>
         <button type="button" onClick={onHide}>
           hide
         </button>
+        {onOpenProviderSettings && (
+          <button type="button" onClick={onOpenProviderSettings}>
+            provider-settings
+          </button>
+        )}
         {onConfigureEmptyState && (
           <button type="button" onClick={onConfigureEmptyState}>
             configure-empty-state
@@ -155,17 +162,18 @@ describe('ModelSelector', () => {
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
-  it('should reach the provider settings action with combobox keyboard navigation', async () => {
+  it('should close the popup before opening provider settings', async () => {
     const user = userEvent.setup()
     const onHide = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onHide={onHide} />)
 
     const triggerButton = screen.getByRole('combobox')
     await user.click(triggerButton)
-    await user.keyboard('{End}{Enter}')
+    await user.click(screen.getByRole('button', { name: 'provider-settings' }))
 
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
     expect(onHide).toHaveBeenCalledTimes(1)
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
   })
 
   it('should not open popup when disabled', () => {

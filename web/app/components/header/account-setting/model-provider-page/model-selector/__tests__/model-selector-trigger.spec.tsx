@@ -118,6 +118,13 @@ describe('ModelSelectorTrigger', () => {
       expect(
         screen.getByText('common.modelProvider.selector.configureRequired'),
       ).toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveAttribute(
+        'data-model-status',
+        'configure-required',
+      )
+      expect(screen.getByRole('combobox')).toHaveClass(
+        'data-[model-status=configure-required]:bg-components-input-bg-disabled',
+      )
     })
 
     it('should show credits exhausted state when model quota is exceeded', () => {
@@ -160,6 +167,9 @@ describe('ModelSelectorTrigger', () => {
         screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
       ).toBeInTheDocument()
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveClass(
+        'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled',
+      )
     })
 
     it('should show disabled badge when selected model is disabled', () => {
@@ -198,6 +208,9 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveClass(
+        'data-[model-status=incompatible]:bg-components-input-bg-disabled',
+      )
       await user.hover(screen.getByText('common.modelProvider.selector.incompatible'))
 
       expect(

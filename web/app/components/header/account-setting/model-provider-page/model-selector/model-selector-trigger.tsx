@@ -107,7 +107,7 @@ function ModelSelectorTrigger({
               'data-[size=small]:h-6 data-[size=small]:gap-px data-[size=small]:rounded-md data-[size=small]:p-0.5',
               'data-[size=medium]:h-8 data-[size=medium]:gap-0.5 data-[size=medium]:rounded-lg data-[size=medium]:p-1',
               'data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg data-[surface=workflow]:data-popup-open:bg-workflow-block-parma-bg',
-              'data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=no-configure]:bg-components-input-bg-disabled data-[model-status=no-permission]:bg-components-input-bg-disabled',
+              'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled data-[model-status=configure-required]:bg-components-input-bg-disabled data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=incompatible]:bg-components-input-bg-disabled',
               'data-disabled:data-[model-status=active]:bg-components-input-bg-normal! data-disabled:data-[model-status=empty]:bg-components-input-bg-normal! data-disabled:data-[surface=workflow]:bg-workflow-block-parma-bg!',
               'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-l-lg! data-[shape=split]:rounded-r-none! data-[shape=split]:focus-visible:z-1',
               'data-[surface=workflow]:data-deprecated:[&>span]:opacity-50',

@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  ComboboxGroup,
-  ComboboxInput,
-  ComboboxInputGroup,
-  ComboboxItem,
-  ComboboxItemText,
-} from '@langgenius/dify-ui/combobox'
+import { ComboboxInput, ComboboxInputGroup } from '@langgenius/dify-ui/combobox'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -15,7 +9,6 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-import { MODEL_PROVIDER_SETTINGS_ACTION } from './types'
 
 type ModelSelectorSearchHeaderProps = {
   inputValue: string
@@ -122,23 +115,25 @@ export function ShowIncompatibleModelsButton({
   )
 }
 
-export function ModelProviderSettingsFooter() {
+type ModelProviderSettingsFooterProps = {
+  onOpenSettings: () => void
+}
+
+export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSettingsFooterProps) {
   const { t } = useTranslation()
 
   return (
-    <ComboboxGroup
-      className="shrink-0 border-t border-divider-subtle p-1"
-      items={[MODEL_PROVIDER_SETTINGS_ACTION]}
-    >
-      <ComboboxItem
-        className="flex min-h-8 w-full grid-cols-none gap-2 px-3 text-text-tertiary"
-        value={MODEL_PROVIDER_SETTINGS_ACTION}
+    <div className="shrink-0 border-t border-divider-subtle p-1">
+      <button
+        type="button"
+        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        onClick={onOpenSettings}
       >
         <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
-        <ComboboxItemText className="px-0 system-xs-medium">
+        <span className="system-xs-medium">
           {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
-        </ComboboxItemText>
-      </ComboboxItem>
-    </ComboboxGroup>
+        </span>
+      </button>
+    </div>
   )
 }

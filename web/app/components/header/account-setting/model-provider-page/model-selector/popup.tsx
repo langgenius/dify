@@ -56,7 +56,7 @@ export type PopupProps = {
   inputValue: string
   modelList: ModelSelectorProvider[]
   scopeFeatures?: readonly string[]
-  showProviderSettingsAction?: boolean
+  onOpenProviderSettings?: () => void
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
@@ -69,7 +69,7 @@ function Popup({
   inputValue,
   modelList,
   scopeFeatures = [],
-  showProviderSettingsAction = true,
+  onOpenProviderSettings,
   modelPredicate,
   modelSuggestionPredicate,
   onConfigureEmptyState,
@@ -246,25 +246,27 @@ function Popup({
   return (
     <>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
-      <ComboboxList className="flex max-h-none min-h-0 flex-1 flex-col overflow-hidden p-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
           {showCreditsExhaustedAlert && (
             <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
           )}
-          <div className="pb-1">
-            {filteredModelList.map((model) => (
-              <PopupItem
-                key={model.provider}
-                defaultModel={defaultModel}
-                model={model}
-                modelPredicate={modelPredicate}
-                modelSuggestionPredicate={modelSuggestionPredicate}
-                previewCardHandle={previewCardHandle}
-                onPreviewCardClose={handleClosePreviewCard}
-                onHide={onHide}
-              />
-            ))}
-          </div>
+          <ComboboxList className="max-h-none overflow-visible p-0">
+            <div className="pb-1">
+              {filteredModelList.map((model) => (
+                <PopupItem
+                  key={model.provider}
+                  defaultModel={defaultModel}
+                  model={model}
+                  modelPredicate={modelPredicate}
+                  modelSuggestionPredicate={modelSuggestionPredicate}
+                  previewCardHandle={previewCardHandle}
+                  onPreviewCardClose={handleClosePreviewCard}
+                  onHide={onHide}
+                />
+              ))}
+            </div>
+          </ComboboxList>
           <div className="pb-1">
             {!filteredModelList.length && !installedModelList.length && (
               <ModelSelectorEmptyState onConfigure={onConfigureEmptyState ?? onHide} />
@@ -298,8 +300,10 @@ function Popup({
             )}
           </div>
         </ModelSelectorScrollBody>
-        {showProviderSettingsAction && <ModelProviderSettingsFooter />}
-      </ComboboxList>
+        {onOpenProviderSettings && (
+          <ModelProviderSettingsFooter onOpenSettings={onOpenProviderSettings} />
+        )}
+      </div>
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
           <ModelSelectorPreviewCard
