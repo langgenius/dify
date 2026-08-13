@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Laatst gewijzigd",
   "roster.sort.optionsLabel": "Sorteeropties",
   "roster.sort.recentlyCreated": "Recent aangemaakt",
+  "roster.title": "Agenten",
   "roster.updateSuccess": "Agent bijgewerkt.",
   "roster.usageStatus.draft": "Concept"
 }

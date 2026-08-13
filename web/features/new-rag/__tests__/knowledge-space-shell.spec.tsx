@@ -66,7 +66,6 @@ describe('KnowledgeSpaceShell', () => {
     ['/datasets/new/space-1/sources', 'dataset.newKnowledge.sources'],
     ['/datasets/new/space-1/sources/new', 'dataset.newKnowledge.addSource'],
     ['/datasets/new/space-1/documents', 'dataset.newKnowledge.documents'],
-    ['/datasets/new/space-1/documents/document-1', 'dataset.newKnowledge.documents'],
   ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
     pathnameMock.value = pathname
     queryMock.data = { id: 'space-1', name: 'Support knowledge' }
@@ -78,6 +77,17 @@ describe('KnowledgeSpaceShell', () => {
     await waitFor(() => {
       expect(document.title).toBe(`${pageTitle} · Support knowledge - Dify`)
     })
+  })
+
+  it('delegates a document detail title to the document page', () => {
+    pathnameMock.value = '/datasets/new/space-1/documents/document-1'
+    queryMock.data = { id: 'space-1', name: 'Support knowledge' }
+
+    renderWithConsoleQuery(
+      <KnowledgeSpaceShell knowledgeSpaceId="space-1">document content</KnowledgeSpaceShell>,
+    )
+
+    expect(document.title).toBe('')
   })
 
   it('loads the real knowledge space contract by route id', () => {

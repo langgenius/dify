@@ -60,7 +60,8 @@ describe('DatasetDetailLayout', () => {
   describe('Document title', () => {
     it.each([
       ['/datasets/dataset-1/documents', 'common.datasetMenus.documents'],
-      ['/datasets/dataset-1/documents/document-1/settings', 'common.datasetMenus.documents'],
+      ['/datasets/dataset-1/documents/create', 'datasetPipeline.addDocuments.title'],
+      ['/datasets/dataset-1/documents/create-from-pipeline', 'datasetPipeline.addDocuments.title'],
       ['/datasets/dataset-1/pipeline', 'common.datasetMenus.pipeline'],
       ['/datasets/dataset-1/hitTesting', 'common.datasetMenus.hitTesting'],
       ['/datasets/dataset-1/settings', 'common.datasetMenus.settings'],
@@ -90,6 +91,33 @@ describe('DatasetDetailLayout', () => {
       await waitFor(() => {
         expect(document.title).toBe(`${pageTitle} · Dataset 1 - Dify`)
       })
+    })
+
+    it.each([
+      '/datasets/dataset-1/documents/document-1',
+      '/datasets/dataset-1/documents/document-1/settings',
+    ])('delegates the document title for %s to the document page', (pathname) => {
+      mockUsePathname.mockReturnValue(pathname)
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: Object.values(DatasetACLPermission),
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Document page content</div>
+        </DatasetDetailLayout>,
+      )
+
+      expect(document.title).toBe('')
     })
   })
 

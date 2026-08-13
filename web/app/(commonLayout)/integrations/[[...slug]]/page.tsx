@@ -18,7 +18,7 @@ const IntegrationsRoutePage = async ({ params, searchParams }: IntegrationsRoute
 
   if (target.type === 'not-found') notFound()
 
-  return <IntegrationsPage section={target.section} />
+  return <IntegrationsPage section={target.section} shouldUpdateDocumentTitle />
 }
 
 export default IntegrationsRoutePage

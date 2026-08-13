@@ -39,6 +39,11 @@ const shouldRedirectToDatasetList = (error: unknown) => {
 }
 
 const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (
+    pathname.endsWith('/documents/create') ||
+    pathname.endsWith('/documents/create-from-pipeline')
+  )
+    return t(($) => $['addDocuments.title'], { ns: 'datasetPipeline' })
   if (pathname.includes('/documents'))
     return t(($) => $['datasetMenus.documents'], { ns: 'common' })
   if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
@@ -50,6 +55,17 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
   if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
 
   return t(($) => $['menus.datasets'], { ns: 'common' })
+}
+
+const isDocumentDetailPath = (pathname: string) =>
+  /^\/datasets\/[^/]+\/documents\/(?!create(?:-from-pipeline)?\/?$)[^/]+(?:\/settings)?\/?$/.test(
+    pathname,
+  )
+
+const DatasetDetailPageTitle = ({ title }: { title: string }) => {
+  useDocumentTitle(title)
+
+  return null
 }
 
 const getDatasetRedirectionPath = (
@@ -116,10 +132,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
       (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
   const pageTitle = datasetDetailPageTitle(pathname, t)
-
-  useDocumentTitle(
-    `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`,
-  )
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')
@@ -138,6 +151,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     shouldRedirect ||
     isCheckingRouteAccess ||
     shouldRedirectUnauthorizedRoute
+  const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
     <Loading type="app" />
   ) : (
@@ -168,6 +182,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {!documentTitleOwnedByChild && <DatasetDetailPageTitle title={documentTitle} />}
       {content}
     </div>
   )

@@ -338,6 +338,7 @@ const renderIntegrationsPage = (
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     vi.stubGlobal('open', mockWindowOpen)
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
@@ -366,6 +367,26 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
     expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
     expect(container.querySelector('aside')).toHaveClass('bg-components-panel-bg')
+  })
+
+  it.each([
+    ['provider', 'common.settings.provider'],
+    ['mcp', 'MCP'],
+    ['workflow-tool', 'workflow.common.workflowAsTool'],
+  ] as const)('identifies the %s section in the document title', async (section, title) => {
+    renderIntegrationsPage(undefined, { section, shouldUpdateDocumentTitle: true })
+
+    await waitFor(() => {
+      expect(document.title).toBe(`${title} · common.mainNav.integrations - Dify`)
+    })
+  })
+
+  it('does not replace the document title when embedded in a modal', () => {
+    document.title = 'Workspace settings - Dify'
+
+    renderIntegrationsPage(undefined, 'provider')
+
+    expect(document.title).toBe('Workspace settings - Dify')
   })
 
   it('renders the model provider section from the section query', () => {

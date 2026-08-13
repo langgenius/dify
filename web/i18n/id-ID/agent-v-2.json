@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Terakhir diubah",
   "roster.sort.optionsLabel": "Opsi pengurutan",
   "roster.sort.recentlyCreated": "Baru dibuat",
+  "roster.title": "Agen",
   "roster.updateSuccess": "Agen diperbarui.",
   "roster.usageStatus.draft": "Draf"
 }
