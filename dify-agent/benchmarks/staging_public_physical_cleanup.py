@@ -970,14 +970,22 @@ def _http_deleter(base_url: str, api_key: str) -> ConversationDeleter:
 
 
 def _run_command(argv: Sequence[str], stdin: str | None) -> str:
-    completed = subprocess.run(
-        list(argv),
-        input=stdin,
-        text=True,
-        capture_output=True,
-        check=True,
-        timeout=120,
-    )
+    try:
+        completed = subprocess.run(
+            list(argv),
+            input=stdin,
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Staging private probe timed out") from exc
+    except subprocess.CalledProcessError as exc:
+        # kubectl stdout/stderr can contain private probe payloads, Pod names,
+        # or provider diagnostics. Preserve only the exit class for the public
+        # failure path; the durable private recovery bundle remains available.
+        raise RuntimeError("Staging private probe command failed") from exc
     return completed.stdout
 
 
