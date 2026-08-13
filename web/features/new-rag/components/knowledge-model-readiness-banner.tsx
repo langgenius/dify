@@ -34,10 +34,12 @@ export function KnowledgeModelReadinessBanner({
     }),
   )
   const readiness = query.data
+  const isPendingValidation = readiness?.configuration_state === 'pending-validation'
   const requestedCapabilityAvailable =
     capability !== undefined && readiness?.capabilities[capability] === true
   if (
     query.isPending ||
+    isPendingValidation ||
     (!query.isError &&
       (requestedCapabilityAvailable ||
         (capability === undefined &&
@@ -46,21 +48,17 @@ export function KnowledgeModelReadinessBanner({
   )
     return null
 
-  const isPendingValidation = readiness?.configuration_state === 'pending-validation'
   const isFailure = query.isError || readiness?.configuration_state === 'validation-failed'
   const title = query.isError
     ? tCommon(($) => $['api.actionFailed'])
-    : isPendingValidation
-      ? tCommon(($) => $['provider.validating'])
-      : readiness?.configuration_state === 'validation-failed'
-        ? tCommon(($) => $['api.actionFailed'])
-        : t(($) => $['newKnowledge.overview.attention.modelReadiness.title'])
-  const description =
-    query.isError || isPendingValidation
-      ? undefined
-      : readiness?.active_profile_available
-        ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
-        : t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing'])
+    : readiness?.configuration_state === 'validation-failed'
+      ? tCommon(($) => $['api.actionFailed'])
+      : t(($) => $['newKnowledge.overview.attention.modelReadiness.title'])
+  const description = query.isError
+    ? undefined
+    : readiness?.active_profile_available
+      ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
+      : t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing'])
 
   return (
     <KnowledgeModelReadinessNotice
@@ -81,7 +79,7 @@ export function KnowledgeModelReadinessBanner({
       className={className}
       description={description}
       title={title}
-      tone={isFailure ? 'destructive' : isPendingValidation ? 'progress' : 'warning'}
+      tone={isFailure ? 'destructive' : 'warning'}
     />
   )
 }

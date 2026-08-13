@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "쿼리 품질 검토 필요",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "게시된 인덱스가 활성 모델 구성에 연결되어 있지 않습니다. 인덱스를 다시 빌드하거나 게시하세요.",
   "newKnowledge.overview.attention.modelReadiness.description": "필수 모델 프로필이 없거나 현재 게시된 인덱스에 연결되어 있지 않습니다.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "선택한 모델은 첫 번째 문서를 처리할 때 검증됩니다.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "모델 구성이 검증을 기다리고 있습니다",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "필수 임베딩, 추론 및 리랭크 모델을 구성하고 게시하세요.",
   "newKnowledge.overview.attention.modelReadiness.title": "모델 구성이 완료되지 않음",
   "newKnowledge.overview.attention.staleSource.description": "이 소스는 동기화에 성공한 적이 없거나 마지막 성공 이후 7일이 지났습니다.",

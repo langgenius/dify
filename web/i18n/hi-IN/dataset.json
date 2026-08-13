@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "क्वेरी की गुणवत्ता की समीक्षा आवश्यक है",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "प्रकाशित इंडेक्स सक्रिय मॉडल कॉन्फ़िगरेशन से जुड़ा नहीं है। इंडेक्स को फिर से बनाएँ या प्रकाशित करें।",
   "newKnowledge.overview.attention.modelReadiness.description": "आवश्यक मॉडल प्रोफ़ाइल मौजूद नहीं हैं या वर्तमान प्रकाशित इंडेक्स से जुड़ी नहीं हैं।",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "पहले दस्तावेज़ के प्रोसेस होने पर चुने गए मॉडल सत्यापित किए जाएंगे।",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "मॉडल कॉन्फ़िगरेशन सत्यापन की प्रतीक्षा में है",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "आवश्यक एम्बेडिंग, रीजनिंग और रीरैंक मॉडल कॉन्फ़िगर और प्रकाशित करें।",
   "newKnowledge.overview.attention.modelReadiness.title": "मॉडल कॉन्फ़िगरेशन अधूरा है",
   "newKnowledge.overview.attention.staleSource.description": "यह स्रोत कभी सफलतापूर्वक सिंक नहीं हुआ या पिछला सफल सिंक 7 दिन से अधिक पहले हुआ था।",

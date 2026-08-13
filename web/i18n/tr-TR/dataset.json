@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Sorgu kalitesinin incelenmesi gerekiyor",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Yayımlanan dizin etkin model yapılandırmasına bağlı değil. Dizini yeniden oluşturun veya yayımlayın.",
   "newKnowledge.overview.attention.modelReadiness.description": "Gerekli model profilleri eksik veya şu anda yayımlanan dizine bağlı değil.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Seçilen modeller ilk belge işlendiğinde doğrulanacak.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Model yapılandırması doğrulama bekliyor",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Gerekli embedding, akıl yürütme ve rerank modellerini yapılandırıp yayımlayın.",
   "newKnowledge.overview.attention.modelReadiness.title": "Model yapılandırması tamamlanmadı",
   "newKnowledge.overview.attention.staleSource.description": "Bu kaynak hiç başarıyla eşitlenmedi veya son başarılı eşitlemenin üzerinden 7 günden fazla zaman geçti.",

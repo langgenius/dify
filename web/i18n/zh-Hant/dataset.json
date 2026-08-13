@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "查詢品質需要檢查",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "已發佈索引尚未綁定目前模型設定，請重建或重新發佈索引。",
   "newKnowledge.overview.attention.modelReadiness.description": "缺少必要的模型設定，或模型設定尚未綁定目前已發佈索引。",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "處理第一份文件時將驗證所選模型。",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "模型設定正在等待驗證",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "請設定並發佈必要的 Embedding、推理和 Rerank 模型。",
   "newKnowledge.overview.attention.modelReadiness.title": "模型設定未完成",
   "newKnowledge.overview.attention.staleSource.description": "此資料來源從未成功同步，或距離上次成功同步已超過 7 天。",

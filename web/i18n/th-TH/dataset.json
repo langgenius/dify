@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "คุณภาพคิวรีต้องได้รับการตรวจสอบ",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "ดัชนีที่เผยแพร่ไม่ได้เชื่อมโยงกับการกำหนดค่าโมเดลที่ใช้งานอยู่ โปรดสร้างหรือเผยแพร่ดัชนีอีกครั้ง",
   "newKnowledge.overview.attention.modelReadiness.description": "โปรไฟล์โมเดลที่จำเป็นขาดหายไปหรือไม่ได้เชื่อมโยงกับดัชนีที่เผยแพร่ในปัจจุบัน",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "โมเดลที่เลือกจะได้รับการตรวจสอบเมื่อประมวลผลเอกสารแรก",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "การกำหนดค่าโมเดลกำลังรอการตรวจสอบ",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "กำหนดค่าและเผยแพร่โมเดล embedding, reasoning และ rerank ที่จำเป็น",
   "newKnowledge.overview.attention.modelReadiness.title": "การกำหนดค่าโมเดลยังไม่สมบูรณ์",
   "newKnowledge.overview.attention.staleSource.description": "แหล่งข้อมูลนี้ไม่เคยซิงค์สำเร็จ หรือการซิงค์สำเร็จครั้งล่าสุดผ่านมานานกว่า 7 วันแล้ว",

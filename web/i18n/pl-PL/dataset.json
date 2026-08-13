@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Jakość zapytania wymaga sprawdzenia",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Opublikowany indeks nie jest powiązany z aktywną konfiguracją modeli. Ponownie utwórz lub opublikuj indeks.",
   "newKnowledge.overview.attention.modelReadiness.description": "Brakuje wymaganych profili modeli lub nie są one powiązane z obecnie opublikowanym indeksem.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Wybrane modele zostaną zweryfikowane podczas przetwarzania pierwszego dokumentu.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Konfiguracja modeli oczekuje na weryfikację",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Skonfiguruj i opublikuj wymagane modele embeddingu, wnioskowania i rerankingu.",
   "newKnowledge.overview.attention.modelReadiness.title": "Konfiguracja modeli jest niepełna",
   "newKnowledge.overview.attention.staleSource.description": "To źródło nigdy nie zostało pomyślnie zsynchronizowane lub od ostatniej udanej synchronizacji minęło ponad 7 dni.",

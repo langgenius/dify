@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "جودة الاستعلام تحتاج إلى مراجعة",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "الفهرس المنشور غير مرتبط بتهيئة النموذج النشطة. أعد إنشاء الفهرس أو نشره.",
   "newKnowledge.overview.attention.modelReadiness.description": "ملفات تعريف النماذج المطلوبة مفقودة أو غير مرتبطة بالفهرس المنشور حاليًا.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "سيتم التحقق من النماذج المحددة عند معالجة المستند الأول.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "تكوين النموذج في انتظار التحقق",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "هيّئ نماذج التضمين والاستدلال وإعادة الترتيب المطلوبة وانشرها.",
   "newKnowledge.overview.attention.modelReadiness.title": "تهيئة النموذج غير مكتملة",
   "newKnowledge.overview.attention.staleSource.description": "لم تتم مزامنة هذا المصدر بنجاح من قبل، أو مضى أكثر من 7 أيام على آخر مزامنة ناجحة.",

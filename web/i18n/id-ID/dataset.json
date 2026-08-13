@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Kualitas kueri perlu ditinjau",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Indeks yang diterbitkan tidak terhubung ke konfigurasi model aktif. Bangun atau terbitkan ulang indeks.",
   "newKnowledge.overview.attention.modelReadiness.description": "Profil model wajib tidak tersedia atau tidak terhubung ke indeks yang saat ini diterbitkan.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Model yang dipilih akan divalidasi saat dokumen pertama diproses.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Konfigurasi model menunggu validasi",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Konfigurasikan dan terbitkan model embedding, penalaran, dan rerank yang wajib.",
   "newKnowledge.overview.attention.modelReadiness.title": "Konfigurasi model belum lengkap",
   "newKnowledge.overview.attention.staleSource.description": "Sumber ini belum pernah berhasil disinkronkan atau sinkronisasi terakhir yang berhasil terjadi lebih dari 7 hari lalu.",
