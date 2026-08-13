@@ -521,6 +521,7 @@ def _execute_block(
             cleanup_timeout_seconds=_PHYSICAL_CLEANUP_TIMEOUT_SECONDS,
             before_delete=reconcile_e2b_manifest,
             vendor_remaining_probe=sample_vendor_remaining,
+            benchmark_tenant_id=benchmark_tenant_id,
         )
         observer_artifacts = observer.stop_and_collect(
             public_output_dir=block_dir / "e2b",
