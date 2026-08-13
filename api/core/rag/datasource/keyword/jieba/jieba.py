@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Any, TypedDict, override
 
@@ -13,6 +14,8 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, DocumentSegment
+
+logger = logging.getLogger(__name__)
 
 
 class PreSegmentData(TypedDict):
@@ -129,6 +132,19 @@ class Jieba(BaseKeyword):
         child_chunk_map = {child_chunk.index_node_id: child_chunk for child_chunk in child_chunks}
         segments = session.scalars(segment_query_stmt).all()
         segment_map = {segment.index_node_id: segment for segment in segments}
+
+        if not document_ids_filter:
+            resolved_chunk_indices = child_chunk_map.keys() | segment_map.keys()
+            unresolved_count = sum(chunk_index not in resolved_chunk_indices for chunk_index in sorted_chunk_indices)
+            if unresolved_count:
+                logger.warning(
+                    "Keyword index consistency check failed for dataset %s: "
+                    "%d of %d matched node IDs could not be materialized.",
+                    self.dataset.id,
+                    unresolved_count,
+                    len(sorted_chunk_indices),
+                )
+
         for chunk_index in sorted_chunk_indices:
             child_chunk = child_chunk_map.get(chunk_index)
             if child_chunk:

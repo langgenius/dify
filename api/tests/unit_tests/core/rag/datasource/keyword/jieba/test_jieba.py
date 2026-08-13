@@ -248,6 +248,8 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: 
 
 def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.MonkeyPatch, patched_runtime):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
     child_chunk = ChildChunk(
         tenant_id="tenant-1",
         dataset_id="dataset-1",
@@ -272,12 +274,15 @@ def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.Monk
     )
 
     assert documents == []
+    logger.warning.assert_not_called()
 
 
 def test_search_ignores_child_chunks_from_other_datasets_and_missing_nodes(
     monkeypatch: pytest.MonkeyPatch, patched_runtime
 ):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
+    logger = MagicMock()
+    monkeypatch.setattr(jieba_module, "logger", logger)
     child_chunk = ChildChunk(
         tenant_id="tenant-2",
         dataset_id="dataset-other",
@@ -301,6 +306,12 @@ def test_search_ignores_child_chunks_from_other_datasets_and_missing_nodes(
     documents = keyword.search("query", session=patched_runtime.session, top_k=2)
 
     assert documents == []
+    logger.warning.assert_called_once_with(
+        "Keyword index consistency check failed for dataset %s: %d of %d matched node IDs could not be materialized.",
+        "dataset-1",
+        2,
+        2,
+    )
 
 
 def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
