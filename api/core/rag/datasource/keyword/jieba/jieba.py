@@ -144,6 +144,14 @@ class Jieba(BaseKeyword):
                     unresolved_count,
                     len(sorted_chunk_indices),
                 )
+        elif sorted_chunk_indices and not child_chunk_map and not segment_map:
+            logger.debug(
+                "Keyword search for dataset %s had %d matched node IDs before document filtering, "
+                "but no documents remained after applying %d document ID filters.",
+                self.dataset.id,
+                len(sorted_chunk_indices),
+                len(document_ids_filter),
+            )
 
         for chunk_index in sorted_chunk_indices:
             child_chunk = child_chunk_map.get(chunk_index)

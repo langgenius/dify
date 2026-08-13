@@ -275,6 +275,13 @@ def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.Monk
 
     assert documents == []
     logger.warning.assert_not_called()
+    logger.debug.assert_called_once_with(
+        "Keyword search for dataset %s had %d matched node IDs before document filtering, "
+        "but no documents remained after applying %d document ID filters.",
+        "dataset-1",
+        1,
+        1,
+    )
 
 
 def test_search_ignores_child_chunks_from_other_datasets_and_missing_nodes(
