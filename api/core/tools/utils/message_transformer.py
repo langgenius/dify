@@ -10,6 +10,7 @@ import numpy as np
 import pytz
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from core.workflow.file_reference import parse_file_reference
 from graphon.file import File, FileTransferMethod, FileType
@@ -201,7 +202,7 @@ class ToolFileMessageTransformer:
 
     @classmethod
     def get_tool_file_url(cls, tool_file_id: str, extension: str | None) -> str:
-        return f"/files/tools/{tool_file_id}{extension or '.bin'}"
+        return sign_tool_file(tool_file_id=tool_file_id, extension=extension or ".bin")
 
     @staticmethod
     def _with_tool_file_meta(
