@@ -8,7 +8,7 @@ import FeatureIcon from '../model-selector/feature-icon'
 import { modelTypeFormat, sizeFormat } from '../utils'
 
 type ModelNameProps = PropsWithChildren<{
-  modelItem: ModelSelectorModel
+  modelItem?: ModelSelectorModel
   className?: string
   nameClassName?: string
   showModelType?: boolean
@@ -35,9 +35,11 @@ const ModelName: FC<ModelNameProps> = ({
   children,
 }) => {
   const language = useLanguage()
-  const label = renderI18nObject(modelItem.label, language)
 
   if (!modelItem) return null
+
+  const label = renderI18nObject(modelItem.label, language)
+
   return (
     <span
       className={cn(

@@ -3,6 +3,7 @@ import type {
   ModelItem,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ConfigurationMethodEnum,
@@ -671,6 +672,39 @@ describe('ModelParameterModal', () => {
   })
 
   describe('Memoization - disabled', () => {
+    it('should keep active TTS model settings available without an active text generation model', async () => {
+      const user = userEvent.setup()
+      mockProviderContextValue.isAPIKeySet = false
+      const ttsModel = createModel({
+        provider: 'tts-provider',
+        models: [
+          createModelItem({
+            model: 'tts-1',
+            model_type: ModelTypeEnum.tts,
+            status: ModelStatusEnum.active,
+          }),
+        ],
+      })
+      setupModelLists({ tts: [ttsModel] })
+
+      render(
+        <ModelParameterModal
+          {...createDefaultProps()}
+          scope={ModelTypeEnum.tts}
+          value={{ provider: 'tts-provider', model: 'tts-1' }}
+        />,
+      )
+
+      const settingsButton = screen.getByRole('button', {
+        name: /modelProvider\.modelSettings/i,
+      })
+      expect(settingsButton).toBeEnabled()
+
+      await user.click(settingsButton)
+
+      expect(await screen.findByTestId('tts-params-panel')).toBeInTheDocument()
+    })
+
     it('should keep model selection available when isAPIKeySet is false', () => {
       // Arrange
       mockProviderContextValue.isAPIKeySet = false

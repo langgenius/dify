@@ -16,7 +16,6 @@ import {
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelSettingsTrigger } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger'
 import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useProviderContext } from '@/context/provider-context'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
@@ -51,7 +50,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   scope = ModelTypeEnum.textGeneration,
 }) => {
   const { t } = useTranslation()
-  const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
@@ -118,7 +116,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }, [scopedModelList, value?.provider, value?.model])
 
   const hasDeprecated = !currentProvider || !currentModel
-  const disabled = !isAPIKeySet || hasDeprecated || currentModel?.status !== ModelStatusEnum.active
+  const modelSettingsDisabled = hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
   const handleChangeModel = async ({ provider, model }: ModelSelectorValue) => {
     const targetProvider = scopedModelList.find((modelItem) => modelItem.provider === provider)
@@ -204,7 +202,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             onValueChange={handleChangeModel}
           />
           <ModelSettingsTrigger
-            disabled={readonly || !hasSelectedModel || disabled}
+            disabled={readonly || !hasSelectedModel || modelSettingsDisabled}
             surface={isInWorkflow ? 'workflow' : 'default'}
           />
         </div>

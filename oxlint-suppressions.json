@@ -512,11 +512,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/log/model-info.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/log/var-panel.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
