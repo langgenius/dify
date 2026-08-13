@@ -2170,8 +2170,36 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
     )
 
 
+def test_load_agent_app_build_draft_returns_empty_state_when_missing(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    """Regression for #40733: a freshly-created agent has no DEBUG_BUILD row.
+
+    GET /agent/<id>/build-draft used to return 404 "Agent config version
+    not found" and the front-end toasted it as a version error. The fix
+    returns an empty build-draft state so the UI stays on the normal
+    draft screen with no toast.
+    """
+    session = sqlite_session
+    monkeypatch.setattr(AgentComposerService, "_get_agent_draft", lambda **kwargs: None)
+
+    result = AgentComposerService.load_agent_app_build_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    # Schema contract (variant/draft/agent_soul) preserved; draft and
+    # agent_soul are None so the UI can render an empty draft.
+    assert result["variant"] == "agent_app"
+    assert result["draft"] is None
+    assert result["agent_soul"] is None
+
+
 def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
+
     bindings = [
         WorkflowAgentNodeBinding(
             tenant_id="tenant-1",

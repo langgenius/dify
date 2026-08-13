@@ -813,7 +813,11 @@ class AgentComposerService:
             account_id=account_id,
         )
         if build_draft is None:
-            raise AgentVersionNotFoundError()
+            # A freshly-created agent has no DEBUG_BUILD row yet. Return an
+            # empty build-draft state (keeps the existing schema
+            # contract: variant, draft, agent_soul) so the UI can stay on
+            # the normal draft screen instead of toasting a 404.
+            return cls._empty_build_draft_state()
         return cls._serialize_build_draft_state(build_draft)
 
     @classmethod
@@ -2241,6 +2245,18 @@ class AgentComposerService:
             "variant": ComposerVariant.AGENT_APP.value,
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
+        }
+
+    @classmethod
+    def _empty_build_draft_state(cls) -> dict[str, Any]:
+        # Empty payload for a not-yet-created DEBUG_BUILD draft. Keeps
+        # the AgentBuildDraftResponse schema (variant/draft/agent_soul) so
+        # the front-end can render a fresh draft screen without a 404
+        # toast. Regression for #40733.
+        return {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "draft": None,
+            "agent_soul": None,
         }
 
     @classmethod
