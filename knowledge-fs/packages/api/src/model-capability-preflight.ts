@@ -120,6 +120,11 @@ export interface ModelCapabilityPreflightInput extends ResolveModelCatalogEntryI
 }
 
 export interface ModelCapabilityPreflight {
+  /**
+   * Captures a tenant-active catalog declaration without invoking the model. This is used for
+   * configured non-embedding models whose credentials were already checked by Dify.
+   */
+  resolveConfigured?(input: ModelCapabilityPreflightInput): Promise<ModelCapabilitySnapshot>;
   verify(input: ModelCapabilityPreflightInput): Promise<ModelCapabilitySnapshot>;
 }
 
@@ -177,6 +182,49 @@ export function createModelCapabilityPreflight({
   }
 
   return {
+    resolveConfigured: async (input) => {
+      const tenantId = input.tenantId.trim();
+      if (!tenantId) {
+        throw new ModelCapabilityPreflightError(
+          "MODEL_CAPABILITY_MISMATCH",
+          "Model capability resolution requires a tenant",
+        );
+      }
+      const kind = ModelCapabilityKindSchema.parse(input.kind);
+      if (kind === "embedding") {
+        throw new ModelCapabilityPreflightError(
+          "EMBEDDING_DIMENSION_INVALID",
+          "Embedding capabilities require an observed vector dimension",
+        );
+      }
+      const selection = KnowledgeSpaceModelSelectionSchema.parse(input.selection);
+      const scoped = createPreflightAbortScope(input.signal, timeoutMs);
+      try {
+        return await scoped.race(
+          (async () => {
+            const catalogEntry = await resolveCatalogDeclaration({
+              catalog,
+              kind,
+              selection,
+              signal: scoped.signal,
+              tenantId,
+            });
+            assertPreflightActive(scoped.signal);
+            return capabilitySnapshot({
+              catalogEntry,
+              checkedAt: z.string().datetime({ offset: true }).parse(now()),
+              kind,
+              selection,
+            });
+          })(),
+        );
+      } catch (error) {
+        if (error instanceof ModelCapabilityPreflightError) throw error;
+        throw normalizePreflightProviderError(error);
+      } finally {
+        scoped.dispose();
+      }
+    },
     verify: async (input) => {
       const tenantId = input.tenantId.trim();
       if (!tenantId) {
@@ -192,30 +240,13 @@ export function createModelCapabilityPreflight({
         return await scoped.race(
           (async () => {
             assertPreflightActive(scoped.signal);
-            let entry: ModelCatalogEntry | null;
-            try {
-              entry = await catalog.resolve({
-                kind,
-                selection,
-                signal: scoped.signal,
-                tenantId,
-              });
-            } catch (cause) {
-              throw new ModelCapabilityPreflightError(
-                "MODEL_PREFLIGHT_UNAVAILABLE",
-                "Model capability catalog is temporarily unavailable",
-                { cause, retryable: true },
-              );
-            }
-            assertPreflightActive(scoped.signal);
-            if (!entry) {
-              throw new ModelCapabilityPreflightError(
-                "MODEL_SELECTION_NOT_FOUND",
-                "The selected model is not installed for this tenant",
-              );
-            }
-            const catalogEntry = ModelCatalogEntrySchema.parse(entry);
-            assertCatalogIdentity({ catalogEntry, kind, selection });
+            const catalogEntry = await resolveCatalogDeclaration({
+              catalog,
+              kind,
+              selection,
+              signal: scoped.signal,
+              tenantId,
+            });
             if (catalog.validate) {
               let valid: boolean;
               try {
@@ -269,29 +300,12 @@ export function createModelCapabilityPreflight({
               }
             }
             assertPreflightActive(scoped.signal);
-            const checkedAt = z.string().datetime({ offset: true }).parse(now());
-            const capabilityMaterial = {
-              ...(observed.dimension === undefined ? {} : { dimension: observed.dimension }),
-              ...(observed.distanceMetric === undefined
-                ? {}
-                : { distanceMetric: observed.distanceMetric }),
+            return capabilitySnapshot({
+              catalogEntry,
+              checkedAt: z.string().datetime({ offset: true }).parse(now()),
               kind,
-              pluginUniqueIdentifier: catalogEntry.pluginUniqueIdentifier,
-              ...(catalogEntry.pluginVersion ? { pluginVersion: catalogEntry.pluginVersion } : {}),
-              schemaFingerprint: catalogEntry.schemaFingerprint,
+              observed,
               selection,
-            };
-            const material = { ...capabilityMaterial, checkedAt };
-            return ModelCapabilitySnapshotSchema.parse({
-              ...material,
-              capabilityDigest: `sha256:${createHash("sha256")
-                .update(
-                  stableJson({
-                    ...capabilityMaterial,
-                    capabilities: catalogEntry.capabilities,
-                  }),
-                )
-                .digest("hex")}`,
             });
           })(),
         );
@@ -305,6 +319,76 @@ export function createModelCapabilityPreflight({
       }
     },
   };
+}
+
+async function resolveCatalogDeclaration({
+  catalog,
+  kind,
+  selection,
+  signal,
+  tenantId,
+}: {
+  readonly catalog: ModelCapabilityCatalog;
+  readonly kind: ModelCapabilityKind;
+  readonly selection: KnowledgeSpaceModelSelection;
+  readonly signal: AbortSignal;
+  readonly tenantId: string;
+}): Promise<ModelCatalogEntry> {
+  assertPreflightActive(signal);
+  let entry: ModelCatalogEntry | null;
+  try {
+    entry = await catalog.resolve({ kind, selection, signal, tenantId });
+  } catch (cause) {
+    throw new ModelCapabilityPreflightError(
+      "MODEL_PREFLIGHT_UNAVAILABLE",
+      "Model capability catalog is temporarily unavailable",
+      { cause, retryable: true },
+    );
+  }
+  assertPreflightActive(signal);
+  if (!entry) {
+    throw new ModelCapabilityPreflightError(
+      "MODEL_SELECTION_NOT_FOUND",
+      "The selected model is not installed for this tenant",
+    );
+  }
+  const catalogEntry = ModelCatalogEntrySchema.parse(entry);
+  assertCatalogIdentity({ catalogEntry, kind, selection });
+  return catalogEntry;
+}
+
+function capabilitySnapshot({
+  catalogEntry,
+  checkedAt,
+  kind,
+  observed = {},
+  selection,
+}: {
+  readonly catalogEntry: ModelCatalogEntry;
+  readonly checkedAt: string;
+  readonly kind: ModelCapabilityKind;
+  readonly observed?: {
+    readonly dimension?: number | undefined;
+    readonly distanceMetric?: "cosine" | "dot" | "l2" | undefined;
+  };
+  readonly selection: KnowledgeSpaceModelSelection;
+}): ModelCapabilitySnapshot {
+  const capabilityMaterial = {
+    ...(observed.dimension === undefined ? {} : { dimension: observed.dimension }),
+    ...(observed.distanceMetric === undefined ? {} : { distanceMetric: observed.distanceMetric }),
+    kind,
+    pluginUniqueIdentifier: catalogEntry.pluginUniqueIdentifier,
+    ...(catalogEntry.pluginVersion ? { pluginVersion: catalogEntry.pluginVersion } : {}),
+    schemaFingerprint: catalogEntry.schemaFingerprint,
+    selection,
+  };
+  return ModelCapabilitySnapshotSchema.parse({
+    ...capabilityMaterial,
+    capabilityDigest: `sha256:${createHash("sha256")
+      .update(stableJson({ ...capabilityMaterial, capabilities: catalogEntry.capabilities }))
+      .digest("hex")}`,
+    checkedAt,
+  });
 }
 
 function assertCatalogIdentity({

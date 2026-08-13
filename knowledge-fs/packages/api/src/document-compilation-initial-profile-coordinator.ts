@@ -62,11 +62,11 @@ class ModelConfigurationValidationError extends Error {
 }
 
 /**
- * Lazy model activation for an empty knowledge space. Space creation persists only selections;
- * the first durable compilation probes Dify's tenant-bound model runtime, derives the real embedding dimension and
- * installs immutable profile heads before parsing or indexing starts.
+ * Lazy profile activation for an empty knowledge space. Space creation persists selections
+ * immediately; the first durable compilation observes only the embedding dimension needed by the
+ * vector store and trusts Dify's tenant-active catalog for reasoning and rerank identities.
  *
- * The local promise map suppresses duplicate probes in one API process. Database manifest/profile
+ * The local promise map suppresses duplicate activation work in one API process. Database manifest/profile
  * CAS remains the cross-process authority, so duplicate workers can only converge on the same
  * immutable snapshots and can never publish an unverified tuple.
  */
@@ -312,13 +312,13 @@ async function verifyPendingConfiguration(
       signal,
       tenantId,
     }),
-    verifyPendingModel(preflight, "reasoning", {
+    resolveConfiguredModel(preflight, "reasoning", {
       kind: "reasoning",
       selection: retrievalInput.reasoningModel,
       signal,
       tenantId,
     }),
-    verifyPendingModel(preflight, "rerank", {
+    resolveConfiguredModel(preflight, "rerank", {
       kind: "rerank",
       selection: rerankSelection,
       signal,
@@ -387,6 +387,20 @@ async function verifyPendingConfiguration(
       profile: createKnowledgeSpaceRetrievalProfile(retrievalInput),
     },
   };
+}
+
+async function resolveConfiguredModel(
+  preflight: ModelCapabilityPreflight,
+  field: Exclude<ModelConfigurationField, "embedding">,
+  input: Parameters<ModelCapabilityPreflight["verify"]>[0],
+): Promise<ModelCapabilitySnapshot> {
+  try {
+    return preflight.resolveConfigured
+      ? await preflight.resolveConfigured(input)
+      : await preflight.verify(input);
+  } catch (error) {
+    throw new ModelConfigurationValidationError(field, error);
+  }
 }
 
 async function verifyPendingModel(

@@ -43,7 +43,8 @@ describe("first-document model profile activation", () => {
 
     await harness.coordinator.ensureReady(harness.execution);
 
-    expect(harness.preflight.verify).toHaveBeenCalledTimes(3);
+    expect(harness.preflight.verify).toHaveBeenCalledOnce();
+    expect(harness.preflight.resolveConfigured).toHaveBeenCalledTimes(2);
     expect(harness.activations.activate).not.toHaveBeenCalled();
     expect(harness.activations.activateInitialTuple).toHaveBeenCalledTimes(1);
     expect(harness.activations.activateInitialTuple).toHaveBeenCalledWith(
@@ -104,19 +105,19 @@ describe("first-document model profile activation", () => {
     } satisfies Partial<DocumentCompilationProcessingError>);
   });
 
-  it("activates Research only after all three required models pass preflight", async () => {
+  it("activates Research without probing configured reasoning and rerank models", async () => {
     const harness = createHarness("research");
 
     await harness.coordinator.ensureReady(harness.execution);
 
-    expect(harness.preflight.verify).toHaveBeenCalledTimes(3);
+    expect(harness.preflight.verify).toHaveBeenCalledOnce();
     expect(harness.preflight.verify).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "embedding" }),
     );
-    expect(harness.preflight.verify).toHaveBeenCalledWith(
+    expect(harness.preflight.resolveConfigured).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "reasoning" }),
     );
-    expect(harness.preflight.verify).toHaveBeenCalledWith(
+    expect(harness.preflight.resolveConfigured).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "rerank" }),
     );
     expect(harness.activations.activateInitialTuple).toHaveBeenCalledTimes(1);
@@ -241,6 +242,9 @@ function createHarness(mode: "fast" | "research") {
   });
   const heads = new Map<"embedding" | "retrieval", KnowledgeSpaceProfileHead>();
   const preflight = {
+    resolveConfigured: vi.fn(async (input: { kind: "embedding" | "reasoning" | "rerank" }) =>
+      capability(input.kind),
+    ),
     verify: vi.fn(async (input: { kind: "embedding" | "reasoning" | "rerank" }) =>
       capability(input.kind),
     ),

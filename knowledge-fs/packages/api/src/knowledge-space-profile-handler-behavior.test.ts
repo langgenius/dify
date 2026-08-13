@@ -418,7 +418,7 @@ describe("knowledge-space profile handler behavior", () => {
         research: false,
         sourceSync: true,
       },
-      configurationState: "pending-validation",
+      configurationState: "active",
       embedding: EMBEDDING_V1,
       issues: [],
       retrieval: { defaultMode: "deep", reasoningModel: REASONING_V1, topK: 8 },
@@ -430,7 +430,7 @@ describe("knowledge-space profile handler behavior", () => {
     });
     expect(current.status).toBe(200);
     await expect(current.json()).resolves.toMatchObject({
-      configurationState: "pending-validation",
+      configurationState: "active",
       embedding: EMBEDDING_V1,
       revision: 2,
     });

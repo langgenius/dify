@@ -283,6 +283,35 @@ describe("createModelCapabilityPreflight", () => {
     );
   });
 
+  it("resolves configured reasoning and rerank capabilities without invoking providers", async () => {
+    const validate = vi.fn(async () => false);
+    const generate = vi.fn(reasoningProvider().generate);
+    const rerank = vi.fn(rerankerProvider().rerank);
+    const shared = {
+      embeddingProviderFactory: () => embeddingProvider(),
+      reasoningProviderFactory: () => ({ ...reasoningProvider(), generate }),
+      rerankerProviderFactory: () => ({ ...rerankerProvider(), rerank }),
+    };
+    const reasoning = createModelCapabilityPreflight({
+      catalog: { ...catalog(entry("reasoning")), validate },
+      ...shared,
+    });
+    const reranker = createModelCapabilityPreflight({
+      catalog: { ...catalog(entry("rerank")), validate },
+      ...shared,
+    });
+
+    await expect(
+      reasoning.resolveConfigured?.({ kind: "reasoning", selection, tenantId: "tenant-1" }),
+    ).resolves.toMatchObject({ kind: "reasoning", selection });
+    await expect(
+      reranker.resolveConfigured?.({ kind: "rerank", selection, tenantId: "tenant-1" }),
+    ).resolves.toMatchObject({ kind: "rerank", selection });
+    expect(validate).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
+    expect(rerank).not.toHaveBeenCalled();
+  });
+
   it.each(["catalog", "credential-validation", "probe"] as const)(
     "enforces a hard deadline when the %s dependency ignores AbortSignal",
     async (stage) => {

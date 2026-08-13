@@ -1989,9 +1989,13 @@ async function resolveProductSettings({
   const candidateComplete = Boolean(
     embedding && retrieval && hasRequiredKnowledgeSpaceRetrievalModels(retrieval),
   );
+  // A complete model selection is saved synchronously. The internal pending record only delays
+  // creation of immutable profile heads until the first document establishes the vector-space
+  // dimension; it is not a user-visible validation job. Reporting it as pending-validation made
+  // settings clients poll forever when no document compilation was running.
   const configurationState = candidateComplete
-    ? pending
-      ? pending.state
+    ? pending?.state === "validation-failed"
+      ? ("validation-failed" as const)
       : ("active" as const)
     : ("setup-required" as const);
   const configuration = await resolveKnowledgeSpaceConfigurationStatus({

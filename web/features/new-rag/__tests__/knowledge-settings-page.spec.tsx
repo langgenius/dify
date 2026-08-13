@@ -183,7 +183,7 @@ describe('KnowledgeSettingsPage', () => {
     expect(screen.queryByText('settings-form')).not.toBeInTheDocument()
   })
 
-  it('polls settings while model validation is pending', async () => {
+  it('does not poll settings after model selections are saved', async () => {
     membersQueryMock.data = { accounts: [] }
     membersQueryMock.isPending = false
     renderPage()
@@ -192,22 +192,9 @@ describe('KnowledgeSettingsPage', () => {
 
     const settingsOptions = useQueryOptionsMock.mock.calls
       .map(([options]) => options)
-      .find((options) => options.queryKey?.[1] === 'settings') as {
-      refetchInterval: (query: {
-        state: { data?: { configuration_state?: 'active' | 'pending-validation' } }
-      }) => false | number
-    }
+      .find((options) => options.queryKey?.[1] === 'settings')
 
-    expect(
-      settingsOptions.refetchInterval({
-        state: { data: { configuration_state: 'pending-validation' } },
-      }),
-    ).toBe(2000)
-    expect(
-      settingsOptions.refetchInterval({
-        state: { data: { configuration_state: 'active' } },
-      }),
-    ).toBe(false)
+    expect(settingsOptions).not.toHaveProperty('refetchInterval')
   })
 
   it('keeps an active draft mounted and reports a conflict when the server version changes', async () => {

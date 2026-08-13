@@ -435,7 +435,7 @@ describe("knowledge space operator handlers coverage", () => {
     });
     expect(retrievalUpdate.status).toBe(200);
     await expect(retrievalUpdate.json()).resolves.toMatchObject({
-      configurationState: "pending-validation",
+      configurationState: "active",
       retrieval,
       revision: 2,
     });
@@ -450,7 +450,7 @@ describe("knowledge space operator handlers coverage", () => {
     });
     expect(embeddingUpdate.status).toBe(200);
     await expect(embeddingUpdate.json()).resolves.toMatchObject({
-      configurationState: "pending-validation",
+      configurationState: "active",
       revision: 3,
     });
 

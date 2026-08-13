@@ -136,13 +136,11 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
   )
-  const settingsQuery = useQuery({
-    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryOptions({
+  const settingsQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
-    refetchInterval: (query) =>
-      query.state.data?.configuration_state === 'pending-validation' ? 2000 : false,
-  })
+  )
   const canManageAccess =
     spaceQuery.data?.permission_keys.includes('knowledge_space_access_config') ?? false
   const permissionsQuery = useQuery({
