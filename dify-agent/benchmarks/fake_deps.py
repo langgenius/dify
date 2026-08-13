@@ -17,7 +17,7 @@ from decimal import Decimal
 import json
 import os
 import time
-from typing import ClassVar, cast
+from typing import ClassVar, Literal, cast
 import zipfile
 
 from fastapi import FastAPI, HTTPException, Request
@@ -43,6 +43,11 @@ def _benchmark_data_url(path: str) -> str:
         "http://fake-deps:5002/__bench",
     ).rstrip("/")
     return f"{base_url}/{path.lstrip('/')}"
+
+
+def _benchmark_data_uri(path: str) -> str:
+    """Return an origin-free URI matching the current Dify file data plane."""
+    return f"/files/benchmarks/{path.lstrip('/')}"
 
 
 class PluginInvokeRequest(BaseModel):
@@ -261,7 +266,7 @@ async def prepare_ledger(request: PrepareLedgerRequest) -> dict[str, str]:
     if scenario.version != request.scenario_version:
         raise HTTPException(status_code=409, detail="scenario version mismatch")
     if request.payload_bytes is not None:
-        if scenario.workload != "file" or request.payload_bytes < 1:
+        if not scenario.is_file_workload or request.payload_bytes < 1:
             raise HTTPException(
                 status_code=422,
                 detail="payload_bytes is only valid as a positive file override",
@@ -382,6 +387,62 @@ async def config_manifest(benchmark_run_id: str) -> dict[str, object]:
     }
 
 
+@app.post("/inner/api/agent-config/{benchmark_run_id}/download-request")
+async def config_download_request(benchmark_run_id: str, request: Request) -> dict[str, object]:
+    """Allocate one current-contract Config data-plane URI."""
+    scenario = await _capability_scenario(benchmark_run_id)
+    body = cast(dict[str, object], await request.json())
+    source = body.get("config")
+    if not isinstance(source, dict):
+        raise HTTPException(status_code=422, detail="config source is required")
+    source_mapping = cast(dict[str, object], source)
+    kind = _required_string(source_mapping, "kind")
+    name = _required_string(source_mapping, "name")
+    if kind not in {"skill", "file"}:
+        raise HTTPException(status_code=422, detail="config kind must be skill or file")
+    typed_kind = cast(Literal["skill", "file"], kind)
+    _require_config_item(scenario=scenario, benchmark_run_id=benchmark_run_id, kind=typed_kind, name=name)
+    payload = _config_asset_payload(scenario=scenario, kind=typed_kind, name=name)
+    encoded_name = base64.urlsafe_b64encode(name.encode()).decode().rstrip("=")
+    return {
+        "filename": f"{name}.zip" if kind == "skill" else name,
+        "mime_type": "application/zip" if kind == "skill" else "application/octet-stream",
+        "size": len(payload),
+        "download_uri": _benchmark_data_uri(f"config/{benchmark_run_id}/{kind}/{encoded_name}"),
+    }
+
+
+@app.get("/files/benchmarks/config/{benchmark_run_id}/{kind}/{encoded_name}")
+async def config_asset_download(benchmark_run_id: str, kind: str, encoded_name: str) -> Response:
+    """Serve one Config asset after the control-plane URI allocation."""
+    started_ns = time.perf_counter_ns()
+    scenario = await _capability_scenario(benchmark_run_id)
+    try:
+        name = base64.urlsafe_b64decode(encoded_name + "=" * (-len(encoded_name) % 4)).decode()
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="invalid config asset name") from exc
+    if kind not in {"skill", "file"}:
+        raise HTTPException(status_code=422, detail="config kind must be skill or file")
+    typed_kind = cast(Literal["skill", "file"], kind)
+    _require_config_item(
+        scenario=scenario,
+        benchmark_run_id=benchmark_run_id,
+        kind=typed_kind,
+        name=name,
+    )
+    payload = _config_asset_payload(scenario=scenario, kind=typed_kind, name=name)
+    await ledger_store.record_stub_call(
+        benchmark_run_id=benchmark_run_id,
+        name="config_skill_pull" if typed_kind == "skill" else "config_file_pull",
+        payload=_fixed_payload(f"{typed_kind if typed_kind == 'skill' else 'config'}:{name}", scenario.item_bytes),
+        elapsed_ms=_elapsed_ms(started_ns),
+    )
+    return Response(
+        payload,
+        media_type="application/zip" if typed_kind == "skill" else "application/octet-stream",
+    )
+
+
 @app.get("/inner/api/agent-config/{benchmark_run_id}/skills/{name}/pull")
 async def config_skill_pull(benchmark_run_id: str, name: str) -> Response:
     started_ns = time.perf_counter_ns()
@@ -430,6 +491,25 @@ async def request_file_upload(request: Request) -> dict[str, object]:
     }
 
 
+@app.post("/inner/api/agent/files/upload-request")
+async def request_agent_file_upload(request: Request) -> dict[str, str]:
+    """Allocate the origin-free upload URI used by the current Agent Stub."""
+    started_ns = time.perf_counter_ns()
+    payload = cast(dict[str, object], await request.json())
+    benchmark_run_id = _required_string(payload, "user_id")
+    filename = _required_string(payload, "filename")
+    scenario = await _capability_scenario(benchmark_run_id)
+    if not scenario.is_file_workload:
+        raise HTTPException(status_code=409, detail="file upload requested for a non-file workload")
+    await ledger_store.record_stub_call(
+        benchmark_run_id=benchmark_run_id,
+        name="file_upload_request",
+        elapsed_ms=_elapsed_ms(started_ns),
+    )
+    encoded_name = base64.urlsafe_b64encode(filename.encode()).decode().rstrip("=")
+    return {"upload_uri": _benchmark_data_uri(f"upload/{benchmark_run_id}/{encoded_name}")}
+
+
 @app.post("/__bench/files/upload/{benchmark_run_id}/{encoded_name}")
 async def upload_file(benchmark_run_id: str, encoded_name: str, request: Request) -> dict[str, str]:
     started_ns = time.perf_counter_ns()
@@ -445,6 +525,12 @@ async def upload_file(benchmark_run_id: str, encoded_name: str, request: Request
     )
     reference = _canonical_file_reference(record_id)
     return {"reference": reference}
+
+
+@app.post("/files/benchmarks/upload/{benchmark_run_id}/{encoded_name}")
+async def upload_agent_file(benchmark_run_id: str, encoded_name: str, request: Request) -> dict[str, str]:
+    """Receive bytes from the current Agent CLI signed-upload data path."""
+    return await upload_file(benchmark_run_id, encoded_name, request)
 
 
 @app.post("/inner/api/download/file/request")
@@ -475,6 +561,33 @@ async def request_file_download(request: Request) -> dict[str, object]:
     }
 
 
+@app.post("/inner/api/agent/files/download-request")
+async def request_agent_file_download(request: Request) -> dict[str, object]:
+    """Resolve a canonical ToolFile ref using the current inner API contract."""
+    started_ns = time.perf_counter_ns()
+    payload = cast(dict[str, object], await request.json())
+    benchmark_run_id = _required_string(payload, "user_id")
+    file_mapping = payload.get("file")
+    if not isinstance(file_mapping, dict):
+        raise HTTPException(status_code=422, detail="file mapping is required")
+    reference = _required_string(cast(dict[str, object], file_mapping), "reference")
+    record_id = _record_id_from_reference(reference)
+    owner_run_id, filename, content = await ledger_store.read_file(record_id)
+    if owner_run_id != benchmark_run_id:
+        raise HTTPException(status_code=403, detail="file reference belongs to another run")
+    await ledger_store.record_stub_call(
+        benchmark_run_id=benchmark_run_id,
+        name="file_download_request",
+        elapsed_ms=_elapsed_ms(started_ns),
+    )
+    return {
+        "filename": filename,
+        "mime_type": "application/octet-stream",
+        "size": len(content),
+        "download_uri": _benchmark_data_uri(f"download/{record_id}"),
+    }
+
+
 @app.get("/__bench/files/download/{record_id}")
 async def download_file(record_id: str) -> Response:
     started_ns = time.perf_counter_ns()
@@ -491,11 +604,44 @@ async def download_file(record_id: str) -> Response:
     return Response(payload, media_type="application/octet-stream")
 
 
+@app.get("/files/benchmarks/download/{record_id}")
+async def download_agent_file(record_id: str) -> Response:
+    """Stream current-contract ToolFile bytes exactly once."""
+    return await download_file(record_id)
+
+
 async def _capability_scenario(benchmark_run_id: str) -> CapacityScenario:
     try:
         return await ledger_store.read_scenario(benchmark_run_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="capability ledger was not prepared") from exc
+
+
+def _require_config_item(
+    *,
+    scenario: CapacityScenario,
+    benchmark_run_id: str,
+    kind: Literal["skill", "file"],
+    name: str,
+) -> None:
+    expected = (
+        {config_skill_name(benchmark_run_id, index) for index in range(scenario.config_skill_count)}
+        if kind == "skill"
+        else {config_file_name(benchmark_run_id, index) for index in range(scenario.config_file_count)}
+    )
+    if scenario.workload != "config" or name not in expected:
+        raise HTTPException(status_code=404, detail="config asset was not declared for this benchmark run")
+
+
+def _config_asset_payload(
+    *,
+    scenario: CapacityScenario,
+    kind: Literal["skill", "file"],
+    name: str,
+) -> bytes:
+    if kind == "skill":
+        return _skill_archive(name=name, content_bytes=scenario.item_bytes)
+    return _fixed_payload(f"config:{name}", scenario.item_bytes)
 
 
 def _fixed_payload(label: str, size: int) -> bytes:
@@ -588,7 +734,7 @@ def _capability_tool_call_chunk(
 ) -> LLMResultChunk:
     script = _capability_script(scenario, benchmark_run_id=benchmark_run_id)
     arguments: dict[str, str | float] = {"script": script}
-    if scenario.workload == "file":
+    if scenario.is_file_workload:
         arguments["timeout"] = 120.0
     tool_call = AssistantPromptMessage.ToolCall(
         id=f"benchmark-shell-call-{round_number}",
@@ -640,7 +786,7 @@ def _capability_script(scenario: CapacityScenario, *, benchmark_run_id: str = "r
                 "PY",
             ]
         )
-    if scenario.workload != "file":
+    if not scenario.is_file_workload:
         raise ValueError(f"{scenario.workload} does not use shell_run")
     return "\n".join(
         [

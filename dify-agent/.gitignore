@@ -1,3 +1,5 @@
 dify-aio
 site/
 /benchmarks/results/
+/benchmarks/build/
+/benchmarks/private-recovery/

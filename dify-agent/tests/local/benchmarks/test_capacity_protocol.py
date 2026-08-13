@@ -17,6 +17,9 @@ from benchmarks.scenario import load_scenario_manifest
 from benchmarks.schemas import RunSample
 
 
+_CANONICAL_FILE_REFERENCE = "dify-file-ref:eyJyZWNvcmRfaWQiOiJyZWNvcmQifQ=="
+
+
 class _Tracker:
     def __init__(self) -> None:
         self.active: int = 0
@@ -269,7 +272,7 @@ def test_config_request_keeps_three_skills_and_ten_files() -> None:
     assert files[0]["name"] == "file-0-run.bin"
 
 
-def test_file_run_exports_workspace_payload_without_a_public_callback() -> None:
+def test_file_run_exports_binding_payload_through_current_file_contract() -> None:
     scenario = load_scenario_manifest().get("file")
     payload = (bytes(range(256)) * ((scenario.payload_bytes + 255) // 256))[: scenario.payload_bytes]
     requests_seen: list[httpx.Request] = []
@@ -283,24 +286,23 @@ def test_file_run_exports_workspace_payload_without_a_public_callback() -> None:
                 200,
                 text='data: {"id":"1-0","type":"run_succeeded","data":{}}\n\n',
             )
-        if request.method == "POST" and request.url.path == "/workspace/files/upload":
+        if request.method == "POST" and request.url.path == "/execution-bindings/files/download":
             return httpx.Response(
                 200,
-                json={
-                    "path": "dify-bench-file/payload.bin",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "dify-file-ref:record",
-                        "download_url": "http://fake/__bench/files/download/record",
-                    },
-                },
+                json={"reference": _CANONICAL_FILE_REFERENCE},
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url.path}")
 
     def fake_handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/__bench/prepare":
             return httpx.Response(200, json={})
-        if request.method == "GET" and request.url.path == "/__bench/files/download/record":
+        if request.method == "POST" and request.url.path == "/inner/api/agent/files/download-request":
+            body = cast(dict[str, object], json.loads(request.content))
+            file_mapping = cast(dict[str, object], body["file"])
+            assert file_mapping == {"transfer_method": "tool_file", "reference": _CANONICAL_FILE_REFERENCE}
+            assert body["for_frontend"] is True
+            return httpx.Response(200, json={"download_uri": "/files/benchmarks/download/record"})
+        if request.method == "GET" and request.url.path == "/files/benchmarks/download/record":
             return httpx.Response(200, content=payload)
         raise AssertionError(f"unexpected request: {request.method} {request.url.path}")
 
@@ -328,7 +330,9 @@ def test_file_run_exports_workspace_payload_without_a_public_callback() -> None:
         agent.close()
         fake.close()
 
-    upload_request = next(request for request in requests_seen if request.url.path == "/workspace/files/upload")
+    upload_request = next(
+        request for request in requests_seen if request.url.path == "/execution-bindings/files/download"
+    )
     upload_payload = cast(dict[str, object], json.loads(upload_request.content))
     assert upload_payload["backend_binding_ref"] == "binding-1"
     assert upload_payload["path"] == "dify-bench-file/payload.bin"
@@ -337,35 +341,32 @@ def test_file_run_exports_workspace_payload_without_a_public_callback() -> None:
     assert observation.sample.terminal_status == "succeeded"
     assert observation.sample.failure_kind is None
     assert len(observation.e2b_active_windows) == 2
-    assert [metric.name for metric in metrics][-3:] == [
-        "POST /workspace/files/upload",
-        "GET workspace file download",
+    assert [metric.name for metric in metrics][-4:] == [
+        "POST /execution-bindings/files/download",
+        "POST /inner/api/agent/files/download-request",
+        "GET Binding file download",
         "file",
     ]
 
 
-def test_file_run_marks_corrupt_workspace_download_as_validation_error() -> None:
+def test_file_run_marks_corrupt_binding_download_as_validation_error() -> None:
     def agent_handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/runs":
             return httpx.Response(202, json={"run_id": "run-1"})
         if request.url.path.endswith("/events/sse"):
             return httpx.Response(200, text='data: {"type":"run_succeeded","data":{}}\n\n')
-        if request.url.path == "/workspace/files/upload":
-            return httpx.Response(
-                200,
-                json={
-                    "path": "dify-bench-file/payload.bin",
-                    "file": {
-                        "transfer_method": "tool_file",
-                        "reference": "ref",
-                        "download_url": "http://fake/download",
-                    },
-                },
-            )
+        if request.url.path == "/execution-bindings/files/download":
+            return httpx.Response(200, json={"reference": _CANONICAL_FILE_REFERENCE})
         raise AssertionError(request.url.path)
 
     def fake_handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=b"corrupt" if request.method == "GET" else b"{}")
+        if request.url.path == "/__bench/prepare":
+            return httpx.Response(200, json={})
+        if request.url.path == "/inner/api/agent/files/download-request":
+            return httpx.Response(200, json={"download_uri": "/download"})
+        if request.url.path == "/download":
+            return httpx.Response(200, content=b"corrupt")
+        raise AssertionError(request.url.path)
 
     agent, fake = _clients(
         agent_handler=httpx.MockTransport(agent_handler),
@@ -396,7 +397,7 @@ def test_file_run_marks_corrupt_workspace_download_as_validation_error() -> None
     assert "payload size" in observation.sample.error
 
 
-def test_file_run_preserves_workspace_upload_error_body() -> None:
+def test_file_run_preserves_binding_download_error_body() -> None:
     metrics: list[RequestMetric] = []
 
     def agent_handler(request: httpx.Request) -> httpx.Response:
@@ -404,7 +405,7 @@ def test_file_run_preserves_workspace_upload_error_body() -> None:
             return httpx.Response(202, json={"run_id": "run-1"})
         if request.url.path.endswith("/events/sse"):
             return httpx.Response(200, text='data: {"type":"run_succeeded","data":{}}\n\n')
-        if request.url.path == "/workspace/files/upload":
+        if request.url.path == "/execution-bindings/files/download":
             return httpx.Response(502, json={"detail": "runtime workspace acquire failed"})
         raise AssertionError(request.url.path)
 
@@ -439,7 +440,7 @@ def test_file_run_preserves_workspace_upload_error_body() -> None:
     assert observation.sample.failure_kind == "validation_error"
     assert observation.sample.error is not None
     assert "runtime workspace acquire failed" in observation.sample.error
-    upload_metric = next(metric for metric in metrics if metric.name == "POST /workspace/files/upload")
+    upload_metric = next(metric for metric in metrics if metric.name == "POST /execution-bindings/files/download")
     assert upload_metric.error is not None
     assert "runtime workspace acquire failed" in upload_metric.error
 

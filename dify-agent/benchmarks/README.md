@@ -1,4 +1,4 @@
-# Dify Agent local capacity benchmarks
+# Dify Agent capacity benchmarks
 
 The harness measures one fixed Agent capacity unit (`2 vCPU / 2 GiB`, two
 Uvicorn workers) with either:
@@ -18,7 +18,7 @@ resource sampling, Redis snapshots, and the public result schema. Locust runs
 in a child process so its gevent runtime cannot patch the parent asyncio
 driver.
 
-## Run
+## Local run
 
 ```bash
 make -C dify-agent bench-local-runtime
@@ -47,9 +47,10 @@ duplicate or out-of-range pulls fail the Run. The final digest therefore proves
 that the fixed three Skills and ten Files were each materialized with the exact
 bytes, without depending on a public tunnel. The
 File workload writes its fixed payload inside the Runtime and exports it
-through `POST /workspace/files/upload`; the Driver downloads and verifies the
-exact size and SHA256 over the local Docker data path. The 16 MiB File payload
-also never traverses a public tunnel.
+through `POST /execution-bindings/files/download`; the Driver resolves the
+canonical reference through the current inner File API, downloads it, and
+verifies the exact size and SHA256 over the local Docker data path. The 16 MiB
+File payload also never traverses a public tunnel.
 
 For focused debugging:
 
@@ -59,6 +60,186 @@ make -C dify-agent bench-local-runtime \
 ```
 
 A filtered invocation records `matrix_complete=false`.
+
+## Staging public Service API c1 smoke
+
+This smoke follows the real user entrypoint from one local Locust User:
+
+```text
+local Locust -> public edge -> POST /v1/chat-messages -> Dify API -> Agent -> Runtime/E2B
+```
+
+It serially runs `basic -> shell -> config` in one conversation and then
+deletes that conversation through the public Service API. The deterministic
+plugin reads a canonical `DIFY_BENCHMARK_REQUEST` envelope from each user
+query. The Config turn explicitly pulls three Skills and ten Files and verifies
+13 items, 53,248 bytes, and the checked-in SHA256.
+
+The result uses Schema v3 with `mode=staging-public-e2e`,
+`smoke_only=true`, `confidence=low_confidence`, and capacity
+`not_applicable`. It does not contain Kubernetes, Agent process, Redis, E2B
+lifecycle, Sandbox, shared-infrastructure, cost, SLO, or capacity data.
+Conversation deletion is observable; physical Sandbox collection is not.
+
+### Local preparation
+
+Build the deterministic Config fixtures and plugin package locally:
+
+```bash
+make -C dify-agent bench-staging-fixtures
+
+make -C dify-agent bench-staging-plugin-package \
+  STAGING_PLUGIN_PACKAGE="$PWD/dify-agent/benchmarks/build/staging/dify-agent-benchmark-model-0.1.2.difypkg"
+```
+
+The plugin release version is `0.1.2`; its `meta.version` remains `0.0.1`.
+Install or upgrade it only in the Benchmark Tenant and keep the non-secret
+Benchmark provider credential set to `Enabled`. The Service API key is read
+only from `BENCH_STAGING_API_KEY`; it must never be passed as an argument,
+committed, logged, or stored in an artifact.
+
+### Explicitly confirmed execution
+
+The protocol client normalizes the base URL to a trailing `/v1/`, uses only
+relative Service API paths, and disables inherited HTTP proxy settings.
+
+```bash
+export BENCH_STAGING_API_KEY='<benchmark-service-api-key>'
+
+BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK \
+make -C dify-agent bench-staging-public-smoke \
+  BENCH_STAGING_BASE_URL=https://api-staging.dify.dev/v1/
+```
+
+Optional `BENCH_RUN_ID`, `BENCH_RESULTS_ROOT`,
+`BENCH_CONFIG_EXPECTED_SHA256`, and `BENCH_STAGING_PLUGIN_PACKAGE` override
+the invocation ID, output root, expected Config digest, and package-evidence
+path. The package version and SHA in the public report are explicitly labeled
+`local_expected_package`; they are not proof of the version installed in
+Staging, which must be verified independently before execution. The smoke
+writes:
+
+```text
+benchmarks/results/<run-id>-staging-public-smoke/
+├── result.json
+├── report.md
+├── samples.jsonl
+├── environment.json
+├── locust-stats.json
+├── cleanup.json
+└── logs/
+```
+
+The command returns nonzero when any request lacks a single `message_end`,
+emits an SSE error, fails marker/Shell/Config integrity, or fails Conversation
+cleanup. One sample per scenario is correctness evidence only, never a
+performance-capacity conclusion.
+
+### Public E2E replica-scaling experiment
+
+The Staging experiment measures the shared public user path and whether changing
+only `dify-agent-backend` from one to two to four replicas produces a directional
+throughput gain. It does not duplicate the component-capacity conclusions from
+`local-runtime` or `local-e2b`, and it cannot isolate API, Redis, Plugin, E2B, or
+edge bottlenecks.
+
+Each replica stage is an independent, explicitly confirmed command. The
+asymmetric matrix is:
+
+| Agent replicas | `basic` | `shell` | `config` |
+|---:|---|---|---|
+| 1 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c1/c10/c20 | c1/c10/c20 |
+| 2 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 |
+| 4 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 |
+
+Every point has one block. `basic` stops after the first suspected boundary and
+does not repeat it. `shell` and `config` verify the real Runtime path and
+multi-Pod correctness; they do not determine the replica-scaling throughput.
+Every User owns one end user and Conversation, setup is limited to one User per
+second, and all Users pass a setup barrier before the 15-second warmup. Warmup
+is drained and discarded before a 60-second closed-loop measurement; admitted
+requests may drain for at most 180 seconds.
+
+Before a stage, the operator must use GitOps to disable auto-sync only on the
+`staging-agent-backend` child Application and manually scale the Deployment to
+the requested replica count. The Harness is read-only with respect to Argo and
+the Deployment: it verifies the child is paused, the parent remains automated,
+the desired/updated/ready/Endpoint counts match, Pods are placed on distinct
+nodes with zone skew at most one, and every Pod retains the same image digest,
+`2 vCPU / 2 GiB`, two workers, and zero restarts. It never patches Argo or scales
+the Deployment.
+
+The E2B count observer is a bounded local subprocess beside Locust. It reads
+the E2B API key only from its own environment, polls the Vendor inventory once
+per second, and writes only running/paused counts to public artifacts. Sandbox,
+Binding, Workspace, Tenant, Agent, and credential values stay out of the
+public tree. No Kubernetes Job, observer image, or Secret mount is created.
+
+Run one stage only after its replica deployment and cleanup prerequisites have
+been manually verified:
+
+```bash
+export BENCH_STAGING_API_KEY='<benchmark-service-api-key>'
+export BENCH_E2B_API_KEY='<e2b-api-key>'
+
+BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK \
+make -C dify-agent bench-staging-public-scaling-stage \
+  BACKEND_REPLICAS=1 \
+  BENCH_STAGING_BASE_URL=https://api-staging.dify.dev/v1/ \
+  BENCH_TENANT_ID='<benchmark-tenant-id>' \
+  BENCH_AGENT_ID='<benchmark-agent-id>'
+```
+
+Use `BACKEND_REPLICAS=2` and then `4` only after the operator performs and
+verifies each manual scale. Optional Kubernetes overrides are
+`BENCH_STAGING_KUBE_CONTEXT` and `BENCH_STAGING_NAMESPACE`.
+`BENCH_STAGING_SCENARIO` and
+`BENCH_CONCURRENCY` select a debug subset; such a Stage result is explicitly
+incomplete and cannot support the final scaling comparison.
+
+Conversation deletion belongs to the parent Harness, not the Locust process.
+Before DELETE, the parent captures an exact private Workspace/Binding/backend
+mapping from Staging DB, then deletes at two Conversations per second and waits
+for both DB resources and matching Vendor inventory to remain zero twice ten
+seconds apart. Private manifests use mode `0600`, stay outside public artifacts,
+and are removed only after DB/Vendor reconciliation and observer cleanup both
+succeed. DELETE 204 without physical zero evidence fails the Stage and stops
+later blocks.
+
+Each block first creates a durable `0700` recovery directory under
+`BENCH_PRIVATE_RECOVERY_ROOT` (default:
+`dify-agent/benchmarks/private-recovery`). A failed or interrupted block retains
+its `0600` allocation, DB, and E2B manifests there; the public block artifact
+contains only an opaque `recovery-<hex>` handle, never the private directory or
+resource identities. To start manual recovery, stop the matrix, locate
+`$BENCH_PRIVATE_RECOVERY_ROOT/<handle>/`, and use its
+`allocation-journal.jsonl`, `database-targets.json`, and E2B target manifests
+as the inputs for an operator-reviewed rerun of the parent DB/Vendor
+reconciliation. Do not upload these files or delete the directory until both
+inventories are confirmed zero. A subsequent block must not run merely because
+Conversation DELETE returned 204.
+
+After all three Stage results exist, aggregate them offline:
+
+```bash
+make -C dify-agent bench-staging-public-scaling-report \
+  R1_RESULT=/absolute/path/to/r1/result.json \
+  R2_RESULT=/absolute/path/to/r2/result.json \
+  R4_RESULT=/absolute/path/to/r4/result.json
+```
+
+`BENCH_SCALING_OUTPUT_DIR` optionally selects a new, non-existing output
+directory. Aggregation validates Schema v6 Stage mode, replica identity,
+target/harness/plugin/scenario fingerprints, deployment stability, and public
+artifact safety before combining blocks. It performs no network or cluster
+operation.
+
+Stage results use `mode=staging-public-e2e-scaling-stage`; the aggregate uses
+`mode=staging-public-e2e-scaling`. Both use
+`confidence=single_block_shared_traffic`. The aggregate compares only
+`T_basic(1)`, `T_basic(2)`, and `T_basic(4)`. Its conclusion is a directional
+shared-Staging observation, never an Agent component maximum, E2B capacity,
+production SLO, or production concurrency promise.
 
 ## Derive ACU and E2B calculator inputs
 

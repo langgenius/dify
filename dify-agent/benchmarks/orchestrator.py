@@ -220,6 +220,7 @@ def _run_compose_block(
         "BENCH_E2B_API_KEY": e2b_api_key or "",
         "BENCH_E2B_TEMPLATE": e2b_template or "",
         "BENCH_AGENT_STUB_API_BASE_URL": _agent_stub_api_base_url(point),
+        "BENCH_SANDBOX_FILES_BASE_URL": "http://fake-deps:5002",
         "BENCH_PUBLIC_DATA_BASE_URL": "http://fake-deps:5002/__bench",
     }
     compose = ["docker", "compose", "-f", str(compose_file), "-p", project]

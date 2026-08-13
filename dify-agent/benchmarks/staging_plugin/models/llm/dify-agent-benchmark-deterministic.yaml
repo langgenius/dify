@@ -1,0 +1,17 @@
+model: dify-agent-benchmark-deterministic
+label:
+  en_US: Dify Agent Benchmark Deterministic
+  zh_Hans: Dify Agent Benchmark Deterministic
+model_type: llm
+features:
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules: []
+pricing:
+  input: "0"
+  output: "0"
+  unit: "0.000001"
+  currency: USD

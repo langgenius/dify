@@ -22,6 +22,7 @@ from benchmarks.scenario import (
     deterministic_file_payload_sha256,
 )
 from benchmarks.schemas import FailureKind, RunSample, TerminalStatus
+from dify_agent.agent_stub.protocol import is_canonical_dify_file_reference
 
 
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
@@ -97,6 +98,7 @@ class AgentRunClient:
         mode: BenchmarkMode,
         agent_client: httpx.Client,
         fake_client: httpx.Client,
+        data_client: httpx.Client | None = None,
         scenario: CapacityScenario,
         block_id: str,
         recorder: MetricRecorder,
@@ -104,6 +106,7 @@ class AgentRunClient:
         self._mode: BenchmarkMode = mode
         self._agent_client: httpx.Client = agent_client
         self._fake_client: httpx.Client = fake_client
+        self._data_client: httpx.Client = data_client or fake_client
         self._scenario: CapacityScenario = scenario
         self._block_id: str = block_id
         self._recorder: MetricRecorder = recorder
@@ -245,10 +248,10 @@ class AgentRunClient:
         e2b_active_windows: list[tuple[int, int]] = []
         if sample.terminal_status == "succeeded":
             e2b_active_windows.append((started_at_ns, run_ended_at_ns))
-            if self._scenario.workload == "file":
+            if self._scenario.is_file_workload:
                 try:
                     e2b_active_windows.append(
-                        self._export_workspace_file(
+                        self._export_binding_file(
                             benchmark_run_id=benchmark_run_id,
                             binding_ref=binding_ref,
                             metrics=metrics,
@@ -280,7 +283,7 @@ class AgentRunClient:
             self._recorder(metric)
         return observation
 
-    def _export_workspace_file(
+    def _export_binding_file(
         self,
         *,
         benchmark_run_id: str,
@@ -292,7 +295,7 @@ class AgentRunClient:
         upload_started_at_ns = time.time_ns()
         upload_started_ns = time.perf_counter_ns()
         response = self._agent_client.post(
-            "/workspace/files/upload",
+            "/execution-bindings/files/download",
             json={
                 "backend_binding_ref": binding_ref,
                 "path": "dify-bench-file/payload.bin",
@@ -303,7 +306,7 @@ class AgentRunClient:
         metrics.append(
             RequestMetric(
                 request_type="HTTP",
-                name="POST /workspace/files/upload",
+                name="POST /execution-bindings/files/download",
                 response_time_ms=upload_elapsed_ms,
                 error=None if response.is_success else _http_error(response),
             )
@@ -313,33 +316,62 @@ class AgentRunClient:
         upload_ended_at_ns = time.time_ns()
         payload = cast(object, response.json())
         if not isinstance(payload, dict):
-            raise TypeError("workspace upload response was not an object")
-        file_payload = payload.get("file")
-        if not isinstance(file_payload, dict):
-            raise TypeError("workspace upload response did not contain file metadata")
-        download_url = file_payload.get("download_url")
+            raise TypeError("Binding file download response was not an object")
+        response_payload = cast(dict[str, object], payload)
+        reference = response_payload.get("reference")
+        if not isinstance(reference, str) or not is_canonical_dify_file_reference(reference):
+            raise TypeError("Binding file download response did not contain a canonical reference")
+
+        allocation_started_ns = time.perf_counter_ns()
+        allocation = self._data_client.post(
+            "/inner/api/agent/files/download-request",
+            json={
+                "tenant_id": "benchmark-tenant",
+                "user_id": benchmark_run_id,
+                "user_from": "account",
+                "invoke_from": "service-api",
+                "file": {"transfer_method": "tool_file", "reference": reference},
+                "for_frontend": True,
+            },
+        )
+        allocation_elapsed_ms = (time.perf_counter_ns() - allocation_started_ns) / 1_000_000
+        metrics.append(
+            RequestMetric(
+                request_type="HTTP",
+                name="POST /inner/api/agent/files/download-request",
+                response_time_ms=allocation_elapsed_ms,
+                error=None if allocation.is_success else _http_error(allocation),
+            )
+        )
+        if allocation.is_error:
+            raise RuntimeError(_http_error(allocation))
+        download_payload = cast(object, allocation.json())
+        if not isinstance(download_payload, dict):
+            raise TypeError("file download allocation response was not an object")
+        allocation_payload = cast(dict[str, object], download_payload)
+        download_url = allocation_payload.get("download_uri")
         if not isinstance(download_url, str) or not download_url:
-            raise TypeError("workspace upload response did not contain download_url")
+            raise TypeError("file download allocation response did not contain download_uri")
         download_started_ns = time.perf_counter_ns()
-        download = self._fake_client.get(download_url)
+        download = self._data_client.get(download_url)
         download_elapsed_ms = (time.perf_counter_ns() - download_started_ns) / 1_000_000
         metrics.append(
             RequestMetric(
                 request_type="HTTP",
-                name="GET workspace file download",
+                name="GET Binding file download",
                 response_time_ms=download_elapsed_ms,
                 response_length=len(download.content),
                 error=None if download.is_success else f"HTTP {download.status_code}",
             )
         )
-        download.raise_for_status()
+        _ = download.raise_for_status()
         content = download.content
         if len(content) != self._scenario.payload_bytes:
-            raise ValueError(f"workspace payload size {len(content)} did not match {self._scenario.payload_bytes}")
+            raise ValueError(f"Binding payload size {len(content)} did not match {self._scenario.payload_bytes}")
         actual_sha256 = hashlib.sha256(content).hexdigest()
         expected_sha256 = deterministic_file_payload_sha256(self._scenario.payload_bytes)
         if actual_sha256 != expected_sha256:
-            raise ValueError(f"workspace payload SHA256 {actual_sha256} did not match {expected_sha256}")
+            raise ValueError(f"Binding payload SHA256 {actual_sha256} did not match {expected_sha256}")
         return upload_started_at_ns, upload_ended_at_ns
 
     def _cancel_and_drain_run(self, run_id: str) -> str | None:
@@ -375,7 +407,7 @@ class AgentRunClient:
                     "benchmark_run_id": benchmark_run_id,
                     "scenario_id": self._scenario.id,
                     "scenario_version": self._scenario.version,
-                    "payload_bytes": self._scenario.payload_bytes if self._scenario.workload == "file" else None,
+                    "payload_bytes": self._scenario.payload_bytes if self._scenario.is_file_workload else None,
                 },
             )
             elapsed_ms = (time.perf_counter_ns() - started_ns) / 1_000_000
@@ -437,7 +469,7 @@ def build_capacity_run_request(
         },
         {"name": "execution_context", "type": "dify.execution_context", "config": execution_context},
     ]
-    if scenario.workload != "basic":
+    if scenario.uses_runtime:
         if binding_ref is not None:
             layers.append(
                 {
