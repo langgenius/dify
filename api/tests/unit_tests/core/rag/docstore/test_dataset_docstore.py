@@ -139,11 +139,10 @@ class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
         """Test deserialization from dictionary."""
 
         config_dict = {
-            "dataset": MagicMock(spec=["id"]),
+            "dataset": _dataset(),
             "user_id": "test-user",
             "document_id": "test-doc",
         }
-        config_dict["dataset"].id = "ds-123"
 
         store = DatasetDocumentStore.from_dict(config_dict)
 
