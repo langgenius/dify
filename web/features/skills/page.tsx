@@ -33,7 +33,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -543,7 +543,7 @@ function SkillTagFilter({ onOpenTagManagement }: { onOpenTagManagement: () => vo
     skillQueryParamNames.tag,
     skillTagQueryParser,
   )
-  const { data: tagList = [] } = useQuery(
+  const tagsQuery = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: {
         query: {
@@ -552,13 +552,33 @@ function SkillTagFilter({ onOpenTagManagement }: { onOpenTagManagement: () => vo
       },
     }),
   )
-  const skillTags = tagList.filter((tag) => tag.type === 'skill')
-  const tagIdByName = new Map(skillTags.map((tag) => [tag.name, tag.id]))
-  const tagNameById = new Map(skillTags.map((tag) => [tag.id, tag.name]))
+  const skillTags = useMemo(
+    () => (tagsQuery.data ?? []).filter((tag) => tag.type === 'skill'),
+    [tagsQuery.data],
+  )
+  const tagIdByName = useMemo(
+    () => new Map(skillTags.map((tag) => [tag.name, tag.id])),
+    [skillTags],
+  )
+  const tagNameById = useMemo(
+    () => new Map(skillTags.map((tag) => [tag.id, tag.name])),
+    [skillTags],
+  )
+  const validSelectedTags = useMemo(
+    () => selectedTags.filter((tagName) => tagIdByName.has(tagName)),
+    [selectedTags, tagIdByName],
+  )
   const selectedTagIds = selectedTags.flatMap((tagName) => {
     const tagId = tagIdByName.get(tagName)
     return tagId ? [tagId] : []
   })
+
+  useEffect(() => {
+    if (!tagsQuery.isSuccess || validSelectedTags.length === selectedTags.length) return
+
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The loaded tag list is authoritative, so remove stale names from the external URL query state.
+    void setSelectedTags(validSelectedTags)
+  }, [selectedTags, setSelectedTags, tagsQuery.isSuccess, validSelectedTags])
 
   return (
     <TagFilter

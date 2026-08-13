@@ -349,6 +349,25 @@ describe('SkillsPage', () => {
     })
   })
 
+  it('clears stale tag names from the URL-backed filter state', async () => {
+    mocks.queryState.tag = ['renamed-tag']
+
+    renderSkillsPage()
+
+    await waitFor(() => {
+      expect(mocks.queryState.tag).toEqual([])
+    })
+    await waitFor(() => {
+      const queryOptions = mocks.skillsQueryOptions.mock.lastCall?.[0]
+      expect(queryOptions?.input(1)).toEqual({
+        query: {
+          limit: 20,
+          page: 1,
+        },
+      })
+    })
+  })
+
   it('loads the next skill page when the list scrolls near the bottom', async () => {
     const firstPageSkills = Array.from({ length: 20 }, (_, index) =>
       createSkill({

@@ -227,6 +227,19 @@ describe('TagFilter', () => {
   })
 
   describe('Search', () => {
+    it('should filter tags without matching letter case', async () => {
+      const user = userEvent.setup()
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      await user.type(searchInput, 'frontend')
+
+      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
+    })
+
     it('should filter tags by search keywords', async () => {
       const user = userEvent.setup()
 
