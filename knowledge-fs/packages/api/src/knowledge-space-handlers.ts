@@ -70,6 +70,7 @@ import {
   isTerminalKnowledgeSpaceProfileMigrationError,
 } from "./knowledge-space-profile-migration";
 import {
+  type KnowledgeSpaceProfileMigrationPrincipal,
   type KnowledgeSpaceProfileMigrationService,
   KnowledgeSpaceProfileMigrationServiceError,
   toPublicKnowledgeSpaceProfileMigration,
@@ -1223,37 +1224,11 @@ export function registerKnowledgeSpaceHandlers({
           409,
         );
       }
-      const candidateRevision = await nextPublishedRetrievalCandidateRevision(profiles, {
-        activeRevision: actualRevision,
-        knowledgeSpaceId,
-        tenantId: subject.tenantId,
-      });
-      const candidateSnapshot = createKnowledgeSpaceRetrievalProfile(
-        body.profile,
-        candidateRevision,
-      );
       const capabilitySnapshot = {
         reasoning: capabilitySnapshots.reasoning ?? null,
         rerank: capabilitySnapshots.rerank ?? null,
         verification: "verified",
       } as const;
-      let candidate: KnowledgeSpaceProfileRevision;
-      try {
-        candidate = await getOrCreateSettingsProfileCandidate(profiles, {
-          capabilitySnapshot,
-          createdBySubjectId: subject.subjectId,
-          kind: "retrieval",
-          knowledgeSpaceId,
-          now: now(),
-          snapshot: candidateSnapshot,
-          tenantId: subject.tenantId,
-        });
-      } catch (error) {
-        if (error instanceof SettingsProfileCandidateConflictError) {
-          return context.json({ code: error.code, error: error.message }, 409);
-        }
-        throw error;
-      }
       const authenticatedApiKey = context.get("authenticatedApiKey");
       const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
       const migrationPrincipal = {
@@ -1264,7 +1239,21 @@ export function registerKnowledgeSpaceHandlers({
         subject,
       } as const;
       try {
-        let migration = await profileMigrations.request({
+        const candidate = await getOrSupersedeRetrievalSettingsCandidate({
+          activeRevision: actualRevision,
+          capabilitySnapshot,
+          createdBySubjectId: subject.subjectId,
+          migrationPrincipal,
+          migrations: profileMigrations,
+          now,
+          profile: body.profile,
+          profiles,
+        });
+        let migration = await profileMigrations.findByCandidate({
+          ...migrationPrincipal,
+          candidateProfileId: candidate.id,
+        });
+        migration ??= await profileMigrations.request({
           ...migrationPrincipal,
           candidateRevision: candidate.revision,
           changedKind: "retrieval",
@@ -1291,6 +1280,9 @@ export function registerKnowledgeSpaceHandlers({
         }
         return context.json(toPublicKnowledgeSpaceProfileMigration(migration), 202);
       } catch (error) {
+        if (error instanceof SettingsProfileCandidateConflictError) {
+          return context.json({ code: error.code, error: error.message }, 409);
+        }
         if (error instanceof KnowledgeSpaceProfileMigrationConflictError) {
           return context.json({ code: error.code, error: error.message }, 409);
         }
@@ -2589,6 +2581,91 @@ class SettingsProfileCandidateConflictError extends Error {
   constructor() {
     super("Another settings update already owns the next immutable profile revision");
     this.name = "SettingsProfileCandidateConflictError";
+  }
+}
+
+async function getOrSupersedeRetrievalSettingsCandidate(input: {
+  readonly activeRevision: number;
+  readonly capabilitySnapshot: Readonly<Record<string, unknown>>;
+  readonly createdBySubjectId: string;
+  readonly migrationPrincipal: KnowledgeSpaceProfileMigrationPrincipal & {
+    readonly knowledgeSpaceId: string;
+  };
+  readonly migrations: KnowledgeSpaceProfileMigrationService;
+  readonly now: () => string;
+  readonly profile: KnowledgeSpaceRetrievalProfileInput;
+  readonly profiles: KnowledgeSpaceProfileRepository;
+}): Promise<KnowledgeSpaceProfileRevision> {
+  for (;;) {
+    const candidateRevision = await nextPublishedRetrievalCandidateRevision(input.profiles, {
+      activeRevision: input.activeRevision,
+      knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+      tenantId: input.migrationPrincipal.subject.tenantId,
+    });
+    const candidateInput = {
+      capabilitySnapshot: input.capabilitySnapshot,
+      createdBySubjectId: input.createdBySubjectId,
+      kind: "retrieval" as const,
+      knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+      now: input.now(),
+      snapshot: createKnowledgeSpaceRetrievalProfile(input.profile, candidateRevision),
+      tenantId: input.migrationPrincipal.subject.tenantId,
+    };
+    try {
+      return await getOrCreateSettingsProfileCandidate(input.profiles, candidateInput);
+    } catch (error) {
+      if (!(error instanceof SettingsProfileCandidateConflictError)) throw error;
+      const existing = await input.profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+        revision: candidateRevision,
+        tenantId: input.migrationPrincipal.subject.tenantId,
+      });
+      if (
+        !existing ||
+        existing.state !== "candidate" ||
+        existing.createdBySubjectId !== input.createdBySubjectId ||
+        existing.snapshotDigest === knowledgeSpaceProfileSnapshotDigest(candidateInput.snapshot)
+      ) {
+        throw error;
+      }
+
+      const previousMigration = await input.migrations.findByCandidate({
+        ...input.migrationPrincipal,
+        candidateProfileId: existing.id,
+      });
+      if (previousMigration) {
+        const canceled = await input.migrations.cancel({
+          ...input.migrationPrincipal,
+          reason: "Superseded by a newer retrieval settings update",
+          runId: previousMigration.id,
+        });
+        if (!canceled || canceled.runState !== "canceled") throw error;
+      } else {
+        try {
+          await input.profiles.failCandidate({
+            errorCode: "PROFILE_SETTINGS_CANDIDATE_SUPERSEDED",
+            errorMessage: "Superseded by a newer retrieval settings update",
+            kind: "retrieval",
+            knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+            now: input.now(),
+            revision: existing.revision,
+            tenantId: input.migrationPrincipal.subject.tenantId,
+          });
+        } catch (retirementError) {
+          if (retirementError instanceof KnowledgeSpaceProfileTransitionError) throw error;
+          throw retirementError;
+        }
+      }
+
+      const retired = await input.profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: input.migrationPrincipal.knowledgeSpaceId,
+        revision: existing.revision,
+        tenantId: input.migrationPrincipal.subject.tenantId,
+      });
+      if (!retired || retired.state === "candidate") throw error;
+    }
   }
 }
 

@@ -17,6 +17,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -53,6 +59,59 @@ const statusTextClass: Record<DocumentDisplayStatus, string> = {
   processing: 'font-medium text-text-accent',
   failed: 'font-medium text-text-destructive',
   disabled: 'font-medium text-text-tertiary',
+}
+
+function DocumentStatus({
+  failureReason,
+  status,
+}: {
+  failureReason?: string
+  status: DocumentDisplayStatus
+}) {
+  const { t } = useTranslation('dataset')
+  const statusLabel = t(($) => $[`newKnowledge.documentStatus.${status}`])
+  const content = (
+    <>
+      <span
+        aria-hidden
+        className={cn(status === 'processing' ? 'size-4' : 'size-3.5', statusIconClass[status])}
+      />
+      {statusLabel}
+    </>
+  )
+  const className = cn(
+    'inline-flex items-center gap-1.5 text-xs leading-4',
+    statusTextClass[status],
+  )
+
+  if (status !== 'failed' || !failureReason) return <span className={className}>{content}</span>
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        render={
+          <button
+            type="button"
+            aria-label={`${statusLabel}: ${failureReason}`}
+            className={cn(
+              className,
+              'rounded-sm text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+            )}
+          >
+            {content}
+          </button>
+        }
+      />
+      <PopoverContent placement="top" popupClassName="max-w-80 px-3 py-2">
+        <PopoverDescription className="system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          {failureReason}
+        </PopoverDescription>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 function TaskTrigger({
@@ -113,6 +172,7 @@ const DocumentRow = memo(
   ({
     document,
     documentHref,
+    failureReason,
     formatTimeFromNow,
     canDownload,
     onDownload,
@@ -135,6 +195,7 @@ const DocumentRow = memo(
     canDownload: boolean
     document: LogicalDocument
     documentHref: string
+    failureReason?: string
     formatTimeFromNow: (time: number) => string
     onDownload: (documentId: string) => Promise<boolean>
     onRemove: (documentId: string) => Promise<boolean>
@@ -216,21 +277,7 @@ const DocumentRow = memo(
               <span className="sr-only">{tCommon(($) => $.loading)}</span>
             </span>
           ) : (
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 text-xs leading-4',
-                statusTextClass[status],
-              )}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  status === 'processing' ? 'size-4' : 'size-3.5',
-                  statusIconClass[status],
-                )}
-              />
-              {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-            </span>
+            <DocumentStatus failureReason={failureReason} status={status} />
           )}
         </td>
         <td className="hidden w-43.5 pr-6 align-middle system-xs-regular text-text-tertiary lg:table-cell">
@@ -325,6 +372,7 @@ export function DocumentsList({
   canUpload,
   completingResults,
   documents,
+  failureReasons,
   filter,
   getDocumentHref,
   hasNextPage,
@@ -374,6 +422,7 @@ export function DocumentsList({
   canUpload: boolean
   completingResults: boolean
   documents: LogicalDocument[]
+  failureReasons: Map<string, string>
   filter: DocumentFilter
   getDocumentHref: (documentId: string) => string
   hasNextPage: boolean
@@ -562,6 +611,7 @@ export function DocumentsList({
                 canDownload={canDownload}
                 document={document}
                 documentHref={getDocumentHref(document.id)}
+                failureReason={failureReasons.get(document.id)}
                 formatTimeFromNow={formatTimeFromNow}
                 onDownload={onDownloadDocument}
                 onRemove={onRemoveDocument}

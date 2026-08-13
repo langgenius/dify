@@ -853,32 +853,25 @@ export function KnowledgeSettingsForm({
         </div>
       )}
 
-      {(settings.configuration_state !== 'active' || settings.issues.length > 0) && (
-        <KnowledgeModelReadinessNotice
-          className="mb-3"
-          description={
-            settings.issues.length > 0
-              ? settings.issues.map(({ field }) => readinessFieldLabel(field)).join(' · ')
-              : settings.active_profile_available
-                ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
-                : undefined
-          }
-          title={
-            settings.configuration_state === 'pending-validation'
-              ? tCommon(($) => $['provider.validating'])
-              : settings.configuration_state === 'validation-failed'
+      {settings.configuration_state !== 'pending-validation' &&
+        (settings.configuration_state !== 'active' || settings.issues.length > 0) && (
+          <KnowledgeModelReadinessNotice
+            className="mb-3"
+            description={
+              settings.issues.length > 0
+                ? settings.issues.map(({ field }) => readinessFieldLabel(field)).join(' · ')
+                : settings.active_profile_available
+                  ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
+                  : undefined
+            }
+            title={
+              settings.configuration_state === 'validation-failed'
                 ? tCommon(($) => $['api.actionFailed'])
                 : tCommon(($) => $['modelProvider.toBeConfigured'])
-          }
-          tone={
-            settings.configuration_state === 'pending-validation'
-              ? 'progress'
-              : settings.configuration_state === 'validation-failed'
-                ? 'destructive'
-                : 'warning'
-          }
-        />
-      )}
+            }
+            tone={settings.configuration_state === 'validation-failed' ? 'destructive' : 'warning'}
+          />
+        )}
 
       {saveErrorSlice && (
         <div

@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Query quality needs review",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "The published index is not bound to the active model configuration; rebuild or republish the index.",
   "newKnowledge.overview.attention.modelReadiness.description": "Required model profiles are missing or are not bound to the current published index.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "The selected models will be validated when the first document is processed.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Model configuration is awaiting validation",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configure and publish the required embedding, reasoning, and rerank models.",
   "newKnowledge.overview.attention.modelReadiness.title": "Model configuration is incomplete",
   "newKnowledge.overview.attention.staleSource.description": "This source has never synced successfully or its last successful sync was more than 7 days ago.",

@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "La qualité de la requête doit être vérifiée",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "L’index publié n’est pas lié à la configuration de modèles active. Reconstruisez ou republiez l’index.",
   "newKnowledge.overview.attention.modelReadiness.description": "Des profils de modèles requis sont absents ou ne sont pas liés à l’index actuellement publié.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Les modèles sélectionnés seront validés lors du traitement du premier document.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "La configuration des modèles est en attente de validation",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configurez et publiez les modèles d’embedding, de raisonnement et de rerank requis.",
   "newKnowledge.overview.attention.modelReadiness.title": "La configuration des modèles est incomplète",
   "newKnowledge.overview.attention.staleSource.description": "Cette source n’a jamais été synchronisée avec succès ou sa dernière synchronisation réussie date de plus de 7 jours.",

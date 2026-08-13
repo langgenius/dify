@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "A qualidade da consulta precisa de revisão",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "O índice publicado não está vinculado à configuração de modelos ativa. Reconstrua ou publique o índice novamente.",
   "newKnowledge.overview.attention.modelReadiness.description": "Perfis de modelo obrigatórios estão ausentes ou não estão vinculados ao índice publicado atual.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Os modelos selecionados serão validados quando o primeiro documento for processado.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "A configuração do modelo aguarda validação",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Configure e publique os modelos obrigatórios de embedding, raciocínio e rerank.",
   "newKnowledge.overview.attention.modelReadiness.title": "A configuração de modelos está incompleta",
   "newKnowledge.overview.attention.staleSource.description": "Esta fonte nunca foi sincronizada com sucesso ou a última sincronização bem-sucedida ocorreu há mais de 7 dias.",

@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Abfragequalität muss geprüft werden",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Der veröffentlichte Index ist nicht mit der aktiven Modellkonfiguration verknüpft. Erstellen oder veröffentlichen Sie den Index erneut.",
   "newKnowledge.overview.attention.modelReadiness.description": "Erforderliche Modellprofile fehlen oder sind nicht mit dem aktuell veröffentlichten Index verknüpft.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Die ausgewählten Modelle werden beim Verarbeiten des ersten Dokuments validiert.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Die Modellkonfiguration wartet auf die Validierung",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Konfigurieren und veröffentlichen Sie die erforderlichen Embedding-, Reasoning- und Rerank-Modelle.",
   "newKnowledge.overview.attention.modelReadiness.title": "Modellkonfiguration ist unvollständig",
   "newKnowledge.overview.attention.staleSource.description": "Diese Quelle wurde noch nie erfolgreich synchronisiert oder die letzte erfolgreiche Synchronisierung liegt mehr als 7 Tage zurück.",

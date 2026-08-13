@@ -504,6 +504,18 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.has('creator_ids[0]')).toBe(false)
   })
 
+  it('should serialize KnowledgeFS list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/knowledge-fs/spaces?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
   it('should serialize snippet list query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/workspaces/current/customized-snippets?tag_ids%5B0%5D=tag-1&creators%5B0%5D=user-1',

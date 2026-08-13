@@ -1084,6 +1084,14 @@ export type KnowledgeFsSourceWorkflowImportPayload =
       kind: 'online-drive-import'
     } & KnowledgeFsOnlineDriveWorkflowImportPayload)
 
+export type KnowledgeFsSpaceTagListResponse = {
+  data: Array<KnowledgeFsSpaceTagResponse>
+}
+
+export type KnowledgeFsSpaceTagsReplacePayload = {
+  tag_ids?: Array<string>
+}
+
 export type KnowledgeFsTraceListResponse = {
   data: Array<KnowledgeFsTraceResponse>
   next_cursor?: string | null
@@ -1220,6 +1228,7 @@ export type KnowledgeFsSpaceListItemResponse = {
   permission_keys: Array<KnowledgeFsProductPermission>
   resource_version: number
   state: KnowledgeFsControlSpaceState
+  tags?: Array<KnowledgeFsSpaceTagResponse>
   technical_status: 'available' | 'not_ready' | 'unavailable'
   technical_summary?: KnowledgeFsTechnicalSummary | null
   updated_at: string
@@ -1905,6 +1914,12 @@ export type KnowledgeFsOnlineDriveWorkflowImportPayload = {
   kind: 'online-drive-import'
 }
 
+export type KnowledgeFsSpaceTagResponse = {
+  id: string
+  name: string
+  type?: 'knowledge'
+}
+
 export type KnowledgeFsTraceResponse = {
   completed: boolean
   created_at: string
@@ -2241,6 +2256,7 @@ export type GetKnowledgeFsSpacesData = {
     limit?: number
     page?: number
     query?: string
+    tag_ids?: Array<string>
   }
   url: '/knowledge-fs/spaces'
 }
@@ -4011,6 +4027,38 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImport
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
   PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTagsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/tags'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTagsResponses = {
+  200: KnowledgeFsSpaceTagListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdTagsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdTagsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdTagsResponses]
+
+export type PutKnowledgeFsSpacesByControlSpaceIdTagsData = {
+  body: KnowledgeFsSpaceTagsReplacePayload
+  path: {
+    control_space_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/tags'
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdTagsResponses = {
+  200: KnowledgeFsSpaceTagListResponse
+}
+
+export type PutKnowledgeFsSpacesByControlSpaceIdTagsResponse =
+  PutKnowledgeFsSpacesByControlSpaceIdTagsResponses[keyof PutKnowledgeFsSpacesByControlSpaceIdTagsResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
   body?: never

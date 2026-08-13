@@ -188,13 +188,13 @@ function retrievalUpdateBody() {
   } as const;
 }
 
-function rerankOnlyRetrievalUpdateBody() {
+function rerankOnlyRetrievalUpdateBody(rerankModel = RERANK_V2) {
   return {
     expectedRevision: 1,
     profile: {
       defaultMode: "deep",
       reasoningModel: REASONING_V1,
-      rerank: { enabled: true, model: RERANK_V2 },
+      rerank: { enabled: true, model: rerankModel },
       scoreThreshold: { enabled: false, stage: "mode-final" },
       topK: 8,
     },
@@ -743,6 +743,7 @@ describe("knowledge-space profile handler behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request,
         requiresMigration: async () => true,
@@ -793,6 +794,7 @@ describe("knowledge-space profile handler behavior", () => {
       knowledgeSpaceManifests: retrievalManifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request,
         requiresMigration: async () => true,
@@ -852,6 +854,121 @@ describe("knowledge-space profile handler behavior", () => {
     ).resolves.toMatchObject({ state: "candidate" });
   });
 
+  it("supersedes an owned pending retrieval candidate when the rerank model changes", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    const request = vi.fn(
+      async (input: { readonly candidateRevision: number }) =>
+        ({
+          changedKind: "retrieval",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: `migration-retrieval-${input.candidateRevision}`,
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "clone-publication",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const cancel = vi.fn(async (input: { readonly runId: string }) => {
+      expect(input.runId).toBe("migration-retrieval-2");
+      await profiles.failCandidate({
+        errorCode: "PROFILE_MIGRATION_CANCELED",
+        errorMessage: "Superseded by a newer retrieval settings update",
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        revision: 2,
+        tenantId: "tenant-1",
+      });
+      return {
+        changedKind: "retrieval",
+        checkpoint: "queued",
+        completedAt: NOW,
+        createdAt: NOW,
+        id: input.runId,
+        knowledgeSpaceId: SPACE_ID,
+        rebuildScope: "clone-publication",
+        runState: "canceled",
+        updatedAt: NOW,
+      } as never;
+    });
+    const findByCandidate = vi.fn(async (input: { readonly candidateProfileId: string }) => {
+      const revision = await profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 2,
+        tenantId: "tenant-1",
+      });
+      if (request.mock.calls.length === 0 || revision?.id !== input.candidateProfileId) return null;
+      return {
+        changedKind: "retrieval",
+        checkpoint: "queued",
+        createdAt: NOW,
+        id: "migration-retrieval-2",
+        knowledgeSpaceId: SPACE_ID,
+        rebuildScope: "clone-publication",
+        runState: "queued",
+        updatedAt: NOW,
+      } as never;
+    });
+    const app = publishedProfileApp(manifests, profiles, {
+      cancel,
+      findByCandidate,
+      get: async () => null,
+      request,
+      requiresMigration: async () => true,
+      retry: async () => null,
+    });
+    await createSpace(app);
+    await seedLegacyManifestWithoutRerank(manifests);
+
+    const first = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(rerankOnlyRetrievalUpdateBody(RERANK_V1)),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(first.status).toBe(202);
+
+    const replacement = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(rerankOnlyRetrievalUpdateBody(RERANK_V2)),
+      headers: headers(),
+      method: "PUT",
+    });
+    const replacementBody = await replacement.json();
+
+    expect(replacement.status, JSON.stringify(replacementBody)).toBe(202);
+    expect(replacementBody).toMatchObject({
+      id: "migration-retrieval-3",
+      runState: "queued",
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(findByCandidate).toHaveBeenCalledTimes(3);
+    expect(cancel).toHaveBeenCalledOnce();
+    await expect(
+      profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 2,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ state: "failed" });
+    await expect(
+      profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 3,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      snapshot: { rerank: { enabled: true, model: RERANK_V2 } },
+      state: "candidate",
+    });
+  });
+
   it("retries a nonterminal failed retrieval migration when settings are saved again", async () => {
     const manifests = createInMemoryKnowledgeSpaceManifestRepository({
       maxListLimit: 10,
@@ -887,6 +1004,7 @@ describe("knowledge-space profile handler behavior", () => {
     );
     const app = publishedProfileApp(manifests, profiles, {
       cancel: async () => null,
+      findByCandidate: async () => null,
       get: async () => null,
       request,
       requiresMigration: async () => true,
@@ -921,21 +1039,20 @@ describe("knowledge-space profile handler behavior", () => {
       maxManifests: 10,
     });
     const profiles = profileRepository();
-    const request = vi.fn(
-      async () =>
-        ({
-          changedKind: "retrieval",
-          checkpoint: "queued",
-          createdAt: NOW,
-          id: "migration-retrieval",
-          knowledgeSpaceId: SPACE_ID,
-          rebuildScope: "clone-publication",
-          runState: "queued",
-          updatedAt: NOW,
-        }) as never,
-    );
+    const migration = {
+      changedKind: "retrieval",
+      checkpoint: "queued",
+      createdAt: NOW,
+      id: "migration-retrieval",
+      knowledgeSpaceId: SPACE_ID,
+      rebuildScope: "clone-publication",
+      runState: "queued",
+      updatedAt: NOW,
+    } as never;
+    const request = vi.fn(async () => migration);
     const app = publishedProfileApp(manifests, profiles, {
       cancel: async () => null,
+      findByCandidate: async () => null,
       get: async () => null,
       request,
       requiresMigration: async () => true,
@@ -994,23 +1111,23 @@ describe("knowledge-space profile handler behavior", () => {
     const profiles = profileRepository();
     let checkedAt = NOW;
     let capabilityDigest = `sha256:${"c".repeat(64)}`;
-    const request = vi.fn(
-      async () =>
-        ({
-          changedKind: "retrieval",
-          checkpoint: "queued",
-          createdAt: NOW,
-          id: "migration-retrieval",
-          knowledgeSpaceId: SPACE_ID,
-          rebuildScope: "clone-publication",
-          runState: "queued",
-          updatedAt: NOW,
-        }) as never,
-    );
+    const migration = {
+      changedKind: "retrieval",
+      checkpoint: "queued",
+      createdAt: NOW,
+      id: "migration-retrieval",
+      knowledgeSpaceId: SPACE_ID,
+      rebuildScope: "clone-publication",
+      runState: "queued",
+      updatedAt: NOW,
+    } as never;
+    const request = vi.fn(async () => migration);
+    const findByCandidate = vi.fn(async () => (request.mock.calls.length === 0 ? null : migration));
     const app = profileApp({
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate,
         get: async () => null,
         request,
         requiresMigration: async () => true,
@@ -1061,7 +1178,8 @@ describe("knowledge-space profile handler behavior", () => {
       changedKind: "retrieval",
       id: "migration-retrieval",
     });
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledOnce();
+    expect(findByCandidate).toHaveBeenCalledTimes(2);
 
     capabilityDigest = `sha256:${"e".repeat(64)}`;
     const changedCapability = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
@@ -1073,7 +1191,7 @@ describe("knowledge-space profile handler behavior", () => {
     await expect(changedCapability.json()).resolves.toMatchObject({
       code: "KNOWLEDGE_SPACE_SETTINGS_CANDIDATE_CONFLICT",
     });
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledOnce();
   });
 
   it("carries an integrated settings Capability grant into the durable migration", async () => {
@@ -1121,6 +1239,7 @@ describe("knowledge-space profile handler behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request,
         requiresMigration: async () => true,
@@ -1182,6 +1301,7 @@ describe("knowledge-space profile handler behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request,
         requiresMigration: async () => true,
@@ -2403,6 +2523,7 @@ describe("knowledge-space profile failure behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request: async () => ({}) as never,
         requiresMigration: async () => true,
@@ -2539,6 +2660,7 @@ describe("knowledge-space profile failure behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request: async () => ({}) as never,
         requiresMigration: async () => true,
@@ -2604,6 +2726,7 @@ describe("knowledge-space profile failure behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request: async () => ({}) as never,
         requiresMigration: async () => true,
@@ -2653,6 +2776,7 @@ describe("knowledge-space profile failure behavior", () => {
       knowledgeSpaceManifests: manifests,
       knowledgeSpaceProfileMigrations: {
         cancel: async () => null,
+        findByCandidate: async () => null,
         get: async () => null,
         request: async () => ({}) as never,
         requiresMigration: async () => true,

@@ -1264,7 +1264,7 @@ describe('KnowledgeSettingsForm', () => {
     ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('keeps API access available while model validation is pending', () => {
+  it('keeps API access available without showing an idle pending-validation status', () => {
     renderForm({
       settings: {
         ...settings,
@@ -1280,7 +1280,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(apiAccessSwitch).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.apiAccessDescription',
     )
-    expect(screen.getByRole('status')).toHaveTextContent('common.provider.validating')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows a recovery alert when initial model validation fails', () => {

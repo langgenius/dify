@@ -1,8 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
@@ -13,6 +12,8 @@ import ExternalAPIPanel from '@/app/components/datasets/external-api/external-ap
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
@@ -32,6 +33,8 @@ import {
 } from './components/new-knowledge-list-states'
 
 const PAGE_SIZE = 30
+const TAG_FILTER_MAX_ID_LENGTH = 255
+const TAG_FILTER_MAX_SELECTION = 100
 const searchParser = parseAsString.withDefault('').withOptions({
   history: 'replace',
 })
@@ -51,6 +54,21 @@ const creatorIdsParser = createParser<string[]>({
   .withDefault([])
   .withOptions({ history: 'push' })
 
+function normalizeTagIds(tagIds: string[]) {
+  return [...new Set(tagIds)]
+    .filter((tagId) => tagId.length > 0 && tagId.length <= TAG_FILTER_MAX_ID_LENGTH)
+    .slice(0, TAG_FILTER_MAX_SELECTION)
+}
+
+const tagIdsParser = createParser<string[]>({
+  eq: (left, right) =>
+    left.length === right.length && left.every((tagId, index) => tagId === right[index]),
+  parse: (query) => normalizeTagIds(query.split(';')),
+  serialize: (tagIds) => normalizeTagIds(tagIds).join(';'),
+})
+  .withDefault([])
+  .withOptions({ history: 'push' })
+
 function isUnavailableError(error: unknown) {
   if (!error || typeof error !== 'object') return false
   const status = 'status' in error ? error.status : undefined
@@ -62,19 +80,6 @@ function isUnavailableError(error: unknown) {
   return dataStatus === 404 || dataStatus === 503
 }
 
-function MetadataFilter({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <Button
-      variant="tertiary"
-      className="gap-0 border-0 bg-components-input-bg-normal px-2 font-normal text-text-tertiary shadow-none hover:bg-components-input-bg-hover"
-      onClick={onClick}
-    >
-      <span className="px-1 system-sm-regular">{label}</span>
-      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-    </Button>
-  )
-}
-
 export function NewKnowledgeList({
   view,
   onViewChange,
@@ -84,18 +89,19 @@ export function NewKnowledgeList({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
-  const showFilterBoundary = () => toast.info(filtersUnavailable)
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useQueryState('query', searchParser)
   const debouncedSearchValue = useDebounce(searchValue.trim(), { wait: 300 })
   const [creatorIds, setCreatorIds] = useQueryState('creator_ids', creatorIdsParser)
+  const [tagIds, setTagIds] = useQueryState('tag_ids', tagIdsParser)
   const knowledgeSpacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
       input: (pageParam) => ({
@@ -103,6 +109,7 @@ export function NewKnowledgeList({
           limit: PAGE_SIZE,
           page: pageParam,
           ...(creatorIds.length > 0 ? { creator_ids: creatorIds } : {}),
+          ...(tagIds.length > 0 ? { tag_ids: tagIds } : {}),
           ...(debouncedSearchValue ? { query: debouncedSearchValue } : {}),
         },
       }),
@@ -145,7 +152,12 @@ export function NewKnowledgeList({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} onClick={showFilterBoundary} />
+            <TagFilter
+              type="knowledge"
+              value={tagIds}
+              onChange={(nextTagIds) => void setTagIds(nextTagIds)}
+              onOpenTagManagement={() => setShowTagManagementModal(true)}
+            />
             <CreatorFilter
               value={creatorIds}
               onChange={(nextCreatorIds) => void setCreatorIds(nextCreatorIds)}
@@ -209,7 +221,7 @@ export function NewKnowledgeList({
               }
             />
           </div>
-        ) : knowledgeSpaces.length === 0 && creatorIds.length === 0 ? (
+        ) : knowledgeSpaces.length === 0 && creatorIds.length === 0 && tagIds.length === 0 ? (
           <NewKnowledgeEmptyState
             canConnect={canConnect}
             canCreate={canCreate}
@@ -218,7 +230,7 @@ export function NewKnowledgeList({
         ) : knowledgeSpaces.length === 0 ? (
           <div className="flex min-h-105 items-center justify-center px-6 text-center text-text-tertiary">
             {tCommon(($) => $['operation.noSearchResults'], {
-              content: t(($) => $['newKnowledge.creators']),
+              content: t(($) => $.knowledge),
             })}
           </div>
         ) : (
@@ -228,6 +240,7 @@ export function NewKnowledgeList({
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
+                  onOpenTagManagement={() => setShowTagManagementModal(true)}
                 />
               ))}
             </ul>
@@ -251,6 +264,16 @@ export function NewKnowledgeList({
           </div>
         )}
       </div>
+      <TagManagementModal
+        type="knowledge"
+        show={showTagManagementModal}
+        onClose={() => setShowTagManagementModal(false)}
+        onTagsChange={() => {
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+          })
+        }}
+      />
       {showExternalApiPanel && canConnect && (
         <ExternalAPIPanel
           canManageExternalKnowledgeApi={canConnect}

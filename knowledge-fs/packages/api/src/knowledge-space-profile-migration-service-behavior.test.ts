@@ -114,6 +114,35 @@ describe("knowledge-space profile migration service behavior", () => {
     );
   });
 
+  it("finds and cancels a candidate migration after capability grant rotation", async () => {
+    const fixture = serviceFixture();
+    const run = await fixture.service.request(capabilityRequest());
+    const rotatedCapabilityGrantId = "70000000-0000-4000-8000-000000000002";
+
+    await expect(
+      fixture.service.findByCandidate({
+        callerKind: "agent",
+        candidateProfileId: run.candidateProfile.id,
+        capabilityGrantId: rotatedCapabilityGrantId,
+        knowledgeSpaceId: spaceId,
+        subject,
+      }),
+    ).resolves.toEqual(run);
+    await expect(
+      fixture.service.cancel({
+        callerKind: "agent",
+        capabilityGrantId: rotatedCapabilityGrantId,
+        knowledgeSpaceId: spaceId,
+        runId: run.id,
+        subject,
+      }),
+    ).resolves.toMatchObject({
+      capabilityGrantId: rotatedCapabilityGrantId,
+      runState: "canceled",
+    });
+    expect(fixture.authorization.authorize).not.toHaveBeenCalled();
+  });
+
   it("classifies retrieval migrations from reasoning-model compatibility", async () => {
     const compatibleCandidate = profileRevision(
       "retrieval",

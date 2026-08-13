@@ -5,6 +5,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { newKnowledgeOverviewPath } from '../routes'
 import { KnowledgeSpaceActions } from './knowledge-space-actions'
+import { KnowledgeSpaceCardTags } from './knowledge-space-card-tags'
 import { KnowledgeSpaceIcon } from './knowledge-space-icon'
 
 function getBuiltinIconName(iconRef: string | undefined) {
@@ -14,13 +15,14 @@ function getBuiltinIconName(iconRef: string | undefined) {
 
 export function KnowledgeSpaceCard({
   knowledgeSpace,
+  onOpenTagManagement,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
+  onOpenTagManagement: () => void
 }) {
   const { t } = useTranslation('dataset')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const linkedAppsDescriptionId = useId()
-  const unavailable = t(($) => $['cornerLabel.unavailable'])
   const summary = knowledgeSpace.technical_summary
   const name = summary?.name ?? knowledgeSpace.control_space_id
   const linkedApps = knowledgeSpace.linked_apps
@@ -31,14 +33,14 @@ export function KnowledgeSpaceCard({
     : formatTimeFromNow(updatedAt)
 
   return (
-    <li className="group relative">
+    <li className="group relative flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md motion-reduce:transition-none">
       <Link
         href={newKnowledgeOverviewPath(knowledgeSpace.control_space_id)}
         aria-label={name}
         aria-describedby={linkedAppsDescriptionId}
-        className="relative flex h-41.5 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
+        className="block outline-hidden after:absolute after:inset-0 after:z-0 after:rounded-xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid"
       >
-        <div className="flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
+        <div className="relative z-1 flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
           <div
             aria-label={iconName ?? t(($) => $['newKnowledge.cardType'])}
             title={iconName}
@@ -53,40 +55,35 @@ export function KnowledgeSpaceCard({
             </div>
           </div>
         </div>
-        <p className="line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
+        <p className="relative z-1 line-clamp-2 min-h-8 w-full px-4 py-0.5 body-xs-regular text-text-tertiary">
           {summary?.description || t(($) => $['newKnowledge.noDescription'])}
         </p>
-        <div
-          aria-label={`${t(($) => $['newKnowledge.tags'])}. ${unavailable}`}
-          className="mt-1 flex min-w-0 items-center gap-1 px-4"
-        >
-          <span className="rounded-md bg-background-section px-1.5 py-0.5 system-2xs-medium-uppercase text-text-disabled">
-            {t(($) => $['newKnowledge.tags'])}
-          </span>
-          <span className="system-2xs-regular text-text-disabled">{unavailable}</span>
-        </div>
-        <div className="mt-auto flex w-full min-w-0 items-center gap-2 px-4 pt-1 pb-2.5 system-xs-regular text-text-tertiary">
-          <span className="flex shrink-0 items-center gap-1 text-text-disabled">
-            <span aria-hidden className="i-ri-file-text-line size-3.5" />
-            <span>{summary?.document_count ?? 0}</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-1 text-text-disabled">
-            <span aria-hidden className="i-ri-robot-2-line size-3.5" />
-            <span aria-hidden>{linkedApps}</span>
-            <span id={linkedAppsDescriptionId} className="sr-only">
-              {t(($) => $['newKnowledge.overview.linkedApps'])}: {linkedApps}
-            </span>
-          </span>
-          <span aria-hidden className="text-divider-deep">
-            /
-          </span>
-          <span className="ml-auto min-w-0 truncate text-right">
-            {t(($) => $['newKnowledge.updated'], {
-              date: formattedUpdatedAt,
-            })}
-          </span>
-        </div>
       </Link>
+      <KnowledgeSpaceCardTags
+        knowledgeSpace={knowledgeSpace}
+        onOpenTagManagement={onOpenTagManagement}
+      />
+      <div className="pointer-events-none relative z-1 mt-auto flex w-full min-w-0 items-center gap-2 px-4 pt-1 pb-2.5 system-xs-regular text-text-tertiary">
+        <span className="flex shrink-0 items-center gap-1 text-text-disabled">
+          <span aria-hidden className="i-ri-file-text-line size-3.5" />
+          <span>{summary?.document_count ?? 0}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-text-disabled">
+          <span aria-hidden className="i-ri-robot-2-line size-3.5" />
+          <span aria-hidden>{linkedApps}</span>
+          <span id={linkedAppsDescriptionId} className="sr-only">
+            {t(($) => $['newKnowledge.overview.linkedApps'])}: {linkedApps}
+          </span>
+        </span>
+        <span aria-hidden className="text-divider-deep">
+          /
+        </span>
+        <span className="ml-auto min-w-0 truncate text-right">
+          {t(($) => $['newKnowledge.updated'], {
+            date: formattedUpdatedAt,
+          })}
+        </span>
+      </div>
       <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} />
     </li>
   )

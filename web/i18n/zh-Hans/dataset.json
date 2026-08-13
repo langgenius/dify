@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "查询质量需要检查",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "已发布索引尚未绑定当前模型配置，请重建或重新发布索引。",
   "newKnowledge.overview.attention.modelReadiness.description": "缺少必需的模型配置，或模型配置尚未绑定当前已发布索引。",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "处理首个文档时将验证所选模型。",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "模型配置等待验证",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "请配置并发布必需的 Embedding、推理和 Rerank 模型。",
   "newKnowledge.overview.attention.modelReadiness.title": "模型配置未完成",
   "newKnowledge.overview.attention.staleSource.description": "该数据源从未成功同步，或距离上次成功同步已超过 7 天。",

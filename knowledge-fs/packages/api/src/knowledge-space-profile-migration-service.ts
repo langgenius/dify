@@ -54,6 +54,12 @@ export interface KnowledgeSpaceProfileMigrationService {
       readonly runId: string;
     },
   ): Promise<KnowledgeSpaceProfileMigrationRun | null>;
+  findByCandidate(
+    input: KnowledgeSpaceProfileMigrationPrincipal & {
+      readonly candidateProfileId: string;
+      readonly knowledgeSpaceId: string;
+    },
+  ): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   requiresMigration(input: {
     readonly knowledgeSpaceId: string;
     readonly tenantId: string;
@@ -241,6 +247,14 @@ export function createKnowledgeSpaceProfileMigrationService({
       });
     },
     get: (input) => getAuthorized(input, input.knowledgeSpaceId, input.runId),
+    findByCandidate: async (input) => {
+      await authorize(input, input.knowledgeSpaceId);
+      return repository.findLatestByCandidate({
+        candidateProfileId: input.candidateProfileId,
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        tenantId: input.subject.tenantId,
+      });
+    },
     cancel: async (input) => {
       const run = await getAuthorized(input, input.knowledgeSpaceId, input.runId);
       if (!run) return null;

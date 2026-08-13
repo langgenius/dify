@@ -118,7 +118,7 @@ describe('KnowledgeModelReadinessBanner', () => {
     )
   })
 
-  it('shows validation progress while keeping the configuration route accessible', () => {
+  it('stays hidden while model validation is waiting for the first document', () => {
     queryState.data = {
       ...queryState.data,
       configuration_state: 'pending-validation',
@@ -127,15 +127,7 @@ describe('KnowledgeModelReadinessBanner', () => {
 
     render(<KnowledgeModelReadinessBanner knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('common.provider.validating')
-    expect(
-      screen.getByRole('link', {
-        name: 'dataset.newKnowledge.overview.attention.action.configureModels',
-      }),
-    ).toHaveAttribute(
-      'href',
-      '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fdocuments%3Fstatus%3Dfailed',
-    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('keeps a readiness fetch failure separate and retryable', async () => {

@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Kakovost poizvedbe je treba pregledati",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Objavljeni indeks ni povezan z aktivno konfiguracijo modelov. Znova zgradite ali objavite indeks.",
   "newKnowledge.overview.attention.modelReadiness.description": "Zahtevani profili modelov manjkajo ali niso povezani s trenutno objavljenim indeksom.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Izbrani modeli bodo preverjeni ob obdelavi prvega dokumenta.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Konfiguracija modelov čaka na preverjanje",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Konfigurirajte in objavite zahtevane modele za embedding, sklepanje in rerank.",
   "newKnowledge.overview.attention.modelReadiness.title": "Konfiguracija modelov ni dokončana",
   "newKnowledge.overview.attention.staleSource.description": "Ta vir še nikoli ni bil uspešno sinhroniziran ali pa je od zadnje uspešne sinhronizacije minilo več kot 7 dni.",

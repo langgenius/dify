@@ -351,6 +351,8 @@
   "newKnowledge.overview.attention.lowQualityQuery.title": "Chất lượng truy vấn cần được xem xét",
   "newKnowledge.overview.attention.modelReadiness.bindingMissing": "Chỉ mục đã xuất bản chưa được liên kết với cấu hình mô hình đang hoạt động. Hãy tạo lại hoặc xuất bản lại chỉ mục.",
   "newKnowledge.overview.attention.modelReadiness.description": "Thiếu hồ sơ mô hình bắt buộc hoặc các hồ sơ này chưa được liên kết với chỉ mục hiện đã xuất bản.",
+  "newKnowledge.overview.attention.modelReadiness.pendingDescription": "Các mô hình đã chọn sẽ được xác thực khi tài liệu đầu tiên được xử lý.",
+  "newKnowledge.overview.attention.modelReadiness.pendingTitle": "Cấu hình mô hình đang chờ xác thực",
   "newKnowledge.overview.attention.modelReadiness.profilesMissing": "Hãy cấu hình và xuất bản các mô hình embedding, suy luận và rerank bắt buộc.",
   "newKnowledge.overview.attention.modelReadiness.title": "Cấu hình mô hình chưa hoàn tất",
   "newKnowledge.overview.attention.staleSource.description": "Nguồn này chưa từng đồng bộ thành công hoặc lần đồng bộ thành công gần nhất đã cách đây hơn 7 ngày.",

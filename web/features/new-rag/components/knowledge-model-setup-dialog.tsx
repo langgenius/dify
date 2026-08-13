@@ -11,7 +11,7 @@ function readinessTitle(
   tCommon: ReturnType<typeof useTranslation<'common'>>['t'],
 ) {
   if (readiness?.configuration_state === 'pending-validation')
-    return tCommon(($) => $['provider.validating'])
+    return t(($) => $['newKnowledge.overview.attention.modelReadiness.pendingTitle'])
   if (readiness?.configuration_state === 'validation-failed')
     return tCommon(($) => $['api.actionFailed'])
   return t(($) => $['newKnowledge.overview.attention.modelReadiness.title'])
@@ -40,7 +40,7 @@ export function KnowledgeModelSetupDialog({
   }
   const pendingValidation = readiness?.configuration_state === 'pending-validation'
   const description = pendingValidation
-    ? undefined
+    ? t(($) => $['newKnowledge.overview.attention.modelReadiness.pendingDescription'])
     : readiness?.active_profile_available
       ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
       : t(($) => $['newKnowledge.overview.attention.modelReadiness.profilesMissing'])

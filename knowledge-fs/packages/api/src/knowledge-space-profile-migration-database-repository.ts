@@ -234,6 +234,7 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
 
     get: (id) => getById(database, database, id, false),
     findByRequest: (input) => getByIdempotency(database, database, input, false),
+    findLatestByCandidate: (input) => getLatestByCandidate(database, database, input),
 
     claim: async (input) => {
       positiveInteger(input.limit, "claim.limit");
@@ -1133,6 +1134,37 @@ async function getByIdempotency(
     );
   }
   return replay;
+}
+
+async function getLatestByCandidate(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: {
+    readonly candidateProfileId: string;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  },
+): Promise<KnowledgeSpaceProfileMigrationRun | null> {
+  const result = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [input.tenantId, input.knowledgeSpaceId, input.candidateProfileId],
+    sql: `SELECT * FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(
+      database,
+      1,
+    )} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(
+      database,
+      "candidate_profile_revision_id",
+    )} = ${p(database, 3)} ORDER BY CASE WHEN ${q(
+      database,
+      "active_slot",
+    )} IS NOT NULL THEN 0 ELSE 1 END ASC, ${q(database, "created_at")} DESC, ${q(
+      database,
+      "id",
+    )} DESC LIMIT 1;`,
+    tableName: runTable,
+  });
+  return result.rows[0] ? mapRun(result.rows[0]) : null;
 }
 
 function profileMigrationIdempotencyDigest(input: {

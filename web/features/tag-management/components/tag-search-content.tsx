@@ -26,6 +26,7 @@ type TagSearchContentProps = {
   onOpenTagManagement?: () => void
   onClose?: () => void
   canBindOrUnbindTags?: boolean
+  requiresTargetEditPermission?: boolean
 }
 
 export const TagSearchContent = ({
@@ -35,10 +36,14 @@ export const TagSearchContent = ({
   onOpenTagManagement,
   onClose,
   canBindOrUnbindTags = false,
+  requiresTargetEditPermission = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const canChangeBindings = requiresTargetEditPermission
+    ? canBindOrUnbindTags
+    : canBindOrUnbindTags || canManageTags
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length
   const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
@@ -93,11 +98,7 @@ export const TagSearchContent = ({
           }
 
           return (
-            <ComboboxItem
-              key={tag.id}
-              value={tag}
-              disabled={!canBindOrUnbindTags && !canManageTags}
-            >
+            <ComboboxItem key={tag.id} value={tag} disabled={!canChangeBindings}>
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>

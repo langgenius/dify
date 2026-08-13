@@ -64,8 +64,11 @@ export type TagSelectorProps = TagSelectorRootProps &
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
+    requiresTargetEditPermission?: boolean
+    showProvidedTagNames?: boolean
     onOpenTagManagement?: () => void
     onTagsChange?: () => void
+    onApplyTags?: (tagIds: string[]) => void
   }
 
 export const TagSelector = ({
@@ -73,10 +76,13 @@ export const TagSelector = ({
   type,
   value,
   canBindOrUnbindTags,
+  requiresTargetEditPermission = false,
+  showProvidedTagNames = false,
   className,
   onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
+  onApplyTags,
   placement = 'bottom-start',
   sideOffset = 4,
   alignOffset = 0,
@@ -92,6 +98,9 @@ export const TagSelector = ({
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const canChangeBindings = requiresTargetEditPermission
+    ? !!canBindOrUnbindTags
+    : !!canBindOrUnbindTags || canManageTags
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
@@ -113,10 +122,10 @@ export const TagSelector = ({
 
     const tagNameById = new Map(tagList.map((tag) => [tag.id, tag.name]))
     return value.flatMap((tag) => {
-      const tagName = tagNameById.get(tag.id)
+      const tagName = tagNameById.get(tag.id) ?? (showProvidedTagNames ? tag.name : undefined)
       return tagName ? [tagName] : []
     })
-  }, [tagList, value])
+  }, [showProvidedTagNames, tagList, value])
   const emptyTriggerLabel = canBindOrUnbindTags
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
@@ -159,6 +168,11 @@ export const TagSelector = ({
 
     if (!tagSelectionChanged) return
 
+    if (onApplyTags) {
+      onApplyTags(draftTagIds)
+      return
+    }
+
     const toastId = `tag-bindings-${type}-${targetId}`
 
     applyTagBindingsMutation.mutate(
@@ -190,7 +204,16 @@ export const TagSelector = ({
         },
       },
     )
-  }, [applyTagBindingsMutation, draftTags, onTagsChange, selectedTagIds, t, targetId, type])
+  }, [
+    applyTagBindingsMutation,
+    draftTags,
+    onApplyTags,
+    onTagsChange,
+    selectedTagIds,
+    t,
+    targetId,
+    type,
+  ])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -259,7 +282,7 @@ export const TagSelector = ({
       isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
-        disabled={!canManageTags && !canBindOrUnbindTags}
+        disabled={!canChangeBindings}
         aria-label={triggerLabel}
         className={cn(
           'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
@@ -291,6 +314,7 @@ export const TagSelector = ({
           inputValue={inputValue}
           onInputValueChange={setInputValue}
           canBindOrUnbindTags={canBindOrUnbindTags}
+          requiresTargetEditPermission={requiresTargetEditPermission}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />
