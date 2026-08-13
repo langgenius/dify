@@ -193,6 +193,58 @@ def test_metadata_counter_filters_locally_and_never_serializes_private_identity(
         assert private_value not in public_payload
 
 
+def test_metadata_counter_retries_one_transient_inventory_failure() -> None:
+    attempts = 0
+
+    def load_inventory(
+        _metadata_filter: Mapping[str, str],
+        _api_key: str,
+        _request_timeout_seconds: float,
+    ) -> Sequence[observer_module._InventoryRecord]:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("transient private failure")
+        return [_record("running-match", "running")]
+
+    counter = E2BMetadataInventoryCounter(
+        api_key=SecretStr(_API_KEY),
+        tenant_id=SecretStr(_TENANT_ID),
+        agent_id=SecretStr(_AGENT_ID),
+        inventory_loader=load_inventory,
+    )
+
+    snapshot = counter.snapshot_inventory()
+
+    assert attempts == 2
+    assert (snapshot.running, snapshot.paused) == (1, 0)
+
+
+def test_metadata_counter_does_not_retry_vendor_throttle() -> None:
+    attempts = 0
+
+    def load_inventory(
+        _metadata_filter: Mapping[str, str],
+        _api_key: str,
+        _request_timeout_seconds: float,
+    ) -> Sequence[observer_module._InventoryRecord]:
+        nonlocal attempts
+        attempts += 1
+        raise RateLimitException("private throttle")
+
+    counter = E2BMetadataInventoryCounter(
+        api_key=SecretStr(_API_KEY),
+        tenant_id=SecretStr(_TENANT_ID),
+        agent_id=SecretStr(_AGENT_ID),
+        inventory_loader=load_inventory,
+    )
+
+    with pytest.raises(RateLimitException):
+        counter.snapshot_inventory()
+
+    assert attempts == 1
+
+
 def test_sdk_loader_uses_server_side_metadata_filter_and_bounded_page_size(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

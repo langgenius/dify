@@ -52,6 +52,7 @@ E2B_OBSERVER_MAX_DURATION_SECONDS = 6 * 60 * 60
 E2B_LIST_REQUEST_TIMEOUT_SECONDS = 0.8
 E2B_LIST_PAGE_SIZE = 100
 E2B_LIST_MAX_PAGES = 10
+E2B_LIST_MAX_ATTEMPTS = 2
 
 E2B_RUNNING_COUNTS_FILENAME = "e2b-running-count.jsonl"
 E2B_SUMMARY_FILENAME = "e2b-summary.json"
@@ -213,11 +214,28 @@ class E2BMetadataInventoryCounter:
         paused = 0
         matching_records: list[_InventoryRecord] = []
         inventory_loader = self.inventory_loader or _load_e2b_inventory
-        for record in inventory_loader(
-            metadata_filter,
-            self.api_key.get_secret_value(),
-            self.request_timeout_seconds,
-        ):
+        records: tuple[_InventoryRecord, ...] | None = None
+        for attempt in range(E2B_LIST_MAX_ATTEMPTS):
+            try:
+                records = tuple(
+                    inventory_loader(
+                        metadata_filter,
+                        self.api_key.get_secret_value(),
+                        self.request_timeout_seconds,
+                    )
+                )
+            except RateLimitException:
+                # A Vendor throttle is capacity evidence, not a transient
+                # transport failure. Preserve it without retrying.
+                raise
+            except Exception:
+                if attempt + 1 >= E2B_LIST_MAX_ATTEMPTS:
+                    raise
+            else:
+                break
+        if records is None:  # pragma: no cover - the bounded loop either returns or raises
+            raise RuntimeError("E2B inventory retry loop did not produce a result")
+        for record in records:
             # E2B performs the server-side metadata filter. Verify it locally
             # as well so unrelated Team inventory can never affect counts.
             if any(record.metadata.get(key) != value for key, value in metadata_filter.items()):
