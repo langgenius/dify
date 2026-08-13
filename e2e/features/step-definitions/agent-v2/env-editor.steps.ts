@@ -280,7 +280,7 @@ Then(
     await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(
       agentBuilderFixedInputs.envPlainValue,
     )
-    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /^Build$/i })).toBeVisible()
   },
 )
 
@@ -318,6 +318,6 @@ Then(
       agentBuilderFixedInputs.envAfterInvalidImportKey,
       agentBuilderFixedInputs.envAfterInvalidImportValue,
     )
-    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /^Build$/i })).toBeVisible()
   },
 )

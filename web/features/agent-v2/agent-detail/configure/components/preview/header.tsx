@@ -157,11 +157,8 @@ export function AgentPreviewHeader({
     <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <SegmentedControl<AgentConfigureRightPanelMode>
-          value={[mode]}
-          onValueChange={(value) => {
-            const nextMode = value[0]
-            if (nextMode && (nextMode !== 'preview' || previewEnabled)) onModeChange(nextMode)
-          }}
+          value={mode}
+          onValueChange={(value) => onModeChange(value)}
           aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
           <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
