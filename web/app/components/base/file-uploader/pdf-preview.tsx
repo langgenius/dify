@@ -58,7 +58,6 @@ const PdfPreview: FC<PdfPreviewProps> = ({ url, onCancel }) => {
       >
         <div
           tabIndex={-1}
-          onClick={(e) => e.stopPropagation()}
           className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
           style={{
             transform: `scale(${scale})`,

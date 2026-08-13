@@ -335,7 +335,7 @@ def test_normalize_wrapper_index_rejects_unstable_values(value):
     assert _normalize_wrapper_index(value) is None
 
 
-def test_parent_workflow_can_publish_span_context_keeps_unknown_parent_retryable(monkeypatch):
+def test_parent_workflow_can_publish_span_context_keeps_unknown_parent_retryable(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "dify_trace_arize_phoenix.arize_phoenix_trace.db.session.query",
         lambda model: _FakeQuery(None),
@@ -344,7 +344,7 @@ def test_parent_workflow_can_publish_span_context_keeps_unknown_parent_retryable
     assert _parent_workflow_can_publish_span_context("missing-run") is True
 
 
-def test_parent_workflow_can_publish_span_context_checks_parent_app_tracing(monkeypatch):
+def test_parent_workflow_can_publish_span_context_checks_parent_app_tracing(monkeypatch: pytest.MonkeyPatch):
     parent_run = SimpleNamespace(app_id="parent-app")
     parent_app = SimpleNamespace(tracing=json.dumps({"enabled": True, "tracing_provider": "phoenix"}))
 

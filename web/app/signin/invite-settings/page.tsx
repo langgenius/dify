@@ -176,9 +176,9 @@ export default function InviteSettingsPage() {
           <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">
             🤷‍♂️
           </div>
-          <h2 className="title-4xl-semi-bold text-text-primary">
+          <h1 className="title-4xl-semi-bold text-text-primary">
             {t(($) => $.invalid, { ns: 'login' })}
-          </h2>
+          </h1>
         </div>
         <div className="mx-auto mt-6 w-full">
           <Button variant="primary" className="w-full text-sm!">
@@ -195,11 +195,11 @@ export default function InviteSettingsPage() {
         <RiAccountCircleLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">
+        <h1 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
             ? t(($) => $.setYourAccount, { ns: 'login' })
             : `${t(($) => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
-        </h2>
+        </h1>
       </div>
       <form onSubmit={noop}>
         {requiresAccountSetup && (

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountJoin
 
@@ -79,9 +80,9 @@ def sync_workspace_member_removal(workspace_id: str, member_id: str, *, source: 
         source: Source of the sync request (e.g., "workspace_member_removed")
 
     Returns:
-        bool: True if task was queued (or skipped in community), False if queueing failed
+        bool: True if task was queued (or skipped outside the Enterprise edition), False if queueing failed
     """
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
     return _queue_task(workspace_id=workspace_id, member_id=member_id, source=source)
@@ -100,9 +101,9 @@ def sync_account_deletion(account_id: str, *, source: str, session: Session) -> 
         session: SQLAlchemy session used to fetch workspace memberships
 
     Returns:
-        bool: True if all tasks were queued (or skipped in community), False if any queueing failed
+        bool: True if all tasks were queued (or skipped outside the Enterprise edition), False if any queueing failed
     """
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
     # Fetch all workspaces the account belongs to

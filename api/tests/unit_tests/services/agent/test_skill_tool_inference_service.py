@@ -139,7 +139,7 @@ def test_binary_skill_md_maps_to_404(sqlite_session: Session):
 # ── real-path coverage: _invoke / passthrough ────────────────────────────────
 
 
-def test_invoke_maps_missing_default_model_to_400(monkeypatch):
+def test_invoke_maps_missing_default_model_to_400(monkeypatch: pytest.MonkeyPatch):
     import services.agent.skill_tool_inference_service as module
     from core.errors.error import ProviderTokenNotInitError
 
@@ -153,7 +153,7 @@ def test_invoke_maps_missing_default_model_to_400(monkeypatch):
     assert exc_info.value.status_code == 400
 
 
-def test_invoke_maps_model_failure_to_422_and_success_returns_text(monkeypatch):
+def test_invoke_maps_model_failure_to_422_and_success_returns_text(monkeypatch: pytest.MonkeyPatch):
     import services.agent.skill_tool_inference_service as module
 
     fake_manager = MagicMock()

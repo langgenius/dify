@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "ລຶບລະຫັດລັບນີ້ບໍ?",
   "actionMsg.ok": "ຕົກລົງ",
   "apiKey": "API Key",
-  "apiKeyModal.apiSecretKey": "ລະຫັດລັບ API",
+  "apiKeyModal.apiSecretKey": "API Key",
   "apiKeyModal.apiSecretKeyTips": "ເພື່ອປ້ອງກັນການລະເມີດການໃຊ້ API, ຄວນປົກປ້ອງ API Key ຂອງທ່ານ. ຫຼີກເວັ້ນການໃຊ້ໃນຮູບແບບຂໍ້ຄວາມທຳມະດາໃນໂຄ້ດ front-end. :)",
   "apiKeyModal.createNewSecretKey": "ສ້າງລະຫັດລັບໃໝ່",
   "apiKeyModal.created": "ສ້າງເມື່ອ",

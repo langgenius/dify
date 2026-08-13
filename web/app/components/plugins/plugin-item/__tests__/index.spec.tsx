@@ -8,11 +8,6 @@ import PluginItem from '../index'
 
 const mockEnableMarketplace = vi.fn(() => true)
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
-  })
-
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme() }),
@@ -58,28 +53,25 @@ const mockLangGeniusVersionInfo = vi.fn(() => ({
   current_env: '',
   current_version: '1.0.0',
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 }))
 
 const createLangGeniusVersionInfo = (currentVersion: string) => ({
   current_env: '',
   current_version: currentVersion,
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  can_auto_update: false,
 })
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfileMeta: {
+      currentVersion: mockLangGeniusVersionInfo().current_version,
+    },
+    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
+  })
 
 vi.mock('../action', () => ({
   default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (

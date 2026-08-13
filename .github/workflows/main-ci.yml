@@ -394,10 +394,10 @@ jobs:
   style-check:
     name: Style Check
     needs: pre_job
-    if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
     with:
       base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      skip-checks: ${{ needs.pre_job.outputs.should_skip == 'true' }}
 
   vdb-tests-run:
     name: Run VDB Tests
