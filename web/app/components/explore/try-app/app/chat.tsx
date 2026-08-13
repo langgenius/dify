@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import type { EmbeddedChatbotContextValue } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
@@ -79,13 +79,13 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <ActionButton
-                      size="l"
+                    <IconButton
+                      size="lg"
                       aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                       onClick={handleNewConversation}
                     >
                       <RiResetLeftLine className="h-4.5 w-4.5" aria-hidden="true" />
-                    </ActionButton>
+                    </IconButton>
                   }
                 />
                 <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>

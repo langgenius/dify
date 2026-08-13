@@ -10,14 +10,14 @@ import { memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
-import { AppCardActionBar } from './app-card'
+import { AppCardActionBar } from './app-card/action-bar'
 
 type StarredAppCardProps = {
   app: AppPartial
@@ -28,7 +28,10 @@ type StarredAppCardProps = {
 export const StarredAppCard = memo(
   ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
     const { t } = useTranslation()
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const isRbacEnabled = systemFeatures.rbac_enabled

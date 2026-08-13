@@ -1,5 +1,6 @@
 import pytest
 
+from enums import DeploymentEdition
 from services import feature_service as feature_service_module
 from services.entities.feature_entities import LicenseModel, LicenseStatus
 from services.feature_service import FeatureService
@@ -18,7 +19,11 @@ def test_get_license_non_enterprise_ignores_expiry_notice_config(
 ) -> None:
     """Non-enterprise deployments have no license, so the env toggle never turns the notice on."""
     monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_LICENSE_EXPIRY_NOTICE", enabled)
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
 
     result = FeatureService.get_license()
 
@@ -31,7 +36,11 @@ def test_get_license_enterprise_reads_license_expiry_notice_enabled(
 ) -> None:
     """The enterprise-sourced license carries the env-resolved notice flag alongside its real status."""
     monkeypatch.setattr(feature_service_module.dify_config, "ENABLE_LICENSE_EXPIRY_NOTICE", enabled)
-    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr(
+        feature_service_module.dify_config,
+        "DEPLOYMENT_EDITION",
+        DeploymentEdition.ENTERPRISE,
+    )
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",

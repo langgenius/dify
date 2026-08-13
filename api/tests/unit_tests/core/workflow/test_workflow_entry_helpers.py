@@ -746,7 +746,7 @@ class TestMappingUserInputsBranches:
 
 
 class TestWorkflowEntryNodeLayers:
-    def test_traced_node_run_reports_success(self):
+    def test_run_node_with_layers_reports_success(self):
         observability_layer = MagicMock()
         result_event = NodeRunSucceededEvent(
             id="execution-id",
@@ -786,7 +786,7 @@ class TestWorkflowEntryNodeLayers:
             layer.on_node_run_end.assert_called_once_with(node, None, result_event)
             layer.on_graph_end.assert_called_once_with(None)
 
-    def test_traced_node_run_reports_errors(self):
+    def test_run_node_with_layers_reports_errors(self):
         observability_layer = MagicMock()
 
         class FakeNode:

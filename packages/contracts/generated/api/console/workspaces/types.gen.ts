@@ -845,7 +845,7 @@ export type CurrentWorkspaceSummaryResponse = {
   credits: number | null
   id: string
   name: string
-  plan: string | null
+  plan: CloudPlan | null
   role: TenantAccountRole
 }
 
@@ -1252,7 +1252,7 @@ export type TenantListItemResponse = {
   id: string
   last_opened_at?: number | null
   name?: string | null
-  plan?: string | null
+  plan?: CloudPlan | null
   status?: string | null
 }
 
@@ -1848,6 +1848,8 @@ export type SkillReferenceResponse = {
   workflow_version?: string | null
 }
 
+export type CloudPlan = 'professional' | 'sandbox' | 'team'
+
 export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
 export type ToolLabel = {
@@ -2016,7 +2018,7 @@ export type TenantInfoResponse = {
   in_trial?: boolean | null
   name?: string | null
   next_credit_reset_date?: number | null
-  plan?: string | null
+  plan?: CloudPlan | null
   role?: string | null
   status?: string | null
   trial_credits?: number | null

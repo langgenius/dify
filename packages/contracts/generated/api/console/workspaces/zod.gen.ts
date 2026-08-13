@@ -782,26 +782,6 @@ export const zSwitchWorkspacePayload = z.object({
 })
 
 /**
- * TenantListItemResponse
- */
-export const zTenantListItemResponse = z.object({
-  created_at: z.int().nullish(),
-  current: z.boolean(),
-  id: z.string(),
-  last_opened_at: z.int().nullish(),
-  name: z.string().nullish(),
-  plan: z.string().nullish(),
-  status: z.string().nullish(),
-})
-
-/**
- * TenantListResponse
- */
-export const zTenantListResponse = z.object({
-  workspaces: z.array(zTenantListItemResponse),
-})
-
-/**
  * AgentSkillBindingItemResponse
  */
 export const zAgentSkillBindingItemResponse = z.object({
@@ -1605,6 +1585,37 @@ export const zSkillReferenceListResponse = z.object({
 })
 
 /**
+ * CloudPlan
+ *
+ * Enum representing user plan types in the cloud platform.
+ *
+ * SANDBOX: Free/default plan with limited features
+ * PROFESSIONAL: Professional paid plan
+ * TEAM: Team collaboration paid plan
+ */
+export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
+
+/**
+ * TenantListItemResponse
+ */
+export const zTenantListItemResponse = z.object({
+  created_at: z.int().nullish(),
+  current: z.boolean(),
+  id: z.string(),
+  last_opened_at: z.int().nullish(),
+  name: z.string().nullish(),
+  plan: zCloudPlan.nullish(),
+  status: z.string().nullish(),
+})
+
+/**
+ * TenantListResponse
+ */
+export const zTenantListResponse = z.object({
+  workspaces: z.array(zTenantListItemResponse),
+})
+
+/**
  * TenantAccountRole
  */
 export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
@@ -1616,7 +1627,7 @@ export const zCurrentWorkspaceSummaryResponse = z.object({
   credits: z.int().nullable(),
   id: z.string(),
   name: z.string(),
-  plan: z.string().nullable(),
+  plan: zCloudPlan.nullable(),
   role: zTenantAccountRole,
 })
 
@@ -1939,7 +1950,7 @@ export const zTenantInfoResponse = z.object({
   in_trial: z.boolean().nullish(),
   name: z.string().nullish(),
   next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
+  plan: zCloudPlan.nullish(),
   role: z.string().nullish(),
   status: z.string().nullish(),
   trial_credits: z.int().nullish(),

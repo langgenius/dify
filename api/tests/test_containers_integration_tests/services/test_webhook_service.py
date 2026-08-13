@@ -8,7 +8,7 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App

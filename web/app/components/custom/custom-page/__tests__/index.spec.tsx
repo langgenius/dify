@@ -1,10 +1,10 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { contactSalesUrl, defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
@@ -64,10 +64,10 @@ const mockUseModalContext = vi.mocked(useModalContext)
 
 const createProviderContext = ({
   enableBilling = false,
-  planType = Plan.professional,
+  planType = 'professional',
 }: {
   enableBilling?: boolean
-  planType?: Plan
+  planType?: CloudPlan
 } = {}) => {
   return createMockProviderContextValue({
     enableBilling,
@@ -106,7 +106,7 @@ describe('CustomPage', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.sandbox,
+          planType: 'sandbox',
         }),
       )
 
@@ -124,7 +124,7 @@ describe('CustomPage', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.professional,
+          planType: 'professional',
         }),
       )
 
@@ -141,7 +141,7 @@ describe('CustomPage', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.team,
+          planType: 'team',
         }),
       )
 
@@ -155,7 +155,7 @@ describe('CustomPage', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: false,
-          planType: Plan.sandbox,
+          planType: 'sandbox',
         }),
       )
 

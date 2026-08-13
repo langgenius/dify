@@ -81,4 +81,4 @@ const ActionButton = ({
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton
-export { ActionButton, ActionButtonState }
+export { ActionButtonState }

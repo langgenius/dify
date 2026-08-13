@@ -1,15 +1,29 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import { DataSourceType } from '@/models/datasets'
 import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOne from '../index'
 
-let mockPlan = {
-  type: Plan.professional,
+let mockPlan: {
+  type: CloudPlan
+  usage: {
+    vectorSpace: number
+    buildApps: number
+    documentsUploadQuota: number
+    vectorStorageQuota: number
+  }
+  total: {
+    vectorSpace: number
+    buildApps: number
+    documentsUploadQuota: number
+    vectorStorageQuota: number
+  }
+} = {
+  type: 'professional',
   usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
   total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
 }
@@ -232,7 +246,7 @@ describe('StepOne', () => {
     vi.clearAllMocks()
     mockDatasetDetail = undefined
     mockPlan = {
-      type: Plan.professional,
+      type: 'professional',
       usage: { vectorSpace: 50, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
       total: { vectorSpace: 100, buildApps: 0, documentsUploadQuota: 0, vectorStorageQuota: 0 },
     }
@@ -417,7 +431,7 @@ describe('StepOne', () => {
 
     it('should show plan upgrade modal when batch upload not supported and multiple files', () => {
       mockEnableBilling = true
-      mockPlan.type = Plan.sandbox
+      mockPlan.type = 'sandbox'
       const files = [createMockFileItem(), createMockFileItem()]
       render(<StepOne {...defaultProps} files={files} />)
 
@@ -428,7 +442,7 @@ describe('StepOne', () => {
 
     it('should show upgrade card immediately when in sandbox plan', () => {
       mockEnableBilling = true
-      mockPlan.type = Plan.sandbox
+      mockPlan.type = 'sandbox'
 
       render(<StepOne {...defaultProps} files={[]} />)
 
@@ -462,7 +476,7 @@ describe('StepOne', () => {
 
     it('should require sandbox users to retry when vector space usage is unknown', () => {
       mockEnableBilling = true
-      mockPlan.type = Plan.sandbox
+      mockPlan.type = 'sandbox'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
       const files = [createMockFileItem()]
@@ -477,7 +491,7 @@ describe('StepOne', () => {
 
     it('should allow paid users to continue when vector space usage is unknown', () => {
       mockEnableBilling = true
-      mockPlan.type = Plan.professional
+      mockPlan.type = 'professional'
       const files = [createMockFileItem()]
 
       render(<StepOne {...defaultProps} files={files} />, true)

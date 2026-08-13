@@ -9,6 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -398,7 +399,7 @@ function Operation({
                 <NewAudioButton id={id} value={content} voice={config?.text_to_speech?.voice} />
               )}
             {hasPublicContent && !humanInputFormDataList?.length && (
-              <ActionButton
+              <IconButton
                 aria-label={copyLabel}
                 onClick={() => {
                   copy(content)
@@ -406,12 +407,12 @@ function Operation({
                 }}
               >
                 <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
-              </ActionButton>
+              </IconButton>
             )}
             {(!noChatInput || showRegenerate) && (
-              <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
+              <IconButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
-              </ActionButton>
+              </IconButton>
             )}
             {shouldShowAnnotationAction && (
               <AnnotationCtrlButton

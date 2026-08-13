@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
@@ -30,7 +30,7 @@ import {
   dayjsToTimeOfDay,
   timeOfDayToDayjs,
 } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useMutationPluginAutoUpgradeSettings,
   usePluginAutoUpgradeSettings,
@@ -44,8 +44,10 @@ type Props = {
 
 const UpdateSettingDialog = ({ category, disabled = false }: Props) => {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
-  const timezone = userProfile.timezone || 'UTC'
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone || 'UTC',
+  })
   const {
     data: autoUpgradeSetting,
     error,
