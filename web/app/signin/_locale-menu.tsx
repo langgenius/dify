@@ -24,10 +24,6 @@ export default function LocaleMenu<T extends string>({
   onChange,
 }: LocaleMenuProps<T>) {
   const selectedItem = items.find((item) => item.value === value)
-  const handleValueChange = (nextValue: string) => {
-    const nextItem = items.find((item) => item.value === nextValue)
-    if (nextItem) onChange?.(nextItem.value)
-  }
 
   return (
     <div className="w-56 text-right">
@@ -48,9 +44,12 @@ export default function LocaleMenu<T extends string>({
           </div>
         </div>
         <DropdownMenuContent placement="bottom-end" sideOffset={8} popupClassName="w-[200px]">
-          <DropdownMenuRadioGroup value={value} onValueChange={handleValueChange}>
+          <DropdownMenuRadioGroup<T>
+            value={value}
+            onValueChange={(nextValue) => onChange?.(nextValue)}
+          >
             {items.map((item) => (
-              <DropdownMenuRadioItem
+              <DropdownMenuRadioItem<T>
                 key={item.value}
                 value={item.value}
                 closeOnClick

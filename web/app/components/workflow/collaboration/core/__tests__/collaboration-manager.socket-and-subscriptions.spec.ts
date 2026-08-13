@@ -12,8 +12,10 @@ import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
-import { webSocketClient } from '../websocket-manager'
+import * as websocketManager from '../websocket-manager'
 import { attachCrdtRuntime } from './test-crdt-runtime'
+
+const { webSocketClient } = websocketManager
 
 type ReactFlowStore = {
   getState: () => {
@@ -178,6 +180,108 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     socket.trigger('disconnect', 'transport close')
     expect(manager.canUseLocalDraftFallback()).toBe(false)
+  })
+
+  it('switches to local editing and stops reconnecting when the initial connection fails', async () => {
+    vi.spyOn(websocketManager, 'isDefaultSocketUrl').mockReturnValueOnce(true)
+    const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
+    const socket = createMockSocket('socket-initial-failure')
+    socket.connected = false
+    const reactFlowStore: ReactFlowStore = {
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    const connectSpy = vi
+      .spyOn(webSocketClient, 'connect')
+      .mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
+    const disconnectSpy = vi
+      .spyOn(webSocketClient, 'disconnect')
+      .mockImplementation(() => undefined)
+
+    const connectionId = await manager.connect('app-initial-failure', reactFlowStore)
+    const graphReadyStates: boolean[] = []
+    manager.onGraphReadyChange((isReady) => graphReadyStates.push(isReady))
+
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(graphReadyStates.at(-1)).toBe(false)
+
+    socket.trigger('connect_error', new Error('connect failed'))
+
+    expect(manager.canApplyLocalGraphMutation()).toBe(true)
+    expect(manager.canPersistLocalGraph()).toBe(true)
+    expect(disconnectSpy).toHaveBeenCalledWith('app-initial-failure')
+    expect(graphReadyStates.at(-1)).toBe(true)
+
+    const secondConnectionId = await manager.connect('app-initial-failure', reactFlowStore)
+    expect(connectSpy).toHaveBeenCalledTimes(1)
+
+    manager.disconnect(connectionId)
+    manager.disconnect(secondConnectionId)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+  })
+
+  it('keeps editing blocked when a configured socket URL fails to connect', () => {
+    vi.spyOn(websocketManager, 'isDefaultSocketUrl')
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(false)
+    const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
+    const internals = getManagerInternals(manager)
+    const socket = createMockSocket('socket-configured-failure')
+    socket.connected = false
+    internals.currentAppId = 'app-configured-failure'
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
+    const disconnectSpy = vi.spyOn(webSocketClient, 'disconnect')
+    internals.setupSocketEventListeners(socket as unknown as Socket)
+
+    socket.trigger('connect_error', new Error('connect failed'))
+
+    expect(manager.canUseLocalDraftFallback()).toBe(false)
+    expect(manager.canApplyLocalGraphMutation()).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(disconnectSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps editing blocked when a previously established connection fails', async () => {
+    const manager = new CollaborationManager()
+    attachCrdtRuntime(manager)
+    const socket = createMockSocket('socket-established-failure')
+    const reactFlowStore: ReactFlowStore = {
+      getState: () => ({
+        getNodes: () => [],
+        setNodes: vi.fn(),
+        getEdges: () => [],
+        setEdges: vi.fn(),
+      }),
+    }
+    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
+    vi.spyOn(webSocketClient, 'isConnected').mockImplementation(() => socket.connected)
+    const disconnectSpy = vi
+      .spyOn(webSocketClient, 'disconnect')
+      .mockImplementation(() => undefined)
+
+    const connectionId = await manager.connect('app-established-failure', reactFlowStore)
+    socket.trigger('status', { isLeader: true })
+    expect(manager.canApplyLocalGraphMutation()).toBe(true)
+
+    socket.connected = false
+    socket.trigger('disconnect', 'transport close')
+    socket.trigger('connect_error', new Error('reconnect failed'))
+
+    expect(manager.canApplyLocalGraphMutation()).toBe(false)
+    expect(manager.canPersistLocalGraph()).toBe(false)
+    expect(disconnectSpy).not.toHaveBeenCalled()
+
+    manager.disconnect(connectionId)
   })
 
   it('emits cursor/sync/workflow events via collaboration_event when connected', async () => {

@@ -22,14 +22,14 @@ import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
@@ -45,7 +45,6 @@ from controllers.openapi.workspaces import (
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.base import TypeBase
 from services.account_service import TenantService as RealTenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -92,14 +91,8 @@ def openapi_app() -> Flask:
 
 
 @pytest.fixture
-def database_session(sqlite_engine: Engine):
-    models = (Account, Tenant, TenantAccountJoin)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    factory = SimpleNamespace(get_session_maker=lambda: session_maker, create_session=session_maker)
-    with patch("controllers.common.session.session_factory", factory), session_maker() as session:
-        yield session
+def database_session(sqlite_session: Session):
+    return sqlite_session
 
 
 def _rule(app: Flask, path: str):

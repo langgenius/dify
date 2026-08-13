@@ -89,14 +89,14 @@ function TaskStatusIndicator({
             disabled={disabled}
             aria-label={tip}
             className={cn(
-              'relative size-8 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg p-2 shadow-none',
+              'relative size-8 overflow-visible rounded-lg bg-components-panel-bg p-2 shadow-none inset-ring-components-panel-border-subtle',
               'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               isClickable ? 'cursor-pointer' : 'cursor-default',
               showErrorStyle &&
-                'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover text-components-button-destructive-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:bg-state-destructive-hover-alt',
+                'cursor-pointer bg-state-destructive-hover text-components-button-destructive-secondary-text shadow-xs shadow-shadow-shadow-3 inset-ring-components-button-destructive-secondary-border-hover backdrop-blur-[5px] hover:bg-state-destructive-hover-alt',
               isOpen &&
                 !showErrorStyle &&
-                'border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
+                'bg-components-button-secondary-bg-hover shadow-xs shadow-shadow-shadow-3 inset-ring-components-button-secondary-border-hover backdrop-blur-[5px]',
               isOpen && showErrorStyle && 'bg-state-destructive-hover-alt',
             )}
             id="plugin-task-trigger"

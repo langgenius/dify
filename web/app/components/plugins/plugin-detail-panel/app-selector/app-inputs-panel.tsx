@@ -1,5 +1,6 @@
 'use client'
-import type { App } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ type Props = Readonly<{
     app_id: string
     inputs: Record<string, unknown>
   }
-  appDetail: App
+  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
   onFormChange: (value: Record<string, unknown>) => void
 }>
 
@@ -20,7 +21,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
   const { t } = useTranslation()
   const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
 
-  const { inputFormSchema, isLoading } = useAppInputsFormSchema({ appDetail })
+  const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })
 
   const handleFormChange = (newValue: Record<string, unknown>) => {
     inputsRef.current = newValue
@@ -36,19 +37,30 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
           <Loading type="app" />
         </div>
       )}
-      {!isLoading && (
+      {!isLoading && isError && (
+        <div
+          className="flex h-20 flex-col items-center justify-center gap-2 px-4 system-xs-regular text-text-tertiary"
+          role="alert"
+        >
+          <span>{t(($) => $['errorBoundary.title'], { ns: 'common' })}</span>
+          <Button size="small" variant="secondary" onClick={retry}>
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+      {!isLoading && !isError && (
         <div className="mt-3 mb-2 flex h-6 shrink-0 items-center px-4 system-sm-semibold text-text-secondary">
           {t(($) => $['appSelector.params'], { ns: 'app' })}
         </div>
       )}
-      {!isLoading && !hasInputs && (
+      {!isLoading && !isError && !hasInputs && (
         <div className="flex h-16 flex-col items-center justify-center">
           <div className="system-sm-regular text-text-tertiary">
             {t(($) => $['appSelector.noParams'], { ns: 'app' })}
           </div>
         </div>
       )}
-      {!isLoading && hasInputs && (
+      {!isLoading && !isError && hasInputs && (
         <div className="grow overflow-y-auto">
           <AppInputsForm
             inputs={value?.inputs || {}}

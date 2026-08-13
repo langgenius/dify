@@ -21,7 +21,11 @@ func NewTmuxController(config *Config) *TmuxController {
 
 // StartServer ensures the tmux server is running.
 func (t *TmuxController) StartServer() error {
-	_, err := t.runTmux("start-server")
+	_, err := t.runTmux(
+		"start-server",
+		";",
+		"set-option", "-g", "exit-empty", "off",
+	)
 	return err
 }
 

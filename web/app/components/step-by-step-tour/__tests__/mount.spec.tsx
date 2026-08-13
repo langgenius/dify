@@ -2,15 +2,14 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepByStepTourSessionState, StepByStepTourTaskId } from '../types'
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -33,8 +32,6 @@ type StepByStepTourFixtureState = StepByStepTourSessionState & {
   updatedAt?: string | null
 }
 
-type WorkspaceRole = ICurrentWorkspace['role']
-
 const mockRouterPush = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 let mockPathname = '/apps'
@@ -54,7 +51,7 @@ const mockIsCurrentWorkspaceManager = vi.hoisted(() => ({
   value: true,
 }))
 const mockCurrentWorkspaceRole = vi.hoisted(() => ({
-  value: 'owner' as WorkspaceRole,
+  value: 'owner' as GetWorkspacesCurrentSummaryResponse['role'],
 }))
 const mockEnableLearnApp = vi.hoisted(() => ({
   value: true,
@@ -214,7 +211,7 @@ vi.mock('@/context/modal-context', () => ({
     }),
 }))
 
-vi.mock('@/app/education-apply/use-expire-notice', () => ({
+vi.mock('@/app/education/expire-notice/use-expire-notice', () => ({
   useEducationExpireNotice: () => [
     mockEducationExpireNotice.value
       ? { accountId: 'user-1', expireAt: 1, expired: false, phase: 'expiring' }
@@ -403,14 +400,8 @@ function getMockAppContextState() {
     currentWorkspace: {
       id: 'workspace-1',
       name: 'Solar Studio',
-      plan: Plan.sandbox,
-      status: 'normal',
+      plan: 'sandbox',
       role: mockCurrentWorkspaceRole.value,
-      created_at: 0,
-      providers: [],
-      trial_credits: 0,
-      trial_credits_used: 0,
-      next_credit_reset_date: 0,
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
@@ -672,6 +663,9 @@ describe('StepByStepTourMount', () => {
     ).toBeInTheDocument()
 
     const dismissButton = screen.getByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     await user.click(dismissButton)
 
     await waitFor(() => {
@@ -759,6 +753,71 @@ describe('StepByStepTourMount', () => {
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
     })
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+  })
+
+  it('exposes dialog semantics and returns focus after minimizing with the keyboard', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Get to know Dify',
+        description: 'A quick tour — about 5 minutes',
+      }),
+    ).toBeInTheDocument()
+
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
+    minimizeButton.focus()
+    await user.keyboard('{Enter}')
+
+    const restoreButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+
+    await waitFor(() => {
+      expect(restoreButton).toHaveFocus()
+    })
+    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+  })
+
+  it('focuses the minimize button when the checklist opens', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['home'],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
+    await waitFor(() => {
+      expect(minimizeButton).toHaveFocus()
+    })
+  })
+
+  it('keeps the expanded checklist open after an outside pointer interaction', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Get to know Dify' })
+    await user.click(document.body)
+
+    expect(dialog).toBeInTheDocument()
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
   })
 
   it('shows the completion prompt expanded even when the saved shell mode is collapsed', async () => {
@@ -942,13 +1001,13 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('completes Knowledge directly when the workspace has no Knowledge walkthrough permissions', async () => {
+  it('focuses Dismiss after completing Knowledge as the final task without permission', async () => {
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
-      completedTaskIds: ['home', 'studio'],
+      completedTaskIds: ['home', 'studio', 'integration'],
       skipped: false,
     })
 
@@ -973,6 +1032,10 @@ describe('StepByStepTourMount', () => {
     await user.click(screen.getByRole('button', { name: 'Got it' }))
 
     await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'knowledge' })
+    const dismissButton = await screen.findByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     expect(mockRouterPush).not.toHaveBeenCalled()
   })
 

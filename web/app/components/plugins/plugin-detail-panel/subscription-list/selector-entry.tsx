@@ -106,11 +106,11 @@ export const SubscriptionSelectorEntry = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
-        render={
-          <div>
-            <SubscriptionTriggerButton selectedId={selectedId} isOpen={isOpen} />
+        render={(props, state) => (
+          <div {...props}>
+            <SubscriptionTriggerButton selectedId={selectedId} isOpen={state.open} />
           </div>
-        }
+        )}
       />
       <PopoverContent
         placement="bottom-start"

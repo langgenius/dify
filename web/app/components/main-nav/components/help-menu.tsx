@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,15 +36,17 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   currentWorkspaceIdAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -86,8 +88,20 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: profileMeta } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta,
+  })
+  const { data: versionData } = useQuery(
+    consoleQuery.version.get.queryOptions({
+      input: profileMeta.currentVersion
+        ? { query: { current_version: profileMeta.currentVersion } }
+        : skipToken,
+      enabled: !systemFeatures.branding.enabled,
+    }),
+  )
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const langGeniusVersionInfo = getLangGeniusVersionInfo({ meta: profileMeta, versionData })
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
@@ -100,7 +114,6 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutOpen, setAboutOpen] = useState(false)
-  const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const canToggleStepByStepTour =
@@ -123,13 +136,9 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
         onSuccess: trackVisibilityToggled,
       })
     }
-
-    if (checked) setOpen(false)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-
     if (nextOpen) setSkipRecoveryVisible(false)
   }
 
@@ -137,14 +146,14 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
           className={cn(
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             triggerClassName,
-            open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
+            'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
             skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
           )}
         >
@@ -201,7 +210,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {systemFeatures.deployment_edition === 'CLOUD' && shouldShowStepByStepTourSwitch && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
-                  closeOnClick={false}
+                  closeOnClick={!stepByStepTourEnabled}
                   className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
@@ -222,7 +231,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <SupportMenu onContactUsClick={() => setOpen(false)} />
+              <SupportMenu />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
@@ -249,10 +258,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
               {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
                 <DropdownMenuItem
                   className="mx-0 h-8 gap-1 px-3 py-1.5"
-                  onClick={() => {
-                    setOpen(false)
-                    setAboutOpen(true)
-                  }}
+                  onClick={() => setAboutOpen(true)}
                 >
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"

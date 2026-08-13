@@ -105,6 +105,28 @@ describe('GenerationActionGroups', () => {
     ).toBeDisabled()
   })
 
+  it('should hide the log action when requested by the owning surface', () => {
+    render(
+      <GenerationActionGroups
+        appSourceType={AppSourceType.webApp}
+        content="hello world"
+        currentTab="DETAIL"
+        depth={1}
+        hideLogAction
+        isError={false}
+        isInWebApp={false}
+        messageId="msg-1"
+        onMoreLikeThis={mockOnMoreLikeThis}
+        onOpenLogModal={mockOnOpenLogModal}
+        onRetry={mockOnRetry}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }),
+    ).not.toBeInTheDocument()
+  })
+
   it('should stringify non-string content before copying', () => {
     render(
       <GenerationActionGroups

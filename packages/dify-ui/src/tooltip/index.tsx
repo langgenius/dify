@@ -6,8 +6,6 @@ import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 
-export type { Placement }
-
 /**
  * Tooltip is an **ephemeral hint** tied to a trigger (typically an icon button,
  * badge, or short label). It follows Base UI's Tooltip semantics:
@@ -27,9 +25,13 @@ export type { Placement }
  *
  * If you need interactive affordances (buttons, links, forms) use `Popover`.
  */
-export const TooltipProvider = BaseTooltip.Provider
-export const Tooltip = BaseTooltip.Root
-export const TooltipTrigger = BaseTooltip.Trigger
+const TooltipProvider = BaseTooltip.Provider
+const Tooltip = BaseTooltip.Root
+const TooltipTrigger = BaseTooltip.Trigger
+
+type TooltipProviderProps = BaseTooltip.Provider.Props
+type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
+type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
 type TooltipContentProps = {
   children: React.ReactNode
@@ -40,7 +42,7 @@ type TooltipContentProps = {
   className?: string
 } & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
 
-export function TooltipContent({
+function TooltipContent({
   children,
   placement = 'top',
   sideOffset = 8,
@@ -74,3 +76,7 @@ export function TooltipContent({
     </BaseTooltip.Portal>
   )
 }
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
+
+export type { TooltipContentProps, TooltipProps, TooltipProviderProps, TooltipTriggerProps }

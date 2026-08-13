@@ -101,12 +101,12 @@ function EnvEditorScope({
   }
 
   return (
-    <Select
+    <Select<EnvScope>
       value={scope}
       onValueChange={(nextValue) => {
         if (!nextValue) return
 
-        onChange?.(nextValue as EnvScope)
+        onChange?.(nextValue)
       }}
     >
       <SelectTrigger
@@ -117,7 +117,7 @@ function EnvEditorScope({
       </SelectTrigger>
       <SelectContent placement="bottom-start" popupClassName="min-w-24">
         {envScopeOptions.map((option) => (
-          <SelectItem key={option} value={option} className="h-7 system-xs-regular">
+          <SelectItem<EnvScope> key={option} value={option} className="h-7 system-xs-regular">
             <SelectItemText>{t(($) => $[scopeLabelKeys[option]])}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>

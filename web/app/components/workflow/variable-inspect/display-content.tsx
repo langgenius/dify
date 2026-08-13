@@ -120,7 +120,7 @@ export function DisplayContent(props: DisplayContentProps) {
               readOnly={readonly}
               disabled={readonly}
               className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"
-              value={mdString as any}
+              value={mdString}
               onValueChange={(value) => handleTextChange?.(value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}

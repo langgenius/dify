@@ -60,7 +60,6 @@ export async function syncAgentV2WorkflowDraft(
       viewport: { x: 0, y: 0, zoom: 1 },
     },
     features: {},
-    environment_variables: [],
     conversation_variables: [],
   } satisfies SyncDraftWorkflowPayload
   await client.apps.byAppId.workflows.draft.post({ body, params: { app_id: appId } })

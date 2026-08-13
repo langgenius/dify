@@ -221,7 +221,7 @@ function AgentSkillPackageUploader({
                       href="https://agentskills.io/specification"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-sm underline outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="rounded-sm underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     />
                   ),
                 }}

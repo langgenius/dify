@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
     BillingSandboxPolicy,
@@ -404,10 +404,10 @@ class TestCreateMessageCleanPolicy:
     """Unit tests for create_message_clean_policy factory function."""
 
     @patch("services.retention.conversation.messages_clean_policy.dify_config")
-    def test_billing_disabled_returns_billing_disabled_policy(self, mock_config):
-        """Test that BILLING_ENABLED=False returns BillingDisabledPolicy."""
+    def test_non_cloud_edition_returns_billing_disabled_policy(self, mock_config):
+        """Test that the Community edition returns BillingDisabledPolicy."""
         # Arrange
-        mock_config.BILLING_ENABLED = False
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
         # Act
         policy = create_message_clean_policy(graceful_period_days=21)
@@ -417,10 +417,10 @@ class TestCreateMessageCleanPolicy:
 
     @patch("services.retention.conversation.messages_clean_policy.BillingService", autospec=True)
     @patch("services.retention.conversation.messages_clean_policy.dify_config")
-    def test_billing_enabled_policy_has_correct_internals(self, mock_config, mock_billing_service):
+    def test_cloud_edition_policy_has_correct_internals(self, mock_config, mock_billing_service):
         """Test that BillingSandboxPolicy is created with correct internal values."""
         # Arrange
-        mock_config.BILLING_ENABLED = True
+        mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
         whitelist = ["tenant1", "tenant2"]
         mock_billing_service.get_expired_subscription_cleanup_whitelist.return_value = whitelist
         mock_plan_provider = MagicMock()

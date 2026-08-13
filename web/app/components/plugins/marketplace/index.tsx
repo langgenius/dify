@@ -1,6 +1,6 @@
 import type { SearchParams } from 'nuqs'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
-import { TanStackQueryProvider } from '@/context/query-client'
+import { TanStackQueryProvider } from '@/app/query-provider'
 import Description from './description'
 import { HydrateQueryClient } from './hydration-server'
 import ListWrapper from './list/list-wrapper'

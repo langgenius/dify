@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
@@ -19,7 +20,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -183,12 +183,12 @@ const MCPDetailContent: FC<Props> = ({
                 onRemove={() => onDelete(detail.id)}
               />
             )}
-            <ActionButton
+            <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onHide}
             >
               <span aria-hidden className="i-ri-close-line size-4" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
         <div className="mt-5">
@@ -199,7 +199,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!canManageMCP}
             >
-              <StatusDot className="mr-2" status="success" />
+              <StatusDot status="success" />
               {t(($) => $['auth.authorized'], { ns: 'tools' })}
             </Button>
           )}
@@ -215,7 +215,7 @@ const MCPDetailContent: FC<Props> = ({
           )}
           {isAuthorizing && (
             <Button variant="primary" className="w-full" disabled>
-              <span aria-hidden className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
               {t(($) => $['mcp.authorizing'], { ns: 'tools' })}
             </Button>
           )}
@@ -271,7 +271,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm} disabled={!canManageMCP}>
-                  <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
+                  <span aria-hidden className="i-ri-loop-left-line size-3.5" />
                   {t(($) => $['mcp.update'], { ns: 'tools' })}
                 </Button>
               </div>

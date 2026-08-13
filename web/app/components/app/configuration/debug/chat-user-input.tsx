@@ -7,6 +7,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
@@ -130,9 +131,9 @@ const ChatUserInput = ({ inputs }: Props) => {
                     }}
                   >
                     <SelectTrigger className="w-full">
-                      {typeof inputs[key] === 'string' && inputs[key] !== ''
-                        ? inputs[key]
-                        : t(($) => $['placeholder.select'], { ns: 'common' })}
+                      <SelectValue
+                        placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {(options || []).map((option) => (

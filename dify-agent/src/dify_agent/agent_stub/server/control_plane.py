@@ -1,9 +1,7 @@
-"""Shared Agent Stub control-plane service used by HTTP and gRPC transports.
+"""Shared Agent Stub HTTP control-plane service.
 
-This layer owns the authenticated control-plane delegation for file, config,
-and drive operations. Transport adapters validate transport DTOs first, then
-call into this service so auth, handler lookup, and error mapping stay shared
-across HTTP and gRPC.
+This layer owns authenticated delegation for file, config, and drive operations.
+The HTTP adapter validates transport DTOs before calling into this service.
 """
 
 from __future__ import annotations
@@ -55,9 +53,8 @@ class AgentStubConfigurationError(AgentStubControlPlaneError):
 class AgentStubControlPlaneService:
     """Shared business service for authenticated Agent Stub control-plane calls.
 
-    HTTP and gRPC adapters validate or decode transport payloads before calling
-    this service, so this layer focuses only on shared auth, connection-id
-    generation, plus file, config, and drive request delegation.
+    The HTTP adapter validates transport payloads before calling this service,
+    which focuses on auth, connection-id generation, and request delegation.
     """
 
     token_codec: AgentStubTokenCodec | None
@@ -93,6 +90,13 @@ class AgentStubControlPlaneService:
     ) -> AgentStubFileDownloadResponse:
         """Authenticate and delegate one already-validated file-download request."""
         principal = self._authenticate(authorization)
+        if request.config is not None:
+            handler = self._require_config_request_handler()
+            try:
+                return await handler.create_download_request(principal=principal, source=request.config)
+            except AgentStubConfigRequestError as exc:
+                raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
         handler = self._require_file_request_handler()
         try:
             return await handler.create_download_request(principal=principal, request=request)
@@ -130,19 +134,6 @@ class AgentStubControlPlaneService:
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    async def pull_config_skill(
-        self,
-        *,
-        name: str,
-        authorization: str | None,
-    ) -> bytes:
-        principal = self._authenticate(authorization)
-        handler = self._require_config_request_handler()
-        try:
-            return await handler.pull_skill(principal=principal, name=name)
-        except AgentStubConfigRequestError as exc:
-            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
-
     async def inspect_config_skill(
         self,
         *,
@@ -153,19 +144,6 @@ class AgentStubControlPlaneService:
         handler = self._require_config_request_handler()
         try:
             return await handler.inspect_skill(principal=principal, name=name)
-        except AgentStubConfigRequestError as exc:
-            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
-
-    async def pull_config_file(
-        self,
-        *,
-        name: str,
-        authorization: str | None,
-    ) -> bytes:
-        principal = self._authenticate(authorization)
-        handler = self._require_config_request_handler()
-        try:
-            return await handler.pull_file(principal=principal, name=name)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 

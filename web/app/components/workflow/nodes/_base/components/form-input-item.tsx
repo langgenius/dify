@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResourceVarInputs } from '../types'
 import type {
@@ -18,6 +19,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
@@ -28,7 +30,10 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
+import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
+import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType } from '@/app/components/workflow/types'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
@@ -87,8 +92,14 @@ const FormInputItem: FC<Props> = ({
   extraParams,
   providerType,
   disableVariableInsertion = false,
+  inPanel,
 }) => {
   const language = useLanguage()
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const timezone = userProfile.timezone ?? 'UTC'
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
 
@@ -108,6 +119,8 @@ const FormInputItem: FC<Props> = ({
     isBoolean,
     isCheckbox,
     isConstant,
+    isDate,
+    isDateRange,
     isDynamicSelect,
     isModelSelector,
     isMultipleSelect,
@@ -224,12 +237,14 @@ const FormInputItem: FC<Props> = ({
 
   const handleValueChange = (newValue: FormInputValue) => {
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
+    let nextValue: FormInputValue = newValue
+    if (isNumber) nextValue = Number.parseFloat(String(newValue ?? ''))
     onChange({
       ...value,
       [variable]: {
         ...varInput,
         type: nextType,
-        value: isNumber ? Number.parseFloat(String(newValue ?? '')) : newValue,
+        value: nextValue,
       },
     })
   }
@@ -337,6 +352,28 @@ const FormInputItem: FC<Props> = ({
           onChange={(e) => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
+      )}
+      {isDate && isConstant && (
+        <div className="min-w-0 grow">
+          <ToolDatePicker
+            value={varInput?.value}
+            onChange={handleValueChange}
+            timezone={timezone}
+            readOnly={readOnly}
+            placeholder={placeholder?.[language] || placeholder?.en_US}
+          />
+        </div>
+      )}
+      {isDateRange && varInput?.type !== VarKindType.variable && (
+        <div className="min-w-0 grow">
+          <ToolDateRangePicker
+            value={varInput?.value}
+            onChange={handleValueChange}
+            readOnly={readOnly}
+            timezone={timezone}
+            inPanel={inPanel}
+          />
+        </div>
       )}
       {isCheckbox && isConstant && (
         <CheckboxList

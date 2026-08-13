@@ -16,7 +16,7 @@ from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
+from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -284,7 +284,11 @@ def _strict_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
-UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
 
 
 def alphanumeric(value: str):
@@ -395,7 +399,7 @@ def extract_remote_ip(request: Request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return cast(str, request.headers.get("CF-Connecting-IP"))
     elif request.headers.getlist("X-Forwarded-For"):
-        return cast(str, request.headers.getlist("X-Forwarded-For")[0])
+        return request.headers.getlist("X-Forwarded-For")[0]
     else:
         return cast(str, request.remote_addr)
 

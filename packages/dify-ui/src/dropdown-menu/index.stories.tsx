@@ -138,23 +138,25 @@ export const WithSubmenu: Story = {
   ),
 }
 
+type Density = 'compact' | 'comfortable' | 'spacious'
+
 const WithRadioItemsDemo = () => {
-  const [value, setValue] = React.useState('comfortable')
+  const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
     <DropdownMenu>
-      <TriggerButton label={`Density: ${value}`} />
+      <TriggerButton label={`Density: ${density}`} />
       <DropdownMenuContent>
-        <DropdownMenuRadioGroup value={value} onValueChange={setValue}>
-          <DropdownMenuRadioItem value="compact">
+        <DropdownMenuRadioGroup<Density> value={density} onValueChange={setDensity}>
+          <DropdownMenuRadioItem<Density> value="compact">
             Compact
             <DropdownMenuRadioItemIndicator />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="comfortable">
+          <DropdownMenuRadioItem<Density> value="comfortable">
             Comfortable
             <DropdownMenuRadioItemIndicator />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="spacious">
+          <DropdownMenuRadioItem<Density> value="spacious">
             Spacious
             <DropdownMenuRadioItemIndicator />
           </DropdownMenuRadioItem>
@@ -261,8 +263,10 @@ export const WithLinkItems: Story = {
   ),
 }
 
+type SortOrder = 'newest' | 'oldest' | 'name'
+
 const ComplexDemo = () => {
-  const [sortOrder, setSortOrder] = React.useState('newest')
+  const [sortOrder, setSortOrder] = React.useState<SortOrder>('newest')
   const [showArchived, setShowArchived] = React.useState(false)
 
   return (
@@ -308,16 +312,16 @@ const ComplexDemo = () => {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={sortOrder} onValueChange={setSortOrder}>
-            <DropdownMenuRadioItem value="newest">
+          <DropdownMenuRadioGroup<SortOrder> value={sortOrder} onValueChange={setSortOrder}>
+            <DropdownMenuRadioItem<SortOrder> value="newest">
               Newest first
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="oldest">
+            <DropdownMenuRadioItem<SortOrder> value="oldest">
               Oldest first
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="name">
+            <DropdownMenuRadioItem<SortOrder> value="name">
               Name
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>

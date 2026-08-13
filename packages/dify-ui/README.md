@@ -32,10 +32,12 @@ import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
 
@@ -43,11 +45,27 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 The canonical boundary exported from a primitive subpath uses the primitive name without a `Root` suffix, and its public types follow the same name (`Select` / `SelectProps`, `Drawer` / `DrawerProps`). Keep `Root` only when the subpath exposes both a low-level anatomy root and a higher-level convenience component, such as `CheckboxRoot` / `Checkbox` or `PaginationRoot` / `Pagination`. Implementation code should continue to reference the upstream Base UI anatomy explicitly through names such as `BaseSelect.Root.Props`.
 
+### Public type contracts
+
+Every runtime component exported from a primitive subpath must have an accurate, importable props type with the matching name (`DialogContent` / `DialogContentProps`). Define Dify-authored composite props at the Dify UI boundary; use direct aliases for unchanged Base UI parts instead of copying their shapes.
+
+Treat each `src/<primitive>/index.tsx` as an explicit public API boundary. Keep component, factory, hook, and type declarations module-local, then publish the complete surface through separate `export { ... }` and `export type { ... }` manifests at the bottom of the file. Do not mix scattered inline exports with the manifest or use a wildcard export; omission from the manifest keeps implementation helpers private.
+
+Preserve generic relationships end to end. Generic public components and their props must carry the same caller-owned type parameters, including picker `Value` / `Multiple`, form values, radio values, slider values, and overlay payloads and handles. Never erase those relationships with `any` or a hard-coded `string`; use `unknown` only as the safe default for an independently consumed anatomy part whose value cannot be inferred from its parent through JSX.
+
+Do not add a root-only generic when independently rendered JSX anatomy can produce values outside that root's inferred type. Preserve the upstream contract until the complete component family can enforce one value type; otherwise the generic gives callbacks a narrower type than the runtime can guarantee. `Tabs` intentionally follows Base UI's value contract for this reason.
+
+Keep the public type surface smaller than the upstream Base UI namespace. A type is not public merely because Base UI provides a name for it, because Dify gives an internal contract a descriptive alias, or because an earlier implementation happened to export it. In addition to matching component props, export a type only when it pairs with a public factory or has a concrete workspace consumer that cannot express the contract clearly through the matching props type. Remove legacy aliases that have no matching runtime API or real consumer; package-local tests and stories can derive narrow values from canonical props instead of preserving an otherwise unused export. Dify-authored options, states, and controlled/uncontrolled branches stay private when the matching props type already expresses them.
+
+State, event details and reasons, actions, and controlled/uncontrolled composition helpers are private by default. Public props already provide contextual typing for inline render and event callbacks. Export one of these narrower contracts only when Dify defines the state or event itself, a public factory requires the named type, or an external consumer needs to name it independently. Apply the same rule to Dify-authored components such as FileTree, Pagination, ProgressCircle, StatusDot, and Toast; being implemented locally does not justify a broader API.
+
+Keep implementation-only render helpers, context values, styling helpers, and upstream passthrough aliases private. When a wrapper consumes `className` through `cn()`, omit the upstream state-callback form and expose `className?: string`; public types must describe behavior the wrapper actually implements.
+
 ## Primitives
 
 | Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                    | Design-system CTA primitive with `cva` variants.                                                      |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                       | Visible-label actions, icon-only commands, and persistent toggles.                                    |
 | Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
 | Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
@@ -65,9 +83,30 @@ Utilities:
 
 ## Button loading and disabled contract
 
+`Button` owns the spacing between direct children. Regular (`medium`) and Large sizes use
+4px and 6px gaps. Small uses 3px for Primary and 4px for the other variants. Do not add icon
+margins or a standard `gap-*` at call sites; use a Button `className` override only for a
+documented layout exception.
+
 `Button` keeps normal `disabled` controls native-disabled by default so unavailable actions are removed from the keyboard focus order.
 
 When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loading represents an action that has already been triggered and is temporarily pending, so the button remains focusable while Base UI still suppresses click, pointer, keyboard activation, and submit-button activation. Pass `focusableWhenDisabled={false}` only when a loading button should use native disabled behavior.
+
+## Icon button contract
+
+Use `IconButton` for a command represented by one icon and no visible text. Use `Button` when the control has a visible label, including buttons with leading or trailing icons.
+
+Pass exactly one CSS or React SVG icon and provide either `aria-label` or `aria-labelledby`:
+
+```tsx
+<IconButton aria-label="Close">
+  <span aria-hidden="true" className="i-ri-close-line size-4" />
+</IconButton>
+```
+
+Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is only a visual enhancement. The child chooses the glyph and its optical size. Omit `variant` for the neutral action-button appearance, or use the same appearance variants as `Button`. Use `tone="destructive"` for destructive intent. Size, radius, colors, hover, disabled, and focus-visible styles belong to `IconButton`; limit `className` to external layout.
+
+`IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
 
 ## Segmented control contract
 
@@ -107,7 +146,7 @@ Use `Fieldset` and `FieldsetLegend` when one field is represented by a group of 
 
 Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, and `RadioItem<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
 
-Root-level generics type `value`, `defaultValue`, `onValueChange`, and collection props such as `items`, but JSX children do not automatically inherit the parent generic. For non-string radio groups, type the child item too:
+Root-level generics type `value`, `defaultValue`, and value-dependent callbacks such as `onValueChange`. Upstream collection props such as `items` can still be broader than the root value type, and JSX children do not automatically inherit the parent generic. Type independently consumed anatomy parts when their value cannot be inferred locally; for non-string radio groups, type the child item too:
 
 ```tsx
 <RadioGroup<PromptMode> value={promptMode} onValueChange={setPromptMode}>
@@ -121,7 +160,22 @@ Root-level generics type `value`, `defaultValue`, `onValueChange`, and collectio
 
 Use `Radio` for the default Dify control. Use `RadioItem` when custom UI should be the radio item; place `RadioControl` inside it for the standard visual dot. `RadioControl` is a Dify visual part, not a Base UI anatomy export.
 
-For select labels and display values, prefer the Base UI `items` collection pattern so the root, value display, and item list share the same typed values. Avoid helpers that stringify values only to recover labels later; convert values to strings only at real boundaries such as form submission, URL/search params, or legacy APIs that require strings.
+For `Select` and `Combobox`, a literal multiple-value contract must match the runtime mode: `<Combobox<Subject, true> multiple>`. Their value display can still receive `null` before a value is selected, including in multiple mode. Because JSX does not pass the root's generic to its children, repeat the domain type on independently consumed render anatomy instead of annotating callback parameters:
+
+```tsx
+<Combobox<Subject, true> multiple value={subjects} onValueChange={setSubjects}>
+  <ComboboxValue<Subject, true>>
+    {(selectedSubjects) => selectedSubjects?.map((subject) => subject.name).join(', ') ?? 'Anyone'}
+  </ComboboxValue>
+  <ComboboxList<Subject>>
+    {(subject) => <ComboboxItem value={subject}>{subject.name}</ComboboxItem>}
+  </ComboboxList>
+</Combobox>
+```
+
+`AutocompleteList` follows the same rule. A `ComboboxGroup` or `AutocompleteGroup` can infer its local value type from `items`; a nested `Collection` is a separate JSX boundary and should use `<Value>` when its render callback needs the domain type. Dynamic `multiple={condition}` remains supported and gives callbacks the corresponding single-or-multiple union.
+
+For select labels and display values, prefer the Base UI `items` collection pattern so the root, value display, and item list share one runtime source of truth for values and labels. Avoid helpers that stringify values only to recover labels later; convert values to strings only at real boundaries such as form submission, URL/search params, or legacy APIs that require strings.
 
 `CheckboxGroup` follows the Base UI contract and uses `string[]`. Do not add a generic checkbox-group wrapper unless the underlying primitive contract changes; if different business IDs need stronger separation, model that at the feature/domain type boundary.
 

@@ -91,7 +91,7 @@ const PluginsPicker: FC<Props> = ({ updateMode, value, onChange, integrationCate
 
       <ToolPicker
         trigger={
-          <Button className="h-6 w-full gap-1" size="small" variant="secondary-accent">
+          <Button className="h-6 w-full" size="small" variant="secondary-accent">
             <RiAddLine className="size-3.5" />
             {t(($) => $[`${i18nPrefix}.operation.select`], { ns: 'plugin' })}
           </Button>

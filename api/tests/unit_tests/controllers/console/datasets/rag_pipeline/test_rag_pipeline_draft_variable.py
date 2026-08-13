@@ -8,13 +8,16 @@ from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
+    PaginationQuery,
     RagPipelineEnvironmentVariableCollectionApi,
     RagPipelineNodeVariableCollectionApi,
     RagPipelineSystemVariableCollectionApi,
     RagPipelineVariableApi,
     RagPipelineVariableCollectionApi,
     RagPipelineVariableResetApi,
+    WorkflowDraftVariablePatchPayload,
 )
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.variables.types import SegmentType
 from models.account import Account, TenantAccountRole
@@ -71,7 +74,7 @@ class TestRagPipelineVariableCollectionApi:
                 return_value=draft_srv,
             ),
         ):
-            result = method(api, editor_user, pipeline)
+            result = method(api, PaginationQuery(page=1, limit=10), editor_user, pipeline)
 
         assert result is var_list
         draft_srv.list_variables_without_values.assert_called_once_with(
@@ -99,7 +102,7 @@ class TestRagPipelineVariableCollectionApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, editor_user, pipeline)
+                method(api, PaginationQuery(), editor_user, pipeline)
 
     def test_delete_variables_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
@@ -197,7 +200,7 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, editor_user, pipeline, "v1")
+                method(api, WorkflowDraftVariablePatchPayload.model_validate(payload), editor_user, pipeline, "v1")
 
     def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
@@ -315,3 +318,35 @@ class TestSystemAndEnvironmentVariablesApi:
             result = method(api, editor_user, pipeline)
 
         assert len(result["items"]) == 1
+        assert result["items"][0]["value_type"] == "string"
+
+    def test_environment_variables_preserve_number_subtype_and_llm_type(self, app: Flask, editor_user):
+        api = RagPipelineEnvironmentVariableCollectionApi()
+        method = unwrap(api.get)
+        number_var = MagicMock(
+            id="number",
+            name="NUMBER",
+            description="",
+            selector=["env", "NUMBER"],
+            value_type=MagicMock(value="integer"),
+            value=1,
+        )
+        llm_var = LLMEnvironmentVariable(
+            id="llm",
+            name="MODEL",
+            value={"provider": "provider", "name": "model", "mode": "chat"},
+            selector=["env", "MODEL"],
+        )
+        rag_srv = MagicMock()
+        rag_srv.get_draft_workflow.return_value = MagicMock(environment_variables=[number_var, llm_var])
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
+                return_value=rag_srv,
+            ),
+        ):
+            result = method(api, editor_user, MagicMock(id="p1"))
+
+        assert [item["value_type"] for item in result["items"]] == ["integer", "llm"]

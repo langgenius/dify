@@ -11,6 +11,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -189,14 +190,16 @@ const AddExtractParameter: FC<Props> = ({ type, payload, onSave, onCancel }) => 
                     ns: 'workflow',
                   })}
                 >
-                  <Select
+                  <Select<ParamType>
                     value={param.type}
                     onValueChange={(value) => value && handleParamChange('type')(value)}
                   >
-                    <SelectTrigger className="w-full capitalize">{param.type}</SelectTrigger>
+                    <SelectTrigger className="w-full capitalize">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       {TYPES.map((type) => (
-                        <SelectItem key={type} value={type} className="capitalize">
+                        <SelectItem<ParamType> key={type} value={type} className="capitalize">
                           <SelectItemText className="capitalize">{type}</SelectItemText>
                           <SelectItemIndicator />
                         </SelectItem>

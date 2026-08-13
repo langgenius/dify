@@ -117,7 +117,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 size-4" />
+            <RiSearchEyeLine className="size-4" />
             {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>

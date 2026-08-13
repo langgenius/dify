@@ -47,57 +47,48 @@ const statusDotSkeletonVariants = cva(
 
 type StatusDotVariants = VariantProps<typeof statusDotVariants>
 
-export type StatusDotStatus = NonNullable<StatusDotVariants['status']>
-export type StatusDotSize = NonNullable<StatusDotVariants['size']>
+type StatusDotStatus = NonNullable<StatusDotVariants['status']>
+type StatusDotSize = NonNullable<StatusDotVariants['size']>
 
-export type StatusDotProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type DecorativeSpanProps = Omit<
+  React.ComponentProps<'span'>,
+  'children' | 'role' | 'tabIndex' | keyof React.AriaAttributes
+> & {
+  [Key in keyof React.AriaAttributes]?: never
+} & {
+  role?: never
+  tabIndex?: never
+}
+
+type StatusDotProps = DecorativeSpanProps & {
   status?: StatusDotStatus
   size?: StatusDotSize
 }
 
-export type StatusDotSkeletonProps = Omit<React.ComponentProps<'span'>, 'children'> & {
+type StatusDotSkeletonProps = DecorativeSpanProps & {
   size?: StatusDotSize
 }
 
-export function StatusDot({
-  className,
-  status = 'success',
-  size = 'medium',
-  'aria-hidden': ariaHidden,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  ...props
-}: StatusDotProps) {
-  const hidden = ariaHidden ?? (ariaLabel || ariaLabelledBy ? undefined : true)
-
+function StatusDot({ className, status = 'success', size = 'medium', ...props }: StatusDotProps) {
   return (
     <span
+      {...props}
       className={cn(statusDotVariants({ status, size }), className)}
-      aria-hidden={hidden}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
-      {...props}
+      aria-hidden="true"
     />
   )
 }
 
-export function StatusDotSkeleton({
-  className,
-  size = 'medium',
-  'aria-hidden': ariaHidden,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  ...props
-}: StatusDotSkeletonProps) {
-  const hidden = ariaHidden ?? (ariaLabel || ariaLabelledBy ? undefined : true)
-
+function StatusDotSkeleton({ className, size = 'medium', ...props }: StatusDotSkeletonProps) {
   return (
     <span
-      className={cn(statusDotSkeletonVariants({ size }), className)}
-      aria-hidden={hidden}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy}
       {...props}
+      className={cn(statusDotSkeletonVariants({ size }), className)}
+      aria-hidden="true"
     />
   )
 }
+
+export { StatusDot, StatusDotSkeleton }
+
+export type { StatusDotProps, StatusDotSkeletonProps, StatusDotStatus }

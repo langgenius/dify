@@ -10,12 +10,12 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -44,7 +44,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(
@@ -117,12 +120,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
+    const isDeployPath = pathname.endsWith('deploy')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
+      (isAccessConfigPath && !appACLCapabilities.canAccessConfig) ||
+      (isDeployPath &&
+        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {

@@ -148,10 +148,8 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
           'ml-1 flex size-auto rounded-lg border-0 bg-transparent px-2 py-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover',
         )}
       >
-        <ComboboxValue>
-          {(document: SimpleDocumentDetail | null) => (
-            <DocumentPickerTriggerValue document={document} parentMode={parentMode} />
-          )}
+        <ComboboxValue<SimpleDocumentDetail>>
+          {(document) => <DocumentPickerTriggerValue document={document} parentMode={parentMode} />}
         </ComboboxValue>
       </ComboboxTrigger>
       <ComboboxContent

@@ -164,8 +164,7 @@ const ViewWorkflowHistory = () => {
               aria-label={t(($) => $['changeHistory.title'], { ns: 'workflow' })}
               className={cn(
                 'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                nodesReadOnly &&
-                  'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+                'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
               )}
               onClick={() => {
                 if (nodesReadOnly) return
