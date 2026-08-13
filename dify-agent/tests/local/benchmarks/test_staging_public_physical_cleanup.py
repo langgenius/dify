@@ -139,6 +139,59 @@ def test_parent_captures_private_targets_before_delete_and_waits_for_two_zero_ch
     assert "never-serialize-this-key" not in result.database.model_dump_json()
 
 
+def test_parent_replays_exact_retired_workspaces_once_after_a_ledger_only_stall(
+    tmp_path: Path,
+) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 2)
+    clock = _Clock()
+    base_runner = _runner([])
+    replay_payloads: list[dict[str, object]] = []
+    replayed = False
+
+    def runner(argv, stdin):
+        nonlocal replayed
+        script = argv[-1]
+        if "replay-retired-workspaces" in script:
+            assert stdin is not None
+            payload = json.loads(stdin)
+            replay_payloads.append(payload)
+            replayed = True
+            return json.dumps({"enqueued": True, "target_count": len(payload["workspace_ids"])})
+        if "count-targets" in script:
+            remaining = 0 if replayed else 2
+            return json.dumps(
+                {"conversations": 0, "workspaces": remaining, "bindings": remaining}
+            )
+        return base_runner(argv, stdin)
+
+    result = reconcile_staging_public_resources(
+        allocation_journal_path=journal,
+        private_manifest_path=tmp_path / "private" / "cleanup.json",
+        invocation_id="scaling.r1.shell.c20",
+        requested_concurrency=2,
+        service_api_base_url="https://api-staging.dify.dev/v1/",
+        service_api_key=SecretStr("key"),
+        benchmark_tenant_id="benchmark-tenant",
+        runner=runner,
+        conversation_deleter=lambda _conversation_id, _end_user: 204,
+        vendor_remaining_probe=_vendor_probe(clock),
+        cleanup_timeout_seconds=100,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert result.joint.complete is True
+    assert replay_payloads == [
+        {
+            "tenant_id": "benchmark-tenant",
+            "workspace_ids": ["workspace-0", "workspace-1"],
+        }
+    ]
+    replay_calls = [call for call in replay_payloads]
+    assert len(replay_calls) == 1
+
+
 def test_db_and_vendor_zero_windows_are_not_synthesized_when_they_do_not_overlap(tmp_path: Path) -> None:
     journal = tmp_path / "allocations.jsonl"
     _journal(journal, 1)

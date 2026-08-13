@@ -30,6 +30,9 @@ from benchmarks.staging_public_locust import bounded_end_user
 CommandRunner = Callable[[Sequence[str], str | None], str]
 ConversationDeleter = Callable[[str, str], int]
 VendorRemainingProbe = Callable[[], "StagingVendorRemainingSample"]
+StalledResourceReplayer = Callable[[tuple[str, ...]], None]
+
+STALLED_CLEANUP_REPLAY_AFTER_SECONDS = 60
 
 
 class StagingDatabaseCleanupEvidence(BaseModel):
@@ -245,6 +248,7 @@ def reconcile_staging_public_resources(
     conversation_deleter: ConversationDeleter | None = None,
     before_delete: Callable[[Path], None] | None = None,
     vendor_remaining_probe: VendorRemainingProbe,
+    benchmark_tenant_id: str | None = None,
     monotonic: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
 ) -> StagingPhysicalCleanupResult:
@@ -260,6 +264,8 @@ def reconcile_staging_public_resources(
         raise ValueError("private cleanup manifest must not already exist")
     if cleanup_timeout_seconds < 20:
         raise ValueError("physical cleanup timeout must allow two zero checks")
+    if benchmark_tenant_id is not None and not benchmark_tenant_id.strip():
+        raise ValueError("benchmark tenant identity must not be empty")
     invoke = runner or _run_command
     allocations = _read_allocations(
         allocation_journal_path,
@@ -329,6 +335,23 @@ def reconcile_staging_public_resources(
             )
         next_delete_at = max(next_delete_at + 0.5, monotonic())
 
+    stalled_resource_replayer: StalledResourceReplayer | None = None
+    if targets and benchmark_tenant_id is not None:
+        if api_pod is None:
+            raise RuntimeError("database cleanup probe Pod was missing")
+
+        def replay(workspace_ids: tuple[str, ...]) -> None:
+            _replay_retired_workspace_collection(
+                invoke,
+                api_pod=api_pod,
+                kube_context=kube_context,
+                namespace=namespace,
+                tenant_id=benchmark_tenant_id,
+                workspace_ids=workspace_ids,
+            )
+
+        stalled_resource_replayer = replay
+
     database, joint = _wait_for_joint_zero(
         invoke,
         api_pod=api_pod,
@@ -337,6 +360,7 @@ def reconcile_staging_public_resources(
         targets=targets,
         timeout_seconds=cleanup_timeout_seconds,
         vendor_remaining_probe=vendor_remaining_probe,
+        stalled_resource_replayer=stalled_resource_replayer,
         monotonic=monotonic,
         sleep=sleep,
     )
@@ -667,6 +691,7 @@ def _wait_for_joint_zero(
     targets: Sequence[_Target],
     timeout_seconds: float,
     vendor_remaining_probe: VendorRemainingProbe,
+    stalled_resource_replayer: StalledResourceReplayer | None,
     monotonic: Callable[[], float],
     sleep: Callable[[float], None],
 ) -> tuple[StagingDatabaseCleanupEvidence, StagingJointCleanupEvidence]:
@@ -680,6 +705,7 @@ def _wait_for_joint_zero(
     latest_vendor = len(targets)
     database_errors: list[str] = []
     joint_errors: list[str] = []
+    replay_attempted = False
     while monotonic() - started <= timeout_seconds:
         if targets:
             if api_pod is None:
@@ -734,6 +760,19 @@ def _wait_for_joint_zero(
             first_joint_zero_at = None
             first_joint_vendor_timestamp = None
             joint_zero_checks = 0
+        if (
+            not replay_attempted
+            and stalled_resource_replayer is not None
+            and now - started >= STALLED_CLEANUP_REPLAY_AFTER_SECONDS
+            and latest["conversations"] == 0
+            and latest_vendor == 0
+            and (latest["workspaces"] > 0 or latest["bindings"] > 0)
+        ):
+            # The product collector intentionally treats individual destroy
+            # failures as best-effort. Re-enqueue this immutable manifest once
+            # after a sustained ledger-only stall; deleted targets are no-ops.
+            stalled_resource_replayer(tuple(item.workspace_id for item in targets))
+            replay_attempted = True
         sleep(5)
     if database_zero_checks < 2:
         database_errors.append("database Agent resources did not remain zero for two checks ten seconds apart")
@@ -768,6 +807,28 @@ def _wait_for_joint_zero(
         errors=joint_errors,
     )
     return database, joint
+
+
+def _replay_retired_workspace_collection(
+    runner: CommandRunner,
+    *,
+    api_pod: str,
+    kube_context: str,
+    namespace: str,
+    tenant_id: str,
+    workspace_ids: tuple[str, ...],
+) -> None:
+    raw = _exec_private_probe(
+        runner,
+        api_pod=api_pod,
+        kube_context=kube_context,
+        namespace=namespace,
+        script=_REPLAY_RETIRED_WORKSPACES_SCRIPT,
+        payload={"tenant_id": tenant_id, "workspace_ids": workspace_ids},
+    )
+    value = _parse_private_probe_json_object(raw)
+    if value != {"enqueued": True, "target_count": len(workspace_ids)}:
+        raise RuntimeError("retired Agent Workspace replay returned an invalid response")
 
 
 def _exec_private_probe(
@@ -956,6 +1017,14 @@ p=json.load(sys.stdin)
 with app.app_context(), db.session() as s:
  out={'conversations':s.scalar(select(func.count()).select_from(Conversation).where(Conversation.id.in_(p['conversation_ids']))) or 0,'workspaces':s.scalar(select(func.count()).select_from(AgentWorkspace).where(AgentWorkspace.id.in_(p['workspace_ids']))) or 0,'bindings':s.scalar(select(func.count()).select_from(AgentWorkspaceBinding).where(AgentWorkspaceBinding.id.in_(p['binding_ids']))) or 0}
 print(json.dumps(out,separators=(',',':')))
+'''
+
+_REPLAY_RETIRED_WORKSPACES_SCRIPT = r'''# dify-benchmark-replay-retired-workspaces
+import json,sys
+from app import celery
+p=json.load(sys.stdin)
+celery.send_task('tasks.collect_agent_resources_task.collect_agent_resources',kwargs={'tenant_id':p['tenant_id'],'workspace_ids':p['workspace_ids'],'binding_ids':[],'home_snapshot_ids':[]},queue='retention')
+print(json.dumps({'enqueued':True,'target_count':len(p['workspace_ids'])},separators=(',',':')))
 '''
 
 
