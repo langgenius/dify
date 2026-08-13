@@ -503,6 +503,30 @@ def test_capacity_window_mapping_accepts_sixty_phase_offset_samples() -> None:
     assert mapped.error is None
 
 
+def test_capacity_window_mapping_tolerates_remote_poll_jitter_without_hiding_a_gap() -> None:
+    measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
+    measurement_ended_at = measurement_started_at + timedelta(seconds=3)
+    samples = [
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=1)}),
+        _sample(10, 5, "ok").model_copy(
+            update={"timestamp": _STARTED_AT + timedelta(seconds=2, milliseconds=4)}
+        ),
+        _sample(10, 5, "ok").model_copy(
+            update={"timestamp": _STARTED_AT + timedelta(seconds=3, milliseconds=8)}
+        ),
+    ]
+
+    mapped = observer_module.capacity_e2b_observation_for_window(
+        samples,
+        measurement_started_at=measurement_started_at,
+        measurement_ended_at=measurement_ended_at,
+    )
+
+    assert mapped.sample_count == 3
+    assert mapped.observation_complete is True
+    assert mapped.error is None
+
+
 def test_sample_schema_rejects_counts_on_failure_and_missing_counts_on_success() -> None:
     with pytest.raises(ValidationError):
         _ = _sample(None, None, "ok")

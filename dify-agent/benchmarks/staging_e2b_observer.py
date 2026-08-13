@@ -43,6 +43,10 @@ E2B_OBSERVER_STOP_FILE_ENV = "BENCH_E2B_OBSERVER_STOP_FILE"
 E2B_FREE_RUNNING_LIMIT = 20
 E2B_LIMIT_CONSECUTIVE_SECONDS = 3
 E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS = 1
+# The local observer polls a remote Vendor API.  A few milliseconds of process
+# scheduling or request jitter must not turn an otherwise contiguous one-Hz
+# window into a false coverage gap; a missing sample is still roughly 2s.
+E2B_WINDOW_CADENCE_TOLERANCE_SECONDS = 0.25
 E2B_OBSERVER_MAX_DURATION_SECONDS = 6 * 60 * 60
 E2B_LIST_REQUEST_TIMEOUT_SECONDS = 0.8
 E2B_LIST_PAGE_SIZE = 100
@@ -819,7 +823,9 @@ def _window_has_cadence_coverage(
 
     if not samples:
         return False
-    cadence = timedelta(seconds=E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS)
+    cadence = timedelta(
+        seconds=E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS + E2B_WINDOW_CADENCE_TOLERANCE_SECONDS
+    )
     timestamps = [
         _as_utc(sample.timestamp, field_name="E2B sample timestamp")
         for sample in samples
