@@ -252,6 +252,35 @@ def test_search_applies_document_filter_to_child_chunks(monkeypatch: pytest.Monk
     assert documents == []
 
 
+def test_search_ignores_child_chunks_from_other_datasets_and_missing_nodes(
+    monkeypatch: pytest.MonkeyPatch, patched_runtime
+):
+    keyword = Jieba(_dataset(_dataset_keyword_table()))
+    child_chunk = ChildChunk(
+        tenant_id="tenant-2",
+        dataset_id="dataset-other",
+        document_id="doc-other",
+        segment_id="segment-other",
+        position=1,
+        content="other-dataset-child",
+        word_count=1,
+        created_by="user-2",
+        index_node_id="child-other",
+        index_node_hash="hash-other",
+    )
+    patched_runtime.session.add(child_chunk)
+    patched_runtime.session.flush()
+    monkeypatch.setattr(
+        keyword,
+        "_retrieve_ids_by_query",
+        MagicMock(return_value=["child-other", "missing-node"]),
+    )
+
+    documents = keyword.search("query", session=patched_runtime.session, top_k=2)
+
+    assert documents == []
+
+
 def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
     db_keyword = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="database")
     patched_runtime.session.add(db_keyword)
