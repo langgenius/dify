@@ -800,9 +800,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           const message = t(($) => $[messageKey])
           const reference =
             task?.failure?.traceId && task.failure.category === 'internal'
-              ? t(($) => $['newKnowledge.taskFailure.reference'], {
-                  traceId: task.failure.traceId,
-                })
+              ? `${t(($) => $['newKnowledge.taskFailure.diagnosticId'])}: ${task.failure.traceId}`
               : undefined
           return [[document.id, reference ? `${message}\n${reference}` : message] as const]
         }),

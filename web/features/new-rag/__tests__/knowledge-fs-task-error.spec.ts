@@ -24,7 +24,7 @@ describe('KnowledgeFS task error presentation', () => {
     })
 
     expect(knowledgeFsTaskFailureMessageKey(modelFailure)).toBe(
-      'newKnowledge.taskFailure.configuration',
+      'newKnowledge.taskFailure.modelConfiguration',
     )
     expect(knowledgeFsTaskRecoveryPath(modelFailure, 'space-1')).toBe(
       '/datasets/new/space-1/settings',
@@ -37,12 +37,12 @@ describe('KnowledgeFS task error presentation', () => {
     ).toBeUndefined()
   })
 
-  it('uses generic localized categories instead of provider messages', () => {
+  it('uses localized model-service guidance instead of provider messages', () => {
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'timeout', code: 'MODEL_RUNTIME_TIMEOUT' }),
       ),
-    ).toBe('newKnowledge.taskFailure.temporary')
+    ).toBe('newKnowledge.taskFailure.modelService')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({ category: 'authorization', code: 'KNOWLEDGE_FS_ACCESS_DENIED' }),
@@ -59,7 +59,7 @@ describe('KnowledgeFS task error presentation', () => {
           retryPolicy: 'after_configuration',
         }),
       ),
-    ).toBe('newKnowledge.taskFailure.configuration')
+    ).toBe('newKnowledge.taskFailure.modelConfiguration')
     expect(
       knowledgeFsTaskFailureMessageKey(
         failure({
@@ -68,7 +68,22 @@ describe('KnowledgeFS task error presentation', () => {
           retryPolicy: 'automatic',
         }),
       ),
-    ).toBe('newKnowledge.taskFailure.temporary')
+    ).toBe('newKnowledge.taskFailure.modelService')
+  })
+
+  it('distinguishes document, parser, source, and upload failures', () => {
+    expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'DOCUMENT_COMPILATION_FAILED' }))).toBe(
+      'newKnowledge.taskFailure.documentProcessing',
+    )
+    expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'DOCUMENT_PARSER_UNAVAILABLE' }))).toBe(
+      'newKnowledge.taskFailure.parser',
+    )
+    expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'SOURCE_SYNC_FAILED' }))).toBe(
+      'newKnowledge.taskFailure.source',
+    )
+    expect(knowledgeFsTaskFailureMessageKey(failure({ code: 'UPLOAD_INTEGRITY_MISMATCH' }))).toBe(
+      'newKnowledge.taskFailure.upload',
+    )
   })
 
   it('provides safe compatibility behavior for legacy error codes', () => {

@@ -1040,15 +1040,68 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const failedStatus = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.configuration',
+      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.modelConfiguration',
     })
-    expect(screen.queryByText('dataset.newKnowledge.taskFailure.configuration')).toBeNull()
+    expect(screen.queryByText('dataset.newKnowledge.taskFailure.modelConfiguration')).toBeNull()
 
     await user.hover(failedStatus)
 
     expect(
-      await screen.findByText('dataset.newKnowledge.taskFailure.configuration'),
+      await screen.findByText('dataset.newKnowledge.taskFailure.modelConfiguration'),
     ).toBeInTheDocument()
+  })
+
+  it('explains structured task failures and labels diagnostic identifiers', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'failed-document', title: 'Failed report.pdf' })] }],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [
+            task({
+              documentId: 'failed-document',
+              failure: {
+                action: 'contact_admin',
+                category: 'internal',
+                code: 'DOCUMENT_COMPILATION_FAILED',
+                message: 'Safe server fallback',
+                retryPolicy: 'manual',
+                traceId: 'cef52296-3aa7-41ec-9953-2bbe030fdf6c',
+              },
+              id: 'failed-task',
+              state: 'failed',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+
+    const panel = screen.getByRole('dialog', { name: 'dataset.newKnowledge.backgroundTasks' })
+    expect(
+      within(panel).getByText('dataset.newKnowledge.taskFailure.documentProcessing'),
+    ).toBeInTheDocument()
+    expect(within(panel).queryByText('DOCUMENT_COMPILATION_FAILED')).not.toBeInTheDocument()
+
+    await user.click(
+      within(panel).getByRole('button', {
+        name: 'dataset.newKnowledge.taskFailure.technicalDetails',
+      }),
+    )
+
+    expect(within(panel).getByText('DOCUMENT_COMPILATION_FAILED')).toBeInTheDocument()
+    expect(
+      within(panel).getByText('dataset.newKnowledge.taskFailure.diagnosticId:'),
+    ).toBeInTheDocument()
+    expect(within(panel).getByText('cef52296-3aa7-41ec-9953-2bbe030fdf6c')).toBeInTheDocument()
   })
 
   it('downloads the active revision from the document action menu', async () => {
