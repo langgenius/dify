@@ -1161,6 +1161,9 @@ class KnowledgeFSSettingsResponse(ResponseModel):
     configuration_state: Literal["active", "pending-validation", "setup-required", "validation-failed"] = Field(
         validation_alias=AliasChoices("configuration_state", "configurationState")
     )
+    active_profile_available: bool = Field(
+        validation_alias=AliasChoices("active_profile_available", "activeProfileAvailable")
+    )
     embedding: KnowledgeFSEmbeddingSettingsResponse | None
     retrieval: KnowledgeFSRetrievalSettingsResponse | None
 

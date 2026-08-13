@@ -163,6 +163,7 @@ class RecordingRemote:
             }
         if request.operation_id in {"getSettings", "updateSettings"}:
             return {
+                "activeProfileAvailable": False,
                 "configurationState": "pending-validation",
                 "embedding": {
                     "model": "embed-v1",
@@ -427,15 +428,23 @@ class RecordingRemote:
 
 
 class ActiveSettingsRemote(RecordingRemote):
-    def __init__(self, *, configuration_state: str = "active", rerank_enabled: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        active_profile_available: bool = True,
+        configuration_state: str = "active",
+        rerank_enabled: bool = True,
+    ) -> None:
         super().__init__()
+        self.active_profile_available = active_profile_available
         self.configuration_state = configuration_state
         self.rerank_enabled = rerank_enabled
 
     def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
-        self.requests.append(request)
         if request.operation_id == "getSettings":
+            self.requests.append(request)
             return {
+                "activeProfileAvailable": self.active_profile_available,
                 "configurationState": self.configuration_state,
                 "embedding": {
                     "model": "embed-v1",
@@ -473,6 +482,7 @@ class ActiveSettingsRemote(RecordingRemote):
                 "revision": 9,
             }
         if request.operation_id in {"updateEmbeddingProfile", "updateRetrievalProfile"}:
+            self.requests.append(request)
             return {
                 "changedKind": "embedding" if request.operation_id == "updateEmbeddingProfile" else "retrieval",
                 "checkpoint": "queued",
@@ -484,6 +494,7 @@ class ActiveSettingsRemote(RecordingRemote):
                 "updatedAt": "2026-07-28T00:00:00Z",
             }
         if request.operation_id == "getProfileMigration":
+            self.requests.append(request)
             return {
                 "changedKind": "embedding",
                 "checkpoint": "activated",
@@ -1248,8 +1259,12 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
     }
 
 
-def test_setup_required_legacy_settings_with_revisions_use_the_migration_route() -> None:
-    remote = ActiveSettingsRemote(configuration_state="setup-required", rerank_enabled=False)
+def test_setup_required_settings_without_active_profile_use_product_settings_route() -> None:
+    remote = ActiveSettingsRemote(
+        active_profile_available=False,
+        configuration_state="setup-required",
+        rerank_enabled=False,
+    )
     facade = KnowledgeFSDataFacade(
         broker=RecordingBroker(),
         remote=remote,
@@ -1286,12 +1301,33 @@ def test_setup_required_legacy_settings_with_revisions_use_the_migration_route()
         ),
     )
 
-    assert result.settings.configuration_state == "setup-required"
-    assert result.migration is not None
+    assert result.settings.configuration_state == "pending-validation"
+    assert result.migration is None
     assert [request.operation_id for request in remote.requests] == [
         "getSettings",
-        "updateRetrievalProfile",
+        "updateSettings",
     ]
+    assert remote.requests[1].payload == {
+        "expectedRevision": 9,
+        "retrieval": {
+            "defaultMode": "fast",
+            "reasoningModel": {
+                "model": "reason-v1",
+                "pluginId": "plugin-1",
+                "provider": "provider-1",
+            },
+            "rerank": {
+                "enabled": True,
+                "model": {
+                    "model": "rerank-v1",
+                    "pluginId": "plugin-1",
+                    "provider": "provider-1",
+                },
+            },
+            "scoreThreshold": {"enabled": False, "stage": "rerank", "value": 0.5},
+            "topK": 3,
+        },
+    }
 
 
 def test_get_profile_migration_uses_the_durable_migration_route() -> None:

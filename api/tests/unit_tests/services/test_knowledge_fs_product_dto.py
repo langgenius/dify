@@ -68,6 +68,7 @@ def test_settings_response_serializes_rerank_plugin_id_with_its_public_alias() -
     response = KnowledgeFSSettingsResponse.model_validate(
         {
             "revision": 1,
+            "active_profile_available": True,
             "configuration_state": "active",
             "embedding": None,
             "retrieval": {
