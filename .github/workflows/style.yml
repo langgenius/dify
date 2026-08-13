@@ -6,6 +6,11 @@ on:
       base-rev:
         required: true
         type: string
+      skip-checks:
+        description: Create the required check runs without repeating previously successful work.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   checks: write
@@ -15,6 +20,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
 
     steps:
@@ -79,6 +85,7 @@ jobs:
 
   web-style:
     name: Web Style
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
     defaults:
       run:
@@ -138,6 +145,7 @@ jobs:
 
   ts-common-style:
     name: TS Common
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04-4
     permissions:
       checks: write
@@ -181,6 +189,7 @@ jobs:
 
   superlinter:
     name: SuperLinter
+    if: ${{ !inputs.skip-checks }}
     runs-on: depot-ubuntu-24.04
 
     steps:

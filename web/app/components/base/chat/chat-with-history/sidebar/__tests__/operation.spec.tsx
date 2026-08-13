@@ -109,7 +109,7 @@ describe('Operation', () => {
     expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
   })
 
-  it('should close dropdown when item hovering stops', async () => {
+  it('should let the menu primitive own open state when item hovering stops', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<Operation {...defaultProps} isItemHovering={true} />)
 
@@ -118,9 +118,8 @@ describe('Operation', () => {
 
     rerender(<Operation {...defaultProps} isItemHovering={false} />)
 
-    await waitFor(() => {
-      expect(screen.queryByText('explore.sidebar.action.pin')).not.toBeInTheDocument()
-    })
+    expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
+    expect(getTrigger()).toHaveAttribute('data-popup-open')
   })
 
   it('should keep the trigger mounted while visually hidden', () => {

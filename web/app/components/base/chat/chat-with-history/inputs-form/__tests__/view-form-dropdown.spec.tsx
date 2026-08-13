@@ -98,16 +98,16 @@ describe('ViewFormDropdown', () => {
     expect(screen.getByText('Num Form')).toBeInTheDocument()
   })
 
-  it('applies correct state to ActionButton when open', async () => {
+  it('exposes popup-open state on the trigger', async () => {
     const user = userEvent.setup()
     render(<ViewFormDropdown />)
     const trigger = screen.getByRole('button', { name: 'share.chat.viewChatSettings' })
 
     // closed state
-    expect(trigger).not.toHaveClass('action-btn-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     // open state
     await user.click(trigger)
-    expect(trigger).toHaveClass('action-btn-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 })

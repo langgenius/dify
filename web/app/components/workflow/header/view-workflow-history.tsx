@@ -1,6 +1,6 @@
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,26 +156,22 @@ const ViewWorkflowHistory = () => {
             )
           }
           render={
-            <Button
-              variant="ghost"
-              size="small"
+            <IconButton
+              size="lg"
               disabled={nodesReadOnly}
               focusableWhenDisabled
               aria-label={t(($) => $['changeHistory.title'], { ns: 'workflow' })}
-              className={cn(
-                'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
-              )}
+              className="rounded-md"
               onClick={() => {
                 if (nodesReadOnly) return
                 setCurrentLogItem()
                 setShowMessageLogModal(false)
               }}
-            />
+            >
+              <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
-        </PopoverTrigger>
+        />
       </TipPopup>
       <PopoverContent
         placement="bottom-end"
@@ -188,14 +184,14 @@ const ViewWorkflowHistory = () => {
             </div>
             <PopoverClose
               render={
-                <Button
+                <IconButton
                   variant="ghost"
-                  size="small"
+                  size="md"
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 shrink-0 p-0 text-text-secondary hover:bg-state-base-hover"
+                  className="shrink-0 text-text-secondary hover:bg-state-base-hover"
                 >
                   <span aria-hidden className="i-ri-close-line size-4 text-text-secondary" />
-                </Button>
+                </IconButton>
               }
               onClick={() => {
                 setCurrentLogItem()

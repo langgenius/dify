@@ -1,12 +1,12 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -110,12 +110,12 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             </PopoverContent>
           </Popover>
         </div>
-        <ActionButton
+        <IconButton
           aria-label={t(($) => $['detailPanel.endpointModalTitle'], { ns: 'plugin' })}
           onClick={showEndpointModal}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
-        </ActionButton>
+        </IconButton>
       </div>
       {data.endpoints.length === 0 && (
         <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
