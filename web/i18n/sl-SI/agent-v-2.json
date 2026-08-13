@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Vozlišča",
   "agentDetail.access.workflow.table.version": "Različica",
   "agentDetail.access.workflow.title": "Dostop do poteka dela",
-  "agentDetail.configure.advancedSettings.description": "Za napredne uporabnike. Okoljske spremenljivke, sandbox in pomnilnik.",
+  "agentDetail.configure.advancedSettings.description": "Za napredne uporabnike, na primer okoljske spremenljivke.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Dodaj okoljsko spremenljivko",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Izbriši {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Skrij vrednost {{key}}",
