@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
@@ -421,15 +422,22 @@ class WorkflowAgentRuntimeRequestBuilder:
             )
         return resolved
 
-    @staticmethod
-    def _summarize_value(value: Any) -> str:
-        prompt_payload, used_download_mapping = WorkflowAgentRuntimeRequestBuilder._resolve_prompt_payload_value(value)
+    # Truncation threshold for free-form string values interpolated into
+    # the agent prompt. Upstream LLM context windows handle far more than
+    # this, but the truncation avoids runaway token usage on huge upstream
+    # payloads. Override via env (\`AGENT_V2_PROMPT_VALUE_MAX_CHARS\`) for
+    # operators who need a higher ceiling. Regression for #40729.
+    _PROMPT_VALUE_MAX_CHARS = int(os.environ.get("AGENT_V2_PROMPT_VALUE_MAX_CHARS", "2000"))
+
+    @classmethod
+    def _summarize_value(cls, value: Any) -> str:
+        prompt_payload, used_download_mapping = cls._resolve_prompt_payload_value(value)
         if used_download_mapping:
             return json.dumps(prompt_payload, ensure_ascii=False, separators=(",", ":"))
 
         text = str(value)
-        if len(text) > 2000:
-            return text[:2000] + "...[truncated]"
+        if len(text) > cls._PROMPT_VALUE_MAX_CHARS:
+            return text[: cls._PROMPT_VALUE_MAX_CHARS] + "...[truncated]"
         return text
 
     @classmethod

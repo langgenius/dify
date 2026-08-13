@@ -1639,3 +1639,40 @@ def test_feature_manifest_treats_empty_knowledge_sets_as_not_configured():
 
     manifest = build_runtime_feature_manifest(soul)
     assert manifest["reserved_status"]["knowledge"] == "not_configured"
+
+
+def test_summarize_value_truncates_at_class_threshold(monkeypatch: pytest.MonkeyPatch):
+    """Regression for #40729: long variable values are truncated at the
+    class-level `_PROMPT_VALUE_MAX_CHARS` threshold instead of a hard-coded
+    2000. The default stays 2000 unless overridden via
+    `AGENT_V2_PROMPT_VALUE_MAX_CHARS`.
+    """
+    from core.workflow.nodes.agent_v2.runtime_request_builder import (
+        WorkflowAgentRuntimeRequestBuilder,
+    )
+
+    short = "x" * 100
+    assert "...[truncated]" not in WorkflowAgentRuntimeRequestBuilder._summarize_value(short)
+
+    long = "x" * 3000
+    truncated = WorkflowAgentRuntimeRequestBuilder._summarize_value(long)
+    assert truncated.endswith("...[truncated]")
+    assert len(truncated) < 3000
+
+    # Default threshold is 2000.
+    threshold = WorkflowAgentRuntimeRequestBuilder._PROMPT_VALUE_MAX_CHARS
+    assert threshold == 2000
+
+    # Operators can raise the ceiling via env.
+    monkeypatch.setenv("AGENT_V2_PROMPT_VALUE_MAX_CHARS", "5000")
+    # Re-import to re-read the env constant. The class is already loaded,
+    # so patch the constant directly.
+    monkeypatch.setattr(
+        WorkflowAgentRuntimeRequestBuilder,
+        "_PROMPT_VALUE_MAX_CHARS",
+        5000,
+    )
+    longer = "y" * 4500
+    truncated = WorkflowAgentRuntimeRequestBuilder._summarize_value(longer)
+    assert "...[truncated]" not in truncated
+    assert len(truncated) == 4500
