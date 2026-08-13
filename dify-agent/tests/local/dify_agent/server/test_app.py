@@ -155,6 +155,31 @@ class FakeHttpxModule:
     AsyncClient: ClassVar[type[FakePluginDaemonHttpClient]] = FakePluginDaemonHttpClient
 
 
+@pytest.mark.parametrize(
+    ("path", "authorized_status"),
+    [
+        ("/runs", 422),
+        ("/execution-bindings", 503),
+        ("/home-snapshots/from-binding", 503),
+        ("/execution-bindings/files/list", 503),
+    ],
+)
+def test_create_app_authenticates_control_plane_routes(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    authorized_status: int,
+) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token="secret-token")
+
+    with TestClient(create_app(settings)) as client:
+        assert client.post(path, json={}).status_code == 401
+        assert client.post(path, headers={"Authorization": "Bearer wrong"}, json={}).status_code == 401
+        response = client.post(path, headers={"Authorization": "Bearer secret-token"}, json={})
+
+    assert response.status_code == authorized_status
+
+
 def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis = FakeRedis()
     fake_http_client = FakePluginDaemonHttpClient()

@@ -16,6 +16,7 @@ from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionB
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
@@ -426,7 +427,10 @@ class AgentWorkspaceService:
         base_url = dify_config.AGENT_BACKEND_BASE_URL
         if not base_url:
             raise AgentWorkspaceError("Dify Agent backend is required for Workspace operations")
-        return Client(base_url=base_url)
+        return create_agent_backend_client(
+            base_url=base_url,
+            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        )
 
 
 __all__ = [

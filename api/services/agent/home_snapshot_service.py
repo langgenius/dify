@@ -7,6 +7,7 @@ from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
@@ -159,7 +160,10 @@ class AgentHomeSnapshotService:
         base_url = dify_config.AGENT_BACKEND_BASE_URL
         if not base_url:
             raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations")
-        return Client(base_url=base_url)
+        return create_agent_backend_client(
+            base_url=base_url,
+            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        )
 
 
 def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str | None) -> None:
