@@ -297,7 +297,34 @@ export function KnowledgeSettingsForm({
   })
   const completedBasicSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
   const handledMigrationIdRef = useRef<string | undefined>(undefined)
+  const migratingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
   const pendingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
+  const queuedSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
+  const resumeSettingsQueueAfterMigrationRef = useRef(false)
+  const settingsSaveRunnerRef = useRef<(draft: SettingsDraft) => void>(() => undefined)
+  const settingsSaveInFlightRef = useRef(false)
+  const settingsDraftOwnsFormLockRef = useRef(false)
+  const liveSettingsDraftRef = useRef<SettingsDraft>({
+    embeddingModel: initialEmbeddingModel,
+    reasoningModel: initialReasoningModel,
+    rerankModel: initialRerankModel,
+    retrievalMode: initialRetrievalMode,
+    scoreThreshold: initialScoreThreshold,
+    scoreThresholdEnabled: initialScoreThresholdEnabled,
+    topK: initialTopK,
+  })
+  const embeddingBaselineRef = useRef(modelFingerprint(initialEmbeddingModel))
+  const retrievalBaselineRef = useRef(
+    retrievalFingerprint({
+      mode: initialRetrievalMode,
+      reasoningModel: initialReasoningModel,
+      rerankModel: initialRerankModel,
+      scoreThreshold: initialScoreThreshold,
+      scoreThresholdEnabled: initialScoreThresholdEnabled,
+      topK: initialTopK,
+    }),
+  )
+  const basicDirtyRef = useRef(false)
   const settingsRevisionRef = useRef(settings.revision)
   const settingsPropRevisionRef = useRef(settings.revision)
   const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -346,6 +373,8 @@ export function KnowledgeSettingsForm({
   const embeddingDirty = currentEmbeddingFingerprint !== embeddingBaseline
   const retrievalDirty = currentRetrievalFingerprint !== retrievalBaseline
   const basicDirty = spaceDirty || membersDirty
+  liveSettingsDraftRef.current = currentSettingsDraft
+  basicDirtyRef.current = basicDirty
   const isDirty = basicDirty
   const nameInvalid = !name.trim()
   const descriptionInvalid = Array.from(description).length > KNOWLEDGE_DESCRIPTION_MAX_LENGTH
@@ -397,6 +426,13 @@ export function KnowledgeSettingsForm({
   const saveDisabled =
     !basicDirty || nameInvalid || descriptionInvalid || membersInvalid || isSaving || serverConflict
   const startDraft = () => onDraftStart?.()
+  const beginSettingsDraft = (patch: Partial<SettingsDraft>) => {
+    if (!basicDirtyRef.current) settingsDraftOwnsFormLockRef.current = true
+    onDraftStart?.()
+    const draft = { ...liveSettingsDraftRef.current, ...patch }
+    liveSettingsDraftRef.current = draft
+    return draft
+  }
 
   const resetDraft = () => {
     setName(initialName)
@@ -433,23 +469,37 @@ export function KnowledgeSettingsForm({
 
     if (migration?.run_state === 'succeeded') {
       handledMigrationIdRef.current = pendingMigrationId
-      const savedDraft = pendingSettingsDraftRef.current
-      if (savedDraft) setEmbeddingBaseline(modelFingerprint(savedDraft.embeddingModel))
+      const savedDraft = migratingSettingsDraftRef.current
       if (savedDraft) {
-        setRetrievalBaseline(
-          retrievalFingerprint({
-            mode: savedDraft.retrievalMode,
-            reasoningModel: savedDraft.reasoningModel,
-            rerankModel: savedDraft.rerankModel,
-            scoreThreshold: savedDraft.scoreThreshold,
-            scoreThresholdEnabled: savedDraft.scoreThresholdEnabled,
-            topK: savedDraft.topK,
-          }),
-        )
+        const savedEmbeddingFingerprint = modelFingerprint(savedDraft.embeddingModel)
+        embeddingBaselineRef.current = savedEmbeddingFingerprint
+        setEmbeddingBaseline(savedEmbeddingFingerprint)
+      }
+      if (savedDraft) {
+        const savedRetrievalFingerprint = retrievalFingerprint({
+          mode: savedDraft.retrievalMode,
+          reasoningModel: savedDraft.reasoningModel,
+          rerankModel: savedDraft.rerankModel,
+          scoreThreshold: savedDraft.scoreThreshold,
+          scoreThresholdEnabled: savedDraft.scoreThresholdEnabled,
+          topK: savedDraft.topK,
+        })
+        retrievalBaselineRef.current = savedRetrievalFingerprint
+        setRetrievalBaseline(savedRetrievalFingerprint)
       }
       void invalidateSettingsQueries().then(() => {
-        pendingSettingsDraftRef.current = undefined
+        migratingSettingsDraftRef.current = undefined
+        if (!queuedSettingsDraftRef.current) pendingSettingsDraftRef.current = undefined
+        resumeSettingsQueueAfterMigrationRef.current = Boolean(queuedSettingsDraftRef.current)
         setPendingMigrationId(undefined)
+        if (
+          !queuedSettingsDraftRef.current &&
+          settingsDraftOwnsFormLockRef.current &&
+          !basicDirtyRef.current
+        ) {
+          settingsDraftOwnsFormLockRef.current = false
+          onDraftFinish?.()
+        }
       })
       return
     }
@@ -460,12 +510,20 @@ export function KnowledgeSettingsForm({
       migration?.run_state === 'canceled'
     ) {
       handledMigrationIdRef.current = pendingMigrationId
+      migratingSettingsDraftRef.current = undefined
+      resumeSettingsQueueAfterMigrationRef.current = false
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
       setPendingMigrationId(undefined)
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative failed migration transitions the save UI to its retry state.
       setSaveErrorSlice('settings')
     }
-  }, [invalidateSettingsQueries, migrationQuery.data, migrationQuery.isError, pendingMigrationId])
+  }, [
+    invalidateSettingsQueries,
+    migrationQuery.data,
+    migrationQuery.isError,
+    onDraftFinish,
+    pendingMigrationId,
+  ])
 
   const performBasicSave = async () => {
     if (saveDisabled || !canEdit) return
@@ -553,11 +611,7 @@ export function KnowledgeSettingsForm({
     }
   }
 
-  const performSettingsSave = async (draft: SettingsDraft) => {
-    if (!canEdit || settingsMutation.isPending || pendingMigrationId) return
-
-    if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
-
+  const saveSettingsDraft = async (draft: SettingsDraft) => {
     const nextEmbeddingFingerprint = modelFingerprint(draft.embeddingModel)
     const nextRetrievalFingerprint = retrievalFingerprint({
       mode: draft.retrievalMode,
@@ -567,14 +621,14 @@ export function KnowledgeSettingsForm({
       scoreThresholdEnabled: draft.scoreThresholdEnabled,
       topK: draft.topK,
     })
-    const nextEmbeddingDirty = nextEmbeddingFingerprint !== embeddingBaseline
-    const nextRetrievalDirty = nextRetrievalFingerprint !== retrievalBaseline
+    const nextEmbeddingDirty = nextEmbeddingFingerprint !== embeddingBaselineRef.current
+    const nextRetrievalDirty = nextRetrievalFingerprint !== retrievalBaselineRef.current
     const invalid =
       (nextEmbeddingDirty && !draft.embeddingModel) ||
       (nextRetrievalDirty && (!draft.reasoningModel || !draft.rerankModel)) ||
       (initialModelSetup && nextRetrievalDirty && !draft.embeddingModel) ||
       (!initialModelSetup && nextEmbeddingDirty && nextRetrievalDirty)
-    if (invalid || (!nextEmbeddingDirty && !nextRetrievalDirty)) return
+    if (invalid || (!nextEmbeddingDirty && !nextRetrievalDirty)) return 'skipped' as const
 
     const body: KnowledgeFsSettingsPayload = {
       expectedRevision: settingsRevisionRef.current,
@@ -599,7 +653,6 @@ export function KnowledgeSettingsForm({
     }
 
     setSaveErrorSlice(undefined)
-    pendingSettingsDraftRef.current = draft
     try {
       const result = await settingsMutation.mutateAsync({
         body,
@@ -607,18 +660,85 @@ export function KnowledgeSettingsForm({
       })
       settingsRevisionRef.current = result.settings.revision
       if (result.migration) {
+        migratingSettingsDraftRef.current = draft
         handledMigrationIdRef.current = undefined
         setPendingMigrationId(result.migration.id)
-        return
+        return 'migration' as const
       }
-      if (nextEmbeddingDirty) setEmbeddingBaseline(nextEmbeddingFingerprint)
-      if (nextRetrievalDirty) setRetrievalBaseline(nextRetrievalFingerprint)
-      pendingSettingsDraftRef.current = undefined
+      if (nextEmbeddingDirty) {
+        embeddingBaselineRef.current = nextEmbeddingFingerprint
+        setEmbeddingBaseline(nextEmbeddingFingerprint)
+      }
+      if (nextRetrievalDirty) {
+        retrievalBaselineRef.current = nextRetrievalFingerprint
+        setRetrievalBaseline(nextRetrievalFingerprint)
+      }
       await invalidateSettingsQueries()
+      return 'saved' as const
     } catch {
       setSaveErrorSlice('settings')
+      return 'failed' as const
     }
   }
+
+  const performSettingsSave = async (draft: SettingsDraft) => {
+    if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
+
+    pendingSettingsDraftRef.current = draft
+    if (!canEdit) return
+    if (pendingMigrationId) {
+      queuedSettingsDraftRef.current = draft
+      return
+    }
+    if (settingsSaveInFlightRef.current) {
+      queuedSettingsDraftRef.current = draft
+      return
+    }
+
+    settingsSaveInFlightRef.current = true
+    let nextDraft: SettingsDraft | undefined = draft
+    let saveResult: Awaited<ReturnType<typeof saveSettingsDraft>> = 'skipped'
+    try {
+      while (nextDraft) {
+        queuedSettingsDraftRef.current = undefined
+        saveResult = await saveSettingsDraft(nextDraft)
+        if (saveResult === 'failed' || saveResult === 'migration') break
+        nextDraft = queuedSettingsDraftRef.current
+      }
+    } finally {
+      settingsSaveInFlightRef.current = false
+    }
+
+    if (saveResult === 'failed' || saveResult === 'migration') return
+
+    const latestDraft = liveSettingsDraftRef.current
+    const latestDraftIsSaved =
+      modelFingerprint(latestDraft.embeddingModel) === embeddingBaselineRef.current &&
+      retrievalFingerprint({
+        mode: latestDraft.retrievalMode,
+        reasoningModel: latestDraft.reasoningModel,
+        rerankModel: latestDraft.rerankModel,
+        scoreThreshold: latestDraft.scoreThreshold,
+        scoreThresholdEnabled: latestDraft.scoreThresholdEnabled,
+        topK: latestDraft.topK,
+      }) === retrievalBaselineRef.current
+    if (!latestDraftIsSaved) return
+
+    pendingSettingsDraftRef.current = undefined
+    if (settingsDraftOwnsFormLockRef.current && !basicDirtyRef.current) {
+      settingsDraftOwnsFormLockRef.current = false
+      onDraftFinish?.()
+    }
+  }
+  settingsSaveRunnerRef.current = (draft) => void performSettingsSave(draft)
+
+  useEffect(() => {
+    if (pendingMigrationId || !resumeSettingsQueueAfterMigrationRef.current) return
+    resumeSettingsQueueAfterMigrationRef.current = false
+    const queuedDraft = queuedSettingsDraftRef.current
+    queuedSettingsDraftRef.current = undefined
+    if (queuedDraft) settingsSaveRunnerRef.current(queuedDraft)
+  }, [pendingMigrationId])
 
   const scheduleSettingsSave = (draft: SettingsDraft) => {
     if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
@@ -645,7 +765,7 @@ export function KnowledgeSettingsForm({
       return
     }
     if (saveErrorSlice === 'settings') {
-      void performSettingsSave(pendingSettingsDraftRef.current ?? currentSettingsDraft)
+      void performSettingsSave(pendingSettingsDraftRef.current ?? liveSettingsDraftRef.current)
       return
     }
     requestSave()
@@ -999,8 +1119,9 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
+                  const draft = beginSettingsDraft({ reasoningModel: model })
                   setReasoningModel(model)
-                  void performSettingsSave({ ...currentSettingsDraft, reasoningModel: model })
+                  void performSettingsSave(draft)
                 }}
               />
               {!reasoningModel && (
@@ -1038,8 +1159,9 @@ export function KnowledgeSettingsForm({
                     setEmbeddingDialogOpen(true)
                     return
                   }
+                  const draft = beginSettingsDraft({ embeddingModel: model })
                   setEmbeddingModel(model)
-                  void performSettingsSave({ ...currentSettingsDraft, embeddingModel: model })
+                  void performSettingsSave(draft)
                 }}
               />
               {!embeddingModel && (
@@ -1078,8 +1200,9 @@ export function KnowledgeSettingsForm({
                 readonly={retrievalFieldsDisabled}
                 triggerClassName="w-full"
                 onSelect={(model) => {
+                  const draft = beginSettingsDraft({ rerankModel: model })
                   setRerankModel(model)
-                  void performSettingsSave({ ...currentSettingsDraft, rerankModel: model })
+                  void performSettingsSave(draft)
                 }}
               />
               {!rerankModel && (
@@ -1104,11 +1227,9 @@ export function KnowledgeSettingsForm({
                 disabled={retrievalFieldsDisabled}
                 value={retrievalMode}
                 onChange={(mode) => {
+                  const draft = beginSettingsDraft({ retrievalMode: mode })
                   setRetrievalMode(mode)
-                  void performSettingsSave({
-                    ...currentSettingsDraft,
-                    retrievalMode: mode,
-                  })
+                  void performSettingsSave(draft)
                 }}
               />
             </div>
@@ -1132,11 +1253,12 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     className="w-18 shrink-0"
-                    onBlur={() => void performSettingsSave(currentSettingsDraft)}
+                    onBlur={() => void performSettingsSave(liveSettingsDraftRef.current)}
                     onChange={(event) => {
                       const nextTopK = clamp(Number(event.target.value), TOP_K_MIN, TOP_K_MAX)
+                      const draft = beginSettingsDraft({ topK: nextTopK })
                       setTopK(nextTopK)
-                      scheduleSettingsSave({ ...currentSettingsDraft, topK: nextTopK })
+                      scheduleSettingsSave(draft)
                     }}
                   />
                   <Slider
@@ -1146,8 +1268,9 @@ export function KnowledgeSettingsForm({
                     value={topK}
                     disabled={retrievalFieldsDisabled}
                     onValueChange={(value) => {
+                      const draft = beginSettingsDraft({ topK: value })
                       setTopK(value)
-                      scheduleSettingsSave({ ...currentSettingsDraft, topK: value })
+                      scheduleSettingsSave(draft)
                     }}
                   />
                 </div>
@@ -1163,11 +1286,9 @@ export function KnowledgeSettingsForm({
                     checked={scoreThresholdEnabled}
                     disabled={retrievalFieldsDisabled || !rerankModel}
                     onCheckedChange={(checked) => {
+                      const draft = beginSettingsDraft({ scoreThresholdEnabled: checked })
                       setScoreThresholdEnabled(checked)
-                      void performSettingsSave({
-                        ...currentSettingsDraft,
-                        scoreThresholdEnabled: checked,
-                      })
+                      void performSettingsSave(draft)
                     }}
                   />
                   <label
@@ -1195,19 +1316,15 @@ export function KnowledgeSettingsForm({
                         SCORE_THRESHOLD_MIN,
                         SCORE_THRESHOLD_MAX,
                       )
+                      const draft = beginSettingsDraft({ scoreThreshold: nextScoreThreshold })
                       setScoreThreshold(nextScoreThreshold)
-                      void performSettingsSave({
-                        ...currentSettingsDraft,
-                        scoreThreshold: nextScoreThreshold,
-                      })
+                      void performSettingsSave(draft)
                     }}
                     onChange={(event) => {
                       const nextScoreThreshold = Number(event.target.value)
+                      const draft = beginSettingsDraft({ scoreThreshold: nextScoreThreshold })
                       setScoreThreshold(nextScoreThreshold)
-                      scheduleSettingsSave({
-                        ...currentSettingsDraft,
-                        scoreThreshold: nextScoreThreshold,
-                      })
+                      scheduleSettingsSave(draft)
                     }}
                   />
                   <Slider
@@ -1218,8 +1335,9 @@ export function KnowledgeSettingsForm({
                     value={scoreThreshold}
                     disabled={retrievalFieldsDisabled || !scoreThresholdEnabled}
                     onValueChange={(value) => {
+                      const draft = beginSettingsDraft({ scoreThreshold: value })
                       setScoreThreshold(value)
-                      scheduleSettingsSave({ ...currentSettingsDraft, scoreThreshold: value })
+                      scheduleSettingsSave(draft)
                     }}
                   />
                 </div>
@@ -1301,8 +1419,9 @@ export function KnowledgeSettingsForm({
                 setEmbeddingDialogOpen(false)
                 setPendingEmbeddingModel(undefined)
                 if (!model) return
+                const draft = beginSettingsDraft({ embeddingModel: model })
                 setEmbeddingModel(model)
-                void performSettingsSave({ ...currentSettingsDraft, embeddingModel: model })
+                void performSettingsSave(draft)
               }}
             >
               {tCommon(($) => $['operation.confirm'])}
