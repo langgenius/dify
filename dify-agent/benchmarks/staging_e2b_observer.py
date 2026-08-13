@@ -47,6 +47,7 @@ E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS = 1
 # scheduling or request jitter must not turn an otherwise contiguous one-Hz
 # window into a false coverage gap; a missing sample is still roughly 2s.
 E2B_WINDOW_CADENCE_TOLERANCE_SECONDS = 0.25
+E2B_WINDOW_MINIMUM_SECONDS_FOR_ONE_MISSED_SAMPLE = 60
 E2B_OBSERVER_MAX_DURATION_SECONDS = 6 * 60 * 60
 E2B_LIST_REQUEST_TIMEOUT_SECONDS = 0.8
 E2B_LIST_PAGE_SIZE = 100
@@ -826,14 +827,27 @@ def _window_has_cadence_coverage(
     cadence = timedelta(
         seconds=E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS + E2B_WINDOW_CADENCE_TOLERANCE_SECONDS
     )
+    window_duration_seconds = (ended_at - started_at).total_seconds()
+    nominal_sample_count = max(
+        1,
+        math.floor(window_duration_seconds / E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS),
+    )
+    allowed_missed_samples = (
+        1 if window_duration_seconds >= E2B_WINDOW_MINIMUM_SECONDS_FOR_ONE_MISSED_SAMPLE else 0
+    )
+    if len(samples) < nominal_sample_count - allowed_missed_samples:
+        return False
     timestamps = [
         _as_utc(sample.timestamp, field_name="E2B sample timestamp")
         for sample in samples
     ]
     if timestamps[0] - started_at > cadence or ended_at - timestamps[-1] > cadence:
         return False
+    maximum_gap = cadence + timedelta(
+        seconds=allowed_missed_samples * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
+    )
     return all(
-        timedelta(0) < current - previous <= cadence
+        timedelta(0) < current - previous <= maximum_gap
         for previous, current in zip(timestamps, timestamps[1:], strict=False)
     )
 
