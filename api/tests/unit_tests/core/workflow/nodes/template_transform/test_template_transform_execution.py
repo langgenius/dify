@@ -1,3 +1,5 @@
+"""Unit coverage for in-process template-transform execution."""
+
 import time
 import uuid
 
