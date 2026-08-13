@@ -775,6 +775,60 @@ describe("incremental reindexer", () => {
         nodes,
       }),
     ).toThrow("Incremental reindexer maxNodes must be at least 1");
+    expect(() =>
+      createIncrementalReindexer({
+        artifacts,
+        compute,
+        maxNodes: 4,
+        maxProjectionBatchSize: 0,
+        nodes,
+      }),
+    ).toThrow("maxProjectionBatchSize must be at least 1");
+    expect(() =>
+      createIncrementalReindexer({
+        artifacts,
+        compute,
+        maxNodeReplayPageSize: 0,
+        maxNodes: 4,
+        nodes,
+      }),
+    ).toThrow("maxNodeReplayPageSize must be at least 1");
+
+    const validating = createIncrementalReindexer({ artifacts, compute, maxNodes: 4, nodes });
+    const validInput = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: parseArtifact({ artifactHash: "8".repeat(64) }),
+      projectionVersion: 1,
+    } as const;
+    await expect(validating.reindex({ ...validInput, knowledgeSpaceId: " " })).rejects.toThrow(
+      "knowledgeSpaceId is required",
+    );
+    await expect(validating.reindex({ ...validInput, projectionVersion: 0 })).rejects.toThrow(
+      "projectionVersion must be a positive integer",
+    );
+    await expect(
+      validating.reindex({ ...validInput, reuseNodeGenerationId: PUBLICATION_GENERATION_ID }),
+    ).rejects.toThrow("reuseNodeGenerationId requires publicationGenerationId");
+    await expect(
+      validating.reindex({
+        ...validInput,
+        publicationGenerationId: PUBLICATION_GENERATION_ID,
+        reuseNodeGenerationId: PUBLICATION_GENERATION_ID,
+      }),
+    ).rejects.toThrow("source and target node generations must be different");
+    await expect(
+      validating.reindex({ ...validInput, denseModel: "dense", skipDense: true }),
+    ).rejects.toThrow("skipDense cannot include dense model configuration");
+    await expect(
+      validating.reindex({ ...validInput, skipVisual: true, visualModel: "clip" }),
+    ).rejects.toThrow("skipVisual cannot include visual model configuration");
+    await expect(
+      validating.reindex({
+        ...validInput,
+        publicationGenerationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c53",
+        reuseNodeGenerationId: PUBLICATION_GENERATION_ID,
+      }),
+    ).rejects.toThrow("could not load source generation nodes");
 
     let denseBuilds = 0;
     await expect(

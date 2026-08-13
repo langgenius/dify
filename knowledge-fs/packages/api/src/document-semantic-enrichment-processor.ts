@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   type KnowledgeNode,
   type KnowledgeSpaceModelSelection,
+  type KnowledgeSpaceRetrievalProfile,
   PublicationGenerationIdSchema,
   stableJson,
 } from "@knowledge/core";
@@ -21,7 +22,7 @@ import {
 import { createExtractionQualityControlFlow } from "./extraction-quality-control-flow";
 import type { GraphIndexRepository } from "./graph-index-repository";
 import { createGraphIndexWriter } from "./graph-index-writer";
-import { cloneJsonObject } from "./json-utils";
+import { cloneJsonObject, isPlainObject } from "./json-utils";
 import {
   type KnowledgeNodeRepository,
   cloneKnowledgeNode,
@@ -35,6 +36,7 @@ import {
   type RelationExtractionTextProvider,
   createLlmRelationExtractionProvider,
 } from "./llm-relation-extraction-provider";
+import { hasValidLlmSemanticJointExtraction } from "./llm-semantic-chunker";
 import { createRelationExtractionFlow } from "./relation-extraction-flow";
 
 export type DocumentSemanticEnrichmentTextProvider = EntityExtractionTextProvider &
@@ -42,7 +44,9 @@ export type DocumentSemanticEnrichmentTextProvider = EntityExtractionTextProvide
 
 export interface DocumentSemanticEnrichmentProcessorResult {
   readonly entitiesExtracted: number;
+  readonly graphEntityIds: readonly string[];
   readonly graphEntitiesIndexed: number;
+  readonly graphRelationIds: readonly string[];
   readonly graphRelationsIndexed: number;
   readonly nodesScanned: number;
   readonly semanticProviderCalls: number;
@@ -51,6 +55,25 @@ export interface DocumentSemanticEnrichmentProcessorResult {
 
 export interface DocumentSemanticEnrichmentProcessor {
   process(job: DocumentSemanticEnrichmentJob): Promise<DocumentSemanticEnrichmentProcessorResult>;
+}
+
+export interface JointSemanticGraphMaterializer {
+  materialize(input: {
+    readonly createdAt: string;
+    readonly knowledgeSpaceId: string;
+    readonly parseArtifactId: string;
+    readonly publicationGenerationId: string;
+    readonly retrievalProfile: KnowledgeSpaceRetrievalProfile;
+  }): Promise<DocumentSemanticEnrichmentProcessorResult>;
+}
+
+export interface JointSemanticGraphMaterializerOptions {
+  readonly graph: GraphIndexRepository;
+  readonly maxEntitiesPerNode: number;
+  readonly maxNodesPerArtifact: number;
+  readonly maxRelationsPerNode: number;
+  readonly nodes: Pick<KnowledgeNodeRepository, "listByArtifact">;
+  readonly now?: (() => string) | undefined;
 }
 
 export interface DocumentSemanticEnrichmentProcessorOptions {
@@ -121,7 +144,9 @@ export function createDocumentSemanticEnrichmentProcessor({
       if (page.items.length === 0) {
         return {
           entitiesExtracted: 0,
+          graphEntityIds: [],
           graphEntitiesIndexed: 0,
+          graphRelationIds: [],
           graphRelationsIndexed: 0,
           nodesScanned: 0,
           semanticProviderCalls: 0,
@@ -132,6 +157,35 @@ export function createDocumentSemanticEnrichmentProcessor({
       const selection = job.retrievalProfile.reasoningModel;
       if (!selection) {
         throw new Error("Document semantic enrichment requires a frozen reasoning model");
+      }
+      const originalNodes = page.items.map(cloneKnowledgeNode);
+      const jointSemanticNodes = originalNodes.filter(hasValidLlmSemanticJointExtraction);
+      if (jointSemanticNodes.length > 0) {
+        if (jointSemanticNodes.length !== originalNodes.length) {
+          throw new Error(
+            "Document semantic enrichment refuses a mixed joint/legacy node generation",
+          );
+        }
+        if (
+          jointSemanticNodes.some(
+            (node) => stableJson(jointSemanticModelSelection(node)) !== stableJson(selection),
+          )
+        ) {
+          throw new Error(
+            "Document semantic enrichment joint metadata does not match the frozen reasoning model",
+          );
+        }
+        return indexPreparedSemanticNodes({
+          graph,
+          job,
+          maxEntitiesPerNode,
+          maxNodesPerArtifact,
+          maxRelationsPerNode,
+          nodes: jointSemanticNodes,
+          now,
+          semanticProviderCalls: 0,
+          semanticProviderCallsMaximum: 0,
+        });
       }
       let semanticProviderCalls = 0;
       const resolvedProvider = providerFactory(selection);
@@ -159,7 +213,6 @@ export function createDocumentSemanticEnrichmentProcessor({
         publicationGenerationId: generationId,
         tenantId: job.tenantId,
       };
-      const originalNodes = page.items.map(cloneKnowledgeNode);
       const entityCheckpoints = await completeEntityCheckpoints({
         checkpoints,
         maxConcurrentBatches,
@@ -186,54 +239,172 @@ export function createDocumentSemanticEnrichmentProcessor({
         tenantId: job.tenantId,
       });
       const relationNodes = applyStageCheckpoints(entityNodes, relationCheckpoints);
-      const qualityRepository = await temporaryNodeRepository(relationNodes);
-      const controlled = await createExtractionQualityControlFlow({
-        maxBatchSize: maxNodesPerArtifact,
-        maxEligibleEntitiesPerNode: maxEntitiesPerNode,
-        maxEligibleRelationsPerNode: maxRelationsPerNode,
-        nodes: qualityRepository,
-        now,
-      }).apply({
-        knowledgeSpaceId: job.knowledgeSpaceId,
-        nodeIds: relationNodes.map((node) => node.id),
-        publicationGenerationId: generationId,
-      });
-      if (controlled.missingNodeIds.length > 0) {
-        throw new Error("Document semantic enrichment quality stage lost immutable nodes");
-      }
-      const indexed = await createGraphIndexWriter({
-        extractionVersion: 1,
-        graph,
-        maxBatchSize: maxNodesPerArtifact,
-        nodes: qualityRepository,
-        // A generation retry must reproduce byte-identical immutable graph rows.
-        now: () => job.createdAt,
-      }).indexNodes({
-        knowledgeSpaceId: job.knowledgeSpaceId,
-        nodes: controlled.controlledNodes,
-        publicationGenerationId: generationId,
-      });
-      if (indexed.missingNodeIds.length > 0) {
-        throw new Error("Document semantic enrichment graph stage lost immutable nodes");
-      }
-
       const eligibleRelationNodes = entityNodes.filter(
         (node) => extractedEntitiesFromNodeMetadata(node).length >= 2,
       ).length;
-      return {
-        entitiesExtracted: controlled.controlledNodes.reduce(
-          (sum, node) => sum + extractedEntitiesFromNodeMetadata(node).length,
-          0,
-        ),
-        graphEntitiesIndexed: indexed.stats.entitiesIndexed,
-        graphRelationsIndexed: indexed.stats.relationsIndexed,
-        nodesScanned: originalNodes.length,
+      return indexPreparedSemanticNodes({
+        graph,
+        job,
+        maxEntitiesPerNode,
+        maxNodesPerArtifact,
+        maxRelationsPerNode,
+        nodes: relationNodes,
+        now,
         semanticProviderCalls,
         semanticProviderCallsMaximum:
           Math.ceil(originalNodes.length / providerBatchSize) +
           Math.ceil(eligibleRelationNodes / providerBatchSize),
-      };
+      });
     },
+  };
+}
+
+/** Materializes only the joint facts already frozen by semantic chunking; it never calls an LLM. */
+export function createJointSemanticGraphMaterializer({
+  graph,
+  maxEntitiesPerNode,
+  maxNodesPerArtifact,
+  maxRelationsPerNode,
+  nodes,
+  now = () => new Date().toISOString(),
+}: JointSemanticGraphMaterializerOptions): JointSemanticGraphMaterializer {
+  for (const [name, value] of Object.entries({
+    maxEntitiesPerNode,
+    maxNodesPerArtifact,
+    maxRelationsPerNode,
+  })) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new Error(`Joint semantic Graph ${name} must be at least 1`);
+    }
+  }
+  return {
+    materialize: async (input) => {
+      const generationId = PublicationGenerationIdSchema.parse(input.publicationGenerationId);
+      const page = await nodes.listByArtifact({
+        knowledgeSpaceId: input.knowledgeSpaceId,
+        limit: maxNodesPerArtifact,
+        parseArtifactId: input.parseArtifactId,
+        publicationGenerationId: generationId,
+      });
+      if (page.nextCursor) {
+        throw new Error(
+          `Joint semantic Graph node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
+        );
+      }
+      if (page.items.length === 0) {
+        return {
+          entitiesExtracted: 0,
+          graphEntityIds: [],
+          graphEntitiesIndexed: 0,
+          graphRelationIds: [],
+          graphRelationsIndexed: 0,
+          nodesScanned: 0,
+          semanticProviderCalls: 0,
+          semanticProviderCallsMaximum: 0,
+        };
+      }
+      const prepared = page.items.map(cloneKnowledgeNode);
+      if (prepared.some((node) => !hasValidLlmSemanticJointExtraction(node))) {
+        throw new Error("Joint semantic Graph refuses a legacy or invalid node generation");
+      }
+      const selection = input.retrievalProfile.reasoningModel;
+      if (
+        prepared.some(
+          (node) => stableJson(jointSemanticModelSelection(node)) !== stableJson(selection),
+        )
+      ) {
+        throw new Error("Joint semantic Graph metadata does not match the frozen reasoning model");
+      }
+      return indexPreparedSemanticNodes({
+        graph,
+        job: {
+          createdAt: input.createdAt,
+          knowledgeSpaceId: input.knowledgeSpaceId,
+          publicationGenerationId: generationId,
+        },
+        maxEntitiesPerNode,
+        maxNodesPerArtifact,
+        maxRelationsPerNode,
+        nodes: prepared,
+        now,
+        semanticProviderCalls: 0,
+        semanticProviderCallsMaximum: 0,
+      });
+    },
+  };
+}
+
+function jointSemanticModelSelection(node: KnowledgeNode): unknown {
+  const semantic = node.metadata.semanticChunking;
+  return isPlainObject(semantic) ? semantic.modelSelection : undefined;
+}
+
+async function indexPreparedSemanticNodes({
+  graph,
+  job,
+  maxEntitiesPerNode,
+  maxNodesPerArtifact,
+  maxRelationsPerNode,
+  nodes,
+  now,
+  semanticProviderCalls,
+  semanticProviderCallsMaximum,
+}: {
+  readonly graph: GraphIndexRepository;
+  readonly job: Pick<
+    DocumentSemanticEnrichmentJob,
+    "createdAt" | "knowledgeSpaceId" | "publicationGenerationId"
+  >;
+  readonly maxEntitiesPerNode: number;
+  readonly maxNodesPerArtifact: number;
+  readonly maxRelationsPerNode: number;
+  readonly nodes: readonly KnowledgeNode[];
+  readonly now: () => string;
+  readonly semanticProviderCalls: number;
+  readonly semanticProviderCallsMaximum: number;
+}): Promise<DocumentSemanticEnrichmentProcessorResult> {
+  const generationId = PublicationGenerationIdSchema.parse(job.publicationGenerationId);
+  const qualityRepository = await temporaryNodeRepository(nodes);
+  const controlled = await createExtractionQualityControlFlow({
+    maxBatchSize: maxNodesPerArtifact,
+    maxEligibleEntitiesPerNode: maxEntitiesPerNode,
+    maxEligibleRelationsPerNode: maxRelationsPerNode,
+    nodes: qualityRepository,
+    now,
+  }).apply({
+    knowledgeSpaceId: job.knowledgeSpaceId,
+    nodeIds: nodes.map((node) => node.id),
+    publicationGenerationId: generationId,
+  });
+  if (controlled.missingNodeIds.length > 0) {
+    throw new Error("Document semantic enrichment quality stage lost immutable nodes");
+  }
+  const indexed = await createGraphIndexWriter({
+    extractionVersion: 1,
+    graph,
+    maxBatchSize: maxNodesPerArtifact,
+    nodes: qualityRepository,
+    now: () => job.createdAt,
+  }).indexNodes({
+    knowledgeSpaceId: job.knowledgeSpaceId,
+    nodes: controlled.controlledNodes,
+    publicationGenerationId: generationId,
+  });
+  if (indexed.missingNodeIds.length > 0) {
+    throw new Error("Document semantic enrichment graph stage lost immutable nodes");
+  }
+  return {
+    entitiesExtracted: controlled.controlledNodes.reduce(
+      (sum, node) => sum + extractedEntitiesFromNodeMetadata(node).length,
+      0,
+    ),
+    graphEntityIds: indexed.entities.map((entity) => entity.id),
+    graphEntitiesIndexed: indexed.stats.entitiesIndexed,
+    graphRelationIds: indexed.relations.map((relation) => relation.id),
+    graphRelationsIndexed: indexed.stats.relationsIndexed,
+    nodesScanned: nodes.length,
+    semanticProviderCalls,
+    semanticProviderCallsMaximum,
   };
 }
 

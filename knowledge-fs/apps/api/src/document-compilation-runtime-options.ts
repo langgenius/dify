@@ -47,6 +47,7 @@ import {
   type ParseArtifactRepository,
   type ProjectionSetPublicationMemberRepository,
   type ProjectionSetPublicationRepository,
+  type SemanticChunker,
   createDatabaseDocumentCompilationCandidateValidator,
   createDatabaseDocumentCompilationIndexOverrideResolver,
   createDatabaseDocumentLogicalMutationReconciler,
@@ -72,6 +73,7 @@ import {
   createDurableDocumentCompilationJobStateMachine,
   createFtsProjectionBuilder,
   createIncrementalReindexer,
+  createJointSemanticGraphMaterializer,
   createKnowledgeSpaceProfileMigrationRuntime,
   createLegacySpacePublicationBootstrapRuntime,
   createLegacySpacePublicationBootstrapService,
@@ -173,6 +175,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
       })
     | undefined;
   readonly semanticMetrics?: DocumentSemanticEnrichmentOperationalMetrics | undefined;
+  readonly semanticChunker?: SemanticChunker | undefined;
   readonly visual?:
     | {
         readonly model: string;
@@ -253,6 +256,7 @@ export function createApiDocumentCompilationRuntime({
   repositories: partialRepositories,
   semantic,
   semanticMetrics,
+  semanticChunker,
   visual,
 }: CreateApiDocumentCompilationRuntimeOptions): ApiDocumentCompilationRuntimeAssembly | undefined {
   if (!config) {
@@ -260,6 +264,9 @@ export function createApiDocumentCompilationRuntime({
   }
   if (!compute) {
     throw new Error("Document compilation runtime requires an in-process compute runtime");
+  }
+  if (!semanticChunker) {
+    throw new Error("Document compilation runtime requires the Reasoning-model semantic chunker");
   }
   if (!embeddingResolver) {
     throw new Error(
@@ -363,7 +370,7 @@ export function createApiDocumentCompilationRuntime({
     },
     publications: repositories.publications,
     versions: {
-      chunkerVersion: "knowledge-compute-chunker-v1",
+      chunkerVersion: "knowledge-llm-semantic-chunker-v1",
       indexVersion: "knowledge-index-v1",
       nodeSchemaVersion: 1,
       parserPolicyVersion: "configured-parser-v1",
@@ -402,6 +409,7 @@ export function createApiDocumentCompilationRuntime({
     maxProjectionBatchSize: embeddingBatchSize,
     nodes: repositories.nodes,
     projections: repositories.projections,
+    semanticChunker,
     ...(visual
       ? {
           visualBuilder: createVisualEmbeddingProjectionBuilder({
@@ -417,6 +425,19 @@ export function createApiDocumentCompilationRuntime({
     maxNodes: maxDocumentNodes,
     maxSummaryChars: 2_000,
   });
+  const jointSemanticGraph =
+    semanticChunker && repositories.graph
+      ? createJointSemanticGraphMaterializer({
+          graph: repositories.graph,
+          maxEntitiesPerNode: semantic?.semanticEntityExtractionMaxEntitiesPerNode ?? 50,
+          maxNodesPerArtifact: maxDocumentNodes,
+          maxRelationsPerNode: semantic?.semanticRelationExtractionMaxRelationsPerNode ?? 50,
+          nodes: repositories.nodes,
+        })
+      : undefined;
+  if (semanticChunker && !jointSemanticGraph) {
+    throw new Error("Semantic document compilation requires the graph repository");
+  }
   if (profileMigration && !outlineSummaryEnhancer) {
     throw new Error(
       "Profile migration runtime requires the profile-aware PageIndex Summary enhancer",
@@ -441,12 +462,14 @@ export function createApiDocumentCompilationRuntime({
             outlineSummaryEnhancer,
             outlines: repositories.outlines,
             pageIndexBuild,
+            paths: repositories.paths,
             profiles: repositories.profiles,
             projections: {
               getMany: repositories.projections.getMany.bind(repositories.projections),
             },
             publications: repositories.publications,
             reindexer,
+            ...(jointSemanticGraph ? { semanticGraph: jointSemanticGraph } : {}),
             snapshots: createDatabaseKnowledgeSpaceProfileMigrationCandidateSnapshotRepository({
               database: adapter.database,
               maxMembers: maxCandidateComponents,
@@ -516,6 +539,7 @@ export function createApiDocumentCompilationRuntime({
         failureManagement: "caller",
         generateKnowledgePathId: randomUUID,
         jobs,
+        ...(jointSemanticGraph ? { jointSemanticGraph } : {}),
         indexOverrides: documentIndexOverrides,
         knowledgePaths: repositories.paths,
         ...(multimodal?.documentMultimodalImageVariantGenerator

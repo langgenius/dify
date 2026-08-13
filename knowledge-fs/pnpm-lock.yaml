@@ -172,6 +172,9 @@ importers:
       sharp:
         specifier: 0.35.3
         version: 0.35.3(@types/node@22.19.18)
+      unicode-segmenter:
+        specifier: 0.15.0
+        version: 0.15.0
       zod:
         specifier: ^3.24.1
         version: 3.25.76

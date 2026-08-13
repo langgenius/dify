@@ -133,6 +133,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
@@ -192,6 +194,10 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[39]).toContain("-- Migration id: 0040_knowledge_space_metadata\n");
     expect(migrationSql[40]).toContain("-- Migration id: 0041_logical_document_availability\n");
     expect(migrationSql[41]).toContain("-- Migration id: 0042_workflow_failed_retrieval_capture\n");
+    expect(migrationSql[42]).toContain("-- Migration id: 0043_semantic_generation_receipts\n");
+    expect(migrationSql[42]).toContain(
+      'CREATE TABLE IF NOT EXISTS "knowledge_node_generation_receipts"',
+    );
     expect(closed).toBe(true);
   });
 

@@ -58,7 +58,9 @@ describe("createDocumentSemanticEnrichmentRuntime", () => {
     const processor = {
       process: vi.fn(async () => ({
         entitiesExtracted: 4,
+        graphEntityIds: [uuid(31), uuid(32), uuid(33)],
         graphEntitiesIndexed: 3,
+        graphRelationIds: [uuid(34)],
         graphRelationsIndexed: 1,
         nodesScanned: 8,
         semanticProviderCalls: 2,

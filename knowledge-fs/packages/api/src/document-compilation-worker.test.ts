@@ -371,6 +371,12 @@ describe("createDocumentCompilationWorker lease integration", () => {
     const semanticAdmissions: unknown[] = [];
     let semanticCalls = 0;
     let smokeCalls = 0;
+    const outlines = createInMemoryDocumentOutlineRepository({ maxOutlines: 2 });
+    const knowledgePaths = createInMemoryKnowledgePathRepository({
+      maxBatchSize: 10,
+      maxListLimit: 10,
+      maxPaths: 10,
+    });
     const worker = createDocumentCompilationWorker({
       assets,
       candidateComposer: {
@@ -412,13 +418,12 @@ describe("createDocumentCompilationWorker lease integration", () => {
         "018f0d60-7a49-7cc2-9c1b-5b36f18f6a36",
         "018f0d60-7a49-7cc2-9c1b-5b36f18f6a37",
         "018f0d60-7a49-7cc2-9c1b-5b36f18f6a38",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3b",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3c",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3d",
       ]),
       jobs: compilationJobs,
-      knowledgePaths: createInMemoryKnowledgePathRepository({
-        maxBatchSize: 10,
-        maxListLimit: 10,
-        maxPaths: 10,
-      }),
+      knowledgePaths,
       multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
         maxManifests: 2,
       }),
@@ -428,7 +433,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
         maxNodes: 10,
         maxSummaryChars: 200,
       }),
-      outlines: createInMemoryDocumentOutlineRepository({ maxOutlines: 2 }),
+      outlines,
       pageIndexBuild: {
         materializeBuilding: async ({ outline }) => {
           pageIndexBuildCalls += 1;
@@ -460,6 +465,19 @@ describe("createDocumentCompilationWorker lease integration", () => {
             artifact: input.parseArtifact,
             nodeIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f6a39"],
             nodesCreated: 1,
+            outlineArtifact: ParseArtifactSchema.parse({
+              ...input.parseArtifact,
+              elements: [
+                {
+                  id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a39",
+                  metadata: { semanticSectionSummary: "发票身份、购买方和金额信息。" },
+                  sectionPath: ["电子发票", "购买方与金额"],
+                  text: "发票号码、购买方与价税合计",
+                  type: "paragraph",
+                },
+              ],
+              metadata: { semanticCompilation: { source: "llm-semantic-v1" } },
+            }),
             projectionIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f6a3a"],
             projectionsCreated: 1,
             status: "rebuilt",
@@ -469,6 +487,21 @@ describe("createDocumentCompilationWorker lease integration", () => {
       semanticEnrichmentAdmission: {
         enqueue: async (input) => {
           semanticAdmissions.push(input);
+        },
+      },
+      jointSemanticGraph: {
+        materialize: async () => {
+          semanticCalls += 1;
+          return {
+            entitiesExtracted: 1,
+            graphEntityIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f6a3b"],
+            graphEntitiesIndexed: 1,
+            graphRelationIds: ["018f0d60-7a49-7cc2-9c1b-5b36f18f6a3c"],
+            graphRelationsIndexed: 1,
+            nodesScanned: 1,
+            semanticProviderCalls: 0,
+            semanticProviderCallsMaximum: 0,
+          };
         },
       },
       semanticPostProcessor: {
@@ -509,8 +542,18 @@ describe("createDocumentCompilationWorker lease integration", () => {
       expect.objectContaining({
         componentReceipt: {
           documentOutlines: [expect.objectContaining({ generationId })],
-          graphEntities: [],
-          graphRelations: [],
+          graphEntities: [
+            {
+              componentKey: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3b",
+              generationId,
+            },
+          ],
+          graphRelations: [
+            {
+              componentKey: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3c",
+              generationId,
+            },
+          ],
           indexProjections: [
             {
               componentKey: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a3a",
@@ -528,18 +571,33 @@ describe("createDocumentCompilationWorker lease integration", () => {
     expect(smokeCalls).toBe(0);
     expect(mutableEmbeddingReads).toBe(0);
     expect(pageIndexBuildCalls).toBe(0);
-    expect(semanticAdmissions).toEqual([
+    expect(semanticAdmissions).toEqual([]);
+    expect(semanticCalls).toBe(1);
+    expect(reindexInputs[0]).toEqual(
       expect.objectContaining({
-        documentAssetId: asset.id,
-        parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a02",
-        publicationGenerationId: generationId,
+        enableGraph: true,
+        language: "zh-CN",
         retrievalProfile: expect.objectContaining({ revision: 4 }),
+        skipDense: true,
       }),
-    ]);
-    expect(semanticCalls).toBe(0);
-    expect(reindexInputs[0]).toEqual(expect.objectContaining({ language: "zh-CN" }));
+    );
     expect(reindexInputs[0]).not.toHaveProperty("denseModel");
     expect(reindexInputs[0]).not.toHaveProperty("embeddingProfile");
+    await expect(
+      outlines.getByDocumentVersion({
+        documentAssetId: asset.id,
+        publicationGenerationId: generationId,
+        version: asset.version,
+      }),
+    ).resolves.toMatchObject({
+      metadata: expect.objectContaining({ builder: "semantic-knowledge-nodes" }),
+      nodes: [
+        expect.objectContaining({
+          sectionPath: ["电子发票"],
+          children: [expect.objectContaining({ sectionPath: ["电子发票", "购买方与金额"] })],
+        }),
+      ],
+    });
     await expect(
       assets.get({ id: asset.id, knowledgeSpaceId: asset.knowledgeSpaceId }),
     ).resolves.toMatchObject({ parserStatus: "pending" });
@@ -1342,7 +1400,9 @@ describe("createDocumentCompilationWorker lease integration", () => {
       expect.objectContaining({
         denseModel: frozenEmbeddingProfile.vectorSpaceId,
         embeddingProfile: frozenEmbeddingProfile,
+        enableGraph: true,
         projectionStatus: "building",
+        retrievalProfile: frozenRetrievalProfile,
         tenantId: "tenant-1",
       }),
     ]);

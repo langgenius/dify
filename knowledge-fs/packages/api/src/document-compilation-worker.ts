@@ -49,6 +49,7 @@ import {
   type DocumentPdfRasterizer,
   rasterizeDocumentPdfMultimodalAssets,
 } from "./document-pdf-rasterizer";
+import type { JointSemanticGraphMaterializer } from "./document-semantic-enrichment-processor";
 import { logDocumentUploadDiagnostic } from "./document-upload-diagnostics";
 import type { IncrementalReindexer } from "./index-reindexer";
 import type { KnowledgeFsOperationLeaseCoordinator } from "./knowledge-fs-operation-leases";
@@ -89,6 +90,7 @@ export interface DocumentCompilationWorkerOptions {
   readonly failureManagement?: "caller" | "worker" | undefined;
   readonly generateKnowledgePathId?: (() => string) | undefined;
   readonly jobs: DocumentCompilationJobStateMachine;
+  readonly jointSemanticGraph?: JointSemanticGraphMaterializer | undefined;
   readonly knowledgePaths?: KnowledgePathRepository | undefined;
   readonly multimodalImageVariantGenerator?: DocumentImageVariantGenerator | undefined;
   readonly multimodalLocalAssetAllowlist?: readonly string[] | undefined;
@@ -220,6 +222,7 @@ export function createDocumentCompilationWorker({
   failureManagement = "worker",
   generateKnowledgePathId,
   jobs,
+  jointSemanticGraph,
   knowledgePaths,
   multimodalImageVariantGenerator,
   multimodalLocalAssetAllowlist,
@@ -418,6 +421,9 @@ export function createDocumentCompilationWorker({
           let documentOutlineIds: readonly string[] = [];
           let knowledgePathIds: readonly string[] = [];
           let persistedManifest: DocumentMultimodalManifest;
+          const deferOutlineUntilSemanticNodes = Boolean(
+            publicationGenerationId && frozenRetrievalProfile,
+          );
           if (resumeOutlineGeneration && publicationGenerationId) {
             const [persistedOutline, resumedManifest] = await Promise.all([
               outlines?.getByDocumentVersion({
@@ -461,7 +467,7 @@ export function createDocumentCompilationWorker({
               knowledgeSpaceId: input.knowledgeSpaceId,
               ...(publicationGenerationId ? { publicationGenerationId } : {}),
             });
-            if (outlineBuilder && outlines) {
+            if (outlineBuilder && outlines && !deferOutlineUntilSemanticNodes) {
               const deterministicOutline = outlineBuilder.build({
                 knowledgeSpaceId: input.knowledgeSpaceId,
                 parseArtifact: canonicalArtifact,
@@ -504,8 +510,10 @@ export function createDocumentCompilationWorker({
             }
             await assertWritable();
             persistedManifest = await multimodalManifests.upsert(multimodalManifest);
-            await assertWritable();
-            await jobs.advance(input.documentCompilationJobId, "outline_built");
+            if (!deferOutlineUntilSemanticNodes) {
+              await assertWritable();
+              await jobs.advance(input.documentCompilationJobId, "outline_built");
+            }
           }
 
           const resolvedEmbedding = frozenEmbeddingProfile
@@ -531,6 +539,7 @@ export function createDocumentCompilationWorker({
               ? { excludedNodeOrdinals: documentIndexOverrides.excludedNodeOrdinals }
               : {}),
             ...(frozenEmbeddingProfile ? { embeddingProfile: frozenEmbeddingProfile } : {}),
+            enableGraph: documentIndexOverrides.enableGraph !== false,
             knowledgeSpaceId: input.knowledgeSpaceId,
             ...(documentIndexOverrides.language
               ? { language: documentIndexOverrides.language }
@@ -541,11 +550,70 @@ export function createDocumentCompilationWorker({
               publicationGenerationId || legacyStagedProjectionPublication ? "building" : "ready",
             projectionVersion: input.version,
             ...(publicationGenerationId ? { publicationGenerationId } : {}),
+            ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
             ...(initialJob.stage === "outline_built" ? { resetFailedProjections: true } : {}),
             ...(signal ? { signal } : {}),
+            ...(frozenRetrievalProfile && !resolvedEmbedding ? { skipDense: true as const } : {}),
             tenantId: input.tenantId,
             ...(visualEmbeddingModel ? { visualModel: visualEmbeddingModel } : {}),
           });
+          if (
+            deferOutlineUntilSemanticNodes &&
+            !resumeOutlineGeneration &&
+            publicationGenerationId
+          ) {
+            if (
+              reindexResult.status !== "rebuilt" ||
+              !reindexResult.outlineArtifact ||
+              !outlineBuilder ||
+              !outlines
+            ) {
+              throw new Error(
+                "Generation-scoped semantic compilation requires a semantic outline artifact",
+              );
+            }
+            const deterministicOutline = outlineBuilder.build({
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              parseArtifact: reindexResult.outlineArtifact,
+              publicationGenerationId,
+            });
+            const outline = outlineSummaryEnhancer
+              ? await outlineSummaryEnhancer.enhance({
+                  outline: deterministicOutline,
+                  parseArtifact: reindexResult.outlineArtifact,
+                  retrievalProfile: frozenRetrievalProfile,
+                  ...(signal ? { signal } : {}),
+                  tenantId: input.tenantId,
+                })
+              : deterministicOutline;
+            await assertWritable();
+            const persistedOutline = await outlines.upsert(outline);
+            if (documentIndexOverrides.enablePageIndex !== false) {
+              await assertWritable();
+              await pageIndexBuild?.materializeBuilding({
+                builtAt: persistedOutline.updatedAt ?? persistedOutline.createdAt,
+                outline: persistedOutline,
+                tenantId: input.tenantId,
+              });
+            }
+            documentOutlineIds = [persistedOutline.id];
+            if (knowledgePaths && generateKnowledgePathId) {
+              await assertWritable();
+              const persistedPaths = await knowledgePaths.upsertMany(
+                buildCompilationKnowledgePaths({
+                  asset: activeAsset,
+                  generateId: generateKnowledgePathId,
+                  manifest: persistedManifest,
+                  outline: persistedOutline,
+                  publicationGenerationId,
+                  tenantId: input.tenantId,
+                }),
+              );
+              knowledgePathIds = persistedPaths.map((path) => path.id);
+            }
+            await assertWritable();
+            await jobs.advance(input.documentCompilationJobId, "outline_built");
+          }
           await assertWritable();
           if (legacyStagedProjectionPublication && reindexResult.status === "rebuilt") {
             stagedProjectionIds = [...(reindexResult.projectionIds ?? [])];
@@ -581,7 +649,27 @@ export function createDocumentCompilationWorker({
           let graphEntityIds: readonly string[] = [];
           let graphRelationIds: readonly string[] = [];
           if (
+            jointSemanticGraph &&
+            publicationGenerationId &&
+            frozenRetrievalProfile &&
+            reindexResult.status === "rebuilt" &&
+            documentIndexOverrides.enableGraph !== false
+          ) {
+            await assertWritable();
+            const semanticResult = await jointSemanticGraph.materialize({
+              createdAt: activeAsset.updatedAt ?? activeAsset.createdAt,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              parseArtifactId: canonicalArtifact.id,
+              publicationGenerationId,
+              retrievalProfile: frozenRetrievalProfile,
+            });
+            await assertWritable();
+            graphEntityIds = semanticResult.graphEntityIds;
+            graphRelationIds = semanticResult.graphRelationIds;
+          }
+          if (
             semanticEnrichmentAdmission &&
+            !jointSemanticGraph &&
             publicationGenerationId &&
             frozenRetrievalProfile &&
             reindexResult.status === "rebuilt" &&

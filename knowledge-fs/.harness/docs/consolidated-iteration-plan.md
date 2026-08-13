@@ -1,7 +1,7 @@
 # KnowledgeFS Master Iteration Plan
 
 > Created: 2026-06-24
-> Updated: 2026-08-07
+> Updated: 2026-08-13
 > Source directory: `.harness/docs`
 > Status: current executable master plan
 > Rule: historical plans remain source records; this file is the first document to use
@@ -28,6 +28,7 @@ and how each slice should be accepted and verified.
 | `.harness/docs/pageindex-research-retrieval-v2-iteration-plan.md` | Document selection, book-like layered Research navigation, Value node queue, interactive/durable policies, degradation, budgets, and human-golden findability. | Active execution plan. Automatic Golden Question generation is explicitly excluded. |
 | `.harness/docs/multimodal-knowledgefs-iteration-plan.md` | `DocumentMultimodalManifest`, table/image/code/page inventory, visual assets, thumbnails, VLM answer support, visual embeddings, Admin browser, evals. | Core functional capability implemented. Remaining work is external QA fixtures, provider conformance, and richer trace UX. |
 | `.harness/docs/image-query-retrieval-iteration-plan.md` | Image-as-query support: query-side image visual embedding (`inputType: "query"`), gateway image transport with typed degradation, query images in VLM answering, and query image-to-text expansion for deep/research. | Implemented 2026-08-07 for the backend-only scope. Retrieval-time recognition of document images remains explicitly excluded (belongs to ingest-side enrichment reindex). |
+| `.harness/docs/semantic-document-compilation-restoration-plan.md` | Restores the pre-monorepo profile-aware LLM semantic chunker and adds layout recomposition, durable semantic receipts, unified outline/index/Graph derivation, diagnostics, and rollout gates. | Active P0 regression-restoration track. It precedes further outline-quality work because current parser boundaries leak into chunks, outlines, and Graph inputs. |
 | `.harness/docs/rag-platform-redesign-technical-selection.md` | Architecture source of truth and technology choices. | Updated to reflect this master plan, PageIndex-inspired outlines, native multimodal contracts, and visual indexing. |
 | Dify prototype `/datasets` | Product UX target for dataset list/detail, overview readiness, sources, documents, evidence, quality, settings, agent access, and pipeline surfaces. | Used as the Admin/product parity target before deeper quality-only iteration. |
 
@@ -88,7 +89,8 @@ The desired mode is:
 | Queryable ingestion | Done | QI.1-QI.5: upload creates nodes, local compute runtime, local generator over nodes, evidence query smoke, Admin BFF upload smoke. | None for this plan. |
 | Durable local runtime | Done | DLR.1-DLR.15: PostgreSQL executor, DB repository bundle, migrations, `.env`, durable smoke, application packaging, app Compose guardrails, API/Admin images and smoke gates. | None for this plan. |
 | JuiceFS hardening | Done | JH.1-JH.7: manifests, commit ledger, artifact segments, consistency/cache contracts, sessions/leases, fsck/gc/status/stats, quota/projection hardening, Admin/MCP operator UX. | Keep docs/runbooks aligned when related behavior changes. |
-| PageIndex outline | V2 backend verification 2026-08-06 | Deterministic schema/builder/repository/API/KnowledgeFS; document shortlist; root-to-leaf layered LLM lane; Value propagation and node queue; per-level/round replay-safe checkpoints; degradation/budget semantics; exact-generation human-golden findability and bounded repair queue. | Automatic Golden Question generation remains explicitly excluded until its product requirements are decided. |
+| Semantic document compilation | Local implementation, regression, and rollout automation complete; production execution pending 2026-08-13 | SSC.0-SSC.6 restore profile-aware LLM semantic ranges, immutable source-derived text, durable generation receipts, unified outline/PageIndex/search/Graph derivation, and exact profile-migration replay. SSC.7 provides guarded static/preflight/canary/backfill/rollback commands and tests; the changed semantic chain is above 90% branch coverage. | Apply migration 0043 before workers, run production preflight/canary/backfill/shadow comparison/rollback, close the historical full-API branch gap, then retire the legacy final chunker. |
+| PageIndex outline | V2 backend verification 2026-08-06 | Deterministic schema/builder/repository/API/KnowledgeFS; document shortlist; root-to-leaf layered LLM lane; Value propagation and node queue; per-level/round replay-safe checkpoints; degradation/budget semantics; exact-generation human-golden findability and bounded repair queue. | Rebase outline inputs onto restored semantic generations before additional outline-quality tuning. Automatic Golden Question generation remains explicitly excluded until its product requirements are decided. |
 | Multimodal KnowledgeFS | Mostly done | Manifest, metadata normalization, asset extraction, PDF rasterization, thumbnails, KnowledgeFS descriptors, VLM answer providers, visual embeddings, visual retrieval metrics, Admin browser, eval utilities. | External QA fixtures, provider conformance packs, richer trace drill-downs. |
 | Prototype product parity | Planned | Underlying APIs and data contracts exist in pieces across KnowledgeFS, SourceFS, EvidenceFS, retrieval, quality, and Admin. | Align Admin routes and workflow APIs with the prototype: dataset list/detail shell, sources, documents, evidence, quality, settings, agent access, and pipeline mode. |
 | Admin integration | Active | AIR.1-AIR.2 done: upload/readiness/citation paths and local/Compose upstream wiring repaired. | AIR.3/AIR.4: preview panel audit and outline/multimodal trace UX. |
@@ -101,13 +103,14 @@ Work should proceed in this order unless a production regression appears:
 
 1. Documentation alignment and planning source of truth.
 2. Prototype product surface parity for the dataset workspace.
-3. PageIndex outline quality hardening.
-4. Multimodal functional completion.
-5. Admin integration honesty and trace drill-downs.
-6. API/code-health closure.
-7. Research-mode completeness over outline + multimodal + graph evidence.
-8. Evaluation governance and CI regression hardening.
-9. Optional provider, deployment, and adapter expansion.
+3. Restore semantic document compilation (SSC.0-SSC.7).
+4. PageIndex outline quality hardening on semantic generations.
+5. Multimodal functional completion.
+6. Admin integration honesty and trace drill-downs.
+7. API/code-health closure.
+8. Research-mode completeness over outline + multimodal + graph evidence.
+9. Evaluation governance and CI regression hardening.
+10. Optional provider, deployment, and adapter expansion.
 
 Every slice should:
 

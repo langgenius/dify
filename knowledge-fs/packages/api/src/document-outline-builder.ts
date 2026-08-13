@@ -156,7 +156,9 @@ export function createDocumentOutlineBuilder({
         id: buildGenerateId(),
         knowledgeSpaceId,
         metadata: {
-          builder: "deterministic-parse-artifact",
+          builder: artifact.metadata.semanticCompilation
+            ? "semantic-knowledge-nodes"
+            : "deterministic-parse-artifact",
           contentType: artifact.contentType,
           parser: artifact.parser,
           parserVersion: artifact.metadata.parserVersion,
@@ -373,8 +375,22 @@ function applySpanToDraft(draft: OutlineNodeDraft, span: ElementSpan): void {
     draft.sourceElementIds.push(span.element.id);
   }
 
+  const sourceKnowledgeNodeId = span.element.metadata.sourceKnowledgeNodeId;
+  if (
+    typeof sourceKnowledgeNodeId === "string" &&
+    sourceKnowledgeNodeId.trim() &&
+    !draft.sourceNodeIds.includes(sourceKnowledgeNodeId)
+  ) {
+    draft.sourceNodeIds.push(sourceKnowledgeNodeId);
+  }
+
   if (span.element.type !== "heading" && span.element.type !== "title") {
-    draft.summaryTexts.push(span.text);
+    const semanticSectionSummary = span.element.metadata.semanticSectionSummary;
+    draft.summaryTexts.push(
+      typeof semanticSectionSummary === "string" && semanticSectionSummary.trim()
+        ? semanticSectionSummary.trim()
+        : span.text,
+    );
   }
 
   if (!draft.titleLocation && (span.element.type === "heading" || span.element.type === "title")) {

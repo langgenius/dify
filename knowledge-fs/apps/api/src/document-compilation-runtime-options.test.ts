@@ -60,6 +60,18 @@ describe("createApiDocumentCompilationRuntime", () => {
         parser: {} as never,
         repositories: {},
       }),
+    ).toThrow("requires the Reasoning-model semantic chunker");
+
+    expect(() =>
+      createApiDocumentCompilationRuntime({
+        adapter,
+        compute: {} as never,
+        config,
+        embeddingResolver: undefined,
+        parser: {} as never,
+        repositories: {},
+        semanticChunker: {} as never,
+      }),
     ).toThrow("requires the per-space plugin embedding resolver");
 
     expect(() =>
@@ -71,6 +83,7 @@ describe("createApiDocumentCompilationRuntime", () => {
         modelCapabilityPreflight: {} as never,
         parser: {} as never,
         repositories: {},
+        semanticChunker: {} as never,
       }),
     ).toThrow("requires the atomic initial profile activation repository");
 
@@ -83,6 +96,7 @@ describe("createApiDocumentCompilationRuntime", () => {
         initialProfileActivations: {} as never,
         parser: {} as never,
         repositories: {},
+        semanticChunker: {} as never,
       }),
     ).toThrow("requires model capability preflight");
 
@@ -96,6 +110,7 @@ describe("createApiDocumentCompilationRuntime", () => {
         modelCapabilityPreflight: {} as never,
         parser: {} as never,
         repositories: {},
+        semanticChunker: {} as never,
       }),
     ).toThrow("requires database repository: artifacts");
   });
@@ -122,6 +137,7 @@ describe("createApiDocumentCompilationRuntime", () => {
         assets: required(gateway.documentAssets),
         attempts: required(databaseRepositories.documentCompilationAttempts),
         chunks: required(gateway.documentChunks),
+        graph: required(gateway.graphIndex),
         legacyBootstraps: required(databaseRepositories.legacySpacePublicationBootstraps),
         pageIndexUpgradeBackfills: required(databaseRepositories.pageIndexUpgradeBackfills),
         logicalDocuments: required(gateway.logicalDocuments),
@@ -137,6 +153,7 @@ describe("createApiDocumentCompilationRuntime", () => {
         settings: required(gateway.documentSettings),
         tasks: required(gateway.documentProcessingTasks),
       },
+      semanticChunker: {} as never,
     });
 
     expect(assembly).toMatchObject({

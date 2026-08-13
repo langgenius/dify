@@ -7,8 +7,11 @@ import type {
 } from "@knowledge/core";
 import {
   KnowledgeNodeSchema,
+  KnowledgeSpaceModelSelectionSchema,
   PUBLICATION_GENERATION_ID_SENTINEL,
   PublicationGenerationIdSchema,
+  UuidSchema,
+  stableJson,
 } from "@knowledge/core";
 
 import { numberColumn, optionalStringColumn, stringColumn } from "./database-row-utils";
@@ -23,7 +26,36 @@ import {
   assertExactGenerationReplay,
   assertInMemoryGenerationNotPublished,
 } from "./generation-immutability";
-import { cloneJsonObject, jsonObjectColumn, jsonStringArrayColumn } from "./json-utils";
+import {
+  cloneJsonObject,
+  isPlainObject,
+  jsonObjectColumn,
+  jsonStringArrayColumn,
+} from "./json-utils";
+import {
+  type KnowledgeNodeGenerationCompletionReceipt,
+  type KnowledgeNodeGenerationReceipt,
+  type KnowledgeNodeGenerationUnitRangeReceipt,
+  type KnowledgeNodeGenerationWindowReceipt,
+  type KnowledgeNodeSemanticGenerationConfig,
+  MAX_KNOWLEDGE_NODE_GENERATION_RECEIPT_BYTES,
+  MAX_LLM_SEMANTIC_COMPLETION_IDENTITIES,
+  MAX_LLM_SEMANTIC_FINISH_REASON_CODE_POINTS,
+  MAX_LLM_SEMANTIC_TERMINAL_IDENTITY_CODE_POINTS,
+  MAX_LLM_SEMANTIC_UNIT_ID_CODE_POINTS,
+  MAX_LLM_SEMANTIC_WINDOWS,
+  MAX_LLM_SEMANTIC_WINDOW_ID_CODE_POINTS,
+  knowledgeNodeGenerationReceiptSerializedBytes,
+  llmSemanticCompletionFingerprint,
+} from "./semantic-generation-receipt";
+
+export type {
+  KnowledgeNodeGenerationCompletionReceipt,
+  KnowledgeNodeGenerationReceipt,
+  KnowledgeNodeGenerationUnitRangeReceipt,
+  KnowledgeNodeGenerationWindowReceipt,
+  KnowledgeNodeSemanticGenerationConfig,
+} from "./semantic-generation-receipt";
 
 export interface KnowledgeNodeCursor {
   readonly id: string;
@@ -99,12 +131,34 @@ export interface UpdateKnowledgeNodeMetadataManyInput {
   readonly publicationGenerationId?: string | undefined;
 }
 
+export interface KnowledgeNodeGenerationReceiptLookupInput {
+  readonly knowledgeSpaceId: string;
+  readonly parseArtifactId: string;
+  readonly publicationGenerationId: string;
+}
+
+export interface CompleteKnowledgeNodeGenerationInput {
+  readonly nodes: readonly KnowledgeNode[];
+  readonly receipt: KnowledgeNodeGenerationReceipt;
+}
+
+export interface CompleteKnowledgeNodeGenerationResult {
+  readonly nodes: KnowledgeNode[];
+  readonly receipt: KnowledgeNodeGenerationReceipt;
+}
+
 export interface KnowledgeNodeRepository {
+  completeGenerationAtomically?(
+    input: CompleteKnowledgeNodeGenerationInput,
+  ): Promise<CompleteKnowledgeNodeGenerationResult>;
   createMany(nodes: readonly KnowledgeNode[]): Promise<KnowledgeNode[]>;
   deleteByDocumentAsset(
     input: DeleteKnowledgeNodesByDocumentAssetInput,
   ): Promise<DeleteKnowledgeNodesResult>;
   get(input: KnowledgeNodeLookupInput): Promise<KnowledgeNode | null>;
+  getGenerationReceipt?(
+    input: KnowledgeNodeGenerationReceiptLookupInput,
+  ): Promise<KnowledgeNodeGenerationReceipt | null>;
   getMany(input: GetManyKnowledgeNodesInput): Promise<KnowledgeNode[]>;
   /**
    * Reads immutable evidence references by their globally unique ids without selecting a
@@ -117,6 +171,11 @@ export interface KnowledgeNodeRepository {
   ): Promise<readonly string[]>;
   listBySpace(input: ListKnowledgeNodesBySpaceInput): Promise<ListKnowledgeNodesBySpaceResult>;
   updateMetadataMany(input: UpdateKnowledgeNodeMetadataManyInput): Promise<KnowledgeNode[]>;
+  /**
+   * Persists one immutable publication generation in a single repository transaction while the
+   * implementation may split SQL statements into repository-safe batches.
+   */
+  upsertGenerationAtomically?(nodes: readonly KnowledgeNode[]): Promise<KnowledgeNode[]>;
   upsertMany(nodes: readonly KnowledgeNode[]): Promise<KnowledgeNode[]>;
 }
 
@@ -151,6 +210,12 @@ export class KnowledgeNodeLogicalConflictError extends Error {
   }
 }
 
+export class KnowledgeNodeGenerationReceiptConflictError extends Error {
+  constructor() {
+    super("Knowledge node generation receipt conflicts with the immutable persisted receipt");
+  }
+}
+
 export function createInMemoryKnowledgeNodeRepository({
   maxBatchSize,
   maxListLimit,
@@ -160,8 +225,83 @@ export function createInMemoryKnowledgeNodeRepository({
   validateKnowledgeNodeRepositoryBounds({ maxBatchSize, maxListLimit, maxNodes });
 
   const nodes = new Map<string, KnowledgeNode>();
+  const generationReceipts = new Map<string, KnowledgeNodeGenerationReceipt>();
+  const upsertAtomically = (input: readonly KnowledgeNode[]): KnowledgeNode[] => {
+    const parsed = input.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
+    validateKnowledgeNodeLogicalBatch(parsed);
+    const next = new Map(nodes);
+    const persisted: KnowledgeNode[] = [];
+
+    for (const node of parsed) {
+      const existingById = next.get(node.id);
+      if (existingById && !hasSameKnowledgeNodeOwnership(existingById, node)) {
+        throw new KnowledgeNodeOwnershipConflictError(node.id);
+      }
+      if (
+        existingById &&
+        knowledgeNodeLogicalIdentity(existingById) !== knowledgeNodeLogicalIdentity(node)
+      ) {
+        throw new KnowledgeNodeLogicalConflictError();
+      }
+
+      const existingByLogicalIdentity = findKnowledgeNodeByLogicalIdentity(next.values(), node);
+      if (
+        existingById &&
+        existingByLogicalIdentity &&
+        existingById.id !== existingByLogicalIdentity.id
+      ) {
+        throw new KnowledgeNodeLogicalConflictError();
+      }
+      if (
+        existingByLogicalIdentity &&
+        !hasSameKnowledgeNodeOwnership(existingByLogicalIdentity, node)
+      ) {
+        throw new KnowledgeNodeOwnershipConflictError(node.id);
+      }
+
+      const existing = existingById ?? existingByLogicalIdentity;
+      if (existing && node.publicationGenerationId) {
+        assertExactGenerationReplay({
+          componentType: "knowledge-node",
+          incoming: node,
+          logicalKey: knowledgeNodeLogicalIdentity(node),
+          persisted: existing,
+        });
+        persisted.push(existing);
+        continue;
+      }
+      const stored = existing ? { ...node, id: existing.id } : node;
+      next.set(stored.id, cloneKnowledgeNode(stored));
+      persisted.push(stored);
+    }
+
+    if (next.size > maxNodes) {
+      throw new KnowledgeNodeCapacityExceededError(maxNodes);
+    }
+
+    nodes.clear();
+    for (const [id, node] of next) {
+      nodes.set(id, node);
+    }
+
+    return persisted.map(cloneKnowledgeNode);
+  };
 
   return {
+    completeGenerationAtomically: async (input) => {
+      const receipt = validateKnowledgeNodeGenerationCompletion(input);
+      const key = knowledgeNodeGenerationReceiptKey(receipt);
+      const existingReceipt = generationReceipts.get(key);
+      if (existingReceipt && stableJson(existingReceipt) !== stableJson(receipt)) {
+        throw new KnowledgeNodeGenerationReceiptConflictError();
+      }
+      const persistedNodes = input.nodes.length > 0 ? upsertAtomically(input.nodes) : [];
+      generationReceipts.set(key, cloneKnowledgeNodeGenerationReceipt(receipt));
+      return {
+        nodes: persistedNodes,
+        receipt: cloneKnowledgeNodeGenerationReceipt(existingReceipt ?? receipt),
+      };
+    },
     createMany: async (input) => {
       validateKnowledgeNodeBatch(input, maxBatchSize);
       const parsed = input.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
@@ -213,66 +353,13 @@ export function createInMemoryKnowledgeNodeRepository({
 
       return persisted.map(cloneKnowledgeNode);
     },
+    upsertGenerationAtomically: async (input) => {
+      validateKnowledgeNodeGenerationBatch(input);
+      return upsertAtomically(input);
+    },
     upsertMany: async (input) => {
       validateKnowledgeNodeBatch(input, maxBatchSize);
-      const parsed = input.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
-      validateKnowledgeNodeLogicalBatch(parsed);
-      const next = new Map(nodes);
-      const persisted: KnowledgeNode[] = [];
-
-      for (const node of parsed) {
-        const existingById = next.get(node.id);
-        if (existingById && !hasSameKnowledgeNodeOwnership(existingById, node)) {
-          throw new KnowledgeNodeOwnershipConflictError(node.id);
-        }
-        if (
-          existingById &&
-          knowledgeNodeLogicalIdentity(existingById) !== knowledgeNodeLogicalIdentity(node)
-        ) {
-          throw new KnowledgeNodeLogicalConflictError();
-        }
-
-        const existingByLogicalIdentity = findKnowledgeNodeByLogicalIdentity(next.values(), node);
-        if (
-          existingById &&
-          existingByLogicalIdentity &&
-          existingById.id !== existingByLogicalIdentity.id
-        ) {
-          throw new KnowledgeNodeLogicalConflictError();
-        }
-        if (
-          existingByLogicalIdentity &&
-          !hasSameKnowledgeNodeOwnership(existingByLogicalIdentity, node)
-        ) {
-          throw new KnowledgeNodeOwnershipConflictError(node.id);
-        }
-
-        const existing = existingById ?? existingByLogicalIdentity;
-        if (existing && node.publicationGenerationId) {
-          assertExactGenerationReplay({
-            componentType: "knowledge-node",
-            incoming: node,
-            logicalKey: knowledgeNodeLogicalIdentity(node),
-            persisted: existing,
-          });
-          persisted.push(existing);
-          continue;
-        }
-        const stored = existing ? { ...node, id: existing.id } : node;
-        next.set(stored.id, cloneKnowledgeNode(stored));
-        persisted.push(stored);
-      }
-
-      if (next.size > maxNodes) {
-        throw new KnowledgeNodeCapacityExceededError(maxNodes);
-      }
-
-      nodes.clear();
-      for (const [id, node] of next) {
-        nodes.set(id, node);
-      }
-
-      return persisted.map(cloneKnowledgeNode);
+      return upsertAtomically(input);
     },
     deleteByDocumentAsset: async ({ documentAssetId, knowledgeSpaceId, maxNodes }) => {
       if (!Number.isInteger(maxNodes) || maxNodes < 1) {
@@ -320,6 +407,11 @@ export function createInMemoryKnowledgeNodeRepository({
         hasKnowledgeNodeGeneration(node, generation)
         ? cloneKnowledgeNode(node)
         : null;
+    },
+    getGenerationReceipt: async (input) => {
+      const normalized = normalizeKnowledgeNodeGenerationReceiptLookup(input);
+      const receipt = generationReceipts.get(knowledgeNodeGenerationReceiptKey(normalized));
+      return receipt ? cloneKnowledgeNodeGenerationReceipt(receipt) : null;
     },
     getMany: async ({ ids, knowledgeSpaceId, publicationGenerationId }) => {
       validateKnowledgeNodeBatchIds(ids, maxBatchSize);
@@ -448,8 +540,38 @@ export function createDatabaseKnowledgeNodeRepository({
     maxNodes: Number.MAX_SAFE_INTEGER,
   });
   const tableName = "knowledge_nodes";
+  const receiptTableName = "knowledge_node_generation_receipts";
 
   return {
+    completeGenerationAtomically: async (input) => {
+      const receipt = validateKnowledgeNodeGenerationCompletion(input);
+      const parsedNodes = input.nodes.map((node) =>
+        cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)),
+      );
+      validateKnowledgeNodeLogicalBatch(parsedNodes);
+
+      return database.transaction(async (transaction) => {
+        const persisted: KnowledgeNode[] = [];
+        for (const batch of chunkKnowledgeNodeBatch(parsedNodes, maxBatchSize)) {
+          persisted.push(
+            ...(await databaseWriteKnowledgeNodeGroups({
+              database,
+              executor: transaction,
+              legacyMode: "upsert",
+              nodes: batch,
+              tableName,
+            })),
+          );
+        }
+        const persistedReceipt = await databaseWriteKnowledgeNodeGenerationReceipt({
+          database,
+          executor: transaction,
+          receipt,
+          tableName: receiptTableName,
+        });
+        return { nodes: persisted, receipt: persistedReceipt };
+      });
+    },
     createMany: async (input) => {
       validateKnowledgeNodeBatch(input, maxBatchSize);
       const nodes = input.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
@@ -472,6 +594,27 @@ export function createDatabaseKnowledgeNodeRepository({
           tableName,
         }),
       );
+    },
+    upsertGenerationAtomically: async (input) => {
+      validateKnowledgeNodeGenerationBatch(input);
+      const nodes = input.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
+      validateKnowledgeNodeLogicalBatch(nodes);
+
+      return database.transaction(async (transaction) => {
+        const persisted: KnowledgeNode[] = [];
+        for (const batch of chunkKnowledgeNodeBatch(nodes, maxBatchSize)) {
+          persisted.push(
+            ...(await databaseWriteKnowledgeNodeGroups({
+              database,
+              executor: transaction,
+              legacyMode: "upsert",
+              nodes: batch,
+              tableName,
+            })),
+          );
+        }
+        return persisted;
+      });
     },
     upsertMany: async (input) => {
       validateKnowledgeNodeBatch(input, maxBatchSize);
@@ -588,6 +731,30 @@ export function createDatabaseKnowledgeNodeRepository({
       });
 
       return result.rows[0] ? mapKnowledgeNodeRow(result.rows[0]) : null;
+    },
+    getGenerationReceipt: async (input) => {
+      const normalized = normalizeKnowledgeNodeGenerationReceiptLookup(input);
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [
+          normalized.knowledgeSpaceId,
+          normalized.publicationGenerationId,
+          normalized.parseArtifactId,
+        ],
+        sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, receiptTableName)} WHERE ${quoteDatabaseIdentifier(
+          database,
+          "knowledge_space_id",
+        )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
+          database,
+          "publication_generation_id",
+        )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
+          database,
+          "parse_artifact_id",
+        )} = ${databasePlaceholder(database, 3)} LIMIT 1;`,
+        tableName: receiptTableName,
+      });
+      return result.rows[0] ? mapKnowledgeNodeGenerationReceiptRow(result.rows[0]) : null;
     },
     getMany: async ({ ids, knowledgeSpaceId, publicationGenerationId }) => {
       return databaseKnowledgeNodeGetMany(database, tableName, maxBatchSize, {
@@ -799,6 +966,466 @@ export function knowledgeNodeCursor(node: KnowledgeNode): KnowledgeNodeCursor {
     id: node.id,
     startOffset: node.startOffset,
   };
+}
+
+function validateKnowledgeNodeGenerationCompletion({
+  nodes,
+  receipt: inputReceipt,
+}: CompleteKnowledgeNodeGenerationInput): KnowledgeNodeGenerationReceipt {
+  const receipt = validateKnowledgeNodeGenerationReceipt(inputReceipt);
+  if (nodes.length !== receipt.storedNodeCount) {
+    throw new Error("Knowledge node generation receipt storedNodeCount does not match nodes");
+  }
+  const expectedIndexes = Array.from(
+    { length: receipt.documentChunkCount },
+    (_, index) => index,
+  ).filter((index) => !receipt.excludedNodeOrdinals.includes(index));
+  const actualIndexes: number[] = [];
+  for (const candidate of nodes) {
+    const node = KnowledgeNodeSchema.parse(candidate);
+    if (
+      node.knowledgeSpaceId !== receipt.knowledgeSpaceId ||
+      node.documentAssetId !== receipt.documentAssetId ||
+      node.parseArtifactId !== receipt.parseArtifactId ||
+      node.publicationGenerationId !== receipt.publicationGenerationId ||
+      node.artifactHash !== receipt.artifactHash ||
+      !Number.isSafeInteger(node.metadata.chunkIndex)
+    ) {
+      throw new Error("Knowledge node generation receipt identity does not match nodes");
+    }
+    actualIndexes.push(node.metadata.chunkIndex as number);
+  }
+  actualIndexes.sort((left, right) => left - right);
+  if (stableJson(actualIndexes) !== stableJson(expectedIndexes)) {
+    throw new Error("Knowledge node generation receipt chunk indexes do not match nodes");
+  }
+  return receipt;
+}
+
+function validateKnowledgeNodeGenerationReceipt(
+  input: KnowledgeNodeGenerationReceipt,
+): KnowledgeNodeGenerationReceipt {
+  assertKnowledgeNodeGenerationReceiptSize(input);
+  const knowledgeSpaceId = UuidSchema.parse(input.knowledgeSpaceId);
+  const publicationGenerationId = PublicationGenerationIdSchema.parse(
+    input.publicationGenerationId,
+  );
+  const parseArtifactId = UuidSchema.parse(input.parseArtifactId);
+  const documentAssetId = UuidSchema.parse(input.documentAssetId);
+  if (input.schemaVersion !== 1) {
+    throw new Error("Knowledge node generation receipt schemaVersion must be 1");
+  }
+  if (!/^[a-f0-9]{64}$/u.test(input.artifactHash)) {
+    throw new Error("Knowledge node generation receipt artifactHash is invalid");
+  }
+  const semanticConfig = input.semanticConfig;
+  for (const [name, value] of [
+    ["maxChunkChars", semanticConfig.maxChunkChars],
+    ["maxNodes", semanticConfig.maxNodes],
+    ["maxWindowChars", semanticConfig.maxWindowChars],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new Error(`Knowledge node generation receipt ${name} must be at least 1`);
+    }
+  }
+  if (
+    !Number.isSafeInteger(semanticConfig.overlapChars) ||
+    semanticConfig.overlapChars < 0 ||
+    semanticConfig.overlapChars >= semanticConfig.maxChunkChars
+  ) {
+    throw new Error("Knowledge node generation receipt overlapChars is invalid");
+  }
+  if (
+    semanticConfig.maxWindowChars < semanticConfig.maxChunkChars ||
+    !semanticConfig.promptVersion.trim()
+  ) {
+    throw new Error("Knowledge node generation receipt semantic config is invalid");
+  }
+  if (
+    !Number.isSafeInteger(input.documentChunkCount) ||
+    input.documentChunkCount < 0 ||
+    input.documentChunkCount > semanticConfig.maxNodes ||
+    !Number.isSafeInteger(input.storedNodeCount) ||
+    input.storedNodeCount < 0 ||
+    input.storedNodeCount > input.documentChunkCount
+  ) {
+    throw new Error("Knowledge node generation receipt node counts are invalid");
+  }
+  const excludedNodeOrdinals = [...input.excludedNodeOrdinals];
+  if (
+    excludedNodeOrdinals.some(
+      (ordinal) =>
+        !Number.isSafeInteger(ordinal) || ordinal < 0 || ordinal >= input.documentChunkCount,
+    ) ||
+    excludedNodeOrdinals.some((ordinal, index) => {
+      const previous = excludedNodeOrdinals[index - 1];
+      return previous !== undefined && ordinal <= previous;
+    }) ||
+    input.storedNodeCount !== input.documentChunkCount - excludedNodeOrdinals.length
+  ) {
+    throw new Error("Knowledge node generation receipt exclusions are invalid");
+  }
+  for (const fingerprint of [
+    input.promptResponseFingerprint,
+    input.requestFingerprint,
+    input.responseFingerprint,
+    input.storedResponseFingerprint,
+  ]) {
+    if (!/^sha256:[a-f0-9]{64}$/u.test(fingerprint)) {
+      throw new Error("Knowledge node generation receipt fingerprint is invalid");
+    }
+  }
+  const permissionScope = [...input.permissionScope];
+  if (permissionScope.some((scope) => typeof scope !== "string" || !scope.trim())) {
+    throw new Error("Knowledge node generation receipt permissionScope is invalid");
+  }
+  if (input.language !== undefined && !input.language.trim()) {
+    throw new Error("Knowledge node generation receipt language is invalid");
+  }
+  const modelSelection = KnowledgeSpaceModelSelectionSchema.parse(input.modelSelection);
+  const completionCatalog = validateKnowledgeNodeGenerationCompletionCatalog(
+    input.completionCatalog,
+  );
+  const windowManifest = validateKnowledgeNodeGenerationWindowManifest(
+    input.windowManifest,
+    input.documentChunkCount,
+    semanticConfig.maxNodes,
+    completionCatalog.length,
+  );
+  const receipt: KnowledgeNodeGenerationReceipt = {
+    artifactHash: input.artifactHash,
+    completionCatalog,
+    documentAssetId,
+    documentChunkCount: input.documentChunkCount,
+    excludedNodeOrdinals,
+    knowledgeSpaceId,
+    ...(input.language === undefined ? {} : { language: input.language }),
+    modelSelection,
+    parseArtifactId,
+    permissionScope,
+    promptResponseFingerprint: input.promptResponseFingerprint,
+    publicationGenerationId,
+    requestFingerprint: input.requestFingerprint,
+    responseFingerprint: input.responseFingerprint,
+    schemaVersion: 1,
+    semanticConfig: {
+      maxChunkChars: semanticConfig.maxChunkChars,
+      maxNodes: semanticConfig.maxNodes,
+      maxWindowChars: semanticConfig.maxWindowChars,
+      overlapChars: semanticConfig.overlapChars,
+      promptVersion: semanticConfig.promptVersion,
+    },
+    storedNodeCount: input.storedNodeCount,
+    storedResponseFingerprint: input.storedResponseFingerprint,
+    windowManifest,
+  };
+  assertKnowledgeNodeGenerationReceiptSize(receipt);
+  return receipt;
+}
+
+function validateKnowledgeNodeGenerationCompletionCatalog(
+  input: readonly KnowledgeNodeGenerationCompletionReceipt[],
+): KnowledgeNodeGenerationCompletionReceipt[] {
+  if (!Array.isArray(input) || input.length > MAX_LLM_SEMANTIC_COMPLETION_IDENTITIES) {
+    throw new Error("Knowledge node generation receipt completion catalog is invalid");
+  }
+  const fingerprints = new Set<string>();
+  const identities = new Set<string>();
+  return input.map((candidate) => {
+    if (!isPlainObject(candidate)) {
+      throw new Error("Knowledge node generation receipt completion identity is invalid");
+    }
+    const actualModel = optionalBoundedReceiptString(
+      candidate.actualModel,
+      "actualModel",
+      MAX_LLM_SEMANTIC_TERMINAL_IDENTITY_CODE_POINTS,
+    );
+    const actualProvider = optionalBoundedReceiptString(
+      candidate.actualProvider,
+      "actualProvider",
+      MAX_LLM_SEMANTIC_TERMINAL_IDENTITY_CODE_POINTS,
+    );
+    const finishReason = optionalBoundedReceiptString(
+      candidate.finishReason,
+      "finishReason",
+      MAX_LLM_SEMANTIC_FINISH_REASON_CODE_POINTS,
+    );
+    const transportProvider = optionalBoundedReceiptString(
+      candidate.transportProvider,
+      "transportProvider",
+      MAX_LLM_SEMANTIC_TERMINAL_IDENTITY_CODE_POINTS,
+    );
+    const identity = {
+      ...(actualModel ? { actualModel } : {}),
+      ...(actualProvider ? { actualProvider } : {}),
+      ...(finishReason ? { finishReason } : {}),
+      ...(transportProvider ? { transportProvider } : {}),
+    };
+    const fingerprint = llmSemanticCompletionFingerprint(identity);
+    if (
+      candidate.fingerprint !== fingerprint ||
+      fingerprints.has(fingerprint) ||
+      identities.has(stableJson(identity))
+    ) {
+      throw new Error("Knowledge node generation receipt completion identity is invalid");
+    }
+    fingerprints.add(fingerprint);
+    identities.add(stableJson(identity));
+    return { fingerprint, ...identity };
+  });
+}
+
+function validateKnowledgeNodeGenerationWindowManifest(
+  input: readonly KnowledgeNodeGenerationWindowReceipt[],
+  documentChunkCount: number,
+  maxNodes: number,
+  completionCatalogLength: number,
+): KnowledgeNodeGenerationWindowReceipt[] {
+  if (
+    !Array.isArray(input) ||
+    input.length > maxNodes ||
+    input.length > MAX_LLM_SEMANTIC_WINDOWS ||
+    (documentChunkCount > 0 && input.length === 0) ||
+    (documentChunkCount === 0 && input.length > 0) ||
+    (input.length > 0 && completionCatalogLength === 0) ||
+    completionCatalogLength > input.length
+  ) {
+    throw new Error("Knowledge node generation receipt window manifest is incomplete");
+  }
+  const windowIds = new Set<string>();
+  let nextChunkIndex = 0;
+  const windows = input.map((window, windowIndex) => {
+    if (window === null || typeof window !== "object" || Array.isArray(window)) {
+      throw new Error("Knowledge node generation receipt window manifest is invalid");
+    }
+    if (
+      !isValidReceiptWindowId(window.windowId) ||
+      window.windowId !== `window-${windowIndex.toString().padStart(6, "0")}` ||
+      windowIds.has(window.windowId) ||
+      !/^sha256:[a-f0-9]{64}$/u.test(window.inputFingerprint) ||
+      !/^sha256:[a-f0-9]{64}$/u.test(window.responseFingerprint) ||
+      !Number.isSafeInteger(window.completionIndex) ||
+      window.completionIndex < 0 ||
+      window.completionIndex >= completionCatalogLength ||
+      !Number.isSafeInteger(window.firstChunkIndex) ||
+      window.firstChunkIndex !== nextChunkIndex ||
+      !Array.isArray(window.chunkRanges) ||
+      window.chunkRanges.length < 1 ||
+      window.chunkRanges.length > maxNodes
+    ) {
+      throw new Error("Knowledge node generation receipt window manifest is invalid");
+    }
+    windowIds.add(window.windowId);
+    const coreUnitRange = validateKnowledgeNodeGenerationUnitRange(window.coreUnitRange);
+    const committedUnitRange = validateKnowledgeNodeGenerationUnitRange(window.committedUnitRange);
+    const lookAheadUnitRange =
+      window.lookAheadUnitRange === undefined
+        ? undefined
+        : validateKnowledgeNodeGenerationUnitRange(window.lookAheadUnitRange);
+    const chunkRanges = window.chunkRanges.map(validateKnowledgeNodeGenerationUnitRange);
+    nextChunkIndex += chunkRanges.length;
+    return {
+      chunkRanges,
+      committedUnitRange,
+      completionIndex: window.completionIndex,
+      coreUnitRange,
+      firstChunkIndex: window.firstChunkIndex,
+      inputFingerprint: window.inputFingerprint,
+      ...(lookAheadUnitRange ? { lookAheadUnitRange } : {}),
+      responseFingerprint: window.responseFingerprint,
+      windowId: window.windowId,
+    };
+  });
+  if (nextChunkIndex !== documentChunkCount) {
+    throw new Error("Knowledge node generation receipt window chunks do not cover the document");
+  }
+  return windows;
+}
+
+function validateKnowledgeNodeGenerationUnitRange(
+  input: KnowledgeNodeGenerationUnitRangeReceipt,
+): KnowledgeNodeGenerationUnitRangeReceipt {
+  if (!Array.isArray(input) || input.length !== 2 || !input.every(isValidReceiptUnitId)) {
+    throw new Error("Knowledge node generation receipt window unit range is invalid");
+  }
+  return [input[0] as string, input[1] as string];
+}
+
+function isValidReceiptWindowId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    Array.from(value).length <= MAX_LLM_SEMANTIC_WINDOW_ID_CODE_POINTS &&
+    /^window-\d{6,}$/u.test(value)
+  );
+}
+
+function isValidReceiptUnitId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    Array.from(value).length <= MAX_LLM_SEMANTIC_UNIT_ID_CODE_POINTS &&
+    /^u-\d{6,}-\d{6,}$/u.test(value)
+  );
+}
+
+function optionalBoundedReceiptString(
+  value: unknown,
+  name: string,
+  maxCodePoints: number,
+): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim() || Array.from(value).length > maxCodePoints) {
+    throw new Error(`Knowledge node generation receipt ${name} is invalid`);
+  }
+  return value.trim();
+}
+
+function assertKnowledgeNodeGenerationReceiptSize(value: unknown): void {
+  if (
+    knowledgeNodeGenerationReceiptSerializedBytes(value) >
+    MAX_KNOWLEDGE_NODE_GENERATION_RECEIPT_BYTES
+  ) {
+    throw new Error(
+      `Knowledge node generation receipt exceeds maxBytes=${MAX_KNOWLEDGE_NODE_GENERATION_RECEIPT_BYTES}`,
+    );
+  }
+}
+
+function normalizeKnowledgeNodeGenerationReceiptLookup(
+  input: KnowledgeNodeGenerationReceiptLookupInput,
+): KnowledgeNodeGenerationReceiptLookupInput {
+  return {
+    knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
+    parseArtifactId: UuidSchema.parse(input.parseArtifactId),
+    publicationGenerationId: PublicationGenerationIdSchema.parse(input.publicationGenerationId),
+  };
+}
+
+function knowledgeNodeGenerationReceiptKey(
+  input: KnowledgeNodeGenerationReceiptLookupInput,
+): string {
+  return stableJson([input.knowledgeSpaceId, input.publicationGenerationId, input.parseArtifactId]);
+}
+
+function cloneKnowledgeNodeGenerationReceipt(
+  receipt: KnowledgeNodeGenerationReceipt,
+): KnowledgeNodeGenerationReceipt {
+  return validateKnowledgeNodeGenerationReceipt(
+    JSON.parse(JSON.stringify(receipt)) as KnowledgeNodeGenerationReceipt,
+  );
+}
+
+async function databaseWriteKnowledgeNodeGenerationReceipt({
+  database,
+  executor,
+  receipt,
+  tableName,
+}: {
+  readonly database: DatabaseAdapter;
+  readonly executor: DatabaseExecutor;
+  readonly receipt: KnowledgeNodeGenerationReceipt;
+  readonly tableName: string;
+}): Promise<KnowledgeNodeGenerationReceipt> {
+  const columns = [
+    "knowledge_space_id",
+    "publication_generation_id",
+    "parse_artifact_id",
+    "document_asset_id",
+    "artifact_hash",
+    "document_chunk_count",
+    "stored_node_count",
+    "request_fingerprint",
+    "response_fingerprint",
+    "prompt_response_fingerprint",
+    "receipt",
+  ] as const;
+  const params: readonly DatabaseQueryValue[] = [
+    receipt.knowledgeSpaceId,
+    receipt.publicationGenerationId,
+    receipt.parseArtifactId,
+    receipt.documentAssetId,
+    receipt.artifactHash,
+    receipt.documentChunkCount,
+    receipt.storedNodeCount,
+    receipt.requestFingerprint,
+    receipt.responseFingerprint,
+    receipt.promptResponseFingerprint,
+    JSON.stringify(receipt),
+  ];
+  const conflictSql =
+    database.dialect === "postgres"
+      ? " ON CONFLICT DO NOTHING RETURNING *"
+      : ` ON DUPLICATE KEY UPDATE ${quoteDatabaseIdentifier(
+          database,
+          "knowledge_space_id",
+        )} = ${quoteDatabaseIdentifier(database, "knowledge_space_id")}`;
+  const inserted = await executor.execute({
+    maxRows: 1,
+    operation: "insert",
+    params,
+    sql: `INSERT INTO ${quoteDatabaseIdentifier(database, tableName)} (${columns
+      .map((column) => quoteDatabaseIdentifier(database, column))
+      .join(", ")}) VALUES (${columns
+      .map((_, index) =>
+        index === columns.length - 1
+          ? jsonInsertPlaceholder(database, index + 1, "receipt")
+          : databasePlaceholder(database, index + 1),
+      )
+      .join(", ")})${conflictSql};`,
+    tableName,
+  });
+  const row =
+    inserted.rows[0] ??
+    (
+      await executor.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [
+          receipt.knowledgeSpaceId,
+          receipt.publicationGenerationId,
+          receipt.parseArtifactId,
+        ],
+        sql: `SELECT * FROM ${quoteDatabaseIdentifier(database, tableName)} WHERE ${quoteDatabaseIdentifier(
+          database,
+          "knowledge_space_id",
+        )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
+          database,
+          "publication_generation_id",
+        )} = ${databasePlaceholder(database, 2)} AND ${quoteDatabaseIdentifier(
+          database,
+          "parse_artifact_id",
+        )} = ${databasePlaceholder(database, 3)} LIMIT 1;`,
+        tableName,
+      })
+    ).rows[0];
+  if (!row) {
+    throw new Error("Knowledge node generation receipt was not persisted");
+  }
+  const persisted = mapKnowledgeNodeGenerationReceiptRow(row);
+  if (stableJson(persisted) !== stableJson(receipt)) {
+    throw new KnowledgeNodeGenerationReceiptConflictError();
+  }
+  return persisted;
+}
+
+function mapKnowledgeNodeGenerationReceiptRow(row: DatabaseRow): KnowledgeNodeGenerationReceipt {
+  const receipt = validateKnowledgeNodeGenerationReceipt(
+    jsonObjectColumn(row, "receipt") as unknown as KnowledgeNodeGenerationReceipt,
+  );
+  if (
+    stringColumn(row, "knowledge_space_id") !== receipt.knowledgeSpaceId ||
+    stringColumn(row, "publication_generation_id") !== receipt.publicationGenerationId ||
+    stringColumn(row, "parse_artifact_id") !== receipt.parseArtifactId ||
+    stringColumn(row, "document_asset_id") !== receipt.documentAssetId ||
+    stringColumn(row, "artifact_hash") !== receipt.artifactHash ||
+    numberColumn(row, "document_chunk_count") !== receipt.documentChunkCount ||
+    numberColumn(row, "stored_node_count") !== receipt.storedNodeCount ||
+    stringColumn(row, "request_fingerprint") !== receipt.requestFingerprint ||
+    stringColumn(row, "response_fingerprint") !== receipt.responseFingerprint ||
+    stringColumn(row, "prompt_response_fingerprint") !== receipt.promptResponseFingerprint
+  ) {
+    throw new KnowledgeNodeGenerationReceiptConflictError();
+  }
+  return receipt;
 }
 
 async function databaseWriteKnowledgeNodeGroups({
@@ -1276,6 +1903,37 @@ function validateKnowledgeNodeBatch(nodes: readonly KnowledgeNode[], maxBatchSiz
   if (nodes.length > maxBatchSize) {
     throw new Error(`Knowledge node batch size exceeds maxBatchSize=${maxBatchSize}`);
   }
+}
+
+function validateKnowledgeNodeGenerationBatch(nodes: readonly KnowledgeNode[]): void {
+  if (nodes.length < 1) {
+    throw new Error("Knowledge node generation batch must contain at least 1 node");
+  }
+  const first = KnowledgeNodeSchema.parse(nodes[0]);
+  if (!first.publicationGenerationId) {
+    throw new Error("Knowledge node generation batch requires publicationGenerationId");
+  }
+  for (const candidate of nodes) {
+    const node = KnowledgeNodeSchema.parse(candidate);
+    if (
+      node.publicationGenerationId !== first.publicationGenerationId ||
+      node.knowledgeSpaceId !== first.knowledgeSpaceId ||
+      node.parseArtifactId !== first.parseArtifactId
+    ) {
+      throw new Error("Knowledge node generation batch must share one generation and artifact");
+    }
+  }
+}
+
+function chunkKnowledgeNodeBatch(
+  nodes: readonly KnowledgeNode[],
+  maxBatchSize: number,
+): KnowledgeNode[][] {
+  const batches: KnowledgeNode[][] = [];
+  for (let start = 0; start < nodes.length; start += maxBatchSize) {
+    batches.push(nodes.slice(start, start + maxBatchSize));
+  }
+  return batches;
 }
 
 function validateKnowledgeNodeLogicalBatch(nodes: readonly KnowledgeNode[]): void {

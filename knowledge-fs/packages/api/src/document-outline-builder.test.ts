@@ -97,6 +97,48 @@ describe("document outline builder", () => {
     expect(outline.nodes[0]?.children[0]?.summary).toContain("dense, full-text, and graph");
   });
 
+  it("preserves semantic-node lineage and model section summaries", () => {
+    const builder = createDocumentOutlineBuilder({
+      generateId: sequenceIds([
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+        "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52",
+      ]),
+      maxElements: 20,
+      maxNodes: 10,
+      maxSummaryChars: 120,
+      now: () => createdAt,
+    });
+    const sourceNodeId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
+    const semanticArtifact: ParseArtifact = {
+      ...parseArtifact([
+        {
+          id: sourceNodeId,
+          metadata: {
+            semanticSectionSummary: "发票身份、购买方和价税合计。",
+            sourceKnowledgeNodeId: sourceNodeId,
+          },
+          sectionPath: ["电子发票", "购买方与金额"],
+          text: "发票号码、购买方、价税合计和开票人",
+          type: "paragraph",
+        },
+      ]),
+      metadata: {
+        parserVersion: "native-markdown@1",
+        semanticCompilation: { source: "llm-semantic-v1" },
+      },
+    };
+
+    const outline = builder.build({ knowledgeSpaceId, parseArtifact: semanticArtifact });
+
+    expect(outline.metadata).toMatchObject({ builder: "semantic-knowledge-nodes" });
+    expect(outline.nodes[0]?.children[0]).toMatchObject({
+      sectionPath: ["电子发票", "购买方与金额"],
+      sourceNodeIds: [sourceNodeId],
+      summary: "发票身份、购买方和价税合计。",
+    });
+  });
+
   it("falls back to a document node when parse output has no heading structure", () => {
     const builder = createDocumentOutlineBuilder({
       generateId: sequenceIds([

@@ -21,6 +21,7 @@ import {
   createKnowledgeSpaceOutlineSummaryEnhancer,
   createLlmAnswerQueryGenerator,
   createLlmAutoRetrievalModeResolver,
+  createLlmSemanticChunker,
   createModelCapabilityPreflight,
   createPageIndexFindabilityEvaluator,
   createPageIndexLayeredTreeSearch,
@@ -433,6 +434,10 @@ const documentOutlineSummaryEnhancer = createKnowledgeSpaceOutlineSummaryEnhance
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
 });
+const documentSemanticChunker = createLlmSemanticChunker({
+  maxNodes: 20_000,
+  reasoningProviderFactory: profileReasoningCapability.providerFactory,
+});
 const relevanceTriageOptions = createApiRelevanceTriageOptions({
   ...(repositoryOptions.documentAssets ? { documentAssets: repositoryOptions.documentAssets } : {}),
   ...(repositoryOptions.documentOutlines
@@ -590,6 +595,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
     semanticExtractionMaxConcurrency: ingestionModelRuntimeOptions.semanticExtractionMaxConcurrency,
   },
   semanticMetrics: operationalMetrics.semanticEnrichment,
+  semanticChunker: documentSemanticChunker,
   ...(visualEmbeddingOptions
     ? {
         visual: {

@@ -2307,6 +2307,80 @@ const tables = [
     ],
   },
   {
+    name: "knowledge_node_generation_receipts",
+    checkConstraints: [
+      publicationGenerationCheck(
+        "knowledge_node_generation_receipts_pub_gen_nonzero_ck",
+        "publication_generation_id",
+        false,
+      ),
+      {
+        expression: {
+          postgres:
+            '"document_chunk_count" >= 0 AND "stored_node_count" >= 0 AND "stored_node_count" <= "document_chunk_count"',
+          tidb: "`document_chunk_count` >= 0 AND `stored_node_count` >= 0 AND `stored_node_count` <= `document_chunk_count`",
+        },
+        name: "knowledge_node_generation_receipts_counts_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "\"artifact_hash\" ~ '^[a-f0-9]{64}$' AND \"request_fingerprint\" ~ '^sha256:[a-f0-9]{64}$' AND \"response_fingerprint\" ~ '^sha256:[a-f0-9]{64}$' AND \"prompt_response_fingerprint\" ~ '^sha256:[a-f0-9]{64}$'",
+          tidb: "`artifact_hash` REGEXP '^[a-f0-9]{64}$' AND `request_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$' AND `response_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$' AND `prompt_response_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "knowledge_node_generation_receipts_hashes_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"receipt\") = 'object'",
+          tidb: "JSON_TYPE(`receipt`) = 'OBJECT'",
+        },
+        name: "knowledge_node_generation_receipts_json_ck",
+      },
+      {
+        expression: {
+          postgres: 'octet_length("receipt"::text) <= 8388608',
+          tidb: "OCTET_LENGTH(CAST(`receipt` AS CHAR)) <= 8388608",
+        },
+        name: "knowledge_node_generation_receipts_bytes_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["document_asset_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "document_assets",
+      },
+      {
+        columns: ["parse_artifact_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["id"],
+        referencedTable: "parse_artifacts",
+      },
+    ],
+    columns: [
+      idColumn("knowledge_space_id"),
+      idColumn("publication_generation_id"),
+      idColumn("parse_artifact_id"),
+      idColumn("document_asset_id"),
+      varcharColumn("artifact_hash", 64),
+      integerColumn("document_chunk_count"),
+      integerColumn("stored_node_count"),
+      varcharColumn("request_fingerprint", 71),
+      varcharColumn("response_fingerprint", 71),
+      varcharColumn("prompt_response_fingerprint", 71),
+      jsonColumn("receipt"),
+    ],
+    primaryKey: ["knowledge_space_id", "publication_generation_id", "parse_artifact_id"],
+  },
+  {
     name: "index_projections",
     checkConstraints: [
       publicationGenerationCheck(
@@ -6745,6 +6819,18 @@ const indexes = [
     using: {
       postgres: "GIN",
     },
+  },
+  {
+    columns: [
+      "knowledge_space_id",
+      "document_asset_id",
+      "publication_generation_id",
+      "parse_artifact_id",
+    ],
+    name: "knowledge_node_generation_receipts_document_idx",
+    purpose:
+      "Delete immutable semantic-generation receipts for one tombstoned document without a table scan",
+    tableName: "knowledge_node_generation_receipts",
   },
   {
     columns: ["knowledge_space_id", "id", "version"],

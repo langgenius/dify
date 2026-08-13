@@ -3,11 +3,14 @@ import type {
   DatabaseExecuteInput,
   DatabaseExecuteResult,
   DatabaseTransactionCallback,
+  DocumentAsset,
   IndexProjection,
+  KnowledgePath,
 } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { deterministicChildId } from "./api-shared-utils";
+import { buildDocumentOutlineKnowledgePath } from "./document-knowledge-paths";
 import type { KnowledgeSpaceProfileMigrationRun } from "./knowledge-space-profile-migration";
 import {
   type ReplaceKnowledgeSpaceProfileMigrationCandidateSnapshotInput,
@@ -334,12 +337,48 @@ describe("profile migration candidate builder", () => {
       pageIndexSummaryOutlineRebuilt: true,
       publicationStatus: "validating",
     });
+    expect(fixture.reindex).toHaveBeenCalledOnce();
+    expect(fixture.reindex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        denseModel: fixture.baseVectorSpaceId,
+        embeddingProfile: expect.objectContaining({ model: "embedding-v1" }),
+        retrievalProfile: expect.objectContaining({
+          reasoningModel: expect.objectContaining({ model: "reasoning-v2" }),
+        }),
+      }),
+    );
+    expect(fixture.buildOutline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parseArtifact: expect.objectContaining({
+          metadata: expect.objectContaining({ semanticCompilation: expect.any(Object) }),
+        }),
+      }),
+    );
     expect(fixture.enhance).toHaveBeenCalledOnce();
     expect(fixture.materialize).toHaveBeenCalledOnce();
+    expect(fixture.materializeGraph).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdAt: now,
+        publicationGenerationId: fixture.expectedGenerationId,
+      }),
+    );
     expect(fixture.heartbeat.mock.calls.length).toBeGreaterThanOrEqual(5);
     expect(fixture.candidateMembers()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ componentKey: pathId, componentType: "knowledge-path" }),
+        expect.objectContaining({
+          componentType: "knowledge-path",
+          generationId: fixture.expectedGenerationId,
+        }),
+        expect.objectContaining({
+          componentKey: fixture.rebuiltGraphEntityId,
+          componentType: "graph-entity",
+          generationId: fixture.expectedGenerationId,
+        }),
+        expect.objectContaining({
+          componentKey: fixture.rebuiltGraphRelationId,
+          componentType: "graph-relation",
+          generationId: fixture.expectedGenerationId,
+        }),
         expect.objectContaining({
           componentKey: fixture.rebuiltOutlineId,
           componentType: "document-outline",
@@ -376,12 +415,32 @@ describe("profile migration candidate builder", () => {
       publicationStatus: "validating",
     });
     expect(fixture.reindex).toHaveBeenCalledOnce();
+    expect(fixture.reindex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reuseNodeGenerationId: baseGenerationId,
+        skipVisual: true,
+        retrievalProfile: expect.objectContaining({
+          reasoningModel: expect.objectContaining({ model: "reasoning-v1" }),
+        }),
+      }),
+    );
+    expect(fixture.materializeGraph).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdAt: now,
+        publicationGenerationId: fixture.expectedGenerationId,
+      }),
+    );
     expect(fixture.candidateMembers()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ componentKey: pathId, componentType: "knowledge-path" }),
         expect.objectContaining({ componentKey: fixture.visualProjectionId }),
         expect.objectContaining({ componentKey: fixture.rebuiltFtsId }),
         expect.objectContaining({ componentKey: fixture.rebuiltDenseId }),
+        expect.objectContaining({
+          componentKey: fixture.rebuiltGraphEntityId,
+          componentType: "graph-entity",
+          generationId: fixture.expectedGenerationId,
+        }),
       ]),
     );
     expect(
@@ -740,6 +799,9 @@ function builderFixture(
   const visualProjectionId = deterministicChildId(documentAssetId, "base-visual");
   const rebuiltFtsId = deterministicChildId(runId, "rebuilt-fts");
   const rebuiltDenseId = deterministicChildId(runId, "rebuilt-dense");
+  const baseGraphEntityId = deterministicChildId(documentAssetId, "base-graph-entity");
+  const rebuiltGraphEntityId = deterministicChildId(runId, "rebuilt-graph-entity");
+  const rebuiltGraphRelationId = deterministicChildId(runId, "rebuilt-graph-relation");
   const expectedGenerationId = deterministicChildId(
     runId,
     `profile-migration:${scope === "full-vector-space" ? "vector-space" : "page-index"}:${documentAssetId}`,
@@ -771,33 +833,55 @@ function builderFixture(
     publicationGenerationId: baseGenerationId,
     version: 1,
   };
+  const asset: DocumentAsset = {
+    createdAt: now,
+    filename: "synthetic-invoice.pdf",
+    id: documentAssetId,
+    knowledgeSpaceId: spaceId,
+    metadata: { permissionScope: ["read"] },
+    mimeType: "application/pdf",
+    objectKey: "documents/synthetic-invoice.pdf",
+    parserStatus: "parsed",
+    sha256: digestA,
+    sizeBytes: 1_024,
+    version: 1,
+  };
+  const storedPaths = new Map<string, KnowledgePath[]>();
+  const baseOutlinePath = {
+    ...buildDocumentOutlineKnowledgePath({
+      asset,
+      id: pathId,
+      publicationGenerationId: baseGenerationId,
+      tenantId,
+    }),
+    id: pathId,
+  };
+  storedPaths.set(baseGenerationId, [baseOutlinePath]);
   let rebuiltOutline: typeof baseOutline | undefined;
   let candidate: ProjectionSetPublication | undefined;
   let candidateMembers: readonly ProjectionSetPublicationMember[] = [];
   const projections = new Map<string, IndexProjection>();
-  const baseProjectionMembers: ProjectionSetPublicationMember[] = [];
-  if (scope === "full-vector-space") {
-    const baseProjections = [
-      projection(baseFtsId, baseGenerationId, "fts"),
-      projection(baseDenseId, baseGenerationId, "dense-vector", oldVectorSpaceId),
-      {
-        ...projection(visualProjectionId, baseGenerationId, "dense-vector", "visual-model"),
-        metadata: {
-          documentAssetId,
-          multimodal: { vectorSpace: "visual" },
-        },
+  const baseProjections = [
+    projection(baseFtsId, baseGenerationId, "fts"),
+    projection(baseDenseId, baseGenerationId, "dense-vector", oldVectorSpaceId),
+    {
+      ...projection(visualProjectionId, baseGenerationId, "dense-vector", "visual-model"),
+      metadata: {
+        documentAssetId,
+        multimodal: { vectorSpace: "visual" },
       },
-    ];
-    for (const item of baseProjections) projections.set(item.id, item);
-    baseProjectionMembers.push(
-      member("index-projection", baseFtsId, baseGenerationId),
-      member("index-projection", baseDenseId, baseGenerationId),
-      member("index-projection", visualProjectionId, baseGenerationId),
-    );
-  }
+    },
+  ];
+  for (const item of baseProjections) projections.set(item.id, item);
+  const baseProjectionMembers: ProjectionSetPublicationMember[] = [
+    member("index-projection", baseFtsId, baseGenerationId),
+    member("index-projection", baseDenseId, baseGenerationId),
+    member("index-projection", visualProjectionId, baseGenerationId),
+  ];
   const baseMembers = [
     member("document-outline", outlineId, baseGenerationId),
     member("knowledge-path", pathId, baseGenerationId),
+    member("graph-entity", baseGraphEntityId, baseGenerationId),
     ...baseProjectionMembers,
   ];
   const heartbeat = vi.fn(async () => undefined);
@@ -805,7 +889,28 @@ function builderFixture(
     ...outline,
     metadata: { summary: { model: "reasoning-v2" } },
   }));
+  const buildOutline = vi.fn(
+    ({ publicationGenerationId }: { readonly publicationGenerationId?: string }) => {
+      rebuiltOutline = {
+        ...baseOutline,
+        id: rebuiltOutlineId,
+        metadata: {},
+        publicationGenerationId: publicationGenerationId ?? baseGenerationId,
+      };
+      return rebuiltOutline as never;
+    },
+  );
   const materialize = vi.fn(async () => ({ status: "building" }) as never);
+  const materializeGraph = vi.fn(async () => ({
+    entitiesExtracted: 1,
+    graphEntityIds: [rebuiltGraphEntityId],
+    graphEntitiesIndexed: 1,
+    graphRelationIds: [rebuiltGraphRelationId],
+    graphRelationsIndexed: 1,
+    nodesScanned: 1,
+    semanticProviderCalls: 0,
+    semanticProviderCallsMaximum: 0,
+  }));
   const reindex = vi.fn(
     async ({ publicationGenerationId }: { readonly publicationGenerationId?: string }) => {
       if (options.incompleteReindexReceipt) {
@@ -819,13 +924,26 @@ function builderFixture(
       }
       if (!publicationGenerationId) throw new Error("generation missing");
       projections.set(rebuiltFtsId, projection(rebuiltFtsId, publicationGenerationId, "fts"));
+      const targetVectorSpaceId =
+        scope === "full-vector-space" ? newVectorSpaceId : oldVectorSpaceId;
       projections.set(
         rebuiltDenseId,
-        projection(rebuiltDenseId, publicationGenerationId, "dense-vector", newVectorSpaceId),
+        projection(rebuiltDenseId, publicationGenerationId, "dense-vector", targetVectorSpaceId),
       );
       return {
         artifact: {} as never,
+        nodeIds: [deterministicChildId(publicationGenerationId, "semantic-node")],
         nodesCreated: 1,
+        outlineArtifact: {
+          artifactHash: digestA,
+          documentAssetId,
+          elements: [],
+          id: parseArtifactId,
+          metadata: { semanticCompilation: { source: "reasoning-v2" } },
+          parseVersion: "semantic-outline-v1",
+          parser: "semantic",
+          version: 1,
+        } as never,
         projectionIds: [rebuiltFtsId, rebuiltDenseId],
         projectionsCreated: 2,
         status: "rebuilt" as const,
@@ -881,8 +999,7 @@ function builderFixture(
         }) as never,
     },
     assets: {
-      get: async () =>
-        ({ id: documentAssetId, metadata: { permissionScope: ["read"] }, version: 1 }) as never,
+      get: async () => asset,
     },
     maxDocuments: 10,
     maxMembers: 100,
@@ -893,15 +1010,7 @@ function builderFixture(
     },
     now: () => now,
     outlineBuilder: {
-      build: ({ publicationGenerationId }: { readonly publicationGenerationId?: string }) => {
-        rebuiltOutline = {
-          ...baseOutline,
-          id: rebuiltOutlineId,
-          metadata: {},
-          publicationGenerationId: publicationGenerationId ?? baseGenerationId,
-        };
-        return rebuiltOutline as never;
-      },
+      build: buildOutline,
     } as never,
     outlineSummaryEnhancer: { enhance } as never,
     outlines: {
@@ -919,59 +1028,106 @@ function builderFixture(
       hasCompleteBuild: async () => options.completePageIndex !== false,
       materializeBuilding: materialize,
     },
+    paths: {
+      listPhysicalDescendants: async ({ publicationGenerationId }) => ({
+        items: storedPaths.get(publicationGenerationId ?? "") ?? [],
+      }),
+      upsertMany: async (items) => {
+        for (const item of items) {
+          const generationId = item.publicationGenerationId ?? "";
+          const generation = storedPaths.get(generationId) ?? [];
+          const existing = generation.findIndex((path) => path.id === item.id);
+          if (existing >= 0) generation[existing] = item;
+          else generation.push(item);
+          storedPaths.set(generationId, generation);
+        }
+        return [...items];
+      },
+    },
     profiles: {
-      getRevision: async ({ kind }) =>
+      getRevision: async ({ kind, revision }) =>
         kind === "embedding"
-          ? ({
-              id: "embedding-2",
-              revision: 2,
-              snapshot: {
-                dimension: 3072,
-                model: "embedding-v2",
-                pluginId: "plugin-embedding",
-                provider: "plugin-daemon",
-                revision: 2,
-                vectorSpaceId: newVectorSpaceId,
-              },
-              snapshotDigest: digestB,
-              state: "candidate",
-            } as never)
-          : ({
-              id: "retrieval-2",
-              revision: 2,
-              snapshot: {
-                defaultMode: "research",
-                reasoningModel: {
-                  model: "reasoning-v2",
-                  pluginId: "plugin-reasoning",
+          ? revision === 1
+            ? ({
+                id: "embedding-1",
+                revision: 1,
+                snapshot: {
+                  dimension: 3072,
+                  model: "embedding-v1",
+                  pluginId: "plugin-embedding",
                   provider: "plugin-daemon",
+                  revision: 1,
+                  vectorSpaceId: oldVectorSpaceId,
                 },
-                rerank: { enabled: false },
+                snapshotDigest: digestA,
+                state: "active",
+              } as never)
+            : ({
+                id: "embedding-2",
                 revision: 2,
-                scoreThreshold: { enabled: false, stage: "mode-final" },
-                topK: 12,
-              },
-              snapshotDigest: digestB,
-              state: "candidate",
-            } as never),
+                snapshot: {
+                  dimension: 3072,
+                  model: "embedding-v2",
+                  pluginId: "plugin-embedding",
+                  provider: "plugin-daemon",
+                  revision: 2,
+                  vectorSpaceId: newVectorSpaceId,
+                },
+                snapshotDigest: digestB,
+                state: "candidate",
+              } as never)
+          : revision === 1
+            ? ({
+                id: "retrieval-1",
+                revision: 1,
+                snapshot: {
+                  defaultMode: "research",
+                  reasoningModel: {
+                    model: "reasoning-v1",
+                    pluginId: "plugin-reasoning",
+                    provider: "plugin-daemon",
+                  },
+                  rerank: { enabled: false },
+                  revision: 1,
+                  scoreThreshold: { enabled: false, stage: "mode-final" },
+                  topK: 12,
+                },
+                snapshotDigest: digestA,
+                state: "active",
+              } as never)
+            : ({
+                id: "retrieval-2",
+                revision: 2,
+                snapshot: {
+                  defaultMode: "research",
+                  reasoningModel: {
+                    model: "reasoning-v2",
+                    pluginId: "plugin-reasoning",
+                    provider: "plugin-daemon",
+                  },
+                  rerank: { enabled: false },
+                  revision: 2,
+                  scoreThreshold: { enabled: false, stage: "mode-final" },
+                  topK: 12,
+                },
+                snapshotDigest: digestB,
+                state: "candidate",
+              } as never),
     },
     projections: {
       getMany: async ({ ids }) => ids.flatMap((id) => projections.get(id) ?? []),
     },
     publications,
     reindexer: { reindex } as never,
+    semanticGraph: { materialize: materializeGraph },
     snapshots: { replace },
   });
   const input = {
-    ...(scope === "full-vector-space"
-      ? {
-          baseEmbeddingProfile: {
-            id: "embedding-1",
-            revision: 1,
-            snapshotDigest: digestA,
-          },
-        }
-      : {}),
+    baseEmbeddingProfile: {
+      id: "embedding-1",
+      revision: 1,
+      snapshotDigest: digestA,
+    },
     basePublication: {
       fingerprint: baseFingerprint,
       headRevision: 3,
@@ -992,6 +1148,8 @@ function builderFixture(
   };
   return {
     baseDenseId,
+    baseVectorSpaceId: oldVectorSpaceId,
+    buildOutline,
     builder,
     candidateMembers: () => candidateMembers,
     candidateStatus: () => candidate?.status,
@@ -1000,9 +1158,12 @@ function builderFixture(
     heartbeat,
     input,
     materialize,
+    materializeGraph,
     published: () => basePublication,
     rebuiltDenseId,
     rebuiltFtsId,
+    rebuiltGraphEntityId,
+    rebuiltGraphRelationId,
     rebuiltOutlineId,
     reindex,
     replace,
@@ -1021,15 +1182,25 @@ describe("profile migration structural evaluator", () => {
     expect(result).toMatchObject({ passed: true });
   });
 
-  it("accepts a Research-only reasoning Summary/Outline/PageIndex rebuild without Graph or FTS", async () => {
+  it("accepts a reasoning rebuild with one semantic generation for path, outline, FTS, and dense", async () => {
     const rebuiltGenerationId = deterministicChildId(
       runId,
       `profile-migration:page-index:${documentAssetId}`,
     );
+    const candidateMembers = [
+      member("document-outline", outlineId, rebuiltGenerationId),
+      member("knowledge-path", pathId, rebuiltGenerationId),
+      member("index-projection", ftsId, rebuiltGenerationId),
+      member("index-projection", denseId, rebuiltGenerationId),
+    ];
     const result = await evaluator({
       baseMembers: [member("document-outline", outlineId, baseGenerationId)],
-      candidateMembers: [member("document-outline", outlineId, rebuiltGenerationId)],
+      candidateMembers,
       outlineGenerationId: rebuiltGenerationId,
+      projections: [
+        projection(ftsId, rebuiltGenerationId, "fts"),
+        projection(denseId, rebuiltGenerationId, "dense-vector", vectorSpaceId),
+      ],
       summaryModel: "reasoning-v2",
     }).evaluate({
       candidate: candidateResult(),
@@ -1062,7 +1233,7 @@ describe("profile migration structural evaluator", () => {
     expect(result).toMatchObject({ passed: true });
   });
 
-  it("fails closed when a reasoning candidate drops a non-outline Graph/path member", async () => {
+  it("fails closed when a reasoning candidate drops a preserved multimodal member", async () => {
     const rebuiltGenerationId = deterministicChildId(
       runId,
       `profile-migration:page-index:${documentAssetId}`,
@@ -1070,7 +1241,7 @@ describe("profile migration structural evaluator", () => {
     const result = await evaluator({
       baseMembers: [
         member("document-outline", outlineId, baseGenerationId),
-        member("knowledge-path", pathId, baseGenerationId),
+        member("multimodal-manifest", pathId, baseGenerationId),
       ],
       candidateMembers: [member("document-outline", outlineId, rebuiltGenerationId)],
       outlineGenerationId: rebuiltGenerationId,
@@ -1108,21 +1279,21 @@ function evaluator(input: {
     },
     pageIndexBuild: { hasCompleteBuild: async () => true },
     profiles: {
-      getRevision: async ({ kind }) =>
+      getRevision: async ({ kind, revision }) =>
         kind === "embedding"
           ? ({
-              id: "embedding-2",
-              revision: 1,
+              id: revision === 1 ? "embedding-1" : "embedding-2",
+              revision,
               snapshot: {
                 dimension: 3072,
-                model: "embedding-v2",
+                model: revision === 1 ? "embedding-v1" : "embedding-v2",
                 pluginId: "plugin-embedding",
                 provider: "plugin-daemon",
-                revision: 1,
+                revision,
                 vectorSpaceId,
               },
-              snapshotDigest: digestB,
-              state: "candidate",
+              snapshotDigest: revision === 1 ? digestA : digestB,
+              state: revision === 1 ? "active" : "candidate",
             } as never)
           : ({
               id: "retrieval-2",
@@ -1156,10 +1327,11 @@ function migrationRun(
   return {
     accessChannel: "interactive",
     basePublication: { fingerprint: baseFingerprint, headRevision: 3, id: basePublicationId },
+    baseEmbeddingProfile: { id: "embedding-1", revision: 1, snapshotDigest: digestA },
     baseRetrievalProfile: { id: "retrieval-1", revision: 1, snapshotDigest: digestA },
     candidateProfile: {
       id: changedKind === "embedding" ? "embedding-2" : "retrieval-2",
-      revision: changedKind === "embedding" ? 1 : 2,
+      revision: 2,
       snapshotDigest: digestB,
     },
     candidatePublicationFingerprint: candidateResult().publicationFingerprint,

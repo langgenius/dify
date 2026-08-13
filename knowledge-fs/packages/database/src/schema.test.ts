@@ -49,6 +49,7 @@ describe("database schema catalog", () => {
       "knowledge_fs_leases",
       "retrieval_execution_leases",
       "knowledge_nodes",
+      "knowledge_node_generation_receipts",
       "index_projections",
       "index_projection_fts_postings",
       "tidb_fts_posting_backfills",
@@ -116,6 +117,39 @@ describe("database schema catalog", () => {
       "document_semantic_enrichment_jobs",
       "document_semantic_extraction_checkpoints",
       "bulk_operations",
+    ]);
+  });
+
+  it("models immutable semantic generation receipts with bounded JSON and cascade ownership", () => {
+    const schema = getDatabaseSchema();
+    const table = findTable(schema, "knowledge_node_generation_receipts");
+
+    expect(table.primaryKey).toEqual([
+      "knowledge_space_id",
+      "publication_generation_id",
+      "parse_artifact_id",
+    ]);
+    expect(table.checkConstraints?.map((constraint) => constraint.name)).toEqual(
+      expect.arrayContaining([
+        "knowledge_node_generation_receipts_counts_ck",
+        "knowledge_node_generation_receipts_hashes_ck",
+        "knowledge_node_generation_receipts_json_ck",
+        "knowledge_node_generation_receipts_bytes_ck",
+        "knowledge_node_generation_receipts_pub_gen_nonzero_ck",
+      ]),
+    );
+    expect(table.foreignKeys).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ referencedTable: "knowledge_spaces", onDelete: "CASCADE" }),
+        expect.objectContaining({ referencedTable: "document_assets", onDelete: "CASCADE" }),
+        expect.objectContaining({ referencedTable: "parse_artifacts", onDelete: "CASCADE" }),
+      ]),
+    );
+    expect(findIndex(schema, "knowledge_node_generation_receipts_document_idx").columns).toEqual([
+      "knowledge_space_id",
+      "document_asset_id",
+      "publication_generation_id",
+      "parse_artifact_id",
     ]);
   });
 

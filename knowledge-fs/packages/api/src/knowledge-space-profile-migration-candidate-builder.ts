@@ -4,7 +4,9 @@ import {
   type DatabaseAdapter,
   type DatabaseQueryValue,
   DateTimeSchema,
+  type DocumentOutline,
   type IndexProjection,
+  type KnowledgePath,
   type KnowledgeSpaceEmbeddingProfile,
   KnowledgeSpaceEmbeddingProfileSchema,
   type KnowledgeSpaceRetrievalProfile,
@@ -19,12 +21,18 @@ import {
 import { deterministicChildId } from "./api-shared-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import type { DocumentAssetRepository } from "./document-asset-repository";
+import {
+  buildDocumentOutlineKnowledgePath,
+  buildDocumentSectionKnowledgePaths,
+} from "./document-knowledge-paths";
 import type { DocumentOutlineBuilder } from "./document-outline-builder";
 import type { DocumentOutlineRepository } from "./document-outline-repository";
 import type { DocumentOutlineSummaryEnhancer } from "./document-outline-summary-enhancer";
+import type { JointSemanticGraphMaterializer } from "./document-semantic-enrichment-processor";
 import type { IndexProjectionRepository } from "./index-projection-repository";
 import type { IncrementalReindexer } from "./index-reindexer";
 import { isPlainObject } from "./json-utils";
+import type { KnowledgePathRepository } from "./knowledge-path-repository";
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
 import type {
   KnowledgeSpaceProfileMigrationProfileReference,
@@ -259,6 +267,8 @@ export interface RepositoryKnowledgeSpaceProfileMigrationCandidateBuilderOptions
   readonly assets: Pick<DocumentAssetRepository, "get">;
   readonly maxDocuments: number;
   readonly maxMembers: number;
+  readonly maxPathReadPageSize?: number | undefined;
+  readonly maxPathsPerDocument?: number | undefined;
   readonly maxProjectionBatchSize: number;
   readonly members: Pick<ProjectionSetPublicationMemberRepository, "listByFingerprint">;
   readonly now?: (() => string) | undefined;
@@ -269,6 +279,9 @@ export interface RepositoryKnowledgeSpaceProfileMigrationCandidateBuilderOptions
     PublishedPageIndexBuildRepository,
     "hasCompleteBuild" | "materializeBuilding"
   >;
+  readonly paths?:
+    | Pick<KnowledgePathRepository, "listPhysicalDescendants" | "upsertMany">
+    | undefined;
   readonly profiles: Pick<KnowledgeSpaceProfileRepository, "getRevision">;
   readonly projections: Required<Pick<IndexProjectionRepository, "getMany">>;
   readonly publications: Pick<
@@ -276,6 +289,7 @@ export interface RepositoryKnowledgeSpaceProfileMigrationCandidateBuilderOptions
     "createCandidate" | "getByFingerprint" | "getPublished" | "validate"
   >;
   readonly reindexer: Pick<IncrementalReindexer, "reindex">;
+  readonly semanticGraph?: JointSemanticGraphMaterializer | undefined;
   readonly snapshots: KnowledgeSpaceProfileMigrationCandidateSnapshotRepository;
 }
 
@@ -303,6 +317,8 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
   assets,
   maxDocuments,
   maxMembers,
+  maxPathReadPageSize = 100,
+  maxPathsPerDocument = 20_000,
   maxProjectionBatchSize,
   members,
   now = () => new Date().toISOString(),
@@ -310,14 +326,18 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
   outlineSummaryEnhancer,
   outlines,
   pageIndexBuild,
+  paths,
   profiles,
   projections,
   publications,
   reindexer,
+  semanticGraph,
   snapshots,
 }: RepositoryKnowledgeSpaceProfileMigrationCandidateBuilderOptions): KnowledgeSpaceProfileMigrationCandidateBuilder {
   positiveInteger(maxDocuments, "maxDocuments");
   positiveInteger(maxMembers, "maxMembers");
+  positiveInteger(maxPathReadPageSize, "maxPathReadPageSize");
+  positiveInteger(maxPathsPerDocument, "maxPathsPerDocument");
   positiveInteger(maxProjectionBatchSize, "maxProjectionBatchSize");
 
   const loadBase = async (
@@ -457,11 +477,69 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
       return buildResult(candidate, { successorMembersCloned: true }, requireValidating);
     }
     if (input.rebuildScope === "full-page-index-summary-outline") {
+      if (!paths) {
+        throw candidateError(
+          "PROFILE_MIGRATION_REASONING_REBUILD_UNAVAILABLE",
+          "Reasoning migration requires outline-derived KnowledgeFS path persistence",
+        );
+      }
+      if (!input.baseEmbeddingProfile) {
+        throw candidateError(
+          "PROFILE_MIGRATION_REASONING_REBUILD_UNAVAILABLE",
+          "Reasoning migration requires the frozen active embedding profile",
+        );
+      }
+      const baseProjectionMembers = base.members.filter(
+        (member) => member.componentType === "index-projection",
+      );
+      const baseProjections = await loadProjections(
+        projections,
+        baseProjectionMembers.map((member) => member.componentKey),
+        input.knowledgeSpaceId,
+        maxProjectionBatchSize,
+      );
+      const preservedProjectionIds = new Set(
+        baseProjections
+          .filter((projection) => !isOrdinarySearchProjection(projection))
+          .map((projection) => projection.id),
+      );
+      const baseDerivedPathIds = await resolveBaseOutlineDerivedPathIds({
+        documents: base.documents,
+        maxPaths: maxPathsPerDocument,
+        pageSize: maxPathReadPageSize,
+        paths,
+        tenantId: input.tenantId,
+      });
+      const expectedCandidatePathGenerations = new Set(
+        base.documents.map((document) =>
+          migrationGenerationId(input.runId, "page-index", document.documentAssetId),
+        ),
+      );
       assertSameMemberSnapshot(
-        base.members.filter((member) => member.componentType !== "document-outline"),
-        candidateMembers.filter((member) => member.componentType !== "document-outline"),
+        base.members.filter(
+          (member) =>
+            member.componentType !== "document-outline" &&
+            !(semanticGraph && isGraphMember(member)) &&
+            !(
+              member.componentType === "knowledge-path" &&
+              baseDerivedPathIds.has(member.componentKey)
+            ) &&
+            (member.componentType !== "index-projection" ||
+              preservedProjectionIds.has(member.componentKey)),
+        ),
+        candidateMembers.filter(
+          (member) =>
+            member.componentType !== "document-outline" &&
+            !(semanticGraph && isGraphMember(member)) &&
+            !(
+              member.componentType === "knowledge-path" &&
+              expectedCandidatePathGenerations.has(member.generationId)
+            ) &&
+            (member.componentType !== "index-projection" ||
+              preservedProjectionIds.has(member.componentKey)),
+        ),
         "PROFILE_MIGRATION_PAGE_INDEX_REBUILD_INCOMPLETE",
-        "Reasoning migration changed or dropped a non-outline publication member",
+        "Reasoning migration changed or dropped a preserved publication member",
       );
       const candidateOutlineMembers = candidateMembers.filter(
         (member) => member.componentType === "document-outline",
@@ -480,9 +558,31 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
         "candidate",
       );
       const profile = KnowledgeSpaceRetrievalProfileSchema.parse(retrieval.snapshot);
+      const embedding = await requireProfile(
+        profiles,
+        input,
+        "embedding",
+        input.baseEmbeddingProfile,
+        "active",
+      );
+      const embeddingProfile = KnowledgeSpaceEmbeddingProfileSchema.parse(embedding.snapshot);
       const outlinesByDocument = groupByDocument(
         candidateMembers.filter((member) => member.componentType === "document-outline"),
       );
+      const candidateProjectionMembers = candidateMembers.filter(
+        (member) => member.componentType === "index-projection",
+      );
+      const candidateProjections = await loadProjections(
+        projections,
+        candidateProjectionMembers.map((member) => member.componentKey),
+        input.knowledgeSpaceId,
+        maxProjectionBatchSize,
+      );
+      const candidateProjectionById = new Map(
+        candidateProjections.map((projection) => [projection.id, projection]),
+      );
+      const candidateProjectionsByDocument = groupByDocument(candidateProjectionMembers);
+      const candidateGraphByDocument = groupByDocument(candidateMembers.filter(isGraphMember));
       for (const document of base.documents) {
         const expectedGeneration = migrationGenerationId(
           input.runId,
@@ -510,6 +610,84 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             `Document ${document.documentAssetId} PageIndex Summary/Outline rebuild is incomplete`,
           );
         }
+        if (
+          (candidateGraphByDocument.get(document.documentAssetId) ?? []).some(
+            (member) => member.generationId !== expectedGeneration,
+          )
+        ) {
+          throw candidateError(
+            "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
+            `Document ${document.documentAssetId} Graph lineage is incomplete`,
+          );
+        }
+        const expectedPaths = buildOutlineDerivedPaths({
+          asset: document.asset,
+          outline,
+          publicationGenerationId: expectedGeneration,
+          tenantId: input.tenantId,
+        });
+        await assertOutlineDerivedPathClosure({
+          expected: expectedPaths,
+          maxPaths: maxPathsPerDocument,
+          members: candidateMembers.filter(
+            (member) =>
+              member.componentType === "knowledge-path" &&
+              expectedPaths.some((path) => path.id === member.componentKey),
+          ),
+          pageSize: maxPathReadPageSize,
+          paths,
+        });
+        const ordinary = (candidateProjectionsByDocument.get(document.documentAssetId) ?? [])
+          .filter((member) => !preservedProjectionIds.has(member.componentKey))
+          .map((member) => {
+            const projection = candidateProjectionById.get(member.componentKey);
+            if (
+              !projection ||
+              !isOrdinarySearchProjection(projection) ||
+              projection.publicationGenerationId !== expectedGeneration ||
+              member.generationId !== expectedGeneration ||
+              projectionDocumentAssetId(projection) !== document.documentAssetId ||
+              projection.status !== "ready"
+            ) {
+              throw candidateError(
+                "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
+                `Document ${document.documentAssetId} semantic projection lineage is incomplete`,
+              );
+            }
+            return projection;
+          });
+        const fts = ordinary.filter((projection) => projection.type === "fts");
+        const dense = ordinary.filter((projection) => projection.type === "dense-vector");
+        if (
+          fts.length < 1 ||
+          dense.length !== fts.length ||
+          dense.some((projection) => projection.model !== embeddingProfile.vectorSpaceId)
+        ) {
+          throw candidateError(
+            "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
+            `Document ${document.documentAssetId} semantic search projection closure is incomplete`,
+          );
+        }
+      }
+      const baseDocumentIds = new Set(base.documents.map((document) => document.documentAssetId));
+      if (
+        candidateMembers.some(
+          (member) =>
+            isGraphMember(member) &&
+            (!member.documentAssetId || !baseDocumentIds.has(member.documentAssetId)),
+        ) ||
+        candidateProjectionMembers.some(
+          (member) =>
+            !preservedProjectionIds.has(member.componentKey) &&
+            (!member.documentAssetId ||
+              !baseDocumentIds.has(member.documentAssetId) ||
+              !isOrdinarySearchProjection(candidateProjectionById.get(member.componentKey))),
+        )
+      ) {
+        throw candidateError(
+          "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
+          "Reasoning migration candidate contains an extra or unowned search projection",
+        );
       }
       return buildResult(candidate, { pageIndexSummaryOutlineRebuilt: true }, requireValidating);
     }
@@ -526,8 +704,14 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
       (member) => member.componentType === "index-projection",
     );
     assertSameMemberSnapshot(
-      base.members.filter((member) => member.componentType !== "index-projection"),
-      candidateMembers.filter((member) => member.componentType !== "index-projection"),
+      base.members.filter(
+        (member) =>
+          member.componentType !== "index-projection" && !(semanticGraph && isGraphMember(member)),
+      ),
+      candidateMembers.filter(
+        (member) =>
+          member.componentType !== "index-projection" && !(semanticGraph && isGraphMember(member)),
+      ),
       "PROFILE_MIGRATION_VECTOR_REBUILD_INCOMPLETE",
       "Embedding migration changed or dropped a non-index publication member",
     );
@@ -562,6 +746,7 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
     );
     const projectionsById = new Map(loaded.map((projection) => [projection.id, projection]));
     const membersByDocument = groupByDocument(projectionMembers);
+    const graphByDocument = groupByDocument(candidateMembers.filter(isGraphMember));
     for (const document of base.documents) {
       const expectedGeneration = migrationGenerationId(
         input.runId,
@@ -587,6 +772,16 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
         }
         return projection;
       });
+      if (
+        (graphByDocument.get(document.documentAssetId) ?? []).some(
+          (member) => member.generationId !== expectedGeneration,
+        )
+      ) {
+        throw candidateError(
+          "PROFILE_MIGRATION_VECTOR_REBUILD_INCOMPLETE",
+          `Document ${document.documentAssetId} Graph lineage is incomplete`,
+        );
+      }
       const baseOwned = baseProjectionMembers
         .filter((member) => member.documentAssetId === document.documentAssetId)
         .flatMap((member) => {
@@ -620,6 +815,11 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
     }
     const baseDocumentIds = new Set(base.documents.map((document) => document.documentAssetId));
     if (
+      candidateMembers.some(
+        (member) =>
+          isGraphMember(member) &&
+          (!member.documentAssetId || !baseDocumentIds.has(member.documentAssetId)),
+      ) ||
       projectionMembers.some(
         (member) =>
           !preservedProjectionIds.has(member.componentKey) &&
@@ -691,6 +891,18 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
       if (input.rebuildScope === "clone-publication") {
         nextMembers = base.members.map(memberInput);
       } else if (input.rebuildScope === "full-page-index-summary-outline") {
+        if (!paths) {
+          throw candidateError(
+            "PROFILE_MIGRATION_REASONING_REBUILD_UNAVAILABLE",
+            "Reasoning migration requires outline-derived KnowledgeFS path persistence",
+          );
+        }
+        if (!input.baseEmbeddingProfile) {
+          throw candidateError(
+            "PROFILE_MIGRATION_REASONING_REBUILD_UNAVAILABLE",
+            "Reasoning migration requires the frozen active embedding profile",
+          );
+        }
         const retrieval = await requireProfile(
           profiles,
           input,
@@ -699,52 +911,12 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
           "candidate",
         );
         const retrievalProfile = KnowledgeSpaceRetrievalProfileSchema.parse(retrieval.snapshot);
-        const rebuilt: KnowledgeSpaceProfileMigrationCandidateMemberInput[] = [];
-        for (const document of base.documents) {
-          await input.execution?.heartbeat();
-          const generationId = migrationGenerationId(
-            input.runId,
-            "page-index",
-            document.documentAssetId,
-          );
-          const deterministicOutline = outlineBuilder.build({
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            parseArtifact: document.artifact,
-            publicationGenerationId: generationId,
-          });
-          const enhanced = await outlineSummaryEnhancer.enhance({
-            outline: deterministicOutline,
-            parseArtifact: document.artifact,
-            retrievalProfile,
-            tenantId: input.tenantId,
-          });
-          const outline = await outlines.upsert(enhanced);
-          await pageIndexBuild.materializeBuilding({
-            builtAt: outline.updatedAt ?? outline.createdAt,
-            outline,
-            tenantId: input.tenantId,
-          });
-          rebuilt.push({
-            componentKey: outline.id,
-            componentType: "document-outline",
-            documentAssetId: document.documentAssetId,
-            generationId,
-          });
-          await input.execution?.heartbeat();
-        }
-        nextMembers = [
-          ...base.members
-            .filter((member) => member.componentType !== "document-outline")
-            .map(memberInput),
-          ...rebuilt,
-        ];
-      } else {
         const embedding = await requireProfile(
           profiles,
           input,
           "embedding",
-          input.candidateProfile,
-          "candidate",
+          input.baseEmbeddingProfile,
+          "active",
         );
         const embeddingProfile = KnowledgeSpaceEmbeddingProfileSchema.parse(embedding.snapshot);
         const baseProjectionMembers = base.members.filter(
@@ -761,7 +933,185 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             .filter((projection) => !isOrdinarySearchProjection(projection))
             .map((projection) => projection.id),
         );
+        const baseDerivedPathIds = await resolveBaseOutlineDerivedPathIds({
+          documents: base.documents,
+          maxPaths: maxPathsPerDocument,
+          pageSize: maxPathReadPageSize,
+          paths,
+          tenantId: input.tenantId,
+        });
         const rebuilt: KnowledgeSpaceProfileMigrationCandidateMemberInput[] = [];
+        for (const document of base.documents) {
+          await input.execution?.heartbeat();
+          const generationId = migrationGenerationId(
+            input.runId,
+            "page-index",
+            document.documentAssetId,
+          );
+          const reindexResult = await reindexer.reindex({
+            denseModel: embeddingProfile.vectorSpaceId,
+            embeddingProfile,
+            enableGraph: true,
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            parseArtifact: document.artifact,
+            permissionScope: stringArray(document.asset.metadata.permissionScope),
+            projectionStatus: "ready",
+            projectionVersion: document.asset.version,
+            publicationGenerationId: generationId,
+            retrievalProfile,
+            skipVisual: true,
+            tenantId: input.tenantId,
+          });
+          if (
+            reindexResult.status !== "rebuilt" ||
+            !reindexResult.outlineArtifact ||
+            !reindexResult.projectionIds ||
+            reindexResult.projectionIds.length === 0 ||
+            reindexResult.projectionIds.length !== reindexResult.projectionsCreated ||
+            (reindexResult.nodeIds?.length ?? 0) !== reindexResult.nodesCreated
+          ) {
+            throw candidateError(
+              "PROFILE_MIGRATION_REASONING_REBUILD_INCOMPLETE",
+              `Document ${document.documentAssetId} did not produce a complete semantic generation receipt`,
+            );
+          }
+          const deterministicOutline = outlineBuilder.build({
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            parseArtifact: reindexResult.outlineArtifact,
+            publicationGenerationId: generationId,
+          });
+          const enhanced = await outlineSummaryEnhancer.enhance({
+            outline: deterministicOutline,
+            parseArtifact: reindexResult.outlineArtifact,
+            retrievalProfile,
+            tenantId: input.tenantId,
+          });
+          const outline = await outlines.upsert(enhanced);
+          await pageIndexBuild.materializeBuilding({
+            builtAt: outline.updatedAt ?? outline.createdAt,
+            outline,
+            tenantId: input.tenantId,
+          });
+          const rebuiltPaths = buildOutlineDerivedPaths({
+            asset: document.asset,
+            outline,
+            publicationGenerationId: generationId,
+            tenantId: input.tenantId,
+          });
+          await persistOutlineDerivedPaths({
+            batchSize: maxProjectionBatchSize,
+            expected: rebuiltPaths,
+            paths,
+          });
+          rebuilt.push(
+            {
+              componentKey: outline.id,
+              componentType: "document-outline",
+              documentAssetId: document.documentAssetId,
+              generationId,
+            },
+            ...rebuiltPaths.map((path) => ({
+              componentKey: path.id,
+              componentType: "knowledge-path" as const,
+              documentAssetId: document.documentAssetId,
+              generationId,
+            })),
+          );
+          rebuilt.push(
+            ...reindexResult.projectionIds.map((componentKey) => ({
+              componentKey,
+              componentType: "index-projection" as const,
+              documentAssetId: document.documentAssetId,
+              generationId,
+            })),
+          );
+          if (semanticGraph) {
+            const graph = await semanticGraph.materialize({
+              createdAt: candidate.createdAt,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              parseArtifactId: document.artifact.id,
+              publicationGenerationId: generationId,
+              retrievalProfile,
+            });
+            rebuilt.push(
+              ...graph.graphEntityIds.map((componentKey) => ({
+                componentKey,
+                componentType: "graph-entity" as const,
+                documentAssetId: document.documentAssetId,
+                generationId,
+              })),
+              ...graph.graphRelationIds.map((componentKey) => ({
+                componentKey,
+                componentType: "graph-relation" as const,
+                documentAssetId: document.documentAssetId,
+                generationId,
+              })),
+            );
+          }
+          await input.execution?.heartbeat();
+        }
+        nextMembers = [
+          ...base.members
+            .filter(
+              (member) =>
+                member.componentType !== "document-outline" &&
+                !(semanticGraph && isGraphMember(member)) &&
+                !(
+                  member.componentType === "knowledge-path" &&
+                  baseDerivedPathIds.has(member.componentKey)
+                ) &&
+                (member.componentType !== "index-projection" ||
+                  preservedProjectionIds.has(member.componentKey)),
+            )
+            .map(memberInput),
+          ...rebuilt,
+        ];
+      } else {
+        const embedding = await requireProfile(
+          profiles,
+          input,
+          "embedding",
+          input.candidateProfile,
+          "candidate",
+        );
+        const embeddingProfile = KnowledgeSpaceEmbeddingProfileSchema.parse(embedding.snapshot);
+        const retrieval = await requireProfile(
+          profiles,
+          input,
+          "retrieval",
+          input.baseRetrievalProfile,
+          "active",
+        );
+        const retrievalProfile = KnowledgeSpaceRetrievalProfileSchema.parse(retrieval.snapshot);
+        const baseProjectionMembers = base.members.filter(
+          (member) => member.componentType === "index-projection",
+        );
+        const baseProjections = await loadProjections(
+          projections,
+          baseProjectionMembers.map((member) => member.componentKey),
+          input.knowledgeSpaceId,
+          maxProjectionBatchSize,
+        );
+        const baseProjectionById = new Map(
+          baseProjections.map((projection) => [projection.id, projection]),
+        );
+        const ordinaryNodeGenerationsByDocument = new Map<string, Set<string>>();
+        for (const member of baseProjectionMembers) {
+          if (!member.documentAssetId) continue;
+          const projection = baseProjectionById.get(member.componentKey);
+          if (!projection || !isOrdinarySearchProjection(projection)) continue;
+          const generations =
+            ordinaryNodeGenerationsByDocument.get(member.documentAssetId) ?? new Set<string>();
+          generations.add(member.generationId);
+          ordinaryNodeGenerationsByDocument.set(member.documentAssetId, generations);
+        }
+        const preservedProjectionIds = new Set(
+          baseProjections
+            .filter((projection) => !isOrdinarySearchProjection(projection))
+            .map((projection) => projection.id),
+        );
+        const rebuilt: KnowledgeSpaceProfileMigrationCandidateMemberInput[] = [];
+        const rebuiltGraph: KnowledgeSpaceProfileMigrationCandidateMemberInput[] = [];
         for (const document of base.documents) {
           await input.execution?.heartbeat();
           const generationId = migrationGenerationId(
@@ -769,6 +1119,15 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             "vector-space",
             document.documentAssetId,
           );
+          const sourceNodeGenerations =
+            ordinaryNodeGenerationsByDocument.get(document.documentAssetId) ?? new Set<string>();
+          if (sourceNodeGenerations.size !== 1) {
+            throw candidateError(
+              "PROFILE_MIGRATION_VECTOR_REBUILD_INCOMPLETE",
+              `Document ${document.documentAssetId} must have exactly one reusable ordinary node generation`,
+            );
+          }
+          const reuseNodeGenerationId = [...sourceNodeGenerations][0] as string;
           const result = await reindexer.reindex({
             denseModel: embeddingProfile.vectorSpaceId,
             embeddingProfile,
@@ -778,6 +1137,9 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             projectionStatus: "ready",
             projectionVersion: document.asset.version,
             publicationGenerationId: generationId,
+            retrievalProfile,
+            reuseNodeGenerationId,
+            skipVisual: true,
             tenantId: input.tenantId,
           });
           if (
@@ -799,17 +1161,42 @@ export function createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
               generationId,
             })),
           );
+          if (semanticGraph) {
+            const graph = await semanticGraph.materialize({
+              createdAt: candidate.createdAt,
+              knowledgeSpaceId: input.knowledgeSpaceId,
+              parseArtifactId: document.artifact.id,
+              publicationGenerationId: generationId,
+              retrievalProfile,
+            });
+            rebuiltGraph.push(
+              ...graph.graphEntityIds.map((componentKey) => ({
+                componentKey,
+                componentType: "graph-entity" as const,
+                documentAssetId: document.documentAssetId,
+                generationId,
+              })),
+              ...graph.graphRelationIds.map((componentKey) => ({
+                componentKey,
+                componentType: "graph-relation" as const,
+                documentAssetId: document.documentAssetId,
+                generationId,
+              })),
+            );
+          }
           await input.execution?.heartbeat();
         }
         nextMembers = [
           ...base.members
             .filter(
               (member) =>
-                member.componentType !== "index-projection" ||
-                preservedProjectionIds.has(member.componentKey),
+                !(semanticGraph && isGraphMember(member)) &&
+                (member.componentType !== "index-projection" ||
+                  preservedProjectionIds.has(member.componentKey)),
             )
             .map(memberInput),
           ...rebuilt,
+          ...rebuiltGraph,
         ];
       }
       if (nextMembers.length > maxMembers) {
@@ -894,10 +1281,22 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
           assertSameMemberSnapshot(baseMembers, candidateMembers);
         } else if (run.rebuildScope === "full-page-index-summary-outline") {
           assertSameMemberSnapshot(
-            baseMembers.filter((member) => member.componentType !== "document-outline"),
-            candidateMembers.filter((member) => member.componentType !== "document-outline"),
+            baseMembers.filter(
+              (member) =>
+                member.componentType !== "document-outline" &&
+                member.componentType !== "index-projection" &&
+                member.componentType !== "knowledge-path" &&
+                !isGraphMember(member),
+            ),
+            candidateMembers.filter(
+              (member) =>
+                member.componentType !== "document-outline" &&
+                member.componentType !== "index-projection" &&
+                member.componentType !== "knowledge-path" &&
+                !isGraphMember(member),
+            ),
             "PROFILE_MIGRATION_PAGE_INDEX_REBUILD_INCOMPLETE",
-            "Reasoning evaluation found a changed or missing non-outline publication member",
+            "Reasoning evaluation found a changed or missing preserved publication member",
           );
           if (
             candidateMembers.filter((member) => member.componentType === "document-outline")
@@ -910,8 +1309,12 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
           }
         } else {
           assertSameMemberSnapshot(
-            baseMembers.filter((member) => member.componentType !== "index-projection"),
-            candidateMembers.filter((member) => member.componentType !== "index-projection"),
+            baseMembers.filter(
+              (member) => member.componentType !== "index-projection" && !isGraphMember(member),
+            ),
+            candidateMembers.filter(
+              (member) => member.componentType !== "index-projection" && !isGraphMember(member),
+            ),
             "PROFILE_MIGRATION_VECTOR_REBUILD_INCOMPLETE",
             "Embedding evaluation found a changed or missing non-index publication member",
           );
@@ -927,6 +1330,29 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
           [...baseDocuments].some((documentId) => !candidateDocuments.has(documentId))
         ) {
           return failedEvaluation("candidate document ownership differs from the frozen base");
+        }
+        if (run.rebuildScope === "full-page-index-summary-outline") {
+          for (const documentAssetId of candidateDocuments) {
+            const expectedGeneration = migrationGenerationId(run.id, "page-index", documentAssetId);
+            if (
+              !candidateMembers.some(
+                (member) =>
+                  member.componentType === "knowledge-path" &&
+                  member.documentAssetId === documentAssetId &&
+                  member.generationId === expectedGeneration,
+              ) ||
+              candidateMembers.some(
+                (member) =>
+                  isGraphMember(member) &&
+                  member.documentAssetId === documentAssetId &&
+                  member.generationId !== expectedGeneration,
+              )
+            ) {
+              return failedEvaluation(
+                `document ${documentAssetId} semantic path or Graph generation is incomplete`,
+              );
+            }
+          }
         }
         if (baseMembers.length === 0 && candidateMembers.length === 0) {
           return {
@@ -1053,6 +1479,15 @@ export function createRepositoryKnowledgeSpaceProfileMigrationEvaluator({
               projection.status !== "ready"
             ) {
               return failedEvaluation(`projection ${member.componentKey} lineage is invalid`);
+            }
+            if (
+              reasoningProfile !== undefined &&
+              isOrdinarySearchProjection(projection) &&
+              member.generationId !== migrationGenerationId(run.id, "page-index", documentAssetId)
+            ) {
+              return failedEvaluation(
+                `document ${documentAssetId} contains a stale reasoning search projection`,
+              );
             }
             if (projection.type === "fts") {
               ftsProjections += 1;
@@ -1350,6 +1785,198 @@ function isOrdinarySearchProjection(projection: IndexProjection | undefined): bo
     (projection.type === "fts" ||
       (projection.type === "dense-vector" && !isVisualProjection(projection)))
   );
+}
+
+function isGraphMember(member: Pick<ProjectionSetPublicationMember, "componentType">): boolean {
+  return member.componentType === "graph-entity" || member.componentType === "graph-relation";
+}
+
+function buildOutlineDerivedPaths({
+  asset,
+  outline,
+  publicationGenerationId,
+  tenantId,
+}: {
+  readonly asset: CandidateDocument["asset"];
+  readonly outline: DocumentOutline;
+  readonly publicationGenerationId: string;
+  readonly tenantId: string;
+}): readonly KnowledgePath[] {
+  let sequence = 0;
+  const generateId = () =>
+    deterministicChildId(publicationGenerationId, `reasoning-path-seed:${sequence++}`);
+  const derived = [
+    buildDocumentOutlineKnowledgePath({
+      asset,
+      id: generateId(),
+      publicationGenerationId,
+      tenantId,
+    }),
+    ...buildDocumentSectionKnowledgePaths({
+      asset,
+      generateId,
+      outline,
+      publicationGenerationId,
+      tenantId,
+    }),
+  ];
+  if (
+    new Set(derived.map((path) => path.id)).size !== derived.length ||
+    new Set(derived.map((path) => path.virtualPath)).size !== derived.length
+  ) {
+    throw candidateError(
+      "PROFILE_MIGRATION_REASONING_PATH_REBUILD_INCOMPLETE",
+      `Document ${asset.id} produced duplicate outline-derived KnowledgeFS paths`,
+    );
+  }
+  return derived;
+}
+
+async function persistOutlineDerivedPaths({
+  batchSize,
+  expected,
+  paths,
+}: {
+  readonly batchSize: number;
+  readonly expected: readonly KnowledgePath[];
+  readonly paths: Pick<KnowledgePathRepository, "upsertMany">;
+}): Promise<void> {
+  const persisted: KnowledgePath[] = [];
+  for (const batch of batches(expected, batchSize)) {
+    persisted.push(...(await paths.upsertMany(batch)));
+  }
+  assertExactKnowledgePaths(expected, persisted);
+}
+
+async function assertOutlineDerivedPathClosure({
+  expected,
+  maxPaths,
+  members,
+  pageSize,
+  paths,
+}: {
+  readonly expected: readonly KnowledgePath[];
+  readonly maxPaths: number;
+  readonly members: readonly Pick<
+    ProjectionSetPublicationMember,
+    "componentKey" | "componentType" | "documentAssetId" | "generationId"
+  >[];
+  readonly pageSize: number;
+  readonly paths: Pick<KnowledgePathRepository, "listPhysicalDescendants">;
+}): Promise<void> {
+  assertSameMemberSnapshot(
+    expected.map((path) => ({
+      componentKey: path.id,
+      componentType: "knowledge-path" as const,
+      documentAssetId: path.targetId,
+      generationId: path.publicationGenerationId as string,
+    })),
+    members,
+    "PROFILE_MIGRATION_REASONING_PATH_REBUILD_INCOMPLETE",
+    `Document ${expected[0]?.targetId ?? "unknown"} outline-derived path membership is incomplete`,
+  );
+  const stored = await listDocumentGenerationPaths({
+    anchor: expected[0] as KnowledgePath,
+    maxPaths,
+    pageSize,
+    paths,
+  });
+  const expectedVirtualPaths = new Set(expected.map((path) => path.virtualPath));
+  assertExactKnowledgePaths(
+    expected,
+    stored.filter((path) => expectedVirtualPaths.has(path.virtualPath)),
+  );
+}
+
+async function listDocumentGenerationPaths({
+  anchor,
+  maxPaths,
+  pageSize,
+  paths,
+}: {
+  readonly anchor: KnowledgePath;
+  readonly maxPaths: number;
+  readonly pageSize: number;
+  readonly paths: Pick<KnowledgePathRepository, "listPhysicalDescendants">;
+}): Promise<readonly KnowledgePath[]> {
+  const parentPath = anchor.virtualPath.replace(/\/outline\.json$/u, "");
+  const matched: KnowledgePath[] = [];
+  let cursor: Awaited<ReturnType<KnowledgePathRepository["listPhysicalDescendants"]>>["nextCursor"];
+  do {
+    const page = await paths.listPhysicalDescendants({
+      ...(cursor ? { cursor } : {}),
+      knowledgeSpaceId: anchor.knowledgeSpaceId,
+      limit: Math.min(pageSize, maxPaths - matched.length),
+      parentPath,
+      publicationGenerationId: anchor.publicationGenerationId,
+      viewName: anchor.viewName,
+    });
+    matched.push(...page.items);
+    cursor = page.nextCursor;
+    if (cursor && matched.length >= maxPaths) {
+      throw candidateError(
+        "PROFILE_MIGRATION_REASONING_PATH_REBUILD_INCOMPLETE",
+        `Document ${anchor.targetId} path count exceeds ${maxPaths}`,
+      );
+    }
+  } while (cursor);
+  return matched;
+}
+
+async function resolveBaseOutlineDerivedPathIds({
+  documents,
+  maxPaths,
+  pageSize,
+  paths,
+  tenantId,
+}: {
+  readonly documents: readonly CandidateDocument[];
+  readonly maxPaths: number;
+  readonly pageSize: number;
+  readonly paths: Pick<KnowledgePathRepository, "listPhysicalDescendants">;
+  readonly tenantId: string;
+}): Promise<ReadonlySet<string>> {
+  const ids = new Set<string>();
+  for (const document of documents) {
+    const expected = buildOutlineDerivedPaths({
+      asset: document.asset,
+      outline: document.baseOutline,
+      publicationGenerationId: PublicationGenerationIdSchema.parse(
+        document.baseOutline.publicationGenerationId,
+      ),
+      tenantId,
+    });
+    const resolved = await listDocumentGenerationPaths({
+      anchor: expected[0] as KnowledgePath,
+      maxPaths,
+      pageSize,
+      paths,
+    });
+    for (const path of resolved) {
+      const contentKind = path.metadata.contentKind;
+      if (
+        path.targetId === document.documentAssetId &&
+        (contentKind === "document-outline" || contentKind === "document-section")
+      ) {
+        ids.add(path.id);
+      }
+    }
+  }
+  return ids;
+}
+
+function assertExactKnowledgePaths(
+  expected: readonly KnowledgePath[],
+  actual: readonly KnowledgePath[],
+): void {
+  const left = expected.map((path) => stableJson(path)).sort();
+  const right = actual.map((path) => stableJson(path)).sort();
+  if (left.length !== right.length || left.some((value, index) => value !== right[index])) {
+    throw candidateError(
+      "PROFILE_MIGRATION_REASONING_PATH_REBUILD_INCOMPLETE",
+      "Outline-derived KnowledgeFS path receipt is incomplete or incompatible",
+    );
+  }
 }
 
 function failedEvaluation(reason: string): KnowledgeSpaceProfileMigrationEvaluationResult {
