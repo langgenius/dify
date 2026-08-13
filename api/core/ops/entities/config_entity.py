@@ -120,8 +120,8 @@ class LangSmithConfig(BaseTracingConfig):
     @field_validator("endpoint")
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
-        # LangSmith only allows HTTPS
-        return validate_url(v, "https://api.smith.langchain.com", allowed_schemes=("https",))
+        # LangSmith only allows HTTPS; self-hosted deployments may sit under a path prefix
+        return validate_url_with_path(v, "https://api.smith.langchain.com", allowed_schemes=("https",))
 
 
 class OpikConfig(BaseTracingConfig):
@@ -160,13 +160,13 @@ class WeaveConfig(BaseTracingConfig):
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
         # Weave only allows HTTPS for endpoint
-        return validate_url(v, "https://trace.wandb.ai", allowed_schemes=("https",))
+        return validate_url_with_path(v, "https://trace.wandb.ai", allowed_schemes=("https",))
 
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
         if v is not None and v.strip() != "":
-            return validate_url(v, v, allowed_schemes=("https", "http"))
+            return validate_url_with_path(v, v, allowed_schemes=("https", "http"))
         return v
 
 

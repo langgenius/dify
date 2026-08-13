@@ -179,8 +179,18 @@ class TestLangSmithConfig:
 
     def test_endpoint_validation_https_only(self):
         """Test endpoint validation only allows HTTPS"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https://"):
             LangSmithConfig(api_key="key", project="project", endpoint="http://insecure.com")
+
+    def test_endpoint_preserves_path(self):
+        """Self-hosted LangSmith endpoints keep their API path prefix"""
+        config = LangSmithConfig(api_key="key", project="project", endpoint="https://langsmith.internal/api")
+        assert config.endpoint == "https://langsmith.internal/api"
+
+    def test_endpoint_preserves_versioned_path(self):
+        """Self-hosted LangSmith endpoints keep multi-segment API paths"""
+        config = LangSmithConfig(api_key="key", project="project", endpoint="https://langsmith.internal/api/v1")
+        assert config.endpoint == "https://langsmith.internal/api/v1"
 
 
 class TestOpikConfig:
@@ -266,7 +276,7 @@ class TestWeaveConfig:
 
     def test_endpoint_validation_https_only(self):
         """Test endpoint validation only allows HTTPS"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https://"):
             WeaveConfig(api_key="key", project="project", endpoint="http://insecure.wandb.ai")
 
     def test_host_validation_optional(self):
@@ -282,8 +292,23 @@ class TestWeaveConfig:
 
     def test_host_validation_invalid_scheme(self):
         """Test host validation rejects invalid schemes when provided"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
             WeaveConfig(api_key="key", project="project", host="ftp://invalid.host.com")
+
+    def test_endpoint_preserves_path(self):
+        """Self-hosted Weave endpoints keep their path prefix"""
+        config = WeaveConfig(api_key="key", project="project", endpoint="https://wandb.internal/api")
+        assert config.endpoint == "https://wandb.internal/api"
+
+    def test_host_preserves_path(self):
+        """Self-hosted W&B hosts keep their path prefix"""
+        config = WeaveConfig(api_key="key", project="project", host="https://wandb.internal/wandb")
+        assert config.host == "https://wandb.internal/wandb"
+
+    def test_host_preserves_http_path(self):
+        """Self-hosted W&B hosts may be plain http and keep their path"""
+        config = WeaveConfig(api_key="key", project="project", host="http://wandb.internal/wandb")
+        assert config.host == "http://wandb.internal/wandb"
 
 
 class TestAliyunConfig:
@@ -395,11 +420,17 @@ class TestConfigIntegration:
         aliyun_config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
+        langsmith_config = LangSmithConfig(
+            api_key="key", project="project", endpoint="https://langsmith.internal/api/v1"
+        )
+        weave_config = WeaveConfig(api_key="key", project="project", endpoint="https://weave.internal/wandb")
 
         assert arize_config.endpoint == "https://arize.com"
         assert phoenix_with_path_config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
         assert phoenix_without_path_config.endpoint == "https://app.phoenix.arize.com"
         assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
+        assert langsmith_config.endpoint == "https://langsmith.internal/api/v1"
+        assert weave_config.endpoint == "https://weave.internal/wandb"
 
     def test_project_default_values(self):
         """Test that project default values are set correctly"""
