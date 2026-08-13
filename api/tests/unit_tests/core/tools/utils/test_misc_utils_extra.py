@@ -3,8 +3,9 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from datetime import datetime
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from yaml import YAMLError

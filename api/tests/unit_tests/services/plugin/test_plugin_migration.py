@@ -1,7 +1,8 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
-from pathlib import Path
+
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session

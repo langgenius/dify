@@ -1,7 +1,8 @@
 import json
+from pathlib import Path
 
 import pytest
-from pathlib import Path
+
 from services.data_migration.entities import MigrationDataError
 from services.data_migration.package_service import MigrationPackageService
 
