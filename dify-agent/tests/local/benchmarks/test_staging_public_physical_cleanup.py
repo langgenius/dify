@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from benchmarks.staging_public_physical_cleanup import (
     _CAPTURE_TARGETS_SCRIPT,
     _parse_private_probe_json_object,
     _RECOVER_ALLOCATIONS_SCRIPT,
+    _run_command,
     StagingVendorRemainingSample,
     recover_unjournaled_staging_public_allocations,
     reconcile_staging_public_resources,
@@ -27,6 +29,27 @@ class _Clock:
 
     def sleep(self, seconds: float) -> None:
         self.value += seconds
+
+
+def test_private_command_failure_is_wrapped_without_serializing_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_output = "private-conversation-id secret-token"
+
+    def fail(*_args, **_kwargs):
+        raise subprocess.CalledProcessError(
+            137,
+            ["kubectl", "exec"],
+            output=private_output,
+            stderr=private_output,
+        )
+
+    monkeypatch.setattr(subprocess, "run", fail)
+
+    with pytest.raises(RuntimeError, match="Staging private probe command failed") as caught:
+        _run_command(("kubectl", "exec"), "private-payload")
+
+    assert private_output not in str(caught.value)
 
 
 def _vendor_probe(
