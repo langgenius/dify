@@ -39,7 +39,7 @@ class OceanBaseVectorTest(AbstractVectorTest):
 
 
 def test_oceanbase_vector(
-    setup_mock_redis,
+    setup_real_redis,
     oceanbase_vector,
 ):
     OceanBaseVectorTest(oceanbase_vector).run_all_tests()

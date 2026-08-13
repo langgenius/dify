@@ -28,5 +28,5 @@ class MyScaleVectorTest(AbstractVectorTest):
         assert len(ids) == 1
 
 
-def test_myscale_vector(setup_mock_redis):
+def test_myscale_vector(setup_real_redis):
     MyScaleVectorTest().run_all_tests()
