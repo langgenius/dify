@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Knoten",
   "agentDetail.access.workflow.table.version": "Version",
   "agentDetail.access.workflow.title": "Workflow-Zugriff",
-  "agentDetail.configure.advancedSettings.description": "Für erfahrene Nutzer. Umgebungsvariablen, Sandbox und Speicher.",
+  "agentDetail.configure.advancedSettings.description": "Für erfahrene Nutzer, z. B. Umgebungsvariablen.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Umgebungsvariable hinzufügen",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} löschen",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Wert von {{key}} verbergen",
