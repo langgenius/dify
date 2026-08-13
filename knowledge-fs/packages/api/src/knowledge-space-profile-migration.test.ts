@@ -32,6 +32,20 @@ describe("knowledge-space profile migration durable repository", () => {
     const first = await repository.start(input);
     expect(await repository.start(input)).toEqual(first);
     await expect(
+      repository.findLatestByCandidate({
+        candidateProfileId: input.candidateProfile.id,
+        knowledgeSpaceId: spaceId,
+        tenantId,
+      }),
+    ).resolves.toEqual(first);
+    await expect(
+      repository.findLatestByCandidate({
+        candidateProfileId: input.candidateProfile.id,
+        knowledgeSpaceId: spaceId,
+        tenantId: "tenant-other",
+      }),
+    ).resolves.toBeNull();
+    await expect(
       repository.start({
         ...input,
         candidateProfile: { ...input.candidateProfile, revision: 3 },

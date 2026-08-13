@@ -149,6 +149,11 @@ export interface KnowledgeSpaceProfileMigrationRepository {
     readonly requestedBySubjectId?: string | undefined;
     readonly tenantId: string;
   }): Promise<KnowledgeSpaceProfileMigrationRun | null>;
+  findLatestByCandidate(input: {
+    readonly candidateProfileId: string;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  }): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   get(runId: string): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   heartbeat(
     input: KnowledgeSpaceProfileMigrationFence & {
@@ -270,6 +275,21 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
       const id = requestKeys.get(key);
       return id ? (runs.get(id) ?? null) : null;
     },
+    findLatestByCandidate: async (input) =>
+      [...runs.values()]
+        .filter(
+          (run) =>
+            run.tenantId === input.tenantId &&
+            run.knowledgeSpaceId === input.knowledgeSpaceId &&
+            run.candidateProfile.id === input.candidateProfileId,
+        )
+        .sort(
+          (left, right) =>
+            Number(right.runState === "queued" || right.runState === "running") -
+              Number(left.runState === "queued" || left.runState === "running") ||
+            right.createdAt.localeCompare(left.createdAt) ||
+            right.id.localeCompare(left.id),
+        )[0] ?? null,
     claim: async (raw) => {
       const now = validDate(raw.now, "claim.now");
       const leaseExpiresAt = validDate(raw.leaseExpiresAt, "claim.leaseExpiresAt");

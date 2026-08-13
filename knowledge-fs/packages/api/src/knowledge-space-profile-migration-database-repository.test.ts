@@ -135,6 +135,42 @@ describe.each(["postgres", "tidb"] as const)(
       ).toBe(true);
     });
 
+    it("looks up the latest candidate migration independently of authorization provenance", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        return { rows: [runRow()], rowsAffected: 1 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseKnowledgeSpaceProfileMigrationRepository({
+        database,
+        maxClaimBatchSize: 10,
+      });
+
+      await expect(
+        repository.findLatestByCandidate({
+          candidateProfileId: candidateId,
+          knowledgeSpaceId: spaceId,
+          tenantId,
+        }),
+      ).resolves.toMatchObject({ id: runId, runState: "queued" });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.params).toEqual([tenantId, spaceId, candidateId]);
+      expect(calls[0]?.sql).toContain(
+        dialect === "postgres"
+          ? '"candidate_profile_revision_id"'
+          : "`candidate_profile_revision_id`",
+      );
+      expect(calls[0]?.sql).toContain(
+        dialect === "postgres" ? '"active_slot" IS NOT NULL' : "`active_slot` IS NOT NULL",
+      );
+    });
+
     it("rejects malformed admissions and unsafe claim leases before database access", async () => {
       const execute = async (): Promise<DatabaseExecuteResult> => {
         throw new Error("database should not be called");
