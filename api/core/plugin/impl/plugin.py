@@ -22,6 +22,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginReadmeResponse,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from models.provider_ids import GenericProviderID
 
 
@@ -98,18 +99,56 @@ class PluginInstaller(BasePluginClient):
         tags: Sequence[str] = (),
         language: str = "en_US",
     ) -> PluginListWithoutTotalResponse:
-        return self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/{category.value}/list",
-            PluginListWithoutTotalResponse,
-            params={
-                "page": page,
-                "page_size": page_size,
-                "response_type": "paged",
-                "query": query,
-                "tags": list(tags),
-                "language": language,
-            },
+        try:
+            return self._request_with_plugin_daemon_response(
+                "GET",
+                f"plugin/{tenant_id}/management/{category.value}/list",
+                PluginListWithoutTotalResponse,
+                params={
+                    "page": page,
+                    "page_size": page_size,
+                    "response_type": "paged",
+                    "query": query,
+                    "tags": list(tags),
+                    "language": language,
+                },
+            )
+        except PluginDaemonClientSideError as e:
+            if not self._is_plugin_category_route_missing(e):
+                raise
+            return self._list_plugins_by_category_from_management_list(tenant_id, category, page, page_size)
+
+    def _is_plugin_category_route_missing(self, error: PluginDaemonClientSideError) -> bool:
+        description = error.description.lower()
+        return "404" in description or "not found" in description
+
+    def _list_plugins_by_category_from_management_list(
+        self,
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+    ) -> PluginListWithoutTotalResponse:
+        normalized_page = max(page, 1)
+        normalized_page_size = max(page_size, 1)
+        start = (normalized_page - 1) * normalized_page_size
+        end = start + normalized_page_size
+        fallback_page = 1
+        fallback_page_size = max(normalized_page_size, 256)
+        matched_plugins: list[PluginEntity] = []
+
+        while True:
+            plugins = self.list_plugins_with_total(tenant_id, fallback_page, fallback_page_size)
+            matched_plugins.extend(plugin for plugin in plugins.list if plugin.declaration.category == category)
+            if len(matched_plugins) > end:
+                break
+            if fallback_page * fallback_page_size >= plugins.total or not plugins.list:
+                break
+            fallback_page += 1
+
+        return PluginListWithoutTotalResponse(
+            list=matched_plugins[start:end],
+            has_more=len(matched_plugins) > end,
         )
 
     def upload_pkg(
