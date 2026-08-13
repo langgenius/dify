@@ -19,7 +19,6 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
-import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -27,6 +26,7 @@ import useTheme from '@/hooks/use-theme'
 import { usePluginManifestInfo } from '@/service/use-plugins'
 import { Theme } from '@/types/app'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { supportsAgentPluginCredentials } from '../../../../tool-provider-catalog'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -162,7 +162,8 @@ function CredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const canSwitchCredential = tool.providerType === CollectionType.builtIn && tool.allowDelete
+  const supportsPluginCredentials = supportsAgentPluginCredentials(tool.providerType)
+  const canSwitchCredential = supportsPluginCredentials && tool.allowDelete
   const handleAuthorizationItemClick = useCallback(
     (id: string) => {
       onCredentialChange(
@@ -180,6 +181,8 @@ function CredentialStatus({
   )
 
   if (tool.credentialVariant === 'none') return null
+
+  if (!supportsPluginCredentials) return null
 
   if (tool.credentialVariant === 'unauthorized') {
     return <UnauthorizedCredentialStatus tool={tool} onCredentialChange={onCredentialChange} />

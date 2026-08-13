@@ -21,6 +21,7 @@ import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[] | undefined,
+  mcpTools: [] as ToolWithProvider[] | undefined,
 }))
 const pluginAuthState = vi.hoisted(() => ({
   canOAuth: true as boolean | undefined,
@@ -28,6 +29,7 @@ const pluginAuthState = vi.hoisted(() => ({
   credentials: [] as Credential[],
   notAllowCustomCredential: false,
   invalidPluginCredentialInfo: vi.fn(),
+  usePluginAuth: vi.fn(),
 }))
 const pluginInstallState = vi.hoisted(() => ({
   manifest: undefined as
@@ -123,10 +125,13 @@ vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () =>
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
-  usePluginAuth: () => ({
-    ...pluginAuthState,
-    isAuthorized: pluginAuthState.credentials.length > 0,
-  }),
+  usePluginAuth: (...args: unknown[]) => {
+    pluginAuthState.usePluginAuth(...args)
+    return {
+      ...pluginAuthState,
+      isAuthorized: pluginAuthState.credentials.length > 0,
+    }
+  },
 }))
 
 vi.mock('@/hooks/use-credential-permissions', () => ({
@@ -155,7 +160,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: toolProviderState.mcpTools }),
   useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
   useInvalidToolsByType: () => vi.fn(),
 }))
@@ -378,6 +383,63 @@ const duckDuckGoProvider = {
   ],
 } satisfies ToolWithProvider
 
+const mcpProvider = {
+  ...googleProvider,
+  id: 'tapd-server-test',
+  name: 'tapd-server-test',
+  author: 'TAPD',
+  label: {
+    en_US: 'TAPD MCP',
+    zh_Hans: 'TAPD MCP',
+  },
+  type: CollectionType.mcp,
+  team_credentials: {
+    access_token: 'configured',
+  },
+  is_team_authorization: true,
+  allow_delete: false,
+  tools: [
+    {
+      name: 'get_story',
+      author: 'TAPD',
+      label: {
+        en_US: 'Get TAPD Story',
+        zh_Hans: 'Get TAPD Story',
+      },
+      description: {
+        en_US: 'Get a TAPD story.',
+        zh_Hans: 'Get a TAPD story.',
+      },
+      parameters: [],
+      labels: [],
+      output_schema: {},
+    },
+  ],
+} satisfies ToolWithProvider
+
+const reflectedUnauthorizedMCPDraft = {
+  ...defaultAgentSoulConfigFormState,
+  tools: [
+    {
+      id: 'tapd-server-test',
+      kind: 'provider',
+      name: 'tapd-server-test',
+      iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+      providerType: CollectionType.mcp,
+      credentialType: 'unauthorized',
+      credentialVariant: 'unauthorized',
+      actions: [
+        {
+          id: 'tapd-server-test:get_story',
+          name: 'get_story',
+          toolName: 'get_story',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies AgentSoulConfigFormState
+
 function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -450,10 +512,12 @@ describe('AgentTools', () => {
     cleanup()
     vi.clearAllMocks()
     toolProviderState.builtInTools = []
+    toolProviderState.mcpTools = []
     pluginAuthState.canOAuth = true
     pluginAuthState.canApiKey = false
     pluginAuthState.credentials = []
     pluginAuthState.notAllowCustomCredential = false
+    pluginAuthState.usePluginAuth.mockReset()
     pluginInstallState.manifest = undefined
     pluginInstallState.fallbackManifest = undefined
     pluginInstallState.invalidateBuiltInTools.mockResolvedValue(undefined)
@@ -698,6 +762,59 @@ describe('AgentTools', () => {
         }),
       ).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+    })
+
+    it('should not request plugin credentials for an authorized MCP provider', async () => {
+      const user = userEvent.setup()
+      toolProviderState.mcpTools = [mcpProvider]
+
+      renderAgentTools(reflectedUnauthorizedMCPDraft)
+
+      expect(screen.getByRole('button', { name: 'TAPD MCP' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tools.notAuthorized' })).not.toBeInTheDocument()
+      expect(pluginAuthState.usePluginAuth).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'TAPD MCP' }))
+
+      expect(screen.getByText('Get TAPD Story')).toBeInTheDocument()
+    })
+
+    it('should not request plugin credentials while the MCP provider catalog is loading', () => {
+      toolProviderState.mcpTools = undefined
+
+      renderAgentTools(reflectedUnauthorizedMCPDraft)
+
+      expect(screen.getByRole('button', { name: 'tapd-server-test' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'tools.notAuthorized' })).not.toBeInTheDocument()
+      expect(pluginAuthState.usePluginAuth).not.toHaveBeenCalled()
+    })
+
+    it('should preserve plugin credential authorization actions', () => {
+      toolProviderState.builtInTools = [
+        {
+          ...googleProvider,
+          id: 'langgenius/google/google',
+          name: 'google',
+          plugin_id: 'langgenius/google',
+          type: 'plugin',
+          team_credentials: {
+            api_key: 'configured',
+          },
+          is_team_authorization: false,
+          allow_delete: false,
+        },
+      ]
+
+      renderAgentTools(reflectedUninstalledPluginDraft)
+
+      expect(screen.getByRole('button', { name: 'tools.notAuthorized' })).toBeInTheDocument()
+      expect(pluginAuthState.usePluginAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          provider: 'langgenius/google/google',
+          providerType: 'plugin',
+        }),
+        true,
+      )
     })
 
     it('should keep provider credential metadata display-only without dirtying the composer draft', () => {
