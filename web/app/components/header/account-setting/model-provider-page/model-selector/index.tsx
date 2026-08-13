@@ -5,6 +5,7 @@ import type {
   ModelSelectorProvider,
   ModelSelectorValue,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent } from '@langgenius/dify-ui/combobox'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo, useState } from 'react'
@@ -30,6 +31,7 @@ type ModelSelectorBaseProps = {
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
   className?: string
+  popupClassName?: string
   onValueChange?: (model: ModelSelectorValue) => void
   onHide?: () => void
   disabled?: boolean
@@ -54,6 +56,7 @@ function ModelSelectorRoot({
   value,
   models,
   className,
+  popupClassName,
   onValueChange,
   onHide,
   disabled,
@@ -192,7 +195,12 @@ function ModelSelectorRoot({
             : undefined
         }
       />
-      <ComboboxContent popupClassName="flex max-h-[min(624px,var(--available-height,624px))] flex-col">
+      <ComboboxContent
+        popupClassName={cn(
+          'flex max-h-[min(624px,var(--available-height,624px))] flex-col',
+          popupClassName,
+        )}
+      >
         <Popup
           defaultModel={value}
           inputValue={inputValue}

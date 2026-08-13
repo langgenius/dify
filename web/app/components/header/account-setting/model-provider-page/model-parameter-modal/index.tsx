@@ -28,6 +28,7 @@ import { getSupportedPresetConfig } from './presets-parameter-utils'
 export type ModelParameterModalProps = {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   popupClassName?: string
+  modelSelectorPopupClassName?: string
   placement?: Placement
   isAdvancedMode: boolean
   modelId: string
@@ -59,6 +60,7 @@ export type ModelParameterModalProps = {
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   trigger,
   popupClassName,
+  modelSelectorPopupClassName,
   placement,
   isAdvancedMode,
   modelId,
@@ -159,6 +161,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           <SplitModelSelector
             value={hasSelectedModel ? { provider, model: modelId } : undefined}
             models={selectableModelList}
+            popupClassName={modelSelectorPopupClassName}
             disabled={readonly || modelSelectorReadonly}
             showModelMeta={showModelMeta}
             surface={isInWorkflow ? 'workflow' : 'default'}
