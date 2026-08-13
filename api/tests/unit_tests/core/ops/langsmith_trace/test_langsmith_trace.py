@@ -57,6 +57,16 @@ def test_init(langsmith_config, monkeypatch):
     assert instance.file_base_url == "http://test.url"
 
 
+def test_init_passes_self_hosted_path_to_client(monkeypatch):
+    config = LangSmithConfig(api_key="ls-123", project="default", endpoint="https://langsmith.internal/api")
+    mock_client_class = MagicMock()
+    monkeypatch.setattr("core.ops.langsmith_trace.langsmith_trace.Client", mock_client_class)
+
+    LangSmithDataTrace(config)
+
+    mock_client_class.assert_called_once_with(api_key="ls-123", api_url="https://langsmith.internal/api")
+
+
 def test_trace_dispatch(trace_instance, monkeypatch):
     methods = [
         "workflow_trace",
