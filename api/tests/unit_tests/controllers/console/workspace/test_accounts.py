@@ -263,6 +263,7 @@ class TestAccountProfilePatchApi:
         profile = MagicMock()
         profile.update.return_value = user
         payload = {"name": "Jane", "interface_language": "en-US", "timezone": "UTC"}
+        args = AccountProfilePatchPayload.model_validate(payload)
 
         with (
             app.test_request_context("/account/profile", method="PATCH", json=payload),
@@ -271,7 +272,7 @@ class TestAccountProfilePatchApi:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
             ),
         ):
-            result = method(api, request_context)
+            result = method(api, args, request_context)
 
         assert result["id"] == user.id
         profile.update.assert_called_once_with(
@@ -291,6 +292,7 @@ class TestAccountProfilePatchApi:
         )
         profile = MagicMock()
         profile.update.return_value = user
+        args = AccountProfilePatchPayload.model_validate({})
 
         with (
             app.test_request_context("/account/profile", method="PATCH", json={}),
@@ -299,7 +301,7 @@ class TestAccountProfilePatchApi:
                 return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
             ),
         ):
-            result = method(api, request_context)
+            result = method(api, args, request_context)
 
         assert result["id"] == user.id
         profile.update.assert_called_once_with(request_context, AccountProfileChanges())

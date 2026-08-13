@@ -364,9 +364,8 @@ class AccountProfileApi(Resource):
     @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
-    def patch(self, request_context: RequestContext):
-        payload = console_ns.payload or {}
-        args = AccountProfilePatchPayload.model_validate(payload)
+    @model_validate(AccountProfilePatchPayload)
+    def patch(self, args: AccountProfilePatchPayload, request_context: RequestContext):
         return _update_account_profile(request_context, args.to_changes())
 
 
