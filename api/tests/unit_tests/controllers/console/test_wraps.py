@@ -192,6 +192,51 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
+    def test_console_account_admission_composes_role_and_rbac_requirements(self):
+        current_user = make_account()
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.is_admin_or_owner_required", side_effect=lambda view: view
+            ) as admin_required,
+            patch(
+                "controllers.console.flask_admission.rbac_permission_required",
+                return_value=lambda view: view,
+            ) as rbac_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value=None),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(
+                    require_admin_or_owner=True,
+                    rbac=flask_admission.ConsoleRBACRequirement(
+                        resource_scope=RBACResourceScope.WORKSPACE,
+                        permission=RBACPermission.CREDENTIAL_MANAGE,
+                        resource_required=False,
+                    ),
+                )
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context(headers={"X-Trace-Id": "trace-header"}):
+                result = Handler().get()
+
+        assert result.trace_id == "trace-header"
+        admin_required.assert_called_once()
+        rbac_required.assert_called_once_with(
+            RBACResourceScope.WORKSPACE,
+            RBACPermission.CREDENTIAL_MANAGE,
+            resource_required=False,
+        )
+
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
             @with_current_tenant_id

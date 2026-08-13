@@ -6,6 +6,7 @@ from pytest_mock import MockerFixture
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from machinery.context import RequestContext
+from services.data_source_oauth_service import DataSourceOAuthService
 from services.entities.feature_entities import (
     FeatureModel,
     LicenseLimitationModel,
@@ -17,6 +18,7 @@ from services.entities.feature_entities import (
 )
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
+from services.oauth_server_service import OAuthServerService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_service import SetupService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
@@ -35,10 +37,12 @@ def _request_context() -> RequestContext:
 def _install_application_services(mocker: MockerFixture):
     feature_queries = create_autospec(FeatureQueryService, instance=True, spec_set=True)
     services = ApplicationServices(
+        data_source_oauth={"notion": create_autospec(DataSourceOAuthService, instance=True, spec_set=True)},
         explore_banner_queries=create_autospec(ExploreBannerQueryService, instance=True, spec_set=True),
         schema_definitions=create_autospec(SchemaDefinitionService, instance=True, spec_set=True),
         setup=create_autospec(SetupService, instance=True, spec_set=True),
         feature_queries=feature_queries,
+        oauth_server=create_autospec(OAuthServerService, instance=True, spec_set=True),
         workspace_queries=create_autospec(WorkspaceQueryService, instance=True, spec_set=True),
         workspace_member_queries=create_autospec(WorkspaceMemberQueryService, instance=True, spec_set=True),
     )

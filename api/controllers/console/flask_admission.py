@@ -1,23 +1,39 @@
 """Flask adapter for Console API admission."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from functools import wraps
 from typing import Concatenate
 
 from flask import Response, abort, request
 
 from configs import dify_config
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enterprise_license_required,
+    is_admin_or_owner_required,
+    setup_required,
+)
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
 
 
+@dataclass(frozen=True, slots=True)
+class ConsoleRBACRequirement:
+    resource_scope: RBACResourceScope
+    permission: RBACPermission
+    resource_required: bool = True
+
+
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
     require_valid_enterprise_license: bool = False,
+    require_admin_or_owner: bool = False,
+    rbac: ConsoleRBACRequirement | None = None,
 ) -> Callable[
     [Callable[Concatenate[T, RequestContext, P], R]],
     Callable[Concatenate[T, P], R | Response],
@@ -26,7 +42,8 @@ def console_account_admission[T, **P, R](
 
     All combinations use this decorator factory. Requirements are data, while
     the execution order stays fixed: edition, setup, login/CSRF, account
-    initialization, optional enterprise license, then context construction.
+    initialization, optional enterprise license, role/RBAC checks, then
+    context construction.
     """
 
     def decorator(
@@ -44,6 +61,14 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
+        if rbac is not None:
+            admitted = rbac_permission_required(
+                rbac.resource_scope,
+                rbac.permission,
+                resource_required=rbac.resource_required,
+            )(admitted)
+        if require_admin_or_owner:
+            admitted = is_admin_or_owner_required(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
         admitted = account_initialization_required(admitted)
