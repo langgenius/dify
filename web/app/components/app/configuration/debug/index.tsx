@@ -6,6 +6,7 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiAddLine, RiEqualizer2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -442,12 +443,12 @@ const Debug: FC<IDebug> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton
+                        <IconButton
                           aria-label={t(($) => $['operation.refresh'], { ns: 'common' })}
                           onClick={clearConversation}
                         >
                           <RefreshCcw01 aria-hidden="true" className="size-4" />
-                        </ActionButton>
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
