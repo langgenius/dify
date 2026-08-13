@@ -716,8 +716,12 @@ export type KnowledgeFsResearchTaskPartialListResponse = {
 }
 
 export type KnowledgeFsSettingsResponse = {
+  active_profile_available: boolean
+  active_profile_revisions: KnowledgeFsActiveProfileRevisions
+  capabilities: KnowledgeFsReadinessCapabilities
   configuration_state: 'active' | 'pending-validation' | 'setup-required' | 'validation-failed'
   embedding: KnowledgeFsEmbeddingSettingsResponse | null
+  issues: Array<KnowledgeFsReadinessIssue>
   retrieval: KnowledgeFsRetrievalSettingsResponse | null
   revision: number
 }
@@ -1714,6 +1718,20 @@ export type KnowledgeFsResearchTaskPartialResponse = {
   sequence: number
 }
 
+export type KnowledgeFsActiveProfileRevisions = {
+  embedding?: number | null
+  retrieval?: number | null
+}
+
+export type KnowledgeFsReadinessCapabilities = {
+  deep: boolean
+  index: boolean
+  ingest: boolean
+  query: boolean
+  research: boolean
+  source_sync: boolean
+}
+
 export type KnowledgeFsEmbeddingSettingsResponse = {
   dimension?: number | null
   model: string
@@ -1721,6 +1739,12 @@ export type KnowledgeFsEmbeddingSettingsResponse = {
   provider: string
   revision?: number | null
   vector_space_id?: string | null
+}
+
+export type KnowledgeFsReadinessIssue = {
+  code: 'binding_missing' | 'incompatible' | 'missing' | 'unavailable' | 'validation_failed'
+  field: 'embedding' | 'publication' | 'reasoning' | 'rerank'
+  retryable: boolean
 }
 
 export type KnowledgeFsRetrievalSettingsResponse = {

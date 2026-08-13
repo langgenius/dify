@@ -4,6 +4,10 @@ import dayjs from 'dayjs'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { KnowledgeOverviewPage } from '../overview/knowledge-overview-page'
 
+vi.mock('../components/knowledge-model-readiness-banner', () => ({
+  KnowledgeModelReadinessBanner: () => null,
+}))
+
 const queryOptionsMocks = vi.hoisted(() => ({
   activity: vi.fn(),
   attention: vi.fn(),

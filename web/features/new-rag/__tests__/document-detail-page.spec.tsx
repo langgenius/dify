@@ -13,6 +13,10 @@ import copy from 'copy-to-clipboard'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
 
+vi.mock('../components/knowledge-model-readiness-banner', () => ({
+  KnowledgeModelReadinessBanner: () => null,
+}))
+
 type BulkDocumentReindexResult = {
   bulkJobId: string
   items: Array<{
@@ -286,7 +290,10 @@ vi.mock('@/context/permission-state', () => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastState }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/documents/document-1',
+  useRouter: () => routerMock,
+}))
 
 vi.mock('@tanstack/react-virtual', () => ({
   defaultRangeExtractor: ({ endIndex, startIndex }: { endIndex: number; startIndex: number }) =>
@@ -382,8 +389,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (options.queryKind === 'settings')
         return {
           data: {
+            active_profile_available: settingsState.configurationState === 'active',
+            active_profile_revisions:
+              settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+            capabilities: {
+              deep: settingsState.configurationState === 'active',
+              index: settingsState.configurationState === 'active',
+              ingest: settingsState.configurationState === 'active',
+              query: settingsState.configurationState === 'active',
+              research: settingsState.configurationState === 'active',
+              source_sync: settingsState.configurationState === 'active',
+            },
             configuration_state: settingsState.configurationState,
             embedding: null,
+            issues: [],
             retrieval: null,
             revision: 1,
           },
@@ -661,8 +680,20 @@ describe('DocumentDetailPage', () => {
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
       data: {
+        active_profile_available: settingsState.configurationState === 'active',
+        active_profile_revisions:
+          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+        capabilities: {
+          deep: settingsState.configurationState === 'active',
+          index: settingsState.configurationState === 'active',
+          ingest: settingsState.configurationState === 'active',
+          query: settingsState.configurationState === 'active',
+          research: settingsState.configurationState === 'active',
+          source_sync: settingsState.configurationState === 'active',
+        },
         configuration_state: settingsState.configurationState,
         embedding: null,
+        issues: [],
         retrieval: null,
         revision: 1,
       },
@@ -2036,15 +2067,17 @@ describe('DocumentDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }))
 
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
-    const dialog = screen.getByRole('alertdialog', {
-      name: 'common.modelProvider.toBeConfigured',
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
     })
     await user.click(
       within(dialog).getByRole('button', {
         name: 'common.modelProvider.selector.configure',
       }),
     )
-    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+    expect(routerMock.push).toHaveBeenCalledWith(
+      '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fdocuments%2Fdocument-1&capability=index',
+    )
   })
 
   it('guards re-index against rapid repeats and handles a concurrently removed document', async () => {

@@ -69,7 +69,10 @@ import {
   type KnowledgeSpaceProfileMigrationService,
   toPublicKnowledgeSpaceProfileMigration,
 } from "./knowledge-space-profile-migration-service";
-import type { KnowledgeSpaceProfilePublicationRepository } from "./knowledge-space-profile-publication-repository";
+import {
+  type KnowledgeSpaceProfilePublicationRepository,
+  KnowledgeSpaceProfilePublicationTransitionError,
+} from "./knowledge-space-profile-publication-repository";
 import {
   type KnowledgeSpaceProfileRepository,
   type KnowledgeSpaceProfileRevision,
@@ -117,6 +120,8 @@ import {
 } from "./model-capability-preflight";
 import type { ParseArtifactRepository } from "./parse-artifact-repository";
 import type { ProjectionSetPublicationRepository } from "./projection-publication-repository";
+import type { PublishedKnowledgeSpaceRuntimeSnapshotResolver } from "./published-knowledge-space-runtime-snapshot";
+import { PublishedProjectionReadUnavailableError } from "./published-projection-read-snapshot";
 import {
   StagedCommitListLimitExceededError,
   type StagedCommitRepository,
@@ -137,7 +142,8 @@ export interface RegisterKnowledgeSpaceHandlersOptions {
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly profileMigrations?: KnowledgeSpaceProfileMigrationService | undefined;
   readonly profilePublicationBindings?:
-    | Pick<KnowledgeSpaceProfilePublicationRepository, "bindCurrentPublished">
+    | (Pick<KnowledgeSpaceProfilePublicationRepository, "bindCurrentPublished"> &
+        Partial<Pick<KnowledgeSpaceProfilePublicationRepository, "requireActivatedBinding">>)
     | undefined;
   readonly profiles?: KnowledgeSpaceProfileRepository | undefined;
   readonly provisioning?: KnowledgeSpaceProvisioningRepository | undefined;
@@ -147,6 +153,7 @@ export interface RegisterKnowledgeSpaceHandlersOptions {
   readonly publishedPublications?:
     | Pick<ProjectionSetPublicationRepository, "getPublished">
     | undefined;
+  readonly runtimeSnapshotResolver?: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
   readonly modelCapabilityPreflight?: ModelCapabilityPreflight | undefined;
   readonly nodes: KnowledgeNodeRepository;
   readonly now: () => string;
@@ -178,6 +185,7 @@ export function registerKnowledgeSpaceHandlers({
   provisioning,
   unpublishedProfileActivations,
   publishedPublications,
+  runtimeSnapshotResolver,
   modelCapabilityPreflight,
   nodes,
   now,
@@ -433,7 +441,18 @@ export function registerKnowledgeSpaceHandlers({
       now,
       space,
     });
-    return context.json(toProductSettings(manifest), 200);
+    return context.json(
+      await resolveProductSettings({
+        knowledgeSpaceId,
+        manifest,
+        profilePublicationBindings,
+        profiles,
+        publishedPublications,
+        runtimeSnapshotResolver,
+        tenantId: subject.tenantId,
+      }),
+      200,
+    );
   });
 
   app.openapi(updateKnowledgeSpaceProductSettingsRoute, async (context) => {
@@ -524,7 +543,18 @@ export function registerKnowledgeSpaceHandlers({
         409,
       );
     }
-    return context.json(toProductSettings(updated), 200);
+    return context.json(
+      await resolveProductSettings({
+        knowledgeSpaceId,
+        manifest: updated,
+        profilePublicationBindings,
+        profiles,
+        publishedPublications,
+        runtimeSnapshotResolver,
+        tenantId: subject.tenantId,
+      }),
+      200,
+    );
   });
 
   app.openapi(updateKnowledgeSpaceEmbeddingProfileRoute, async (context) => {
@@ -1880,24 +1910,193 @@ export function registerKnowledgeSpaceHandlers({
   });
 }
 
-function toProductSettings(manifest: KnowledgeSpaceManifest) {
+type ProductReadinessIssue = {
+  readonly code:
+    | "binding_missing"
+    | "incompatible"
+    | "missing"
+    | "unavailable"
+    | "validation_failed";
+  readonly field: "embedding" | "publication" | "reasoning" | "rerank";
+  readonly retryable: boolean;
+};
+
+async function resolveProductSettings({
+  knowledgeSpaceId,
+  manifest,
+  profilePublicationBindings,
+  profiles,
+  publishedPublications,
+  runtimeSnapshotResolver,
+  tenantId,
+}: {
+  readonly knowledgeSpaceId: string;
+  readonly manifest: KnowledgeSpaceManifest;
+  readonly profilePublicationBindings:
+    | (Pick<KnowledgeSpaceProfilePublicationRepository, "bindCurrentPublished"> &
+        Partial<Pick<KnowledgeSpaceProfilePublicationRepository, "requireActivatedBinding">>)
+    | undefined;
+  readonly profiles: KnowledgeSpaceProfileRepository | undefined;
+  readonly publishedPublications:
+    | Pick<ProjectionSetPublicationRepository, "getPublished">
+    | undefined;
+  readonly runtimeSnapshotResolver: PublishedKnowledgeSpaceRuntimeSnapshotResolver | undefined;
+  readonly tenantId: string;
+}) {
   const pending = manifest.pendingModelConfiguration;
   const embedding = pending?.embeddingSelection ?? manifest.embeddingProfile ?? null;
   const retrieval = pending?.retrievalProfile ?? manifest.retrievalProfile ?? null;
-  const hasRequiredModels = Boolean(
+  const candidateComplete = Boolean(
     embedding && retrieval && hasRequiredKnowledgeSpaceRetrievalModels(retrieval),
   );
-  const configurationState = hasRequiredModels
+  const configurationState = candidateComplete
     ? pending
       ? pending.state
       : ("active" as const)
     : ("setup-required" as const);
+  const configuration = await resolveKnowledgeSpaceConfigurationStatus({
+    knowledgeSpaceId,
+    manifest,
+    profiles,
+    tenantId,
+  });
+  const activeProfileAvailable =
+    configuration.activeProfiles.embeddingRevision !== undefined &&
+    configuration.activeProfiles.retrievalRevision !== undefined &&
+    configuration.availableModes.length > 0;
+  const canActivateCandidate = candidateComplete && pending?.state === "pending-validation";
+  const issues: ProductReadinessIssue[] = [];
+  let deepAvailable = activeProfileAvailable;
+  let queryAvailable = activeProfileAvailable;
+  let researchAvailable = activeProfileAvailable;
+  if (!embedding) issues.push({ code: "missing", field: "embedding", retryable: false });
+  if (!retrieval) {
+    issues.push({ code: "missing", field: "reasoning", retryable: false });
+    issues.push({ code: "missing", field: "rerank", retryable: false });
+  } else if (!hasRequiredKnowledgeSpaceRetrievalModels(retrieval)) {
+    issues.push({ code: "missing", field: "rerank", retryable: false });
+  }
+  if (pending?.state === "validation-failed" && pending.failure) {
+    const failure = pending.failure;
+    const fields = failure.field ? [failure.field] : inferFailedModelFields(failure.code);
+    issues.push(
+      ...fields.map((field) => ({
+        code: readinessIssueCodeForFailure(failure.code),
+        field,
+        retryable: failure.retryable,
+      })),
+    );
+  }
+  if (activeProfileAvailable && runtimeSnapshotResolver) {
+    try {
+      await runtimeSnapshotResolver.resolve({ knowledgeSpaceId, tenantId });
+    } catch (error) {
+      if (!(error instanceof PublishedProjectionReadUnavailableError)) throw error;
+      deepAvailable = false;
+      queryAvailable = false;
+      researchAvailable = false;
+    }
+    if (queryAvailable) {
+      [queryAvailable, deepAvailable, researchAvailable] = await Promise.all([
+        isPublishedRuntimeModeReady(runtimeSnapshotResolver, {
+          knowledgeSpaceId,
+          resolvedMode: "fast",
+          tenantId,
+        }),
+        isPublishedRuntimeModeReady(runtimeSnapshotResolver, {
+          knowledgeSpaceId,
+          resolvedMode: "deep",
+          tenantId,
+        }),
+        isPublishedRuntimeModeReady(runtimeSnapshotResolver, {
+          knowledgeSpaceId,
+          resolvedMode: "research",
+          tenantId,
+        }),
+      ]);
+    }
+  } else if (activeProfileAvailable && publishedPublications) {
+    const publication = await publishedPublications.getPublished({ knowledgeSpaceId, tenantId });
+    if (!publication) {
+      deepAvailable = false;
+      queryAvailable = false;
+      researchAvailable = false;
+    } else if (profilePublicationBindings?.requireActivatedBinding) {
+      try {
+        await profilePublicationBindings.requireActivatedBinding({
+          knowledgeSpaceId,
+          publicationFingerprint: publication.fingerprint,
+          publicationId: publication.id,
+          tenantId,
+        });
+      } catch (error) {
+        if (
+          !(error instanceof KnowledgeSpaceProfilePublicationTransitionError) ||
+          error.code !== "KNOWLEDGE_SPACE_PROFILE_PUBLICATION_TUPLE_NOT_PUBLISHED"
+        )
+          throw error;
+        deepAvailable = false;
+        queryAvailable = false;
+        researchAvailable = false;
+        issues.push({ code: "binding_missing", field: "publication", retryable: false });
+      }
+    }
+  }
+  if (activeProfileAvailable && (!deepAvailable || !queryAvailable || !researchAvailable)) {
+    if (!issues.some((issue) => issue.field === "publication")) {
+      issues.push({ code: "unavailable", field: "publication", retryable: true });
+    }
+  }
   return {
+    activeProfileAvailable,
+    activeProfileRevisions: {
+      ...(configuration.activeProfiles.embeddingRevision !== undefined
+        ? { embedding: configuration.activeProfiles.embeddingRevision }
+        : {}),
+      ...(configuration.activeProfiles.retrievalRevision !== undefined
+        ? { retrieval: configuration.activeProfiles.retrievalRevision }
+        : {}),
+    },
+    capabilities: {
+      deep: deepAvailable,
+      index: activeProfileAvailable,
+      ingest: activeProfileAvailable || canActivateCandidate,
+      query: queryAvailable,
+      research: researchAvailable,
+      sourceSync: activeProfileAvailable || canActivateCandidate,
+    },
     configurationState,
     embedding,
+    issues,
     retrieval,
     revision: manifest.manifestVersion,
   };
+}
+
+async function isPublishedRuntimeModeReady(
+  runtimeSnapshotResolver: PublishedKnowledgeSpaceRuntimeSnapshotResolver,
+  input: Parameters<PublishedKnowledgeSpaceRuntimeSnapshotResolver["assertReady"]>[0],
+): Promise<boolean> {
+  try {
+    await runtimeSnapshotResolver.assertReady(input);
+    return true;
+  } catch (error) {
+    if (error instanceof PublishedProjectionReadUnavailableError) return false;
+    throw error;
+  }
+}
+
+function inferFailedModelFields(code: string): ProductReadinessIssue["field"][] {
+  if (code.includes("EMBEDDING") || code.includes("DIMENSION")) return ["embedding"];
+  if (code.includes("RERANK")) return ["rerank"];
+  if (code.includes("REASON")) return ["reasoning"];
+  return ["embedding", "reasoning", "rerank"];
+}
+
+function readinessIssueCodeForFailure(code: string): ProductReadinessIssue["code"] {
+  if (code === "MODEL_SELECTION_NOT_FOUND" || code.includes("UNAVAILABLE")) return "unavailable";
+  if (code.includes("MISMATCH") || code.includes("DIMENSION")) return "incompatible";
+  return "validation_failed";
 }
 
 async function preflightKnowledgeSpaceModels({

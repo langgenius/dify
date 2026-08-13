@@ -51,6 +51,7 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useMembers } from '@/service/use-common'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
 import {
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
@@ -1056,7 +1057,7 @@ function ActivityDrawer({
   range: ActivityRange
 }) {
   const { t, i18n } = useTranslation('dataset')
-  const { t: tDeployments } = useTranslation('deployments')
+  const { t: tCommon } = useTranslation('common')
   const { t: tActivityLog } = useTranslation('appLog')
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
@@ -1300,7 +1301,7 @@ function ActivityDrawer({
                       className="mt-3 system-xs-medium text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       onClick={clearFilters}
                     >
-                      {tDeployments(($) => $['list.clearFilters'])}
+                      {tCommon(($) => $['operation.clear'])}
                     </button>
                   </div>
                 )}
@@ -1960,6 +1961,11 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             </SegmentedControl>
           )}
         </header>
+        <KnowledgeModelReadinessBanner
+          capability="query"
+          className="mt-4"
+          knowledgeSpaceId={knowledgeSpaceId}
+        />
 
         {pageLoading && (
           <p className="sr-only" role="status">

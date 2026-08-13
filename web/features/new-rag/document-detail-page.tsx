@@ -10,6 +10,7 @@ import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
@@ -82,7 +83,8 @@ export function DocumentDetailPage({
   const taskProgressStore = taskProgressStoreRef.current
   const {
     configureModelSetup,
-    ensureModelSetupReady,
+    ensureModelReady,
+    modelReadiness,
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
@@ -185,7 +187,8 @@ export function DocumentDetailPage({
     tasksError,
     writePermissionRevoked,
   } = useDocumentReindex({
-    beforeReindex: ensureModelSetupReady,
+    beforeReindex: async () =>
+      (await ensureModelReady({ capability: 'index', intent: 'reindex' })).status === 'ready',
     documentActiveRevision,
     chunksQueryKey,
     documentId,
@@ -252,6 +255,11 @@ export function DocumentDetailPage({
   const document = documentQuery.data
   return (
     <section className="flex min-h-0 flex-1 flex-col px-6 py-5 lg:px-8">
+      <KnowledgeModelReadinessBanner
+        capability="index"
+        className="mb-4"
+        knowledgeSpaceId={knowledgeSpaceId}
+      />
       <DocumentDetailHeader
         backPath={backPath}
         canCancelReindex={canCancelReindex}
@@ -372,6 +380,7 @@ export function DocumentDetailPage({
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
+        readiness={modelReadiness}
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={configureModelSetup}
       />

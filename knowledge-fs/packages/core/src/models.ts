@@ -408,6 +408,7 @@ export const KnowledgeSpacePendingModelConfigurationSchema = z
           .trim()
           .regex(/^[A-Za-z0-9._:-]{1,64}$/),
         failedAt: DateTimeSchema,
+        field: z.enum(["embedding", "reasoning", "rerank"]).optional(),
         retryable: z.boolean(),
       })
       .strict()

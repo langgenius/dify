@@ -35,6 +35,7 @@ import {
   createStaticAuthVerifier,
 } from "./index";
 import { ensureLegacyPublishedProfileTuple } from "./knowledge-space-handlers";
+import { PublishedProjectionReadUnavailableError } from "./published-projection-read-snapshot";
 
 const SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const NOW = "2026-07-21T12:00:00.000Z";
@@ -303,8 +304,23 @@ describe("knowledge-space profile handler behavior", () => {
     });
     expect(initial.status).toBe(200);
     await expect(initial.json()).resolves.toEqual({
+      activeProfileAvailable: false,
+      activeProfileRevisions: {},
+      capabilities: {
+        deep: false,
+        index: false,
+        ingest: false,
+        query: false,
+        research: false,
+        sourceSync: false,
+      },
       configurationState: "setup-required",
       embedding: null,
+      issues: [
+        { code: "missing", field: "embedding", retryable: false },
+        { code: "missing", field: "reasoning", retryable: false },
+        { code: "missing", field: "rerank", retryable: false },
+      ],
       retrieval: null,
       revision: 1,
     });
@@ -326,8 +342,19 @@ describe("knowledge-space profile handler behavior", () => {
     });
     expect(updated.status).toBe(200);
     await expect(updated.json()).resolves.toMatchObject({
+      activeProfileAvailable: false,
+      activeProfileRevisions: {},
+      capabilities: {
+        deep: false,
+        index: false,
+        ingest: true,
+        query: false,
+        research: false,
+        sourceSync: true,
+      },
       configurationState: "pending-validation",
       embedding: EMBEDDING_V1,
+      issues: [],
       retrieval: { defaultMode: "deep", reasoningModel: REASONING_V1, topK: 8 },
       revision: 2,
     });
@@ -378,6 +405,178 @@ describe("knowledge-space profile handler behavior", () => {
     await expect(response.json()).resolves.toEqual({
       code: "PRODUCT_SETTINGS_PROFILE_MIGRATION_REQUIRED",
       error: "Active profile changes require the dedicated profile migration workflow",
+    });
+  });
+
+  it("keeps active capabilities available when a replacement candidate fails validation", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const app = profileApp({ knowledgeSpaceManifests: manifests });
+    await createSpace(app);
+    const active = await seedActiveManifest(manifests);
+    const pending = createKnowledgeSpacePendingModelConfiguration({
+      embeddingSelection: EMBEDDING_V2,
+      retrievalProfile: {
+        defaultMode: "deep",
+        reasoningModel: REASONING_V2,
+        rerank: { enabled: true, model: RERANK_V2 },
+        scoreThreshold: { enabled: true, stage: "mode-final", value: 0.35 },
+        topK: 8,
+      },
+    });
+    const failed = await manifests.update({
+      expectedManifestVersion: active.manifestVersion,
+      knowledgeSpaceId: SPACE_ID,
+      patch: {
+        manifestVersion: active.manifestVersion + 1,
+        pendingModelConfiguration: {
+          ...pending,
+          failure: {
+            code: "MODEL_SELECTION_NOT_FOUND",
+            failedAt: NOW,
+            field: "embedding",
+            retryable: false,
+          },
+          state: "validation-failed",
+        },
+        updatedAt: NOW,
+      },
+      tenantId: "tenant-1",
+    });
+    if (!failed) throw new Error("test manifest update failed");
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/product-settings`, {
+      headers: headers(),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      activeProfileAvailable: true,
+      activeProfileRevisions: { embedding: 1, retrieval: 1 },
+      capabilities: {
+        deep: true,
+        index: true,
+        ingest: true,
+        query: true,
+        research: true,
+        sourceSync: true,
+      },
+      configurationState: "validation-failed",
+      issues: [{ code: "unavailable", field: "embedding", retryable: false }],
+    });
+
+    const legacyFailed = await manifests.update({
+      expectedManifestVersion: failed.manifestVersion,
+      knowledgeSpaceId: SPACE_ID,
+      patch: {
+        manifestVersion: failed.manifestVersion + 1,
+        pendingModelConfiguration: {
+          ...pending,
+          failure: {
+            code: "MODEL_SELECTION_NOT_FOUND",
+            failedAt: NOW,
+            retryable: false,
+          },
+          state: "validation-failed",
+        },
+        updatedAt: NOW,
+      },
+      tenantId: "tenant-1",
+    });
+    if (!legacyFailed) throw new Error("legacy test manifest update failed");
+
+    const legacyResponse = await app.request(`/knowledge-spaces/${SPACE_ID}/product-settings`, {
+      headers: headers(),
+    });
+    expect(legacyResponse.status).toBe(200);
+    await expect(legacyResponse.json()).resolves.toMatchObject({
+      issues: [
+        { code: "unavailable", field: "embedding", retryable: false },
+        { code: "unavailable", field: "reasoning", retryable: false },
+        { code: "unavailable", field: "rerank", retryable: false },
+      ],
+    });
+  });
+
+  it("withholds published capabilities when the runtime snapshot is unavailable", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const app = profileApp({
+      knowledgeSpaceManifests: manifests,
+      runtimeSnapshotResolver: {
+        assertReady: vi.fn(async () => undefined),
+        resolve: async (input) => {
+          throw new PublishedProjectionReadUnavailableError(input);
+        },
+      },
+    });
+    await createSpace(app);
+    await seedActiveManifest(manifests);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/product-settings`, {
+      headers: headers(),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      capabilities: { deep: false, query: false, research: false },
+      issues: [{ code: "unavailable", field: "publication", retryable: true }],
+    });
+  });
+
+  it("reports query and research readiness from their runtime mode gates", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const assertReady = vi.fn(
+      async (input: { readonly resolvedMode?: "deep" | "fast" | "research" | undefined }) => {
+        if (input.resolvedMode === "deep" || input.resolvedMode === "research") {
+          throw new PublishedProjectionReadUnavailableError({
+            knowledgeSpaceId: SPACE_ID,
+            resolvedMode: input.resolvedMode,
+            tenantId: "tenant-1",
+          });
+        }
+      },
+    );
+    const app = profileApp({
+      knowledgeSpaceManifests: manifests,
+      runtimeSnapshotResolver: {
+        assertReady,
+        resolve: async () => ({}) as never,
+      },
+    });
+    await createSpace(app);
+    await seedActiveManifest(manifests);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/product-settings`, {
+      headers: headers(),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      capabilities: { deep: false, query: true, research: false },
+      issues: [{ code: "unavailable", field: "publication", retryable: true }],
+    });
+    expect(assertReady).toHaveBeenCalledWith({
+      knowledgeSpaceId: SPACE_ID,
+      resolvedMode: "fast",
+      tenantId: "tenant-1",
+    });
+    expect(assertReady).toHaveBeenCalledWith({
+      knowledgeSpaceId: SPACE_ID,
+      resolvedMode: "deep",
+      tenantId: "tenant-1",
+    });
+    expect(assertReady).toHaveBeenCalledWith({
+      knowledgeSpaceId: SPACE_ID,
+      resolvedMode: "research",
+      tenantId: "tenant-1",
     });
   });
 

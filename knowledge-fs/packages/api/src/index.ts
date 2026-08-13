@@ -1640,6 +1640,7 @@ export function createKnowledgeGateway({
       ? { profilePublicationBindings: knowledgeSpaceProfilePublications }
       : {}),
     ...(projectionSetPublications ? { publishedPublications: projectionSetPublications } : {}),
+    ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
     ...(modelCapabilityPreflight ? { modelCapabilityPreflight } : {}),
     nodes,
     now,

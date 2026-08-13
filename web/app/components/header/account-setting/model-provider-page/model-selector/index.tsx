@@ -20,7 +20,10 @@ const getModelProviderPluginId = (provider: string) => {
 }
 
 type ModelSelectorProps = {
+  ariaDescribedBy?: string
+  ariaInvalid?: boolean
   ariaLabelledBy?: string
+  ariaRequired?: boolean
   defaultModel?: DefaultModel
   modelList: Model[]
   triggerClassName?: string
@@ -39,7 +42,10 @@ type ModelSelectorProps = {
   modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 function ModelSelector({
+  ariaDescribedBy,
+  ariaInvalid,
   ariaLabelledBy,
+  ariaRequired,
   defaultModel,
   modelList,
   triggerClassName,
@@ -142,10 +148,13 @@ function ModelSelector({
       onValueChange={handleValueChange}
     >
       <ComboboxTrigger
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
         aria-label={
           ariaLabelledBy ? undefined : t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
         }
         aria-labelledby={ariaLabelledBy}
+        aria-required={ariaRequired}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
         disabled={readonly}

@@ -151,6 +151,7 @@ describe("first-document model profile activation", () => {
     expect(harness.manifest.pendingModelConfiguration).toMatchObject({
       failure: {
         code: "MODEL_SELECTION_NOT_FOUND",
+        field: "embedding",
         retryable: false,
       },
       state: "validation-failed",

@@ -8,6 +8,10 @@ import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentsPage } from '../documents-page'
 import { TaskEventObserver } from '../task-event-observer'
 
+vi.mock('../components/knowledge-model-readiness-banner', () => ({
+  KnowledgeModelReadinessBanner: () => null,
+}))
+
 vi.mock('@/app/components/base/file-uploader/dynamic-pdf-preview', () => ({
   default: ({ onCancel, url }: { onCancel: () => void; url: string }) => (
     <button type="button" aria-label="PDF preview" data-url={url} onClick={onCancel}>
@@ -266,7 +270,10 @@ vi.mock('jotai', async (importOriginal) => {
 })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastMock }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/documents',
+  useRouter: () => routerMock,
+}))
 vi.mock('@/utils/download', () => ({ downloadBlob: downloadBlobMock }))
 
 const documentsInfiniteOptions = vi.hoisted(() =>
@@ -384,8 +391,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
       return {
         data: {
+          active_profile_available: settingsState.configurationState === 'active',
+          active_profile_revisions:
+            settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+          capabilities: {
+            deep: settingsState.configurationState === 'active',
+            index: settingsState.configurationState === 'active',
+            ingest: settingsState.configurationState === 'active',
+            query: settingsState.configurationState === 'active',
+            research: settingsState.configurationState === 'active',
+            source_sync: settingsState.configurationState === 'active',
+          },
           configuration_state: settingsState.configurationState,
           embedding: null,
+          issues: [],
           retrieval: null,
           revision: 1,
         },
@@ -691,8 +710,20 @@ describe('DocumentsPage', () => {
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
       data: {
+        active_profile_available: settingsState.configurationState === 'active',
+        active_profile_revisions:
+          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+        capabilities: {
+          deep: settingsState.configurationState === 'active',
+          index: settingsState.configurationState === 'active',
+          ingest: settingsState.configurationState === 'active',
+          query: settingsState.configurationState === 'active',
+          research: settingsState.configurationState === 'active',
+          source_sync: settingsState.configurationState === 'active',
+        },
         configuration_state: settingsState.configurationState,
         embedding: null,
+        issues: [],
         retrieval: null,
         revision: 1,
       },
@@ -1937,23 +1968,36 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    const dialog = screen.getByRole('alertdialog', {
-      name: 'common.modelProvider.toBeConfigured',
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
     })
     await user.click(
       within(dialog).getByRole('button', {
         name: 'common.modelProvider.selector.configure',
       }),
     )
-    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+    expect(routerMock.push).toHaveBeenCalledWith(
+      '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fdocuments&capability=ingest',
+    )
   })
 
   it('waits for an authoritative model setup check before uploading', async () => {
     const user = userEvent.setup()
     let resolveSettingsCheck!: (result: {
       data: {
+        active_profile_available: true
+        active_profile_revisions: { embedding: 1; retrieval: 1 }
+        capabilities: {
+          deep: true
+          index: true
+          ingest: true
+          query: true
+          research: true
+          source_sync: true
+        }
         configuration_state: 'active'
         embedding: null
+        issues: []
         retrieval: null
         revision: number
       }
@@ -1980,8 +2024,19 @@ describe('DocumentsPage', () => {
     await act(async () =>
       resolveSettingsCheck({
         data: {
+          active_profile_available: true,
+          active_profile_revisions: { embedding: 1, retrieval: 1 },
+          capabilities: {
+            deep: true,
+            index: true,
+            ingest: true,
+            query: true,
+            research: true,
+            source_sync: true,
+          },
           configuration_state: 'active',
           embedding: null,
+          issues: [],
           retrieval: null,
           revision: 1,
         },
@@ -3348,8 +3403,8 @@ describe('DocumentsPage', () => {
 
     expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
     expect(
-      screen.getByRole('alertdialog', {
-        name: 'common.modelProvider.toBeConfigured',
+      screen.getByRole('dialog', {
+        name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
   })

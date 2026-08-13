@@ -3,12 +3,14 @@
 import type { KnowledgeFsExternalAccessResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useMembers } from '@/service/use-common'
 import { KnowledgeSettingsForm } from './knowledge-settings-form'
+import { parseKnowledgeModelCapability, validateNewKnowledgeReturnTo } from './routes'
 
 const READ_ONLY_EXTERNAL_ACCESS: KnowledgeFsExternalAccessResponse = {
   agent_enabled: false,
@@ -123,6 +125,12 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { t: tSettings } = useTranslation('datasetSettings')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnCapability = parseKnowledgeModelCapability(searchParams.get('capability'))
+  const returnTo = validateNewKnowledgeReturnTo(knowledgeSpaceId, searchParams.get('returnTo'))
+  const returnWasBlockedRef = useRef(false)
+  const returnInitializedRef = useRef(false)
   const spaceQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
@@ -154,6 +162,17 @@ export function KnowledgeSettingsPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     conflict: string
     form: string
   }>()
+
+  useEffect(() => {
+    if (!returnCapability || !returnTo || !settingsQuery.data) return
+    const available = settingsQuery.data.capabilities[returnCapability]
+    if (!returnInitializedRef.current) {
+      returnInitializedRef.current = true
+      returnWasBlockedRef.current = !available
+      return
+    }
+    if (returnWasBlockedRef.current && available) router.replace(returnTo)
+  }, [returnCapability, returnTo, router, settingsQuery.data])
 
   const isPending =
     spaceQuery.isPending ||
