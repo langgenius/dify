@@ -62,6 +62,7 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/uploads",
         "/knowledge-fs/uploads/<string:upload_id>",
         "/knowledge-fs/spaces/<string:control_space_id>",
+        "/knowledge-fs/spaces/<string:control_space_id>/tags",
         "/knowledge-fs/spaces/<string:control_space_id>/permissions",
         "/knowledge-fs/spaces/<string:control_space_id>/members",
         "/knowledge-fs/spaces/<string:control_space_id>/app-bindings",

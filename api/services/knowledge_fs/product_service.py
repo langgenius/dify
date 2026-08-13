@@ -17,6 +17,7 @@ from models.knowledge_fs import (
     KnowledgeFSAppSpaceJoinStatus,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSSpaceTagBinding,
 )
 from services.knowledge_fs.batch_capability import (
     MAX_BATCH_SPACE_SUMMARIES,
@@ -42,6 +43,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceDetailResponse,
     KnowledgeFSSpaceListItemResponse,
     KnowledgeFSSpaceListResponse,
+    KnowledgeFSSpaceTagResponse,
     KnowledgeFSTechnicalSummary,
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
@@ -50,6 +52,7 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRemotePort,
 )
+from services.knowledge_fs.space_tag_service import load_space_tags
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +96,7 @@ class KnowledgeFSProductService:
         page: int,
         limit: int,
         creator_ids: list[str] | None = None,
+        tag_ids: list[str] | None = None,
         query: str | None = None,
     ) -> KnowledgeFSSpaceListResponse:
         self.require_product_routes(tenant_id=tenant_id)
@@ -100,6 +104,14 @@ class KnowledgeFSProductService:
             statement = visible_control_space_statement(tenant_id=tenant_id, account_id=account_id)
             if creator_ids:
                 statement = statement.where(KnowledgeFSControlSpace.owner_account_id.in_(creator_ids))
+            if tag_ids:
+                statement = statement.where(
+                    sa.exists().where(
+                        KnowledgeFSSpaceTagBinding.tenant_id == KnowledgeFSControlSpace.tenant_id,
+                        KnowledgeFSSpaceTagBinding.control_space_id == KnowledgeFSControlSpace.id,
+                        KnowledgeFSSpaceTagBinding.tag_id.in_(tag_ids),
+                    )
+                )
             statement = statement.order_by(KnowledgeFSControlSpace.created_at.desc(), KnowledgeFSControlSpace.id.desc())
             candidates = tuple(session.scalars(statement))
             rbac_permissions = self._rbac.permission_keys_by_control_space(
@@ -170,6 +182,11 @@ class KnowledgeFSProductService:
                 tenant_id=tenant_id,
                 control_space_ids=tuple(space.id for space in authorized),
             )
+            tags_by_control_space_id = load_space_tags(
+                session,
+                tenant_id=tenant_id,
+                control_space_ids=tuple(space.id for space in authorized),
+            )
 
         return KnowledgeFSSpaceListResponse(
             data=[
@@ -178,6 +195,7 @@ class KnowledgeFSProductService:
                     summaries=summaries,
                     permission_keys=effective_permissions[space.id],
                     linked_apps=linked_apps_by_control_space_id.get(space.id, 0),
+                    tags=tags_by_control_space_id.get(space.id, []),
                 )
                 for space in authorized
             ],
@@ -419,9 +437,10 @@ def _list_item(
     summaries: dict[str, KnowledgeFSTechnicalSummary],
     permission_keys: tuple[KnowledgeFSProductPermission, ...],
     linked_apps: int,
+    tags: list[KnowledgeFSSpaceTagResponse],
 ) -> KnowledgeFSSpaceListItemResponse:
     response = _space_response(space, summaries=summaries, permission_keys=permission_keys)
-    return KnowledgeFSSpaceListItemResponse(**response.model_dump(), linked_apps=linked_apps)
+    return KnowledgeFSSpaceListItemResponse(**response.model_dump(), linked_apps=linked_apps, tags=tags)
 
 
 def _space_matches_query(

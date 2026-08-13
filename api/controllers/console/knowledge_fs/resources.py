@@ -213,6 +213,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceDetailResponse,
     KnowledgeFSSpaceListQuery,
     KnowledgeFSSpaceListResponse,
+    KnowledgeFSSpaceTagListResponse,
+    KnowledgeFSSpaceTagsReplacePayload,
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSStagedUploadResponse,
     KnowledgeFSStreamCapabilityPayload,
@@ -237,6 +239,7 @@ from services.knowledge_fs.product_remote import (
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, validate_query_image_references
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
+from services.knowledge_fs.space_tag_service import KnowledgeFSSpaceTagValidationError
 from services.knowledge_fs.staged_upload_service import (
     KnowledgeFSStagedUploadConflictError,
     KnowledgeFSStagedUploadInvalidError,
@@ -308,6 +311,7 @@ register_schema_models(
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSpaceCreatePayload,
     KnowledgeFSSpaceListQuery,
+    KnowledgeFSSpaceTagsReplacePayload,
     KnowledgeFSSpaceUpdatePayload,
     KnowledgeFSStreamCapabilityPayload,
     KnowledgeFSTraceEntriesQuery,
@@ -382,6 +386,7 @@ register_response_schema_models(
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSSpaceDetailResponse,
     KnowledgeFSSpaceListResponse,
+    KnowledgeFSSpaceTagListResponse,
     KnowledgeFSStreamCapabilityResponse,
     KnowledgeFSStagedUploadResponse,
     KnowledgeFSTraceListResponse,
@@ -807,13 +812,14 @@ class KnowledgeFSSpacesApi(Resource):
     @_knowledge_fs_errors
     def get(self):
         actor_id, tenant_id = _actor()
-        query = query_params_from_request(KnowledgeFSSpaceListQuery, list_fields=("creator_ids",))
+        query = query_params_from_request(KnowledgeFSSpaceListQuery, list_fields=("creator_ids", "tag_ids"))
         result = _console_services().application.list_spaces(
             tenant_id=tenant_id,
             account_id=actor_id,
             page=query.page,
             limit=query.limit,
             creator_ids=query.creator_ids,
+            tag_ids=query.tag_ids,
             query=query.query,
         )
         return dump_response(KnowledgeFSSpaceListResponse, result)
@@ -836,6 +842,51 @@ class KnowledgeFSSpacesApi(Resource):
             payload=_payload(KnowledgeFSSpaceCreatePayload),
         )
         return dump_response(KnowledgeFSSpaceCreateResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/tags")
+class KnowledgeFSSpaceTagsApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS space tags",
+        console_ns.models[KnowledgeFSSpaceTagListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        tags = _console_services().space_tags.list_tags(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+        )
+        return dump_response(KnowledgeFSSpaceTagListResponse, {"data": tags})
+
+    @console_ns.expect(console_ns.models[KnowledgeFSSpaceTagsReplacePayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS space tags replaced",
+        console_ns.models[KnowledgeFSSpaceTagListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def put(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSSpaceTagsReplacePayload)
+        try:
+            tags = _console_services().space_tags.replace_tags(
+                tenant_id=tenant_id,
+                account_id=actor_id,
+                control_space_id=control_space_id,
+                tag_ids=payload.tag_ids,
+            )
+        except KnowledgeFSSpaceTagValidationError as exc:
+            raise UnprocessableEntity(str(exc)) from exc
+        return dump_response(KnowledgeFSSpaceTagListResponse, {"data": tags})
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>")

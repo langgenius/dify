@@ -308,10 +308,15 @@ class KnowledgeFSSpaceListQuery(BaseModel):
         max_length=100,
         description="Filter by creator account IDs",
     )
+    tag_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] | None = Field(
+        default=None,
+        max_length=100,
+        description="Filter by knowledge tag IDs using match-any semantics",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("creator_ids")
+    @field_validator("creator_ids", "tag_ids")
     @classmethod
     def normalize_creator_ids(cls, value: list[str] | None) -> list[str] | None:
         return value or None
@@ -928,8 +933,25 @@ class KnowledgeFSSpaceResponse(ResponseModel):
         return value.astimezone(UTC)
 
 
+class KnowledgeFSSpaceTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: Literal["knowledge"] = "knowledge"
+
+
+class KnowledgeFSSpaceTagListResponse(ResponseModel):
+    data: list[KnowledgeFSSpaceTagResponse]
+
+
+class KnowledgeFSSpaceTagsReplacePayload(BaseModel):
+    tag_ids: list[str] = Field(default_factory=list, max_length=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class KnowledgeFSSpaceListItemResponse(KnowledgeFSSpaceResponse):
     linked_apps: int = Field(ge=0)
+    tags: list[KnowledgeFSSpaceTagResponse] = Field(default_factory=list)
 
 
 class KnowledgeFSSpaceListResponse(ResponseModel):
