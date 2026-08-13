@@ -1,9 +1,12 @@
+"""SQLite-backed coverage for message retention cleanup."""
+
 import datetime
 import math
 import uuid
+from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import delete, func, select
+from sqlalchemy import Engine, delete, func, select
 
 from core.db.session_factory import session_factory
 from models import Tenant
@@ -15,6 +18,7 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
+from services.retention.conversation import messages_clean_service as messages_clean_service_module
 from services.retention.conversation.messages_clean_policy import BillingDisabledPolicy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 
@@ -31,8 +35,13 @@ _PAGINATION_MESSAGE_COUNT = 25
 _PAGINATION_BATCH_SIZE = 8
 
 
+@pytest.fixture(autouse=True)
+def _bind_service_engine(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+    monkeypatch.setattr(messages_clean_service_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+
 @pytest.fixture
-def tenant_and_app(flask_req_ctx):
+def tenant_and_app():
     """Creates a Tenant, App and Conversation for the test and cleans up after."""
     with session_factory.create_session() as session:
         tenant = Tenant(name="retention_it_tenant")
@@ -287,6 +296,7 @@ class TestMessagesCleanServiceIntegration:
 
     def test_no_messages_in_range_returns_empty_stats(self, seed_messages):
         """A window entirely in the future must yield zero matches."""
+        _ = seed_messages
         far_future = _NOW + datetime.timedelta(days=365)
         even_further = far_future + datetime.timedelta(days=1)
 
