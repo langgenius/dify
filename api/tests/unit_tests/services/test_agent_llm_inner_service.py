@@ -2,17 +2,21 @@
 
 from collections.abc import Generator
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from models.model import App, AppMode
+from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 
@@ -185,10 +189,73 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
         chunks = list(service.invoke(prepared))
 
     assert chunks == [provider_chunk]
-    model_instance.reserve_quota.assert_called_once_with()
+    model_instance.reserve_quota.assert_called_once_with(request_id=request.caller.invocation_id)
     reservation.commit.assert_called_once_with(provider_chunk.delta.usage)
     reservation.release.assert_called_once_with()
     provider_invoke.assert_called_once()
+
+
+def test_retried_gateway_delivery_uses_one_effective_billing_charge(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+) -> None:
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    service = AgentLLMInnerService(session_factory=sqlite_session_factory)
+    model_instance, _ = _model_instance()
+    model_instance.provider_model_bundle.configuration.tenant_id = request.caller.tenant_id
+    prepared = _prepare(service, request, model_instance)
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    reservations_by_request: dict[str, str] = {}
+    committed_reservations: set[str] = set()
+    effective_charges = 0
+    reserve_request_ids: list[str] = []
+
+    def reserve(*, request_id: str, **_: object) -> dict[str, object]:
+        reserve_request_ids.append(request_id)
+        reservation_id = reservations_by_request.setdefault(request_id, "reservation-1")
+        return {"reservation_id": reservation_id, "available": 97, "reserved": 3}
+
+    def commit(*, reservation_id: str, actual_amount: int, **_: object) -> dict[str, object]:
+        nonlocal effective_charges
+        if reservation_id not in committed_reservations:
+            committed_reservations.add(reservation_id)
+            effective_charges += actual_amount
+        return {"available": 97, "reserved": 0, "refunded": 0}
+
+    def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk, None, None]:
+        yield _chunk("done", usage=_usage())
+
+    with (
+        patch("core.app.llm.quota._get_provider_configuration", return_value=provider_configuration),
+        patch.object(type(dify_config), "get_model_credits", return_value=3),
+        patch("services.credit_pool_service.CreditPoolService._use_billing_quota", return_value=True),
+        patch("services.billing_service.BillingService.quota_reserve", side_effect=reserve),
+        patch("services.billing_service.BillingService.quota_commit", side_effect=commit),
+        patch.object(ModelInstance, "invoke_llm", side_effect=provider_invoke),
+    ):
+        first = list(service.invoke(prepared))
+        second = list(service.invoke(prepared))
+
+    assert first[0].delta.message.content == "done"
+    assert second[0].delta.message.content == "done"
+    assert reserve_request_ids == [request.caller.invocation_id, request.caller.invocation_id]
+    assert reservations_by_request == {request.caller.invocation_id: "reservation-1"}
+    assert committed_reservations == {"reservation-1"}
+    assert effective_charges == 3
 
 
 def test_gateway_releases_reservation_when_provider_fails_before_delivery(

@@ -2,6 +2,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
+from uuid import UUID
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -130,6 +131,7 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             tenant_id="tenant-id",
             provider="openai",
             model="gpt-4o",
+            request_id="11111111-1111-5111-8111-111111111111",
         )
         reservation.commit(LLMUsage.empty_usage())
         reservation.release()
@@ -140,12 +142,41 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         tenant_id="tenant-id",
         credits_required=9,
         pool_type="trial",
-        request_id=ANY,
+        request_id="11111111-1111-5111-8111-111111111111",
         session_factory=ANY,
         meta={"source": "llm.invoke", "provider": "openai", "model": "gpt-4o"},
     )
     credit_reservation.commit.assert_called_once_with()
     credit_reservation.release.assert_not_called()
+
+
+def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
+    credit_reservation = MagicMock()
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.TIMES,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits", return_value=credit_reservation) as reserve,
+    ):
+        reserve_llm_quota_for_model(tenant_id="tenant-id", provider="openai", model="gpt-4o")
+
+    generated_request_id = reserve.call_args.kwargs["request_id"]
+    assert str(UUID(generated_request_id)) == generated_request_id
 
 
 def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:

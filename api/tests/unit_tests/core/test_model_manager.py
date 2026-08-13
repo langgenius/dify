@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
 import redis
@@ -145,13 +146,19 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     result = MagicMock(spec=LLMResult, usage=usage)
     reservation = MagicMock(commit_before_delivery=True)
 
+    invocation_id = str(uuid4())
     with (
-        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
         patch.object(ModelInstance, "invoke_llm", return_value=result) as invoke,
     ):
-        response = model_instance.invoke_llm(prompt_messages=[], stream=False)
+        response = model_instance.invoke_llm(
+            prompt_messages=[],
+            stream=False,
+            request_metadata={"invocation_id": invocation_id},
+        )
 
     assert response is result
+    reserve_quota.assert_called_once_with(request_id=invocation_id)
     invoke.assert_called_once()
     reservation.commit.assert_called_once_with(usage)
     reservation.release.assert_called_once_with()
@@ -172,17 +179,23 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     events: list[str] = []
     reservation.commit.side_effect = lambda _usage: events.append("commit")
 
+    invocation_id = str(uuid4())
     with (
-        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
         patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
     ):
-        response = model_instance.invoke_llm(prompt_messages=[], stream=True)
+        response = model_instance.invoke_llm(
+            prompt_messages=[],
+            stream=True,
+            request_metadata={"invocation_id": invocation_id},
+        )
         assert next(response) is chunk
         events.append("delivered")
         with pytest.raises(StopIteration):
             next(response)
 
     assert events == ["commit", "delivered"]
+    reserve_quota.assert_called_once_with(request_id=invocation_id)
     reservation.release.assert_called_once_with()
 
 
