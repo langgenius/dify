@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from flask import Flask
+from pydantic import JsonValue
 
 from controllers.inner_api import bp as inner_api_bp
 from core.errors.error import QuotaExceededError
@@ -89,6 +90,61 @@ def test_post_streams_plugin_compatible_envelope() -> None:
         assert envelope["code"] == 0
         assert envelope["data"]["delta"]["message"]["content"] == "done"
         prepare.assert_called_once()
+
+
+def test_post_preserves_prompt_messages_without_transport_validation() -> None:
+    payload = _payload()
+    prompt_messages: list[dict[str, JsonValue]] = [
+        {
+            "role": "assistant",
+            "content": "prior answer",
+            "tool_calls": [],
+        },
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call-1",
+                    "type": "function",
+                    "function": {"name": "search", "arguments": '{"query":"Dify"}'},
+                }
+            ],
+            "provider_extension": {"thought_signature": "opaque"},
+        },
+        {
+            "role": "tool",
+            "content": "result",
+            "name": "search",
+            "tool_call_id": "call-1",
+        },
+    ]
+    target = payload["target"]
+    assert isinstance(target, dict)
+    target["prompt_messages"] = prompt_messages
+    captured: dict[str, AgentLLMInvokeRequest] = {}
+
+    def prepare(request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
+        captured["request"] = request
+        return PreparedAgentLLMInvocation(request=request, model_instance=MagicMock())
+
+    with (
+        _agent_inner_auth(),
+        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.prepare", side_effect=prepare),
+        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.invoke", return_value=iter([])),
+    ):
+        response = (
+            _app()
+            .test_client()
+            .post(
+                "/inner/api/agent/llm/invoke",
+                json=payload,
+                headers={"X-Inner-Api-Key": "inner-key"},
+            )
+        )
+
+    assert response.status_code == 200
+    assert captured["request"].target.prompt_messages == prompt_messages
 
 
 def test_post_rejects_invalid_body_before_model_resolution() -> None:

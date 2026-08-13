@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -39,7 +40,7 @@ def _request() -> AgentLLMInvokeRequest:
         target=AgentLLMInvokeTarget(
             provider="openai",
             model="gpt-test",
-            prompt_messages=[UserPromptMessage(content="hello")],
+            prompt_messages=[UserPromptMessage(content="hello").model_dump(mode="json")],
         ),
     )
 
@@ -193,6 +194,37 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     reservation.commit.assert_called_once_with(provider_chunk.delta.usage)
     reservation.release.assert_called_once_with()
     provider_invoke.assert_called_once()
+
+
+def test_gateway_forwards_prompt_messages_without_revalidation() -> None:
+    request = _request()
+    prompt_messages: list[dict[str, JsonValue]] = [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call-1",
+                    "type": "function",
+                    "function": {"name": "search", "arguments": '{"query":"Dify"}'},
+                }
+            ],
+            "provider_extension": {"thought_signature": "opaque"},
+        },
+        {
+            "role": "tool",
+            "content": "result",
+            "name": "search",
+            "tool_call_id": "call-1",
+        },
+    ]
+    request.target.prompt_messages = prompt_messages
+    model_instance = MagicMock(spec=ModelInstance)
+    model_instance.invoke_llm.return_value = iter([])
+    prepared = PreparedAgentLLMInvocation(request=request, model_instance=model_instance)
+
+    assert list(AgentLLMInnerService().invoke(prepared)) == []
+    assert model_instance.invoke_llm.call_args.kwargs["prompt_messages"] is prompt_messages
 
 
 def test_retried_gateway_delivery_uses_one_effective_billing_charge(

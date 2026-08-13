@@ -6,7 +6,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.message_entities import PromptMessageTool
 
 type AgentLLMMode = Literal["workflow_run", "single_step", "agent_app", "babysit", "fasten"]
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
@@ -38,7 +38,10 @@ class AgentLLMInvokeCaller(BaseModel):
 class AgentLLMInvokeTarget(BaseModel):
     provider: str
     model: str
-    prompt_messages: list[PromptMessage]
+    # The trusted Agent service already produces plugin-runtime prompt payloads.
+    # Keep them opaque here so this transport cannot discard role-specific or
+    # newly introduced fields before the authoritative runtime validates them.
+    prompt_messages: list[dict[str, JsonValue]]
     model_parameters: dict[str, JsonValue] = Field(default_factory=dict)
     tools: list[PromptMessageTool] | None = None
     stop: list[str] | None = None

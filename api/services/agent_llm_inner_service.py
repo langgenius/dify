@@ -13,6 +13,7 @@ from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
+from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.model import App
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
@@ -71,7 +72,7 @@ class AgentLLMInnerService:
         caller = request.caller
         target = request.target
         result = prepared.model_instance.invoke_llm(
-            prompt_messages=target.prompt_messages,
+            prompt_messages=cast(list[PromptMessage], target.prompt_messages),
             model_parameters=target.model_parameters,
             tools=target.tools,
             stop=target.stop,
