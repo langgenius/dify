@@ -65,6 +65,20 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:init-validation-service-boundary]
+name = Initialization validation application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.init_validation_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:explore-banner-query-service-boundary]
 name = Explore banner query application service is framework and persistence neutral
 type = forbidden

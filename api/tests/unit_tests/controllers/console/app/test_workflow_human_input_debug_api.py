@@ -40,8 +40,7 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.delenv("INIT_PASSWORD", raising=False)
+    monkeypatch.setattr(console_wraps.dify_config, "INIT_PASSWORD", "")
 
     # Avoid hitting the database when resolving the app model
     monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)

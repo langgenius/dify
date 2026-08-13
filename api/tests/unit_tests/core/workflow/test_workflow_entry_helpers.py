@@ -1,4 +1,3 @@
-import threading
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
@@ -16,7 +15,6 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_events import GraphRunFailedEvent, NodeRunSucceededEvent
-from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
@@ -40,7 +38,6 @@ def _build_minimal_workflow_entry(
     monkeypatch.setattr(workflow_entry, "GraphEngine", MagicMock(return_value=graph_engine))
     monkeypatch.setattr(workflow_entry, "GraphEngineConfig", MagicMock(return_value=sentinel.graph_engine_config))
     monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
-    monkeypatch.setattr(workflow_entry, "LLMQuotaLayer", MagicMock(return_value=sentinel.llm_quota_layer))
 
     return workflow_entry.WorkflowEntry(
         tenant_id="tenant-id",
@@ -82,7 +79,6 @@ class TestWorkflowEntryInit:
         graph_runtime_state = SimpleNamespace(_execution_context=None)
         debug_layer = sentinel.debug_layer
         execution_limits_layer = sentinel.execution_limits_layer
-        llm_quota_layer = sentinel.llm_quota_layer
         observability_layer = sentinel.observability_layer
 
         with (
@@ -99,7 +95,6 @@ class TestWorkflowEntryInit:
                 "ExecutionLimitsLayer",
                 return_value=execution_limits_layer,
             ) as execution_limits_layer_cls,
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=llm_quota_layer) as llm_quota_layer_cls,
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
         ):
             entry = workflow_entry.WorkflowEntry(
@@ -137,11 +132,9 @@ class TestWorkflowEntryInit:
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
-        llm_quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
         assert graph_engine.layer.call_args_list == [
             ((debug_layer,), {}),
             ((execution_limits_layer,), {}),
-            ((llm_quota_layer,), {}),
             ((observability_layer,), {}),
         ]
 
@@ -754,7 +747,6 @@ class TestMappingUserInputsBranches:
 
 class TestWorkflowEntryNodeLayers:
     def test_run_node_with_layers_reports_success(self):
-        quota_layer = MagicMock()
         observability_layer = MagicMock()
         result_event = NodeRunSucceededEvent(
             id="execution-id",
@@ -775,7 +767,6 @@ class TestWorkflowEntryNodeLayers:
 
         node = FakeNode()
         with (
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=quota_layer) as quota_layer_cls,
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
             patch.object(
@@ -787,9 +778,8 @@ class TestWorkflowEntryNodeLayers:
             events = list(workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id"))
 
         assert events == [result_event]
-        quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
         runtime_state_wrapper.assert_called_once_with(sentinel.graph_runtime_state)
-        for layer in (quota_layer, observability_layer):
+        for layer in (observability_layer,):
             layer.initialize.assert_called_once_with(sentinel.read_only_runtime_state, sentinel.command_channel)
             layer.on_graph_start.assert_called_once_with()
             layer.on_node_run_start.assert_called_once_with(node)
@@ -797,7 +787,6 @@ class TestWorkflowEntryNodeLayers:
             layer.on_graph_end.assert_called_once_with(None)
 
     def test_run_node_with_layers_reports_errors(self):
-        quota_layer = MagicMock()
         observability_layer = MagicMock()
 
         class FakeNode:
@@ -812,7 +801,6 @@ class TestWorkflowEntryNodeLayers:
 
         node = FakeNode()
         with (
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=quota_layer),
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
             patch.object(
                 workflow_entry,
@@ -823,64 +811,8 @@ class TestWorkflowEntryNodeLayers:
             with pytest.raises(RuntimeError, match="boom"):
                 list(workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id"))
 
-        for layer in (quota_layer, observability_layer):
+        for layer in (observability_layer,):
             assert layer.on_node_run_end.call_args.args[0] is node
             assert isinstance(layer.on_node_run_end.call_args.args[1], RuntimeError)
             assert layer.on_node_run_end.call_args.args[2] is None
             assert isinstance(layer.on_graph_end.call_args.args[0], RuntimeError)
-
-    def test_run_node_with_layers_deducts_llm_quota(self):
-        result_event = NodeRunSucceededEvent(
-            id="execution-id",
-            node_id="node-id",
-            node_type=BuiltinNodeTypes.LLM,
-            start_at=datetime.now(),
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"model_provider": "openai", "model_name": "gpt-4o"},
-                llm_usage=LLMUsage.empty_usage(),
-            ),
-        )
-
-        class FakeNode:
-            id = "node-id"
-            node_type = BuiltinNodeTypes.LLM
-            graph_runtime_state = SimpleNamespace(
-                stop_event=threading.Event(),
-                variable_pool=VariablePool(),
-            )
-            node_data = SimpleNamespace(
-                model=SimpleNamespace(provider="openai", name="gpt-4o"),
-                error_strategy=None,
-                retry_config=SimpleNamespace(retry_enabled=False),
-            )
-
-            def bind_execution_id(self, execution_id):
-                self.execution_id = execution_id
-
-            def run(self):
-                yield result_event
-
-        with (
-            patch.object(workflow_entry, "ObservabilityLayer", return_value=MagicMock()),
-            patch(
-                "core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model",
-                autospec=True,
-            ) as ensure_quota,
-            patch(
-                "core.app.workflow.layers.llm_quota.deduct_llm_quota_for_model",
-                autospec=True,
-            ) as deduct_quota,
-        ):
-            generator = workflow_entry.WorkflowEntry._run_node_with_layers(FakeNode(), tenant_id="tenant-id")
-            event = next(generator)
-
-        assert event is result_event
-        ensure_quota.assert_called_once_with(tenant_id="tenant-id", provider="openai", model="gpt-4o")
-        deduct_quota.assert_called_once_with(
-            tenant_id="tenant-id",
-            provider="openai",
-            model="gpt-4o",
-            usage=result_event.node_run_result.llm_usage,
-        )
-        generator.close()

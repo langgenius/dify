@@ -1,6 +1,5 @@
 import contextlib
 import json
-import os
 import time
 from collections.abc import Callable
 from functools import wraps
@@ -319,7 +318,7 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
         # preserving support for plain functions used in tests and utilities.
         # check setup
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD and not _is_setup_completed():
-            if os.environ.get("INIT_PASSWORD"):
+            if dify_config.INIT_PASSWORD:
                 raise NotInitValidateError()
             raise NotSetupError()
 
