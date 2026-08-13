@@ -93,11 +93,12 @@ function auth() {
 function capability(
   kind: ModelCapabilityKind,
   selection: KnowledgeSpaceModelSelection,
+  checkedAt = NOW,
 ): ModelCapabilitySnapshot {
   const marker = kind === "embedding" ? "a" : kind === "reasoning" ? "b" : "c";
   return {
     capabilityDigest: `sha256:${marker.repeat(64)}`,
-    checkedAt: NOW,
+    checkedAt,
     ...(kind === "embedding" ? { dimension: 1536, distanceMetric: "cosine" as const } : {}),
     kind,
     pluginUniqueIdentifier: `${selection.pluginId}@installed-1`,
@@ -148,6 +149,31 @@ async function seedActiveManifest(manifests: KnowledgeSpaceManifestRepository) {
   return updated;
 }
 
+async function seedLegacyManifestWithoutRerank(manifests: KnowledgeSpaceManifestRepository) {
+  const current = await manifests.get({ knowledgeSpaceId: SPACE_ID, tenantId: "tenant-1" });
+  if (!current) throw new Error("test manifest missing");
+  const updated = await manifests.update({
+    expectedManifestVersion: current.manifestVersion,
+    knowledgeSpaceId: SPACE_ID,
+    patch: {
+      embeddingProfile: await createKnowledgeSpaceEmbeddingProfile(EMBEDDING_V1),
+      manifestVersion: current.manifestVersion + 1,
+      retrievalProfile: KnowledgeSpaceRetrievalProfileSchema.parse({
+        defaultMode: "deep",
+        reasoningModel: REASONING_V1,
+        revision: 1,
+        rerank: { enabled: false },
+        scoreThreshold: { enabled: false, stage: "mode-final" },
+        topK: 8,
+      }),
+      updatedAt: NOW,
+    },
+    tenantId: "tenant-1",
+  });
+  if (!updated) throw new Error("test manifest update failed");
+  return updated;
+}
+
 function retrievalUpdateBody() {
   return {
     expectedRevision: 1,
@@ -157,6 +183,19 @@ function retrievalUpdateBody() {
       rerank: { enabled: true, model: RERANK_V2 },
       scoreThreshold: { enabled: true, stage: "mode-final", value: 0.45 },
       topK: 12,
+    },
+  } as const;
+}
+
+function rerankOnlyRetrievalUpdateBody() {
+  return {
+    expectedRevision: 1,
+    profile: {
+      defaultMode: "deep",
+      reasoningModel: REASONING_V1,
+      rerank: { enabled: true, model: RERANK_V2 },
+      scoreThreshold: { enabled: false, stage: "mode-final" },
+      topK: 8,
     },
   } as const;
 }
@@ -221,6 +260,33 @@ function profileApp(options: ProfileGatewayOptions = {}) {
     }),
     now: () => NOW,
     ...options,
+  });
+}
+
+function publishedProfileApp(
+  manifests: KnowledgeSpaceManifestRepository,
+  profiles: ReturnType<typeof profileRepository>,
+  migrations: NonNullable<ProfileGatewayOptions["knowledgeSpaceProfileMigrations"]>,
+) {
+  return profileApp({
+    knowledgeSpaceManifests: manifests,
+    knowledgeSpaceProfileMigrations: migrations,
+    knowledgeSpaceProfilePublications: {
+      activateCandidate: async () => ({}) as never,
+      bindCandidate: async () => ({}) as never,
+      bindCurrentPublished: async () => ({}) as never,
+      bindExistingPublished: async () => ({}) as never,
+      requireActivatedBinding: async () => ({}) as never,
+    },
+    knowledgeSpaceProfiles: profiles,
+    modelCapabilityPreflight: {
+      verify: async (input) =>
+        capability(input.kind, {
+          model: input.selection.model,
+          pluginId: input.selection.pluginId,
+          provider: input.selection.provider,
+        }),
+    },
   });
 }
 
@@ -585,6 +651,230 @@ describe("knowledge-space profile handler behavior", () => {
         tenantId: "tenant-1",
       }),
     ).resolves.toMatchObject({ state: "candidate" });
+  });
+
+  it("retries a nonterminal failed retrieval migration when settings are saved again", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    const request = vi.fn(
+      async () =>
+        ({
+          changedKind: "retrieval",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: "migration-retrieval-retry",
+          knowledgeSpaceId: SPACE_ID,
+          lastErrorCode: "MODEL_PROVIDER_TEMPORARY",
+          rebuildScope: "clone-publication",
+          runState: "failed",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const retry = vi.fn(
+      async () =>
+        ({
+          changedKind: "retrieval",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: "migration-retrieval-retry",
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "clone-publication",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const app = publishedProfileApp(manifests, profiles, {
+      cancel: async () => null,
+      get: async () => null,
+      request,
+      requiresMigration: async () => true,
+      retry,
+    });
+    await createSpace(app);
+    await seedLegacyManifestWithoutRerank(manifests);
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(rerankOnlyRetrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      id: "migration-retrieval-retry",
+      runState: "queued",
+    });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ candidateRevision: 2 }));
+    expect(retry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        knowledgeSpaceId: SPACE_ID,
+        runId: "migration-retrieval-retry",
+      }),
+    );
+  });
+
+  it("allocates retrieval settings after a terminally failed immutable candidate", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    const request = vi.fn(
+      async () =>
+        ({
+          changedKind: "retrieval",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: "migration-retrieval",
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "clone-publication",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const app = publishedProfileApp(manifests, profiles, {
+      cancel: async () => null,
+      get: async () => null,
+      request,
+      requiresMigration: async () => true,
+      retry: async () => null,
+    });
+    await createSpace(app);
+    await seedLegacyManifestWithoutRerank(manifests);
+
+    const first = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(rerankOnlyRetrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(first.status).toBe(202);
+    await profiles.failCandidate({
+      errorCode: "PROFILE_MIGRATION_CANDIDATE_INVALID",
+      errorMessage: "Candidate failed terminal validation",
+      kind: "retrieval",
+      knowledgeSpaceId: SPACE_ID,
+      now: NOW,
+      revision: 2,
+      tenantId: "tenant-1",
+    });
+    const replay = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(rerankOnlyRetrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+
+    const replayBody = await replay.json();
+    expect(replay.status, JSON.stringify(replayBody)).toBe(202);
+    expect(request).toHaveBeenNthCalledWith(2, expect.objectContaining({ candidateRevision: 3 }));
+    await expect(
+      profiles.getRevision({
+        kind: "retrieval",
+        knowledgeSpaceId: SPACE_ID,
+        revision: 3,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      snapshot: {
+        defaultMode: "deep",
+        reasoningModel: REASONING_V1,
+        rerank: { enabled: true, model: RERANK_V2 },
+        topK: 8,
+      },
+      state: "candidate",
+    });
+  });
+
+  it("replays a published settings candidate when only capability observation time changes", async () => {
+    const manifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const profiles = profileRepository();
+    let checkedAt = NOW;
+    let capabilityDigest = `sha256:${"c".repeat(64)}`;
+    const request = vi.fn(
+      async () =>
+        ({
+          changedKind: "retrieval",
+          checkpoint: "queued",
+          createdAt: NOW,
+          id: "migration-retrieval",
+          knowledgeSpaceId: SPACE_ID,
+          rebuildScope: "clone-publication",
+          runState: "queued",
+          updatedAt: NOW,
+        }) as never,
+    );
+    const app = profileApp({
+      knowledgeSpaceManifests: manifests,
+      knowledgeSpaceProfileMigrations: {
+        cancel: async () => null,
+        get: async () => null,
+        request,
+        requiresMigration: async () => true,
+        retry: async () => null,
+      },
+      knowledgeSpaceProfilePublications: {
+        activateCandidate: async () => ({}) as never,
+        bindCandidate: async () => ({}) as never,
+        bindCurrentPublished: async () => ({}) as never,
+        bindExistingPublished: async () => ({}) as never,
+        requireActivatedBinding: async () => ({}) as never,
+      },
+      knowledgeSpaceProfiles: profiles,
+      modelCapabilityPreflight: {
+        verify: async (input) => {
+          const selection = {
+            model: input.selection.model,
+            pluginId: input.selection.pluginId,
+            provider: input.selection.provider,
+          };
+          return {
+            ...capability(input.kind, selection, checkedAt),
+            ...(input.kind === "rerank" ? { capabilityDigest } : {}),
+          };
+        },
+      },
+    });
+    await createSpace(app);
+    await seedActiveManifest(manifests);
+
+    const first = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(retrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(first.status).toBe(202);
+
+    checkedAt = "2026-07-21T12:05:00.000Z";
+    const replay = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(retrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+
+    const replayBody = await replay.json();
+    expect(replay.status, JSON.stringify(replayBody)).toBe(202);
+    expect(replayBody).toMatchObject({
+      changedKind: "retrieval",
+      id: "migration-retrieval",
+    });
+    expect(request).toHaveBeenCalledTimes(2);
+
+    capabilityDigest = `sha256:${"e".repeat(64)}`;
+    const changedCapability = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-profile`, {
+      body: JSON.stringify(retrievalUpdateBody()),
+      headers: headers(),
+      method: "PUT",
+    });
+    expect(changedCapability.status).toBe(409);
+    await expect(changedCapability.json()).resolves.toMatchObject({
+      code: "KNOWLEDGE_SPACE_SETTINGS_CANDIDATE_CONFLICT",
+    });
+    expect(request).toHaveBeenCalledTimes(2);
   });
 
   it("carries an integrated settings Capability grant into the durable migration", async () => {

@@ -66,7 +66,12 @@ import {
   ensureKnowledgeSpaceManifest,
 } from "./knowledge-space-manifest-repository";
 import {
+  KnowledgeSpaceProfileMigrationConflictError,
+  isTerminalKnowledgeSpaceProfileMigrationError,
+} from "./knowledge-space-profile-migration";
+import {
   type KnowledgeSpaceProfileMigrationService,
+  KnowledgeSpaceProfileMigrationServiceError,
   toPublicKnowledgeSpaceProfileMigration,
 } from "./knowledge-space-profile-migration-service";
 import type { KnowledgeSpaceProfilePublicationRepository } from "./knowledge-space-profile-publication-repository";
@@ -1188,9 +1193,14 @@ export function registerKnowledgeSpaceHandlers({
           409,
         );
       }
+      const candidateRevision = await nextPublishedRetrievalCandidateRevision(profiles, {
+        activeRevision: actualRevision,
+        knowledgeSpaceId,
+        tenantId: subject.tenantId,
+      });
       const candidateSnapshot = createKnowledgeSpaceRetrievalProfile(
         body.profile,
-        actualRevision + 1,
+        candidateRevision,
       );
       const capabilitySnapshot = {
         reasoning: capabilitySnapshots.reasoning ?? null,
@@ -1216,17 +1226,55 @@ export function registerKnowledgeSpaceHandlers({
       }
       const authenticatedApiKey = context.get("authenticatedApiKey");
       const capabilityGrantId = context.get("capabilityV2Grant")?.grantId;
-      const migration = await profileMigrations.request({
+      const migrationPrincipal = {
         ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
         ...(capabilityGrantId ? { capabilityGrantId } : {}),
         callerKind: context.get("callerKind") ?? "interactive",
-        candidateRevision: candidate.revision,
-        changedKind: "retrieval",
-        idempotencyKey: `settings-retrieval-${candidate.snapshotDigest}`,
         knowledgeSpaceId,
         subject,
-      });
-      return context.json(toPublicKnowledgeSpaceProfileMigration(migration), 202);
+      } as const;
+      try {
+        let migration = await profileMigrations.request({
+          ...migrationPrincipal,
+          candidateRevision: candidate.revision,
+          changedKind: "retrieval",
+          idempotencyKey: `settings-retrieval-${candidate.snapshotDigest}`,
+        });
+        if (
+          migration.runState === "failed" &&
+          !isTerminalKnowledgeSpaceProfileMigrationError(migration.lastErrorCode)
+        ) {
+          const retried = await profileMigrations.retry({
+            ...migrationPrincipal,
+            runId: migration.id,
+          });
+          if (!retried) {
+            return context.json(
+              {
+                code: "PROFILE_MIGRATION_RETRY_CONFLICT",
+                error: "Failed profile migration could not be retried",
+              },
+              409,
+            );
+          }
+          migration = retried;
+        }
+        return context.json(toPublicKnowledgeSpaceProfileMigration(migration), 202);
+      } catch (error) {
+        if (error instanceof KnowledgeSpaceProfileMigrationConflictError) {
+          return context.json({ code: error.code, error: error.message }, 409);
+        }
+        if (error instanceof KnowledgeSpaceProfileMigrationServiceError) {
+          if (error.code === "PROFILE_MIGRATION_FORBIDDEN") {
+            return context.json({ code: error.code, error: error.message }, 403);
+          }
+          if (error.code.endsWith("NOT_FOUND") || error.code.endsWith("MISSING")) {
+            return context.json({ code: error.code, error: error.message }, 404);
+          }
+          return context.json({ code: error.code, error: error.message }, 409);
+        }
+        throw error;
+      }
     }
 
     if (!authorization || !unpublishedProfileActivations) {
@@ -2345,6 +2393,35 @@ class SettingsProfileCandidateConflictError extends Error {
   }
 }
 
+async function nextPublishedRetrievalCandidateRevision(
+  profiles: KnowledgeSpaceProfileRepository,
+  input: {
+    readonly activeRevision: number;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  },
+): Promise<number> {
+  let nextRevision = input.activeRevision + 1;
+  let afterRevision: number | undefined = input.activeRevision;
+  for (;;) {
+    const page = await profiles.listRevisions({
+      ...(afterRevision === undefined ? {} : { afterRevision }),
+      kind: "retrieval",
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      limit: 10,
+      tenantId: input.tenantId,
+    });
+    for (const revision of page.items) {
+      if (revision.revision > nextRevision) return nextRevision;
+      if (revision.revision !== nextRevision) continue;
+      if (revision.state === "candidate") return nextRevision;
+      nextRevision += 1;
+    }
+    if (page.nextRevision === undefined) return nextRevision;
+    afterRevision = page.nextRevision;
+  }
+}
+
 /**
  * Candidate allocation happens before the migration request ledger is written. Re-reading the
  * exact immutable revision makes a client retry safe after a response disconnect, while refusing
@@ -2355,7 +2432,9 @@ async function getOrCreateSettingsProfileCandidate(
   input: Parameters<KnowledgeSpaceProfileRepository["createCandidate"]>[0],
 ): Promise<KnowledgeSpaceProfileRevision> {
   const expectedSnapshotDigest = knowledgeSpaceProfileSnapshotDigest(input.snapshot);
-  const expectedCapabilityDigest = knowledgeSpaceProfileSnapshotDigest(input.capabilitySnapshot);
+  const expectedCapabilitySemanticsDigest = settingsCapabilitySnapshotSemanticsDigest(
+    input.capabilitySnapshot,
+  );
   const lookup = async () => {
     const existing = await profiles.getRevision({
       kind: input.kind,
@@ -2367,7 +2446,8 @@ async function getOrCreateSettingsProfileCandidate(
     if (
       existing.state === "candidate" &&
       existing.snapshotDigest === expectedSnapshotDigest &&
-      existing.capabilitySnapshotDigest === expectedCapabilityDigest &&
+      settingsCapabilitySnapshotSemanticsDigest(existing.capabilitySnapshot) ===
+        expectedCapabilitySemanticsDigest &&
       existing.createdBySubjectId === input.createdBySubjectId
     ) {
       return existing;
@@ -2391,6 +2471,36 @@ async function getOrCreateSettingsProfileCandidate(
     }
     throw error;
   }
+}
+
+function settingsCapabilitySnapshotSemanticsDigest(
+  snapshot: Readonly<Record<string, unknown>>,
+): string {
+  const directCapability = ModelCapabilitySnapshotSchema.safeParse(snapshot);
+  if (directCapability.success) {
+    return knowledgeSpaceProfileSnapshotDigest(
+      modelCapabilitySnapshotWithoutObservationTime(directCapability.data),
+    );
+  }
+  return knowledgeSpaceProfileSnapshotDigest(
+    Object.fromEntries(
+      Object.entries(snapshot).map(([key, value]) => {
+        const nestedCapability = ModelCapabilitySnapshotSchema.safeParse(value);
+        return [
+          key,
+          nestedCapability.success
+            ? modelCapabilitySnapshotWithoutObservationTime(nestedCapability.data)
+            : value,
+        ];
+      }),
+    ),
+  );
+}
+
+function modelCapabilitySnapshotWithoutObservationTime(
+  snapshot: ModelCapabilitySnapshot,
+): Readonly<Record<string, unknown>> {
+  return Object.fromEntries(Object.entries(snapshot).filter(([key]) => key !== "checkedAt"));
 }
 
 const STATUS_ITEM_LIMIT = 10;

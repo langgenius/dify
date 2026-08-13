@@ -5,7 +5,7 @@ import type {
 import type { ReactNode } from 'react'
 import type { Member } from '@/models/common'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { KnowledgeSettingsForm } from '../knowledge-settings-form'
@@ -755,7 +755,34 @@ describe('KnowledgeSettingsForm', () => {
 
   it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
     const user = userEvent.setup()
+    const onDraftFinish = vi.fn()
+    const onDraftStart = vi.fn()
+    serviceMock.patchSettings.mockResolvedValueOnce({
+      migration: {
+        changed_kind: 'retrieval',
+        checkpoint: 'queued',
+        created_at: '2026-07-28T00:00:00Z',
+        id: 'migration-rerank-1',
+        knowledge_space_id: 'knowledge-1',
+        rebuild_scope: 'clone-publication',
+        run_state: 'queued',
+        updated_at: '2026-07-28T00:00:00Z',
+      },
+      settings: { ...settings, revision: 6 },
+    })
+    serviceMock.getMigration.mockResolvedValueOnce({
+      changed_kind: 'retrieval',
+      checkpoint: 'activated',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-rerank-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'succeeded',
+      updated_at: '2026-07-28T00:01:00Z',
+    })
     renderForm({
+      onDraftFinish,
+      onDraftStart,
       settings: {
         ...settings,
         configuration_state: 'setup-required',
@@ -781,6 +808,11 @@ describe('KnowledgeSettingsForm', () => {
           expectedRevision: 5,
           retrieval: expect.objectContaining({
             defaultMode: 'fast',
+            reasoningModel: {
+              model: 'gpt-4o',
+              pluginId: 'langgenius/openai',
+              provider: 'openai',
+            },
             rerank: {
               enabled: true,
               model: {
@@ -796,6 +828,10 @@ describe('KnowledgeSettingsForm', () => {
       },
       expect.anything(),
     )
+    expect(onDraftStart).toHaveBeenCalledOnce()
+    expect(screen.queryByText('dataset.newKnowledge.settings.rerankModelRequired')).toBeNull()
+    await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
+    await waitFor(() => expect(onDraftFinish).toHaveBeenCalledOnce())
   })
 
   it('saves a reasoning model selection immediately without enabling the basic info save', async () => {
@@ -814,6 +850,222 @@ describe('KnowledgeSettingsForm', () => {
         name: 'dataset.newKnowledge.settings.saveChanges',
       }),
     ).toBeDisabled()
+  })
+
+  it('serializes rapid model selections and saves the latest draft with the new revision', async () => {
+    let resolveFirstSave!: (value: { settings: KnowledgeFsSettingsResponse }) => void
+    const firstSave = new Promise<Parameters<typeof resolveFirstSave>[0]>((resolve) => {
+      resolveFirstSave = resolve
+    })
+    serviceMock.patchSettings
+      .mockReturnValueOnce(firstSave)
+      .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
+    const onDraftFinish = vi.fn()
+    const onDraftStart = vi.fn()
+    renderForm({ onDraftFinish, onDraftStart })
+
+    const reasoningSelector = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+    })
+    const rerankSelector = screen.getByRole('button', {
+      name: 'common.modelProvider.rerankModel.key',
+    })
+    await act(async () => {
+      reasoningSelector.click()
+      rerankSelector.click()
+    })
+
+    expect(onDraftStart).toHaveBeenCalledTimes(2)
+    expect(onDraftStart.mock.invocationCallOrder[0]).toBeLessThan(
+      serviceMock.patchSettings.mock.invocationCallOrder[0]!,
+    )
+    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
+    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
+      1,
+      {
+        body: expect.objectContaining({ expectedRevision: 5 }),
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+
+    resolveFirstSave({ settings: { ...settings, revision: 6 } })
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
+      2,
+      {
+        body: {
+          expectedRevision: 6,
+          retrieval: expect.objectContaining({
+            reasoningModel: {
+              model: 'openrouter/auto',
+              pluginId: 'langgenius/openrouter',
+              provider: 'openrouter',
+            },
+            rerank: {
+              enabled: true,
+              model: {
+                model: 'openrouter/auto',
+                pluginId: 'langgenius/openrouter',
+                provider: 'openrouter',
+              },
+            },
+          }),
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+    await waitFor(() => expect(onDraftFinish).toHaveBeenCalledOnce())
+  })
+
+  it('continues a queued model selection only after its preceding migration succeeds', async () => {
+    let resolveFirstSave!: (value: {
+      migration: {
+        changed_kind: 'retrieval'
+        checkpoint: 'queued'
+        created_at: string
+        id: string
+        knowledge_space_id: string
+        rebuild_scope: 'clone-publication'
+        run_state: 'queued'
+        updated_at: string
+      }
+      settings: KnowledgeFsSettingsResponse
+    }) => void
+    const firstSave = new Promise<Parameters<typeof resolveFirstSave>[0]>((resolve) => {
+      resolveFirstSave = resolve
+    })
+    serviceMock.patchSettings
+      .mockReturnValueOnce(firstSave)
+      .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
+    serviceMock.getMigration.mockResolvedValueOnce({
+      changed_kind: 'retrieval',
+      checkpoint: 'activated',
+      created_at: '2026-07-28T00:00:00Z',
+      id: 'migration-serial-1',
+      knowledge_space_id: 'knowledge-1',
+      rebuild_scope: 'clone-publication',
+      run_state: 'succeeded',
+      updated_at: '2026-07-28T00:01:00Z',
+    })
+    renderForm()
+
+    const reasoningSelector = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+    })
+    const rerankSelector = screen.getByRole('button', {
+      name: 'common.modelProvider.rerankModel.key',
+    })
+    await act(async () => {
+      reasoningSelector.click()
+      rerankSelector.click()
+    })
+    expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
+
+    resolveFirstSave({
+      migration: {
+        changed_kind: 'retrieval',
+        checkpoint: 'queued',
+        created_at: '2026-07-28T00:00:00Z',
+        id: 'migration-serial-1',
+        knowledge_space_id: 'knowledge-1',
+        rebuild_scope: 'clone-publication',
+        run_state: 'queued',
+        updated_at: '2026-07-28T00:00:00Z',
+      },
+      settings: { ...settings, revision: 6 },
+    })
+
+    await waitFor(() => expect(serviceMock.getMigration).toHaveBeenCalledOnce())
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
+      2,
+      {
+        body: expect.objectContaining({ expectedRevision: 6 }),
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+  })
+
+  it('coalesces a delayed retrieval save that arrives while a migration is running', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      let resolveMigration!: (value: {
+        changed_kind: 'retrieval'
+        checkpoint: 'activated'
+        created_at: string
+        id: string
+        knowledge_space_id: string
+        rebuild_scope: 'clone-publication'
+        run_state: 'succeeded'
+        updated_at: string
+      }) => void
+      const migrationPromise = new Promise<Parameters<typeof resolveMigration>[0]>((resolve) => {
+        resolveMigration = resolve
+      })
+      serviceMock.patchSettings
+        .mockResolvedValueOnce({
+          migration: {
+            changed_kind: 'retrieval',
+            checkpoint: 'queued',
+            created_at: '2026-07-28T00:00:00Z',
+            id: 'migration-delayed-1',
+            knowledge_space_id: 'knowledge-1',
+            rebuild_scope: 'clone-publication',
+            run_state: 'queued',
+            updated_at: '2026-07-28T00:00:00Z',
+          },
+          settings: { ...settings, revision: 6 },
+        })
+        .mockResolvedValueOnce({ settings: { ...settings, revision: 7 } })
+      serviceMock.getMigration.mockReturnValueOnce(migrationPromise)
+      renderForm()
+
+      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
+        screen.getByRole('button', {
+          name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+        }),
+      )
+      expect(await screen.findByRole('status')).toHaveTextContent('common.operation.saving')
+
+      fireEvent.change(
+        screen.getByRole('spinbutton', {
+          name: 'dataset.newKnowledge.settings.topKLabel',
+        }),
+        { target: { value: '8' } },
+      )
+      await act(() => vi.advanceTimersByTimeAsync(400))
+      expect(serviceMock.patchSettings).toHaveBeenCalledOnce()
+
+      resolveMigration({
+        changed_kind: 'retrieval',
+        checkpoint: 'activated',
+        created_at: '2026-07-28T00:00:00Z',
+        id: 'migration-delayed-1',
+        knowledge_space_id: 'knowledge-1',
+        rebuild_scope: 'clone-publication',
+        run_state: 'succeeded',
+        updated_at: '2026-07-28T00:01:00Z',
+      })
+
+      await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+      expect(serviceMock.patchSettings).toHaveBeenNthCalledWith(
+        2,
+        {
+          body: {
+            expectedRevision: 6,
+            retrieval: expect.objectContaining({ topK: 8 }),
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('blocks a stale draft after the server baseline changes and restores the latest value', async () => {
