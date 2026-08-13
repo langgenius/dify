@@ -49,6 +49,18 @@ interface VerifiedInitialProfiles {
   };
 }
 
+type ModelConfigurationField = "embedding" | "reasoning" | "rerank";
+
+class ModelConfigurationValidationError extends Error {
+  readonly field: ModelConfigurationField;
+
+  constructor(field: ModelConfigurationField, cause: unknown) {
+    super(`The ${field} model failed validation`, { cause });
+    this.name = "ModelConfigurationValidationError";
+    this.field = field;
+  }
+}
+
 /**
  * Lazy model activation for an empty knowledge space. Space creation persists only selections;
  * the first durable compilation probes Dify's tenant-bound model runtime, derives the real embedding dimension and
@@ -294,19 +306,19 @@ async function verifyPendingConfiguration(
     );
   }
   const [embedding, reasoning, rerank] = await Promise.all([
-    preflight.verify({
+    verifyPendingModel(preflight, "embedding", {
       kind: "embedding",
       selection: embeddingSelection,
       signal,
       tenantId,
     }),
-    preflight.verify({
+    verifyPendingModel(preflight, "reasoning", {
       kind: "reasoning",
       selection: retrievalInput.reasoningModel,
       signal,
       tenantId,
     }),
-    preflight.verify({
+    verifyPendingModel(preflight, "rerank", {
       kind: "rerank",
       selection: rerankSelection,
       signal,
@@ -377,6 +389,18 @@ async function verifyPendingConfiguration(
   };
 }
 
+async function verifyPendingModel(
+  preflight: ModelCapabilityPreflight,
+  field: ModelConfigurationField,
+  input: Parameters<ModelCapabilityPreflight["verify"]>[0],
+): Promise<ModelCapabilitySnapshot> {
+  try {
+    return await preflight.verify(input);
+  } catch (error) {
+    throw new ModelConfigurationValidationError(field, error);
+  }
+}
+
 async function recordValidationFailure(
   input: {
     readonly execution: DocumentCompilationExecutionContext;
@@ -384,7 +408,11 @@ async function recordValidationFailure(
     readonly now: () => string;
     readonly pending: KnowledgeSpacePendingModelConfiguration;
   },
-  failure: { readonly code: string; readonly retryable: boolean },
+  failure: {
+    readonly code: string;
+    readonly field?: ModelConfigurationField | undefined;
+    readonly retryable: boolean;
+  },
   permission: Parameters<
     KnowledgeSpaceUnpublishedProfileActivationRepository["activate"]
   >[0]["permission"],
@@ -411,6 +439,7 @@ async function recordValidationFailure(
           failure: {
             code: failure.code.slice(0, 64),
             failedAt: timestamp,
+            ...(failure.field ? { field: failure.field } : {}),
             retryable: failure.retryable,
           },
           state: "validation-failed",
@@ -503,9 +532,13 @@ function initialActivationPermission(
 
 function classifyInitialProfileError(error: unknown): {
   readonly code: string;
+  readonly field?: ModelConfigurationField | undefined;
   readonly message: string;
   readonly retryable: boolean;
 } {
+  if (error instanceof ModelConfigurationValidationError) {
+    return { ...classifyInitialProfileError(error.cause), field: error.field };
+  }
   if (error instanceof DocumentCompilationProcessingError) {
     const failure = knowledgeFsFailureForCode(error.code, { stage: "model_preflight" });
     return { code: failure.code, message: failure.message, retryable: error.retryable };

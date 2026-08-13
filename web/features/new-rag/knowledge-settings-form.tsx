@@ -37,14 +37,11 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { KnowledgeModelReadinessNotice } from './components/knowledge-model-readiness-notice'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
-import {
-  isKnowledgeModelSetupReady,
-  KNOWLEDGE_DESCRIPTION_MAX_LENGTH,
-  KNOWLEDGE_NAME_MAX_LENGTH,
-} from './constants'
+import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 import { newKnowledgeListPath } from './routes'
 
 const TOP_K_MIN = 1
@@ -56,8 +53,11 @@ const DESCRIPTION_ERROR_ID = 'knowledge-description-error'
 const API_ACCESS_DESCRIPTION_ID = 'knowledge-api-access-description'
 const WORKFLOW_ACCESS_DESCRIPTION_ID = 'knowledge-workflow-access-description'
 const REASONING_MODEL_LABEL_ID = 'knowledge-reasoning-model-label'
+const REASONING_MODEL_ERROR_ID = 'knowledge-reasoning-model-error'
 const EMBEDDING_MODEL_LABEL_ID = 'knowledge-embedding-model-label'
+const EMBEDDING_MODEL_ERROR_ID = 'knowledge-embedding-model-error'
 const RERANK_MODEL_LABEL_ID = 'knowledge-rerank-model-label'
+const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 type BasicSaveSlice = 'members' | 'space'
 type SaveErrorSlice = 'basic' | 'externalAccess' | 'settings'
@@ -337,8 +337,14 @@ export function KnowledgeSettingsForm({
   const canEdit = space.permission_keys.includes('knowledge_space_edit')
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
   const canDelete = space.permission_keys.includes('knowledge_space_delete')
-  const initialModelSetup = settings.configuration_state !== 'active'
-  const modelSetupReady = isKnowledgeModelSetupReady(settings.configuration_state)
+  const initialModelSetup = !settings.active_profile_available
+  const modelSetupReady = settings.active_profile_available
+  const readinessFieldLabel = (field: KnowledgeFsSettingsResponse['issues'][number]['field']) => {
+    if (field === 'embedding') return tSettings(($) => $['form.embeddingModel'])
+    if (field === 'reasoning') return tCommon(($) => $['modelProvider.systemReasoningModel.key'])
+    if (field === 'rerank') return tCommon(($) => $['modelProvider.rerankModel.key'])
+    return t(($) => $['newKnowledge.overview.attention.modelReadiness.bindingMissing'])
+  }
 
   const spaceDirty =
     name !== initialName ||
@@ -847,28 +853,31 @@ export function KnowledgeSettingsForm({
         </div>
       )}
 
-      {settings.configuration_state === 'setup-required' && (
-        <div
-          className="mb-3 flex items-center gap-2 rounded-lg border border-components-panel-border bg-background-section px-3 py-2 system-xs-regular text-text-tertiary"
-          role="status"
-        >
-          <span aria-hidden className="i-ri-information-line size-4 shrink-0" />
-          {tCommon(($) => $['modelProvider.toBeConfigured'])}
-        </div>
-      )}
-
-      {settings.configuration_state === 'validation-failed' && (
-        <div
-          className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2 system-xs-regular text-text-destructive"
-          role="alert"
-        >
-          <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
-          <span className="min-w-0 flex-1">
-            {tCommon(($) => $['api.actionFailed'])}
-            {' · '}
-            {tCommon(($) => $['modelProvider.toBeConfigured'])}
-          </span>
-        </div>
+      {(settings.configuration_state !== 'active' || settings.issues.length > 0) && (
+        <KnowledgeModelReadinessNotice
+          className="mb-3"
+          description={
+            settings.issues.length > 0
+              ? settings.issues.map(({ field }) => readinessFieldLabel(field)).join(' · ')
+              : settings.active_profile_available
+                ? t(($) => $['newKnowledge.overview.attention.modelReadiness.description'])
+                : undefined
+          }
+          title={
+            settings.configuration_state === 'pending-validation'
+              ? tCommon(($) => $['provider.validating'])
+              : settings.configuration_state === 'validation-failed'
+                ? tCommon(($) => $['api.actionFailed'])
+                : tCommon(($) => $['modelProvider.toBeConfigured'])
+          }
+          tone={
+            settings.configuration_state === 'pending-validation'
+              ? 'progress'
+              : settings.configuration_state === 'validation-failed'
+                ? 'destructive'
+                : 'warning'
+          }
+        />
       )}
 
       {saveErrorSlice && (
@@ -1101,7 +1110,10 @@ export function KnowledgeSettingsForm({
                 </span>
               </div>
               <ModelSelector
+                ariaDescribedBy={!reasoningModel ? REASONING_MODEL_ERROR_ID : undefined}
+                ariaInvalid={!reasoningModel}
                 ariaLabelledBy={REASONING_MODEL_LABEL_ID}
+                ariaRequired
                 defaultModel={reasoningModel}
                 modelList={reasoningModelList}
                 readonly={retrievalFieldsDisabled}
@@ -1112,6 +1124,14 @@ export function KnowledgeSettingsForm({
                   void performSettingsSave(draft)
                 }}
               />
+              {!reasoningModel && (
+                <p
+                  id={REASONING_MODEL_ERROR_ID}
+                  className="mt-1 system-xs-regular text-text-destructive"
+                >
+                  {t(($) => $['newKnowledge.settings.systemReasoningModelRequired'])}
+                </p>
+              )}
             </div>
 
             <div>
@@ -1125,7 +1145,10 @@ export function KnowledgeSettingsForm({
                 </span>
               </div>
               <ModelSelector
+                ariaDescribedBy={!embeddingModel ? EMBEDDING_MODEL_ERROR_ID : undefined}
+                ariaInvalid={!embeddingModel}
                 ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
+                ariaRequired
                 defaultModel={embeddingModel}
                 modelList={embeddingModelList}
                 readonly={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
@@ -1141,6 +1164,14 @@ export function KnowledgeSettingsForm({
                   void performSettingsSave(draft)
                 }}
               />
+              {!embeddingModel && (
+                <p
+                  id={EMBEDDING_MODEL_ERROR_ID}
+                  className="mt-1 system-xs-regular text-text-destructive"
+                >
+                  {t(($) => $['newKnowledge.settings.embeddingModelRequired'])}
+                </p>
+              )}
               {embeddingDirty && (space.technical_summary?.document_count ?? 0) > 0 && (
                 <p className="mt-1 flex items-start gap-1 system-xs-regular text-text-warning-secondary">
                   <span aria-hidden className="mt-0.5 i-ri-alert-fill size-3.5 shrink-0" />
@@ -1160,7 +1191,10 @@ export function KnowledgeSettingsForm({
                 </span>
               </div>
               <ModelSelector
+                ariaDescribedBy={!rerankModel ? RERANK_MODEL_ERROR_ID : undefined}
+                ariaInvalid={!rerankModel}
                 ariaLabelledBy={RERANK_MODEL_LABEL_ID}
+                ariaRequired
                 defaultModel={rerankModel}
                 modelList={rerankModelList}
                 readonly={retrievalFieldsDisabled}
@@ -1172,7 +1206,10 @@ export function KnowledgeSettingsForm({
                 }}
               />
               {!rerankModel && (
-                <p className="mt-1 system-xs-regular text-text-destructive" role="alert">
+                <p
+                  id={RERANK_MODEL_ERROR_ID}
+                  className="mt-1 system-xs-regular text-text-destructive"
+                >
                   {t(($) => $['newKnowledge.settings.rerankModelRequired'])}
                 </p>
               )}

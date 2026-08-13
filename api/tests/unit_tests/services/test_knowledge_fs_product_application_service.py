@@ -152,6 +152,7 @@ def test_product_application_delegates_reads_without_reauthorizing() -> None:
         page=2,
         limit=25,
         creator_ids=["creator-1", "creator-2"],
+        tag_ids=None,
         query="support",
     )
     product.get_space.assert_called_once_with(

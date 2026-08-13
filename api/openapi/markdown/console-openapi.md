@@ -5352,7 +5352,7 @@ Sync partner tenants bindings
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BillingResponse](#billingresponse)<br> |
+| 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -9868,6 +9868,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
+| 404 | Customized pipeline template not found |  |
 
 ### [POST] /rag/pipeline/dataset
 #### Request Body
@@ -9916,6 +9917,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline template | **application/json**: [PipelineTemplateDetailResponse](#pipelinetemplatedetailresponse)<br> |
+| 404 | Pipeline template not found |  |
 
 ### [GET] /rag/pipelines/datasource-plugins
 #### Responses
@@ -9991,6 +9993,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| 404 | Dataset or pipeline not found |  |
 
 ### [POST] /rag/pipelines/{pipeline_id}/customized/publish
 #### Parameters
@@ -10010,6 +10013,7 @@ Update account-level Step-by-step Tour state
 | Code | Description |
 | ---- | ----------- |
 | 204 | Pipeline template published |
+| 404 | Pipeline, workflow, or dataset not found |
 
 ### [GET] /rag/pipelines/{pipeline_id}/exports
 #### Parameters
@@ -17929,6 +17933,12 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | ---- | ---- | ----------- | -------- |
 | BillingResponse | object |  |  |
 
+#### BillingSubscriptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
+
 #### BinaryFileResponse
 
 | Name | Type | Description | Required |
@@ -18166,6 +18176,18 @@ Button styles for user actions.
 | inferred_from | string |  | No |
 | install_commands | [ string ] |  | No |
 | name | string |  | Yes |
+
+#### CloudPlan
+
+Enum representing user plan types in the cloud platform.
+
+SANDBOX: Free/default plan with limited features
+PROFESSIONAL: Professional paid plan
+TEAM: Team collaboration paid plan
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CloudPlan | string | Enum representing user plan types in the cloud platform.  SANDBOX: Free/default plan with limited features PROFESSIONAL: Professional paid plan TEAM: Team collaboration paid plan |  |
 
 #### CodeBasedExtensionQuery
 
@@ -18622,7 +18644,7 @@ Model class for credential form schema.
 | credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| plan | string |  | Yes |
+| plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### CustomConfigurationResponse
@@ -26403,7 +26425,7 @@ The subscription constructor of the trigger provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | interval | string |  | Yes |
-| plan | string, <br>**Default:** sandbox |  | Yes |
+| plan | [CloudPlan](#cloudplan) |  | Yes |
 
 #### SubscriptionQuery
 
@@ -26618,7 +26640,7 @@ Tag type
 | in_trial | boolean |  | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
-| plan | string |  | No |
+| plan | [CloudPlan](#cloudplan) |  | No |
 | role | string |  | No |
 | status | string |  | No |
 | trial_credits | integer |  | No |
@@ -26635,7 +26657,7 @@ Tag type
 | id | string |  | Yes |
 | last_opened_at | integer |  | No |
 | name | string |  | No |
-| plan | string |  | No |
+| plan | [CloudPlan](#cloudplan) |  | No |
 | status | string |  | No |
 
 #### TenantListResponse

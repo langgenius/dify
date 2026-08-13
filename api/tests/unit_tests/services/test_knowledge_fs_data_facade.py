@@ -163,6 +163,16 @@ class RecordingRemote:
             }
         if request.operation_id in {"getSettings", "updateSettings"}:
             return {
+                "activeProfileAvailable": False,
+                "activeProfileRevisions": {},
+                "capabilities": {
+                    "deep": False,
+                    "index": False,
+                    "ingest": True,
+                    "query": False,
+                    "research": False,
+                    "sourceSync": True,
+                },
                 "configurationState": "pending-validation",
                 "embedding": {
                     "model": "embed-v1",
@@ -170,6 +180,7 @@ class RecordingRemote:
                     "provider": "provider-1",
                 },
                 "retrieval": None,
+                "issues": [{"code": "missing", "field": "reasoning", "retryable": False}],
                 "revision": 2,
             }
         if request.operation_id == "listMetadataFields":
@@ -427,8 +438,17 @@ class RecordingRemote:
 
 
 class ActiveSettingsRemote(RecordingRemote):
-    def __init__(self, *, configuration_state: str = "active", rerank_enabled: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        active_profile_available: bool | None = None,
+        configuration_state: str = "active",
+        rerank_enabled: bool = True,
+    ) -> None:
         super().__init__()
+        self.active_profile_available = (
+            configuration_state == "active" if active_profile_available is None else active_profile_available
+        )
         self.configuration_state = configuration_state
         self.rerank_enabled = rerank_enabled
 
@@ -436,12 +456,22 @@ class ActiveSettingsRemote(RecordingRemote):
         self.requests.append(request)
         if request.operation_id == "getSettings":
             return {
+                "activeProfileAvailable": self.active_profile_available,
+                "activeProfileRevisions": ({"embedding": 3, "retrieval": 4} if self.active_profile_available else {}),
+                "capabilities": {
+                    "deep": self.active_profile_available,
+                    "index": self.active_profile_available,
+                    "ingest": self.active_profile_available or self.configuration_state == "pending-validation",
+                    "query": self.active_profile_available,
+                    "research": self.active_profile_available,
+                    "sourceSync": self.active_profile_available or self.configuration_state == "pending-validation",
+                },
                 "configurationState": self.configuration_state,
                 "embedding": {
                     "model": "embed-v1",
                     "pluginId": "plugin-1",
                     "provider": "provider-1",
-                    "revision": 3,
+                    **({"revision": 3} if self.configuration_state == "active" else {}),
                 },
                 "retrieval": {
                     "defaultMode": "fast",
@@ -462,7 +492,7 @@ class ActiveSettingsRemote(RecordingRemote):
                             else None
                         ),
                     },
-                    "revision": 4,
+                    **({"revision": 4} if self.configuration_state == "active" else {}),
                     "scoreThreshold": {
                         "enabled": False,
                         "stage": "rerank" if self.rerank_enabled else "mode-final",
@@ -470,6 +500,7 @@ class ActiveSettingsRemote(RecordingRemote):
                     },
                     "topK": 3,
                 },
+                "issues": [],
                 "revision": 9,
             }
         if request.operation_id in {"updateEmbeddingProfile", "updateRetrievalProfile"}:
@@ -1249,7 +1280,11 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
 
 
 def test_setup_required_legacy_settings_with_revisions_use_the_migration_route() -> None:
-    remote = ActiveSettingsRemote(configuration_state="setup-required", rerank_enabled=False)
+    remote = ActiveSettingsRemote(
+        active_profile_available=True,
+        configuration_state="setup-required",
+        rerank_enabled=False,
+    )
     facade = KnowledgeFSDataFacade(
         broker=RecordingBroker(),
         remote=remote,
@@ -1291,6 +1326,40 @@ def test_setup_required_legacy_settings_with_revisions_use_the_migration_route()
     assert [request.operation_id for request in remote.requests] == [
         "getSettings",
         "updateRetrievalProfile",
+    ]
+
+
+def test_failed_candidate_with_active_profiles_uses_the_migration_route() -> None:
+    remote = ActiveSettingsRemote(
+        active_profile_available=True,
+        configuration_state="validation-failed",
+    )
+    facade = KnowledgeFSDataFacade(
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    result = facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            embedding=KnowledgeFSProfileModelSelection(
+                model="embed-v2",
+                plugin_id="plugin-2",
+                provider="provider-2",
+            ),
+            expected_revision=9,
+        ),
+    )
+
+    assert result.settings.active_profile_available is True
+    assert result.settings.embedding is not None
+    assert result.settings.embedding.revision is None
+    assert result.migration is not None
+    assert [request.operation_id for request in remote.requests] == [
+        "getSettings",
+        "updateEmbeddingProfile",
     ]
 
 

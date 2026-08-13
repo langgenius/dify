@@ -36,6 +36,7 @@ from services.knowledge_fs.product_remote_http import HTTPKnowledgeFSProductRemo
 from services.knowledge_fs.product_service import KnowledgeFSProductService
 from services.knowledge_fs.remote_registry import get_knowledge_fs_lifecycle_remote
 from services.knowledge_fs.revocation_commands import KnowledgeFSRevocationCommandProducer
+from services.knowledge_fs.space_tag_service import KnowledgeFSSpaceTagService
 from services.knowledge_fs_capability import create_configured_knowledge_fs_capability_issuer
 
 
@@ -48,6 +49,7 @@ class KnowledgeFSRuntime(NamedTuple):
     control_plane: KnowledgeFSControlPlaneService
     credentials: KnowledgeFSCredentialService
     facade: KnowledgeFSDataFacade
+    space_tags: KnowledgeFSSpaceTagService
 
 
 _runtime_cache_lock = Lock()
@@ -149,6 +151,7 @@ def create_knowledge_fs_runtime(session_maker: sessionmaker[Session]) -> Knowled
         control_plane=control_plane,
         credentials=credentials,
         facade=facade,
+        space_tags=KnowledgeFSSpaceTagService(session_maker, product=product),
     )
 
 

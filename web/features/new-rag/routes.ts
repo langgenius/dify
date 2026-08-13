@@ -242,6 +242,49 @@ export const newKnowledgeQualityPath = (knowledgeSpaceId: string) =>
 export const newKnowledgeSettingsPath = (knowledgeSpaceId: string) =>
   `/datasets/new/${knowledgeSpaceId}/settings`
 
+export type KnowledgeModelCapability =
+  | 'deep'
+  | 'index'
+  | 'ingest'
+  | 'query'
+  | 'research'
+  | 'source_sync'
+
+export function newKnowledgeSettingsReturnPath(
+  knowledgeSpaceId: string,
+  { capability, returnTo }: { capability?: KnowledgeModelCapability; returnTo?: string } = {},
+) {
+  const path = newKnowledgeSettingsPath(knowledgeSpaceId)
+  const safeReturnTo = validateNewKnowledgeReturnTo(knowledgeSpaceId, returnTo)
+  if (!safeReturnTo) return path
+  const searchParams = new URLSearchParams({ returnTo: safeReturnTo })
+  if (capability) searchParams.set('capability', capability)
+  return `${path}?${searchParams.toString()}`
+}
+
+export function validateNewKnowledgeReturnTo(
+  knowledgeSpaceId: string,
+  returnTo: string | null | undefined,
+) {
+  if (!returnTo || returnTo.startsWith('//') || returnTo.includes('\\')) return undefined
+  const expectedPrefix = `/datasets/new/${knowledgeSpaceId}`
+  if (returnTo !== expectedPrefix && !returnTo.startsWith(`${expectedPrefix}/`)) return undefined
+  return returnTo
+}
+
+export function parseKnowledgeModelCapability(
+  value: string | null | undefined,
+): KnowledgeModelCapability | undefined {
+  return value === 'deep' ||
+    value === 'index' ||
+    value === 'ingest' ||
+    value === 'query' ||
+    value === 'research' ||
+    value === 'source_sync'
+    ? value
+    : undefined
+}
+
 export const newKnowledgeDocumentDetailPath = (
   knowledgeSpaceId: string,
   documentId: string,

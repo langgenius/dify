@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
@@ -103,15 +102,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -164,15 +159,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(
                 response: LLMResultWithStructuredOutput,

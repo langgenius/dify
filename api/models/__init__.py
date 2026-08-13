@@ -87,6 +87,7 @@ from .knowledge_fs import (
     KnowledgeFSLifecycleOperation,
     KnowledgeFSLifecycleOutbox,
     KnowledgeFSLifecycleOutboxStatus,
+    KnowledgeFSSpaceTagBinding,
     KnowledgeFSStagedUpload,
     KnowledgeFSStagedUploadStatus,
 )
@@ -303,6 +304,7 @@ __all__ = [
     "KnowledgeFSShadowAuthorizationDecision",
     "KnowledgeFSShadowAuthorizationDiff",
     "KnowledgeFSShadowAuthorizationObservation",
+    "KnowledgeFSSpaceTagBinding",
     "KnowledgeFSStagedUpload",
     "KnowledgeFSStagedUploadStatus",
     "KnowledgeFSWorkspaceCutoverLedger",

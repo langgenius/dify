@@ -5,6 +5,10 @@ import datasetTranslations from '@/i18n/en-US/dataset.json'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
+vi.mock('../components/knowledge-model-readiness-banner', () => ({
+  KnowledgeModelReadinessBanner: () => null,
+}))
+
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
 const permissionState = vi.hoisted(() => ({
@@ -143,8 +147,20 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     }),
     useQuery: () => ({
       data: {
+        active_profile_available: settingsState.configurationState === 'active',
+        active_profile_revisions:
+          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+        capabilities: {
+          deep: settingsState.configurationState === 'active',
+          index: settingsState.configurationState === 'active',
+          ingest: settingsState.configurationState === 'active',
+          query: settingsState.configurationState === 'active',
+          research: settingsState.configurationState === 'active',
+          source_sync: settingsState.configurationState === 'active',
+        },
         configuration_state: settingsState.configurationState,
         embedding: null,
+        issues: [],
         retrieval: null,
         revision: 1,
       },
@@ -295,8 +311,20 @@ describe('SourcesPage', () => {
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
       data: {
+        active_profile_available: settingsState.configurationState === 'active',
+        active_profile_revisions:
+          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
+        capabilities: {
+          deep: settingsState.configurationState === 'active',
+          index: settingsState.configurationState === 'active',
+          ingest: settingsState.configurationState === 'active',
+          query: settingsState.configurationState === 'active',
+          research: settingsState.configurationState === 'active',
+          source_sync: settingsState.configurationState === 'active',
+        },
         configuration_state: settingsState.configurationState,
         embedding: null,
+        issues: [],
         retrieval: null,
         revision: 1,
       },
@@ -1609,15 +1637,17 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
 
     expect(clientMock.syncSource).not.toHaveBeenCalled()
-    const dialog = screen.getByRole('alertdialog', {
-      name: 'common.modelProvider.toBeConfigured',
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
     })
     await user.click(
       within(dialog).getByRole('button', {
         name: 'common.modelProvider.selector.configure',
       }),
     )
-    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+    expect(routerMock.push).toHaveBeenCalledWith(
+      '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources&capability=source_sync',
+    )
   })
 
   it('disables and re-enables a source through the real patch endpoint', async () => {

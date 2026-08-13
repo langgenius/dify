@@ -100,31 +100,49 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   default: ({
+    ariaDescribedBy,
+    ariaInvalid,
     ariaLabelledBy,
+    ariaRequired,
     defaultModel,
     onSelect,
     readonly,
   }: {
+    ariaDescribedBy?: string
+    ariaInvalid?: boolean
     ariaLabelledBy?: string
+    ariaRequired?: boolean
     defaultModel?: { model: string; provider: string }
     onSelect?: (model: { model: string; plugin_id: string; provider: string }) => void
     readonly?: boolean
-  }) => (
-    <button
-      type="button"
-      aria-labelledby={ariaLabelledBy}
-      disabled={readonly}
-      onClick={() =>
-        onSelect?.({
-          model: 'openrouter/auto',
-          plugin_id: 'langgenius/openrouter',
-          provider: 'langgenius/openrouter/openrouter',
-        })
-      }
-    >
-      {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'select-model'}
-    </button>
-  ),
+  }) => {
+    const popupId = `${ariaLabelledBy ?? 'model-selector'}-popup`
+    return (
+      <>
+        <button
+          type="button"
+          role="combobox"
+          aria-controls={popupId}
+          aria-expanded="false"
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid || undefined}
+          aria-labelledby={ariaLabelledBy}
+          aria-required={ariaRequired}
+          disabled={readonly}
+          onClick={() =>
+            onSelect?.({
+              model: 'openrouter/auto',
+              plugin_id: 'langgenius/openrouter',
+              provider: 'langgenius/openrouter/openrouter',
+            })
+          }
+        >
+          {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'select-model'}
+        </button>
+        <span id={popupId} hidden />
+      </>
+    )
+  },
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
@@ -163,6 +181,16 @@ const space = {
 } satisfies KnowledgeFsSpaceDetailResponse
 
 const settings = {
+  active_profile_available: true,
+  active_profile_revisions: { embedding: 1, retrieval: 1 },
+  capabilities: {
+    deep: true,
+    index: true,
+    ingest: true,
+    query: true,
+    research: true,
+    source_sync: true,
+  },
   configuration_state: 'active' as const,
   embedding: {
     model: 'text-embedding-3-large',
@@ -191,6 +219,7 @@ const settings = {
     },
     top_k: 3,
   },
+  issues: [],
   revision: 5,
 }
 
@@ -631,7 +660,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -706,7 +735,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.embeddingModelLabel',
       }),
     )
@@ -796,10 +825,14 @@ describe('KnowledgeSettingsForm', () => {
     expect(
       screen.queryByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    const rerankSelector = screen.getByRole('combobox', {
+      name: 'common.modelProvider.rerankModel.key',
+    })
+    expect(rerankSelector).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.rerankModelRequired',
     )
-    await user.click(screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }))
+    expect(rerankSelector).toHaveAttribute('aria-invalid', 'true')
+    await user.click(rerankSelector)
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
     expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -839,7 +872,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1118,8 +1151,23 @@ describe('KnowledgeSettingsForm', () => {
     const user = userEvent.setup()
     renderForm({
       settings: {
+        active_profile_available: false,
+        active_profile_revisions: {},
+        capabilities: {
+          deep: false,
+          index: false,
+          ingest: false,
+          query: false,
+          research: false,
+          source_sync: false,
+        },
         configuration_state: 'setup-required',
         embedding: null,
+        issues: [
+          { code: 'missing', field: 'embedding', retryable: false },
+          { code: 'missing', field: 'reasoning', retryable: false },
+          { code: 'missing', field: 'rerank', retryable: false },
+        ],
         retrieval: null,
         revision: 1,
       },
@@ -1132,7 +1180,32 @@ describe('KnowledgeSettingsForm', () => {
       },
     })
 
-    expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.modelProvider.toBeConfigured')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'datasetSettings.form.embeddingModel · common.modelProvider.systemReasoningModel.key · common.modelProvider.rerankModel.key',
+    )
+    const reasoningSelector = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+    })
+    expect(reasoningSelector).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.systemReasoningModelRequired',
+    )
+    expect(reasoningSelector).toHaveAttribute('aria-invalid', 'true')
+    expect(reasoningSelector).toHaveAttribute('aria-required', 'true')
+    const embeddingSelector = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.settings.embeddingModelLabel',
+    })
+    expect(embeddingSelector).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.embeddingModelRequired',
+    )
+    expect(embeddingSelector).toHaveAttribute('aria-invalid', 'true')
+    const rerankSelector = screen.getByRole('combobox', {
+      name: 'common.modelProvider.rerankModel.key',
+    })
+    expect(rerankSelector).toHaveAccessibleDescription(
+      'dataset.newKnowledge.settings.rerankModelRequired',
+    )
+    expect(rerankSelector).toHaveAttribute('aria-invalid', 'true')
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
     ).toHaveAttribute('aria-disabled', 'true')
@@ -1141,17 +1214,23 @@ describe('KnowledgeSettingsForm', () => {
     ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
-    const embeddingSelector = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.settings.embeddingModelLabel',
-    })
+    expect(
+      screen.queryByText('dataset.newKnowledge.settings.systemReasoningModelRequired'),
+    ).not.toBeInTheDocument()
     expect(embeddingSelector).toBeEnabled()
     await user.click(embeddingSelector)
+    expect(
+      screen.queryByText('dataset.newKnowledge.settings.embeddingModelRequired'),
+    ).not.toBeInTheDocument()
     expect(serviceMock.patchSettings).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.modelProvider.rerankModel.key' }))
+    await user.click(rerankSelector)
+    expect(
+      screen.queryByText('dataset.newKnowledge.settings.rerankModelRequired'),
+    ).not.toBeInTheDocument()
 
     await waitFor(() =>
       expect(serviceMock.patchSettings).toHaveBeenCalledWith(
@@ -1166,6 +1245,23 @@ describe('KnowledgeSettingsForm', () => {
         expect.anything(),
       ),
     )
+  })
+
+  it('keeps active-profile controls enabled when a replacement candidate fails validation', () => {
+    renderForm({
+      settings: {
+        ...settings,
+        configuration_state: 'validation-failed',
+        issues: [{ code: 'unavailable', field: 'embedding', retryable: false }],
+      },
+    })
+
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.workflowAccess' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('keeps API access available while model validation is pending', () => {
@@ -1184,7 +1280,7 @@ describe('KnowledgeSettingsForm', () => {
     expect(apiAccessSwitch).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.apiAccessDescription',
     )
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.provider.validating')
   })
 
   it('shows a recovery alert when initial model validation fails', () => {
@@ -1192,12 +1288,12 @@ describe('KnowledgeSettingsForm', () => {
       settings: {
         ...settings,
         configuration_state: 'validation-failed',
+        issues: [{ code: 'validation_failed', field: 'embedding', retryable: true }],
       },
     })
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'common.api.actionFailed · common.modelProvider.toBeConfigured',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('alert')).toHaveTextContent('datasetSettings.form.embeddingModel')
   })
 
   it('asks before following a link while the form has unsaved changes', async () => {
@@ -1254,7 +1350,7 @@ describe('KnowledgeSettingsForm', () => {
     })
 
     expect(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     ).toBeInTheDocument()
@@ -1265,7 +1361,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1322,7 +1418,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1374,7 +1470,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('combobox', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )

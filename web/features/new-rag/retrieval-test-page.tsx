@@ -27,6 +27,8 @@ import { Markdown } from '@/app/components/base/markdown'
 import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
+import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
 import { GoldenQuestionDialog } from './quality/golden-question-dialog'
 import {
@@ -45,6 +47,7 @@ import {
   researchTaskAnswerFromEvents,
   streamResearchTaskEvents,
 } from './services/research-task-events'
+import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 type LocalQueryRun = {
   endedAt?: number
@@ -1074,6 +1077,13 @@ function RecordButton({
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
+  const {
+    configureModelSetup,
+    ensureModelReady,
+    modelReadiness,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
   const [linkedSelection, setLinkedSelection] = useQueryStates({
     research: parseAsString,
     trace: parseAsString,
@@ -1651,12 +1661,23 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     const cleanQuery = query.trim()
     if (!cleanQuery || runInFlightRef.current) return
     runInFlightRef.current = true
+    const runMode = mode === 'deep' ? 'deep' : 'fast'
+    if (
+      (
+        await ensureModelReady({
+          capability: runMode === 'deep' ? 'deep' : 'query',
+          intent: 'retrieval-test',
+        })
+      ).status !== 'ready'
+    ) {
+      runInFlightRef.current = false
+      return
+    }
     queryAbortControllerRef.current?.abort()
     const controller = new AbortController()
     queryAbortControllerRef.current = controller
     const id = crypto.randomUUID()
     const startedAt = Date.now()
-    const runMode = mode === 'deep' ? 'deep' : 'fast'
     setComposerDraft({ mode: runMode, query: cleanQuery })
     setLocalRun({
       evidence: [],
@@ -1755,6 +1776,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     if (!cleanQuery || runInFlightRef.current) return
     runInFlightRef.current = true
     try {
+      if (
+        (await ensureModelReady({ capability: 'research', intent: 'retrieval-test' })).status !==
+        'ready'
+      )
+        return
       const plan = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
         body: { mode: 'research', query: cleanQuery },
         params: { control_space_id: knowledgeSpaceId },
@@ -1817,6 +1843,11 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           {t(($) => $['newKnowledge.retrievalTest.description'])}
         </p>
       </header>
+      <KnowledgeModelReadinessBanner
+        capability={mode === 'deep' ? 'deep' : mode === 'research' ? 'research' : 'query'}
+        className="mt-4"
+        knowledgeSpaceId={knowledgeSpaceId}
+      />
 
       <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
         <section className="flex min-h-0 w-full shrink-0 flex-col pb-5 lg:w-117 lg:pr-6">
@@ -2138,6 +2169,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           onSubmit={submitGoldenPromotion}
         />
       )}
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        readiness={modelReadiness}
+        onConfigure={configureModelSetup}
+        onOpenChange={setModelSetupDialogOpen}
+      />
     </main>
   )
 }

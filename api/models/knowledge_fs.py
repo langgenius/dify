@@ -296,6 +296,39 @@ class KnowledgeFSControlSpace(DefaultFieldsDCMixin, TypeBase):
     deletion_irreversible_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
+class KnowledgeFSSpaceTagBinding(DefaultFieldsDCMixin, TypeBase):
+    """Dify-owned tag binding for one KnowledgeFS control-space."""
+
+    __tablename__ = "knowledge_fs_space_tag_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_space_tag_binding_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "control_space_id",
+            "tag_id",
+            name="kfs_space_tag_binding_identity_uq",
+        ),
+        sa.ForeignKeyConstraint(
+            ["tenant_id", "control_space_id"],
+            ["knowledge_fs_control_spaces.tenant_id", "knowledge_fs_control_spaces.id"],
+            name="kfs_space_tag_binding_space_fk",
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["tag_id"],
+            ["tags.id"],
+            name="kfs_space_tag_binding_tag_fk",
+            ondelete="CASCADE",
+        ),
+        Index("kfs_space_tag_binding_tag_idx", "tenant_id", "tag_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    control_space_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tag_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+
 class KnowledgeFSControlSpacePermission(DefaultFieldsDCMixin, TypeBase):
     """Account-level product authorization for one control-space."""
 

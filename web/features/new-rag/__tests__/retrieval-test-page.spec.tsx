@@ -1,3 +1,4 @@
+import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
@@ -12,6 +13,7 @@ const apiMock = vi.hoisted(() => ({
   createGolden: vi.fn(),
   createResearch: vi.fn(),
   planResearch: vi.fn(),
+  readinessRefetch: vi.fn(),
   partials: [] as Array<Record<string, unknown>>,
   queryAdmission: vi.fn(),
   refetchPartials: vi.fn(),
@@ -44,10 +46,33 @@ const apiMock = vi.hoisted(() => ({
   traceDetail: undefined as Record<string, unknown> | undefined,
   tracesHasNextPage: false,
   traces: [] as Array<Record<string, unknown>>,
+  readiness: {
+    active_profile_available: true,
+    active_profile_revisions: { embedding: 1, retrieval: 1 },
+    capabilities: {
+      deep: true,
+      index: true,
+      ingest: true,
+      query: true,
+      research: true,
+      source_sync: true,
+    },
+    configuration_state: 'active',
+    embedding: null,
+    issues: [],
+    retrieval: null,
+    revision: 1,
+  } as KnowledgeFsSettingsResponse,
 }))
 
 vi.mock('../services/knowledge-query-events', () => ({
   streamKnowledgeQuery: apiMock.streamQuery,
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/retrieval',
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('../services/research-task-events', async (importOriginal) => ({
@@ -77,6 +102,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         return {
           data: apiMock.documentReferences,
           isPending: false,
+        }
+      if (resource === 'settings')
+        return {
+          data: apiMock.readiness,
+          isError: false,
+          isPending: false,
+          refetch: apiMock.readinessRefetch,
         }
       return { data: undefined, isPending: false }
     },
@@ -170,6 +202,11 @@ vi.mock('@/service/client', () => ({
               key: () => ['quality', 'golden'],
             },
           },
+          settings: {
+            get: {
+              queryOptions: () => ({ queryKey: ['settings'] }),
+            },
+          },
           researchTasks: {
             byTaskId: {
               get: {
@@ -238,6 +275,27 @@ describe('RetrievalTestPage', () => {
       steps: [],
       strategy_version: 'research-dry-run-planner-v1',
     })
+    apiMock.readiness = {
+      active_profile_available: true,
+      active_profile_revisions: { embedding: 1, retrieval: 1 },
+      capabilities: {
+        deep: true,
+        index: true,
+        ingest: true,
+        query: true,
+        research: true,
+        source_sync: true,
+      },
+      configuration_state: 'active',
+      embedding: null,
+      issues: [],
+      retrieval: null,
+      revision: 1,
+    }
+    apiMock.readinessRefetch.mockImplementation(async () => ({
+      data: apiMock.readiness,
+      isError: false,
+    }))
     apiMock.createResearch.mockResolvedValue({
       cost: {},
       created_at: 1_800_000_000,
@@ -329,6 +387,55 @@ describe('RetrievalTestPage', () => {
     })
   })
 
+  it.each([
+    { capability: 'query', mode: 'fast' },
+    { capability: 'deep', mode: 'deep' },
+    { capability: 'research', mode: 'research' },
+  ] as const)(
+    'blocks $mode before admission or task planning when $capability is unavailable',
+    async ({ capability, mode }) => {
+      apiMock.readiness = {
+        ...apiMock.readiness,
+        active_profile_available: false,
+        capabilities: { ...apiMock.readiness.capabilities, [capability]: false },
+        configuration_state: 'pending-validation',
+        issues: [],
+      }
+      const user = userEvent.setup()
+      renderPage()
+
+      await user.type(
+        screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+        'Blocked query',
+      )
+      if (mode !== 'fast')
+        await user.click(
+          screen.getByRole('button', {
+            name: `dataset.newKnowledge.settings.retrievalMode.${mode}`,
+          }),
+        )
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            mode === 'research'
+              ? 'dataset.newKnowledge.retrievalTest.startResearch'
+              : 'dataset.newKnowledge.retrievalTest.run',
+        }),
+      )
+
+      expect(apiMock.queryAdmission).not.toHaveBeenCalled()
+      expect(apiMock.planResearch).not.toHaveBeenCalled()
+      expect(apiMock.createResearch).not.toHaveBeenCalled()
+      const dialog = screen.getByRole('dialog', { name: 'common.provider.validating' })
+      expect(dialog).not.toHaveTextContent(
+        'dataset.newKnowledge.overview.attention.modelReadiness.profilesMissing',
+      )
+      expect(dialog).not.toHaveTextContent('datasetSettings.form.embeddingModel')
+      expect(dialog).not.toHaveTextContent('common.modelProvider.systemReasoningModel.key')
+      expect(dialog).not.toHaveTextContent('common.modelProvider.rerankModel.key')
+    },
+  )
+
   it('admits only one research task while the first Start request is pending', async () => {
     let resolvePlan: ((value: Awaited<ReturnType<typeof apiMock.planResearch>>) => void) | undefined
     const pendingPlan = new Promise<Awaited<ReturnType<typeof apiMock.planResearch>>>((resolve) => {
@@ -400,7 +507,7 @@ describe('RetrievalTestPage', () => {
         start.click()
       })
 
-      expect(apiMock.queryAdmission).toHaveBeenCalledOnce()
+      await waitFor(() => expect(apiMock.queryAdmission).toHaveBeenCalledOnce())
       expect(apiMock.queryAdmission).toHaveBeenCalledWith({
         body: { mode, query: `Run one ${mode} query` },
         params: { control_space_id: 'space-1' },
@@ -443,7 +550,7 @@ describe('RetrievalTestPage', () => {
       retry.click()
     })
 
-    expect(apiMock.queryAdmission).toHaveBeenCalledOnce()
+    await waitFor(() => expect(apiMock.queryAdmission).toHaveBeenCalledOnce())
     expect(apiMock.queryAdmission).toHaveBeenCalledWith({
       body: { mode: 'fast', query: 'Retry this query once' },
       params: { control_space_id: 'space-1' },

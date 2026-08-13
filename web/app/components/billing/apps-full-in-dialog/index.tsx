@@ -7,7 +7,6 @@ import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -24,7 +23,7 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
       currentVersion: data.meta.currentVersion,
     }),
   })
-  const isTeam = plan.type === Plan.team
+  const isTeam = plan.type === 'team'
   const usage = plan.usage.buildApps
   const total = plan.total.buildApps
   const percent = total > 0 ? (usage / total) * 100 : 0
@@ -58,10 +57,10 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
             </div>
           </div>
         )}
-        {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
+        {(plan.type === 'sandbox' || plan.type === 'professional') && (
           <UpgradeBtn isShort loc={loc} />
         )}
-        {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
+        {plan.type !== 'sandbox' && plan.type !== 'professional' && (
           <Button variant="secondary-accent">
             <a
               target="_blank"

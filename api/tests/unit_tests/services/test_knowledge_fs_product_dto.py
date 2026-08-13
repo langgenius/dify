@@ -69,7 +69,18 @@ def test_settings_response_serializes_rerank_plugin_id_with_its_public_alias() -
         {
             "revision": 1,
             "configuration_state": "active",
+            "active_profile_available": True,
+            "active_profile_revisions": {"embedding": 2, "retrieval": 3},
+            "capabilities": {
+                "deep": True,
+                "ingest": True,
+                "index": True,
+                "source_sync": True,
+                "query": True,
+                "research": True,
+            },
             "embedding": None,
+            "issues": [],
             "retrieval": {
                 "default_mode": "fast",
                 "reasoning_model": {

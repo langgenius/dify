@@ -329,6 +329,46 @@ class TestResourceAccessScopeBindings:
 
         mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
 
+    def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
+        # Widening a dataset to the whole workspace only records the scope; without granting the
+        # default policy to the current members nobody actually gains access.
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
+                method="PUT",
+                json={"scope": "all"},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
+                return_value=rbac_mod.svc.ResourceWhitelist(),
+            ),
+            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
+
+        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", dataset_id="dataset-1")
+
+    def test_dataset_whitelist_specific_does_not_schedule_member_policy_sync(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
+                method="PUT",
+                json={"scope": "specific"},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
+                return_value=rbac_mod.svc.ResourceWhitelist(),
+            ),
+            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
+
+        mock_sync_task.delay.assert_not_called()
+
     def test_app_user_access_policy_assignment_forwards_ids(self, app):
         with (
             app.test_request_context(

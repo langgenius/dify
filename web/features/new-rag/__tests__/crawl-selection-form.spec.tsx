@@ -84,7 +84,10 @@ const selectSyncPolicy = async (
   await user.click(screen.getByRole('option', { name: optionNames[mode] }))
 }
 
-vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/sources/new/website',
+  useRouter: () => routerMock,
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -130,8 +133,22 @@ vi.mock('@/service/client', () => ({
             get: {
               queryOptions: ({ input }: { input: unknown }) => ({
                 queryFn: async () => ({
+                  active_profile_available: settingsState.configurationState === 'active',
+                  active_profile_revisions:
+                    settingsState.configurationState === 'active'
+                      ? { embedding: 1, retrieval: 1 }
+                      : {},
+                  capabilities: {
+                    deep: settingsState.configurationState === 'active',
+                    index: settingsState.configurationState === 'active',
+                    ingest: settingsState.configurationState === 'active',
+                    query: settingsState.configurationState === 'active',
+                    research: settingsState.configurationState === 'active',
+                    source_sync: settingsState.configurationState === 'active',
+                  },
                   configuration_state: settingsState.configurationState,
                   embedding: null,
+                  issues: [],
                   retrieval: null,
                   revision: 1,
                 }),
@@ -319,15 +336,17 @@ describe('CrawlSelectionForm', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
 
     expect(clientMock.selectPages).not.toHaveBeenCalled()
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'common.modelProvider.toBeConfigured',
+    const dialog = await screen.findByRole('dialog', {
+      name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
     })
     await user.click(
       screen.getByRole('button', {
         name: 'common.modelProvider.selector.configure',
       }),
     )
-    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/settings')
+    expect(routerMock.push).toHaveBeenCalledWith(
+      '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources%2Fnew%2Fwebsite&capability=ingest',
+    )
     expect(clientMock.selectPages).not.toHaveBeenCalled()
     expect(dialog).not.toBeInTheDocument()
   })

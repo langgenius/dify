@@ -59,6 +59,7 @@ class KnowledgeFSProductApplicationService:
         page: int,
         limit: int,
         creator_ids: list[str] | None = None,
+        tag_ids: list[str] | None = None,
         query: str | None = None,
     ) -> KnowledgeFSSpaceListResponse:
         return self._product.list_spaces(
@@ -67,6 +68,7 @@ class KnowledgeFSProductApplicationService:
             page=page,
             limit=limit,
             creator_ids=creator_ids,
+            tag_ids=tag_ids,
             query=query,
         )
 

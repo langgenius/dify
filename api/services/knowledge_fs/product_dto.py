@@ -308,10 +308,15 @@ class KnowledgeFSSpaceListQuery(BaseModel):
         max_length=100,
         description="Filter by creator account IDs",
     )
+    tag_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] | None = Field(
+        default=None,
+        max_length=100,
+        description="Filter by knowledge tag IDs using match-any semantics",
+    )
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("creator_ids")
+    @field_validator("creator_ids", "tag_ids")
     @classmethod
     def normalize_creator_ids(cls, value: list[str] | None) -> list[str] | None:
         return value or None
@@ -928,8 +933,25 @@ class KnowledgeFSSpaceResponse(ResponseModel):
         return value.astimezone(UTC)
 
 
+class KnowledgeFSSpaceTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: Literal["knowledge"] = "knowledge"
+
+
+class KnowledgeFSSpaceTagListResponse(ResponseModel):
+    data: list[KnowledgeFSSpaceTagResponse]
+
+
+class KnowledgeFSSpaceTagsReplacePayload(BaseModel):
+    tag_ids: list[str] = Field(default_factory=list, max_length=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class KnowledgeFSSpaceListItemResponse(KnowledgeFSSpaceResponse):
     linked_apps: int = Field(ge=0)
+    tags: list[KnowledgeFSSpaceTagResponse] = Field(default_factory=list)
 
 
 class KnowledgeFSSpaceListResponse(ResponseModel):
@@ -1134,12 +1156,40 @@ class KnowledgeFSRetrievalSettingsResponse(ResponseModel):
     revision: int | None = Field(default=None, ge=1)
 
 
+class KnowledgeFSReadinessCapabilities(ResponseModel):
+    deep: bool
+    ingest: bool
+    index: bool
+    source_sync: bool = Field(validation_alias=AliasChoices("source_sync", "sourceSync"))
+    query: bool
+    research: bool
+
+
+class KnowledgeFSReadinessIssue(ResponseModel):
+    field: Literal["embedding", "reasoning", "rerank", "publication"]
+    code: Literal["missing", "unavailable", "incompatible", "validation_failed", "binding_missing"]
+    retryable: bool
+
+
+class KnowledgeFSActiveProfileRevisions(ResponseModel):
+    embedding: int | None = Field(default=None, ge=1)
+    retrieval: int | None = Field(default=None, ge=1)
+
+
 class KnowledgeFSSettingsResponse(ResponseModel):
     revision: int = Field(ge=1)
     configuration_state: Literal["active", "pending-validation", "setup-required", "validation-failed"] = Field(
         validation_alias=AliasChoices("configuration_state", "configurationState")
     )
+    active_profile_available: bool = Field(
+        validation_alias=AliasChoices("active_profile_available", "activeProfileAvailable")
+    )
+    active_profile_revisions: KnowledgeFSActiveProfileRevisions = Field(
+        validation_alias=AliasChoices("active_profile_revisions", "activeProfileRevisions")
+    )
+    capabilities: KnowledgeFSReadinessCapabilities
     embedding: KnowledgeFSEmbeddingSettingsResponse | None
+    issues: list[KnowledgeFSReadinessIssue]
     retrieval: KnowledgeFSRetrievalSettingsResponse | None
 
 
@@ -3226,6 +3276,7 @@ class KnowledgeFSJWKSResponse(ResponseModel):
 
 
 __all__ = [
+    "KnowledgeFSActiveProfileRevisions",
     "KnowledgeFSAdmittedQueryRequest",
     "KnowledgeFSAnswerTraceResponse",
     "KnowledgeFSAppBindingListResponse",
@@ -3328,6 +3379,8 @@ __all__ = [
     "KnowledgeFSQueryCreatePayload",
     "KnowledgeFSQueryResponse",
     "KnowledgeFSQueryStreamCapabilityResponse",
+    "KnowledgeFSReadinessCapabilities",
+    "KnowledgeFSReadinessIssue",
     "KnowledgeFSRerankIntent",
     "KnowledgeFSResearchTaskCreatePayload",
     "KnowledgeFSResearchTaskLimits",

@@ -100,6 +100,27 @@ describe('ModelSelector', () => {
     expect(screen.getByRole('combobox', { name: 'System reasoning model' })).toBeInTheDocument()
   })
 
+  it('exposes required and invalid field guidance on the combobox trigger', () => {
+    renderWithQueryClient(
+      <>
+        <span id="embedding-model-label">Embedding model</span>
+        <span id="embedding-model-error">Select an embedding model.</span>
+        <ModelSelector
+          ariaDescribedBy="embedding-model-error"
+          ariaInvalid
+          ariaLabelledBy="embedding-model-label"
+          ariaRequired
+          modelList={[makeModel()]}
+        />
+      </>,
+    )
+
+    const trigger = screen.getByRole('combobox', { name: 'Embedding model' })
+    expect(trigger).toHaveAccessibleDescription('Select an embedding model.')
+    expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    expect(trigger).toHaveAttribute('aria-required', 'true')
+  })
+
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 

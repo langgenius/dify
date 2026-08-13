@@ -119,6 +119,7 @@ def test_core_coverage_rejects_unclassified_knowledge_fs_production_files(tmp_pa
     [
         "api/migrations/versions/2026_07_21_1500-d4f6e8a1c305_add_knowledge_fs_remote_freeze_evidence.py",
         "api/migrations/versions/2026_07_21_1600-e5a7c9b2d416_add_knowledge_fs_cleanup_completion.py",
+        "api/migrations/versions/2026_08_13_1200-9d4e6f8a1b2c_add_knowledge_fs_space_tag_bindings.py",
     ],
 )
 def test_core_coverage_allows_explicit_non_core_migrations(tmp_path: Path, migration: str) -> None:
