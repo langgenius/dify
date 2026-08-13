@@ -1,10 +1,10 @@
 'use client'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import copyStyle from './style.module.css'
 
 type Props = Readonly<{
@@ -35,10 +35,13 @@ const CopyFeedback = ({ content }: Props) => {
     <Tooltip>
       <TooltipTrigger
         render={
-          <ActionButton aria-label={safeText} onClick={handleCopy}>
-            {copied && <RiClipboardFill className="size-4" aria-hidden="true" />}
-            {!copied && <RiClipboardLine className="size-4" aria-hidden="true" />}
-          </ActionButton>
+          <IconButton aria-label={safeText} onClick={handleCopy}>
+            {copied ? (
+              <RiClipboardFill className="size-4" aria-hidden="true" />
+            ) : (
+              <RiClipboardLine className="size-4" aria-hidden="true" />
+            )}
+          </IconButton>
         }
       />
       <TooltipContent>{safeText}</TooltipContent>

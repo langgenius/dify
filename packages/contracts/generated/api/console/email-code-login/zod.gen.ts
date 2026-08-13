@@ -3,11 +3,12 @@
 import * as z from 'zod'
 
 /**
- * EmailPayload
+ * EmailCodeSendPayload
  */
-export const zEmailPayload = z.object({
+export const zEmailCodeSendPayload = z.object({
   email: z.string(),
   language: z.string().nullish(),
+  turnstile_token: z.string().nullish(),
 })
 
 /**
@@ -36,7 +37,7 @@ export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
 
-export const zPostEmailCodeLoginBody = zEmailPayload
+export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
 
 /**
  * Success

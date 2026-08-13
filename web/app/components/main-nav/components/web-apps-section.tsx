@@ -16,6 +16,8 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -89,6 +91,12 @@ const WebAppsSectionContent = () => {
     setSearchText(value)
   }
 
+  const handleSearchVisibleChange = (visible: boolean) => {
+    setAppsExpanded(true)
+    if (!visible) handleSearchTextChange('')
+    setSearchVisible(visible)
+  }
+
   const handleDelete = () => {
     if (!uninstallDialogAppId) return
 
@@ -136,7 +144,11 @@ const WebAppsSectionContent = () => {
     />
   )
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <Collapsible
+      open={appsExpanded && searchVisible}
+      onOpenChange={handleSearchVisibleChange}
+      className="flex min-h-0 flex-1 flex-col"
+    >
       <div className="flex items-center justify-between py-1 pr-2 pl-2">
         <button
           type="button"
@@ -154,26 +166,22 @@ const WebAppsSectionContent = () => {
           />
         </button>
         <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-            className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              searchVisible && 'bg-state-base-hover text-text-secondary',
-            )}
-            onClick={() => {
-              setAppsExpanded(true)
-              if (searchVisible) handleSearchTextChange('')
-              setSearchVisible(!searchVisible)
-            }}
-          >
-            <span className="flex size-5 shrink-0 items-center justify-center">
-              <span aria-hidden className="i-ri-search-line size-3.5" />
-            </span>
-          </button>
+          <CollapsibleTrigger
+            className="size-6 min-h-0 w-6 justify-center gap-0 rounded-md p-0.5 hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-base-hover data-panel-open:text-text-secondary"
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+                className="rounded-md"
+              >
+                <span className="flex size-5 shrink-0 items-center justify-center">
+                  <span aria-hidden className="i-ri-search-line size-3.5" />
+                </span>
+              </IconButton>
+            }
+          />
         </div>
       </div>
-      {appsExpanded && searchVisible && (
+      <CollapsiblePanel className="shrink-0">
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
@@ -183,7 +191,7 @@ const WebAppsSectionContent = () => {
             autoFocus
           />
         </div>
-      )}
+      </CollapsiblePanel>
       {appsExpanded && (
         <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
           <ScrollAreaViewport
@@ -298,7 +306,7 @@ const WebAppsSectionContent = () => {
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Collapsible>
   )
 }
 

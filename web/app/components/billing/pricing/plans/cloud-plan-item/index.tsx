@@ -1,6 +1,6 @@
 'use client'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { FC } from 'react'
-import type { BasicPlan } from '../../../type'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -16,25 +16,23 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
-import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import PlanButton from './button'
 import List from './list'
 
 const ICON_MAP = {
-  [Plan.sandbox]: <Sandbox />,
-  [Plan.professional]: <Professional />,
-  [Plan.team]: <Team />,
+  sandbox: <Sandbox />,
+  professional: <Professional />,
+  team: <Team />,
 }
 
 type CloudPlanItemProps = {
-  currentPlan: BasicPlan
-  plan: BasicPlan
+  currentPlan: CloudPlan
+  plan: CloudPlan
   planRange: PlanRange
   canPay: boolean
 }
@@ -43,8 +41,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `plans.${plan}` as const
-  const isFreePlan = plan === Plan.sandbox
-  const isMostPopularPlan = plan === Plan.professional
+  const isFreePlan = plan === 'sandbox'
+  const isMostPopularPlan = plan === 'professional'
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
@@ -58,7 +56,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
     }),
   )
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
-  const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
+  const isEducationDiscountSupportedPlan = plan === 'professional' && isYear
   const educationDiscountWarningText =
     canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
       ? t(($) => $.planNotSupportEducationDiscount, { ns: 'education' })
@@ -74,9 +72,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
     if (isCurrent) return t(($) => $['plansCommon.currentPlan'], { ns: 'billing' })
 
     return {
-      [Plan.sandbox]: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
-      [Plan.professional]: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
-      [Plan.team]: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
+      sandbox: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
+      professional: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
+      team: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
     }[plan]
   }, [canPay, isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
 
@@ -120,7 +118,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, c
         return
       }
 
-      const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
+      const res = await consoleClient.billing.subscription.get({
+        query: { plan, interval: isYear ? 'year' : 'month' },
+      })
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = res.url
     } finally {

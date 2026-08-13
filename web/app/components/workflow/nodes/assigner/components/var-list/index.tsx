@@ -2,14 +2,13 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
@@ -261,13 +260,15 @@ const VarList: FC<Props> = ({
                 />
               )}
             </div>
-            <ActionButton
-              size="l"
-              className="group shrink-0 hover:bg-state-destructive-hover!"
+            <IconButton
+              aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+              size="lg"
+              tone="destructive"
+              className="shrink-0"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         )
       })}

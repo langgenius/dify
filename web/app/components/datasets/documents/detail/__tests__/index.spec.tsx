@@ -405,10 +405,10 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       const toggle = screen.getByRole('button', { name: /metadata\.title/ })
       expect(toggle).toHaveAttribute('aria-label')
-      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
       fireEvent.click(toggle)
-      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should pass correct props to Metadata', () => {

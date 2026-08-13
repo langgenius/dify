@@ -34,18 +34,6 @@ vi.mock('@floating-ui/react', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/action-button', () => {
-  const comp = ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>
-      {children}
-    </button>
-  )
-  return {
-    default: comp,
-    ActionButtonState: { Destructive: 'destructive' },
-  }
-})
-
 const { EditSlice } = await import('../edit-slice')
 
 // Helper to find divider span (zero-width space)

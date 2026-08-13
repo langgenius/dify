@@ -15,8 +15,8 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -33,7 +33,7 @@ import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/compone
 import ToolDatePicker from '@/app/components/workflow/nodes/tool/components/tool-date-picker'
 import ToolDateRangePicker from '@/app/components/workflow/nodes/tool/components/tool-date-range-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   createPickerProps,
   getFieldFlags,
@@ -68,8 +68,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const userProfile = useAtomValue(userProfileAtom)
-  const timezone = userProfile.timezone ?? 'UTC'
+  const { data: timezone } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.timezone ?? 'UTC',
+  })
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
     onChange(updateInputAutoState(value, key, val, type))

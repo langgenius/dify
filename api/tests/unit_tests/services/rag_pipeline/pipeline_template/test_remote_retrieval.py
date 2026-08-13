@@ -46,7 +46,7 @@ def test_get_pipeline_template_detail_fallbacks_to_database_on_error(
     )
     retrieval = RemotePipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("tpl-1", session=sqlite_session)
+    result = retrieval.get_pipeline_template_detail("tpl-1", "tenant-1", session=sqlite_session)
 
     assert result == {"id": "db-1"}
     fetch_mock.assert_called_once_with("tpl-1")

@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "تخفیف آموزشی فقط برای طرح سالانه Professional اعمال می‌شود. با حفظ طرح فعلی، این تخفیف شامل نمی‌شود.",
   "educationPricingConfirm.title": "طرح انتخاب‌شده شما از تخفیف آموزشی پشتیبانی نمی‌کند",
   "emailLabel": "ایمیل فعلی شما",
+  "form.schoolName.noResults": "مدرسه منطبقی یافت نشد. همچنان می‌توانید نام رسمی مدرسه را وارد کنید.",
   "form.schoolName.placeholder": "نام رسمی و کامل مدرسه خود را وارد کنید",
   "form.schoolName.title": "نام مدرسه شما",
   "form.schoolRole.option.administrator": "مدیر مدرسه",

@@ -120,12 +120,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
     const isAccessConfigPath = pathname.endsWith('access-config')
+    const isDeployPath = pathname.endsWith('deploy')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout) ||
       (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
       (isOverviewPath && !appACLCapabilities.canMonitor) ||
-      (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
+      (isAccessConfigPath && !appACLCapabilities.canAccessConfig) ||
+      (isDeployPath &&
+        (routeAppDetail.mode !== AppModeEnum.WORKFLOW || !appACLCapabilities.canDeploy))
     ) {
       router.replace(
         getRedirectionPath(routeAppDetail, {

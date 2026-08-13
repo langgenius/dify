@@ -19,6 +19,7 @@ const EMBEDDABLE_PATH_SEGMENTS = [
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
@@ -47,6 +48,19 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+
+  // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
+  if (pathname === '/' && request.nextUrl.searchParams.get('action') === LEGACY_EDUCATION_ACTION) {
+    const destination = request.nextUrl.clone()
+    destination.pathname = '/education/verify'
+    destination.searchParams.delete('action')
+
+    return wrapResponseWithFrameProtection(
+      NextResponse.redirect(destination, { status: 308 }),
+      pathname,
+    )
+  }
+
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
   requestHeaders.set(CURRENT_SEARCH_HEADER, search)
@@ -62,7 +76,10 @@ export function proxy(request: NextRequest) {
     return wrapResponseWithFrameProtection(response, pathname)
   }
 
-  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
+  const turnstileOrigin = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    ? ' https://challenges.cloudflare.com'
+    : ''
+  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 

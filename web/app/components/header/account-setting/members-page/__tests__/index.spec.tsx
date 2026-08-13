@@ -6,7 +6,6 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -19,10 +18,6 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -39,6 +34,7 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () =>
   renderWithConsoleQuery(<MembersPage />, {
+    accountProfile: mockConsoleState.current.userProfile,
     systemFeatures: { is_email_setup: true },
   })
 
@@ -402,7 +398,7 @@ describe('MembersPage', () => {
       createMockProviderContextValue({
         enableBilling: true,
         plan: {
-          type: Plan.sandbox,
+          type: 'sandbox',
           total: { teamMembers: 5 } as unknown as ReturnType<
             typeof useProviderContext
           >['plan']['total'],
@@ -423,7 +419,7 @@ describe('MembersPage', () => {
       createMockProviderContextValue({
         enableBilling: true,
         plan: {
-          type: Plan.sandbox,
+          type: 'sandbox',
           total: { teamMembers: -1 } as unknown as ReturnType<
             typeof useProviderContext
           >['plan']['total'],
@@ -441,7 +437,7 @@ describe('MembersPage', () => {
       createMockProviderContextValue({
         enableBilling: true,
         plan: {
-          type: Plan.team,
+          type: 'team',
           total: { teamMembers: 50 } as unknown as ReturnType<
             typeof useProviderContext
           >['plan']['total'],
@@ -451,8 +447,8 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
-    // Plan.team is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
+    // 'team' is an unlimited member plan → isNotUnlimitedMemberPlan=false → non-billing layout
     expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
@@ -551,7 +547,7 @@ describe('MembersPage', () => {
       createMockProviderContextValue({
         enableBilling: true,
         plan: {
-          type: Plan.sandbox,
+          type: 'sandbox',
           total: { teamMembers: 5 } as unknown as ReturnType<
             typeof useProviderContext
           >['plan']['total'],
@@ -722,7 +718,7 @@ describe('MembersPage', () => {
       createMockProviderContextValue({
         enableBilling: true,
         plan: {
-          type: Plan.sandbox,
+          type: 'sandbox',
           total: { teamMembers: 2 } as unknown as ReturnType<
             typeof useProviderContext
           >['plan']['total'],

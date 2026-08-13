@@ -426,9 +426,6 @@ catalogs:
     jotai:
       specifier: 2.20.2
       version: 2.20.2
-    jotai-effect:
-      specifier: 2.4.1
-      version: 2.4.1
     jotai-scope:
       specifier: 0.11.0
       version: 0.11.0
@@ -1245,9 +1242,6 @@ importers:
       '@tailwindcss/typography':
         specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.3)
-      '@tanstack/form-core':
-        specifier: 'catalog:'
-        version: 1.33.3
       '@tanstack/query-core':
         specifier: 'catalog:'
         version: 5.101.4
@@ -1341,15 +1335,9 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
-      jotai-effect:
-        specifier: 'catalog:'
-        version: 2.4.1(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))
       jotai-scope:
         specifier: 'catalog:'
         version: 0.11.0(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
-      jotai-tanstack-form:
-        specifier: workspace:*
-        version: link:../packages/jotai-tanstack-form
       jotai-tanstack-query:
         specifier: 'catalog:'
         version: 0.11.0(@tanstack/query-core@5.101.4)(@tanstack/react-query@5.101.4(react@19.2.8))(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)
@@ -1606,6 +1594,12 @@ importers:
       '@vitejs/plugin-rsc':
         specifier: 'catalog:'
         version: 0.5.33(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(react-dom@19.2.8(react@19.2.8))(react-server-dom-webpack@19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+      '@vitest/browser':
+        specifier: 'catalog:'
+        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(vitest@4.1.10)
+      '@vitest/browser-playwright':
+        specifier: 'catalog:'
+        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(playwright@1.62.1)(vitest@4.1.10)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
@@ -1618,6 +1612,9 @@ importers:
       happy-dom:
         specifier: 'catalog:'
         version: 20.11.1
+      playwright:
+        specifier: 'catalog:'
+        version: 1.62.1
       postcss:
         specifier: 'catalog:'
         version: 8.5.25
@@ -1654,6 +1651,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@25.9.5)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(happy-dom@20.11.1)
+      vitest-browser-react:
+        specifier: 'catalog:'
+        version: 2.2.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@4.1.10)
       vitest-canvas-mock:
         specifier: 'catalog:'
         version: 1.1.4(vitest@4.1.10)
@@ -6772,12 +6772,6 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jotai-effect@2.4.1:
-    resolution: {integrity: sha512-wptUnVOEeU8SkBA+sKGzXGnR3rbSfXLXrRxcj5QF3ukxH7CUbo5hoO2iMwUzsJSYaZM804ZpPoAxUY9nmksu8w==}
-    engines: {node: '>=12.20.0'}
-    peerDependencies:
-      jotai: '>=2.20.0 || >=3.0.0-alpha.0'
-
   jotai-scope@0.11.0:
     resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
     engines: {node: '>=14.0.0'}
@@ -10009,7 +10003,7 @@ snapshots:
       '@eslint/core': 1.2.1
       '@eslint/plugin-kit': 0.7.2
       github-slugger: 2.0.0
-      mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
+      mdast-util-from-markdown: 2.0.3(supports-color@11.0.0)
       mdast-util-frontmatter: 2.0.1(supports-color@11.0.0)
       mdast-util-gfm: 3.1.0(supports-color@11.0.0)
       mdast-util-math: 3.0.0(supports-color@11.0.0)
@@ -14711,10 +14705,6 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jotai-effect@2.4.1(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)):
-    dependencies:
-      jotai: 2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
-
   jotai-scope@0.11.0(jotai@2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8))(react@19.2.8):
     dependencies:
       jotai: 2.20.2(@babel/core@7.29.7(supports-color@11.0.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8)
@@ -15046,23 +15036,6 @@ snapshots:
       escape-string-regexp: 5.0.0
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
-
-  mdast-util-from-markdown@2.0.3(supports-color@10.2.2):
-    dependencies:
-      '@types/mdast': 4.0.4
-      '@types/unist': 3.0.3
-      decode-named-character-reference: 1.3.0
-      devlop: 1.1.0
-      mdast-util-to-string: 4.0.0
-      micromark: 4.0.2(supports-color@10.2.2)
-      micromark-util-decode-numeric-character-reference: 2.0.2
-      micromark-util-decode-string: 2.0.1
-      micromark-util-normalize-identifier: 2.0.1
-      micromark-util-symbol: 2.0.1
-      micromark-util-types: 2.0.2
-      unist-util-stringify-position: 4.0.0
-    transitivePeerDependencies:
-      - supports-color
 
   mdast-util-from-markdown@2.0.3(supports-color@11.0.0):
     dependencies:
@@ -15553,28 +15526,6 @@ snapshots:
   micromark-util-symbol@2.0.1: {}
 
   micromark-util-types@2.0.2: {}
-
-  micromark@4.0.2(supports-color@10.2.2):
-    dependencies:
-      '@types/debug': 4.1.13
-      debug: 4.4.3(supports-color@10.2.2)
-      decode-named-character-reference: 1.3.0
-      devlop: 1.1.0
-      micromark-core-commonmark: 2.0.3
-      micromark-factory-space: 2.0.1
-      micromark-util-character: 2.1.1
-      micromark-util-chunked: 2.0.1
-      micromark-util-combine-extensions: 2.0.1
-      micromark-util-decode-numeric-character-reference: 2.0.2
-      micromark-util-encode: 2.0.1
-      micromark-util-normalize-identifier: 2.0.1
-      micromark-util-resolve-all: 2.0.1
-      micromark-util-sanitize-uri: 2.0.1
-      micromark-util-subtokenize: 2.1.0
-      micromark-util-symbol: 2.0.1
-      micromark-util-types: 2.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   micromark@4.0.2(supports-color@11.0.0):
     dependencies:
@@ -18025,7 +17976,6 @@ time:
   i18next@26.3.6: '2026-07-09T13:42:14.596Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.16: '2026-08-05T19:25:04.961Z'
-  jotai-effect@2.4.1: '2026-07-20T23:14:54.605Z'
   jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
   jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
   jotai@2.20.2: '2026-07-14T13:52:11.083Z'

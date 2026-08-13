@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Освітня знижка застосовується лише до річного плану Professional. Якщо залишити поточний план, знижку не буде включено.",
   "educationPricingConfirm.title": "Вибраний план не підтримує освітню знижку",
   "emailLabel": "Ваш поточний електронний лист",
+  "form.schoolName.noResults": "Відповідний навчальний заклад не знайдено. Ви все одно можете ввести його офіційну назву.",
   "form.schoolName.placeholder": "Введіть офіційну, повну назву вашої школи",
   "form.schoolName.title": "Ваша назва школи",
   "form.schoolRole.option.administrator": "Шкільний адміністратор",

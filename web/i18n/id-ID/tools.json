@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Tujuan dan batasan parameter",
   "mcp.server.modal.parametersTip": "Tambahkan deskripsi untuk setiap parameter untuk membantu LLM memahami tujuan dan kendala mereka.",
   "mcp.server.publishTip": "Aplikasi tidak dipublikasikan. Silakan publikasikan aplikasinya terlebih dahulu.",
-  "mcp.server.reGen": "Apakah Anda ingin meregenerasi URL server?",
+  "mcp.server.reGen": "Apakah Anda ingin meregenerasi URL server? URL saat ini akan segera berhenti berfungsi.",
   "mcp.server.title": "MCP Server",
   "mcp.server.url": "Server URL",
   "mcp.toolItem.noDescription": "Tanpa deskripsi",

@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "ينطبق الخصم التعليمي على خطة Professional السنوية فقط. الاحتفاظ بخطتك الحالية لن يتضمن الخصم.",
   "educationPricingConfirm.title": "الخطة التي اخترتها لا تدعم الخصم التعليمي",
   "emailLabel": "بريدك الإلكتروني الحالي",
+  "form.schoolName.noResults": "لم يتم العثور على مدارس مطابقة. لا يزال بإمكانك إدخال الاسم الرسمي للمدرسة.",
   "form.schoolName.placeholder": "أدخل الاسم الرسمي الكامل لمدرستك",
   "form.schoolName.title": "اسم مدرستك",
   "form.schoolRole.option.administrator": "مسؤول المدرسة",
