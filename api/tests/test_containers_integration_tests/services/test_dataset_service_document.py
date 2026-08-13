@@ -142,7 +142,9 @@ def test_get_document_queries_by_dataset_and_document_id(db_session_with_contain
 def test_get_documents_by_ids_returns_empty_for_empty_input(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [], session=db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(
+        DatasetRefService.create_dataset_ref(dataset), [], session=db_session_with_containers
+    )
 
     assert result == []
 
@@ -157,7 +159,9 @@ def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers
         position=2,
     )
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id], db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(
+        DatasetRefService.create_dataset_ref(dataset), [doc_a.id, doc_b.id], db_session_with_containers
+    )
 
     assert {document.id for document in result} == {doc_a.id, doc_b.id}
 
@@ -319,7 +323,7 @@ def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_doc
         )
 
 
-def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_access(
+def test_get_upload_files_by_document_id_for_zip_download_hides_cross_tenant_documents(
     db_session_with_containers: Session,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
@@ -335,7 +339,7 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_a
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    with pytest.raises(Forbidden, match="No permission"):
+    with pytest.raises(NotFound, match="Document not found"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[document.id],
@@ -527,7 +531,7 @@ def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchive
     assert [document.id for document in result] == [available_document.id]
 
 
-def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db_session_with_containers: Session):
+def test_get_error_documents_by_dataset_ref_returns_error_and_paused_documents(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     error_document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -547,7 +551,8 @@ def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db
         indexing_status=IndexingStatus.COMPLETED,
     )
 
-    result = DocumentService.get_error_documents_by_dataset_id(dataset.id, session=db_session_with_containers)
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    result = DocumentService.get_error_documents_by_dataset_ref(dataset_ref, session=db_session_with_containers)
 
     assert {document.id for document in result} == {error_document.id, paused_document.id}
 

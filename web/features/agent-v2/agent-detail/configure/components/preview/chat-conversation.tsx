@@ -13,20 +13,17 @@ import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
+import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -80,7 +77,7 @@ export function AgentPreviewChatConversation({
   clearChatList,
   config,
   conversationId,
-  currentModel,
+  currentModel: _currentModel,
   draftType,
   initialChatTree,
   inputs,
@@ -124,7 +121,10 @@ export function AgentPreviewChatConversation({
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
   const queryClient = useQueryClient()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const sendInterruptedRef = useRef(false)
   const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
@@ -133,8 +133,6 @@ export function AgentPreviewChatConversation({
     sendInterruptedRef.current = true
     onSendInterrupted?.()
   }, [onSendInterrupted])
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const {
     chatList,
     setTargetMessageId,
@@ -176,21 +174,6 @@ export function AgentPreviewChatConversation({
         const runtimeInputs = preparedAgentSoulConfig
           ? getAgentSoulInputs(runtimeInputsForm)
           : inputs
-        const runtimeConfig = preparedAgentSoulConfig
-          ? buildChatConfig({
-              agentSoulConfig: runtimeAgentSoulConfig,
-              currentModel: undefined,
-              prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
-            })
-          : config
-
-        const currentProvider = textGenerationModelList.find(
-          (item) => item.provider === runtimeConfig.model.provider,
-        )
-        const selectedModel = currentProvider?.models.find(
-          (model) => model.model === runtimeConfig.model.name,
-        )
-        const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
         const data: Record<string, unknown> = {
           query: message,
           inputs: runtimeInputs,
@@ -200,7 +183,7 @@ export function AgentPreviewChatConversation({
         }
         if (draftType) data.draft_type = draftType
 
-        if (files?.length && supportVision) data.files = files
+        if (files?.length) data.files = files
 
         sendMessage({
           agentId,
@@ -278,7 +261,6 @@ export function AgentPreviewChatConversation({
       agentId,
       agentSoulConfig,
       chatList,
-      config,
       conversationId,
       draftType,
       docLink,
@@ -293,7 +275,6 @@ export function AgentPreviewChatConversation({
       queryClient,
       sendMessage,
       t,
-      textGenerationModelList,
     ],
   )
 

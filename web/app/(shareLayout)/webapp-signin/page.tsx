@@ -9,6 +9,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
@@ -44,12 +45,11 @@ function WebSSOForm() {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const shareCode = useWebAppStore((s) => s.shareCode)
   const backToHome = useCallback(async () => {
-    await webAppLogout(shareCode!)
+    await webAppLogout(resolveWebAppAddress())
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, shareCode])
+  }, [getSigninUrl, router])
 
   if (!loginRedirect) {
     return (

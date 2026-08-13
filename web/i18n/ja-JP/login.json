@@ -91,6 +91,7 @@
   "timezone": "タイムゾーン",
   "tos": "利用規約",
   "tosDesc": "サインアップすることで、以下に同意するものとします",
+  "turnstile.loadError": "セキュリティ確認を読み込めませんでした。",
   "usePassword": "パスワードを使用",
   "useVerificationCode": "確認コードを使用する",
   "validate": "検証",

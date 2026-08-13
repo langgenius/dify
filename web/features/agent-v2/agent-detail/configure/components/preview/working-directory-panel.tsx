@@ -17,6 +17,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
@@ -245,6 +246,12 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const persistentFilesTooltip = t(
+    ($) => $['agentDetail.configure.workingDirectory.persistentFilesTooltip'],
+  )
+  const temporaryFilesTooltip = t(
+    ($) => $['agentDetail.configure.workingDirectory.temporaryFilesTooltip'],
+  )
   const [selectedDirectoryPath, setSelectedDirectoryPath] = useState<AgentWorkingDirectoryPath>(
     AGENT_SAVED_FILES_ROOT_PATH,
   )
@@ -561,18 +568,36 @@ export function AgentWorkingDirectoryPanel({
                 }
               >
                 <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
-                  <TabsTab
-                    value={AGENT_SAVED_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
-                  >
-                    {t(($) => $['agentDetail.configure.workingDirectory.savedFiles'])}
-                  </TabsTab>
-                  <TabsTab
-                    value={AGENT_TEMPORARY_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
-                  >
-                    {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
-                  </TabsTab>
+                  <div className="flex h-full items-center gap-0.5">
+                    <TabsTab
+                      value={AGENT_SAVED_FILES_ROOT_PATH}
+                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    >
+                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                    </TabsTab>
+                    <Infotip
+                      aria-label={persistentFilesTooltip}
+                      iconVariant="information"
+                      popupClassName="w-64"
+                    >
+                      {persistentFilesTooltip}
+                    </Infotip>
+                  </div>
+                  <div className="flex h-full items-center gap-0.5">
+                    <TabsTab
+                      value={AGENT_TEMPORARY_FILES_ROOT_PATH}
+                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    >
+                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                    </TabsTab>
+                    <Infotip
+                      aria-label={temporaryFilesTooltip}
+                      iconVariant="information"
+                      popupClassName="w-64"
+                    >
+                      {temporaryFilesTooltip}
+                    </Infotip>
+                  </div>
                   <TabsIndicator
                     className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
                     style={{

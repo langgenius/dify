@@ -1,10 +1,11 @@
 import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -22,13 +23,17 @@ from controllers.console.datasets.datasets_document import (
     DocumentIndexingStatusApi,
     DocumentMetadataApi,
     DocumentMetadataUpdatePayload,
+    DocumentPauseApi,
     DocumentPipelineExecutionLogApi,
     DocumentProcessingApi,
+    DocumentRecoverApi,
     DocumentRenameApi,
+    DocumentResource,
     DocumentRetryApi,
     DocumentStatusApi,
     DocumentSummaryStatusApi,
     GetProcessRuleApi,
+    WebsiteDocumentSyncApi,
 )
 from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
@@ -39,9 +44,11 @@ from controllers.console.datasets.error import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetPermissionEnum
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.dataset_ref_service import DatasetRef, DocumentRef
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     format_vector_space_admission_error,
@@ -191,6 +198,12 @@ def tenant_ctx():
     return (MagicMock(is_dataset_editor=True, id="u1"), "tenant-1")
 
 
+@pytest.fixture(autouse=True)
+def bypass_knowledge_rate_limit():
+    with patch("controllers.console.datasets.datasets_document.check_knowledge_rate_limit") as check:
+        yield check
+
+
 @pytest.fixture
 def patch_tenant(tenant_ctx):
     return tenant_ctx
@@ -219,6 +232,14 @@ def document():
 @pytest.fixture
 def patch_dataset(dataset):
     with patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset):
+        yield
+
+
+@pytest.fixture
+def patch_scoped_dataset(dataset):
+    with patch(
+        "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant", return_value=dataset
+    ):
         yield
 
 
@@ -481,6 +502,7 @@ class TestDatasetInitApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
@@ -489,6 +511,12 @@ class TestDatasetInitApi:
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_without_dataset_id",
                 return_value=(created_dataset, [created_document], "batch-init"),
             ),
+            patch(
+                "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
+            ) as replace_whitelist,
+            patch(
+                "controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task"
+            ) as initialize_rbac_task,
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -496,6 +524,65 @@ class TestDatasetInitApi:
         assert response["documents"][0]["data_source_info"] == {}
         assert response["documents"][0]["doc_metadata"] == []
         assert response["batch"] == "batch-init"
+        assert created_dataset.permission == DatasetPermissionEnum.ALL_TEAM
+        replace_whitelist.assert_called_once_with(
+            tenant_id,
+            user.id,
+            created_dataset.id,
+            ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+        )
+        initialize_rbac_task.delay.assert_called_once_with(tenant_id, user.id, dataset_id=created_dataset.id)
+
+
+class TestDocumentResource:
+    def test_get_document_resolves_owner_chain(self, dataset):
+        api = DocumentResource()
+        session = MagicMock()
+        user = MagicMock()
+        document = MagicMock()
+
+        with (
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ) as get_dataset,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
+            ) as check_permission,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
+                return_value=document,
+            ) as get_document,
+        ):
+            assert api.get_document(session, "ds-1", "doc-1", user, "tenant-1") is document
+
+        get_dataset.assert_called_once_with("ds-1", "tenant-1", session=session)
+        check_permission.assert_called_once_with(dataset, user, session)
+        get_document.assert_called_once_with(
+            DocumentRef(dataset=DatasetRef(tenant_id="tenant-1", dataset_id="ds-1"), document_id="doc-1"),
+            session=session,
+        )
+
+    def test_get_document_relies_on_rbac_in_rbac_mode(self, dataset):
+        api = DocumentResource()
+        session = MagicMock()
+        with (
+            patch("controllers.console.datasets.datasets_document.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission"
+            ) as check_permission,
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
+            ),
+        ):
+            api.get_document(session, "ds-1", "doc-1", MagicMock(), "tenant-1")
+
+        check_permission.assert_not_called()
 
 
 class TestDocumentApi:
@@ -737,108 +824,219 @@ class TestDocumentStatusApi:
 
 
 class TestDocumentRetryApi:
-    def test_retry_archived_document_skipped(self, app: Flask, patch_tenant, patch_dataset):
+    def test_retry_archived_document_skipped(self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission):
         api = DocumentRetryApi()
         method = unwrap(api.post)
+        user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
         doc = MagicMock(id="doc-1", indexing_status="indexing")
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [doc]
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[doc],
-            ),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=True),
             patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_mock,
         ):
-            resp, status = method(api, MagicMock(), "ds-1")
+            resp, status = method(api, session, tenant_id, user, "ds-1")
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [], ANY)
+        retry_mock.assert_called_once_with("ds-1", [], session)
 
-    def test_retry_success(self, app: Flask, patch_tenant, patch_dataset):
+    def test_retry_success(self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission):
         api = DocumentRetryApi()
         method = unwrap(api.post)
+        user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
         document = MagicMock(id="doc-1", indexing_status=IndexingStatus.INDEXING, archived=False)
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [document]
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[document],
-            ),
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, MagicMock(), "ds-1")
+            response, status = method(api, session, tenant_id, user, "ds-1")
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [document], ANY)
+        retry_mock.assert_called_once_with("ds-1", [document], session)
 
-    def test_retry_loads_selected_documents_in_one_batch(self, app: Flask, patch_tenant, patch_dataset):
+    def test_retry_loads_selected_documents_in_one_scoped_query(
+        self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission
+    ):
         api = DocumentRetryApi()
         method = unwrap(api.post)
+        user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1", "doc-2"]}
         first_document = MagicMock(id="doc-1", indexing_status=IndexingStatus.ERROR, archived=False)
         second_document = MagicMock(id="doc-2", indexing_status=IndexingStatus.ERROR, archived=False)
         session = MagicMock()
+        session.scalars.return_value.all.return_value = [first_document, second_document]
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[first_document, second_document],
-            ) as get_documents_by_ids,
             patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, session, "ds-1")
+            response, status = method(api, session, tenant_id, user, "ds-1")
 
         assert status == 204
-        get_documents_by_ids.assert_called_once_with("ds-1", ["doc-1", "doc-2"], session)
+        statement = session.scalars.call_args.args[0]
+        assert statement.compare(
+            select(DatasetDocument).where(
+                DatasetDocument.tenant_id == "tenant-1",
+                DatasetDocument.dataset_id == "ds-1",
+                DatasetDocument.id.in_(["doc-1", "doc-2"]),
+            )
+        )
         retry_mock.assert_called_once_with("ds-1", [first_document, second_document], session)
 
-    def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_dataset):
+    def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission):
         api = DocumentRetryApi()
         method = unwrap(api.post)
+        user, tenant_id = patch_tenant
         payload = {"document_ids": ["doc-1"]}
         document = MagicMock(id="doc-1", indexing_status=IndexingStatus.COMPLETED, archived=False)
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [document]
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[document],
-            ),
-            patch(
                 "controllers.console.datasets.datasets_document.DocumentService.retry_document", return_value=None
             ) as retry_mock,
         ):
-            response, status = method(api, MagicMock(), "ds-1")
+            response, status = method(api, session, tenant_id, user, "ds-1")
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [], ANY)
+        retry_mock.assert_called_once_with("ds-1", [], session)
+
+    def test_retry_foreign_dataset_has_no_side_effects(self, app: Flask, patch_tenant, bypass_knowledge_rate_limit):
+        api = DocumentRetryApi()
+        method = unwrap(api.post)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
+        payload = {"document_ids": ["doc-1"]}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=None,
+            ),
+            patch("controllers.console.datasets.datasets_document.DocumentService.retry_document") as retry_document,
+        ):
+            with pytest.raises(NotFound):
+                method(api, session, tenant_id, user, "foreign-dataset")
+
+        session.scalars.assert_not_called()
+        bypass_knowledge_rate_limit.assert_not_called()
+        retry_document.assert_not_called()
+
+
+class TestDocumentPauseRecoverApi:
+    @pytest.mark.parametrize(
+        ("api_type", "service_method"),
+        [(DocumentPauseApi, "pause_document"), (DocumentRecoverApi, "recover_document")],
+    )
+    def test_patch_uses_scoped_document(
+        self, app: Flask, patch_tenant, bypass_knowledge_rate_limit, api_type, service_method
+    ):
+        api = api_type()
+        method = unwrap(api.patch)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
+        document = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch.object(api, "get_document", return_value=document) as get_document,
+            patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
+            patch(
+                f"controllers.console.datasets.datasets_document.DocumentService.{service_method}"
+            ) as process_document,
+        ):
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+
+        assert (response, status) == ("", 204)
+        get_document.assert_called_once_with(session, "ds-1", "doc-1", user, tenant_id)
+        bypass_knowledge_rate_limit.assert_called_once_with()
+        process_document.assert_called_once_with(document, session)
+
+
+class TestWebsiteDocumentSyncApi:
+    def test_get_uses_scoped_dataset_and_document(self, app: Flask, patch_tenant, dataset):
+        api = WebsiteDocumentSyncApi()
+        method = unwrap(api.get)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
+        document = MagicMock(data_source_type="website_crawl")
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ) as get_dataset,
+            patch.object(api, "get_document", return_value=document) as get_document,
+            patch("controllers.console.datasets.datasets_document.DocumentService.check_archived", return_value=False),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.sync_website_document"
+            ) as sync_document,
+        ):
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
+
+        assert status == 200
+        assert response["result"] == "success"
+        get_dataset.assert_called_once_with("ds-1", tenant_id, session=session)
+        get_document.assert_called_once_with(session, dataset.id, "doc-1", user, tenant_id)
+        sync_document.assert_called_once_with(dataset, document, session)
+
+    def test_get_rejects_non_editor_before_loading_document(self, app: Flask, dataset):
+        api = WebsiteDocumentSyncApi()
+        method = unwrap(api.get)
+        user = MagicMock(is_dataset_editor=False)
+        session = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch.object(api, "get_document") as get_document,
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.sync_website_document"
+            ) as sync_document,
+        ):
+            with pytest.raises(Forbidden):
+                method(api, session, "tenant-1", user, "ds-1", "doc-1")
+
+        get_document.assert_not_called()
+        sync_document.assert_not_called()
 
 
 class TestDocumentPipelineExecutionLogApi:
-    def test_get_log_success(self, app: Flask, patch_tenant, patch_dataset):
+    def test_get_log_success(self, app: Flask, patch_tenant):
         api = DocumentPipelineExecutionLogApi()
         method = unwrap(api.get)
+        user, tenant_id = patch_tenant
         log = MagicMock(datasource_info="{}", datasource_type="file", input_data={}, datasource_node_id="n1")
+        document = MagicMock(id="trusted-doc")
         session = MagicMock()
         session.scalar.return_value = log
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=MagicMock()
-            ),
+            patch.object(api, "get_document", return_value=document) as get_document,
         ):
-            response, status = method(api, session, "ds-1", "doc-1")
+            response, status = method(api, session, tenant_id, user, "ds-1", "doc-1")
         assert status == 200
+        get_document.assert_called_once_with(session, "ds-1", "doc-1", user, tenant_id)
+        assert "trusted-doc" in session.scalar.call_args.args[0].compile().params.values()
 
 
 class TestDocumentGenerateSummaryApi:
@@ -996,49 +1194,54 @@ class TestDocumentBatchDownloadZipApi:
 
 
 class TestDatasetDocumentListApiDelete:
-    def test_delete_success(self, app: Flask, patch_tenant, patch_dataset):
+    def test_delete_success(self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission):
         """Test successful deletion of documents"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
+        user, tenant_id = patch_tenant
+        session = MagicMock()
         with (
             app.test_request_context("/?document_id=doc-1&document_id=doc-2"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
             patch("controllers.console.datasets.datasets_document.DocumentService.delete_documents", return_value=None),
         ):
-            response, status = method(api, MagicMock(), "ds-1")
+            response, status = method(api, session, tenant_id, user, "ds-1")
         assert status == 204
 
-    def test_delete_indexing_error(self, app: Flask, patch_tenant, patch_dataset):
+    def test_delete_indexing_error(self, app: Flask, patch_tenant, patch_scoped_dataset, patch_permission):
         """Test deletion with indexing error"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
+        user, tenant_id = patch_tenant
         with (
             app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.delete_documents",
                 side_effect=services.errors.document.DocumentIndexingError(),
             ),
         ):
             with pytest.raises(DocumentIndexingError):
-                method(api, MagicMock(), "ds-1")
+                method(api, MagicMock(), tenant_id, user, "ds-1")
 
-    def test_delete_dataset_not_found(self, app: Flask, patch_tenant):
+    def test_delete_dataset_not_found(self, app: Flask, patch_tenant, bypass_knowledge_rate_limit):
         """Test deletion when dataset not found"""
         api = DatasetDocumentListApi()
         method = unwrap(api.delete)
+        user, tenant_id = patch_tenant
         with (
             app.test_request_context("/?document_id=doc-1"),
-            patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset_for_tenant",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_document.DocumentService.delete_documents"
+            ) as delete_documents,
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), "ds-1")
+                method(api, MagicMock(), tenant_id, user, "foreign-dataset")
+
+        bypass_knowledge_rate_limit.assert_not_called()
+        delete_documents.assert_not_called()
 
 
 class TestDocumentBatchIndexingEstimateApi:
@@ -1338,22 +1541,6 @@ class TestDocumentPermissionCases:
             response, status = method(api, MagicMock(), tenant_id, user, "ds-1", "batch-1")
         assert status == 200
         assert response == {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
-
-    def test_document_tenant_mismatch(self, app: Flask):
-        api = DocumentApi()
-        method = unwrap(api.get)
-        user = MagicMock(is_dataset_editor=True)
-        document = MagicMock(tenant_id="other-tenant", dataset_process_rule=None)
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=MagicMock()
-            ),
-            patch("controllers.console.datasets.datasets_document.DocumentService.get_document", return_value=document),
-            patch("controllers.console.datasets.datasets_document.DatasetService.get_process_rules", return_value={}),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", user, "ds-1", "doc-1")
 
     def test_process_rule_get_by_document_success(self, app: Flask, patch_tenant):
         api = GetProcessRuleApi()
