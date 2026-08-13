@@ -1,5 +1,5 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 type CurrSegmentType = {
   segInfo?: SegmentDetailModel
@@ -15,7 +15,7 @@ type CurrChildChunkType = {
 type UseModalStateReturn = {
   currSegment: CurrSegmentType
   onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
-  onCloseSegmentDetail: () => void
+  onCloseSegmentDetail: (expectedSegmentId?: string) => void
   currChildChunk: CurrChildChunkType
   currChunkId: string
   onClickSlice: (detail: ChildChunkDetail) => void
@@ -38,28 +38,46 @@ type UseModalStateOptions = {
 export const useModalState = (options: UseModalStateOptions): UseModalStateReturn => {
   const { onNewSegmentModalChange } = options
 
-  const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
+  const initialCurrSegment: CurrSegmentType = { showModal: false }
+  const [currSegment, setCurrSegment] = useState<CurrSegmentType>(initialCurrSegment)
+  const currSegmentRef = useRef<CurrSegmentType>(initialCurrSegment)
   const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })
   const [currChunkId, setCurrChunkId] = useState('')
   const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
   const [fullScreen, setFullScreen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
 
-  const onClickCard = useCallback((detail: SegmentDetailModel, isEditMode = false) => {
-    setCurrChildChunk({ showModal: false })
-    setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
+  const updateCurrSegment = useCallback((nextSegment: CurrSegmentType) => {
+    currSegmentRef.current = nextSegment
+    setCurrSegment(nextSegment)
   }, [])
 
-  const onCloseSegmentDetail = useCallback(() => {
-    setCurrSegment({ showModal: false })
-    setFullScreen(false)
-  }, [])
+  const onClickCard = useCallback(
+    (detail: SegmentDetailModel, isEditMode = false) => {
+      setCurrChildChunk({ showModal: false })
+      updateCurrSegment({ segInfo: detail, showModal: true, isEditMode })
+    },
+    [updateCurrSegment],
+  )
 
-  const onClickSlice = useCallback((detail: ChildChunkDetail) => {
-    setCurrSegment({ showModal: false })
-    setCurrChildChunk({ childChunkInfo: detail, showModal: true })
-    setCurrChunkId(detail.segment_id)
-  }, [])
+  const onCloseSegmentDetail = useCallback(
+    (expectedSegmentId?: string) => {
+      if (expectedSegmentId && currSegmentRef.current.segInfo?.id !== expectedSegmentId) return
+
+      updateCurrSegment({ showModal: false })
+      setFullScreen(false)
+    },
+    [updateCurrSegment],
+  )
+
+  const onClickSlice = useCallback(
+    (detail: ChildChunkDetail) => {
+      updateCurrSegment({ showModal: false })
+      setCurrChildChunk({ childChunkInfo: detail, showModal: true })
+      setCurrChunkId(detail.segment_id)
+    },
+    [updateCurrSegment],
+  )
 
   const onCloseChildSegmentDetail = useCallback(() => {
     setCurrChildChunk({ showModal: false })

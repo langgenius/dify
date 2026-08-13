@@ -692,6 +692,7 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockUpdateSegment).toHaveBeenCalled()
+      expect(onCloseSegmentDetail).toHaveBeenCalledWith('seg-1')
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',

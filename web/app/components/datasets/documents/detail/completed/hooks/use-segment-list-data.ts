@@ -32,7 +32,7 @@ type UseSegmentListDataOptions = {
   importStatus: SegmentImportStatus | undefined
   currentPage: number
   limit: number
-  onCloseSegmentDetail: () => void
+  onCloseSegmentDetail: (expectedSegmentId?: string) => void
   clearSelection: () => void
 }
 type UseSegmentListDataReturn = {
@@ -294,7 +294,7 @@ export const useSegmentListData = (
         {
           onSuccess(res) {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            if (!needRegenerate) onCloseSegmentDetail()
+            if (!needRegenerate) onCloseSegmentDetail(segmentId)
             updateSegmentInCache(segmentId, (seg) => ({
               ...seg,
               answer: res.data.answer,

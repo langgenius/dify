@@ -700,6 +700,7 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.ModelManager") as model_manager_cls,
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
+            patch("services.dataset_service.cancel_segment_summary_regeneration") as cancel_summary_regeneration,
         ):
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model_instance
@@ -721,6 +722,7 @@ class TestSegmentServiceMutations:
             True,
             session=session,
         )
+        cancel_summary_regeneration.assert_called_once_with(segment.id)
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
@@ -742,9 +744,7 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-1"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
-            patch(
-                "services.summary_index_service.SummaryIndexService.generate_and_vectorize_summary"
-            ) as generate_summary,
+            patch("services.dataset_service.schedule_segment_summary_regeneration") as schedule_summary,
         ):
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
@@ -760,7 +760,7 @@ class TestSegmentServiceMutations:
         assert segment.tokens == 9
         assert document.word_count == 18
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset, session=session)
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
+        schedule_summary.assert_called_once_with(segment, dataset, existing_summary, session=session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
     def test_update_segment_regenerates_summary_when_manual_summary_is_unchanged(self, account_context):
@@ -781,9 +781,7 @@ class TestSegmentServiceMutations:
             patch("services.dataset_service.VectorService") as vector_service,
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-2"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
-            patch(
-                "services.summary_index_service.SummaryIndexService.generate_and_vectorize_summary"
-            ) as generate_summary,
+            patch("services.dataset_service.schedule_segment_summary_regeneration") as schedule_summary,
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
         ):
             mock_redis.get.return_value = None
@@ -795,7 +793,7 @@ class TestSegmentServiceMutations:
             result = SegmentService.update_segment(args, segment, document, dataset, session)
 
         assert result is refreshed_segment
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=session)
+        schedule_summary.assert_called_once_with(segment, dataset, existing_summary, session=session)
         update_summary.assert_not_called()
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 
@@ -1072,6 +1070,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             patch("services.dataset_service.helper.generate_text_hash", return_value="hash-parent"),
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.summary_index_service.SummaryIndexService.update_summary_for_segment") as update_summary,
+            patch("services.dataset_service.cancel_segment_summary_regeneration") as cancel_summary_regeneration,
         ):
             mock_redis.get.return_value = None
             model_manager_cls.for_tenant.return_value.get_default_model_instance.return_value = embedding_model_instance
@@ -1104,6 +1103,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             True,
             session=session,
         )
+        cancel_summary_regeneration.assert_called_once_with(segment.id)
         update_summary.assert_called_once_with(segment, dataset, "new summary", session=session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, session=session)
 

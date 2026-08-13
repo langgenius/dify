@@ -270,10 +270,12 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Summary Status', () => {
-    it('should render SummaryStatus when summary_index_status is present', () => {
-      const doc = createMockDoc({ summary_index_status: 'completed' })
+    it('should always render the generating summary status without requiring hover', () => {
+      const doc = createMockDoc({ summary_index_status: 'SUMMARIZING' })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
+      const status = screen.getByText(/list\.summary\.generating/)
+      expect(status).toBeVisible()
+      expect(status.parentElement).not.toHaveClass('hidden')
     })
 
     it('should not render SummaryStatus when summary_index_status is absent', () => {

@@ -102,6 +102,10 @@ from tasks.disable_segments_from_index_task import disable_segments_from_index_t
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
+from tasks.regenerate_segment_summary_task import (
+    cancel_segment_summary_regeneration,
+    schedule_segment_summary_regeneration,
+)
 from tasks.regenerate_summary_index_task import regenerate_summary_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
@@ -3687,6 +3691,7 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
+                                cancel_segment_summary_regeneration(segment.id)
                                 SummaryIndexService.update_summary_for_segment(
                                     segment,
                                     dataset,
@@ -3780,27 +3785,18 @@ class SegmentService:
                     )
 
                     if args.summary is None:
-                        # User didn't provide summary, auto-regenerate if segment previously had summary
-                        # Auto-regeneration only happens if summary_index_setting exists and enable is True
+                        # User didn't provide summary, regenerate after the edit debounce window.
                         if (
                             existing_summary
                             and dataset.summary_index_setting
                             and dataset.summary_index_setting.get("enable") is True
                         ):
-                            # Segment previously had summary, regenerate it with new content
-                            from services.summary_index_service import SummaryIndexService
-
-                            try:
-                                SummaryIndexService.generate_and_vectorize_summary(
-                                    segment,
-                                    dataset,
-                                    dataset.summary_index_setting,
-                                    session=session,
-                                )
-                                logger.info("Auto-regenerated summary for segment %s after content change", segment.id)
-                            except Exception:
-                                logger.exception("Failed to auto-regenerate summary for segment %s", segment.id)
-                                # Don't fail the entire update if summary regeneration fails
+                            schedule_segment_summary_regeneration(
+                                segment,
+                                dataset,
+                                existing_summary,
+                                session=session,
+                            )
                     else:
                         # User provided summary, check if it has changed
                         # Manual summary updates are allowed even if summary_index_setting doesn't exist
@@ -3810,6 +3806,7 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
+                                cancel_segment_summary_regeneration(segment.id)
                                 SummaryIndexService.update_summary_for_segment(
                                     segment,
                                     dataset,
@@ -3821,29 +3818,18 @@ class SegmentService:
                                 logger.exception("Failed to update summary for segment %s", segment.id)
                                 # Don't fail the entire update if summary update fails
                         else:
-                            # Summary hasn't changed, regenerate based on new content
-                            # Auto-regeneration only happens if summary_index_setting exists and enable is True
+                            # Summary hasn't changed, regenerate after the edit debounce window.
                             if (
                                 existing_summary
                                 and dataset.summary_index_setting
                                 and dataset.summary_index_setting.get("enable") is True
                             ):
-                                from services.summary_index_service import SummaryIndexService
-
-                                try:
-                                    SummaryIndexService.generate_and_vectorize_summary(
-                                        segment,
-                                        dataset,
-                                        dataset.summary_index_setting,
-                                        session=session,
-                                    )
-                                    logger.info(
-                                        "Regenerated summary for segment %s after content change (summary unchanged)",
-                                        segment.id,
-                                    )
-                                except Exception:
-                                    logger.exception("Failed to regenerate summary for segment %s", segment.id)
-                                    # Don't fail the entire update if summary regeneration fails
+                                schedule_segment_summary_regeneration(
+                                    segment,
+                                    dataset,
+                                    existing_summary,
+                                    session=session,
+                                )
             # update multimodel vector index
             VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset, session=session)
         except Exception as e:
