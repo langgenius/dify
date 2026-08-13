@@ -10,7 +10,7 @@ import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) =>
-  tag.name.includes(query)
+  tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 
