@@ -23,7 +23,11 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  useDocumentTitle(showSuccess ? t(($) => $.passwordChangedTip, { ns: 'login' }) : null)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)

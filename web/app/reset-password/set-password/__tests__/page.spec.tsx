@@ -75,10 +75,10 @@ describe('Reset Password Set Password Page', () => {
     setSearchParams({ token: 'reset-token' })
   })
 
-  it('leaves the initial title to route metadata', () => {
+  it('reconciles the initial route title with client branding', () => {
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith(null)
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
   })
 
   describe('Post-reset navigation', () => {

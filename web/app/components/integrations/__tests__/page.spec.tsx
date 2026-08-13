@@ -377,6 +377,12 @@ describe('IntegrationsPage', () => {
     expect(document.title).toBe('Workspace settings - Dify')
   })
 
+  it('reconciles the route title with client branding', () => {
+    renderIntegrationsPage(undefined, { section: 'provider', syncDocumentTitle: true })
+
+    expect(document.title).toBe('common.settings.provider · common.mainNav.integrations - Dify')
+  })
+
   it('renders the model provider section from the section query', () => {
     renderIntegrationsPage({ section: 'provider' })
 

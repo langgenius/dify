@@ -37,10 +37,10 @@ describe('Webapp Reset Password Set Password Page', () => {
     vi.mocked(changeWebAppPasswordWithToken).mockResolvedValue({ result: 'success' })
   })
 
-  it('uses route metadata initially and updates the title after a successful reset', async () => {
+  it('reconciles the route title initially and updates it after a successful reset', async () => {
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenCalledWith(null)
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
 
     fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
       target: { value: 'ValidPass123!' },

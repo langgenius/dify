@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import RosterPage from '../page'
 
 vi.mock('@/context/i18n', () => ({
@@ -34,16 +35,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    agent: {
-      get: {
-        infiniteOptions: (options: object) => options,
-      },
-    },
-  },
-}))
-
 vi.mock('../components/agent-roster-list', () => ({
   AgentRosterList: () => <div>Agent roster</div>,
 }))
@@ -61,5 +52,18 @@ describe('RosterPage', () => {
     render(<RosterPage />)
 
     expect(screen.getByRole('heading', { name: 'agentV2.roster.title' })).toBeInTheDocument()
+  })
+
+  it('reconciles the route title with client branding', () => {
+    render(<RosterPage />, {
+      systemFeatures: {
+        branding: {
+          enabled: true,
+          application_title: 'Acme',
+        },
+      },
+    })
+
+    expect(document.title).toBe('agentV2.roster.title - Acme')
   })
 })

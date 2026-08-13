@@ -21,6 +21,7 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -40,6 +41,13 @@ type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
   onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
+  syncDocumentTitle?: boolean
+}
+
+const IntegrationsDocumentTitle = ({ title }: { title: string }) => {
+  useDocumentTitle(title)
+
+  return null
 }
 
 const headerDescriptionDocPaths = {
@@ -115,6 +123,7 @@ export default function IntegrationsPage({
   onSectionChange,
   onSwitchToMarketplace,
   section: routeSection,
+  syncDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -241,6 +250,9 @@ export default function IntegrationsPage({
       className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg"
       style={sidebarWidthStyle}
     >
+      {syncDocumentTitle && (
+        <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
+      )}
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
