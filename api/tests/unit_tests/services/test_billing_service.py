@@ -220,9 +220,7 @@ class TestBillingServiceSendRequest:
         call_args = mock_httpx_request.call_args
         assert call_args[0][0] == method
 
-    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(
-        self, mock_httpx_request, mock_billing_config
-    ):
+    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(self, mock_httpx_request, mock_billing_config):
         mock_response = MagicMock()
         mock_response.status_code = httpx.codes.OK
         mock_response.json.return_value = {"status": "issued"}
