@@ -7736,6 +7736,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| visibility | query | Visibility for the OAuth credential. Defaults to 'only_me'. | No | string, <br>**Available values:** "all_team_members", "only_me" |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -22626,6 +22627,12 @@ Tool label
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolLabelListResponse | array |  |  |
+
+#### ToolOAuthAuthorizationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| visibility | string | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
 
 #### ToolOAuthCustomClientPayload
 
