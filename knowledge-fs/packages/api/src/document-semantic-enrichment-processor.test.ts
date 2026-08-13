@@ -55,6 +55,7 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
       ["maxNodesPerArtifact", { maxNodesPerArtifact: 0 }],
       ["maxOutputTokens", { maxOutputTokens: 0 }],
       ["maxRelationsPerNode", { maxRelationsPerNode: 0 }],
+      ["nodeListPageSize", { nodeListPageSize: 0 }],
       ["providerBatchSize", { providerBatchSize: 0 }],
     ] as const) {
       expect(() =>
@@ -73,6 +74,7 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
       ["maxEntitiesPerNode", { maxEntitiesPerNode: 0 }],
       ["maxNodesPerArtifact", { maxNodesPerArtifact: 0 }],
       ["maxRelationsPerNode", { maxRelationsPerNode: 0 }],
+      ["nodeListPageSize", { nodeListPageSize: 0 }],
     ] as const) {
       expect(() =>
         createJointSemanticGraphMaterializer({ ...baseMaterializer, ...override }),
@@ -185,7 +187,7 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
   it("batches 80 nodes into at most 20 requests, checkpoints them, and preserves published nodes", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 100,
-      maxListLimit: 100,
+      maxListLimit: 25,
       maxNodes: 100,
     });
     const originals = Array.from({ length: 80 }, (_, index) => knowledgeNode(index));
@@ -205,6 +207,7 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
       maxNodesPerArtifact: 100,
       maxOutputTokens: 1_500,
       maxRelationsPerNode: 8,
+      nodeListPageSize: 25,
       nodes,
       now: () => createdAt,
       providerBatchSize: 8,
@@ -229,13 +232,12 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
     });
     expect(graphEntities.items).toHaveLength(160);
 
-    const persisted = await nodes.listByArtifact({
+    const persisted = await nodes.getMany({
+      ids: originals.map((node) => node.id),
       knowledgeSpaceId,
-      limit: 100,
-      parseArtifactId,
       publicationGenerationId,
     });
-    expect(persisted.items).toEqual(originals);
+    expect(persisted).toEqual(originals);
 
     await expect(processor.process(job)).resolves.toMatchObject({
       graphEntitiesIndexed: 160,
@@ -448,10 +450,10 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
     ).rejects.toThrow("metadata does not match the frozen reasoning model");
   });
 
-  it("indexes joint semantic-chunk metadata without a second model request", async () => {
+  it("pages joint semantic nodes within the production repository limit", async () => {
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 10,
-      maxListLimit: 10,
+      maxListLimit: 100,
       maxNodes: 10,
     });
     let chunkingCalls = 0;
@@ -559,7 +561,8 @@ describe("createDocumentSemanticEnrichmentProcessor", () => {
       createJointSemanticGraphMaterializer({
         graph,
         maxEntitiesPerNode: 8,
-        maxNodesPerArtifact: 10,
+        // Production allows 20,000 nodes per document while the repository admits 100 per page.
+        maxNodesPerArtifact: 20_000,
         maxRelationsPerNode: 8,
         nodes,
         now: () => createdAt,

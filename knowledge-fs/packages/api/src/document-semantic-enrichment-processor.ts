@@ -72,6 +72,7 @@ export interface JointSemanticGraphMaterializerOptions {
   readonly maxEntitiesPerNode: number;
   readonly maxNodesPerArtifact: number;
   readonly maxRelationsPerNode: number;
+  readonly nodeListPageSize?: number | undefined;
   readonly nodes: Pick<KnowledgeNodeRepository, "listByArtifact">;
   readonly now?: (() => string) | undefined;
 }
@@ -85,6 +86,7 @@ export interface DocumentSemanticEnrichmentProcessorOptions {
   readonly maxOutputTokens: number;
   readonly maxRelationsPerNode: number;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly nodeListPageSize?: number | undefined;
   readonly nodes: Pick<KnowledgeNodeRepository, "listByArtifact">;
   readonly now?: (() => string) | undefined;
   readonly providerBatchSize: number;
@@ -95,6 +97,7 @@ export interface DocumentSemanticEnrichmentProcessorOptions {
 
 const entityPromptVersion = "entity-extraction-v1";
 const relationPromptVersion = "relation-extraction-v1";
+const defaultNodeListPageSize = 100;
 
 /**
  * Builds graph rows from checkpoint-decorated node copies. Published KnowledgeNode rows remain
@@ -109,6 +112,7 @@ export function createDocumentSemanticEnrichmentProcessor({
   maxOutputTokens,
   maxRelationsPerNode,
   modelRequestGate,
+  nodeListPageSize = Math.min(maxNodesPerArtifact, defaultNodeListPageSize),
   nodes,
   now = () => new Date().toISOString(),
   providerBatchSize,
@@ -120,6 +124,7 @@ export function createDocumentSemanticEnrichmentProcessor({
     maxNodesPerArtifact,
     maxOutputTokens,
     maxRelationsPerNode,
+    nodeListPageSize,
     providerBatchSize,
   })) {
     if (!Number.isSafeInteger(value) || value < 1) {
@@ -130,18 +135,16 @@ export function createDocumentSemanticEnrichmentProcessor({
   return {
     process: async (job) => {
       const generationId = PublicationGenerationIdSchema.parse(job.publicationGenerationId);
-      const page = await nodes.listByArtifact({
+      const originalNodes = await listArtifactNodesWithinBound({
+        countExceededMessage: `Document semantic enrichment node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
         knowledgeSpaceId: job.knowledgeSpaceId,
-        limit: maxNodesPerArtifact,
+        maxNodes: maxNodesPerArtifact,
+        nodes,
+        pageSize: nodeListPageSize,
         parseArtifactId: job.parseArtifactId,
         publicationGenerationId: generationId,
       });
-      if (page.nextCursor) {
-        throw new Error(
-          `Document semantic enrichment node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
-        );
-      }
-      if (page.items.length === 0) {
+      if (originalNodes.length === 0) {
         return {
           entitiesExtracted: 0,
           graphEntityIds: [],
@@ -158,7 +161,6 @@ export function createDocumentSemanticEnrichmentProcessor({
       if (!selection) {
         throw new Error("Document semantic enrichment requires a frozen reasoning model");
       }
-      const originalNodes = page.items.map(cloneKnowledgeNode);
       const jointSemanticNodes = originalNodes.filter(hasValidLlmSemanticJointExtraction);
       if (jointSemanticNodes.length > 0) {
         if (jointSemanticNodes.length !== originalNodes.length) {
@@ -265,6 +267,7 @@ export function createJointSemanticGraphMaterializer({
   maxEntitiesPerNode,
   maxNodesPerArtifact,
   maxRelationsPerNode,
+  nodeListPageSize = Math.min(maxNodesPerArtifact, defaultNodeListPageSize),
   nodes,
   now = () => new Date().toISOString(),
 }: JointSemanticGraphMaterializerOptions): JointSemanticGraphMaterializer {
@@ -272,6 +275,7 @@ export function createJointSemanticGraphMaterializer({
     maxEntitiesPerNode,
     maxNodesPerArtifact,
     maxRelationsPerNode,
+    nodeListPageSize,
   })) {
     if (!Number.isSafeInteger(value) || value < 1) {
       throw new Error(`Joint semantic Graph ${name} must be at least 1`);
@@ -280,18 +284,16 @@ export function createJointSemanticGraphMaterializer({
   return {
     materialize: async (input) => {
       const generationId = PublicationGenerationIdSchema.parse(input.publicationGenerationId);
-      const page = await nodes.listByArtifact({
+      const prepared = await listArtifactNodesWithinBound({
+        countExceededMessage: `Joint semantic Graph node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
         knowledgeSpaceId: input.knowledgeSpaceId,
-        limit: maxNodesPerArtifact,
+        maxNodes: maxNodesPerArtifact,
+        nodes,
+        pageSize: nodeListPageSize,
         parseArtifactId: input.parseArtifactId,
         publicationGenerationId: generationId,
       });
-      if (page.nextCursor) {
-        throw new Error(
-          `Joint semantic Graph node count exceeds maxNodesPerArtifact=${maxNodesPerArtifact}`,
-        );
-      }
-      if (page.items.length === 0) {
+      if (prepared.length === 0) {
         return {
           entitiesExtracted: 0,
           graphEntityIds: [],
@@ -303,7 +305,6 @@ export function createJointSemanticGraphMaterializer({
           semanticProviderCallsMaximum: 0,
         };
       }
-      const prepared = page.items.map(cloneKnowledgeNode);
       if (prepared.some((node) => !hasValidLlmSemanticJointExtraction(node))) {
         throw new Error("Joint semantic Graph refuses a legacy or invalid node generation");
       }
@@ -332,6 +333,44 @@ export function createJointSemanticGraphMaterializer({
       });
     },
   };
+}
+
+async function listArtifactNodesWithinBound({
+  countExceededMessage,
+  knowledgeSpaceId,
+  maxNodes,
+  nodes,
+  pageSize,
+  parseArtifactId,
+  publicationGenerationId,
+}: {
+  readonly countExceededMessage: string;
+  readonly knowledgeSpaceId: string;
+  readonly maxNodes: number;
+  readonly nodes: Pick<KnowledgeNodeRepository, "listByArtifact">;
+  readonly pageSize: number;
+  readonly parseArtifactId: string;
+  readonly publicationGenerationId: string;
+}): Promise<KnowledgeNode[]> {
+  const collected: KnowledgeNode[] = [];
+  let cursor: Awaited<ReturnType<KnowledgeNodeRepository["listByArtifact"]>>["nextCursor"];
+
+  do {
+    const page = await nodes.listByArtifact({
+      ...(cursor ? { cursor } : {}),
+      knowledgeSpaceId,
+      limit: Math.min(pageSize, maxNodes - collected.length),
+      parseArtifactId,
+      publicationGenerationId,
+    });
+    collected.push(...page.items.map(cloneKnowledgeNode));
+    cursor = page.nextCursor;
+    if (collected.length > maxNodes || (cursor && collected.length >= maxNodes)) {
+      throw new Error(countExceededMessage);
+    }
+  } while (cursor);
+
+  return collected;
 }
 
 function jointSemanticModelSelection(node: KnowledgeNode): unknown {
