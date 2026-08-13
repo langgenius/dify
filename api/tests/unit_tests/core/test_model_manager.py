@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -77,6 +79,7 @@ def _build_model_manager_bundle(
     *,
     provider_type: ProviderType,
     restrict_models: list[RestrictModel],
+    model_type: ModelType = ModelType.LLM,
 ) -> tuple[ModelManager, MagicMock]:
     provider_manager = MagicMock()
     bundle = MagicMock()
@@ -96,7 +99,7 @@ def _build_model_manager_bundle(
         )
     ]
     bundle.configuration.get_current_credentials.return_value = {"api_key": "hosted"}
-    bundle.model_type_instance.model_type = ModelType.LLM
+    bundle.model_type_instance.model_type = model_type
     provider_manager.get_provider_model_bundle.return_value = bundle
     return ModelManager(provider_manager), bundle
 
@@ -110,6 +113,33 @@ def test_model_manager_wraps_allowlisted_system_llm() -> None:
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
 
     assert isinstance(model_instance, QuotaManagedModelInstance)
+
+
+@pytest.mark.parametrize("model_type", list(ModelType))
+def test_model_manager_wraps_every_system_model_type(model_type: ModelType) -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="hosted-model", model_type=model_type)],
+        model_type=model_type,
+    )
+
+    model_instance = manager.get_model_instance("tenant-1", "openai", model_type, "hosted-model")
+
+    assert isinstance(model_instance, QuotaManagedModelInstance)
+
+
+def test_model_manager_does_not_wrap_custom_non_llm_model() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.CUSTOM,
+        restrict_models=[],
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+
+    model_instance = manager.get_model_instance(
+        "tenant-1", "openai", ModelType.TEXT_EMBEDDING, "text-embedding-3-small"
+    )
+
+    assert type(model_instance) is ModelInstance
 
 
 def test_model_manager_rejects_system_model_by_exact_name() -> None:
@@ -273,6 +303,162 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
         next(model_instance.invoke_llm(prompt_messages=[], stream=True))
 
     reservation.release.assert_called_once_with()
+
+
+@pytest.mark.parametrize(
+    ("model_type", "method_name", "invoke_model"),
+    [
+        (
+            ModelType.TEXT_EMBEDDING,
+            "invoke_text_embedding",
+            lambda model_instance: model_instance.invoke_text_embedding(texts=["hello"]),
+        ),
+        (
+            ModelType.TEXT_EMBEDDING,
+            "invoke_multimodal_embedding",
+            lambda model_instance: model_instance.invoke_multimodal_embedding(
+                multimodel_documents=[{"content": "image"}]
+            ),
+        ),
+        (
+            ModelType.RERANK,
+            "invoke_rerank",
+            lambda model_instance: model_instance.invoke_rerank(query="hello", docs=["document"]),
+        ),
+        (
+            ModelType.RERANK,
+            "invoke_multimodal_rerank",
+            lambda model_instance: model_instance.invoke_multimodal_rerank(query=MagicMock(), docs=[MagicMock()]),
+        ),
+        (
+            ModelType.MODERATION,
+            "invoke_moderation",
+            lambda model_instance: model_instance.invoke_moderation(text="hello"),
+        ),
+        (
+            ModelType.SPEECH2TEXT,
+            "invoke_speech2text",
+            lambda model_instance: model_instance.invoke_speech2text(file=BytesIO(b"audio")),
+        ),
+    ],
+)
+def test_quota_managed_non_llm_invocation_finalizes_reservation(
+    model_type: ModelType,
+    method_name: str,
+    invoke_model: Callable[[ModelInstance], object],
+) -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="hosted-model", model_type=model_type)],
+        model_type=model_type,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", model_type, "hosted-model")
+    result = MagicMock()
+    reservation = MagicMock()
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, method_name, return_value=result) as invoke,
+    ):
+        response = invoke_model(model_instance)
+
+    assert response is result
+    invoke.assert_called_once()
+    reservation.commit.assert_called_once_with()
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_non_llm_invocation_releases_when_provider_fails() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="embedding-model", model_type=ModelType.TEXT_EMBEDDING)],
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model")
+    reservation = MagicMock()
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_text_embedding", side_effect=RuntimeError("provider failed")),
+        pytest.raises(RuntimeError, match="provider failed"),
+    ):
+        model_instance.invoke_text_embedding(texts=["hello"])
+
+    reservation.commit.assert_not_called()
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_tts_commits_before_first_chunk() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+    events: list[str] = []
+    reservation.commit.side_effect = lambda: events.append("commit")
+
+    def provider_stream():
+        events.append("provider")
+        yield b"audio"
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=provider_stream()),
+    ):
+        response = iter(model_instance.invoke_tts(content_text="hello", voice="voice"))
+        assert next(response) == b"audio"
+        events.append("delivered")
+        with pytest.raises(StopIteration):
+            next(response)
+
+    assert events == ["provider", "commit", "delivered"]
+    reservation.commit.assert_called_once_with()
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="tts-model", model_type=ModelType.TTS)],
+        model_type=ModelType.TTS,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+    reservation = MagicMock()
+
+    def failing_stream():
+        raise RuntimeError("provider failed")
+        yield b""
+
+    with (
+        patch.object(model_instance, "reserve_quota", return_value=reservation),
+        patch.object(ModelInstance, "invoke_tts", return_value=failing_stream()),
+        pytest.raises(RuntimeError, match="provider failed"),
+    ):
+        list(model_instance.invoke_tts(content_text="hello"))
+
+    reservation.commit.assert_not_called()
+    reservation.release.assert_called_once_with()
+
+
+def test_quota_managed_non_inference_helper_does_not_reserve_quota() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[RestrictModel(model="embedding-model", model_type=ModelType.TEXT_EMBEDDING)],
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TEXT_EMBEDDING, "embedding-model")
+
+    with (
+        patch.object(model_instance, "reserve_quota") as reserve,
+        patch.object(ModelInstance, "get_text_embedding_num_tokens", return_value=[1]) as count_tokens,
+    ):
+        result = model_instance.get_text_embedding_num_tokens(["hello"])
+
+    assert result == [1]
+    count_tokens.assert_called_once_with(["hello"])
+    reserve.assert_not_called()
 
 
 def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):
