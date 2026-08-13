@@ -555,6 +555,75 @@ def test_capacity_window_mapping_accepts_sixty_phase_offset_samples() -> None:
     assert mapped.error is None
 
 
+def test_capacity_window_mapping_accepts_ninety_percent_bounded_remote_coverage() -> None:
+    measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
+    measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
+    omitted_offsets = {10, 11, 20, 30, 40, 50}
+    samples = [
+        _sample(10, 5, "ok").model_copy(
+            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
+        )
+        for offset in range(1, 61)
+        if offset not in omitted_offsets
+    ]
+
+    mapped = observer_module.capacity_e2b_observation_for_window(
+        samples,
+        measurement_started_at=measurement_started_at,
+        measurement_ended_at=measurement_ended_at,
+    )
+
+    assert mapped.sample_count == 54
+    assert mapped.successful_sample_count == 54
+    assert mapped.observation_complete is True
+    assert mapped.error is None
+
+
+def test_capacity_window_mapping_rejects_less_than_ninety_percent_coverage() -> None:
+    measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
+    measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
+    omitted_offsets = {10, 11, 20, 30, 40, 50, 55}
+    samples = [
+        _sample(10, 5, "ok").model_copy(
+            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
+        )
+        for offset in range(1, 61)
+        if offset not in omitted_offsets
+    ]
+
+    mapped = observer_module.capacity_e2b_observation_for_window(
+        samples,
+        measurement_started_at=measurement_started_at,
+        measurement_ended_at=measurement_ended_at,
+    )
+
+    assert mapped.sample_count == 53
+    assert mapped.observation_complete is False
+    assert mapped.error == "incomplete_samples"
+
+
+def test_capacity_window_mapping_rejects_a_long_remote_observation_blackout() -> None:
+    measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
+    measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
+    samples = [
+        _sample(10, 5, "ok").model_copy(
+            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
+        )
+        for offset in range(1, 61)
+        if offset not in {10, 11, 12}
+    ]
+
+    mapped = observer_module.capacity_e2b_observation_for_window(
+        samples,
+        measurement_started_at=measurement_started_at,
+        measurement_ended_at=measurement_ended_at,
+    )
+
+    assert mapped.sample_count == 57
+    assert mapped.observation_complete is False
+    assert mapped.error == "incomplete_samples"
+
+
 def test_capacity_window_mapping_tolerates_remote_poll_jitter_without_hiding_a_gap() -> None:
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=3)
@@ -602,7 +671,7 @@ def test_capacity_window_mapping_tolerates_one_missed_poll_in_sixty_seconds() ->
     assert mapped.error is None
 
 
-def test_capacity_window_mapping_rejects_two_missed_polls_in_sixty_seconds() -> None:
+def test_capacity_window_mapping_accepts_two_isolated_missed_polls_in_sixty_seconds() -> None:
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, milliseconds=8)
     samples = [
@@ -620,8 +689,8 @@ def test_capacity_window_mapping_rejects_two_missed_polls_in_sixty_seconds() -> 
     )
 
     assert mapped.sample_count == 58
-    assert mapped.observation_complete is False
-    assert mapped.error == "incomplete_samples"
+    assert mapped.observation_complete is True
+    assert mapped.error is None
 
 
 def test_sample_schema_rejects_counts_on_failure_and_missing_counts_on_success() -> None:
