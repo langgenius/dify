@@ -179,8 +179,8 @@ def recover_unjournaled_staging_public_allocations(
         },
     )
     try:
-        value = cast(object, json.loads(raw))
-    except (TypeError, json.JSONDecodeError) as exc:
+        value = _parse_private_probe_json_object(raw)
+    except RuntimeError as exc:
         _write_private_json(
             private_manifest_path,
             {
@@ -621,7 +621,7 @@ def _capture_targets(
         script=_CAPTURE_TARGETS_SCRIPT,
         payload={"conversation_ids": [item.conversation_id for item in allocations]},
     )
-    value = json.loads(raw)
+    value = _parse_private_probe_json_object(raw)
     rows = value.get("targets") if isinstance(value, dict) else None
     if not isinstance(rows, list):
         raise RuntimeError("private resource capture returned an invalid response")
@@ -696,7 +696,7 @@ def _wait_for_joint_zero(
                     "binding_ids": [item.binding_id for item in targets],
                 },
             )
-            value = json.loads(raw)
+            value = _parse_private_probe_json_object(raw)
             if not isinstance(value, dict) or any(
                 isinstance(value.get(key), bool) or not isinstance(value.get(key), int) or value[key] < 0
                 for key in latest
@@ -796,6 +796,29 @@ def _exec_private_probe(
         ),
         json.dumps(payload, separators=(",", ":"), sort_keys=True),
     )
+
+
+def _parse_private_probe_json_object(raw: str) -> dict[str, Any]:
+    """Read the final JSON object emitted by an API-Pod probe.
+
+    Importing the API application can write framework or provider diagnostics to
+    stdout before the probe's final ``print(json.dumps(...))``.  Those lines are
+    not probe data.  Accepting only the final non-empty line keeps the wire
+    contract strict while allowing the intentional final JSON result through.
+    """
+
+    if not isinstance(raw, str):
+        raise RuntimeError("private probe returned an invalid response")
+    last_line = next((line for line in reversed(raw.splitlines()) if line.strip()), None)
+    if last_line is None:
+        raise RuntimeError("private probe returned an invalid response")
+    try:
+        value = cast(object, json.loads(last_line))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("private probe returned an invalid response") from exc
+    if not isinstance(value, dict):
+        raise RuntimeError("private probe returned an invalid response")
+    return cast(dict[str, Any], value)
 
 
 def _write_private_manifest(

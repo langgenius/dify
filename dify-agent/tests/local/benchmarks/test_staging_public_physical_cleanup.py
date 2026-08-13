@@ -9,6 +9,7 @@ from pydantic import SecretStr
 
 from benchmarks.staging_public_physical_cleanup import (
     _CAPTURE_TARGETS_SCRIPT,
+    _parse_private_probe_json_object,
     _RECOVER_ALLOCATIONS_SCRIPT,
     StagingVendorRemainingSample,
     recover_unjournaled_staging_public_allocations,
@@ -362,6 +363,39 @@ def test_parent_recovers_unjournaled_cold_post_allocation_in_exact_worker_scope(
         "worker_index": 1,
     }
     assert all("conversation-1" not in " ".join(argv) for argv, _stdin in calls)
+
+
+def test_allocation_recovery_accepts_api_initialization_output_before_final_json(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    recovery_manifest = tmp_path / "private" / "allocation-recovery.json"
+    _journal_indices(journal, (0,))
+
+    def runner(argv, stdin):
+        if "get" in argv and "pods" in argv:
+            return _runner([])(argv, stdin)
+        assert stdin is not None
+        scope = json.loads(stdin)["scopes"][0]
+        return "framework initialization diagnostic\n" + json.dumps(
+            {"allocations": [{"conversation_id": "conversation-0", "end_user": scope["end_user"]}]}
+        )
+
+    result = recover_unjournaled_staging_public_allocations(
+        allocation_journal_path=journal,
+        private_manifest_path=recovery_manifest,
+        invocation_id="scaling.r1.basic.c1",
+        requested_concurrency=1,
+        benchmark_tenant_id="benchmark-tenant",
+        benchmark_agent_id="benchmark-agent",
+        runner=runner,
+    )
+
+    assert result.allocated_count == 1
+    assert result.recovered_count == 0
+
+
+def test_private_probe_parser_rejects_output_after_its_final_json_object() -> None:
+    with pytest.raises(RuntimeError, match="invalid response"):
+        _parse_private_probe_json_object('{"allocations":[]}\nunexpected trailing output')
 
 
 def test_allocation_recovery_retains_private_evidence_and_fails_on_ambiguous_owner(tmp_path: Path) -> None:
