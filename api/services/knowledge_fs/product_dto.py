@@ -1156,6 +1156,26 @@ class KnowledgeFSRetrievalSettingsResponse(ResponseModel):
     revision: int | None = Field(default=None, ge=1)
 
 
+class KnowledgeFSReadinessCapabilities(ResponseModel):
+    deep: bool
+    ingest: bool
+    index: bool
+    source_sync: bool = Field(validation_alias=AliasChoices("source_sync", "sourceSync"))
+    query: bool
+    research: bool
+
+
+class KnowledgeFSReadinessIssue(ResponseModel):
+    field: Literal["embedding", "reasoning", "rerank", "publication"]
+    code: Literal["missing", "unavailable", "incompatible", "validation_failed", "binding_missing"]
+    retryable: bool
+
+
+class KnowledgeFSActiveProfileRevisions(ResponseModel):
+    embedding: int | None = Field(default=None, ge=1)
+    retrieval: int | None = Field(default=None, ge=1)
+
+
 class KnowledgeFSSettingsResponse(ResponseModel):
     revision: int = Field(ge=1)
     configuration_state: Literal["active", "pending-validation", "setup-required", "validation-failed"] = Field(
@@ -1164,7 +1184,12 @@ class KnowledgeFSSettingsResponse(ResponseModel):
     active_profile_available: bool = Field(
         validation_alias=AliasChoices("active_profile_available", "activeProfileAvailable")
     )
+    active_profile_revisions: KnowledgeFSActiveProfileRevisions = Field(
+        validation_alias=AliasChoices("active_profile_revisions", "activeProfileRevisions")
+    )
+    capabilities: KnowledgeFSReadinessCapabilities
     embedding: KnowledgeFSEmbeddingSettingsResponse | None
+    issues: list[KnowledgeFSReadinessIssue]
     retrieval: KnowledgeFSRetrievalSettingsResponse | None
 
 
@@ -3251,6 +3276,7 @@ class KnowledgeFSJWKSResponse(ResponseModel):
 
 
 __all__ = [
+    "KnowledgeFSActiveProfileRevisions",
     "KnowledgeFSAdmittedQueryRequest",
     "KnowledgeFSAnswerTraceResponse",
     "KnowledgeFSAppBindingListResponse",
@@ -3353,6 +3379,8 @@ __all__ = [
     "KnowledgeFSQueryCreatePayload",
     "KnowledgeFSQueryResponse",
     "KnowledgeFSQueryStreamCapabilityResponse",
+    "KnowledgeFSReadinessCapabilities",
+    "KnowledgeFSReadinessIssue",
     "KnowledgeFSRerankIntent",
     "KnowledgeFSResearchTaskCreatePayload",
     "KnowledgeFSResearchTaskLimits",

@@ -37,7 +37,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -47,6 +47,7 @@ import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
+import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, newKnowledgeAddSourcePath } from './routes'
 import {
@@ -991,10 +992,17 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     configureModelSetup,
-    ensureModelSetupReady,
+    ensureModelReady,
+    modelReadiness,
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
+  const ensureSourceSyncReady = useCallback(
+    async () =>
+      (await ensureModelReady({ capability: 'source_sync', intent: 'source-sync' })).status ===
+      'ready',
+    [ensureModelReady],
+  )
   const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
@@ -1177,6 +1185,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           </Button>
         )}
       </header>
+      <KnowledgeModelReadinessBanner
+        capability="source_sync"
+        className="mt-4"
+        knowledgeSpaceId={knowledgeSpaceId}
+      />
       {waitingForInitialSource && sources.length > 0 && (
         <div
           className="mt-4 flex items-center gap-2 rounded-lg bg-background-section-burn px-3 py-2 system-xs-regular text-text-tertiary"
@@ -1345,7 +1358,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     canEdit={canManageSources}
                     canSync={canManageSources}
                     checked={selectedSourceIds.has(source.id)}
-                    ensureModelSetupReady={ensureModelSetupReady}
+                    ensureModelSetupReady={ensureSourceSyncReady}
                     knowledgeSpaceId={knowledgeSpaceId}
                     source={source}
                     onRemoved={() => {
@@ -1411,6 +1424,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       )}
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
+        readiness={modelReadiness}
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={configureModelSetup}
       />

@@ -1199,6 +1199,14 @@ export const zHumanInputFormSubmitPayloadWithUser = z.object({
 })
 
 /**
+ * KnowledgeFSActiveProfileRevisions
+ */
+export const zKnowledgeFsActiveProfileRevisions = z.object({
+  embedding: z.int().gte(1).nullish(),
+  retrieval: z.int().gte(1).nullish(),
+})
+
+/**
  * KnowledgeFSAnswerTraceStepResponse
  */
 export const zKnowledgeFsAnswerTraceStepResponse = z.object({
@@ -1795,6 +1803,27 @@ export const zKnowledgeFsQueryResponse = z.object({
 })
 
 /**
+ * KnowledgeFSReadinessCapabilities
+ */
+export const zKnowledgeFsReadinessCapabilities = z.object({
+  deep: z.boolean(),
+  index: z.boolean(),
+  ingest: z.boolean(),
+  query: z.boolean(),
+  research: z.boolean(),
+  source_sync: z.boolean(),
+})
+
+/**
+ * KnowledgeFSReadinessIssue
+ */
+export const zKnowledgeFsReadinessIssue = z.object({
+  code: z.enum(['binding_missing', 'incompatible', 'missing', 'unavailable', 'validation_failed']),
+  field: z.enum(['embedding', 'publication', 'reasoning', 'rerank']),
+  retryable: z.boolean(),
+})
+
+/**
  * KnowledgeFSResearchTaskLimits
  */
 export const zKnowledgeFsResearchTaskLimits = z.object({
@@ -1958,6 +1987,9 @@ export const zKnowledgeFsSettingsPayload = z.object({
  * KnowledgeFSSettingsResponse
  */
 export const zKnowledgeFsSettingsResponse = z.object({
+  active_profile_available: z.boolean(),
+  active_profile_revisions: zKnowledgeFsActiveProfileRevisions,
+  capabilities: zKnowledgeFsReadinessCapabilities,
   configuration_state: z.enum([
     'active',
     'pending-validation',
@@ -1965,6 +1997,7 @@ export const zKnowledgeFsSettingsResponse = z.object({
     'validation-failed',
   ]),
   embedding: zKnowledgeFsEmbeddingSettingsResponse.nullable(),
+  issues: z.array(zKnowledgeFsReadinessIssue),
   retrieval: zKnowledgeFsRetrievalSettingsResponse.nullable(),
   revision: z.int().gte(1),
 })

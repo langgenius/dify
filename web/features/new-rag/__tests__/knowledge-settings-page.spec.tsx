@@ -6,6 +6,15 @@ import { render } from '@/test/console/render'
 import { KnowledgeSettingsPage } from '../knowledge-settings-page'
 
 const useQueryOptionsMock = vi.hoisted(() => vi.fn())
+const navigationMock = vi.hoisted(() => ({
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ replace: navigationMock.replace }),
+  useSearchParams: () => navigationMock.searchParams,
+}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
@@ -54,8 +63,19 @@ vi.mock('../knowledge-settings-form', () => ({
 
 const queryData = vi.hoisted(() => ({
   settings: {
+    active_profile_available: true,
+    active_profile_revisions: { embedding: 1, retrieval: 1 },
+    capabilities: {
+      deep: true,
+      index: true,
+      ingest: true,
+      query: true,
+      research: true,
+      source_sync: true,
+    },
     configuration_state: 'active',
     embedding: null,
+    issues: [],
     retrieval: null,
     revision: 1,
   },
@@ -128,6 +148,9 @@ describe('KnowledgeSettingsPage', () => {
     membersQueryMock.isPending = true
     membersQueryMock.refetch.mockClear()
     useQueryOptionsMock.mockClear()
+    navigationMock.replace.mockClear()
+    navigationMock.searchParams = new URLSearchParams()
+    queryData.settings.capabilities.ingest = true
   })
 
   it('keeps the settings form gated while workspace members are loading', async () => {
@@ -223,5 +246,28 @@ describe('KnowledgeSettingsPage', () => {
     })
 
     expect(await screen.findByText('no-conflict')).toBeInTheDocument()
+  })
+
+  it('returns to a validated source page when its blocked capability becomes available', async () => {
+    membersQueryMock.data = { accounts: [] }
+    membersQueryMock.isPending = false
+    navigationMock.searchParams = new URLSearchParams({
+      capability: 'ingest',
+      returnTo: '/datasets/new/space-1/documents',
+    })
+    queryData.settings.capabilities.ingest = false
+    const { queryClient } = renderPage()
+    expect(await screen.findByText('settings-form')).toBeInTheDocument()
+    expect(navigationMock.replace).not.toHaveBeenCalled()
+
+    act(() => {
+      queryClient.setQueryData(['knowledge-fs', 'settings'], {
+        ...queryData.settings,
+        capabilities: { ...queryData.settings.capabilities, ingest: true },
+      })
+    })
+    await waitFor(() =>
+      expect(navigationMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/documents'),
+    )
   })
 })

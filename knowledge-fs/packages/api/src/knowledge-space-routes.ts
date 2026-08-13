@@ -100,6 +100,23 @@ export const BatchKnowledgeSpaceProductSummariesResponseSchema = z
 
 export const KnowledgeSpaceProductSettingsSchema = z
   .object({
+    activeProfileAvailable: z.boolean(),
+    activeProfileRevisions: z
+      .object({
+        embedding: z.number().int().positive().optional(),
+        retrieval: z.number().int().positive().optional(),
+      })
+      .strict(),
+    capabilities: z
+      .object({
+        deep: z.boolean(),
+        index: z.boolean(),
+        ingest: z.boolean(),
+        query: z.boolean(),
+        research: z.boolean(),
+        sourceSync: z.boolean(),
+      })
+      .strict(),
     configurationState: z.enum([
       "active",
       "pending-validation",
@@ -112,6 +129,21 @@ export const KnowledgeSpaceProductSettingsSchema = z
     retrieval: z
       .union([KnowledgeSpaceRetrievalProfileInputSchema, KnowledgeSpaceRetrievalProfileSchema])
       .nullable(),
+    issues: z.array(
+      z
+        .object({
+          code: z.enum([
+            "binding_missing",
+            "incompatible",
+            "missing",
+            "unavailable",
+            "validation_failed",
+          ]),
+          field: z.enum(["embedding", "publication", "reasoning", "rerank"]),
+          retryable: z.boolean(),
+        })
+        .strict(),
+    ),
     revision: z.number().int().positive(),
   })
   .strict()

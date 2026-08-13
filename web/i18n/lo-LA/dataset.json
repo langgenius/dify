@@ -394,6 +394,8 @@
   "newKnowledge.selectAllSources": "ເລືອກແຫຼ່ງທັງໝົດ",
   "newKnowledge.selectChunk": "ເລືອກອັນໃດນຶ່ງເພື່ອກວດກາເບິ່ງເນື້ອຫາຂອງມັນ.",
   "newKnowledge.selectFilesAndFolders": "ເລືອກໄຟລ໌ ແລະໂຟນເດີທີ່ຈະຊິ້ງຂໍ້ມູນ",
+  "newKnowledge.settings.embeddingModelRequired": "ເລືອກໂມເດວ embedding.",
+  "newKnowledge.settings.systemReasoningModelRequired": "ເລືອກໂມເດວການໃຫ້ເຫດຜົນຂອງລະບົບ.",
   "newKnowledge.settings.workflowAccessDescription": "ອະນຸຍາດໃຫ້ Workflow ທີ່ເຜີຍແຜ່ແລ້ວ ແລະ ການດີບັກ Workflow ດຶງເນື້ອຫາຈາກຄວາມຮູ້ນີ້.",
   "newKnowledge.settings.workflowAccessLabel": "ການເຂົ້າເຖິງ Workflow",
   "newKnowledge.skippedFailed": "ຂ້າມ (ລົ້ມເຫລວ)",

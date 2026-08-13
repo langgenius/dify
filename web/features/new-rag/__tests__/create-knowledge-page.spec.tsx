@@ -1027,9 +1027,11 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
-      'common.modelProvider.toBeConfigured',
-    )
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.overview.attention.modelReadiness.title',
+      }),
+    ).toBeInTheDocument()
     expect(serviceMock.create).toHaveBeenCalledOnce()
     expect(serviceMock.upload).not.toHaveBeenCalled()
 

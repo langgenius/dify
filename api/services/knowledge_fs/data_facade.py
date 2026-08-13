@@ -538,7 +538,7 @@ class KnowledgeFSDataFacade:
                     payload=payload.embedding,
                 )
             elif payload.retrieval is not None:
-                retrieval_revision = current.retrieval.revision if current.retrieval is not None else None
+                retrieval_revision = current.active_profile_revisions.retrieval
                 if retrieval_revision is None:
                     raise KnowledgeFSOperationUnavailableError(
                         "KnowledgeFS active retrieval profile revision is unavailable"

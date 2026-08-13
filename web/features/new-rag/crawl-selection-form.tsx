@@ -371,7 +371,8 @@ function ReadyCrawlSelectionForm({
   const queryClient = useQueryClient()
   const {
     configureModelSetup,
-    ensureModelSetupReady,
+    ensureModelReady,
+    modelReadiness,
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
@@ -478,7 +479,9 @@ function ReadyCrawlSelectionForm({
     submissionPendingRef.current = true
     setSubmitting(true)
     setSubmitError(false)
-    if (!(await ensureModelSetupReady())) {
+    if (
+      (await ensureModelReady({ capability: 'ingest', intent: 'source-sync' })).status !== 'ready'
+    ) {
       submissionPendingRef.current = false
       setSubmitting(false)
       return
@@ -648,6 +651,7 @@ function ReadyCrawlSelectionForm({
       </div>
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
+        readiness={modelReadiness}
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={configureModelSetup}
       />

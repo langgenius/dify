@@ -1033,6 +1033,11 @@ export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
+export type KnowledgeFsActiveProfileRevisions = {
+  embedding?: number | null
+  retrieval?: number | null
+}
+
 export type KnowledgeFsAdmittedQueryRequest = {
   activeDocumentIds?: Array<string>
   activeEntityIds?: Array<string>
@@ -1507,6 +1512,21 @@ export type KnowledgeFsQueryResponse = {
   trace_id?: string | null
 }
 
+export type KnowledgeFsReadinessCapabilities = {
+  deep: boolean
+  index: boolean
+  ingest: boolean
+  query: boolean
+  research: boolean
+  source_sync: boolean
+}
+
+export type KnowledgeFsReadinessIssue = {
+  code: 'binding_missing' | 'incompatible' | 'missing' | 'unavailable' | 'validation_failed'
+  field: 'embedding' | 'publication' | 'reasoning' | 'rerank'
+  retryable: boolean
+}
+
 export type KnowledgeFsResearchTaskCreatePayload = {
   budgetUsd?: number | null
   limits?: KnowledgeFsResearchTaskLimits | null
@@ -1640,8 +1660,12 @@ export type KnowledgeFsSettingsPayload = {
 }
 
 export type KnowledgeFsSettingsResponse = {
+  active_profile_available: boolean
+  active_profile_revisions: KnowledgeFsActiveProfileRevisions
+  capabilities: KnowledgeFsReadinessCapabilities
   configuration_state: 'active' | 'pending-validation' | 'setup-required' | 'validation-failed'
   embedding: KnowledgeFsEmbeddingSettingsResponse | null
+  issues: Array<KnowledgeFsReadinessIssue>
   retrieval: KnowledgeFsRetrievalSettingsResponse | null
   revision: number
 }

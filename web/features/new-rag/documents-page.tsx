@@ -30,6 +30,7 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-task-read-guard'
+import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import {
   DocumentBulkActions,
@@ -351,7 +352,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const {
     configureModelSetup,
-    ensureModelSetupReady,
+    ensureModelReady,
+    modelReadiness,
     modelSetupDialogOpen,
     setModelSetupDialogOpen,
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
@@ -1679,7 +1681,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       uploadPendingRef.current = true
       beginUploadActivity()
       try {
-        if (!(await ensureModelSetupReady())) return false
+        if ((await ensureModelReady({ capability: 'ingest', intent: 'upload' })).status !== 'ready')
+          return false
         let acceptedCount = 0
         const exclusions = [...localExclusions]
         const unstagedFiles = uploadableFiles.filter(
@@ -1752,7 +1755,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       beginUploadActivity,
       cancelUploadForm,
       endUploadActivity,
-      ensureModelSetupReady,
+      ensureModelReady,
       handleWritePermissionDenied,
       knowledgeSpaceId,
       refreshDocumentsAndTasks,
@@ -1774,7 +1777,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     bulkActionPendingRef.current = true
     setBulkActionPending('reindex')
     try {
-      if (!(await ensureModelSetupReady())) return
+      if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
+        return
       const selectedIds = [...validSelectedDocumentIds].sort()
       const result = await reindexDocuments({
         body: { documentIds: selectedIds },
@@ -1821,7 +1825,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
   }, [
     canWrite,
-    ensureModelSetupReady,
+    ensureModelReady,
     handleWritePermissionDenied,
     knowledgeSpaceId,
     refreshDocumentsAndTasks,
@@ -1836,7 +1840,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (!canWrite || reindexPendingRef.current) return
       reindexPendingRef.current = true
       try {
-        if (!(await ensureModelSetupReady())) return
+        if ((await ensureModelReady({ capability: 'index', intent: 'reindex' })).status !== 'ready')
+          return
         const result = await reindexDocuments({
           body: { documentIds: [documentId] },
           params: { control_space_id: knowledgeSpaceId },
@@ -1862,7 +1867,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     },
     [
       canWrite,
-      ensureModelSetupReady,
+      ensureModelReady,
       handleWritePermissionDenied,
       knowledgeSpaceId,
       refreshDocumentsAndTasks,
@@ -2629,6 +2634,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </p>
           )}
         </header>
+        <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
         {permissionQueryError && (
           <div
             className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
@@ -2972,6 +2978,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
+        readiness={modelReadiness}
         onOpenChange={setModelSetupDialogOpen}
         onConfigure={configureModelSetup}
       />
