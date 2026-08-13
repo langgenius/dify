@@ -40,7 +40,6 @@ def _llm_config() -> DifyPluginLLMLayerConfig:
         plugin_id="langgenius/openai",
         model_provider="openai",
         model="demo-model",
-        credentials={"api_key": "secret"},
         model_settings={"temperature": 0.2},
     )
 
@@ -54,7 +53,6 @@ def _tools_config() -> DifyPluginToolsLayerConfig:
                 tool_name="web_search",
                 credential_type="api-key",
                 description="Search the web.",
-                credentials={"api_key": "secret"},
                 runtime_parameters={"api_version": "2026-01", "auth_scope": "workspace"},
                 parameters=_prepared_tool_parameters(),
                 parameters_json_schema=_prepared_tool_schema(),
@@ -72,7 +70,6 @@ def _missing_hidden_parameter_tools_config() -> DifyPluginToolsLayerConfig:
                 tool_name="web_search",
                 credential_type="api-key",
                 description="Search the web.",
-                credentials={"api_key": "secret"},
                 runtime_parameters={"api_version": "2026-01"},
                 parameters=_prepared_tool_parameters(),
                 parameters_json_schema=_prepared_tool_schema(),
@@ -303,7 +300,7 @@ def test_dify_plugin_llm_layer_builds_adapter_model_from_direct_dependency() -> 
                 assert isinstance(model, DifyLLMAdapterModel)
                 assert model.model_name == "demo-model"
                 assert model.model_provider == "openai"
-                assert model.credentials == {}
+                assert not hasattr(model, "credentials")
                 assert model.provider.name == "DifyAPI/langgenius/openai"
                 assert model.provider.client.http_client is client
 

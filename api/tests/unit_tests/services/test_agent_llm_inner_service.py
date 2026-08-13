@@ -1,5 +1,7 @@
-"""Tests for API-owned Agent LLM credential resolution and metering."""
+"""Composition tests for the API-owned Agent LLM gateway."""
 
+from collections.abc import Generator
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -7,11 +9,11 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.model_entities import ModelStatus
-from graphon.model_runtime.entities.message_entities import UserPromptMessage
-from models import TenantCreditPool
-from models.enums import ProviderQuotaType
+from core.model_manager import ModelInstance, QuotaManagedModelInstance
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from models.model import App, AppMode
-from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, _BillingPlan
+from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 
 
@@ -38,33 +40,25 @@ def _request() -> AgentLLMInvokeRequest:
     )
 
 
-def _model_instance(*, status: ModelStatus = ModelStatus.ACTIVE) -> MagicMock:
+def _model_instance(
+    *,
+    status: ModelStatus = ModelStatus.ACTIVE,
+) -> tuple[QuotaManagedModelInstance, MagicMock]:
     provider_model = MagicMock()
     provider_model.status = status
     configuration = MagicMock()
     configuration.get_provider_model.return_value = provider_model
-    model_instance = MagicMock()
-    model_instance.provider_model_bundle.configuration = configuration
-    return model_instance
+    bundle = MagicMock()
+    bundle.configuration = configuration
 
-
-def _prepare_with_plan(
-    service: AgentLLMInnerService,
-    request: AgentLLMInvokeRequest,
-    plan: _BillingPlan,
-    *,
-    session: Session,
-    model_status: ModelStatus = ModelStatus.ACTIVE,
-) -> None:
-    _persist_app(session, request=request)
-    manager = MagicMock()
-    manager.get_model_instance.return_value = _model_instance(status=model_status)
-    with (
-        patch("services.agent_llm_inner_service.create_plugin_provider_manager"),
-        patch("services.agent_llm_inner_service.ModelManager", return_value=manager),
-        patch.object(service, "_build_billing_plan", return_value=plan),
-    ):
-        service.prepare(request)
+    instance = object.__new__(QuotaManagedModelInstance)
+    instance.provider_model_bundle = bundle
+    instance.model_name = "gpt-test"
+    instance.provider = "openai"
+    instance.credentials = {"api_key": "hosted"}
+    instance.model_type_instance = MagicMock()
+    instance.load_balancing_manager = None
+    return instance, provider_model
 
 
 def _persist_app(
@@ -73,9 +67,6 @@ def _persist_app(
     request: AgentLLMInvokeRequest,
     tenant_id: str | None = None,
 ) -> App:
-    existing = session.get(App, request.caller.app_id)
-    if existing is not None:
-        return existing
     app = App(
         id=request.caller.app_id,
         tenant_id=tenant_id or request.caller.tenant_id,
@@ -91,22 +82,46 @@ def _persist_app(
     return app
 
 
-def _create_pool(session: Session, *, tenant_id: str, quota_limit: int, quota_used: int = 0) -> TenantCreditPool:
-    pool = TenantCreditPool(
-        tenant_id=tenant_id,
-        pool_type=ProviderQuotaType.TRIAL,
-        quota_limit=quota_limit,
-        quota_used=quota_used,
+def _prepare(
+    service: AgentLLMInnerService,
+    request: AgentLLMInvokeRequest,
+    model_instance: QuotaManagedModelInstance,
+) -> PreparedAgentLLMInvocation:
+    manager = MagicMock()
+    manager.get_model_instance.return_value = model_instance
+    with (
+        patch("services.agent_llm_inner_service.create_plugin_provider_manager"),
+        patch("services.agent_llm_inner_service.ModelManager", return_value=manager),
+    ):
+        return service.prepare(request)
+
+
+def _usage(*, total_tokens: int = 8) -> LLMUsage:
+    return LLMUsage(
+        prompt_tokens=3,
+        prompt_unit_price=Decimal(0),
+        prompt_price_unit=Decimal(0),
+        prompt_price=Decimal(0),
+        completion_tokens=total_tokens - 3,
+        completion_unit_price=Decimal(0),
+        completion_price_unit=Decimal(0),
+        completion_price=Decimal(0),
+        total_tokens=total_tokens,
+        total_price=Decimal(0),
+        currency="USD",
+        latency=0.1,
     )
-    session.add(pool)
-    session.commit()
-    return pool
 
 
-def _get_pool(session: Session, pool_id: str) -> TenantCreditPool:
-    pool = session.get(TenantCreditPool, pool_id)
-    assert pool is not None
-    return pool
+def _chunk(text: str, *, usage: LLMUsage | None = None) -> LLMResultChunk:
+    return LLMResultChunk(
+        model="gpt-test",
+        delta=LLMResultChunkDelta(
+            index=0,
+            message=AssistantPromptMessage(content=text, tool_calls=[]),
+            usage=usage,
+        ),
+    )
 
 
 def test_prepare_rejects_missing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -135,88 +150,100 @@ def test_prepare_rejects_cross_tenant_app(
     assert exc_info.value.status_code == 403
 
 
-def test_system_invocation_deducts_local_credit_pool(
+def test_prepare_defers_cached_quota_status_to_authoritative_reservation(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
     request = _request()
-    pool = _create_pool(sqlite_session, tenant_id=request.caller.tenant_id, quota_limit=10)
+    _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
+    model_instance, provider_model = _model_instance(status=ModelStatus.QUOTA_EXCEEDED)
 
-    _prepare_with_plan(
-        service,
-        request,
-        _BillingPlan(quota_type="trial", pool_type="trial", credits=3),
-        session=sqlite_session,
-    )
+    prepared = _prepare(service, request, model_instance)
 
-    sqlite_session.expire_all()
-    assert _get_pool(sqlite_session, pool.id).quota_used == 3
+    assert prepared.model_instance is model_instance
+    provider_model.raise_for_status.assert_not_called()
 
 
-def test_system_invocation_forwards_stable_billing_identity(
+def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
     request = _request()
+    _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
+    model_instance, _ = _model_instance()
+    reservation = MagicMock(commit_before_delivery=True)
+    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    prepared = _prepare(service, request, model_instance)
+    provider_chunk = _chunk("done", usage=_usage())
 
-    with patch("services.agent_llm_inner_service.CreditPoolService.check_and_deduct_credits", return_value=3) as deduct:
-        _prepare_with_plan(
-            service,
-            request,
-            _BillingPlan(quota_type="trial", pool_type="trial", credits=3),
-            session=sqlite_session,
-        )
+    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+        yield provider_chunk
 
-    kwargs = deduct.call_args.kwargs
-    assert kwargs["tenant_id"] == request.caller.tenant_id
-    assert kwargs["credits_required"] == 3
-    assert kwargs["pool_type"] == "trial"
-    assert kwargs["request_id"] == request.caller.invocation_id
-    assert kwargs["metadata"] == {
-        "source": "agent_llm_gateway",
-        "invocation_id": request.caller.invocation_id,
-        "agent_run_id": request.caller.agent_run_id,
-        "agent_mode": request.caller.agent_mode,
-        "call_index": "1",
-        "provider": request.target.provider,
-        "model": request.target.model,
-    }
-    assert isinstance(kwargs["session"], Session)
+    with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()) as provider_invoke:
+        chunks = list(service.invoke(prepared))
+
+    assert chunks == [provider_chunk]
+    model_instance.reserve_quota.assert_called_once_with()
+    reservation.commit.assert_called_once_with(provider_chunk.delta.usage)
+    reservation.release.assert_called_once_with()
+    provider_invoke.assert_called_once()
 
 
-def test_custom_credentials_do_not_deduct_credits(
+def test_gateway_releases_reservation_when_provider_fails_before_delivery(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
     request = _request()
+    _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
+    model_instance, _ = _model_instance()
+    reservation = MagicMock(commit_before_delivery=True)
+    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    prepared = _prepare(service, request, model_instance)
 
-    with patch("services.agent_llm_inner_service.CreditPoolService.check_and_deduct_credits") as deduct:
-        _prepare_with_plan(service, request, _BillingPlan(), session=sqlite_session)
+    def failing_stream() -> Generator[LLMResultChunk, None, None]:
+        raise RuntimeError("provider failed")
+        yield
 
-    deduct.assert_not_called()
+    with patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()):
+        with pytest.raises(RuntimeError, match="provider failed"):
+            list(service.invoke(prepared))
+
+    reservation.commit.assert_not_called()
+    reservation.release.assert_called_once_with()
 
 
-def test_insufficient_credits_reject_before_model_invocation(
+def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
     request = _request()
-    pool = _create_pool(sqlite_session, tenant_id=request.caller.tenant_id, quota_limit=2)
+    _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
+    model_instance, _ = _model_instance()
+    events: list[str] = []
+    reservation = MagicMock(commit_before_delivery=False)
+    reservation.commit.side_effect = lambda _usage: events.append("commit")
+    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    prepared = _prepare(service, request, model_instance)
+    terminal_usage = _usage(total_tokens=21)
 
-    with pytest.raises(AgentLLMInnerServiceError) as exc_info:
-        _prepare_with_plan(
-            service,
-            request,
-            _BillingPlan(quota_type="trial", pool_type="trial", credits=3),
-            session=sqlite_session,
-            model_status=ModelStatus.QUOTA_EXCEEDED,
-        )
+    def provider_stream() -> Generator[LLMResultChunk, None, None]:
+        events.append("provider:first")
+        yield _chunk("first")
+        events.append("provider:last")
+        yield _chunk("last", usage=terminal_usage)
 
-    assert exc_info.value.error_code == "agent_llm_quota_exceeded"
-    assert exc_info.value.status_code == 429
-    sqlite_session.expire_all()
-    assert _get_pool(sqlite_session, pool.id).quota_used == 0
+    with patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()):
+        stream = service.invoke(prepared)
+        first = next(stream)
+        events.append("consumer:first")
+        rest = list(stream)
+
+    assert first.delta.message.content == "first"
+    assert [chunk.delta.message.content for chunk in rest] == ["last"]
+    assert events == ["provider:first", "provider:last", "commit", "consumer:first"]
+    reservation.commit.assert_called_once_with(terminal_usage)
+    reservation.release.assert_called_once_with()

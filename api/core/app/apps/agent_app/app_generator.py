@@ -45,7 +45,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
-from core.app.llm.model_access import build_dify_model_access
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -508,7 +507,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         session=session,
                     )
 
-                runner = self._build_runner(dify_context)
+                runner = self._build_runner()
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
@@ -544,10 +543,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return query.replace("\x00", "")
 
     @staticmethod
-    def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
-        credentials_provider, _ = build_dify_model_access(dify_context)
+    def _build_runner() -> AgentAppRunner:
         return AgentAppRunner(
-            request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
+            request_builder=AgentAppRuntimeRequestBuilder(),
             agent_backend_client=create_agent_backend_run_client(
                 base_url=dify_config.AGENT_BACKEND_BASE_URL,
                 api_token=dify_config.AGENT_BACKEND_API_TOKEN,

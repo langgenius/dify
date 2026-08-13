@@ -10,9 +10,8 @@ used by workflow runs.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -57,10 +56,6 @@ class AgentAppRuntimeRequestBuildError(ValueError):
         super().__init__(message)
 
 
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
-
-
 @dataclass(frozen=True, slots=True)
 class AgentAppRuntimeBuildContext:
     dify_context: DifyRunContext
@@ -92,11 +87,9 @@ class AgentAppRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -109,7 +102,6 @@ class AgentAppRuntimeRequestBuilder:
             )
 
         metadata = self._build_metadata(context)
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -140,13 +132,12 @@ class AgentAppRuntimeRequestBuilder:
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
-                    plugin_id=self._plugin_daemon_plugin_id(
+                    plugin_id=self._plugin_id(
                         plugin_id=agent_soul.model.plugin_id,
                         model_provider=agent_soul.model.model_provider,
                     ),
-                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
+                    model_provider=self._provider_name(agent_soul.model.model_provider),
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
@@ -221,8 +212,8 @@ class AgentAppRuntimeRequestBuilder:
         }
 
     @staticmethod
-    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
-        """Return the transport plugin id expected by plugin-daemon headers."""
+    def _plugin_id(*, plugin_id: str, model_provider: str) -> str:
+        """Return the normalized plugin id used by the Agent LLM gateway."""
         if plugin_id.count("/") == 1:
             return plugin_id.split(":", 1)[0].split("@", 1)[0]
         if plugin_id:
@@ -230,19 +221,9 @@ class AgentAppRuntimeRequestBuilder:
         return ModelProviderID(model_provider).plugin_id
 
     @staticmethod
-    def _plugin_daemon_provider_name(model_provider: str) -> str:
-        """Return the provider name expected by plugin-daemon dispatch payloads."""
+    def _provider_name(model_provider: str) -> str:
+        """Return the provider name expected by the Agent LLM gateway."""
         return ModelProviderID(model_provider).provider_name
-
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
 
 
 __all__ = [

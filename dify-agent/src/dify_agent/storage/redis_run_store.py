@@ -5,8 +5,8 @@ streams. HTTP event cursors are Redis stream ids; ``0-0`` means replay from the
 beginning for polling and SSE. Records and streams share one retention window
 that is refreshed when status or event data is written. Execution is scheduled
 in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
-create-run payloads are never persisted because layer config may include model
-credentials.
+create-run payloads are never persisted because layer config may include
+sensitive runtime configuration.
 """
 
 from collections.abc import AsyncIterator, Awaitable

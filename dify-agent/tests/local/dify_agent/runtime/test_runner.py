@@ -311,7 +311,6 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
             ),
         ),
     ]
@@ -1180,7 +1179,6 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1285,7 +1283,6 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1392,7 +1389,6 @@ def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.Monk
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1492,7 +1488,6 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1623,7 +1618,6 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -1749,7 +1743,6 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2323,7 +2316,6 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2398,7 +2390,6 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2495,7 +2486,6 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
                 RunLayerSpec(
@@ -2777,7 +2767,6 @@ def test_runner_treats_missing_runtime_dependency_as_validation_error() -> None:
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]
@@ -2830,7 +2819,6 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                         plugin_id="langgenius/openai",
                         model_provider="openai",
                         model="demo-model",
-                        credentials={"api_key": "secret"},
                     ),
                 ),
             ]

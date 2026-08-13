@@ -77,11 +77,6 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
     return list(session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all())
 
 
-class _FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
-        return {"openai_api_key": "sk-test"}
-
-
 class _NoToolsBuilder:
     def build_layers(self, **kwargs: Any) -> WorkflowAgentToolLayers:
         del kwargs
@@ -488,7 +483,6 @@ def _runner(
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
         agent_backend_client=client,

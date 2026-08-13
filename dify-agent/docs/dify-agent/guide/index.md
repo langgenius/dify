@@ -374,4 +374,4 @@ The repository includes simple consumers that print observed output/events:
   consumes raw SSE frames for an existing run id.
 
 The create-run examples submit Dify plugin model layers, so they require Redis,
-the API server, plugin-daemon settings, and provider credentials.
+the Agent server, Dify API gateway settings, and a configured model provider in Dify.

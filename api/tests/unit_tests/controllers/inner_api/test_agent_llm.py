@@ -9,6 +9,7 @@ from uuid import uuid4
 from flask import Flask
 
 from controllers.inner_api import bp as inner_api_bp
+from core.errors.error import QuotaExceededError
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from services.agent_llm_inner_service import AgentLLMInnerServiceError, PreparedAgentLLMInvocation
@@ -133,4 +134,38 @@ def test_post_preserves_preflight_quota_failure() -> None:
         "code": "agent_llm_quota_exceeded",
         "message": "Insufficient Message Credits.",
         "status": 429,
+    }
+
+
+def test_post_preserves_stream_quota_failure() -> None:
+    payload = _payload()
+    prepared = PreparedAgentLLMInvocation(
+        request=AgentLLMInvokeRequest.model_validate(payload),
+        model_instance=MagicMock(),
+    )
+    with (
+        _agent_inner_auth(),
+        patch("controllers.inner_api.agent.llm.AgentLLMInnerService.prepare", return_value=prepared),
+        patch(
+            "controllers.inner_api.agent.llm.AgentLLMInnerService.invoke",
+            side_effect=QuotaExceededError("Insufficient hosted model quota remaining."),
+        ),
+    ):
+        response = (
+            _app()
+            .test_client()
+            .post(
+                "/inner/api/agent/llm/invoke",
+                json=payload,
+                headers={"X-Inner-Api-Key": "inner-key"},
+            )
+        )
+
+    envelope = json.loads(response.get_data(as_text=True).strip().removeprefix("data: "))
+    error = json.loads(envelope["message"])
+    assert response.status_code == 200
+    assert envelope["code"] == -429
+    assert error == {
+        "error_type": "AgentLLMQuotaExceededError",
+        "message": "Insufficient hosted model quota remaining.",
     }

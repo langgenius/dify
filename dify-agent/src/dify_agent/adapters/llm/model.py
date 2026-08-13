@@ -1,9 +1,8 @@
-"""Bridge Dify plugin-daemon LLM invocations into Pydantic AI's model interface.
+"""Bridge Dify API LLM invocations into Pydantic AI's model interface.
 
-The API and agent layers are clients of the plugin daemon, not direct hosts of provider SDK
-implementations. This adapter therefore targets the plugin-daemon dispatch protocol and maps
-Pydantic AI messages into the daemon's Graphon-compatible request and stream response schema.
-Pydantic AI keeps token counts only, so the adapter separately accumulates the daemon's complete
+The agent calls Dify API's trusted LLM gateway rather than hosting provider SDK implementations.
+This adapter maps Pydantic AI messages into the gateway's Graphon-compatible request and stream
+response schema. Pydantic AI keeps token counts only, so the adapter separately accumulates Dify's complete
 Graphon usage for the lifetime of one model instance. The Agent runner creates one adapter per run
 and reads that accumulated usage after all model/tool rounds finish.
 """
@@ -81,7 +80,6 @@ _DETAIL_HIGH = "high"
 
 @dataclass(slots=True)
 class _DifyRequestInput:
-    credentials: dict[str, object]
     prompt_messages: list[PromptMessage]
     model_parameters: dict[str, object]
     tools: list[PromptMessageTool] | None
@@ -90,7 +88,7 @@ class _DifyRequestInput:
 
 @dataclass(slots=True)
 class DifyLLMAdapterModel(Model[DifyLLMClient]):
-    """Use a Dify plugin-daemon transport and retain complete usage for one Agent run.
+    """Use Dify API's LLM transport and retain complete usage for one Agent run.
 
     A model instance belongs to one runner invocation. Pydantic AI may call it repeatedly while
     resolving tools or retrying structured output; those sequential requests are accumulated so
@@ -98,10 +96,9 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
     """
 
     model: str
-    daemon_provider: Provider[DifyLLMClient]
+    dify_provider: Provider[DifyLLMClient]
     _: KW_ONLY
     model_provider: str
-    credentials: dict[str, object] = field(default_factory=dict, repr=False)
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
     _accumulated_usage: LLMUsage | None = field(default=None, init=False, repr=False)
@@ -114,13 +111,13 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         Model.__init__(
             self,
             settings=model_settings,
-            profile=model_profile or self.daemon_provider.model_profile(self.model),
+            profile=model_profile or self.dify_provider.model_profile(self.model),
         )
 
     @property
     @override
     def provider(self) -> Provider[DifyLLMClient]:
-        return self.daemon_provider
+        return self.dify_provider
 
     @property
     @override
@@ -130,11 +127,11 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
     @property
     @override
     def system(self) -> str:
-        return self.daemon_provider.name
+        return self.dify_provider.name
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete daemon usage accumulated across successful model requests."""
+        """Return complete Dify usage accumulated across successful model requests."""
         return self._accumulated_usage
 
     @override
@@ -149,10 +146,9 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -183,10 +179,9 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -200,7 +195,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         self._record_usage(response.dify_usage)
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed daemon request to this run's usage total."""
+        """Add one completed Dify request to this run's usage total."""
         if usage is None:
             return
         if self._accumulated_usage is None:
@@ -215,7 +210,6 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
         model_request_parameters: ModelRequestParameters,
     ) -> _DifyRequestInput:
         return _DifyRequestInput(
-            credentials=dict(self.credentials),
             prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
@@ -225,7 +219,7 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
 @dataclass
 class DifyStreamedResponse(StreamedResponse):
-    """Map one daemon response while retaining its latest complete usage payload.
+    """Map one Dify response while retaining its latest complete usage payload.
 
     Some providers may repeat cumulative usage on more than one stream chunk. Keeping the latest
     payload lets the owning model count each request exactly once instead of summing stream chunks.
@@ -263,7 +257,7 @@ class DifyStreamedResponse(StreamedResponse):
 
     @property
     def dify_usage(self) -> LLMUsage | None:
-        """Return the daemon's complete usage for this model request."""
+        """Return Dify's complete usage for this model request."""
         return self._dify_usage
 
     @property

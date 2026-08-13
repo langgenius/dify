@@ -35,7 +35,7 @@ register_schema_models(inner_api_ns, AgentLLMInvokeRequest)
 
 @inner_api_ns.route("/agent/llm/invoke")
 class AgentLLMInvokeApi(Resource):
-    """Resolve and meter one dify-agent model request before proxying it."""
+    """Resolve one dify-agent model request before proxying it."""
 
     @agent_inner_api_only
     @inner_api_ns.doc("inner_agent_llm_invoke")
@@ -80,6 +80,17 @@ class AgentLLMInvokeApi(Resource):
                     yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except GeneratorExit:
                 raise
+            except QuotaExceededError as exc:
+                error = {
+                    "error_type": "AgentLLMQuotaExceededError",
+                    "message": str(exc) or "Insufficient hosted model quota remaining.",
+                }
+                envelope = {
+                    "code": -429,
+                    "message": json.dumps(error, ensure_ascii=False, separators=(",", ":")),
+                    "data": None,
+                }
+                yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except Exception as exc:
                 error = {
                     "error_type": type(exc).__name__,

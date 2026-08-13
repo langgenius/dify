@@ -10,7 +10,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from dify_agent.adapters.llm.provider import DifyApiLLMClient
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
-from ._test_support import build_stream_response, single_text_chunk
+from ._test_support import build_stream_error, build_stream_response, single_text_chunk
 
 
 def _execution_context() -> DifyExecutionContextLayerConfig:
@@ -30,7 +30,7 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
     )
 
 
-def test_api_client_uses_stable_per_run_call_identity_and_omits_credentials() -> None:
+def test_api_client_uses_stable_per_run_call_identity() -> None:
     requests: list[httpx.Request] = []
 
     async def handler(request: httpx.Request) -> httpx.Response:
@@ -54,7 +54,6 @@ def test_api_client_uses_stable_per_run_call_identity_and_omits_credentials() ->
                     async for chunk in client.iter_llm_result_chunks(
                         provider="openai",
                         model="gpt-test",
-                        credentials={"api_key": "must-not-leave-agent"},
                         prompt_messages=[UserPromptMessage(content="hello")],
                         model_parameters={"temperature": 0.2},
                         tools=None,
@@ -79,7 +78,6 @@ def test_api_client_uses_stable_per_run_call_identity_and_omits_credentials() ->
     assert first_payload["caller"]["agent_config_version_kind"] == "draft"
     assert first_payload["target"]["provider"] == "acme/custom-model/openai"
     assert "credentials" not in first_payload["target"]
-    assert b"must-not-leave-agent" not in requests[0].content
 
 
 def test_api_client_propagates_gateway_quota_error() -> None:
@@ -110,7 +108,6 @@ def test_api_client_propagates_gateway_quota_error() -> None:
                     async for chunk in client.iter_llm_result_chunks(
                         provider="openai",
                         model="gpt-test",
-                        credentials={},
                         prompt_messages=[UserPromptMessage(content="hello")],
                         model_parameters={},
                         tools=None,
@@ -120,5 +117,43 @@ def test_api_client_propagates_gateway_quota_error() -> None:
                 ]
             assert exc_info.value.status_code == 429
             assert "Insufficient Message Credits" in str(exc_info.value)
+
+    asyncio.run(scenario())
+
+
+def test_api_client_maps_stream_quota_error_to_http_429() -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return build_stream_error(
+            "AgentLLMQuotaExceededError",
+            "Insufficient hosted model quota remaining.",
+            code=-429,
+        )
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler), trust_env=False) as http_client:
+            client = DifyApiLLMClient(
+                plugin_id="langgenius/openai",
+                inner_api_url="http://dify-api",
+                inner_api_key="inner-secret",
+                execution_context=_execution_context(),
+                agent_run_id="00000000-0000-0000-0000-000000000001",
+                http_client=http_client,
+            )
+
+            with pytest.raises(ModelHTTPError) as exc_info:
+                _ = [
+                    chunk
+                    async for chunk in client.iter_llm_result_chunks(
+                        provider="openai",
+                        model="gpt-test",
+                        prompt_messages=[UserPromptMessage(content="hello")],
+                        model_parameters={},
+                        tools=None,
+                        stop=None,
+                        stream=True,
+                    )
+                ]
+            assert exc_info.value.status_code == 429
+            assert "Insufficient hosted model quota" in str(exc_info.value)
 
     asyncio.run(scenario())
