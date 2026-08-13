@@ -149,23 +149,13 @@ class ServerSettings(BaseSettings):
             raise ValueError("DIFY_AGENT_INNER_API_URL must not include a query string or fragment")
         return parsed
 
-    @field_validator("inner_api_key")
+    @field_validator("inner_api_key", "api_token")
     @classmethod
-    def normalize_inner_api_key(cls, value: str | None) -> str | None:
-        """Normalize the optional trusted Dify inner API key."""
+    def normalize_optional_api_token(cls, value: str | None) -> str | None:
+        """Normalize optional API authentication tokens."""
         if value is None:
             return None
-        stripped = value.strip()
-        return stripped or None
-
-    @field_validator("api_token")
-    @classmethod
-    def normalize_api_token(cls, value: str | None) -> str | None:
-        """Normalize the optional control-plane Bearer token."""
-        if value is None:
-            return None
-        stripped = value.strip()
-        return stripped or None
+        return value.strip() or None
 
     def get_shell_redact_patterns(self) -> list[str]:
         """Parse the JSON array from shell_redact_patterns; empty/blank → empty list."""

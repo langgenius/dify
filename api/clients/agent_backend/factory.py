@@ -9,7 +9,6 @@ from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAge
 
 
 def create_agent_backend_client(*, base_url: str, api_token: str | None = None, stream_timeout: float = 30) -> Client:
-    """Create a client for the authenticated Dify Agent control plane."""
     api_token = api_token.strip() if api_token else None
     headers = {"Authorization": f"Bearer {api_token}"} if api_token else None
     return Client(base_url=base_url, stream_timeout=stream_timeout, headers=headers)
