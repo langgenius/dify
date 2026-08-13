@@ -11,19 +11,8 @@ vi.mock('echarts-for-react', () => ({
 
 const mockUseAppDailyMessages = vi.fn()
 
-vi.mock('@/service/use-apps', () => ({
-  useAppAverageResponseTime: vi.fn(),
-  useAppAverageSessionInteractions: vi.fn(),
-  useAppDailyConversations: vi.fn(),
-  useAppDailyEndUsers: vi.fn(),
-  useAppDailyMessages: (...args: unknown[]) => mockUseAppDailyMessages(...args),
-  useAppSatisfactionRate: vi.fn(),
-  useAppTokenCosts: vi.fn(),
-  useAppTokensPerSecond: vi.fn(),
-  useWorkflowAverageInteractions: vi.fn(),
-  useWorkflowDailyConversations: vi.fn(),
-  useWorkflowDailyTerminals: vi.fn(),
-  useWorkflowTokenCosts: vi.fn(),
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: (...args: unknown[]) => mockUseAppDailyMessages(...args),
 }))
 
 describe('app-chart', () => {

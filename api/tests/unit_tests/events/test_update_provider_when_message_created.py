@@ -11,14 +11,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from events.event_handlers import update_provider_when_message_created
-from models import TenantCreditPool
+from models import Message, TenantCreditPool
+from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
 
 
 @pytest.fixture
 def credit_pool_session_factory(sqlite_engine: Engine) -> Iterator[sessionmaker[Session]]:
     """Bind message-created accounting to fixture-owned SQLite sessions."""
-    TenantCreditPool.__table__.create(sqlite_engine)
     session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     with patch("events.event_handlers.update_provider_when_message_created.db.session", session_factory):
         yield session_factory
@@ -31,7 +31,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
     pool_id = str(uuid4())
     pool = TenantCreditPool(
         tenant_id=tenant_id,
-        pool_type=ProviderQuotaType.TRIAL,
+        pool_type=ModelProviderQuotaType.TRIAL,
         quota_limit=10,
         quota_used=9,
     )
@@ -62,7 +62,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
             ),
         ),
     )
-    message = SimpleNamespace(message_tokens=2, answer_tokens=1)
+    message = Message(message_tokens=2, answer_tokens=1)
 
     with (
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
@@ -103,7 +103,7 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
             ),
         ),
     )
-    message = SimpleNamespace(message_tokens=2, answer_tokens=1)
+    message = Message(message_tokens=2, answer_tokens=1)
 
     with (
         patch.object(update_provider_when_message_created, "_deduct_credit_pool_quota_capped") as mock_deduct,

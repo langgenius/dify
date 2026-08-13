@@ -21,22 +21,20 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
+import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
 import { Uploader } from './uploader'
 
@@ -99,6 +97,9 @@ function CreateFromDSLModal({
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const { mutateAsync: requestImport } = useMutation(
+    consoleQuery.apps.imports.post.mutationOptions(),
+  )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
       const body =
@@ -112,17 +113,18 @@ function CreateFromDSLModal({
               yaml_url: source.url,
             } satisfies AppImportPayload)
 
-      return consoleClient.apps.imports.post({ body })
+      return requestImport({ body })
     },
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const setNeedRefresh = useSetNeedRefreshAppList()
-  const invalidateAppList = useInvalidateAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
@@ -143,15 +145,14 @@ function CreateFromDSLModal({
       {
         type: response.status === 'completed' ? 'success' : 'warning',
         description:
-          response.status === 'completed-with-warnings'
-            ? getDSLImportWarningDescription(response.warnings) ||
-              t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
-            : undefined,
+          response.status === 'completed-with-warnings' ? (
+            <DSLImportWarningDescription
+              warnings={response.warnings}
+              fallback={t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })}
+            />
+          ) : undefined,
       },
     )
-    setNeedRefresh('1')
-    invalidateAppList()
-
     if (!response.app_id || !appMode) return
 
     await handleCheckPluginDependencies(response.app_id)
@@ -334,7 +335,6 @@ function CreateFromDSLModal({
                   disabled={createDisabled}
                   loading={isImporting}
                   variant="primary"
-                  className="gap-1"
                 >
                   <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
                   <KbdGroup>

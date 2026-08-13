@@ -8,8 +8,8 @@ import {
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -68,7 +68,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<SnippetListItemData>(), [])
+  const [previewCardHandle] = useState(() => createPreviewCardHandle<SnippetListItemData>())
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -154,7 +154,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
     ) : !snippets.length ? (
       <SnippetEmptyState />
     ) : (
-      <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
+      <ScrollArea className="relative max-h-120 max-w-125 overflow-hidden">
         <ScrollAreaViewport ref={viewportRef}>
           <ScrollAreaContent className="p-1">
             {snippets.map((item) => {
@@ -183,7 +183,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
         <ScrollAreaScrollbar orientation="vertical">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     )
 
   return (
@@ -196,7 +196,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
 
           return (
             <BlockSelectorPreviewCardContent>
-              <SnippetDetailCard snippet={payload as SnippetListItemData} />
+              <SnippetDetailCard snippet={payload} />
             </BlockSelectorPreviewCardContent>
           )
         }}

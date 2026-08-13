@@ -129,7 +129,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.3-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local
     restart: always
     env_file:
       - ./middleware.env
@@ -199,6 +199,7 @@ services:
     restart: always
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
     entrypoint:
       [

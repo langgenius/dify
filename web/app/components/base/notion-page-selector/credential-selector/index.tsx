@@ -35,7 +35,7 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
       value={currentCredential?.credentialId ?? null}
       onValueChange={(nextValue) => nextValue && onSelect(nextValue)}
     >
-      <SelectTrigger aria-label={currentDisplayName} className="w-[168px]">
+      <SelectTrigger aria-label={currentDisplayName} className="w-42">
         <span className="flex min-w-0 items-center">
           <CredentialIcon
             className="mr-2 shrink-0"

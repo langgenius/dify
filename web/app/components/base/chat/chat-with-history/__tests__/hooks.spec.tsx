@@ -1,6 +1,6 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
-import type { InstalledApp } from '@/models/explore'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -1034,17 +1034,25 @@ describe('useChatWithHistory', () => {
   describe('installedApp mode', () => {
     it('should use installedApp source type and derive appData from installedAppInfo', async () => {
       // Arrange
-      const installedAppInfo = {
+      const installedAppInfo: InstalledAppResponse = {
         id: 'installed-app-id',
+        app_owner_tenant_id: 'tenant-id',
+        editable: true,
+        is_pinned: false,
+        last_used_at: null,
+        uninstallable: true,
         app: {
+          id: 'app-id',
           name: 'Installed App',
+          description: 'Installed app description',
+          mode: 'chat',
           icon_type: 'emoji',
           icon: '🤖',
           icon_background: '#fff',
-          icon_url: '',
+          icon_url: null,
           use_icon_as_answer_icon: false,
         },
-      } as unknown as InstalledApp
+      }
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
 

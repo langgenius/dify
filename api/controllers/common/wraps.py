@@ -152,7 +152,7 @@ def _extract_resource_id(
     if resource_type == RBACResourceScope.APP:
         app_id = matched_args.get("app_id")
         if app_id:
-            return str(app_id)
+            return str(app_id)  # pyrefly: ignore[unnecessary-type-conversion]
 
         agent_id = matched_args.get("agent_id")
         if agent_id:
@@ -161,7 +161,7 @@ def _extract_resource_id(
 
         resource_id = matched_args.get("resource_id")
         if resource_id:
-            return str(resource_id)
+            return str(resource_id)  # pyrefly: ignore[unnecessary-type-conversion]
         raise ValueError("Missing app_id in request path")
 
     if resource_type == RBACResourceScope.DATASET:
@@ -171,9 +171,11 @@ def _extract_resource_id(
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == str(pipeline_id)))
+            dataset = db.session.scalar(
+                select(Dataset).where(Dataset.pipeline_id == str(pipeline_id), Dataset.tenant_id == tenant_id)
+            )
             if not dataset:
                 raise NotFound("Dataset not found for pipeline")
-            return str(dataset.id)
+            return str(dataset.id)  # pyrefly: ignore[unnecessary-type-conversion]
         raise ValueError("Missing dataset_id or pipeline_id in request path")
     raise ValueError(f"Unknown resource_type: {resource_type}")

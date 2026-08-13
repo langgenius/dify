@@ -1,19 +1,19 @@
 'use client'
 
 import { atom } from 'jotai'
-import { atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
+import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
-import { initialWorkspaceInfo } from './app-context-defaults'
-import { getWorkspaceRoleFlags, normalizeCurrentWorkspace } from './app-context-normalizers'
+import { initialWorkspaceSummary } from './app-context-defaults'
+import { getWorkspaceRoleFlags, normalizeCurrentWorkspaceSummary } from './app-context-normalizers'
 
 const currentWorkspaceQueryAtom = atomWithQuery(() => {
-  return consoleQuery.workspaces.current.post.queryOptions({
-    select: normalizeCurrentWorkspace,
+  return consoleQuery.workspaces.current.summary.get.queryOptions({
+    select: normalizeCurrentWorkspaceSummary,
   })
 })
 
 export const currentWorkspaceAtom = atom((get) => {
-  return get(currentWorkspaceQueryAtom).data ?? initialWorkspaceInfo
+  return get(currentWorkspaceQueryAtom).data ?? initialWorkspaceSummary
 })
 
 export const currentWorkspaceIdAtom = atom((get) => {
@@ -32,6 +32,11 @@ export const isCurrentWorkspaceManagerAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceManager
 })
 
+/**
+ * Retained for future permission checks when RBAC is disabled.
+ *
+ * @public
+ */
 export const isCurrentWorkspaceEditorAtom = atom((get) => {
   return get(workspaceRoleFlagsAtom).isCurrentWorkspaceEditor
 })
@@ -42,9 +47,4 @@ export const isCurrentWorkspaceDatasetOperatorAtom = atom((get) => {
 
 export const currentWorkspaceLoadingAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).isPending
-})
-
-export const refreshCurrentWorkspaceAtom = atom(null, (get) => {
-  const queryClient = get(queryClientAtom)
-  queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() })
 })

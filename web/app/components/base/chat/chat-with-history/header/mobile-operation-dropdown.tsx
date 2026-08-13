@@ -4,9 +4,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
 type Props = Readonly<{
   handleResetChat: () => void
@@ -30,13 +30,13 @@ const MobileOperationDropdown = ({
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            size="l"
-            state={open ? ActionButtonState.Hover : ActionButtonState.Default}
+            size="lg"
+            className="data-popup-open:bg-state-base-hover"
           >
-            <div className="i-ri-more-fill h-[18px] w-[18px]" aria-hidden="true" />
-          </ActionButton>
+            <div className="i-ri-more-fill h-4.5 w-4.5" aria-hidden="true" />
+          </IconButton>
         }
       />
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">

@@ -11,9 +11,9 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useGetToolIcon } from '../hooks/use-tool-icon'
 import { useStore } from '../store'
 
 const resolveListeningDescription = (
@@ -192,7 +192,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
                   aria-label={
                     t(($) => $['nodes.triggerWebhook.debugUrlCopy'], { ns: 'workflow' }) || ''
                   }
-                  className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+                  className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-0.5 font-mono text-[13px] leading-4.5 text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
                   onClick={() => {
                     copy(webhookDebugUrl)
                     setDebugUrlCopied(true)
@@ -215,7 +215,7 @@ const Listening: FC<ListeningProps> = ({ onStop, message }) => {
       )}
       <div>
         <Button size="medium" className="px-3" variant="primary" onClick={onStop}>
-          <StopCircle className="mr-1 size-4" />
+          <StopCircle className="size-4" />
           {t(($) => $['debug.variableInspect.listening.stopButton'], { ns: 'workflow' })}
         </Button>
       </div>

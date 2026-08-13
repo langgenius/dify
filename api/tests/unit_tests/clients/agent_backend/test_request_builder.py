@@ -1,10 +1,7 @@
 from typing import Any, cast
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
-from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers import ExitIntent
-from agenton.layers.base import LifecycleState
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
 from dify_agent.layers.dify_core_tools import (
@@ -45,8 +42,6 @@ from clients.agent_backend import (
     AgentBackendOutputConfig,
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
-    RuntimeLayerSpec,
-    extract_runtime_layer_specs,
     redact_for_agent_backend_log,
 )
 from clients.agent_backend.request_builder import DIFY_DRIVE_LAYER_ID, DIFY_SHELL_LAYER_ID
@@ -71,6 +66,7 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
             agent_mode="workflow_run",
             invoke_from="debugger",
         ),
+        backend_binding_ref="binding-ref-1",
         idempotency_key="workflow-run-1:node-execution-1",
         agent_soul_prompt="You are a careful reviewer.",
         workflow_node_job_prompt="Review the previous node output.",
@@ -121,6 +117,29 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
     assert workflow_job_config["user"] == "Review the previous node output."
     assert not workflow_job_config.get("prefix")
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
+
+
+def test_request_builder_forwards_plugin_specific_model_settings_via_extra_body():
+    run_input = _run_input().model_copy(
+        update={
+            "model": AgentBackendModelConfig(
+                plugin_id="langgenius/tongyi",
+                model_provider="tongyi",
+                model="qwen-plus-latest",
+                credentials={"api_key": "secret-key"},
+                model_settings={"temperature": 0.7, "enable_thinking": True, "thinking_budget": 4096},
+            )
+        }
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    model_config = cast(DifyPluginLLMLayerConfig, layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+
+    assert model_config.model_settings == {
+        "temperature": 0.7,
+        "extra_body": {"enable_thinking": True, "thinking_budget": 4096},
+    }
 
 
 @pytest.mark.parametrize("agent_config_version_kind", ["snapshot", "draft"])
@@ -271,89 +290,6 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1"]
 
 
-def test_request_builder_can_delete_on_exit_for_cleanup_paths():
-    run_input = _run_input()
-    run_input.suspend_on_exit = False
-
-    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
-
-    assert request.on_exit.default is ExitIntent.DELETE
-
-
-def test_request_builder_builds_cleanup_request_replays_persisted_layer_specs():
-    """The cleanup request must replay the persisted (non-plugin) layer specs
-    and filter the snapshot to match so the agenton compositor's
-    snapshot-vs-composition name-order validator passes."""
-    session_snapshot = CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(name="history", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={"k": 1}),
-            LayerSessionSnapshot(name="llm", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
-        ]
-    )
-    specs = [RuntimeLayerSpec(name="history", type="pydantic_ai.history")]
-
-    request = AgentBackendRunRequestBuilder().build_cleanup_request(
-        session_snapshot=session_snapshot,
-        runtime_layer_specs=specs,
-        idempotency_key="run-1:node-1:binding-1:agent-session-cleanup",
-        metadata={"workflow_run_id": "run-1"},
-    )
-
-    assert [layer.name for layer in request.composition.layers] == ["history"]
-    assert request.session_snapshot is not None
-    assert [layer.name for layer in request.session_snapshot.layers] == ["history"]
-    assert request.on_exit.default is ExitIntent.DELETE
-    assert request.idempotency_key == "run-1:node-1:binding-1:agent-session-cleanup"
-    assert request.metadata["agent_backend_lifecycle"] == "session_cleanup"
-    assert "purpose" not in request.model_dump(mode="json")
-
-
-def test_request_builder_rejects_empty_runtime_layer_specs():
-    """Empty specs would put us back in the original ``layers=[]`` trap that
-    fails on agenton's snapshot-vs-composition validation."""
-    with pytest.raises(ValueError, match="runtime_layer_specs"):
-        AgentBackendRunRequestBuilder().build_cleanup_request(
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
-            runtime_layer_specs=[],
-        )
-
-
-def test_extract_runtime_layer_specs_drops_plugin_layers_keeps_configs():
-    from dify_agent.protocol import RunComposition, RunLayerSpec
-
-    composition = RunComposition(
-        layers=[
-            RunLayerSpec(
-                name="agent_soul_prompt",
-                type="plain.prompt",
-                config=PromptLayerConfig(prefix="hello"),
-            ),
-            RunLayerSpec(
-                name="llm",
-                type="dify.plugin.llm",
-                config=None,  # protocol allows None; the redacted config is what matters
-            ),
-            RunLayerSpec(
-                name="tools",
-                type="dify.plugin.tools",
-            ),
-            RunLayerSpec(
-                name="history",
-                type="pydantic_ai.history",
-            ),
-        ]
-    )
-
-    specs = extract_runtime_layer_specs(composition)
-
-    assert [spec.name for spec in specs] == ["agent_soul_prompt", "history"]
-    # Non-plugin configs are dumped as JSON-compatible dicts so the persisted
-    # row can be replayed without holding live pydantic instances.
-    soul_config = specs[0].config
-    assert isinstance(soul_config, dict)
-    assert soul_config.get("prefix") == "hello"
-
-
 def test_request_builder_rejects_blank_prompts():
     with pytest.raises(ValidationError):
         AgentBackendWorkflowNodeRunInput(
@@ -397,6 +333,7 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
             agent_mode="agent_app",
             invoke_from="web-app",
         ),
+        backend_binding_ref="binding-ref-1",
         agent_soul_prompt="You are Iris.",
         user_prompt="List files.",
         include_shell=include_shell,
@@ -422,7 +359,7 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
     # The shell layer depends on execution_context so the agent server can mint
     # per-command Agent Stub env for sandbox CLI forwarding.
-    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID, "runtime": "runtime"}
     shell_config = cast(DifyShellLayerConfig, shell.config)
     assert shell_config.env[0].name == "PROJECT_NAME"
 
@@ -436,7 +373,10 @@ def test_workflow_request_builder_binds_drive_to_shell_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
     layer_names = [layer.name for layer in request.composition.layers]
 
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": "runtime",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.agent_stub_drive_ref == "agent-agent-1"
     assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}
@@ -470,7 +410,10 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
 
     assert DIFY_SHELL_LAYER_ID in layers
     assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": "runtime",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
 
@@ -483,7 +426,10 @@ def test_agent_app_request_builder_binds_drive_to_shell_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
     layer_names = [layer.name for layer in request.composition.layers]
 
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": "runtime",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.agent_stub_drive_ref == "agent-agent-1"
     assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}

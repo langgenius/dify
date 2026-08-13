@@ -1,23 +1,23 @@
 'use client'
 import type { FC } from 'react'
+import type { SelfHostedPlanOption } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
-import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
 import Button from './button'
 import List from './list'
 
 const STYLE_MAP = {
-  [SelfHostedPlan.community]: {
+  community: {
     icon: <Community />,
     bg: '',
     noise: null,
   },
-  [SelfHostedPlan.premium]: {
+  premium: {
     icon: <Premium />,
     bg: 'bg-billing-plan-card-premium-bg opacity-10',
     noise: (
@@ -26,7 +26,7 @@ const STYLE_MAP = {
       </div>
     ),
   },
-  [SelfHostedPlan.enterprise]: {
+  enterprise: {
     icon: <Enterprise />,
     bg: 'bg-billing-plan-card-enterprise-bg opacity-10',
     noise: (
@@ -38,15 +38,15 @@ const STYLE_MAP = {
 }
 
 type SelfHostedPlanItemProps = {
-  plan: SelfHostedPlan
+  plan: SelfHostedPlanOption
 }
 
 const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
   const { t } = useTranslation()
   const i18nPrefix = `plans.${plan}` as const
-  const isFreePlan = plan === SelfHostedPlan.community
-  const isPremiumPlan = plan === SelfHostedPlan.premium
-  const isEnterprisePlan = plan === SelfHostedPlan.enterprise
+  const isFreePlan = plan === 'community'
+  const isPremiumPlan = plan === 'premium'
+  const isEnterprisePlan = plan === 'enterprise'
 
   const handleGetPayUrl = useCallback(() => {
     if (isFreePlan) {
@@ -69,7 +69,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
       <div className="flex flex-col px-5 py-4">
         <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
-          <div className="flex min-h-[104px] flex-col gap-y-2">
+          <div className="flex min-h-26 flex-col gap-y-2">
             <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
               {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
             </div>

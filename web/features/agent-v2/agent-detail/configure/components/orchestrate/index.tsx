@@ -9,9 +9,16 @@ import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ENABLE_AGENT_KNOWLEDGE_RETRIEVAL } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
@@ -33,18 +40,14 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
-  draftSavedAt?: number
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  workflowReferencesEnabled?: boolean
   isBuildDraftActive?: boolean
   buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
@@ -62,18 +65,14 @@ export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
-  activeConfigSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
-  draftSavedAt,
   isPublishing,
   className,
   readOnly = false,
   selectedVersionSnapshot,
-  workflowReferencesEnabled,
   isBuildDraftActive = false,
   buildDraftChangedKeys = [],
   showHeader = true,
@@ -94,13 +93,9 @@ export function AgentOrchestratePanel({
     (showPublishBar ? (
       <AgentConfigurePublishBar
         agentId={agentId}
-        activeConfigIsPublished={activeConfigIsPublished}
-        activeConfigSnapshot={activeConfigSnapshot}
         agentName={agentName}
-        draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
         selectedVersionSnapshot={selectedVersionSnapshot}
-        workflowReferencesEnabled={workflowReferencesEnabled}
         onPublish={onPublish}
         onExitVersions={onExitVersions}
         onOpenVersions={onOpenVersions}
@@ -146,36 +141,40 @@ export function AgentOrchestratePanel({
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
         <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
-          <ScrollArea
-            className="min-h-0 flex-1 overflow-hidden"
-            label={showHeader ? undefined : orchestrateLabel}
-            slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20'),
-              scrollbar: hasBottomAction ? 'z-20' : undefined,
-            }}
-          >
-            <AgentConfigApiContextProvider value={configApiContext}>
-              <AgentOrchestrateAddActionsProvider>
-                <AgentBuildDraftChangedKeysProvider
-                  changedKeys={
-                    isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
-                  }
-                >
-                  <AgentModelField
-                    currentModel={currentModel}
-                    textGenerationModelList={textGenerationModelList}
-                    onSelect={onSelectModel}
-                  />
-                  <AgentPromptEditor />
-                  <AgentSkills />
-                  <AgentFiles />
-                  <AgentTools />
-                  <AgentKnowledgeRetrieval />
-                  <AgentAdvancedSettings />
-                </AgentBuildDraftChangedKeysProvider>
-              </AgentOrchestrateAddActionsProvider>
-            </AgentConfigApiContextProvider>
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+            <ScrollAreaViewport
+              aria-label={showHeader ? undefined : orchestrateLabel}
+              aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
+              className="overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
+                <AgentConfigApiContextProvider value={configApiContext}>
+                  <AgentOrchestrateAddActionsProvider>
+                    <AgentBuildDraftChangedKeysProvider
+                      changedKeys={
+                        isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                      }
+                    >
+                      <AgentModelField
+                        currentModel={currentModel}
+                        textGenerationModelList={textGenerationModelList}
+                        onSelect={onSelectModel}
+                      />
+                      <AgentPromptEditor />
+                      <AgentSkills />
+                      <AgentFiles />
+                      <AgentTools />
+                      {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
+                      <AgentAdvancedSettings />
+                    </AgentBuildDraftChangedKeysProvider>
+                  </AgentOrchestrateAddActionsProvider>
+                </AgentConfigApiContextProvider>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
           </ScrollArea>
         </div>
       </AgentOrchestrateReadOnlyContext>

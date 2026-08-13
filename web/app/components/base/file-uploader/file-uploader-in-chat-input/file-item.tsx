@@ -1,10 +1,10 @@
 import type { FileEntity } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
@@ -45,7 +45,7 @@ const FileItem = ({
     <>
       <div
         className={cn(
-          'group/file-item relative h-[68px] w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-card-bg p-2 shadow-xs',
+          'group/file-item relative h-17 w-36 rounded-lg border-[0.5px] border-components-panel-border bg-components-card-bg p-2 shadow-xs',
           !uploadError && 'hover:bg-components-card-bg-alt',
           uploadError && 'border border-state-destructive-border bg-state-destructive-hover',
           uploadError &&
@@ -83,9 +83,9 @@ const FileItem = ({
             {!!file.size && formatFileSize(file.size)}
           </div>
           {showDownloadAction && download_url && (
-            <ActionButton
+            <IconButton
               aria-label={t(($) => $['operation.download'], { ns: 'common' })}
-              size="m"
+              size="md"
               className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
               onClick={(e) => {
                 e.stopPropagation()
@@ -93,7 +93,7 @@ const FileItem = ({
               }}
             >
               <span className="i-ri-download-line size-3.5 text-text-tertiary" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
           )}
           {progress >= 0 && !fileIsUploaded(file) && (
             <ProgressCircle

@@ -4,6 +4,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
 
@@ -29,6 +30,7 @@ type ImagePreviewerProps = {
 }
 
 const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
+  const { t } = useTranslation()
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
     return images.reduce(
@@ -159,6 +161,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
         <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
           <Button
             variant="tertiary"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
             className="size-9 rounded-[10px] p-0"
             size="large"
@@ -173,6 +176,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
             <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
             <Button
               variant="secondary"
+              aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
               onClick={() => retryImage(currentImage!)}
               className="size-9 rounded-full p-0"
               size="large"
@@ -199,6 +203,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
         )}
         <Button
           variant="secondary"
+          aria-label={t(($) => $['pagination.previous'], { ns: 'common' })}
           onClick={prevImage}
           className="absolute top-1/2 left-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
           disabled={currentIndex === 0}
@@ -208,6 +213,7 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
         </Button>
         <Button
           variant="secondary"
+          aria-label={t(($) => $['pagination.next'], { ns: 'common' })}
           onClick={nextImage}
           className="absolute top-1/2 right-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
           disabled={currentIndex === images.length - 1}

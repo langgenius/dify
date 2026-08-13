@@ -19,56 +19,6 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading">loading</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => (
-    <PopoverContext.Provider
-      value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}
-    >
-      {children}
-    </PopoverContext.Provider>
-  )
-
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    return <div onClick={() => setOpen(!open)}>{render}</div>
-  }
-
-  const PopoverContent = ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
-    const { open } = React.useContext(PopoverContext)
-    return open ? (
-      <div data-testid="popover-content" className={className}>
-        {children}
-      </div>
-    ) : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
-
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   default: ({
     search,
@@ -151,7 +101,7 @@ describe('ToolPicker', () => {
     const onShowChange = vi.fn()
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow={false}
@@ -161,7 +111,7 @@ describe('ToolPicker', () => {
 
     fireEvent.click(screen.getByText('trigger'))
 
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    expect(onShowChange).toHaveBeenCalledWith(true, expect.any(Object))
   })
 
   it('renders loading content while installed plugins are loading', () => {

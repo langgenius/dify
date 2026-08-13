@@ -25,6 +25,23 @@ vp check web/app/components packages/dify-ui/src/button
 vp check --fix web/app/components packages/dify-ui/src/button
 ```
 
+Run only the Web JSX accessibility rules for selected files or directories with
+`lint:a11y`. Quote paths that contain shell metacharacters such as parentheses:
+
+```sh
+pnpm --dir web lint:a11y 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+```
+
+Use dependency mode to resolve an entry file's transitive local imports, including path aliases,
+re-exports, and dynamic imports, and then lint the resulting JSX and TSX files:
+
+```sh
+pnpm --dir web lint:a11y --deps 'app/(commonLayout)/app/(appDetailLayout)/layout.tsx'
+```
+
+This is a local page-scoped diagnostic. The repository-wide accessibility rule baseline remains
+owned by `lint.config.ts` and is also enforced by the normal `vp check` path.
+
 Run the ESLint fallback separately when targeting JSON, JSONC, JSON5, YAML, TOML, or Markdown:
 
 ```sh
@@ -35,6 +52,8 @@ pnpm lint:eslint:fix package.json pnpm-workspace.yaml web/docs
 Oxlint and Vite+ type-check scope is defined by `lint.config.ts` `ignorePatterns`, and ESLint's scope is defined by `eslint.config.mjs` global ignores.
 
 The primary rule baseline lives in `lint.config.ts` and is connected through the root `vite.config.ts` `lint` block. Oxlint-native rules are preferred, and compatible ESLint rules can run through Oxlint's `jsPlugins` support. The rules are explicit snapshots of the ESLint configurations that were active at migration time. Do not import an upstream preset wholesale: enable a new rule intentionally and review its existing violations first.
+
+Tailwind canonical class cleanup is optional because loading the JavaScript plugin adds noticeable lint startup time. The default `pnpm check` command does not load it. Run `pnpm lint:tailwind` to inspect `web/` and `packages/dify-ui/`, or `pnpm lint:tailwind:fix` to apply safe replacements. Both commands run the complete lint configuration with the additional `better-tailwindcss/enforce-canonical-classes` rule, using `web/app/styles/globals.css` and a 16px root font size.
 
 The non-code baseline and its repository-wide file scope live in `eslint.config.mjs`. ESLint checks JSON, JSONC, JSON5, YAML, TOML, and Markdown only. The configuration globally ignores JavaScript, JSX, TypeScript, TSX, and declaration files; a comment-only inventory records the removed code checks as a migration tradeoff. It does not import or depend on the Antfu ESLint config.
 

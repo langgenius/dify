@@ -28,10 +28,6 @@ vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => mockInstalledPluginList,
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
-}))
-
 vi.mock('../no-plugin-selected', () => ({
   default: ({ updateMode }: { updateMode: AUTO_UPDATE_MODE }) => (
     <div data-testid="no-plugin-selected">{updateMode}</div>

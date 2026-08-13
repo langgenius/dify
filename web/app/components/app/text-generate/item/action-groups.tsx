@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiBookmark3Line,
@@ -26,6 +27,7 @@ type GenerationActionGroupsProps = {
   currentTab: string
   depth: number
   feedback?: FeedbackType
+  hideLogAction?: boolean
   isError: boolean
   isInWebApp: boolean
   isResponding?: boolean
@@ -49,6 +51,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   currentTab,
   depth,
   feedback,
+  hideLogAction,
   isError,
   isInWebApp,
   isResponding,
@@ -71,37 +74,35 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
 
   return (
     <>
-      {!isInWebApp && appSourceType !== AppSourceTypeEnum.installedApp && !isResponding && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
-          <ActionButton
-            aria-label={t(($) => $['operation.log'], { ns: 'common' })}
-            disabled={isError || !messageId}
-            title={t(($) => $['operation.log'], { ns: 'common' })}
-            onClick={onOpenLogModal}
-          >
-            <RiFileList3Line className="size-4" />
-          </ActionButton>
-        </div>
-      )}
+      {!hideLogAction &&
+        !isInWebApp &&
+        appSourceType !== AppSourceTypeEnum.installedApp &&
+        !isResponding && (
+          <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+            <IconButton
+              aria-label={t(($) => $['operation.log'], { ns: 'common' })}
+              disabled={isError || !messageId}
+              title={t(($) => $['operation.log'], { ns: 'common' })}
+              onClick={onOpenLogModal}
+            >
+              <RiFileList3Line aria-hidden="true" className="size-4" />
+            </IconButton>
+          </div>
+        )}
       <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
         {moreLikeThis && !isTryApp && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
-            state={
-              depth === MAX_GENERATION_DEPTH
-                ? ActionButtonState.Disabled
-                : ActionButtonState.Default
-            }
             disabled={depth === MAX_GENERATION_DEPTH}
             title={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
             onClick={onMoreLikeThis}
           >
-            <RiSparklingLine className="size-4" />
-          </ActionButton>
+            <RiSparklingLine aria-hidden="true" className="size-4" />
+          </IconButton>
         )}
         {isShowTextToSpeech && !isTryApp && <NewAudioButton id={messageId!} voice={voice} />}
         {showCopyAction && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
             disabled={isError || !messageId}
             title={t(($) => $['operation.copy'], { ns: 'common' })}
@@ -112,20 +113,20 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="size-4" />
-          </ActionButton>
+            <RiClipboardLine aria-hidden="true" className="size-4" />
+          </IconButton>
         )}
         {isInWebApp && isError && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
             title={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
             onClick={onRetry}
           >
-            <RiResetLeftLine className="size-4" />
-          </ActionButton>
+            <RiResetLeftLine aria-hidden="true" className="size-4" />
+          </IconButton>
         )}
         {isInWebApp && !isWorkflow && !isTryApp && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.save'], { ns: 'common' })}
             disabled={isError || !messageId}
             title={t(($) => $['operation.save'], { ns: 'common' })}
@@ -133,8 +134,8 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               onSave?.(messageId as string)
             }}
           >
-            <RiBookmark3Line className="size-4" />
-          </ActionButton>
+            <RiBookmark3Line aria-hidden="true" className="size-4" />
+          </IconButton>
         )}
       </div>
       {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (

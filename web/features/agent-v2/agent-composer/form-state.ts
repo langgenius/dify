@@ -93,6 +93,8 @@ type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   displayName?: string
+  pluginId?: string
+  pluginUniqueIdentifier?: string
   iconClassName: string
   icon?: ToolDefaultValue['provider_icon']
   iconDark?: ToolDefaultValue['provider_icon_dark']

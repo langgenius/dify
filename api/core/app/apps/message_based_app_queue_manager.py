@@ -10,6 +10,7 @@ from core.app.entities.queue_entities import (
     QueueErrorEvent,
     QueueMessageEndEvent,
     QueueStopEvent,
+    QueueWorkflowPausedEvent,
 )
 from models.model import AppMode
 
@@ -43,7 +44,12 @@ class MessageBasedAppQueueManager(AppQueueManager):
         self._q.put(message)
 
         if isinstance(
-            event, QueueStopEvent | QueueErrorEvent | QueueMessageEndEvent | QueueAdvancedChatMessageEndEvent
+            event,
+            QueueStopEvent
+            | QueueErrorEvent
+            | QueueMessageEndEvent
+            | QueueAdvancedChatMessageEndEvent
+            | QueueWorkflowPausedEvent,
         ):
             self.stop_listen(execution_terminal=True)
 

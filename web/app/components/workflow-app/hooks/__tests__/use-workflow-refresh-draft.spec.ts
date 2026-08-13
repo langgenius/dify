@@ -40,7 +40,7 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
   useWorkflowUpdate: () => ({ handleUpdateWorkflowCanvas: mockHandleUpdateWorkflowCanvas }),
 }))
 

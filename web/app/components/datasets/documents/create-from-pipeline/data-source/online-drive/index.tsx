@@ -3,10 +3,13 @@ import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -35,7 +38,7 @@ const OnlineDrive = ({
   const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const {
     nextPageParameters,
     breadcrumbs,
@@ -202,10 +205,8 @@ const OnlineDrive = ({
   )
 
   const handleSetting = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   return (
     <div className="flex flex-col gap-y-2">

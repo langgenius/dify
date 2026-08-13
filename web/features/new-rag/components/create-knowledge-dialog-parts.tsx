@@ -52,7 +52,7 @@ export function StartMode({
       >
         <RadioControl aria-hidden />
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
-          <span aria-hidden className={`${icon} size-[18px] text-text-accent`} />
+          <span aria-hidden className={`${icon} size-4.5 text-text-accent`} />
         </span>
         <span className="min-w-0 flex-1">
           <span id={titleId} className="block system-sm-medium text-text-primary">
@@ -65,7 +65,7 @@ export function StartMode({
         {value === 'source' && (
           <span
             aria-hidden
-            className="h-4 w-[82px] shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
           />
         )}
         {disabled && (
@@ -83,7 +83,7 @@ export function KnowledgeIllustration({ title }: { title: string }) {
   return (
     <div className="flex size-full flex-col items-start bg-background-default" aria-hidden>
       <div className="min-h-0 w-full flex-1 border-b border-divider-subtle" />
-      <div className="flex max-h-full w-full shrink-0 flex-col items-start overflow-hidden pb-[94px]">
+      <div className="flex max-h-full w-full shrink-0 flex-col items-start overflow-hidden pb-23.5">
         <div className="flex w-full shrink-0 flex-col items-start gap-4 overflow-hidden py-4 pr-32 pl-8">
           <span className="flex size-14 shrink-0 items-center justify-center rounded-[10px] backdrop-blur-[6px]">
             <span className="flex size-full items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 text-text-accent">
@@ -94,7 +94,7 @@ export function KnowledgeIllustration({ title }: { title: string }) {
             {title}
           </p>
         </div>
-        <div className="aspect-[1489/840] w-full shrink-0 overflow-hidden">
+        <div className="aspect-1489/840 w-full shrink-0 overflow-hidden">
           <img
             alt=""
             className="block size-full max-w-none object-contain"

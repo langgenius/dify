@@ -40,6 +40,7 @@ def _request():
                 agent_mode="workflow_run",
                 invoke_from="debugger",
             ),
+            backend_binding_ref="binding-ref-1",
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )

@@ -18,7 +18,6 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
@@ -50,7 +49,7 @@ function LegacyList({
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))

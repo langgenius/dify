@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentChatRuntime } from './chat-runtime'
 import { sendPreviewChatMessage } from './preview-chat-request'
+import { AgentUnconfiguredNotice } from './unconfigured-notice'
 
 type AgentPreviewChatProps = Omit<
   AgentChatRuntimeProps,
@@ -16,7 +17,7 @@ function AgentPreviewChatEmptyState({
   agentIconBackground,
   agentIconType,
   agentName,
-  hasInstructions,
+  showUnconfiguredNotice,
 }: AgentChatRuntimeEmptyStateProps) {
   const { t } = useTranslation('agentV2')
   const imageUrl = agentIconType === 'image' || agentIconType === 'link' ? agentIcon : undefined
@@ -39,11 +40,7 @@ function AgentPreviewChatEmptyState({
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.preview.empty.description'])}
       </p>
-      {!hasInstructions && (
-        <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
-          {t(($) => $['agentDetail.configure.preview.empty.noInstructionsDescription'])}
-        </p>
-      )}
+      <AgentUnconfiguredNotice visible={showUnconfiguredNotice} />
     </>
   )
 }

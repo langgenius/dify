@@ -281,7 +281,7 @@ describe('Details', () => {
       })
 
       const { container } = render(<Details {...defaultProps} />)
-      const sidebar = container.querySelector('[class*="w-[360px]"]')
+      const sidebar = container.querySelector('.w-90')
       expect(sidebar).toBeInTheDocument()
     })
 

@@ -13,7 +13,14 @@ describe('ApiAccess', () => {
     const user = userEvent.setup()
     render(<ApiAccess expand apiEnabled />)
 
-    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
+    const trigger = screen.getByRole('button', { name: 'common.appMenus.apiAccess' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+    expect(trigger.firstElementChild).toHaveClass('hover:bg-state-base-hover')
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(trigger.firstElementChild).toHaveClass('bg-state-base-hover')
 
     expect(screen.getByText('API enabled')).toBeInTheDocument()
   })

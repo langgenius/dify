@@ -10,7 +10,7 @@ type ListProps = {
 
 const List = ({ currentCredentialId, credentials, onCredentialChange }: ListProps) => {
   return (
-    <div className="flex w-[280px] flex-col gap-y-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+    <div className="flex w-70 flex-col gap-y-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
       {credentials.map((credential) => {
         const isSelected = credential.id === currentCredentialId
         return (

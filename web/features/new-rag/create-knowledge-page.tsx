@@ -361,9 +361,9 @@ export function CreateKnowledgePage() {
           </button>
 
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
-            <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="min-h-6 w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
-              className="flex max-h-full min-h-0 w-full max-w-[760px] flex-col"
+              className="flex max-h-full min-h-0 w-full max-w-190 flex-col"
               onFormSubmit={handleSubmit}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -579,7 +579,7 @@ export function CreateKnowledgePage() {
                 </div>
               </div>
             </Form>
-            <div className="min-h-px w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="min-h-px w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">

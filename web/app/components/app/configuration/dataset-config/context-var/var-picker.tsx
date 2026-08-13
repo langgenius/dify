@@ -20,11 +20,11 @@ export type Props = Readonly<{
 }>
 
 const VarItem: FC<{ item: Option }> = ({ item }) => (
-  <div className="flex h-[18px] items-center space-x-1 rounded-sm bg-[#EFF8FF] px-1">
+  <div className="flex h-4.5 items-center space-x-1 rounded-sm bg-[#EFF8FF] px-1">
     <IconTypeIcon type={item.type as IInputTypeIconProps['type']} className="text-[#1570EF]" />
     <div className="flex text-xs font-medium text-[#1570EF]">
       <span className="opacity-60">{'{{'}</span>
-      <span className="max-w-[150px] truncate">{item.value}</span>
+      <span className="max-w-37.5 truncate">{item.value}</span>
       <span className="opacity-60">{'}}'}</span>
     </div>
   </div>
@@ -82,7 +82,7 @@ const VarPicker: FC<Props> = ({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         {options.length > 0 ? (
-          <div className="max-h-[50vh] w-[240px] overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+          <div className="max-h-[50vh] w-60 overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
             {options.map(({ name, value, type }) => (
               <div
                 key={value}
@@ -97,7 +97,7 @@ const VarPicker: FC<Props> = ({
             ))}
           </div>
         ) : (
-          <div className="w-[240px] rounded-lg border border-components-panel-border bg-components-panel-bg p-6 shadow-lg">
+          <div className="w-60 rounded-lg border border-components-panel-border bg-components-panel-bg p-6 shadow-lg">
             <div className="mb-1 text-sm font-medium text-text-secondary">
               {t(($) => $['feature.dataSet.queryVariable.noVar'], { ns: 'appDebug' })}
             </div>

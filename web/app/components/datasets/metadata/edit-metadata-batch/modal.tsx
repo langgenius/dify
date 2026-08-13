@@ -128,7 +128,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-160! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
@@ -137,7 +137,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         <div className="mt-1 system-xs-medium text-text-accent">
           {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
         </div>
-        <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
+        <div className="max-h-76.25 overflow-x-hidden overflow-y-auto">
           <div className="mt-4 space-y-2">
             {templeList.map((item) => (
               <EditMetadataBatchItem
@@ -149,7 +149,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className="mt-4 pl-[18px]">
+          <div className="mt-4 pl-4.5">
             <div className="flex items-center">
               <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFieldList } from '../hooks'
 
 const mockToggleInputFieldEditPanel = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../../../../../hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     toggleInputFieldEditPanel: mockToggleInputFieldEditPanel,
   }),

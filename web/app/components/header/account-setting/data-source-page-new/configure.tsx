@@ -59,7 +59,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
           alignOffset={-4}
           popupClassName="border-none bg-transparent shadow-none"
         >
-          <div className="w-[240px] space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
+          <div className="w-60 space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
             {!!canOAuth && (
               <AddOAuthButton
                 {...oAuthButtonProps}

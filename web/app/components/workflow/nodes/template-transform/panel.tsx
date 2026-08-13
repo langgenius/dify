@@ -71,7 +71,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({ id, data }) => {
           headerRight={
             <div className="flex items-center">
               <a
-                className="flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary"
+                className="flex h-4.5 items-center space-x-0.5 text-xs font-normal text-text-tertiary"
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target="_blank"
                 rel="noopener noreferrer"

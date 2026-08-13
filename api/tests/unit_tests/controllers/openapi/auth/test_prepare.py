@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.openapi.auth.data import AuthData, ExternalIdentity
@@ -150,10 +151,10 @@ def test_load_account_skips_when_already_set():
     assert data.caller is existing_caller
 
 
-def test_load_account_sets_current_tenant_when_tenant_present():
+def test_load_account_sets_current_tenant_when_tenant_present(sqlite_session: Session):
     account = MagicMock()
     tenant = MagicMock()
-    session = MagicMock()
+    session = sqlite_session
     data = _make_auth_data(account_id=uuid.uuid4(), tenant=tenant)
     with (
         patch("controllers.openapi.auth.prepare.AccountService.get_account_by_id", return_value=account),

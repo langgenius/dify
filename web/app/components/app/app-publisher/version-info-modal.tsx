@@ -1,18 +1,16 @@
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type VersionInfoModalProps = {
   isOpen: boolean
-  versionInfo?: VersionHistory
+  versionInfo?: Pick<WorkflowResponse, 'id' | 'marked_comment' | 'marked_name'>
   onClose: () => void
   onPublish: (params: { title: string; releaseNotes: string; id?: string }) => void
 }
@@ -74,7 +72,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
+      <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
         <div className="relative w-full p-6 pr-14 pb-4">
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
             {versionInfo?.marked_name
@@ -87,7 +85,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+            <span className="i-ri-close-line h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
@@ -118,7 +116,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button nativeButton={false} variant="primary" onClick={handlePublish}>
-              {t(($) => $['common.publish'], { ns: 'workflow' })}
+              {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </div>
         </div>

@@ -7,14 +7,14 @@ import { Toggle as BaseToggle } from '@base-ui/react/toggle'
 import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
 import { cn } from '../cn'
 
-export type SegmentedControlProps<Value extends string = string> = Omit<
+type SegmentedControlProps<Value extends string = string> = Omit<
   BaseToggleGroupNS.Props<Value>,
   'className'
 > & {
   className?: string
 }
 
-export function SegmentedControl<Value extends string = string>({
+function SegmentedControl<Value extends string = string>({
   className,
   ...props
 }: SegmentedControlProps<Value>) {
@@ -29,14 +29,14 @@ export function SegmentedControl<Value extends string = string>({
   )
 }
 
-export type SegmentedControlItemProps<Value extends string = string> = Omit<
+type SegmentedControlItemProps<Value extends string = string> = Omit<
   BaseToggleNS.Props<Value>,
   'className'
 > & {
   className?: string
 }
 
-export function SegmentedControlItem<Value extends string = string>({
+function SegmentedControlItem<Value extends string = string>({
   className,
   ...props
 }: SegmentedControlItemProps<Value>) {
@@ -51,11 +51,11 @@ export function SegmentedControlItem<Value extends string = string>({
   )
 }
 
-export type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'className'> & {
+type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'className'> & {
   className?: string
 }
 
-export function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
+function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
   return (
     <span
       role="presentation"
@@ -65,3 +65,7 @@ export function SegmentedControlDivider({ className, ...props }: SegmentedContro
     />
   )
 }
+
+export { SegmentedControl, SegmentedControlDivider, SegmentedControlItem }
+
+export type { SegmentedControlDividerProps, SegmentedControlItemProps, SegmentedControlProps }

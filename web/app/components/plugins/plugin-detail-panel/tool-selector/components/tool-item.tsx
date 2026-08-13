@@ -177,7 +177,7 @@ export function ToolItem({
           render={
             <Button className="relative z-10" variant="secondary" size="small">
               {t(($) => $.notAuthorized, { ns: 'tools' })}
-              <StatusDot className="ml-2" status="warning" />
+              <StatusDot status="warning" />
             </Button>
           }
         />
@@ -187,7 +187,7 @@ export function ToolItem({
           render={
             <Button className="relative z-10" variant="secondary" size="small">
               {t(($) => $['auth.authRemoved'], { ns: 'plugin' })}
-              <StatusDot className="ml-2" status="error" />
+              <StatusDot status="error" />
             </Button>
           }
         />

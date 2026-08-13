@@ -83,7 +83,7 @@ export function OperationDropdown({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName={cn('w-[192px] py-1', popupClassName)}
+        popupClassName={cn('w-48 py-1', popupClassName)}
       >
         {showInfo && (
           <DropdownMenuItem

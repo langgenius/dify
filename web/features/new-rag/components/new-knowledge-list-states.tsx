@@ -33,7 +33,7 @@ export function NewKnowledgeLoadingState() {
       {LOADING_CARD_IDS.map((id) => (
         <div
           key={id}
-          className="h-[166px] rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
+          className="h-41.5 rounded-xl border border-components-card-border bg-components-card-bg p-4 shadow-xs"
         >
           <SkeletonContainer className="h-full">
             <div className="flex gap-3">
@@ -62,12 +62,12 @@ export function NewKnowledgePageState({
   title: ReactNode
 }) {
   return (
-    <div className="flex min-h-[420px] flex-col items-center justify-center px-6 text-center">
+    <div className="flex min-h-105 flex-col items-center justify-center px-6 text-center">
       <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg shadow-xs">
         <span aria-hidden className="i-ri-book-open-line size-6 text-text-tertiary" />
       </div>
       <h2 className="title-2xl-semi-bold text-text-primary">{title}</h2>
-      <p className="mt-2 max-w-[520px] body-md-regular text-text-tertiary">{description}</p>
+      <p className="mt-2 max-w-130 body-md-regular text-text-tertiary">{description}</p>
       {action ? <div className="mt-6">{action}</div> : null}
     </div>
   )
@@ -98,7 +98,7 @@ function EmptyAction({
       href={href}
       aria-label={title}
       aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-[58px] w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
+      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
     >
       <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
         <span
@@ -178,13 +178,13 @@ function EmptyGhostGrid() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)]"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden mask-[linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,transparent,black_22%,black_68%,transparent)]"
     >
-      <div className="absolute top-0 left-1/2 grid w-[1200px] -translate-x-1/2 grid-cols-4 gap-2.5 opacity-35">
+      <div className="absolute top-0 left-1/2 grid w-300 -translate-x-1/2 grid-cols-4 gap-2.5 opacity-35">
         {EMPTY_GHOST_CARD_IDS.map((id) => (
           <div
             key={id}
-            className="h-[209px] rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
+            className="h-52.25 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs"
           >
             <div className="flex items-center gap-3">
               <div className="size-10 shrink-0 rounded-[10px] bg-background-section" />
@@ -216,7 +216,7 @@ export function NewKnowledgeEmptyState({
   return (
     <div className="relative isolate flex min-h-[calc(100vh-134px)] items-center justify-center overflow-hidden px-4 py-16 text-center sm:px-6">
       <EmptyGhostGrid />
-      <div className="relative z-10 flex w-full max-w-[520px] flex-col items-center gap-6">
+      <div className="relative z-10 flex w-full max-w-130 flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
           <div className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-[6px]">
             <span aria-hidden className="i-ri-book-open-line size-6 text-text-accent" />

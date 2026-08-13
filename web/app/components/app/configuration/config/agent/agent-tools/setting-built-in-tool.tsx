@@ -12,11 +12,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -179,7 +179,7 @@ const SettingBuiltInTool: FC<Props> = ({
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
@@ -189,9 +189,12 @@ const SettingBuiltInTool: FC<Props> = ({
                   {/* header */}
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
                     <div className="absolute top-3 right-3">
-                      <ActionButton onClick={onHide}>
-                        <RiCloseLine className="size-4" />
-                      </ActionButton>
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        onClick={onHide}
+                      >
+                        <RiCloseLine aria-hidden="true" className="size-4" />
+                      </IconButton>
                     </div>
                     {showBackButton && (
                       <div

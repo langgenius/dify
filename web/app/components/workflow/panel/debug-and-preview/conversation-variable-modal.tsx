@@ -73,7 +73,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
       <DialogContent
         className={cn(
           'w-full overflow-hidden! border-none text-left align-middle',
-          cn('h-[min(640px,calc(100dvh-2rem))] max-h-none! w-[920px] max-w-[calc(100vw-2rem)] p-0'),
+          cn('h-[min(640px,calc(100dvh-2rem))] max-h-none! w-230 max-w-[calc(100vw-2rem)] p-0'),
         )}
       >
         <button
@@ -86,7 +86,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
         </button>
         <div className="flex size-full">
           {/* LEFT */}
-          <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
+          <div className="flex h-full w-56 shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
             <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">
               {t(($) => $['chatVariable.panelTitle'], { ns: 'workflow' })}
             </div>

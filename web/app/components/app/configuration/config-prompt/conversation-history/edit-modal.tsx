@@ -25,12 +25,12 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-6 text-left align-middle">
+      <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-6 text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}
         </DialogTitle>
 
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">
+        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
           {t(($) => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}
         </div>
         <input
@@ -44,7 +44,7 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
           }
         />
 
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">
+        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
           {t(($) => $['feature.conversationHistory.editModal.assistantPrefix'], { ns: 'appDebug' })}
         </div>
         <input

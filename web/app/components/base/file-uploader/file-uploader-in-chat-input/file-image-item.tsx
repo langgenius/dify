@@ -53,7 +53,7 @@ const FileImageItem = ({
           </Button>
         )}
         <FileImageRender
-          className="h-[68px] w-[68px] shadow-md"
+          className="h-17 w-17 shadow-md"
           imageUrl={base64Url || url || ''}
           showDownloadAction={showDownloadAction}
         />

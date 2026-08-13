@@ -98,7 +98,7 @@ export function Infotip({
         placement={placement}
         sideOffset={sideOffset}
         popupClassName={cn(
-          'max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
+          'max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
           popupClassName,
         )}
       >

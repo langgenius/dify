@@ -5,7 +5,13 @@ import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
@@ -279,7 +285,7 @@ export default function IntegrationsPage({
               >
                 {toolsNavItemContent}
               </CollapsibleTrigger>
-              <CollapsiblePanel className="relative space-y-px before:absolute before:top-[-1px] before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
+              <CollapsiblePanel className="relative space-y-px before:absolute before:-top-px before:bottom-0 before:left-[17.5px] before:w-px before:bg-divider-regular">
                 {toolItems.map((item) => (
                   <IntegrationSidebarNavItem
                     key={item.label}
@@ -339,28 +345,32 @@ export default function IntegrationsPage({
             />
           </div>
         ) : (
-          <ScrollArea
-            className="min-h-0 flex-1 overflow-hidden"
-            label={scrollAreaLabel}
-            slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full',
-            }}
-          >
-            <IntegrationSectionRenderer
-              key={section}
-              section={section}
-              title={integrationHeader?.title ?? activeItem?.label}
-              description={headerDescriptionWithLink}
-              providerSearchText={providerSearchText}
-              onProviderSearchTextChange={setProviderSearchText}
-              onSwitchToMarketplace={handleSwitchToMarketplace}
-              canInstallPlugin={canInstallPlugin}
-              canDeletePlugin={canDeletePlugin}
-              isInstallPermissionLoading={isReferenceSettingLoading}
-              canUpdatePlugin={canUpdatePlugin}
-              pluginCategoryToolbarAction={pluginSettingAction}
-            />
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+            <ScrollAreaViewport
+              aria-label={scrollAreaLabel}
+              className="overscroll-contain"
+              role={scrollAreaLabel ? 'region' : undefined}
+            >
+              <ScrollAreaContent className="min-h-full">
+                <IntegrationSectionRenderer
+                  key={section}
+                  section={section}
+                  title={integrationHeader?.title ?? activeItem?.label}
+                  description={headerDescriptionWithLink}
+                  providerSearchText={providerSearchText}
+                  onProviderSearchTextChange={setProviderSearchText}
+                  onSwitchToMarketplace={handleSwitchToMarketplace}
+                  canInstallPlugin={canInstallPlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
+                  canUpdatePlugin={canUpdatePlugin}
+                  pluginCategoryToolbarAction={pluginSettingAction}
+                />
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
           </ScrollArea>
         )}
       </section>

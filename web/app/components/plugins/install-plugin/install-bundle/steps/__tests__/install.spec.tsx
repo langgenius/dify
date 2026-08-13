@@ -55,12 +55,6 @@ vi.mock('../../../hooks/use-refresh-plugin-list', () => ({
   }),
 }))
 
-// Mock mitt context
-const mockEmit = vi.fn()
-vi.mock('@/context/mitt-context', () => ({
-  useMittContextSelector: () => mockEmit,
-}))
-
 // Mock useCanInstallPluginFromMarketplace
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanInstallPluginFromMarketplace: () => ({ canInstallPluginFromMarketplace: true }),
@@ -527,25 +521,6 @@ describe('Install Component', () => {
 
       await waitFor(() => {
         expect(mockRefreshPluginList).toHaveBeenCalled()
-      })
-    })
-
-    it('should emit plugin:install:success event on successful installation', async () => {
-      render(<Install {...defaultProps} />)
-
-      // Select all plugins
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('select-all-plugins'))
-      })
-
-      // Click install
-      const installButton = screen.getByText(/plugin\.installModal\.install/i)
-      await act(async () => {
-        fireEvent.click(installButton)
-      })
-
-      await waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', expect.any(Array))
       })
     })
 

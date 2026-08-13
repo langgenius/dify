@@ -7,7 +7,14 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from services.recommend_app.recommend_app_type import RecommendAppType
-from services.recommend_app.remote.remote_retrieval import RemoteRecommendAppRetrieval
+from services.recommend_app.remote.remote_retrieval import RemoteRecommendAppRetrieval, clear_remote_fetch_cache
+
+
+@pytest.fixture(autouse=True)
+def _clear_remote_fetch_cache_between_tests():
+    clear_remote_fetch_cache()
+    yield
+    clear_remote_fetch_cache()
 
 
 @pytest.fixture
@@ -249,3 +256,63 @@ class TestFetchFromDifyOfficial:
 
         with pytest.raises(ValueError, match="fetch learn dify apps failed"):
             RemoteRecommendAppRetrieval.fetch_learn_dify_apps_from_dify_official("en-US")
+
+    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
+    def test_apps_uses_cache_for_repeated_requests(self, mock_get, mock_config):
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"recommended_apps": [{"id": "app-1"}]}
+        mock_get.return_value = mock_response
+
+        first = RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+        second = RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+
+        assert first == second == {"recommended_apps": [{"id": "app-1"}]}
+        mock_get.assert_called_once()
+
+    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
+    def test_apps_does_not_cache_failed_responses(self, mock_get, mock_config):
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+        mock_get.return_value = MagicMock(status_code=500)
+
+        with pytest.raises(ValueError, match="fetch recommended apps failed"):
+            RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+        with pytest.raises(ValueError, match="fetch recommended apps failed"):
+            RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+
+        assert mock_get.call_count == 2
+
+    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
+    def test_apps_skips_cache_when_ttl_disabled(self, mock_get, mock_config):
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 0
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"recommended_apps": []}
+        mock_get.return_value = mock_response
+
+        RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+        RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+
+        assert mock_get.call_count == 2
+
+    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
+    def test_apps_cache_isolated_by_origin_header(self, mock_get, mock_config):
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"recommended_apps": []}
+        mock_get.return_value = mock_response
+
+        flask_app = Flask(__name__)
+        with flask_app.test_request_context(headers={"Origin": "https://cloud-a.example.com"}):
+            RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+        with flask_app.test_request_context(headers={"Origin": "https://cloud-b.example.com"}):
+            RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+
+        assert mock_get.call_count == 2

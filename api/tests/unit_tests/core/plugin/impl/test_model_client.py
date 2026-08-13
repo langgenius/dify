@@ -28,6 +28,19 @@ class TestPluginModelClient:
         )
         assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
 
+    def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        request_mock = mocker.patch.object(client, "_request_with_plugin_daemon_response", return_value=["binding-a"])
+
+        result = client.fetch_model_provider_bindings("tenant-1")
+
+        assert result == ["binding-a"]
+        assert request_mock.call_args.args[:2] == (
+            "GET",
+            "plugin/tenant-1/management/models/bindings",
+        )
+        assert "params" not in request_mock.call_args.kwargs
+
     def test_get_model_schema(self, mocker: MockerFixture):
         client = PluginModelClient()
         schema = SimpleNamespace(name="schema")

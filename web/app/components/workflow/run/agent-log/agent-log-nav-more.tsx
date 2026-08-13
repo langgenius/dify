@@ -8,17 +8,27 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiMoreLine } from '@remixicon/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type AgentLogNavMoreProps = {
   options: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
 const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger render={<Button className="size-6" variant="ghost-accent" />}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className="size-6"
+            variant="ghost-accent"
+          />
+        }
+      >
         <RiMoreLine className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent

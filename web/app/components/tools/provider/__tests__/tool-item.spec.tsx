@@ -1,5 +1,6 @@
 import type { Collection, Tool } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import ToolItem from '../tool-item'
 
@@ -38,24 +39,31 @@ const tool = {
 } as Tool
 
 describe('ToolItem', () => {
-  it('opens and closes tool details', () => {
+  it('opens and closes tool details from the keyboard', async () => {
+    const user = userEvent.setup()
     render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} />)
 
-    fireEvent.click(screen.getByText('Tool label'))
+    const toolButton = screen.getByRole('button', { name: 'Tool label' })
+    toolButton.focus()
+    await user.keyboard('{Enter}')
+
     expect(screen.getByTestId('tool-detail')).toBeInTheDocument()
     expect(screen.getByTestId('tool-detail')).toHaveAttribute(
       'data-show-readonly-setting-details',
       'true',
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close details' }))
+    await user.click(screen.getByRole('button', { name: 'Close details' }))
     expect(screen.queryByTestId('tool-detail')).not.toBeInTheDocument()
   })
 
-  it('does not open tool details when disabled', () => {
+  it('does not open tool details when disabled', async () => {
+    const user = userEvent.setup()
     render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} disabled />)
 
-    fireEvent.click(screen.getByText('Tool label'))
+    const toolButton = screen.getByRole('button', { name: 'Tool label' })
+    expect(toolButton).toBeDisabled()
+    await user.click(toolButton)
 
     expect(screen.queryByTestId('tool-detail')).not.toBeInTheDocument()
   })

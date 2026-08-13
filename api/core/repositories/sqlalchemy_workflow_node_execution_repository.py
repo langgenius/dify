@@ -18,6 +18,7 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -372,6 +373,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Persist a caller row before an Agent v2 participant is materialized."""
+
+        self.save(execution)
+
     def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
         """
         Persist the database model to the database.
@@ -386,6 +393,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                merged_process_data = preserve_workflow_agent_binding_id(
+                    existing.process_data_dict,
+                    db_model.process_data_dict,
+                )
+                db_model.process_data = (
+                    _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
+                )
                 # Update existing record by copying all non-private attributes
                 for key, value in db_model.__dict__.items():
                     if not key.startswith("_"):
@@ -442,18 +456,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        if domain_model.process_data is not None:
+        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        if process_data is not None:
             result = self._truncate_and_upload(
-                domain_model.process_data,
+                process_data,
                 domain_model.id,
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                db_model.process_data = self._json_encode(result.truncated_value)
-                domain_model.set_truncated_process_data(result.truncated_value)
+                truncated_process_data = preserve_workflow_agent_binding_id(
+                    process_data,
+                    result.truncated_value,
+                )
+                if truncated_process_data is None:
+                    raise ValueError("truncated process data is unavailable")
+                db_model.process_data = self._json_encode(truncated_process_data)
+                domain_model.set_truncated_process_data(truncated_process_data)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
             else:
-                db_model.process_data = self._json_encode(domain_model.process_data)
+                db_model.process_data = self._json_encode(process_data)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():

@@ -9,7 +9,6 @@ import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
   BoxGroupField,
@@ -18,6 +17,7 @@ import {
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
 import EmbeddingModel from './components/embedding-model'

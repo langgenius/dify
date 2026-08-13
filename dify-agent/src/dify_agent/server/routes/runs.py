@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.params import Depends as DependsInstance
 from fastapi.responses import StreamingResponse
 
 from dify_agent.protocol.schemas import (
@@ -32,9 +33,11 @@ from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
+    *,
+    auth_dependency: DependsInstance | None = None,
 ) -> APIRouter:
-    """Create routes bound to the application's store dependency provider."""
-    router = APIRouter(prefix="/runs", tags=["runs"])
+    dependencies: list[DependsInstance] = [auth_dependency] if auth_dependency is not None else []
+    router = APIRouter(prefix="/runs", tags=["runs"], dependencies=dependencies)
 
     async def store_dep() -> RedisRunStore:
         return get_store()
@@ -65,6 +68,7 @@ def create_runs_router(
             created_at=record.created_at,
             updated_at=record.updated_at,
             error=record.error,
+            error_type=record.error_type,
         )
 
     @router.post("/{run_id}/cancel", response_model=CancelRunResponse)
@@ -73,7 +77,7 @@ def create_runs_router(
         request: CancelRunRequest,
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CancelRunResponse:
-        """Cancel a process-local run and publish its terminal event/status."""
+        """Persist cancellation; the owner process observes it and stops its runner."""
         try:
             return await scheduler.cancel_run(run_id, request)
         except RunNotFoundError as exc:

@@ -23,8 +23,9 @@ import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
-import { useSetWorkflowVarsWithValue, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
+import { useSetWorkflowVarsWithValue } from '../../hooks/use-set-workflow-vars-with-value'
+import { useWorkflowRun } from '../../hooks/use-workflow-run'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
@@ -731,7 +732,7 @@ export const useChat = (
   const handleResume = useCallback(
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
+      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
 
       const otherOptions: IOtherOptions = {
         getAbortController: (abortController) => {
@@ -1001,9 +1002,7 @@ export const useChat = (
             }
           })
         },
-        onWorkflowPaused: ({ data: workflowPausedData }) => {
-          const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
-          sseGet(resumeUrl, {}, otherOptions)
+        onWorkflowPaused: () => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })

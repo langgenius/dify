@@ -27,11 +27,14 @@ let mockCanUseCommentMode = true
 let mockIsCommentModeAvailable = true
 let mockStoreState: WorkflowStoreState
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
     getNodesReadOnly: () => mockNodesReadOnly,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     handleModePointer: mockHandleModePointer,
     handleModeHand: mockHandleModeHand,
@@ -39,6 +42,9 @@ vi.mock('../../hooks', () => ({
     isCommentModeAvailable: mockIsCommentModeAvailable,
     canUseCommentMode: mockCanUseCommentMode,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({
     handleLayout: mockHandleLayout,
   }),

@@ -51,8 +51,8 @@ def upload_remote_file_from_request(
     current_user: Account,
     resource_tenant_id: str | None = None,
 ) -> FileWithSignedUrl:
-    """Validate the JSON request, fetch its remote file, and persist it under the requested tenant."""
     payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
+    """Validate the JSON request, fetch its remote file, and persist it under the requested tenant."""
     url = payload.url
 
     # Try to fetch remote file metadata/content first

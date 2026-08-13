@@ -89,7 +89,7 @@ const VarList: FC<Props> = ({ readonly, list, onChange }) => {
 
   if (list.length === 0) {
     return (
-      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs leading-[18px] font-normal text-text-tertiary">
+      <div className="flex h-10.5 items-center justify-center rounded-md bg-components-panel-bg text-xs leading-4.5 font-normal text-text-tertiary">
         {t(($) => $['nodes.start.noVarTip'], { ns: 'workflow' })}
       </div>
     )

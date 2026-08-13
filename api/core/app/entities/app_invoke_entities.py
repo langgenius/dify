@@ -15,8 +15,6 @@ if TYPE_CHECKING:
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
-AGENT_RUNTIME_EXIT_INTENT_ARG = "_agent_runtime_exit_intent"
-type AgentRuntimeExitIntent = Literal["suspend", "delete"]
 
 
 class UserFrom(StrEnum):
@@ -227,12 +225,8 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     backend should read from: immutable snapshot, shared draft, or per-user
     build draft.
 
-    ``agent_runtime_session_snapshot_id`` carries the runtime session scope
-    used to resume or suspend within the same editable config surface.
-
-    ``agent_runtime_exit_intent`` is API-internal lifecycle policy for the
-    Agent backend session after this turn finishes. Normal chat/resume turns
-    suspend on exit; build-chat finalization deletes the backend runtime.
+    ``agent_session_scope_config_version_id`` identifies the draft or immutable
+    config version whose Workspace Binding should be reused for this session.
 
     ``prompt_file_mappings`` preserves the raw request ``files`` array for the
     Agent backend prompt. These references are appended to the backend prompt
@@ -242,8 +236,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     agent_id: str
     agent_config_snapshot_id: str
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
-    agent_runtime_session_snapshot_id: str | None = None
-    agent_runtime_exit_intent: AgentRuntimeExitIntent = "suspend"
+    agent_session_scope_config_version_id: str | None = None
     prompt_file_mappings: Sequence[JsonValue] = Field(default_factory=list)
 
 

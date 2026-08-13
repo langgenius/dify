@@ -3,6 +3,7 @@ import type { FormInputItem, HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
@@ -11,12 +12,10 @@ import {
   RiExpandDiagonalLine,
   RiEyeLine,
 } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -70,10 +69,10 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
     },
   })
 
-  const [isExpandFormContent, { toggle: toggleExpandFormContent }] = useBoolean(false)
+  const [isExpandFormContent, setIsExpandFormContent] = useState(false)
   const nodePanelWidth = useStore((state) => state.nodePanelWidth)
 
-  const [isPreview, { toggle: togglePreview, setFalse: hidePreview }] = useBoolean(false)
+  const [isPreview, setIsPreview] = useState(false)
 
   const onAddUseAction = useCallback(() => {
     const index = inputs.user_actions.length + 1
@@ -105,7 +104,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
         className={cn(
           'px-4 py-2',
           isExpandFormContent &&
-            'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
+            'fixed top-61 right-1 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
         )}
         style={{
           width: isExpandFormContent ? nodePanelWidth : '100%',
@@ -128,10 +127,10 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                 variant="ghost"
                 size="small"
                 className={cn(
-                  'flex items-center space-x-1 px-2',
+                  'flex items-center px-2',
                   isPreview && 'bg-state-accent-active text-text-accent',
                 )}
-                onClick={togglePreview}
+                onClick={() => setIsPreview((isPreview) => !isPreview)}
               >
                 <RiEyeLine className="size-3.5" />
                 <div className="system-xs-medium">
@@ -160,7 +159,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                     'flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover',
                     isExpandFormContent && 'bg-state-accent-active text-text-accent',
                   )}
-                  onClick={toggleExpandFormContent}
+                  onClick={() => setIsExpandFormContent((isExpanded) => !isExpanded)}
                 >
                   {isExpandFormContent ? (
                     <RiCollapseDiagonalLine className="size-4" aria-hidden />
@@ -202,9 +201,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">
-              <ActionButton onClick={onAddUseAction}>
-                <RiAddLine className="size-4" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $['operation.add'], { ns: 'common' })}
+                onClick={onAddUseAction}
+              >
+                <RiAddLine aria-hidden="true" className="size-4" />
+              </IconButton>
             </div>
           )}
         </div>
@@ -263,7 +265,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
           content={inputs.form_content}
           formInputs={inputs.inputs}
           userActions={inputs.user_actions}
-          onClose={hidePreview}
+          onClose={() => setIsPreview(false)}
         />
       )}
     </div>

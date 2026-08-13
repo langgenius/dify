@@ -3,9 +3,9 @@ import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -100,14 +100,15 @@ const AddOAuthButton = ({
               {redirect_uri && (
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
-                  <ActionButton
+                  <IconButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="shrink-0"
                     onClick={() => {
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <span className="i-ri-clipboard-line size-4" />
-                  </ActionButton>
+                    <span aria-hidden className="i-ri-clipboard-line size-4" />
+                  </IconButton>
                 </div>
               )}
             </div>
@@ -202,7 +203,7 @@ const AddOAuthButton = ({
             {is_oauth_custom_client_enabled && (
               <Badge
                 className={cn(
-                  'mr-0.5 ml-1',
+                  'mr-0.5',
                   buttonVariant === 'primary' &&
                     'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                 )}
@@ -240,7 +241,7 @@ const AddOAuthButton = ({
           disabled={disabled}
           className="w-full"
         >
-          <span className="mr-0.5 i-ri-equalizer-2-line size-4" />
+          <span className="i-ri-equalizer-2-line size-4" />
           {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
         </Button>
       )}

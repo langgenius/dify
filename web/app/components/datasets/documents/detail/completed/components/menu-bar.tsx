@@ -69,7 +69,7 @@ function MenuBar({
           if (nextItem) onChangeStatus(nextItem)
         }}
       >
-        <SelectTrigger className="mr-2 w-[100px] shrink-0 shadow-none">
+        <SelectTrigger className="mr-2 w-25 shrink-0 shadow-none">
           {selectedStatus?.name ?? ''}
         </SelectTrigger>
         <SelectContent popupClassName="w-[160px]">

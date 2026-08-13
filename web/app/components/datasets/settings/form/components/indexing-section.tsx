@@ -9,6 +9,10 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import {
+  MultimodalRetrievalGuidance,
+  MultimodalRetrievalGuidanceLearnMore,
+} from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
@@ -87,7 +91,7 @@ const IndexingSection = ({
         <>
           <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
           <div className={rowClass}>
-            <div className="flex w-[180px] shrink-0 flex-col">
+            <div className="flex w-45 shrink-0 flex-col">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
                 {t(($) => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
               </div>
@@ -149,12 +153,19 @@ const IndexingSection = ({
       {/* Embedding Model */}
       {indexMethod === IndexingType.QUALIFIED && (
         <div className={rowClass}>
-          <div className={labelClass}>
+          <div className="flex w-[180px] shrink-0 flex-col pt-1">
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
+            <MultimodalRetrievalGuidanceLearnMore />
           </div>
           <div className="grow">
+            <MultimodalRetrievalGuidance
+              variant="settings"
+              embeddingModel={embeddingModel}
+              embeddingModelList={embeddingModelList}
+              className="mb-2"
+            />
             <ModelSelector
               defaultModel={embeddingModel}
               modelList={embeddingModelList}
@@ -184,7 +195,7 @@ const IndexingSection = ({
           <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div className="flex w-[180px] shrink-0 flex-col">
+              <div className="flex w-45 shrink-0 flex-col">
                 <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
                   {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
                 </div>

@@ -148,7 +148,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
         <RiFilter3Line className="size-4 text-text-tertiary" />
-        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">
+        <div className="min-w-16.25 grow text-center system-sm-medium text-text-tertiary">
           {t(($) => $['typeSelector.all'], { ns: 'app' })}
         </div>
         <RiArrowDownSLine className="size-4 text-text-tertiary" />

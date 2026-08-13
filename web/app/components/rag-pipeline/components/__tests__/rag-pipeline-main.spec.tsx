@@ -17,19 +17,24 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
-  useDSL: () => ({
-    exportCheck: vi.fn(),
-    handleExportDSL: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-DSL', () => ({
   useDSLByCanEdit: () => ({
     exportCheck: vi.fn(),
     handleExportDSL: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
@@ -38,16 +43,15 @@ vi.mock('../../hooks', () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-pipeline-refresh-draft', () => ({
   usePipelineRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
-  usePipelineRun: () => ({
-    handleBackupDraft: vi.fn(),
-    handleLoadBackupDraft: vi.fn(),
-    handleRestoreFromPublishedWorkflow: vi.fn(),
-    handleRun: vi.fn(),
-    handleStopRun: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-pipeline-run', () => ({
   usePipelineRunByCanEdit: () => ({
     handleBackupDraft: vi.fn(),
     handleLoadBackupDraft: vi.fn(),
@@ -55,10 +59,9 @@ vi.mock('../../hooks', () => ({
     handleRun: vi.fn(),
     handleStopRun: vi.fn(),
   }),
-  usePipelineStartRun: () => ({
-    handleStartWorkflowRun: vi.fn(),
-    handleWorkflowStartRunInWorkflow: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-pipeline-start-run', () => ({
   usePipelineStartRunByCanEdit: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInWorkflow: vi.fn(),

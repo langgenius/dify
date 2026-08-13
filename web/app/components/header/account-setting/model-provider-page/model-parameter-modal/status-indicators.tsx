@@ -1,7 +1,7 @@
 import type { SelectorParam } from 'i18next'
 import type { ReactNode } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiErrorWarningFill } from '@remixicon/react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import Link from '@/next/link'
 import { useInstalledPluginList } from '@/service/use-plugins'
@@ -53,7 +53,12 @@ const StatusIndicators = ({
   pluginInfo,
   t,
 }: StatusIndicatorsProps) => {
-  const { data: pluginList } = useInstalledPluginList()
+  const shouldLoadInstalledModelPlugins =
+    !needsConfiguration && modelProvider && disabled && !inModelList && !!pluginInfo
+  const { data: pluginList } = useInstalledPluginList({
+    category: PluginCategoryEnum.model,
+    enabled: shouldLoadInstalledModelPlugins,
+  })
   const renderTooltipContent = (
     title: string,
     description?: string,
@@ -62,12 +67,12 @@ const StatusIndicators = ({
   ) => {
     return (
       <div
-        className="flex w-[240px] max-w-[240px] flex-col gap-1 px-1 py-1.5"
+        className="flex w-60 max-w-60 flex-col gap-1 px-1 py-1.5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="title-xs-semi-bold text-text-primary">{title}</div>
         {description && (
-          <div className="min-w-[200px] body-xs-regular text-text-secondary">{description}</div>
+          <div className="min-w-50 body-xs-regular text-text-secondary">{description}</div>
         )}
         {linkText && linkHref && (
           <div className="cursor-pointer body-xs-regular text-text-accent">
@@ -100,7 +105,7 @@ const StatusIndicators = ({
                 ns: 'workflow',
               })}
             >
-              <RiErrorWarningFill className="size-4 text-text-destructive" />
+              <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
             </StatusPopover>
           ) : !pluginInfo ? (
             <StatusPopover
@@ -112,7 +117,7 @@ const StatusIndicators = ({
                 '/plugins',
               )}
             >
-              <RiErrorWarningFill className="size-4 text-text-destructive" />
+              <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
             </StatusPopover>
           ) : (
             <SwitchPluginVersion
@@ -138,7 +143,7 @@ const StatusIndicators = ({
             '/plugins',
           )}
         >
-          <RiErrorWarningFill className="size-4 text-text-destructive" />
+          <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
         </StatusPopover>
       )}
     </>

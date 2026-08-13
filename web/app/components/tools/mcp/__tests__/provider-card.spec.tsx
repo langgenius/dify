@@ -1,56 +1,11 @@
 import type { ReactNode } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@/test/console/render'
 import MCPCard from '../provider-card'
-
-// Mutable mock functions
-const mockUpdateMCP = vi.fn().mockResolvedValue({ result: 'success' })
-const mockDeleteMCP = vi.fn().mockResolvedValue({ result: 'success' })
-
-// Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useUpdateMCP: () => ({
-    mutateAsync: mockUpdateMCP,
-  }),
-  useDeleteMCP: () => ({
-    mutateAsync: mockDeleteMCP,
-  }),
-}))
-
-// Mock the MCPModal
-type MCPModalForm = {
-  name: string
-  server_url: string
-}
-
-type MCPModalProps = {
-  show: boolean
-  onConfirm: (form: MCPModalForm) => void
-  onHide: () => void
-}
-
-vi.mock('../modal', () => ({
-  default: ({ show, onConfirm, onHide }: MCPModalProps) => {
-    if (!show) return null
-    return (
-      <div data-testid="mcp-modal">
-        <button
-          data-testid="modal-confirm-btn"
-          onClick={() => onConfirm({ name: 'Updated MCP', server_url: 'https://updated.com' })}
-        >
-          Confirm
-        </button>
-        <button data-testid="modal-close-btn" onClick={onHide}>
-          Close
-        </button>
-      </div>
-    )
-  },
-}))
 
 // Mock the OperationDropdown
 type OperationDropdownProps = {
@@ -59,30 +14,44 @@ type OperationDropdownProps = {
   onOpenChange: (open: boolean) => void
 }
 
-vi.mock('../detail/operation-dropdown', () => ({
-  default: ({ onEdit, onRemove, onOpenChange }: OperationDropdownProps) => (
-    <div data-testid="operation-dropdown">
-      <button
-        data-testid="edit-btn"
-        onClick={() => {
-          onOpenChange(true)
-          onEdit()
-        }}
-      >
-        Edit
-      </button>
-      <button
-        data-testid="remove-btn"
-        onClick={() => {
-          onOpenChange(true)
-          onRemove()
-        }}
-      >
-        Remove
-      </button>
-    </div>
-  ),
-}))
+vi.mock('../detail/operation-dropdown', async () => {
+  const { createPortal } = await import('react-dom')
+
+  return {
+    default: ({ onEdit, onRemove, onOpenChange }: OperationDropdownProps) => (
+      <>
+        <div data-testid="operation-dropdown">
+          <button data-testid="operation-trigger" onClick={() => onOpenChange(true)}>
+            <svg data-testid="operation-icon" />
+          </button>
+        </div>
+        {createPortal(
+          <>
+            <button
+              data-testid="edit-btn"
+              onClick={() => {
+                onOpenChange(false)
+                onEdit()
+              }}
+            >
+              Edit
+            </button>
+            <button
+              data-testid="remove-btn"
+              onClick={() => {
+                onOpenChange(false)
+                onRemove()
+              }}
+            >
+              Remove
+            </button>
+          </>,
+          document.body,
+        )}
+      </>
+    ),
+  }
+})
 
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
@@ -151,20 +120,11 @@ describe('MCPCard', () => {
   const defaultProps = {
     data: createMockData(),
     handleSelect: vi.fn(),
-    onUpdate: vi.fn(),
-    onDeleted: vi.fn(),
+    onEdit: vi.fn(),
+    onDelete: vi.fn(),
   }
 
-  const getDeleteConfirmButton = () =>
-    screen.getByRole('button', { name: 'common.operation.confirm' })
-  const getDeleteCancelButton = () =>
-    screen.getByRole('button', { name: 'common.operation.cancel' })
-
   beforeEach(() => {
-    mockUpdateMCP.mockClear()
-    mockDeleteMCP.mockClear()
-    mockUpdateMCP.mockResolvedValue({ result: 'success' })
-    mockDeleteMCP.mockResolvedValue({ result: 'success' })
     mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
@@ -264,11 +224,9 @@ describe('MCPCard', () => {
         wrapper: createWrapper(),
       })
 
-      const card = screen.getByText('Test MCP Server').closest('[class*="cursor-pointer"]')
-      if (card) {
-        fireEvent.click(card)
-        expect(handleSelect).toHaveBeenCalledWith('mcp-1')
-      }
+      fireEvent.click(screen.getByRole('button', { name: /Test MCP Server/ }))
+
+      expect(handleSelect).toHaveBeenCalledWith('mcp-1')
     })
   })
 
@@ -336,185 +294,43 @@ describe('MCPCard', () => {
       expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
     })
 
-    it('should stop propagation when clicking on dropdown container', () => {
+    it('should not select the card when clicking the dropdown icon', () => {
       const handleSelect = vi.fn()
       render(<MCPCard {...defaultProps} handleSelect={handleSelect} />, {
         wrapper: createWrapper(),
       })
 
-      // Click on the dropdown area (which should stop propagation)
-      const dropdown = screen.getByTestId('operation-dropdown')
-      const dropdownContainer = dropdown.closest('[class*="absolute"]')
-      if (dropdownContainer) {
-        fireEvent.click(dropdownContainer)
-        // handleSelect should NOT be called because stopPropagation
-        expect(handleSelect).not.toHaveBeenCalled()
-      }
+      fireEvent.click(screen.getByTestId('operation-icon'))
+
+      expect(handleSelect).not.toHaveBeenCalled()
+    })
+
+    it('should request edit without selecting the card', () => {
+      const handleSelect = vi.fn()
+      const onEdit = vi.fn()
+      render(<MCPCard {...defaultProps} handleSelect={handleSelect} onEdit={onEdit} />, {
+        wrapper: createWrapper(),
+      })
+
+      fireEvent.click(screen.getByTestId('edit-btn'))
+
+      expect(onEdit).toHaveBeenCalledWith('mcp-1')
+      expect(handleSelect).not.toHaveBeenCalled()
     })
   })
 
-  describe('Update Modal', () => {
-    it('should open update modal when edit button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Click the edit button
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      // Modal should be shown
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-    })
-
-    it('should close update modal when close button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
+  describe('Delete Action', () => {
+    it('should request delete without selecting the card', () => {
+      const handleSelect = vi.fn()
+      const onDelete = vi.fn()
+      render(<MCPCard {...defaultProps} handleSelect={handleSelect} onDelete={onDelete} />, {
+        wrapper: createWrapper(),
       })
 
-      // Close the modal
-      const closeBtn = screen.getByTestId('modal-close-btn')
-      fireEvent.click(closeBtn)
+      fireEvent.click(screen.getByTestId('remove-btn'))
 
-      await waitFor(() => {
-        expect(screen.queryByTestId('mcp-modal')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call updateMCP and onUpdate when form is confirmed', async () => {
-      const onUpdate = vi.fn()
-      render(<MCPCard {...defaultProps} onUpdate={onUpdate} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-
-      // Confirm the form
-      const confirmBtn = screen.getByTestId('modal-confirm-btn')
-      fireEvent.click(confirmBtn)
-
-      await waitFor(() => {
-        expect(mockUpdateMCP).toHaveBeenCalledWith({
-          name: 'Updated MCP',
-          server_url: 'https://updated.com',
-          provider_id: 'mcp-1',
-        })
-        expect(onUpdate).toHaveBeenCalledWith('mcp-1')
-      })
-    })
-
-    it('should not call onUpdate when updateMCP fails', async () => {
-      mockUpdateMCP.mockResolvedValue({ result: 'error' })
-      const onUpdate = vi.fn()
-      render(<MCPCard {...defaultProps} onUpdate={onUpdate} />, { wrapper: createWrapper() })
-
-      // Open the modal
-      const editBtn = screen.getByTestId('edit-btn')
-      fireEvent.click(editBtn)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('mcp-modal')).toBeInTheDocument()
-      })
-
-      // Confirm the form
-      const confirmBtn = screen.getByTestId('modal-confirm-btn')
-      fireEvent.click(confirmBtn)
-
-      await waitFor(() => {
-        expect(mockUpdateMCP).toHaveBeenCalled()
-      })
-
-      // onUpdate should not be called because result is not 'success'
-      expect(onUpdate).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Delete Confirm', () => {
-    it('should open delete confirm when remove button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Click the remove button
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      // Confirm dialog should be shown
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-    })
-
-    it('should close delete confirm when cancel button is clicked', async () => {
-      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Cancel
-      fireEvent.click(getDeleteCancelButton())
-
-      await waitFor(() => {
-        expect(screen.queryByText('tools.mcp.delete')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should call deleteMCP and onDeleted when delete is confirmed', async () => {
-      const onDeleted = vi.fn()
-      render(<MCPCard {...defaultProps} onDeleted={onDeleted} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Confirm delete
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockDeleteMCP).toHaveBeenCalledWith('mcp-1')
-        expect(onDeleted).toHaveBeenCalled()
-      })
-    })
-
-    it('should not call onDeleted when deleteMCP fails', async () => {
-      mockDeleteMCP.mockResolvedValue({ result: 'error' })
-      const onDeleted = vi.fn()
-      render(<MCPCard {...defaultProps} onDeleted={onDeleted} />, { wrapper: createWrapper() })
-
-      // Open the confirm dialog
-      const removeBtn = screen.getByTestId('remove-btn')
-      fireEvent.click(removeBtn)
-
-      await waitFor(() => {
-        expect(screen.getByText('tools.mcp.delete')).toBeInTheDocument()
-      })
-
-      // Confirm delete
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockDeleteMCP).toHaveBeenCalled()
-      })
-
-      // onDeleted should not be called because result is not 'success'
-      expect(onDeleted).not.toHaveBeenCalled()
+      expect(onDelete).toHaveBeenCalledWith('mcp-1')
+      expect(handleSelect).not.toHaveBeenCalled()
     })
   })
 })

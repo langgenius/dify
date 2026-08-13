@@ -118,6 +118,11 @@ export type NodeTracing = {
   agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
+type VersionEnvironment = {
+  id: string
+  name: string
+}
+
 export type FetchWorkflowDraftResponse = {
   id: string
   graph: {
@@ -144,8 +149,10 @@ export type FetchWorkflowDraftResponse = {
   conversation_variables?: ConversationVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  version_number?: number | null
   marked_name: string
   marked_comment: string
+  environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
