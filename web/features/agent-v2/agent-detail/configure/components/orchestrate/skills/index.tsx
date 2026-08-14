@@ -57,6 +57,7 @@ import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
 const WORKSPACE_SKILLS_PAGE_SIZE = 20
+const MAX_AGENT_LIBRARY_SKILLS = 20
 
 function AgentSkillAddMenuItem({
   badge,
@@ -614,6 +615,10 @@ export function AgentSkills() {
   const handleSelectWorkspaceSkill = useCallback(
     (skill: SkillResponse) => {
       if (!skill.latest_published_version_id || boundSkillIds.includes(skill.id)) return
+      if (boundSkillIds.length >= MAX_AGENT_LIBRARY_SKILLS) {
+        toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']))
+        return
+      }
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
         promptAddCallbackRef.current?.({
@@ -626,7 +631,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings],
+    [boundSkillIds, replaceWorkspaceSkillBindings, t],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {

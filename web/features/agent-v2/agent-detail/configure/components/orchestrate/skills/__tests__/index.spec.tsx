@@ -814,6 +814,71 @@ describe('AgentSkills', () => {
     })
   })
 
+  it('blocks adding a 21st library skill and explains the limit before saving', async () => {
+    const user = userEvent.setup()
+    const boundSkills = Array.from({ length: 20 }, (_, index) =>
+      createWorkspaceSkill({
+        id: `bound-skill-${index}`,
+        name: `bound-skill-${index}`,
+        display_name: `Bound skill ${index}`,
+      }),
+    )
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: async () => ({
+          agent_id: input.params.agent_id,
+          skill_ids: boundSkills.map((skill) => skill.id),
+          data: boundSkills.map((skill, priority) => ({
+            ...skill,
+            priority,
+            status: 'published',
+            file_count: 1,
+            latest_published_at: 1,
+          })),
+        }),
+      }
+    })
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => { query?: { limit?: number } }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [createWorkspaceSkill({ id: 'candidate-skill' })],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
+    )
+    expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
+  })
+
   it('should open the workspace skill tag filter and show skill tags', async () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
