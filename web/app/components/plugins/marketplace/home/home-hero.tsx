@@ -60,16 +60,16 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
     >
       <div className="relative flex h-[162px] w-full max-w-[726px] flex-col items-center pt-[41px]">
         <div aria-hidden className="pointer-events-none absolute inset-0 max-[879px]:hidden">
-          <span className={heroDecorationIconFrameClassName} style={{ left: 86, top: 50 }}>
+          <span className={heroDecorationIconFrameClassName} style={{ left: 99, top: 26 }}>
             <DropboxIcon />
           </span>
-          <span className={heroDecorationIconFrameClassName} style={{ left: 24, top: 114 }}>
+          <span className={heroDecorationIconFrameClassName} style={{ left: 12, top: 89 }}>
             <DuckDuckGoIcon />
           </span>
-          <span className={heroDecorationIconFrameClassName} style={{ left: 602, top: 16 }}>
+          <span className={heroDecorationIconFrameClassName} style={{ left: 589, top: 4 }}>
             <Github className="size-10" />
           </span>
-          <span className={heroDecorationIconFrameClassName} style={{ left: 664, top: 98 }}>
+          <span className={heroDecorationIconFrameClassName} style={{ left: 653, top: 68 }}>
             <GmailIcon />
           </span>
         </div>
