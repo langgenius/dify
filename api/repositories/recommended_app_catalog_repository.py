@@ -61,7 +61,11 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
             recommended_apps = self._list_rows(language, session=session)
             if not recommended_apps:
                 recommended_apps = self._list_rows(languages[0], session=session)
-            return self._map_page(recommended_apps, language=language, session=session)
+            records, categories = self._map_rows(recommended_apps, session=session)
+        return RecommendedAppCatalogPage(
+            recommended_apps=records,
+            categories=tuple(_order_categories(categories, language)),
+        )
 
     @override
     def list_learn_dify(self, language: str) -> RecommendedAppCatalogPage:
@@ -69,8 +73,8 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
             recommended_apps = self._list_rows(language, session=session, is_learn_dify=True)
             if not recommended_apps and language != languages[0]:
                 recommended_apps = self._list_rows(languages[0], session=session, is_learn_dify=True)
-            page = self._map_page(recommended_apps, language=language, session=session)
-            return RecommendedAppCatalogPage(recommended_apps=page.recommended_apps, categories=())
+            records, _ = self._map_rows(recommended_apps, session=session)
+        return RecommendedAppCatalogPage(recommended_apps=records, categories=())
 
     @override
     def get_detail(self, app_id: str) -> RecommendedAppDetailRecord | None:
@@ -107,13 +111,12 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
         return list(session.scalars(select(RecommendedApp).where(*filters)).all())
 
     @classmethod
-    def _map_page(
+    def _map_rows(
         cls,
         recommended_apps: Sequence[RecommendedApp],
         *,
-        language: str,
         session: Session,
-    ) -> RecommendedAppCatalogPage:
+    ) -> tuple[tuple[RecommendedAppRecord, ...], set[str]]:
         categories: set[str] = set()
         records: list[RecommendedAppRecord] = []
         for recommended_app in recommended_apps:
@@ -148,10 +151,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
             )
             categories.update(app_categories)
 
-        return RecommendedAppCatalogPage(
-            recommended_apps=tuple(records),
-            categories=tuple(_order_categories(categories, language)),
-        )
+        return tuple(records), categories
 
     @staticmethod
     def _get_detail(app_id: str, *, session: Session) -> RecommendedAppDetailRecord | None:

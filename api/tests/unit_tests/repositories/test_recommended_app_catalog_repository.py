@@ -2,6 +2,8 @@ import json
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, AppMode, RecommendedApp, Site
@@ -111,13 +113,34 @@ def test_list_recommended_does_not_restore_legacy_category_when_categories_are_e
 @patch("repositories.recommended_app_catalog_repository.redis_client.get")
 def test_list_recommended_uses_redis_category_order(
     redis_get: MagicMock,
+    sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    redis_get.return_value = json.dumps(["C", "A", "B"]).encode()
     with sqlite_session_factory() as session:
         _add_catalog_app(session, categories=["A", "B", "C", "D"])
 
-    page = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory).list_recommended("en-US")
+    checked_out_connections = 0
+
+    def record_checkout(_dbapi_connection, _connection_record, _connection_proxy) -> None:
+        nonlocal checked_out_connections
+        checked_out_connections += 1
+
+    def record_checkin(_dbapi_connection, _connection_record) -> None:
+        nonlocal checked_out_connections
+        checked_out_connections -= 1
+
+    def get_category_order(_key: str) -> bytes:
+        assert checked_out_connections == 0
+        return json.dumps(["C", "A", "B"]).encode()
+
+    redis_get.side_effect = get_category_order
+    event.listen(sqlite_engine, "checkout", record_checkout)
+    event.listen(sqlite_engine, "checkin", record_checkin)
+    try:
+        page = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory).list_recommended("en-US")
+    finally:
+        event.remove(sqlite_engine, "checkout", record_checkout)
+        event.remove(sqlite_engine, "checkin", record_checkin)
 
     assert page.categories == ("C", "A", "B")
     redis_get.assert_called_once_with("explore:apps:category_order:en-US")
@@ -137,7 +160,9 @@ def test_list_recommended_sorts_categories_without_redis_order(
     assert page.categories == ("A", "B", "C")
 
 
+@patch("repositories.recommended_app_catalog_repository.redis_client.get")
 def test_list_learn_dify_filters_flag_and_hides_page_categories(
+    redis_get: MagicMock,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory() as session:
@@ -150,6 +175,7 @@ def test_list_learn_dify_filters_flag_and_hides_page_categories(
     assert [app.app_id for app in page.recommended_apps] == [learn_app.id]
     assert page.recommended_apps[0].categories == ("Workflow",)
     assert page.categories == ()
+    redis_get.assert_not_called()
 
 
 def test_membership_does_not_export_dsl(
