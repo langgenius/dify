@@ -55,7 +55,22 @@ const HITLInputReplacementBlock = ({
     ragVariables,
     readonly,
   })
-  latestConfigRef.current = {
+
+  useEffect(() => {
+    latestConfigRef.current = {
+      nodeId,
+      formInputs,
+      onFormInputsChange,
+      onFormInputItemRename,
+      onFormInputItemRemove,
+      workflowNodesMap,
+      getVarType,
+      environmentVariables,
+      conversationVariables,
+      ragVariables,
+      readonly,
+    }
+  }, [
     nodeId,
     formInputs,
     onFormInputsChange,
@@ -67,7 +82,7 @@ const HITLInputReplacementBlock = ({
     conversationVariables,
     ragVariables,
     readonly,
-  }
+  ])
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))

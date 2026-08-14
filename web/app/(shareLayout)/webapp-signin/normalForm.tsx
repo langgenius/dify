@@ -21,6 +21,8 @@ const NormalForm = () => {
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
     systemFeatures.deployment_edition === 'ENTERPRISE'
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
+  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -31,10 +33,10 @@ const NormalForm = () => {
         !systemFeatures.enable_social_oauth_login &&
           !systemFeatures.enable_email_code_login &&
           !systemFeatures.enable_email_password_login &&
-          !systemFeatures.sso_enforced_for_signin,
+          !hasSsoLogin,
       )
       setShowORLine(
-        (systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) &&
+        (systemFeatures.enable_social_oauth_login || hasSsoLogin) &&
           (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login),
       )
       updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
@@ -44,7 +46,7 @@ const NormalForm = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [systemFeatures])
+  }, [hasSsoLogin, systemFeatures])
   useEffect(() => {
     init()
   }, [init])
@@ -122,20 +124,20 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">
+          <h1 className="title-4xl-semi-bold text-text-primary">
             {systemFeatures.branding.enabled
               ? t(($) => $.pageTitleForE, { ns: 'login' })
               : t(($) => $.pageTitle, { ns: 'login' })}
-          </h2>
+          </h1>
           <p className="mt-2 body-md-regular text-text-tertiary">
             {t(($) => $.welcome, { ns: 'login' })}
           </p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
-            {systemFeatures.sso_enforced_for_signin && (
+            {hasSsoLogin && (
               <div className="w-full">
-                <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+                <SSOAuth protocol={ssoProtocol} />
               </div>
             )}
           </div>

@@ -12,11 +12,12 @@ from dify_agent.runtime_backend.profile import (
 )
 
 
-def test_e2b_backend_uses_prepared_dify_template_by_default() -> None:
+def test_e2b_backend_uses_prepared_dify_template_and_one_hour_lease_by_default() -> None:
     settings = RuntimeBackendSettings(runtime_backend="e2b", e2b_api_key="secret")
 
     assert settings.e2b_template == "difys-default-team/dify-agent-local-sandbox"
     assert settings.e2b_template == DEFAULT_E2B_TEMPLATE
+    assert E2B_MAX_ACTIVE_TIMEOUT_SECONDS == 60 * 60
     assert settings.e2b_active_timeout_seconds == E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 
 

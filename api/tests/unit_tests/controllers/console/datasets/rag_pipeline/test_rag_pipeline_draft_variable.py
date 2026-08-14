@@ -8,12 +8,14 @@ from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
+    PaginationQuery,
     RagPipelineEnvironmentVariableCollectionApi,
     RagPipelineNodeVariableCollectionApi,
     RagPipelineSystemVariableCollectionApi,
     RagPipelineVariableApi,
     RagPipelineVariableCollectionApi,
     RagPipelineVariableResetApi,
+    WorkflowDraftVariablePatchPayload,
 )
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
@@ -72,7 +74,7 @@ class TestRagPipelineVariableCollectionApi:
                 return_value=draft_srv,
             ),
         ):
-            result = method(api, editor_user, pipeline)
+            result = method(api, PaginationQuery(page=1, limit=10), editor_user, pipeline)
 
         assert result is var_list
         draft_srv.list_variables_without_values.assert_called_once_with(
@@ -100,7 +102,7 @@ class TestRagPipelineVariableCollectionApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, editor_user, pipeline)
+                method(api, PaginationQuery(), editor_user, pipeline)
 
     def test_delete_variables_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
@@ -198,7 +200,7 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, editor_user, pipeline, "v1")
+                method(api, WorkflowDraftVariablePatchPayload.model_validate(payload), editor_user, pipeline, "v1")
 
     def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()

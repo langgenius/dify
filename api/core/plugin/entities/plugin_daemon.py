@@ -102,6 +102,19 @@ class PluginModelProviderEntity(BaseModel):
     declaration: ProviderEntity = Field(description="The declaration of the model provider.")
 
 
+class PluginModelProviderBinding(BaseModel):
+    """Lightweight installation metadata for one model provider."""
+
+    provider: str
+    installation_id: str
+    plugin_id: str
+    plugin_unique_identifier: str
+    runtime_type: str
+    source: PluginInstallationSource
+    version: str
+    verified: bool = False
+
+
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
     """
     Response for number of tokens.
@@ -213,6 +226,10 @@ class PluginOAuthCredentialsResponse(BaseModel):
 class PluginListResponse(BaseModel):
     list: list[PluginEntity]
     total: int
+
+
+class PluginInstalledIdsDaemonResponse(BaseModel):
+    plugin_ids: list[str]
 
 
 class PluginListWithoutTotalResponse(BaseModel):

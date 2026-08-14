@@ -3,6 +3,7 @@ import type { Credential, PluginPayload } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import Authorized from '../index'
@@ -87,13 +88,6 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockConsoleState.userProfile,
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -137,6 +131,7 @@ const createConsoleQueryClient = () =>
 
 const createWrapper = () => {
   const testQueryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(testQueryClient, mockConsoleState.userProfile)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )

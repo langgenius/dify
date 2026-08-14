@@ -11,7 +11,6 @@ const eslintFix =
 const nonFrontendIgnores = [
   '.agents/**',
   '.devcontainer/**',
-  '.github/**',
   '/*.md',
   'api/**',
   'codecov.yml',

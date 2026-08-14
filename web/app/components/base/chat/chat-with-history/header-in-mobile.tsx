@@ -8,9 +8,9 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
@@ -78,9 +78,14 @@ const HeaderInMobile = () => {
   return (
     <>
       <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
-        <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
-          <div className="i-ri-menu-line h-4.5 w-4.5" />
-        </ActionButton>
+        <IconButton
+          aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+          size="lg"
+          className="shrink-0"
+          onClick={() => setShowSidebar(true)}
+        >
+          <div aria-hidden="true" className="i-ri-menu-line h-4.5 w-4.5" />
+        </IconButton>
         <div className="flex grow items-center justify-center">
           {!currentConversationId && (
             <>

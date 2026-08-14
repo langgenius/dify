@@ -1,6 +1,5 @@
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
-import type { LangGeniusVersionInfo } from '@/context/app-context-types'
-import type { ICurrentWorkspace } from '@/models/common'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -13,12 +12,7 @@ export type ConsoleStateFixture = {
     avatar_url?: string | null
     is_password_set?: boolean
   } | null
-  currentWorkspace?:
-    | ({
-        id?: string
-        name?: string
-      } & Partial<ICurrentWorkspace>)
-    | null
+  currentWorkspace?: Partial<GetWorkspacesCurrentSummaryResponse> | null
   isCurrentWorkspaceManager?: boolean
   isCurrentWorkspaceOwner?: boolean
   isCurrentWorkspaceEditor?: boolean
@@ -30,60 +24,22 @@ export type ConsoleStateFixture = {
   knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
-  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
-  refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
 }
 
 type ConsoleStateFixtureResolver = () => ConsoleStateFixture
 type JotaiStore = ReturnType<typeof createStore>
-type ConsoleStateOwner = 'account' | 'workspace' | 'permission' | 'systemFeatures' | 'version'
-
-const defaultUserProfile = {
-  id: 'user-1',
-  name: 'User',
-  email: 'user@example.com',
-  avatar: '',
-  avatar_url: '',
-  is_password_set: true,
-}
+type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures'
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
   name: 'Workspace',
-  plan: '',
-  status: '',
-  created_at: 0,
+  plan: null,
+  credits: null,
   role: 'owner',
-  providers: [],
-  trial_credits: 0,
-  trial_credits_used: 0,
-  trial_credits_exhausted_at: 0,
-  next_credit_reset_date: 0,
-} satisfies ICurrentWorkspace
+} satisfies GetWorkspacesCurrentSummaryResponse
 
-const defaultLangGeniusVersionInfo = {
-  current_env: 'CLOUD',
-  current_version: '',
-  latest_version: '',
-  version: '',
-  release_date: '',
-  release_notes: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
-} satisfies LangGeniusVersionInfo
-
-const userProfileAtom = atom(defaultUserProfile)
-const userProfileIdAtom = atom((get) => get(userProfileAtom).id)
-const userProfileEmailAtom = atom((get) => get(userProfileAtom).email)
-const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
-const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
-const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
-
-const currentWorkspaceAtom = atom<ICurrentWorkspace>(defaultCurrentWorkspace)
+const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
 const isCurrentWorkspaceOwnerAtom = atom(false)
@@ -102,9 +58,6 @@ const systemFeaturesAtom = atom(createSystemFeaturesFixture())
 const deploymentEditionAtom = atom((get) => get(systemFeaturesAtom).deployment_edition)
 const brandingEnabledAtom = atom((get) => get(systemFeaturesAtom).branding.enabled)
 
-const langGeniusVersionInfoAtom = atom<LangGeniusVersionInfo>(defaultLangGeniusVersionInfo)
-const langGeniusCurrentVersionAtom = atom((get) => get(langGeniusVersionInfoAtom).current_version)
-
 const consoleStateFixtureResolvers: Partial<
   Record<ConsoleStateOwner, ConsoleStateFixtureResolver>
 > = {}
@@ -121,10 +74,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   if (!resolvers.length) return false
 
   const state = Object.assign({}, ...resolvers.map((resolve) => resolve()))
-  store.set(userProfileAtom, {
-    ...defaultUserProfile,
-    ...state.userProfile,
-  })
   store.set(currentWorkspaceAtom, {
     ...defaultCurrentWorkspace,
     ...state.currentWorkspace,
@@ -147,33 +96,11 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
       },
     }),
   )
-  store.set(langGeniusVersionInfoAtom, {
-    ...defaultLangGeniusVersionInfo,
-    ...state.langGeniusVersionInfo,
-  })
-  store.set(refreshUserProfileCallbackAtom, { callback: state.refreshUserProfile ?? (() => {}) })
   store.set(refreshCurrentWorkspaceCallbackAtom, {
     callback: state.refreshCurrentWorkspace ?? (() => {}),
   })
 
   return true
-}
-
-export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('account', () => {
-    const state = getState()
-    return {
-      userProfile: state.userProfile,
-      refreshUserProfile: state.refreshUserProfile,
-    }
-  })
-  return {
-    userProfileAtom,
-    userProfileIdAtom,
-    userProfileEmailAtom,
-    accountProfileMetaAtom,
-    refreshUserProfileAtom,
-  }
 }
 
 export const createWorkspaceStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
@@ -223,15 +150,5 @@ export const createSystemFeaturesStateModuleMock = (getState: ConsoleStateFixtur
   return {
     deploymentEditionAtom,
     brandingEnabledAtom,
-  }
-}
-
-export const createVersionStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('version', () => ({
-    langGeniusVersionInfo: getState().langGeniusVersionInfo,
-  }))
-  return {
-    langGeniusVersionInfoAtom,
-    langGeniusCurrentVersionAtom,
   }
 }

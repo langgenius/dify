@@ -30,7 +30,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -40,6 +39,7 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_own
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
 
+# One RuntimeLease spans the complete Agent run, not one Shell tool call.
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
 _SHELLCTL_READY_MAX_ATTEMPTS = 3
 _SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
@@ -356,10 +356,6 @@ class E2BRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
-
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
 
 
 async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:

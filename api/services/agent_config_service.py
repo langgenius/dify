@@ -14,6 +14,8 @@ Soul reference only.
 from __future__ import annotations
 
 import io
+import mimetypes
+import os.path
 import urllib.parse
 import zipfile
 from collections.abc import Callable
@@ -28,11 +30,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.db.session_factory import session_factory as default_session_factory
+from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from factories import file_factory
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot
 from models.agent_config_entities import (
     AgentConfigFileRefConfig,
@@ -112,6 +116,16 @@ class ConfigDownload:
     filename: str
     mime_type: str
     payload: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigDownloadRequest:
+    """Short-lived data-plane metadata for one authorized Config asset."""
+
+    filename: str
+    mime_type: str
+    size: int
+    download_uri: str
 
 
 class AgentConfigService:
@@ -228,16 +242,19 @@ class AgentConfigService:
             "items": [self._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files],
         }
 
-    def pull_skill(
+    def request_download(
         self,
         *,
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
         config_version_kind: AgentConfigVersionKind,
+        kind: Literal["file", "skill"],
         name: str,
         user_id: str | None = None,
-    ) -> ConfigDownload:
+    ) -> ConfigDownloadRequest:
+        """Authorize one Config reference and return origin-free download metadata."""
+
         target = self.resolve_target(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -245,10 +262,28 @@ class AgentConfigService:
             config_version_kind=config_version_kind,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        file_id = self._available_skill_file_id(skill)
-        payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
-        return ConfigDownload(filename=f"{skill.name}.zip", mime_type=mime_type or "application/zip", payload=payload)
+        if kind == "skill":
+            skill = self._require_skill(target.agent_soul, name=name)
+            return self._resolve_download_request(
+                tenant_id=tenant_id,
+                file_kind=skill.file_kind,
+                file_id=self._available_skill_file_id(skill),
+                filename=f"{skill.name}.zip",
+                default_mime_type="application/zip",
+                missing_code="config_skill_not_found",
+                missing_message="config skill payload is missing",
+            )
+
+        file_ref = self._require_file(target.agent_soul, name=name)
+        return self._resolve_download_request(
+            tenant_id=tenant_id,
+            file_kind=file_ref.file_kind,
+            file_id=self._available_file_id(file_ref),
+            filename=file_ref.name,
+            default_mime_type="application/octet-stream",
+            missing_code="config_file_not_found",
+            missing_message="config file payload is missing",
+        )
 
     def download_skill_url(
         self,
@@ -260,19 +295,16 @@ class AgentConfigService:
         name: str,
         user_id: str | None = None,
     ) -> str:
-        target = self.resolve_target(
+        result = self.request_download(
             tenant_id=tenant_id,
             agent_id=agent_id,
             config_version_id=config_version_id,
             config_version_kind=config_version_kind,
+            kind="skill",
+            name=name,
             user_id=user_id,
         )
-        skill = self._require_skill(target.agent_soul, name=name)
-        file_id = self._available_skill_file_id(skill)
-        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=skill.file_kind, file_id=file_id)
-        if url is None:
-            raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
-        return url
+        return bind_file_uri(result.download_uri, dify_config.FILES_URL)
 
     def inspect_skill(
         self,
@@ -398,34 +430,6 @@ class AgentConfigService:
         )
         return member_path
 
-    def pull_file(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
-        name: str,
-        user_id: str | None = None,
-    ) -> ConfigDownload:
-        target = self.resolve_target(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            config_version_id=config_version_id,
-            config_version_kind=config_version_kind,
-            user_id=user_id,
-        )
-        file_ref = self._require_file(target.agent_soul, name=name)
-        file_id = self._available_file_id(file_ref)
-        payload, filename, mime_type = self._load_file_ref_bytes(
-            tenant_id=tenant_id,
-            file_kind=file_ref.file_kind,
-            file_id=file_id,
-        )
-        return ConfigDownload(
-            filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload
-        )
-
     def download_file_url(
         self,
         *,
@@ -436,19 +440,16 @@ class AgentConfigService:
         name: str,
         user_id: str | None = None,
     ) -> str:
-        target = self.resolve_target(
+        result = self.request_download(
             tenant_id=tenant_id,
             agent_id=agent_id,
             config_version_id=config_version_id,
             config_version_kind=config_version_kind,
+            kind="file",
+            name=name,
             user_id=user_id,
         )
-        file_ref = self._require_file(target.agent_soul, name=name)
-        file_id = self._available_file_id(file_ref)
-        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=file_ref.file_kind, file_id=file_id)
-        if url is None:
-            raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
-        return url
+        return bind_file_uri(result.download_uri, dify_config.FILES_URL)
 
     def upload_skill(
         self,
@@ -1381,35 +1382,56 @@ class AgentConfigService:
             raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
         return storage.load_once(upload_file.key), upload_file.name, upload_file.mime_type
 
-    @staticmethod
-    def _resolve_download_url(
-        *, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str
-    ) -> str | None:
-        controller = DatabaseFileAccessController()
-        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-
-        runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
-        try:
-            if file_kind == "upload_file":
-                return runtime.resolve_upload_file_url(
-                    upload_file_id=file_id,
-                    for_external=True,
-                    as_attachment=True,
+    def _resolve_download_request(
+        self,
+        *,
+        tenant_id: str,
+        file_kind: Literal["upload_file", "tool_file"],
+        file_id: str,
+        filename: str,
+        default_mime_type: str,
+        missing_code: str,
+        missing_message: str,
+    ) -> ConfigDownloadRequest:
+        with self._session_factory() as session:
+            if file_kind == "tool_file":
+                tool_file = session.scalar(
+                    select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
                 )
-            file = file_factory.build_from_mapping(
-                mapping={"transfer_method": "tool_file", "tool_file_id": file_id},
-                tenant_id=tenant_id,
-                access_controller=controller,
-            )
-            url = runtime.resolve_file_url(file=file, for_external=True)
-            if not url:
-                return None
-            parsed = urllib.parse.urlsplit(url)
+                if tool_file is None:
+                    raise AgentConfigServiceError(missing_code, missing_message, status_code=404)
+                extension = (
+                    os.path.splitext(tool_file.name)[1].lower()
+                    or mimetypes.guess_extension(tool_file.mimetype)
+                    or os.path.splitext(tool_file.file_key)[1].lower()
+                    or ".bin"
+                )
+                uri = sign_tool_file_uri(tool_file_id=file_id, extension=extension)
+                mime_type = tool_file.mimetype or default_mime_type
+                size = tool_file.size
+            else:
+                upload_file = session.scalar(
+                    select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
+                )
+                if upload_file is None:
+                    raise AgentConfigServiceError(missing_code, missing_message, status_code=404)
+                runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+                uri = runtime.resolve_upload_file_uri(upload_file_id=file_id, as_attachment=True)
+                mime_type = upload_file.mime_type or default_mime_type
+                size = upload_file.size
+
+        if file_kind == "tool_file":
+            parsed = urllib.parse.urlsplit(uri)
             query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
             query.append(("as_attachment", "true"))
-            return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
-        except ValueError:
-            return None
+            uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+
+        return ConfigDownloadRequest(
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            download_uri=uri,
+        )
 
 
 __all__ = [
@@ -1419,6 +1441,7 @@ __all__ = [
     "AgentConfigTarget",
     "AgentConfigVersionKind",
     "ConfigDownload",
+    "ConfigDownloadRequest",
     "ConfigPushFileItem",
     "ConfigPushPayload",
     "ConfigPushSkillItem",

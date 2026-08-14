@@ -4,6 +4,7 @@
   "app.access_config": "Настройка прав доступа к приложению",
   "app.acl.access_config": "Настройка прав доступа к приложению",
   "app.acl.delete": "Удаление приложения",
+  "app.acl.deploy": "Развертывание приложения",
   "app.acl.edit": "Редактирование и оркестрация приложения",
   "app.acl.import_export_dsl": "Импорт / экспорт DSL",
   "app.acl.log_and_annotation": "Доступ к журналам и аннотациям",

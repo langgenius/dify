@@ -75,7 +75,8 @@ function NormalForm() {
     userResp?.profile.email,
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
-  const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
+  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -185,10 +186,10 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         {isInviteLink ? (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.join, { ns: 'login' })}
               {workspaceName}
-            </h2>
+            </h1>
             {!systemFeatures.branding.enabled && (
               <p className="mt-2 body-md-regular text-text-tertiary">
                 {t(($) => $.joinTipStart, { ns: 'login' })}
@@ -199,11 +200,11 @@ function NormalForm() {
           </div>
         ) : (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {systemFeatures.branding.enabled
                 ? t(($) => $.pageTitleForE, { ns: 'login' })
                 : t(($) => $.pageTitle, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-tertiary">
               {t(($) => $.welcome, { ns: 'login' })}
             </p>
@@ -214,7 +215,7 @@ function NormalForm() {
             {hasSocialLogin && <SocialAuth />}
             {hasSsoLogin && (
               <div className="w-full">
-                <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+                <SSOAuth protocol={ssoProtocol} />
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -173,15 +173,14 @@ export default function AccountSetting({
   return (
     <MenuDialog show onClose={onCancelAction}>
       <div className="fixed top-6 right-6 z-20 flex shrink-0 flex-col items-center">
-        <Button
+        <IconButton
           variant="tertiary"
-          size="large"
-          className="px-2"
+          size="xl"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onCancelAction}
         >
           <span className="i-ri-close-line size-5" />
-        </Button>
+        </IconButton>
         <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
       </div>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
@@ -210,7 +209,7 @@ export default function AccountSetting({
                       type="button"
                       key={item.key}
                       className={cn(
-                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm',
+                        'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                         activeMenu === item.key
                           ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
                           : 'system-sm-medium text-components-menu-item-text',

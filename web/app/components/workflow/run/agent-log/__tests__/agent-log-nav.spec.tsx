@@ -38,8 +38,8 @@ describe('AgentLogNav', () => {
     await user.click(
       screen.getByRole('button', { name: /^workflow\.nodes\.agent\.strategy\.label$/ }),
     )
-    await user.click(screen.getAllByRole('button')[2]!)
-    await user.click(screen.getByText('Tool A'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Tool A' }))
 
     expect(onShowAgentOrToolLog.mock.calls[0]).toHaveLength(0)
     expect(onShowAgentOrToolLog).toHaveBeenNthCalledWith(2, stack[0])

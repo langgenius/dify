@@ -13,24 +13,48 @@ import (
 )
 
 type fakeFileUploadClient struct {
-	forFrontend bool
+	forFrontend         bool
+	downloadRequestCall int
+	uploadResponse      []byte
+	calls               []string
+	filename            string
+	mimetype            string
+	uploadURL           string
+	uploadedBytes       []byte
+	downloadReference   string
 }
 
 func (f *fakeFileUploadClient) CreateFileUploadURL(_ context.Context, filename, mimetype string) (string, error) {
+	f.calls = append(f.calls, "upload-request")
+	f.filename = filename
+	f.mimetype = mimetype
 	return "https://sandbox-files.example.com/files/upload/for-plugin?sign=1", nil
 }
 
 func (f *fakeFileUploadClient) UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error) {
-	return []byte(`{"reference":"dify-file-ref:canonical"}`), nil
+	f.calls = append(f.calls, "multipart-upload")
+	f.uploadURL = uploadURL
+	f.filename = filename
+	f.mimetype = mimetype
+	f.uploadedBytes, _ = os.ReadFile(filePath)
+	if f.uploadResponse != nil {
+		return f.uploadResponse, nil
+	}
+	return []byte(`{"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ=="}`), nil
 }
 
 func (f *fakeFileUploadClient) CreateFileDownloadURL(
 	_ context.Context,
 	_ string,
-	_, _ *string,
+	reference, _ *string,
 	forFrontend bool,
 ) (*FileDownloadResponse, error) {
+	f.calls = append(f.calls, "download-request")
 	f.forFrontend = forFrontend
+	f.downloadRequestCall++
+	if reference != nil {
+		f.downloadReference = *reference
+	}
 	return &FileDownloadResponse{
 		Filename:    "report.pdf",
 		MimeType:    "application/pdf",
@@ -47,17 +71,133 @@ func TestRunFileUploadReturnsFrontendDisplayURL(t *testing.T) {
 
 	client := &fakeFileUploadClient{}
 	var output bytes.Buffer
-	if err := runFileUpload(client, filePath, &output); err != nil {
+	if err := runFileUpload(client, filePath, false, &output); err != nil {
 		t.Fatalf("run file upload: %v", err)
 	}
 
 	if !client.forFrontend {
 		t.Fatal("download request did not select frontend display URL")
 	}
+	if got, want := strings.Join(client.calls, ","), "upload-request,multipart-upload,download-request"; got != want {
+		t.Fatalf("call order = %s, want %s", got, want)
+	}
+	if client.filename != "report.pdf" || client.mimetype != "application/pdf" {
+		t.Fatalf("upload metadata = (%q, %q), want report.pdf/application/pdf", client.filename, client.mimetype)
+	}
+	if client.uploadURL != "https://sandbox-files.example.com/files/upload/for-plugin?sign=1" {
+		t.Fatalf("upload URL = %q", client.uploadURL)
+	}
+	if string(client.uploadedBytes) != "report" {
+		t.Fatalf("uploaded bytes = %q, want report", client.uploadedBytes)
+	}
+	if client.downloadReference != "dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ==" {
+		t.Fatalf("download reference = %q", client.downloadReference)
+	}
 	got := strings.TrimSpace(output.String())
-	want := `{"transfer_method":"tool_file","reference":"dify-file-ref:canonical","public_download_url":"/files/tools/report.pdf?sign=2"}`
+	want := `{"transfer_method":"tool_file","reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ==","public_download_url":"/files/tools/report.pdf?sign=2"}`
 	if got != want {
 		t.Fatalf("output = %s, want %s", got, want)
+	}
+}
+
+func TestRunFileUploadWithoutDownloadLinkReturnsOnlyCanonicalMapping(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	client := &fakeFileUploadClient{}
+	var output bytes.Buffer
+	if err := runFileUpload(client, filePath, true, &output); err != nil {
+		t.Fatalf("run file upload: %v", err)
+	}
+
+	if client.downloadRequestCall != 0 {
+		t.Fatalf("download request calls = %d, want 0", client.downloadRequestCall)
+	}
+	if got, want := strings.Join(client.calls, ","), "upload-request,multipart-upload"; got != want {
+		t.Fatalf("call order = %s, want %s", got, want)
+	}
+	got := strings.TrimSpace(output.String())
+	want := `{"transfer_method":"tool_file","reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiJ0b29sLTEifQ=="}`
+	if got != want {
+		t.Fatalf("output = %s, want %s", got, want)
+	}
+}
+
+func TestRunFileUploadDefaultAcceptsLegacyNonemptyReference(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":"raw-id"}`)}
+	var output bytes.Buffer
+	err := runFileUpload(client, filePath, false, &output)
+	if err != nil {
+		t.Fatalf("run file upload: %v", err)
+	}
+	if client.downloadRequestCall != 1 || client.downloadReference != "raw-id" {
+		t.Fatalf("download request = (%d, %q), want legacy reference", client.downloadRequestCall, client.downloadReference)
+	}
+	if !strings.Contains(output.String(), `"reference":"raw-id"`) {
+		t.Fatalf("output = %q, want legacy reference", output.String())
+	}
+}
+
+func TestRunFileUploadWithoutDownloadLinkRejectsNonCanonicalReference(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":"raw-id"}`)}
+	var output bytes.Buffer
+	err := runFileUpload(client, filePath, true, &output)
+	if err == nil || !strings.Contains(err.Error(), "invalid reference") {
+		t.Fatalf("error = %v, want invalid reference", err)
+	}
+	if client.downloadRequestCall != 0 {
+		t.Fatalf("download request calls = %d, want 0", client.downloadRequestCall)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("output = %q, want empty", output.String())
+	}
+}
+
+func TestRunFileUploadRejectsMissingReferenceInBothModes(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	for _, noDownloadLink := range []bool{false, true} {
+		client := &fakeFileUploadClient{uploadResponse: []byte(`{"reference":""}`)}
+		var output bytes.Buffer
+		err := runFileUpload(client, filePath, noDownloadLink, &output)
+		if err == nil || !strings.Contains(err.Error(), "missing reference") {
+			t.Fatalf("noDownloadLink=%t error = %v, want missing reference", noDownloadLink, err)
+		}
+		if client.downloadRequestCall != 0 {
+			t.Fatalf("noDownloadLink=%t download request calls = %d, want 0", noDownloadLink, client.downloadRequestCall)
+		}
+	}
+}
+
+func TestRunFileUploadRejectsInvalidUploadResponseBeforeDownloadRequest(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "report.pdf")
+	if err := os.WriteFile(filePath, []byte("report"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	client := &fakeFileUploadClient{uploadResponse: []byte("not-json")}
+	var output bytes.Buffer
+	err := runFileUpload(client, filePath, true, &output)
+	if err == nil || !strings.Contains(err.Error(), "parse upload result") {
+		t.Fatalf("error = %v, want parse upload result failure", err)
+	}
+	if client.downloadRequestCall != 0 {
+		t.Fatalf("download request calls = %d, want 0", client.downloadRequestCall)
 	}
 }
 

@@ -2,6 +2,7 @@ from typing import override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -42,7 +43,7 @@ class PipelineQueueManager(AppQueueManager):
             | QueueWorkflowFailedEvent
             | QueueWorkflowPartialSuccessEvent,
         ):
-            self.stop_listen(execution_terminal=True)
+            self.stop_listen(execution_state=AppExecutionState.TERMINAL)
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             raise GenerateTaskStoppedError()

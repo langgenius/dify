@@ -25,6 +25,14 @@
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
     },
+    "./icon-button": {
+      "types": "./src/icon-button/index.tsx",
+      "import": "./src/icon-button/index.tsx"
+    },
+    "./toggle": {
+      "types": "./src/toggle/index.tsx",
+      "import": "./src/toggle/index.tsx"
+    },
     "./checkbox": {
       "types": "./src/checkbox/index.tsx",
       "import": "./src/checkbox/index.tsx"
