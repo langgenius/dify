@@ -23,8 +23,11 @@ def _log(role: CreatorUserRole, created_by: str = "00000000-0000-0000-0000-00000
         trigger_type="manual",
         trigger_data="{}",
         inputs="{}",
+        outputs=None,
         status=WorkflowTriggerStatus.SUCCEEDED,
+        error=None,
         queue_name="default",
+        celery_task_id=None,
         created_by_role=role,
         created_by=created_by,
     )
