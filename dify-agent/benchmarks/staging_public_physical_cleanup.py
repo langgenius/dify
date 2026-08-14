@@ -782,12 +782,15 @@ def _wait_for_joint_zero(
             and stalled_resource_replayer is not None
             and now - started >= STALLED_CLEANUP_REPLAY_AFTER_SECONDS
             and latest["conversations"] == 0
-            and latest_vendor == 0
-            and (latest["workspaces"] > 0 or latest["bindings"] > 0)
+            and (
+                latest["workspaces"] > 0
+                or latest["bindings"] > 0
+                or latest_vendor > 0
+            )
         ):
             # The product collector intentionally treats individual destroy
             # failures as best-effort. Re-enqueue this immutable manifest once
-            # after a sustained ledger-only stall; deleted targets are no-ops.
+            # after a sustained DB or Vendor stall; deleted targets are no-ops.
             stalled_resource_replayer(tuple(item.workspace_id for item in targets))
             replay_attempted = True
         sleep(5)
