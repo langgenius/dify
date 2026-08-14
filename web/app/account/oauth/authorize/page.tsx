@@ -12,32 +12,20 @@ import {
 } from '@remixicon/react'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { MARKETPLACE_OAUTH_CLIENT_ID } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
-
-function buildReturnUrl(pathname: string, search: string) {
-  try {
-    const base = `${globalThis.location.origin}${pathname}${search}`
-    return base
-  } catch {
-    return pathname + search
-  }
-}
-
-function buildOAuthCallbackUrl(redirectUri: string, code: string, state: string | null) {
-  const url = new URL(redirectUri)
-  url.searchParams.set('code', code)
-  if (state) url.searchParams.set('state', state)
-  return url.toString()
-}
+import {
+  buildOAuthCallbackUrl,
+  buildReturnUrl,
+  shouldSilentAuthorizeMarketplace,
+  useMarketplaceSilentAuthorize,
+} from './use-marketplace-silent-authorize'
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
@@ -76,13 +64,6 @@ export default function OAuthAuthorize() {
   const redirectUri = searchParams.get('redirect_uri') || ''
   const state = searchParams.get('state')
   const hasOAuthParams = Boolean(clientId && redirectUri)
-  // These public URL/config values only select the Marketplace UX. They are not credentials.
-  const shouldAutoAuthorizeMarketplace =
-    hasOAuthParams &&
-    systemFeatures.deployment_edition === 'CLOUD' &&
-    searchParams.get('flow') === 'marketplace' &&
-    Boolean(MARKETPLACE_OAUTH_CLIENT_ID) &&
-    clientId === MARKETPLACE_OAUTH_CLIENT_ID
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -96,6 +77,12 @@ export default function OAuthAuthorize() {
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
+  const shouldAutoAuthorizeMarketplace =
+    hasOAuthParams &&
+    shouldSilentAuthorizeMarketplace({
+      clientId,
+      deploymentEdition: systemFeatures.deployment_edition,
+    })
   const shouldLoadOAuthApp = hasOAuthParams && (!shouldAutoAuthorizeMarketplace || isLoggedIn)
   const {
     data: authAppInfo,
@@ -115,9 +102,20 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
-  const marketplaceFlowStartedRef = useRef(false)
-  const [marketplaceAutoAuthorizationFailed, setMarketplaceAutoAuthorizationFailed] =
-    useState(false)
+  const { isMarketplaceAutoAuthorizing } = useMarketplaceSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId,
+    deploymentEdition: systemFeatures.deployment_edition,
+    hasOAuthParams,
+    isLoggedIn,
+    isOAuthError,
+    isOAuthLoading,
+    isProfileLoading,
+    redirectUri,
+    searchParams,
+    state,
+  })
   const localizedAppLabel =
     authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
   const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']
@@ -147,45 +145,6 @@ export default function OAuthAuthorize() {
     }
   }
 
-  useEffect(() => {
-    if (!shouldAutoAuthorizeMarketplace || marketplaceFlowStartedRef.current || isProfileLoading)
-      return
-
-    if (!isLoggedIn) {
-      marketplaceFlowStartedRef.current = true
-      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
-      router.replace(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
-      return
-    }
-
-    if (isOAuthLoading || isOAuthError || !authAppInfo) return
-
-    marketplaceFlowStartedRef.current = true
-    void authorize({ body: { client_id: clientId } })
-      .then(({ code }) => {
-        globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
-      })
-      .catch((error: unknown) => {
-        setMarketplaceAutoAuthorizationFailed(true)
-        const message = error instanceof Error ? error.message : String(error)
-        toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
-      })
-  }, [
-    authAppInfo,
-    authorize,
-    clientId,
-    isLoggedIn,
-    isOAuthError,
-    isOAuthLoading,
-    isProfileLoading,
-    redirectUri,
-    router,
-    searchParams,
-    shouldAutoAuthorizeMarketplace,
-    state,
-    t,
-  ])
-
   if (!hasOAuthParams || isOAuthError) {
     return (
       <div className="flex flex-col gap-4 bg-background-default-subtle text-text-secondary">
@@ -208,8 +167,6 @@ export default function OAuthAuthorize() {
     )
   }
 
-  const isMarketplaceAutoAuthorizing =
-    shouldAutoAuthorizeMarketplace && !marketplaceAutoAuthorizationFailed
   if (isProfileLoading || isOAuthLoading || isMarketplaceAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
