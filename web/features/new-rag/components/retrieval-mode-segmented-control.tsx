@@ -42,7 +42,7 @@ export function RetrievalModeSegmentedControl({
           disabled={disabled}
           className={cn(
             appearance === 'composer' &&
-              'grow border-0 px-2.5 py-1.25 system-sm-regular text-text-tertiary capitalize data-pressed:bg-components-panel-bg data-pressed:font-medium data-pressed:text-text-primary',
+              'grow border-0 px-2.5 py-1.25 system-sm-regular text-text-tertiary capitalize data-checked:bg-components-panel-bg data-checked:font-medium data-checked:text-text-primary',
           )}
         >
           {t(($) => $[`newKnowledge.settings.retrievalMode.${mode}`])}
