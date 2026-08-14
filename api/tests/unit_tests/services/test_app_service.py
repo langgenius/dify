@@ -16,7 +16,6 @@ from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType
-from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
@@ -424,38 +423,6 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     assert len(select_statements) == 1
     assert "count(" not in select_statements[0].lower()
     assert "app_model_configs" not in select_statements[0].lower()
-
-
-class TestAppMeta:
-    def test_loads_workflow_with_caller_session(self, sqlite_session: Session):
-        tenant_id = str(uuid4())
-        app = _persist_app(sqlite_session, tenant_id=tenant_id)
-        app.mode = AppMode.WORKFLOW
-        workflow = Workflow(
-            id=str(uuid4()),
-            tenant_id=tenant_id,
-            app_id=app.id,
-            type="workflow",
-            version="draft",
-            graph='{"nodes": []}',
-            features="{}",
-            created_by=str(uuid4()),
-        )
-        app.workflow_id = workflow.id
-        sqlite_session.add(workflow)
-        sqlite_session.commit()
-
-        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
-
-    def test_loads_app_model_config_with_caller_session(self, sqlite_session: Session):
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-        config = AppModelConfig(app_id=app.id, agent_mode='{"tools": []}')
-        sqlite_session.add(config)
-        sqlite_session.flush()
-        app.app_model_config_id = config.id
-        sqlite_session.commit()
-
-        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
 
 
 class TestGetApp:

@@ -12,10 +12,12 @@ from controllers.service_api.app.error import AgentNotPublishedError, AppUnavail
 from controllers.service_api.wraps import validate_app_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from models.model import App, AppMode, load_annotation_reply_config
-from services.app_service import AppService
+from services.app_definition_query_service import AppDefinitionUnavailableError
 
 
 class AppInfoResponse(ResponseModel):
@@ -136,7 +138,12 @@ class AppMetaApi(Resource):
 
         Returns metadata about the application including configuration and settings.
         """
-        return AppService().get_app_meta(app_model, session=db.session())
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
+        return dump_response(AppMetaResponse, {"tool_icons": tool_icons})
 
 
 @service_api_ns.route("/info")

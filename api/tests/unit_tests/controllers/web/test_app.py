@@ -11,6 +11,7 @@ from flask import Flask
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import AgentNotPublishedError, AppUnavailableError
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from services.app_definition_query_service import AppDefinitionUnavailableError
 
 
 # ---------------------------------------------------------------------------
@@ -115,15 +116,34 @@ class TestAppParameterApi:
 # AppMeta
 # ---------------------------------------------------------------------------
 class TestAppMeta:
-    @patch("controllers.web.app.AppService")
-    def test_get_returns_meta(self, mock_service_cls: MagicMock, app: Flask) -> None:
-        mock_service_cls.return_value.get_app_meta.return_value = {"tool_icons": {}}
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_meta(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.return_value = {}
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
         app_model = SimpleNamespace(id="app-1")
 
         with app.test_request_context("/meta"):
             result = AppMeta().get(app_model, SimpleNamespace())
 
         assert result == {"tool_icons": {}}
+        app_definitions.get_tool_icons.assert_called_once_with("app-1")
+
+    @patch("controllers.web.app.application_services")
+    def test_maps_unavailable_definition_to_app_unavailable(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+
+        with app.test_request_context("/meta"):
+            with pytest.raises(AppUnavailableError) as raised:
+                AppMeta().get(SimpleNamespace(id="app-1"), SimpleNamespace())
+
+        assert raised.value.data == {
+            "code": "app_unavailable",
+            "message": "App unavailable, please check your app configurations.",
+            "status": 400,
+        }
 
 
 # ---------------------------------------------------------------------------

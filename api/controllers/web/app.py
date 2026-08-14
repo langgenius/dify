@@ -12,10 +12,13 @@ from controllers.common.agent_app_parameters import get_published_agent_app_feat
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
+from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser, load_annotation_reply_config
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -131,7 +134,12 @@ class AppMeta(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
-        return AppService().get_app_meta(app_model, session=db.session())
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
+        return dump_response(AppMetaResponse, {"tool_icons": tool_icons})
 
 
 @web_ns.route("/webapp/access-mode")
