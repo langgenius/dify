@@ -15,7 +15,8 @@ type CurrChildChunkType = {
 type UseModalStateReturn = {
   currSegment: CurrSegmentType
   onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
-  onCloseSegmentDetail: (expectedSegmentId?: string) => void
+  onCloseSegmentDetail: () => void
+  onCloseSegmentDetailIfCurrent: (expectedSegmentId: string) => void
   currChildChunk: CurrChildChunkType
   currChunkId: string
   onClickSlice: (detail: ChildChunkDetail) => void
@@ -60,14 +61,17 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     [updateCurrSegment],
   )
 
-  const onCloseSegmentDetail = useCallback(
-    (expectedSegmentId?: string) => {
-      if (expectedSegmentId && currSegmentRef.current.segInfo?.id !== expectedSegmentId) return
+  const onCloseSegmentDetail = useCallback(() => {
+    updateCurrSegment({ showModal: false })
+    setFullScreen(false)
+  }, [updateCurrSegment])
 
-      updateCurrSegment({ showModal: false })
-      setFullScreen(false)
+  const onCloseSegmentDetailIfCurrent = useCallback(
+    (expectedSegmentId: string) => {
+      if (currSegmentRef.current.segInfo?.id !== expectedSegmentId) return
+      onCloseSegmentDetail()
     },
-    [updateCurrSegment],
+    [onCloseSegmentDetail],
   )
 
   const onClickSlice = useCallback(
@@ -111,6 +115,7 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     currSegment,
     onClickCard,
     onCloseSegmentDetail,
+    onCloseSegmentDetailIfCurrent,
     currChildChunk,
     currChunkId,
     onClickSlice,

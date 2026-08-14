@@ -32,7 +32,7 @@ type UseSegmentListDataOptions = {
   importStatus: SegmentImportStatus | undefined
   currentPage: number
   limit: number
-  onCloseSegmentDetail: (expectedSegmentId?: string) => void
+  onCloseSegmentDetailIfCurrent: (expectedSegmentId: string) => void
   clearSelection: () => void
 }
 type UseSegmentListDataReturn = {
@@ -73,7 +73,7 @@ export const useSegmentListData = (
     importStatus,
     currentPage,
     limit,
-    onCloseSegmentDetail,
+    onCloseSegmentDetailIfCurrent,
     clearSelection,
   } = options
   const { t } = useTranslation()
@@ -294,7 +294,7 @@ export const useSegmentListData = (
         {
           onSuccess(res) {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            if (!needRegenerate) onCloseSegmentDetail(segmentId)
+            if (!needRegenerate) onCloseSegmentDetailIfCurrent(segmentId)
             updateSegmentInCache(segmentId, (seg) => ({
               ...seg,
               answer: res.data.answer,
@@ -324,7 +324,7 @@ export const useSegmentListData = (
       docForm,
       updateSegment,
       eventEmitter,
-      onCloseSegmentDetail,
+      onCloseSegmentDetailIfCurrent,
       updateSegmentInCache,
       refreshChunkListDataWithDetailChanged,
       t,
