@@ -219,7 +219,7 @@ class TestWatercrawlAuth:
         assert "timed out" in str(exc_info.value)
 
     def test_credential_timeout_bounds_connect_phase(self):
-        """Credential-validation timeout should bound the connect phase to 3.0s."""
+        """Test that the credential timeout bounds the connect phase to 3.0s"""
         from services.auth.watercrawl.watercrawl import _CREDENTIAL_TIMEOUT
 
         assert _CREDENTIAL_TIMEOUT.connect == 3.0
@@ -227,7 +227,7 @@ class TestWatercrawlAuth:
 
     @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
     def test_get_request_passes_credential_timeout_with_connect(self, mock_get):
-        """`_get_request` should forward the connect-bounded timeout to httpx.get."""
+        """Test that _get_request forwards the connect-bounded timeout to httpx.get"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_get.return_value = mock_response

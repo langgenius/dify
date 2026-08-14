@@ -208,7 +208,7 @@ class TestFirecrawlAuth:
         assert "timed out" in str(exc_info.value)
 
     def test_credential_timeout_bounds_connect_phase(self):
-        """Credential-validation timeout should bound the connect phase to 3.0s."""
+        """Test that the credential timeout bounds the connect phase to 3.0s"""
         from services.auth.firecrawl.firecrawl import _CREDENTIAL_TIMEOUT
 
         assert _CREDENTIAL_TIMEOUT.connect == 3.0
@@ -216,7 +216,7 @@ class TestFirecrawlAuth:
 
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
     def test_post_request_passes_credential_timeout_with_connect(self, mock_post: MagicMock):
-        """`_post_request` should forward the connect-bounded timeout to httpx.post."""
+        """Test that _post_request forwards the connect-bounded timeout to httpx.post"""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_post.return_value = mock_response
