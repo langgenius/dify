@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { renderI18nObject } from '@/i18n-config/index'
 import { marketplaceQuery } from '@/service/client'
 
-export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
 type MarketplaceSuggestion = {
   description: string

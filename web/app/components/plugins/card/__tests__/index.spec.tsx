@@ -77,9 +77,10 @@ describe('Plugin card workspace boundary', () => {
     } as unknown as CardPayload
     const { container } = render(<Card payload={payloadWithoutSource} variant="marketplace" />)
 
-    expect(container.querySelector('[style*="background-image"]')).toHaveStyle({
-      backgroundImage: `url("${MARKETPLACE_API_PREFIX}/plugins/langgenius/demo-plugin/icon")`,
-    })
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      `${MARKETPLACE_API_PREFIX}/plugins/langgenius/demo-plugin/icon`,
+    )
     expect(useAtomValue).not.toHaveBeenCalled()
   })
 })
