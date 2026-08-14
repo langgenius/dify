@@ -65,6 +65,8 @@ resource registry. Its private control-plane endpoints create or destroy
 backend resources from requests made by Dify API. Redis run records and event
 streams are observability state, not the Home/Workspace/Binding ledger.
 
+When `DIFY_AGENT_API_TOKEN` is configured, every private control-plane request must carry the matching Dify API `AGENT_BACKEND_API_TOKEN` as a Bearer token.
+
 ## Creation and execution flow
 
 Agent creation does not create a Home Snapshot. A config with no logical Home
