@@ -134,13 +134,10 @@ class RemoteRecommendedAppCatalogGateway(RecommendedAppCatalogQuery):
 
     def _fetch_detail(self, app_id: str) -> object | None:
         status_code, detail = self._get_payload(f"/apps/{app_id}")
-        if status_code == 404:
-            # The remote catalog uses 404 for an authoritative miss: the app is
-            # absent, unlisted, or not visible to the current Origin. Do not
-            # revive it from the bundled fallback.
-            return None
         if status_code != 200:
-            raise ValueError(f"fetch recommended app detail failed, status code: {status_code}")
+            # Preserve the legacy detail contract: only request or decoding
+            # failures use the bundled fallback; HTTP responses are authoritative.
+            return None
         return detail
 
     def _fetch_page(self, language: str) -> object:

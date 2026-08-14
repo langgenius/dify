@@ -328,9 +328,11 @@ class TestRemoteRecommendedAppCatalogGateway:
         )
         database.list_learn_dify.assert_not_called()
 
-    def test_detail_404_returns_none_without_builtin_fallback(
+    @pytest.mark.parametrize("status_code", [404, 500])
+    def test_detail_non_200_returns_none_without_builtin_fallback(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        status_code: int,
     ) -> None:
         fallback = MagicMock()
         remote = RemoteRecommendedAppCatalogGateway()
@@ -339,34 +341,11 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=404)
+        response = MagicMock(status_code=status_code)
         monkeypatch.setattr("services.recommended_app_catalog_gateway.httpx.get", MagicMock(return_value=response))
 
         assert router.get_detail("missing") is None
         fallback.get_detail.assert_not_called()
-
-    def test_detail_server_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        fallback = MagicMock()
-        fallback_detail = RecommendedAppDetailRecord(
-            id="fallback",
-            name="Fallback",
-            icon=None,
-            icon_background=None,
-            mode="chat",
-            export_data="{}",
-        )
-        fallback.get_detail.return_value = fallback_detail
-        remote = RemoteRecommendedAppCatalogGateway()
-        router = RecommendedAppCatalogRouter(
-            remote=remote,
-            database=MagicMock(),
-            builtin=fallback,
-        )
-        response = MagicMock(status_code=500)
-        monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
-
-        assert router.get_detail("app-1") == fallback_detail
-        fallback.get_detail.assert_called_once_with("app-1")
 
     def test_detail_fetch_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fallback = MagicMock()
@@ -425,7 +404,12 @@ class TestRemoteRecommendedAppCatalogGateway:
 
         assert gateway.contains("app-1") is True
 
-    def test_membership_none_does_not_fall_back(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("status_code", [404, 500])
+    def test_membership_non_200_does_not_fall_back(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        status_code: int,
+    ) -> None:
         fallback = MagicMock()
         remote = RemoteRecommendedAppCatalogGateway()
         router = RecommendedAppCatalogRouter(
@@ -433,13 +417,13 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=404)
+        response = MagicMock(status_code=status_code)
         monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
 
         assert router.contains("missing") is False
         fallback.contains.assert_not_called()
 
-    def test_membership_server_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_membership_fetch_error_falls_back_to_builtin(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fallback = MagicMock()
         fallback.contains.return_value = True
         remote = RemoteRecommendedAppCatalogGateway()
@@ -448,8 +432,7 @@ class TestRemoteRecommendedAppCatalogGateway:
             database=MagicMock(),
             builtin=fallback,
         )
-        response = MagicMock(status_code=500)
-        monkeypatch.setattr(gateway_module.httpx, "get", MagicMock(return_value=response))
+        monkeypatch.setattr(remote, "_fetch_detail", MagicMock(side_effect=ConnectionError("timeout")))
 
         assert router.contains("app-1") is True
         fallback.contains.assert_called_once_with("app-1")
