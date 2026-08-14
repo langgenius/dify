@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, override
 
-from opensearchpy import OpenSearch, helpers
+from opensearchpy import NotFoundError, OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -248,7 +248,7 @@ class LindormVectorStore(BaseVector):
                 params["routing"] = self._routing
             self._client.get(index=self._collection_name, id=id, params=params)
             return True
-        except:
+        except NotFoundError:
             return False
 
     @override
