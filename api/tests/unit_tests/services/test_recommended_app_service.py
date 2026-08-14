@@ -5,11 +5,10 @@ from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
-from models.model import AccountTrialAppRecord, App, AppMode
+from models.model import App, AppMode
 from services import recommended_app_service as service_module
 from services.recommended_app_service import RecommendedAppService
 
@@ -89,41 +88,3 @@ def test_get_app_returns_none_when_app_is_not_recommended(
 
     assert result is None
     retrieval.get_recommend_app_detail.assert_called_once_with(app.id, session=sqlite_session)
-
-
-def test_add_trial_app_record_increments_existing(sqlite_session: Session) -> None:
-    app_id = str(uuid.uuid4())
-    account_id = str(uuid.uuid4())
-    sqlite_session.add(AccountTrialAppRecord(app_id=app_id, account_id=account_id, count=3))
-    sqlite_session.commit()
-
-    RecommendedAppService.add_trial_app_record(app_id, account_id, session=sqlite_session)
-
-    sqlite_session.expire_all()
-    record = sqlite_session.scalar(
-        select(AccountTrialAppRecord).where(
-            AccountTrialAppRecord.app_id == app_id,
-            AccountTrialAppRecord.account_id == account_id,
-        )
-    )
-    assert record is not None
-    assert record.count == 4
-
-
-def test_add_trial_app_record_creates_new_record(sqlite_session: Session) -> None:
-    app_id = str(uuid.uuid4())
-    account_id = str(uuid.uuid4())
-
-    RecommendedAppService.add_trial_app_record(app_id, account_id, session=sqlite_session)
-
-    sqlite_session.expire_all()
-    record = sqlite_session.scalar(
-        select(AccountTrialAppRecord).where(
-            AccountTrialAppRecord.app_id == app_id,
-            AccountTrialAppRecord.account_id == account_id,
-        )
-    )
-    assert record is not None
-    assert record.app_id == app_id
-    assert record.account_id == account_id
-    assert record.count == 1
