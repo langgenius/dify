@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 
 
 class AppParameterConfig(NamedTuple):
@@ -20,13 +21,22 @@ class AppToolIconSource(NamedTuple):
 
 
 class AppDefinitionQuery(Protocol):
-    def get_published_parameter_config(self, app_id: str) -> AppParameterConfig | None: ...
+    def get_published_parameter_config(
+        self,
+        app_id: str,
+        *,
+        public_runtime: bool = False,
+    ) -> AppParameterConfig | None: ...
 
     def get_tool_icon_sources(self, app_id: str) -> Sequence[AppToolIconSource] | None: ...
 
 
 class AppDefinitionUnavailableError(ValueError):
     """Raised when an app definition is unavailable."""
+
+
+class AppDefinitionNotPublishedError(AppDefinitionUnavailableError):
+    """Raised when a public Agent App has not been published."""
 
 
 _API_TOOL_FALLBACK_ICON = {"background": "#252525", "content": "\ud83d\ude01"}
@@ -44,6 +54,21 @@ class AppDefinitionQueryService:
 
     def get_parameters(self, app_id: str) -> AppParametersDict:
         config = self._definitions.get_published_parameter_config(app_id)
+        return self._map_parameters(config)
+
+    def get_public_parameters(self, app_id: str) -> AppParametersDict:
+        """Read public parameters, using the published Soul for Agent Apps."""
+        try:
+            config = self._definitions.get_published_parameter_config(app_id, public_runtime=True)
+        except AgentAppNotPublishedError:
+            raise AppDefinitionNotPublishedError from None
+        except AgentAppGeneratorError:
+            raise AppDefinitionUnavailableError from None
+
+        return self._map_parameters(config)
+
+    @staticmethod
+    def _map_parameters(config: AppParameterConfig | None) -> AppParametersDict:
         if config is None:
             raise AppDefinitionUnavailableError
 

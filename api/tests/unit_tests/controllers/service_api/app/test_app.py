@@ -1,11 +1,10 @@
 """SQLite-backed tests for Service API application controllers.
 
 The authentication decorator resolves the app, tenant, and tenant owner before
-the controller runs.  Controller/model code then reads configuration, workflow,
-tags, and author information through two additional references to the database
-extension.  Tests bind all of those references to one explicit scoped SQLite
-session and persist visibility and cross-tenant decoys instead of fabricating ORM
-lookup results.
+the controller runs. Controller/model code then reads tags and author information
+through model database properties. Tests bind those references to one explicit
+scoped SQLite session and persist visibility and cross-tenant decoys instead of
+fabricating ORM lookup results.
 """
 
 import json
@@ -24,7 +23,7 @@ from werkzeug.exceptions import Forbidden, Unauthorized
 from controllers.service_api.app import app as app_controller
 from controllers.service_api.app.app import AppInfoApi, AppMetaApi, AppParameterApi
 from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.base import TypeBase
 from models.enums import EndUserType
@@ -41,7 +40,7 @@ from models.model import (
     TagType,
 )
 from models.workflow import Workflow, WorkflowType
-from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
 
 @dataclass(frozen=True)
@@ -139,7 +138,6 @@ def app_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[A
     registry = scoped_session(maker)
     binding = _DatabaseBinding(engine=sqlite_engine, session=registry)
     monkeypatch.setattr("controllers.service_api.wraps.db", binding)
-    monkeypatch.setattr(app_controller, "db", binding)
     monkeypatch.setattr("models.model.db", binding)
     monkeypatch.setattr("models.account.db", binding)
 
@@ -270,79 +268,51 @@ def authenticated_controller(app_db: AppDatabase, monkeypatch: pytest.MonkeyPatc
     return app_db
 
 
-@pytest.mark.usefixtures("authenticated_controller")
-def test_get_parameters_for_persisted_chat_config(flask_app: Flask) -> None:
-    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        response = AppParameterApi().get()
-
-    assert response["opening_statement"] == "Hello"
-    assert response["suggested_questions"] == ["Question?"]
-    assert response["user_input_form"] == [{"text-input": {"label": "Name", "variable": "name", "required": True}}]
-
-
-def test_get_parameters_for_persisted_workflow(flask_app: Flask, authenticated_controller: AppDatabase) -> None:
-    authenticated_controller.update_app(mode=AppMode.WORKFLOW, app_model_config_id=None)
-
-    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        response = AppParameterApi().get()
-
-    assert response["user_input_form"] == []
-    assert response["suggested_questions"] == []
-
-
-def test_get_parameters_for_agent_uses_persisted_app(
+def test_get_parameters_queries_authenticated_app(
     flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    authenticated_controller.update_app(mode=AppMode.AGENT, app_model_config_id=None, workflow_id=None)
-    user_input_form = [{"text-input": {"label": "Topic", "variable": "topic", "required": True}}]
-    agent_parameters = Mock(
-        return_value=(
-            {"opening_statement": "Hi from Agent"},
-            user_input_form,
-        )
+    app_definitions = Mock()
+    app_definitions.get_public_parameters.return_value = get_parameters_from_feature_dict(
+        features_dict={"opening_statement": "Hello"},
+        user_input_form=[],
     )
-    monkeypatch.setattr(app_controller, "_get_agent_app_feature_dict_and_user_input_form", agent_parameters)
-
-    with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        response = AppParameterApi().get()
-
-    assert response["opening_statement"] == "Hi from Agent"
-    assert response["user_input_form"] == user_input_form
-    agent_parameters.assert_called_once()
-    (app_model,) = agent_parameters.call_args.args
-    assert app_model.id == authenticated_controller.app_id
-    assert agent_parameters.call_args.kwargs["session"] is authenticated_controller.registry()
-
-
-def test_unpublished_agent_raises_friendly_error(
-    flask_app: Flask, authenticated_controller: AppDatabase, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    authenticated_controller.update_app(mode=AppMode.AGENT)
     monkeypatch.setattr(
         app_controller,
-        "get_published_agent_app_feature_dict_and_user_input_form",
-        Mock(side_effect=AgentAppNotPublishedError("not published")),
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
     with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(AgentNotPublishedError):
-            AppParameterApi().get()
+        response = AppParameterApi().get()
+
+    app_definitions.get_public_parameters.assert_called_once_with(authenticated_controller.app_id)
+    assert response["opening_statement"] == "Hello"
 
 
 @pytest.mark.parametrize(
-    ("mode", "field"),
-    [(AppMode.CHAT, "app_model_config_id"), (AppMode.WORKFLOW, "workflow_id")],
+    ("service_error", "http_error"),
+    [
+        pytest.param(AppDefinitionNotPublishedError(), AgentNotPublishedError, id="not-published"),
+        pytest.param(AppDefinitionUnavailableError(), AppUnavailableError, id="unavailable"),
+    ],
 )
-def test_parameters_reject_missing_persisted_configuration(
+@pytest.mark.usefixtures("authenticated_controller")
+def test_get_parameters_maps_query_errors(
     flask_app: Flask,
-    authenticated_controller: AppDatabase,
-    mode: AppMode,
-    field: str,
+    monkeypatch: pytest.MonkeyPatch,
+    service_error: Exception,
+    http_error: type[Exception],
 ) -> None:
-    authenticated_controller.update_app(mode=mode, **{field: None})
+    app_definitions = Mock()
+    app_definitions.get_public_parameters.side_effect = service_error
+    monkeypatch.setattr(
+        app_controller,
+        "application_services",
+        Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
+    )
 
     with flask_app.test_request_context("/parameters", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(AppUnavailableError):
+        with pytest.raises(http_error):
             AppParameterApi().get()
 
 
