@@ -173,6 +173,110 @@ describe("createDocumentMultimodalManifestBuilder", () => {
     });
   });
 
+  it("assigns canonical byte offsets to text and empty visual elements", () => {
+    const builder = createDocumentMultimodalManifestBuilder();
+    const manifest = builder.build({
+      artifact: {
+        ...manifestFixture(),
+        elements: [
+          {
+            id: "paragraph-1",
+            metadata: {},
+            sectionPath: ["前言"],
+            text: "前言",
+            type: "paragraph",
+          },
+          {
+            id: "image-1",
+            metadata: {
+              assetRef: {
+                contentType: "image/png",
+                objectKey: "tenant-dev/spaces/space/artifacts/image-1.png",
+                sha256: "d".repeat(64),
+              },
+            },
+            sectionPath: ["前言"],
+            type: "image",
+          },
+          {
+            id: "paragraph-2",
+            metadata: {},
+            sectionPath: ["前言"],
+            text: "说明",
+            type: "paragraph",
+          },
+          {
+            id: "table-1",
+            metadata: {},
+            sectionPath: ["前言"],
+            text: "A",
+            type: "table",
+          },
+        ],
+      },
+      knowledgeSpaceId,
+    });
+
+    expect(manifest.items).toEqual([
+      expect.objectContaining({
+        endOffset: 7,
+        modality: "image",
+        parseElementId: "image-1",
+        startOffset: 7,
+      }),
+      expect.objectContaining({
+        endOffset: 15,
+        modality: "table",
+        parseElementId: "table-1",
+        startOffset: 14,
+      }),
+    ]);
+  });
+
+  it("keeps archive fallback images unpositioned instead of attaching them to the last chunk", () => {
+    const builder = createDocumentMultimodalManifestBuilder();
+    const manifest = builder.build({
+      artifact: {
+        ...manifestFixture(),
+        elements: [
+          {
+            id: "paragraph-1",
+            metadata: {},
+            sectionPath: ["Sheet 1"],
+            text: "Spreadsheet values",
+            type: "paragraph",
+          },
+          {
+            id: "image-1",
+            metadata: {
+              assetRef: {
+                contentType: "image/png",
+                objectKey: "tenant-dev/spaces/space/artifacts/image-1.png",
+                sha256: "d".repeat(64),
+              },
+              positionUnknown: true,
+              source: "archive-media-fallback",
+            },
+            sectionPath: [],
+            type: "image",
+          },
+        ],
+      },
+      knowledgeSpaceId,
+    });
+
+    expect(manifest.items[0]).toMatchObject({
+      modality: "image",
+      parseElementId: "image-1",
+      sourceMetadata: {
+        positionUnknown: true,
+        source: "archive-media-fallback",
+      },
+    });
+    expect(manifest.items[0]).not.toHaveProperty("startOffset");
+    expect(manifest.items[0]).not.toHaveProperty("endOffset");
+  });
+
   it("does not fabricate an assetRef from unrelated top-level metadata", () => {
     const builder = createDocumentMultimodalManifestBuilder();
     const manifest = builder.build({

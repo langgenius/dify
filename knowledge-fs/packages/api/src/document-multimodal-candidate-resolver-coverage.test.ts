@@ -54,7 +54,7 @@ describe("document multimodal candidate resolver branch coverage", () => {
     ).resolves.toBeNull();
   });
 
-  it("resolves table items without asset refs, bounding boxes, offsets, or page numbers", async () => {
+  it("resolves table items without asset refs, bounding boxes, or page numbers", async () => {
     const { assets, parseArtifacts } = await seedRepositories();
     const resolver = createDocumentMultimodalCandidateResolver({ assets, parseArtifacts });
 
@@ -74,9 +74,8 @@ describe("document multimodal candidate resolver branch coverage", () => {
     expect(resolved).not.toHaveProperty("assetRoute");
     expect(resolved).not.toHaveProperty("boundingBox");
     expect(resolved).not.toHaveProperty("caption");
-    expect(resolved).not.toHaveProperty("endOffset");
+    expect(resolved).toMatchObject({ endOffset: 25, startOffset: 0 });
     expect(resolved).not.toHaveProperty("pageNumber");
-    expect(resolved).not.toHaveProperty("startOffset");
   });
 
   it("carries OCR text and keeps non-data uris in cloned asset refs without asset routes", async () => {

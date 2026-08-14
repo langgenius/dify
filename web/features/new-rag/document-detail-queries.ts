@@ -53,3 +53,27 @@ export function documentOutlineQueryOptions({
     retry: false,
   })
 }
+
+export function documentMultimodalQueryOptions({
+  documentAssetId,
+  knowledgeSpaceId,
+}: {
+  documentAssetId?: string
+  knowledgeSpaceId: string
+}) {
+  const multimodalQuery =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.multimodal
+
+  return multimodalQuery.get.queryOptions({
+    context: { silent: true },
+    input: documentAssetId
+      ? {
+          params: {
+            control_space_id: knowledgeSpaceId,
+            document_id: documentAssetId,
+          },
+        }
+      : skipToken,
+    retry: false,
+  })
+}

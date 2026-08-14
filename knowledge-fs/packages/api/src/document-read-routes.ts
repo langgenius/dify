@@ -146,6 +146,7 @@ export const getDocumentOutlineRoute = createRoute({
 });
 
 export const getDocumentMultimodalManifestRoute = createRoute({
+  "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
   method: "get",
   operationId: "getDocumentMultimodalManifest",
   path: "/knowledge-spaces/{id}/documents/{documentId}/multimodal",

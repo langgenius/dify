@@ -1,4 +1,7 @@
-import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsDocumentMultimodalItemResponse,
+  KnowledgeFsDocumentOutlineNodeResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -10,8 +13,13 @@ import copy from 'copy-to-clipboard'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import { chunkCharacterCount, chunkContentParts } from './document-detail-model'
+import {
+  chunkCharacterCount,
+  chunkContentParts,
+  placeDocumentMultimodalItems,
+} from './document-detail-model'
 import { DocumentMetadataCard } from './document-metadata-card'
+import { DocumentMultimodalAsset } from './document-multimodal-asset'
 
 function formatBytes(bytes: number, locale: string) {
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
@@ -61,6 +69,7 @@ export function DocumentChunkDetail({
   chunksComplete,
   isLoadingMore,
   locale,
+  multimodalItems,
   outlineNodesByChunkId,
   outlineSummaryChunkIds,
   revision,
@@ -73,6 +82,7 @@ export function DocumentChunkDetail({
   chunksComplete: boolean
   isLoadingMore: boolean
   locale: string
+  multimodalItems: KnowledgeFsDocumentMultimodalItemResponse[]
   outlineNodesByChunkId: Map<string, KnowledgeFsDocumentOutlineNodeResponse>
   outlineSummaryChunkIds: Set<string>
   revision?: Exclude<LogicalDocumentRevision, null>
@@ -88,6 +98,10 @@ export function DocumentChunkDetail({
   const averageChunkLength = chunks.length ? Math.round(characterCount / chunks.length) : 0
   const childChunkCount = chunks.filter((chunk) => chunk.parentChunkId).length
   const parentChunkCount = chunks.length - childChunkCount
+  const multimodalPlacement = useMemo(
+    () => placeDocumentMultimodalItems(chunks, multimodalItems),
+    [chunks, multimodalItems],
+  )
   const chunkMarkerLabels = useMemo(() => {
     const parentChunkIds = new Set(
       chunks.flatMap((chunk) => (chunk.parentChunkId ? [chunk.parentChunkId] : [])),
@@ -142,12 +156,22 @@ export function DocumentChunkDetail({
         aria-busy={isLoadingMore}
         className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-6"
       >
-        {chunks.length ? (
+        {chunks.length || multimodalPlacement.unplaced.length ? (
           <div
             ref={contentScrollRef}
             className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:h-full xl:max-h-none xl:px-0"
             data-testid="chunk-content-scroll"
           >
+            {multimodalPlacement.unplaced.length > 0 && (
+              <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
+                <h3 className="system-sm-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.documentImages'])}
+                </h3>
+                {multimodalPlacement.unplaced.map((item) => (
+                  <DocumentMultimodalAsset item={item} key={item.id} />
+                ))}
+              </section>
+            )}
             {chunks.map((chunk) => {
               const content = chunkContentParts(chunk)
               const markerLabel = chunkMarkerLabels.get(chunk.id)
@@ -155,6 +179,7 @@ export function DocumentChunkDetail({
               const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
                 ? outlineNode?.summary?.trim()
                 : undefined
+              const chunkMultimodalItems = multimodalPlacement.byChunkId.get(chunk.id) ?? []
               return (
                 <section
                   key={chunk.id}
@@ -192,6 +217,13 @@ export function DocumentChunkDetail({
                       <span aria-hidden className="i-ri-file-copy-line size-4" />
                     </Button>
                   </div>
+                  {chunkMultimodalItems.length > 0 && (
+                    <div className="mt-3 space-y-3">
+                      {chunkMultimodalItems.map((item) => (
+                        <DocumentMultimodalAsset item={item} key={item.id} />
+                      ))}
+                    </div>
+                  )}
                   {content.body && (
                     <div className="mt-3 flex items-start gap-1">
                       {markerLabel && <ChunkMarker label={markerLabel} />}

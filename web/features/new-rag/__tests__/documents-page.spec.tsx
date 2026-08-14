@@ -1051,7 +1051,7 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('explains structured task failures and labels diagnostic identifiers', async () => {
+  it('shows actionable task failures without technical identifiers', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'failed-document', title: 'Failed report.pdf' })] }],
@@ -1079,6 +1079,16 @@ describe('DocumentsPage', () => {
     }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const failedStatus = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.documentStatus.failed: dataset.newKnowledge.taskFailure.documentProcessing',
+    })
+    await user.hover(failedStatus)
+    expect(
+      await screen.findByText('dataset.newKnowledge.taskFailure.documentProcessing'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('cef52296-3aa7-41ec-9953-2bbe030fdf6c')).not.toBeInTheDocument()
+
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -1090,18 +1100,14 @@ describe('DocumentsPage', () => {
       within(panel).getByText('dataset.newKnowledge.taskFailure.documentProcessing'),
     ).toBeInTheDocument()
     expect(within(panel).queryByText('DOCUMENT_COMPILATION_FAILED')).not.toBeInTheDocument()
-
-    await user.click(
-      within(panel).getByRole('button', {
+    expect(
+      within(panel).queryByRole('button', {
         name: 'dataset.newKnowledge.taskFailure.technicalDetails',
       }),
-    )
-
-    expect(within(panel).getByText('DOCUMENT_COMPILATION_FAILED')).toBeInTheDocument()
+    ).not.toBeInTheDocument()
     expect(
-      within(panel).getByText('dataset.newKnowledge.taskFailure.diagnosticId:'),
-    ).toBeInTheDocument()
-    expect(within(panel).getByText('cef52296-3aa7-41ec-9953-2bbe030fdf6c')).toBeInTheDocument()
+      within(panel).queryByText('cef52296-3aa7-41ec-9953-2bbe030fdf6c'),
+    ).not.toBeInTheDocument()
   })
 
   it('downloads the active revision from the document action menu', async () => {

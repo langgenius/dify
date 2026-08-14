@@ -364,6 +364,12 @@ describe("Dify Capability v2 request guard", () => {
         "documents.outline.read",
         "document",
       ],
+      getDocumentMultimodalManifest: [
+        "GET",
+        "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+        "documents.multimodal.read",
+        "document",
+      ],
       getKnowledgeSpaceSource: [
         "GET",
         "/knowledge-spaces/{id}/sources/{sourceId}",

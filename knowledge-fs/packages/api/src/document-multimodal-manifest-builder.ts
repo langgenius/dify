@@ -14,6 +14,7 @@ import {
 } from "@knowledge/core";
 
 import { deterministicChildId } from "./api-shared-utils";
+import { materializeDocumentElementByteSpan } from "./document-offsets";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 
 export interface DocumentMultimodalManifestBuilder {
@@ -52,16 +53,24 @@ export function createDocumentMultimodalManifestBuilder({
         publicationGenerationId === undefined
           ? undefined
           : PublicationGenerationIdSchema.parse(publicationGenerationId);
-      const items = artifact.elements
-        .map((element, index) =>
-          documentMultimodalItemFromElement({
-            artifact,
-            element,
-            index,
-            maxTextPreviewChars,
-          }),
-        )
-        .filter((item): item is DocumentMultimodalItem => item !== null);
+      const items: DocumentMultimodalItem[] = [];
+      let nextOffset = 0;
+
+      for (const [index, element] of artifact.elements.entries()) {
+        const span = materializeDocumentElementByteSpan(element.text, nextOffset);
+        const positionalOffset = span?.startOffset ?? nextOffset;
+        const item = documentMultimodalItemFromElement({
+          artifact,
+          element,
+          fallbackEndOffset: span?.endOffset ?? positionalOffset,
+          fallbackStartOffset: positionalOffset,
+          index,
+          maxTextPreviewChars,
+        });
+
+        if (item) items.push(item);
+        if (span) nextOffset = span.nextOffset;
+      }
       const modalityCounts = countModalities(items);
 
       return DocumentMultimodalManifestSchema.parse({
@@ -97,11 +106,15 @@ export function createDocumentMultimodalManifestBuilder({
 function documentMultimodalItemFromElement({
   artifact,
   element,
+  fallbackEndOffset,
+  fallbackStartOffset,
   index,
   maxTextPreviewChars,
 }: {
   readonly artifact: ParseArtifact;
   readonly element: ParseElement;
+  readonly fallbackEndOffset: number;
+  readonly fallbackStartOffset: number;
   readonly index: number;
   readonly maxTextPreviewChars: number;
 }): DocumentMultimodalItem | null {
@@ -117,8 +130,11 @@ function documentMultimodalItemFromElement({
   const assetRef = parseAssetRef(element.metadata);
   const boundingBox = parseBoundingBox(element.metadata.boundingBox);
   const textPreview = textPreviewForElement(element, ocrText, maxTextPreviewChars);
-  const startOffset = metadataNumber(element.metadata, "startOffset");
-  const endOffset = metadataNumber(element.metadata, "endOffset");
+  const positionUnknown = element.metadata.positionUnknown === true;
+  const explicitStartOffset = metadataNumber(element.metadata, "startOffset");
+  const explicitEndOffset = metadataNumber(element.metadata, "endOffset");
+  const startOffset = explicitStartOffset ?? (positionUnknown ? undefined : fallbackStartOffset);
+  const endOffset = explicitEndOffset ?? (positionUnknown ? undefined : fallbackEndOffset);
 
   return {
     ...(assetRef ? { assetRef } : {}),

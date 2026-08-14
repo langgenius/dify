@@ -797,12 +797,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               task?.failure,
               task?.errorCode ?? (task?.errorMessage ? 'LEGACY_TASK_FAILURE' : undefined),
             ) ?? 'newKnowledge.taskFailure.internal'
-          const message = t(($) => $[messageKey])
-          const reference =
-            task?.failure?.traceId && task.failure.category === 'internal'
-              ? `${t(($) => $['newKnowledge.taskFailure.diagnosticId'])}: ${task.failure.traceId}`
-              : undefined
-          return [[document.id, reference ? `${message}\n${reference}` : message] as const]
+          return [[document.id, t(($) => $[messageKey])] as const]
         }),
       ),
     [documentStatuses, documents, t, taskByDocument],

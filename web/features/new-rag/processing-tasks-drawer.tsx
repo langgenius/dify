@@ -3,7 +3,6 @@
 import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './document-models'
 import type { TaskProgressStore } from './task-progress-store'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   Drawer,
   DrawerBackdrop,
@@ -630,37 +629,6 @@ export function ProcessingTasksDrawer({
                               <p className="mt-1 system-2xs-regular wrap-break-word whitespace-pre-wrap text-text-destructive">
                                 {taskError}
                               </p>
-                            )}
-                            {task.failure && (
-                              <Collapsible className="mt-1 items-start">
-                                <CollapsibleTrigger className="-ml-2 min-h-6 w-fit justify-start gap-0.5 rounded-md px-2 py-0 system-2xs-medium text-text-tertiary hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
-                                  <span>
-                                    {t(($) => $['newKnowledge.taskFailure.technicalDetails'])}
-                                  </span>
-                                  <span
-                                    aria-hidden
-                                    className="i-ri-arrow-right-s-line size-3.5 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
-                                  />
-                                </CollapsibleTrigger>
-                                <CollapsiblePanel className="w-full">
-                                  <dl className="space-y-1 pt-1 system-2xs-regular text-text-tertiary">
-                                    <div className="flex min-w-0 gap-1">
-                                      <dt className="shrink-0">
-                                        {t(($) => $['newKnowledge.taskFailure.errorCode'])}:
-                                      </dt>
-                                      <dd className="min-w-0 break-all">{task.failure.code}</dd>
-                                    </div>
-                                    {task.failure.traceId && (
-                                      <div className="min-w-0">
-                                        <dt>
-                                          {t(($) => $['newKnowledge.taskFailure.diagnosticId'])}:
-                                        </dt>
-                                        <dd className="break-all">{task.failure.traceId}</dd>
-                                      </div>
-                                    )}
-                                  </dl>
-                                </CollapsiblePanel>
-                              </Collapsible>
                             )}
                             {actionErrors[task.id] === taskLifecycle(task) && (
                               <p

@@ -1,3 +1,4 @@
+import { zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -856,6 +857,9 @@ describe("parser adapters", () => {
         expect(parsedRequest.body).toBeTruthy();
         const form = await parsedRequest.formData();
         expect(form.get("coordinates")).toBe("true");
+        expect(form.get("strategy")).toBe("hi_res");
+        expect(form.getAll("extract_image_block_types")).toEqual(["Image"]);
+        expect(form.get("extract_image_block_to_payload")).toBe("true");
         expect(form.get("files")).toBeInstanceOf(File);
 
         return new Response(
@@ -881,7 +885,7 @@ describe("parser adapters", () => {
                   ],
                 },
                 image_mime_type: "image/png",
-                image_path: "file:///tmp/report-figure-1.png",
+                image_base64: "iVBORw0KGgo=\n",
                 page_number: 2,
               },
               type: "Image",
@@ -921,7 +925,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@3",
+        parserVersion: "unstructured@4",
       },
       parser: "unstructured",
       version: 1,
@@ -948,7 +952,7 @@ describe("parser adapters", () => {
         metadata: {
           assetRef: {
             contentType: "image/png",
-            uri: "file:///tmp/report-figure-1.png",
+            uri: "data:image/png;base64,iVBORw0KGgo=",
           },
           boundingBox: { height: 120, width: 240, x: 10, y: 20 },
           coordinates: {
@@ -960,7 +964,6 @@ describe("parser adapters", () => {
             ],
           },
           image_mime_type: "image/png",
-          image_path: "file:///tmp/report-figure-1.png",
           unstructuredType: "Image",
         },
         pageNumber: 2,
@@ -981,6 +984,175 @@ describe("parser adapters", () => {
         type: "table",
       },
     ]);
+  });
+
+  it.each([
+    ["report.pdf", "application/pdf"],
+    ["handbook.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    ["briefing.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+    ["forecast.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ])("requests embedded image blocks when parsing %s", async (filename, mimeType) => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (request) => {
+        const parsedRequest = request instanceof Request ? request : new Request(request);
+        const form = await parsedRequest.formData();
+
+        expect(form.get("strategy")).toBe("hi_res");
+        expect(form.getAll("extract_image_block_types")).toEqual(["Image"]);
+        expect(form.get("extract_image_block_to_payload")).toBe("true");
+        expect((form.get("files") as File).name).toBe(filename);
+
+        return new Response("[]", {
+          headers: { "content-type": "application/json" },
+          status: 200,
+        });
+      },
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+      now: () => createdAt,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1, 2, 3]),
+        documentAssetId,
+        filename,
+        mimeType,
+        version: 1,
+      }),
+    ).resolves.toMatchObject({
+      metadata: { filename, mimeType, parserVersion: "unstructured@4" },
+      parser: "unstructured",
+    });
+  });
+
+  it.each([
+    [
+      "handbook.docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "word/media/image1.png",
+    ],
+    [
+      "briefing.pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "ppt/media/image1.png",
+    ],
+    [
+      "forecast.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "xl/media/image1.png",
+    ],
+    ["manual.odt", "application/vnd.oasis.opendocument.text", "Pictures/image1.png"],
+    ["book.epub", "application/epub+zip", "OEBPS/images/image1.png"],
+    ["diagram.vsdx", "application/vnd.ms-visio.drawing", "visio/media/image1.png"],
+  ])(
+    "extracts embedded archive media when the provider omits images for %s",
+    async (filename, mimeType, archivePath) => {
+      const body = zipSync(
+        {
+          "../outside.png": new Uint8Array([9, 9, 9]),
+          "metadata/readme.txt": textBytes("not an image"),
+          [archivePath]: new Uint8Array([1, 2, 3, 4]),
+        },
+        { level: 0 },
+      );
+      const parser = createUnstructuredParserClient({
+        endpoint: "https://unstructured.example.test",
+        fetch: async () =>
+          new Response(
+            JSON.stringify([
+              {
+                metadata: { page_number: 1 },
+                text: "Provider text",
+                type: "NarrativeText",
+              },
+            ]),
+            { headers: { "content-type": "application/json" }, status: 200 },
+          ),
+        generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52",
+        now: () => createdAt,
+      });
+
+      const artifact = await parser.parse({
+        body,
+        documentAssetId,
+        filename,
+        mimeType,
+        version: 1,
+      });
+
+      expect(artifact.elements).toHaveLength(2);
+      expect(artifact.elements[1]).toMatchObject({
+        metadata: {
+          archivePath,
+          assetRef: {
+            contentType: "image/png",
+            uri: "data:image/png;base64,AQIDBA==",
+          },
+          positionUnknown: true,
+          source: "archive-media-fallback",
+          title: "image1.png",
+        },
+        sectionPath: [],
+        type: "image",
+      });
+      expect(artifact.elements).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            metadata: expect.objectContaining({ archivePath: "../outside.png" }),
+          }),
+        ]),
+      );
+    },
+  );
+
+  it("deduplicates provider images while filling archive images that the provider omitted", async () => {
+    const body = zipSync(
+      {
+        "word/media/image1.png": new Uint8Array([1, 2, 3, 4]),
+        "word/media/image2.png": new Uint8Array([5, 6, 7, 8]),
+      },
+      { level: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              metadata: {
+                image_base64: "AQIDBA==",
+                image_mime_type: "image/png",
+                page_number: 1,
+              },
+              type: "Image",
+            },
+          ]),
+          { headers: { "content-type": "application/json" }, status: 200 },
+        ),
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c53",
+      now: () => createdAt,
+    });
+
+    const artifact = await parser.parse({
+      body,
+      documentAssetId,
+      filename: "handbook.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      version: 1,
+    });
+    const images = artifact.elements.filter((element) => element.type === "image");
+
+    expect(images).toHaveLength(2);
+    expect(images[0]?.metadata).toMatchObject({
+      assetRef: { uri: "data:image/png;base64,AQIDBA==" },
+      unstructuredType: "Image",
+    });
+    expect(images[1]?.metadata).toMatchObject({
+      archivePath: "word/media/image2.png",
+      assetRef: { uri: "data:image/png;base64,BQYHCA==" },
+      source: "archive-media-fallback",
+    });
   });
 
   it("preserves nested Unstructured title paths from parent ids and category depth", async () => {

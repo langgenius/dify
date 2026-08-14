@@ -40,6 +40,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSDocumentMultimodalManifest,
     KnowledgeFSDocumentOutlineResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSDocumentReindexResponse,
@@ -947,6 +948,19 @@ class KnowledgeFSDataFacade:
             path_parameters=(("documentId", document_id),),
         )
         return KnowledgeFSDocumentOutlineResponse.model_validate(raw)
+
+    def get_document_multimodal_manifest(
+        self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
+    ) -> KnowledgeFSDocumentMultimodalManifest:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getDocumentMultimodalManifest",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+        )
+        return KnowledgeFSDocumentMultimodalManifest.model_validate(raw)
 
     def list_document_revisions(
         self,

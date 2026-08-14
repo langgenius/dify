@@ -564,6 +564,13 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/documents/{documentId}/outline",
             "document",
         ),
+        "getDocumentMultimodalManifest": KnowledgeFSCapabilityOperation(
+            "documents.multimodal.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+            "document",
+        ),
         "listDocumentRevisions": KnowledgeFSCapabilityOperation(
             "documents.revisions.list",
             _STANDARD_CALLERS,

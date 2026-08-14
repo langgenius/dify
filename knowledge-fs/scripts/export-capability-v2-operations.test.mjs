@@ -20,7 +20,22 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 114);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 115);
+    assert.deepEqual(
+      document.operations.find(
+        (operation) => operation.operationId === "getDocumentMultimodalManifest",
+      ),
+      {
+        action: "documents.multimodal.read",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "GET",
+        operationId: "getDocumentMultimodalManifest",
+        parentResourceBinding: { pathParameter: "id" },
+        path: "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+        resourceBinding: { pathParameter: "documentId" },
+        resourceType: "document",
+      },
+    );
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "captureWorkflowFailedRetrieval",

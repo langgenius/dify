@@ -1173,8 +1173,14 @@ function toPublicChunk(chunk: Awaited<ReturnType<DocumentChunkRepository["get"]>
   const sourceLocation = SourceLocationSchema.safeParse(chunk.systemMetadata.sourceLocation);
   return {
     ...publicChunk,
+    ...(sourceLocation.success && sourceLocation.data.endOffset !== undefined
+      ? { endOffset: sourceLocation.data.endOffset }
+      : {}),
     kind: kind.success ? kind.data : "chunk",
     sectionPath: sourceLocation.success ? [...sourceLocation.data.sectionPath] : [],
+    ...(sourceLocation.success && sourceLocation.data.startOffset !== undefined
+      ? { startOffset: sourceLocation.data.startOffset }
+      : {}),
   };
 }
 

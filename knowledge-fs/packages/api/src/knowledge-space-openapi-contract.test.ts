@@ -108,6 +108,13 @@ describe("knowledge-space OpenAPI contract", () => {
       "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
       "x-knowledge-fs-required-scope": "knowledge-spaces:read",
     });
+    expect(
+      document.paths?.["/knowledge-spaces/{id}/documents/{documentId}/multimodal"]?.get,
+    ).toMatchObject({
+      operationId: "getDocumentMultimodalManifest",
+      "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
+      "x-knowledge-fs-required-scope": "knowledge-spaces:read",
+    });
     expect(document.paths?.["/knowledge-spaces"]?.get?.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({ in: "header", name: "x-trace-id" })]),
     );

@@ -1,5 +1,8 @@
+import { Buffer } from "node:buffer";
+
 import { parse as parseCsv } from "csv-parse/sync";
 import { XMLParser } from "fast-xml-parser";
+import { unzipSync } from "fflate";
 import { DomUtils, parseDocument } from "htmlparser2";
 import { type Token, type Tokens, marked } from "marked";
 import { parse as parseYaml } from "yaml";
@@ -153,7 +156,13 @@ interface MarkdownImageRef {
 const defaultMaxElements = 20_000;
 const defaultMaxInputBytes = 10 * 1024 * 1024;
 const defaultMaxDocumentTitleChars = 2_000;
-const defaultMaxResponseBytes = 5 * 1024 * 1024;
+const defaultMaxArchiveImageBytes = 10 * 1024 * 1024;
+const defaultMaxArchiveImageCount = 1_000;
+const defaultMaxArchiveImageTotalBytes = 32 * 1024 * 1024;
+const archivePathCollator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+// Image blocks are returned as base64 in the partition JSON. Keep the response bounded while
+// leaving enough headroom for the encoded images of ordinary PDF, Office, and presentation files.
+const defaultMaxResponseBytes = 32 * 1024 * 1024;
 const defaultMaxRetries = 0;
 const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
@@ -264,7 +273,7 @@ export function createUnstructuredParserClient({
   return {
     kind: "unstructured",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "unstructured@3";
+      const parserVersion = options.parserVersion ?? "unstructured@4";
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const response = await fetchWithRetries({
         buildRequest: () => {
@@ -275,6 +284,13 @@ export function createUnstructuredParserClient({
           ) as ArrayBuffer;
           form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
           form.set("coordinates", "true");
+          // Embedded visuals are not DOCX-specific: PDF, presentation, spreadsheet, HTML and
+          // other container formats can all carry images. Ask Unstructured for image blocks on
+          // every request routed through this adapter so downstream ingestion can persist one
+          // format-independent multimodal artifact.
+          form.set("strategy", "hi_res");
+          form.append("extract_image_block_types", "Image");
+          form.set("extract_image_block_to_payload", "true");
 
           return new Request(unstructuredPartitionEndpoint(endpoint), {
             body: form,
@@ -310,7 +326,10 @@ export function createUnstructuredParserClient({
         throw new ProviderResponseError("Unstructured parser returned an invalid response");
       }
 
-      const elements = unstructuredElementsToElements(normalizeUnstructuredLayout(parsed.data));
+      const providerElements = unstructuredElementsToElements(
+        normalizeUnstructuredLayout(parsed.data),
+      );
+      const elements = appendArchiveMediaFallbackElements(input, providerElements);
 
       return createParseArtifact({
         elements,
@@ -327,6 +346,198 @@ function unstructuredPartitionEndpoint(endpoint: string): string {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
 
   return trimmed.endsWith("/general/v0/general") ? trimmed : `${trimmed}/general/v0/general`;
+}
+
+function appendArchiveMediaFallbackElements(
+  input: ParseDocumentInput,
+  elements: readonly ParseElementInput[],
+): ParseElementInput[] {
+  const roots = archiveMediaRoots(input);
+
+  if (!roots || !zipSignatureIsSupported(input.body)) {
+    return [...elements];
+  }
+
+  const providerImageUris = elements.flatMap((element) => {
+    const uri = parseElementEmbeddedImageUri(element);
+    return uri ? [uri] : [];
+  });
+  const embeddedImageUris = new Set(providerImageUris);
+  // Keep the combined provider + archive payload within the same count/byte budgets consumed by
+  // the downstream object-storage extractor. This avoids producing an inline asset that would be
+  // stranded after the extraction cap is reached.
+  let selectedBytes = providerImageUris.reduce(
+    (total, uri) => total + embeddedImageDataUriByteLength(uri),
+    0,
+  );
+  let selectedCount = providerImageUris.length;
+
+  try {
+    const archive = unzipSync(input.body, {
+      filter: (file) => {
+        if (
+          selectedCount >= defaultMaxArchiveImageCount ||
+          file.originalSize < 1 ||
+          file.originalSize > defaultMaxArchiveImageBytes ||
+          selectedBytes + file.originalSize > defaultMaxArchiveImageTotalBytes ||
+          !archivePathIsSafe(file.name) ||
+          !archivePathMatchesRoots(file.name, roots) ||
+          !archiveImageContentType(file.name)
+        ) {
+          return false;
+        }
+
+        selectedBytes += file.originalSize;
+        selectedCount += 1;
+        return true;
+      },
+    });
+    const fallbackElements = Object.entries(archive)
+      .sort(([left], [right]) => archivePathCollator.compare(left, right))
+      .flatMap(([archivePath, body]): ParseElementInput[] => {
+        const contentType = archiveImageContentType(archivePath);
+        const uri = contentType
+          ? `data:${contentType};base64,${Buffer.from(body).toString("base64")}`
+          : null;
+
+        if (
+          !contentType ||
+          !uri ||
+          embeddedImageUris.has(uri) ||
+          body.byteLength < 1 ||
+          body.byteLength > defaultMaxArchiveImageBytes
+        ) {
+          return [];
+        }
+
+        const title = archivePath.split("/").at(-1);
+
+        return [
+          {
+            metadata: {
+              archivePath,
+              assetRef: {
+                contentType,
+                uri,
+              },
+              positionUnknown: true,
+              source: "archive-media-fallback",
+              ...(title ? { title } : {}),
+            },
+            sectionPath: [],
+            type: "image",
+          },
+        ];
+      });
+
+    return [...elements, ...fallbackElements];
+  } catch {
+    // The authoritative parser response remains usable even when an optional archive-media
+    // fallback cannot inspect a malformed or unsupported ZIP container.
+    return [...elements];
+  }
+}
+
+function parseElementEmbeddedImageUri(element: ParseElementInput): string | null {
+  if (element.type !== "image") {
+    return null;
+  }
+
+  const assetRef = isPlainRecord(element.metadata?.assetRef) ? element.metadata.assetRef : null;
+  const uri = typeof assetRef?.uri === "string" ? assetRef.uri.trim() : "";
+  return uri.startsWith("data:image/") ? uri : null;
+}
+
+function embeddedImageDataUriByteLength(uri: string): number {
+  const encoded = uri.slice(uri.indexOf(",") + 1).replaceAll(/\s+/gu, "");
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((encoded.length * 3) / 4) - padding);
+}
+
+function archiveMediaRoots(input: ParseDocumentInput): readonly string[] | null {
+  const filename = input.filename.trim().toLowerCase();
+  const mimeType = input.mimeType.trim().toLowerCase();
+
+  if (
+    [".docm", ".docx", ".dotm", ".dotx"].some((extension) => filename.endsWith(extension)) ||
+    mimeType.includes("wordprocessingml") ||
+    mimeType.includes("ms-word.document.macroenabled")
+  ) {
+    return ["word/media/"];
+  }
+
+  if (
+    [".potm", ".potx", ".ppsm", ".ppsx", ".pptm", ".pptx"].some((extension) =>
+      filename.endsWith(extension),
+    ) ||
+    mimeType.includes("presentationml") ||
+    mimeType.includes("ms-powerpoint.presentation.macroenabled")
+  ) {
+    return ["ppt/media/"];
+  }
+
+  if (
+    [".xlsb", ".xlsm", ".xlsx", ".xltm", ".xltx"].some((extension) =>
+      filename.endsWith(extension),
+    ) ||
+    mimeType.includes("spreadsheetml") ||
+    mimeType.includes("ms-excel.sheet.macroenabled") ||
+    mimeType.includes("ms-excel.sheet.binary.macroenabled")
+  ) {
+    return ["xl/media/"];
+  }
+
+  if (filename.endsWith(".vsdx") || mimeType.includes("visio.drawing")) {
+    return ["visio/media/"];
+  }
+
+  if (
+    [".odp", ".ods", ".odt"].some((extension) => filename.endsWith(extension)) ||
+    mimeType.startsWith("application/vnd.oasis.opendocument.")
+  ) {
+    return ["Pictures/"];
+  }
+
+  if (filename.endsWith(".epub") || mimeType === "application/epub+zip") {
+    return [""];
+  }
+
+  return null;
+}
+
+function archivePathIsSafe(path: string): boolean {
+  const normalized = path.replaceAll("\\", "/");
+  return (
+    normalized === path &&
+    !normalized.startsWith("/") &&
+    !normalized.includes("\0") &&
+    !normalized.split("/").includes("..")
+  );
+}
+
+function archivePathMatchesRoots(path: string, roots: readonly string[]): boolean {
+  return roots.some((root) => path.startsWith(root));
+}
+
+function archiveImageContentType(path: string): string | null {
+  const normalized = path.toLowerCase();
+
+  if (normalized.endsWith(".png")) return "image/png";
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) return "image/jpeg";
+  if (normalized.endsWith(".gif")) return "image/gif";
+  if (normalized.endsWith(".webp")) return "image/webp";
+  return null;
+}
+
+function zipSignatureIsSupported(body: Uint8Array): boolean {
+  return (
+    body.byteLength >= 4 &&
+    body[0] === 0x50 &&
+    body[1] === 0x4b &&
+    ((body[2] === 0x03 && body[3] === 0x04) ||
+      (body[2] === 0x05 && body[3] === 0x06) ||
+      (body[2] === 0x07 && body[3] === 0x08))
+  );
 }
 
 export function createParserRouter({
@@ -1270,7 +1481,13 @@ function unstructuredParseElementMetadata({
   readonly type: ParseElement["type"];
   readonly unstructuredType: string | undefined;
 }): Record<string, unknown> {
-  const { page_number: _pageNumber, ...parsed } = cloneMetadata(metadata);
+  // `image_base64` can be several megabytes. Move it into the short-lived assetRef URI consumed
+  // by the multimodal extractor instead of retaining a second copy in ParseElement metadata.
+  const {
+    image_base64: _imageBase64,
+    page_number: _pageNumber,
+    ...parsed
+  } = cloneMetadata(metadata);
   const assetRef = unstructuredAssetRef(metadata);
   const boundingBox = unstructuredBoundingBox(metadata.coordinates);
   const textAsHtml = metadataString(metadata, "text_as_html");
@@ -1298,7 +1515,12 @@ function unstructuredParseElementMetadata({
 function unstructuredAssetRef(
   metadata: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> | undefined {
+  const contentType = normalizedImageContentType(metadataString(metadata, "image_mime_type"));
+  const imageBase64 = metadataString(metadata, "image_base64")?.replaceAll(/\s+/gu, "");
+  const embeddedUri =
+    contentType && imageBase64 ? `data:${contentType};base64,${imageBase64}` : undefined;
   const uri =
+    embeddedUri ??
     metadataString(metadata, "image_path") ??
     metadataString(metadata, "image_url") ??
     metadataString(metadata, "url");
@@ -1308,11 +1530,15 @@ function unstructuredAssetRef(
   }
 
   return {
-    ...(metadataString(metadata, "image_mime_type")
-      ? { contentType: metadataString(metadata, "image_mime_type") }
-      : {}),
+    ...(contentType ? { contentType } : {}),
     uri,
   };
+}
+
+function normalizedImageContentType(value: string | undefined): string | undefined {
+  const normalized = value?.trim().toLowerCase();
+
+  return normalized && /^image\/[a-z0-9.+-]+$/u.test(normalized) ? normalized : undefined;
 }
 
 function unstructuredBoundingBox(value: unknown): Record<string, number> | undefined {

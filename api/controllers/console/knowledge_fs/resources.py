@@ -71,6 +71,10 @@ from services.knowledge_fs.initial_source_preview_job import (
     KnowledgeFSInitialSourcePreviewJobNotFoundError,
     KnowledgeFSInitialSourcePreviewJobService,
 )
+from services.knowledge_fs.object_storage import (
+    KnowledgeFSObjectStorageError,
+    KnowledgeFSObjectStorageService,
+)
 from services.knowledge_fs.product_authorization import (
     KnowledgeFSProductNotFoundError,
 )
@@ -109,8 +113,15 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSDocumentMultimodalAssetQuery,
+    KnowledgeFSDocumentMultimodalAssetRef,
+    KnowledgeFSDocumentMultimodalItem,
+    KnowledgeFSDocumentMultimodalItemResponse,
+    KnowledgeFSDocumentMultimodalManifest,
+    KnowledgeFSDocumentMultimodalManifestResponse,
     KnowledgeFSDocumentOutlineResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSDocumentReindexResponse,
@@ -271,6 +282,7 @@ register_schema_models(
     KnowledgeFSDocumentStagedUploadPayload,
     KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
+    KnowledgeFSDocumentMultimodalAssetQuery,
     KnowledgeFSMetadataFieldCreatePayload,
     KnowledgeFSMetadataFieldDeleteQuery,
     KnowledgeFSMetadataFieldListQuery,
@@ -341,6 +353,7 @@ register_response_schema_models(
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentOutlineResponse,
+    KnowledgeFSDocumentMultimodalManifestResponse,
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentResponse,
@@ -508,9 +521,102 @@ _SMALL_FILE_MULTIPART_OVERHEAD_MAX_BYTES = 64 * 1024
 _MAX_STREAM_CAPABILITY_BYTES = 16 * 1024
 _MAX_STREAM_TRACE_ID_BYTES = 255
 _QUERY_STREAM_PROXY_PATH = "/knowledge-fs/query-stream"
+_DOCUMENT_MULTIMODAL_ASSET_MAX_BYTES = 25 * 1024 * 1024
+_INLINE_MULTIMODAL_CONTENT_TYPES = frozenset({"image/gif", "image/jpeg", "image/png", "image/webp"})
 _BACKGROUND_TASK_KIND_ADAPTER: TypeAdapter[Literal["document", "document_bulk", "source"]] = TypeAdapter(
     Literal["document", "document_bulk", "source"]
 )
+
+
+def _multimodal_asset_ref(
+    item: KnowledgeFSDocumentMultimodalItem, variant: str | None = None
+) -> KnowledgeFSDocumentMultimodalAssetRef | None:
+    asset_ref = item.asset_ref
+    if asset_ref is None or variant is None:
+        return asset_ref
+    selected = asset_ref.variants.get(variant)
+    if selected is None:
+        return None
+    return KnowledgeFSDocumentMultimodalAssetRef(
+        content_type=selected.content_type,
+        object_key=selected.object_key,
+        sha256=selected.sha256,
+    )
+
+
+def _multimodal_asset_url(*, control_space_id: str, document_id: str, item_id: str, variant: str | None = None) -> str:
+    path = (
+        f"/knowledge-fs/spaces/{quote(control_space_id, safe='')}/documents/"
+        f"{quote(document_id, safe='')}/multimodal/{quote(item_id, safe='')}/asset"
+    )
+    if variant is not None:
+        path = f"{path}?{urlencode({'variant': variant})}"
+    return _console_api_url(path)
+
+
+def _public_multimodal_manifest(
+    *,
+    control_space_id: str,
+    document_id: str,
+    manifest: KnowledgeFSDocumentMultimodalManifest,
+) -> KnowledgeFSDocumentMultimodalManifestResponse:
+    if manifest.document_asset_id != document_id:
+        raise NotFound("KnowledgeFS document multimodal manifest not found")
+
+    items: list[KnowledgeFSDocumentMultimodalItemResponse] = []
+    for item in manifest.items:
+        asset_ref = _multimodal_asset_ref(item)
+        thumbnail_ref = _multimodal_asset_ref(item, "thumbnail")
+        items.append(
+            KnowledgeFSDocumentMultimodalItemResponse(
+                asset_url=(
+                    _multimodal_asset_url(
+                        control_space_id=control_space_id,
+                        document_id=document_id,
+                        item_id=item.id,
+                    )
+                    if asset_ref and asset_ref.object_key
+                    else None
+                ),
+                caption=item.caption,
+                end_offset=item.end_offset,
+                id=item.id,
+                modality=item.modality,
+                ocr_text=item.ocr_text,
+                page_number=item.page_number,
+                section_path=item.section_path,
+                start_offset=item.start_offset,
+                text_preview=item.text_preview,
+                thumbnail_url=(
+                    _multimodal_asset_url(
+                        control_space_id=control_space_id,
+                        document_id=document_id,
+                        item_id=item.id,
+                        variant="thumbnail",
+                    )
+                    if thumbnail_ref and thumbnail_ref.object_key
+                    else None
+                ),
+                title=item.title,
+            )
+        )
+
+    return KnowledgeFSDocumentMultimodalManifestResponse(
+        artifact_hash=manifest.artifact_hash,
+        created_at=manifest.created_at,
+        document_asset_id=manifest.document_asset_id,
+        id=manifest.id,
+        items=items,
+        manifest_version=manifest.manifest_version,
+        updated_at=manifest.updated_at,
+        version=manifest.version,
+    )
+
+
+def _multimodal_object_key_is_scoped(
+    *, document_id: str, knowledge_space_id: str, object_key: str, tenant_id: str
+) -> bool:
+    return object_key.startswith(f"{tenant_id}/spaces/{knowledge_space_id}/documents/{document_id}/assets/")
 
 
 def _read_small_file_body(max_bytes: int) -> bytes:
@@ -1884,6 +1990,113 @@ class KnowledgeFSSpaceDocumentOutlineApi(Resource):
             document_id=document_id,
         )
         return dump_response(KnowledgeFSDocumentOutlineResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal")
+class KnowledgeFSSpaceDocumentMultimodalManifestApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS document multimodal manifest",
+        console_ns.models[KnowledgeFSDocumentMultimodalManifestResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, document_id: str):
+        actor_id, tenant_id = _actor()
+        manifest = _console_services().facade.get_document_multimodal_manifest(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+        )
+        return dump_response(
+            KnowledgeFSDocumentMultimodalManifestResponse,
+            _public_multimodal_manifest(
+                control_space_id=control_space_id,
+                document_id=document_id,
+                manifest=manifest,
+            ),
+        )
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal/<path:item_id>/asset"
+)
+class KnowledgeFSSpaceDocumentMultimodalAssetApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSDocumentMultimodalAssetQuery))
+    @console_ns.produces(["application/octet-stream", "image/gif", "image/jpeg", "image/png", "image/webp"])
+    @console_ns.response(
+        HTTPStatus.OK, "KnowledgeFS document multimodal asset", console_ns.models[BinaryFileResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, document_id: str, item_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSDocumentMultimodalAssetQuery.model_validate(request.args.to_dict(flat=True))
+        manifest = _console_services().facade.get_document_multimodal_manifest(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            document_id=document_id,
+        )
+        if manifest.document_asset_id != document_id:
+            raise NotFound("KnowledgeFS document multimodal asset not found")
+        item = next((candidate for candidate in manifest.items if candidate.id == item_id), None)
+        asset_ref = _multimodal_asset_ref(item, query.variant) if item else None
+        if asset_ref is None or not asset_ref.object_key:
+            raise NotFound("KnowledgeFS document multimodal asset not found")
+        object_key = asset_ref.object_key
+        if not _multimodal_object_key_is_scoped(
+            document_id=document_id,
+            knowledge_space_id=manifest.knowledge_space_id,
+            object_key=object_key,
+            tenant_id=tenant_id,
+        ):
+            raise NotFound("KnowledgeFS document multimodal asset not found")
+
+        object_storage = KnowledgeFSObjectStorageService()
+        try:
+            metadata = object_storage.head_object(key=object_key)
+        except KnowledgeFSObjectStorageError as exc:
+            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+        if metadata is None:
+            raise NotFound("KnowledgeFS document multimodal asset not found")
+        if metadata.size_bytes > _DOCUMENT_MULTIMODAL_ASSET_MAX_BYTES:
+            raise RequestEntityTooLarge("KnowledgeFS document multimodal asset is too large")
+
+        content_type = (asset_ref.content_type or metadata.content_type or "").strip().lower()
+        inline = content_type in _INLINE_MULTIMODAL_CONTENT_TYPES
+        descriptor = KnowledgeFSDocumentDownloadDescriptor(
+            document_id=item_id,
+            filename=f"multimodal-{item_id}",
+            mime_type=content_type or "application/octet-stream",
+            object_key=object_key,
+            sha256=asset_ref.sha256 or metadata.checksum_sha256_base64,
+            size_bytes=metadata.size_bytes,
+        )
+        try:
+            body = KnowledgeFSDownloadService(object_storage=object_storage).load_stream(descriptor)
+        except KnowledgeFSDownloadObjectNotFoundError as exc:
+            raise NotFound("KnowledgeFS document multimodal asset not found") from exc
+        except KnowledgeFSDownloadUnavailableError as exc:
+            raise ServiceUnavailable("KnowledgeFS object storage is unavailable") from exc
+
+        response = Response(
+            body,
+            content_type=content_type if inline else "application/octet-stream",
+            direct_passthrough=True,
+        )
+        response.content_length = metadata.size_bytes
+        response.headers["Cache-Control"] = "private, max-age=300"
+        response.headers["Content-Disposition"] = "inline" if inline else "attachment"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        response.headers["ETag"] = f'"{descriptor.sha256}"'
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/revisions")

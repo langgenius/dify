@@ -9,7 +9,11 @@ import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
 import { DocumentChunkTreePanel } from './document-chunk-tree'
 import { buildDocumentChunkTree } from './document-detail-model'
-import { documentChunksQueryOptions, documentOutlineQueryOptions } from './document-detail-queries'
+import {
+  documentChunksQueryOptions,
+  documentMultimodalQueryOptions,
+  documentOutlineQueryOptions,
+} from './document-detail-queries'
 import { documentChunkListFromApi } from './document-models'
 
 export function DocumentRevisionContent({
@@ -136,6 +140,15 @@ function LoadedDocumentRevisionContent({
     [documentAsset?.documentAssetId, knowledgeSpaceId],
   )
   const outlineQuery = useQuery(outlineQueryOptions)
+  const multimodalQueryOptions = useMemo(
+    () =>
+      documentMultimodalQueryOptions({
+        documentAssetId: documentAsset?.documentAssetId,
+        knowledgeSpaceId,
+      }),
+    [documentAsset?.documentAssetId, knowledgeSpaceId],
+  )
+  const multimodalQuery = useQuery(multimodalQueryOptions)
   const chunks = useMemo(
     () =>
       [
@@ -204,6 +217,11 @@ function LoadedDocumentRevisionContent({
         document={document}
         isLoadingMore={chunksQuery.isFetchingNextPage}
         locale={locale}
+        multimodalItems={
+          multimodalQuery.data?.version === documentAsset?.documentAssetVersion
+            ? (multimodalQuery.data?.items ?? [])
+            : []
+        }
         outlineNodesByChunkId={tree.outlineNodesByChunkId}
         outlineSummaryChunkIds={tree.outlineSummaryChunkIds}
         revision={revision}

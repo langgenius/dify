@@ -681,6 +681,25 @@
       "resourceType": "job"
     },
     {
+      "action": "documents.multimodal.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getDocumentMultimodalManifest",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+      "resourceBinding": {
+        "pathParameter": "documentId"
+      },
+      "resourceType": "document"
+    },
+    {
       "action": "documents.outline.read",
       "allowedCallerKinds": [
         "interactive",

@@ -771,6 +771,16 @@ export const DIFY_CAPABILITY_V2_OPERATIONS: readonly DifyCapabilityV2Operation[]
     resourceType: "document",
   },
   {
+    action: "documents.multimodal.read",
+    allowedCallerKinds: STANDARD_CALLERS,
+    method: "GET",
+    operationId: "getDocumentMultimodalManifest",
+    parentResource: { pathParameter: "id" },
+    pathTemplate: "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+    resource: { pathParameter: "documentId" },
+    resourceType: "document",
+  },
+  {
     action: "documents.revisions.list",
     allowedCallerKinds: STANDARD_CALLERS,
     method: "GET",

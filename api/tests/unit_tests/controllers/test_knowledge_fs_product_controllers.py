@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, ServiceUnavailable
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable
 
 from controllers.common import wraps as common_wraps
 from controllers.console import console_ns
@@ -24,8 +24,10 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.knowledge_fs import resources as service_resources
 from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentialProfile
 from services.knowledge_fs.download_service import KnowledgeFSDownloadUnavailableError
+from services.knowledge_fs.object_storage import KnowledgeFSObjectMetadata
 from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentDownloadDescriptor,
+    KnowledgeFSDocumentMultimodalManifest,
     KnowledgeFSDocumentStagedUploadAcceptedResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
@@ -71,6 +73,11 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/credentials",
         "/knowledge-fs/spaces/<string:control_space_id>/settings",
         "/knowledge-fs/spaces/<string:control_space_id>/documents",
+        "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal",
+        (
+            "/knowledge-fs/spaces/<string:control_space_id>/documents/<string:document_id>/multimodal/"
+            "<path:item_id>/asset"
+        ),
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents",
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/download-zip",
         "/knowledge-fs/spaces/<string:control_space_id>/logical-documents/<string:document_id>",
@@ -386,6 +393,8 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
         "KnowledgeFSCredentialCreateResponse",
         "KnowledgeFSDocumentStagedUploadPayload",
         "KnowledgeFSDocumentStagedUploadAcceptedResponse",
+        "KnowledgeFSDocumentMultimodalAssetQuery",
+        "KnowledgeFSDocumentMultimodalManifestResponse",
         "KnowledgeFSStreamCapabilityResponse",
         "KnowledgeFSJWKSResponse",
         "KnowledgeFSSmallFileUploadResponse",
@@ -431,6 +440,165 @@ def test_knowledge_fs_request_and_response_schemas_are_registered() -> None:
     query_capability_schema = console_ns.models["KnowledgeFSQueryStreamCapabilityResponse"].__schema__
     assert set(query_capability_schema["required"]) == {"expires_at", "operation_id", "token", "url"}
     assert query_capability_schema["properties"]["operation_id"]["const"] == "createQuery"
+
+
+def _document_multimodal_manifest(*, object_key: str | None = None) -> KnowledgeFSDocumentMultimodalManifest:
+    asset_ref = (
+        {
+            "contentType": "image/png",
+            "objectKey": object_key,
+            "sha256": "a" * 64,
+            "variants": {
+                "thumbnail": {
+                    "contentType": "image/webp",
+                    "objectKey": object_key.replace("full.png", "thumbnail.webp"),
+                    "sha256": "b" * 64,
+                }
+            },
+        }
+        if object_key is not None
+        else None
+    )
+    return KnowledgeFSDocumentMultimodalManifest.model_validate(
+        {
+            "artifactHash": "c" * 64,
+            "createdAt": "2026-08-14T12:00:00.000Z",
+            "documentAssetId": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+            "id": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45",
+            "items": [
+                {
+                    "assetRef": asset_ref,
+                    "caption": "Architecture",
+                    "endOffset": 42,
+                    "id": "figure:1",
+                    "modality": "image",
+                    "ocrText": "Service A to Service B",
+                    "pageNumber": 2,
+                    "sectionPath": ["Architecture"],
+                    "startOffset": 42,
+                    "title": "System diagram",
+                }
+            ],
+            "knowledgeSpaceId": "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43",
+            "manifestVersion": "document-multimodal@1",
+            "updatedAt": "2026-08-14T12:01:00.000Z",
+            "version": 3,
+        }
+    )
+
+
+def test_document_multimodal_manifest_console_bff_exposes_only_authorized_asset_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44"
+    manifest = _document_multimodal_manifest(
+        object_key=(
+            f"tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/documents/{document_id}/assets/figure-1-full.png"
+        )
+    )
+    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources.dify_config, "CONSOLE_API_URL", "")
+    app = Flask(__name__)
+
+    with app.test_request_context():
+        get = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentMultimodalManifestApi.get)
+        response = get(
+            console_resources.KnowledgeFSSpaceDocumentMultimodalManifestApi(),
+            control_space_id="control-1",
+            document_id=document_id,
+        )
+
+    item = response["items"][0]
+    assert item["asset_url"] == (
+        f"/console/api/knowledge-fs/spaces/control-1/documents/{document_id}/multimodal/figure%3A1/asset"
+    )
+    assert item["thumbnail_url"] == f"{item['asset_url']}?variant=thumbnail"
+    assert "objectKey" not in str(response)
+    assert "sha256" not in str(response)
+    facade.get_document_multimodal_manifest.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        document_id=document_id,
+    )
+
+
+def test_document_multimodal_asset_console_bff_reauthorizes_and_streams_scoped_images(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44"
+    object_key = (
+        f"tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/documents/{document_id}/assets/figure-1-full.png"
+    )
+    manifest = _document_multimodal_manifest(object_key=object_key)
+    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
+    object_storage = SimpleNamespace(
+        head_object=MagicMock(
+            return_value=KnowledgeFSObjectMetadata(
+                checksum_sha256_base64="checksum",
+                content_type="image/png",
+                key=object_key,
+                metadata={},
+                size_bytes=4,
+            )
+        )
+    )
+    download_service = SimpleNamespace(load_stream=MagicMock(return_value=iter((b"im", b"age"))))
+    download_service_factory = MagicMock(return_value=download_service)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSObjectStorageService", lambda: object_storage)
+    monkeypatch.setattr(console_resources, "KnowledgeFSDownloadService", download_service_factory)
+    app = Flask(__name__)
+
+    with app.test_request_context():
+        get = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentMultimodalAssetApi.get)
+        response = get(
+            console_resources.KnowledgeFSSpaceDocumentMultimodalAssetApi(),
+            control_space_id="control-1",
+            document_id=document_id,
+            item_id="figure:1",
+        )
+
+    assert b"".join(response.response) == b"image"
+    assert response.content_type == "image/png"
+    assert response.headers["Content-Disposition"] == "inline"
+    assert response.headers["Content-Security-Policy"] == "default-src 'none'; sandbox"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    object_storage.head_object.assert_called_once_with(key=object_key)
+    download_service_factory.assert_called_once_with(object_storage=object_storage)
+    download_service.load_stream.assert_called_once()
+
+
+def test_document_multimodal_asset_console_bff_rejects_cross_document_object_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document_id = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44"
+    manifest = _document_multimodal_manifest(
+        object_key=(
+            "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c43/"
+            "documents/018f0d60-7a49-7cc2-9c1b-5b36f18f2cff/assets/foreign.png"
+        )
+    )
+    facade = SimpleNamespace(get_document_multimodal_manifest=MagicMock(return_value=manifest))
+    object_storage_factory = MagicMock()
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: SimpleNamespace(facade=facade))
+    monkeypatch.setattr(console_resources, "KnowledgeFSObjectStorageService", object_storage_factory)
+    app = Flask(__name__)
+    get = inspect.unwrap(console_resources.KnowledgeFSSpaceDocumentMultimodalAssetApi.get)
+
+    with app.test_request_context(), pytest.raises(NotFound):
+        get(
+            console_resources.KnowledgeFSSpaceDocumentMultimodalAssetApi(),
+            control_space_id="control-1",
+            document_id=document_id,
+            item_id="figure:1",
+        )
+
+    object_storage_factory.assert_not_called()
 
 
 def test_source_workflow_import_contract_is_discriminated_idempotent_and_accepted() -> None:

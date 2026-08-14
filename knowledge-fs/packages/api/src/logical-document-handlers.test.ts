@@ -1119,8 +1119,10 @@ function publicChunkFixture() {
   const { systemMetadata: _systemMetadata, tenantId: _tenantId, ...chunk } = chunkFixture();
   return {
     ...chunk,
+    endOffset: 12,
     kind: "chunk",
     sectionPath: ["Setup", "Requirements"],
+    startOffset: 0,
   };
 }
 

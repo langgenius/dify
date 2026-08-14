@@ -547,6 +547,13 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         "/knowledge-spaces/{id}/failed-queries/workflow-retrieval-misses",
         "knowledge_space",
     )
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["getDocumentMultimodalManifest"] == (
+        "documents.multimodal.read",
+        ("interactive", "service", "agent", "workflow"),
+        "GET",
+        "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+        "document",
+    )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["cancelResearchTask"].resource_type == "research_task"
     stream = KNOWLEDGE_FS_CAPABILITY_OPERATIONS["streamResearchTaskProgress"]
     assert stream.action == "research_tasks.stream"

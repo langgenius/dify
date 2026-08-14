@@ -299,6 +299,19 @@ export type KnowledgeFsLogicalDocumentResponse = {
   }
 }
 
+export type KnowledgeFsDocumentMultimodalManifestResponse = {
+  artifact_hash: string
+  created_at: string
+  document_asset_id: string
+  id: string
+  items: Array<KnowledgeFsDocumentMultimodalItemResponse>
+  manifest_version: string
+  updated_at?: string | null
+  version: number
+}
+
+export type BinaryFileResponse = Blob | File
+
 export type KnowledgeFsDocumentOutlineResponse = {
   artifact_hash: string
   created_at: string
@@ -330,12 +343,14 @@ export type KnowledgeFsDocumentChunkResponse = {
   document_id: string
   document_revision: number
   enabled: boolean
+  end_offset?: number | null
   id: string
   kind?: 'chunk' | 'image' | 'section' | 'summary' | 'table'
   knowledge_space_id: string
   ordinal: number
   parent_chunk_id?: string | null
   section_path?: Array<string>
+  start_offset?: number | null
   text: string
   token_count: number
   user_metadata: {
@@ -461,8 +476,6 @@ export type KnowledgeFsBulkLogicalDocumentDeletePayload = {
 export type KnowledgeFsDocumentBatchDownloadPayload = {
   document_ids: Array<string>
 }
-
-export type BinaryFileResponse = Blob | File
 
 export type KnowledgeFsLogicalDocumentDeletePayload = {
   expectedRevision: number
@@ -1517,6 +1530,21 @@ export type KnowledgeFsDocumentRevisionResponse = {
   revision: number
   size_bytes: number
   state: 'active' | 'candidate' | 'failed' | 'superseded'
+}
+
+export type KnowledgeFsDocumentMultimodalItemResponse = {
+  asset_url?: string | null
+  caption?: string | null
+  end_offset?: number | null
+  id: string
+  modality: 'code' | 'image' | 'page' | 'table'
+  ocr_text?: string | null
+  page_number?: number | null
+  section_path?: Array<string>
+  start_offset?: number | null
+  text_preview?: string | null
+  thumbnail_url?: string | null
+  title?: string | null
 }
 
 export type KnowledgeFsDocumentOutlineNodeResponse = {
@@ -2624,6 +2652,44 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponses = {
+  200: KnowledgeFsDocumentMultimodalManifestResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetData = {
+  body?: never
+  path: {
+    control_space_id: string
+    document_id: string
+    item_id: string
+  }
+  query?: {
+    variant?: string
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/documents/{document_id}/multimodal/{item_id}/asset'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponses =
+  {
+    200: BinaryFileResponse
+  }
+
+export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponses]
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineData = {
   body?: never

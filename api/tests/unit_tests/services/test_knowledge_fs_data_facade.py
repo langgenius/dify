@@ -1893,6 +1893,13 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "document-1",
         ),
         (
+            "get_document_multimodal_manifest",
+            "KnowledgeFSDocumentMultimodalManifest",
+            "getDocumentMultimodalManifest",
+            {"document_id": "document-1"},
+            "document-1",
+        ),
+        (
             "list_document_revisions",
             "KnowledgeFSDocumentRevisionListResponse",
             "listDocumentRevisions",

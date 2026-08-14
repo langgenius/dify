@@ -61,6 +61,7 @@ def test_ready_product_operations_exactly_match_capability_method_path_and_actio
         "getCompilationJob",
         "getDocument",
         "getDocumentChunk",
+        "getDocumentMultimodalManifest",
         "getDocumentOutline",
         "getQualityBadCase",
         "getQualityBadCaseTraceReference",

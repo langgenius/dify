@@ -1374,6 +1374,74 @@ class KnowledgeFSDocumentOutlineResponse(ResponseModel):
     version: int = Field(ge=1)
 
 
+class KnowledgeFSDocumentMultimodalAssetVariant(BaseModel):
+    content_type: str | None = Field(default=None, validation_alias=AliasChoices("content_type", "contentType"))
+    object_key: str | None = Field(default=None, validation_alias=AliasChoices("object_key", "objectKey"))
+    sha256: str | None = None
+
+
+class KnowledgeFSDocumentMultimodalAssetRef(KnowledgeFSDocumentMultimodalAssetVariant):
+    variants: dict[str, KnowledgeFSDocumentMultimodalAssetVariant] = Field(default_factory=dict)
+
+
+class KnowledgeFSDocumentMultimodalItem(BaseModel):
+    asset_ref: KnowledgeFSDocumentMultimodalAssetRef | None = Field(
+        default=None, validation_alias=AliasChoices("asset_ref", "assetRef")
+    )
+    caption: str | None = None
+    end_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("end_offset", "endOffset"))
+    id: str
+    modality: Literal["code", "image", "page", "table"]
+    ocr_text: str | None = Field(default=None, validation_alias=AliasChoices("ocr_text", "ocrText"))
+    page_number: int | None = Field(default=None, ge=1, validation_alias=AliasChoices("page_number", "pageNumber"))
+    section_path: list[str] = Field(default_factory=list, validation_alias=AliasChoices("section_path", "sectionPath"))
+    start_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("start_offset", "startOffset"))
+    text_preview: str | None = Field(default=None, validation_alias=AliasChoices("text_preview", "textPreview"))
+    title: str | None = None
+
+
+class KnowledgeFSDocumentMultimodalManifest(BaseModel):
+    artifact_hash: str = Field(validation_alias=AliasChoices("artifact_hash", "artifactHash"))
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    document_asset_id: str = Field(validation_alias=AliasChoices("document_asset_id", "documentAssetId"))
+    id: str
+    items: list[KnowledgeFSDocumentMultimodalItem]
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    manifest_version: str = Field(validation_alias=AliasChoices("manifest_version", "manifestVersion"))
+    updated_at: datetime | None = Field(default=None, validation_alias=AliasChoices("updated_at", "updatedAt"))
+    version: int = Field(ge=1)
+
+
+class KnowledgeFSDocumentMultimodalItemResponse(ResponseModel):
+    asset_url: str | None = None
+    caption: str | None = None
+    end_offset: int | None = Field(default=None, ge=0)
+    id: str
+    modality: Literal["code", "image", "page", "table"]
+    ocr_text: str | None = None
+    page_number: int | None = Field(default=None, ge=1)
+    section_path: list[str] = Field(default_factory=list)
+    start_offset: int | None = Field(default=None, ge=0)
+    text_preview: str | None = None
+    thumbnail_url: str | None = None
+    title: str | None = None
+
+
+class KnowledgeFSDocumentMultimodalManifestResponse(ResponseModel):
+    artifact_hash: str
+    created_at: datetime
+    document_asset_id: str
+    id: str
+    items: list[KnowledgeFSDocumentMultimodalItemResponse]
+    manifest_version: str
+    updated_at: datetime | None = None
+    version: int = Field(ge=1)
+
+
+class KnowledgeFSDocumentMultimodalAssetQuery(BaseModel):
+    variant: str | None = Field(default=None, min_length=1, max_length=64, pattern=r"^[A-Za-z0-9._=-]+$")
+
+
 class KnowledgeFSDocumentRevisionResponse(ResponseModel):
     activated_at: datetime | None = Field(default=None, validation_alias=AliasChoices("activated_at", "activatedAt"))
     content_hash: str = Field(validation_alias=AliasChoices("content_hash", "contentHash"))
@@ -1512,6 +1580,7 @@ class KnowledgeFSDocumentChunkResponse(ResponseModel):
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     document_id: str = Field(validation_alias=AliasChoices("document_id", "documentId"))
     document_revision: int = Field(ge=1, validation_alias=AliasChoices("document_revision", "documentRevision"))
+    end_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("end_offset", "endOffset"))
     enabled: bool
     id: str
     kind: Literal["chunk", "section", "table", "image", "summary"] = "chunk"
@@ -1519,6 +1588,7 @@ class KnowledgeFSDocumentChunkResponse(ResponseModel):
     ordinal: int = Field(ge=0)
     parent_chunk_id: str | None = Field(default=None, validation_alias=AliasChoices("parent_chunk_id", "parentChunkId"))
     section_path: list[str] = Field(default_factory=list, validation_alias=AliasChoices("section_path", "sectionPath"))
+    start_offset: int | None = Field(default=None, ge=0, validation_alias=AliasChoices("start_offset", "startOffset"))
     text: str
     token_count: int = Field(ge=0, validation_alias=AliasChoices("token_count", "tokenCount"))
     user_metadata: dict[str, object] = Field(validation_alias=AliasChoices("user_metadata", "userMetadata"))
@@ -3314,6 +3384,13 @@ __all__ = [
     "KnowledgeFSDocumentDownloadDescriptor",
     "KnowledgeFSDocumentListResponse",
     "KnowledgeFSDocumentMetadataPayload",
+    "KnowledgeFSDocumentMultimodalAssetQuery",
+    "KnowledgeFSDocumentMultimodalAssetRef",
+    "KnowledgeFSDocumentMultimodalAssetVariant",
+    "KnowledgeFSDocumentMultimodalItem",
+    "KnowledgeFSDocumentMultimodalItemResponse",
+    "KnowledgeFSDocumentMultimodalManifest",
+    "KnowledgeFSDocumentMultimodalManifestResponse",
     "KnowledgeFSDocumentOutlineResponse",
     "KnowledgeFSDocumentReindexPayload",
     "KnowledgeFSDocumentReindexResponse",

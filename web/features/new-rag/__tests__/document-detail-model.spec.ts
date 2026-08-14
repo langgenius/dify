@@ -1,4 +1,7 @@
-import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsDocumentMultimodalItemResponse,
+  KnowledgeFsDocumentOutlineNodeResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -11,6 +14,7 @@ import {
   chunkMetadataEntries,
   chunkTreeLabel,
   initialDocumentRevision,
+  placeDocumentMultimodalItems,
   visibleDocumentChunkNodes,
 } from '../document-detail-model'
 import { documentChunkListFromApi } from '../document-models'
@@ -103,8 +107,10 @@ describe('document detail model', () => {
         {
           ...base,
           id: 'structured',
+          end_offset: 42,
           kind: 'table',
           section_path: ['Invoices', 'Tax breakdown'],
+          start_offset: 21,
         },
         { ...base, id: 'legacy' },
       ],
@@ -112,9 +118,56 @@ describe('document detail model', () => {
 
     expect(result.items[0]).toMatchObject({
       kind: 'table',
+      endOffset: 42,
       sectionPath: ['Invoices', 'Tax breakdown'],
+      startOffset: 21,
     })
     expect(result.items[1]).toMatchObject({ kind: 'chunk', sectionPath: [] })
+  })
+
+  it('places extracted images by canonical offsets and falls back to section paths', () => {
+    const images: KnowledgeFsDocumentMultimodalItemResponse[] = [
+      {
+        asset_url: '/image-1',
+        id: 'image-1',
+        modality: 'image',
+        section_path: ['Guide'],
+        start_offset: 10,
+      },
+      {
+        asset_url: '/image-2',
+        id: 'image-2',
+        modality: 'image',
+        section_path: ['Appendix'],
+      },
+      {
+        asset_url: '/table-1',
+        id: 'table-1',
+        modality: 'table',
+      },
+      {
+        id: 'image-unplaced',
+        modality: 'image',
+      },
+    ]
+    const placement = placeDocumentMultimodalItems(
+      [
+        chunk({ endOffset: 10, id: 'guide-1', ordinal: 1, sectionPath: ['Guide'], startOffset: 0 }),
+        chunk({
+          endOffset: 30,
+          id: 'guide-2',
+          ordinal: 2,
+          sectionPath: ['Guide'],
+          startOffset: 10,
+        }),
+        chunk({ id: 'appendix', ordinal: 3, sectionPath: ['Appendix'] }),
+      ],
+      images,
+    )
+
+    expect(placement.byChunkId.get('guide-2')?.map((item) => item.id)).toEqual(['image-1'])
+    expect(placement.byChunkId.get('appendix')?.map((item) => item.id)).toEqual(['image-2'])
+    expect(placement.unplaced.map((item) => item.id)).toEqual(['image-unplaced'])
   })
 
   it('builds the chapter hierarchy from structured section paths instead of chunk text', () => {

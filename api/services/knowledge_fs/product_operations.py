@@ -463,6 +463,17 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             max_response_bytes=4 * 1024 * 1024,
             stream_kind="json",
         ),
+        "getDocumentMultimodalManifest": _operation(
+            "GET",
+            "getDocumentMultimodalManifest",
+            KnowledgeFSProductPermission.READ,
+            "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
+            "json",
+            resource_resolver="document",
+            max_request_bytes=0,
+            max_response_bytes=4 * 1024 * 1024,
+            stream_kind="json",
+        ),
         "listDocumentRevisions": _operation(
             "GET",
             "listDocumentRevisions",

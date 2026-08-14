@@ -1,4 +1,7 @@
-import type { KnowledgeFsDocumentOutlineNodeResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsDocumentMultimodalItemResponse,
+  KnowledgeFsDocumentOutlineNodeResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -24,6 +27,11 @@ export type DocumentChunkTree = {
   roots: DocumentChunkTreeNode[]
 }
 
+export type DocumentMultimodalPlacement = {
+  byChunkId: Map<string, KnowledgeFsDocumentMultimodalItemResponse[]>
+  unplaced: KnowledgeFsDocumentMultimodalItemResponse[]
+}
+
 export function responseStatus(error: unknown): number | undefined {
   if (error instanceof Response) return error.status
   if (error && typeof error === 'object' && 'status' in error)
@@ -37,6 +45,63 @@ export function responseStatus(error: unknown): number | undefined {
 
 function compareChunks(left: DocumentRevisionChunk, right: DocumentRevisionChunk) {
   return left.ordinal - right.ordinal || left.id.localeCompare(right.id)
+}
+
+export function placeDocumentMultimodalItems(
+  chunks: DocumentRevisionChunk[],
+  items: KnowledgeFsDocumentMultimodalItemResponse[],
+): DocumentMultimodalPlacement {
+  const orderedChunks = [...chunks].sort(compareChunks)
+  const byChunkId = new Map<string, KnowledgeFsDocumentMultimodalItemResponse[]>()
+  const unplaced: KnowledgeFsDocumentMultimodalItemResponse[] = []
+
+  for (const item of items) {
+    if (item.modality !== 'image') continue
+    const target = chunkForMultimodalItem(orderedChunks, item)
+    if (!target) {
+      unplaced.push(item)
+      continue
+    }
+    const current = byChunkId.get(target.id) ?? []
+    current.push(item)
+    byChunkId.set(target.id, current)
+  }
+
+  return { byChunkId, unplaced }
+}
+
+function chunkForMultimodalItem(
+  chunks: DocumentRevisionChunk[],
+  item: KnowledgeFsDocumentMultimodalItemResponse,
+) {
+  const offset = item.start_offset
+  if (offset !== null && offset !== undefined) {
+    const containing = chunks.find(
+      (chunk) =>
+        chunk.startOffset !== undefined &&
+        chunk.endOffset !== undefined &&
+        offset >= chunk.startOffset &&
+        offset < chunk.endOffset,
+    )
+    if (containing) return containing
+
+    const following = chunks
+      .filter((chunk) => chunk.startOffset !== undefined && chunk.startOffset >= offset)
+      .sort((left, right) => left.startOffset! - right.startOffset!)[0]
+    if (following) return following
+
+    const preceding = chunks
+      .filter((chunk) => chunk.endOffset !== undefined && chunk.endOffset <= offset)
+      .sort((left, right) => right.endOffset! - left.endOffset!)[0]
+    if (preceding) return preceding
+  }
+
+  const sectionPath = normalizedSectionPath(item.section_path ?? [])
+  if (!sectionPath.length) return undefined
+  return chunks.find(
+    (chunk) =>
+      sectionPathKey(normalizedSectionPath(chunk.sectionPath)) === sectionPathKey(sectionPath),
+  )
 }
 
 function cyclicChunkIds(chunksById: Map<string, DocumentRevisionChunk>) {

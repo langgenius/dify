@@ -1,4 +1,7 @@
-import type { KnowledgeFsDocumentOutlineResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsDocumentMultimodalManifestResponse,
+  KnowledgeFsDocumentOutlineResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { DocumentMetadataField } from '../document-metadata-model'
 import type {
   BackgroundTask,
@@ -94,6 +97,13 @@ const outlineQuery = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
+const multimodalQuery = vi.hoisted(() => ({
+  data: undefined as KnowledgeFsDocumentMultimodalManifestResponse | undefined,
+  error: null as unknown,
+  isPending: false,
+  refetch: vi.fn(),
+}))
+
 const tasksQuery = vi.hoisted(() => ({
   data: undefined as { pages: Array<{ items: BackgroundTask[]; nextCursor?: string }> } | undefined,
   error: null as unknown,
@@ -170,6 +180,7 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   created_at: item.createdAt,
   document_id: item.documentId,
   document_revision: item.documentRevision,
+  end_offset: item.endOffset ?? null,
   enabled: item.enabled,
   id: item.id,
   kind: item.kind,
@@ -177,6 +188,7 @@ const chunkApiResponse = vi.hoisted(() => (item: DocumentRevisionChunk) => ({
   ordinal: item.ordinal,
   parent_chunk_id: item.parentChunkId ?? null,
   section_path: item.sectionPath,
+  start_offset: item.startOffset ?? null,
   text: item.text,
   token_count: item.tokenCount,
   user_metadata: item.userMetadata,
@@ -249,6 +261,13 @@ const outlineOptions = vi.hoisted(() =>
     ...options,
     queryKey: ['knowledge-fs', 'outline', 'space-1', 'asset-1'],
     queryKind: 'outline',
+  })),
+)
+const multimodalOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'multimodal', 'space-1', 'asset-1'],
+    queryKind: 'multimodal',
   })),
 )
 const metadataFieldsOptions = vi.hoisted(() =>
@@ -385,6 +404,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       options.mutationKind === 'cancel' ? cancelMutation : reindexMutation,
     useQuery: (options: { queryKey?: readonly unknown[]; queryKind?: string }) => {
       if (options.queryKey?.includes('metadata-fields')) return metadataFieldsQuery
+      if (options.queryKind === 'multimodal') return multimodalQuery
       if (options.queryKind === 'outline') return outlineQuery
       if (options.queryKind === 'settings')
         return {
@@ -456,6 +476,11 @@ vi.mock('@/service/client', () => ({
           },
           documents: {
             byDocumentId: {
+              multimodal: {
+                get: {
+                  queryOptions: multimodalOptions,
+                },
+              },
               outline: {
                 get: {
                   queryOptions: outlineOptions,
@@ -662,6 +687,9 @@ describe('DocumentDetailPage', () => {
     outlineQuery.data = undefined
     outlineQuery.error = null
     outlineQuery.isPending = false
+    multimodalQuery.data = undefined
+    multimodalQuery.error = null
+    multimodalQuery.isPending = false
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
@@ -749,6 +777,13 @@ describe('DocumentDetailPage', () => {
       query: { cursor: 'next' },
     })
     expect(outlineOptions).toHaveBeenCalledWith({
+      context: { silent: true },
+      input: {
+        params: { control_space_id: 'space-1', document_id: 'asset-1' },
+      },
+      retry: false,
+    })
+    expect(multimodalOptions).toHaveBeenCalledWith({
       context: { silent: true },
       input: {
         params: { control_space_id: 'space-1', document_id: 'asset-1' },
@@ -936,6 +971,53 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
     expect(screen.getByText('Guide body')).toBeInTheDocument()
     expect(screen.getByText('Setup body')).toBeInTheDocument()
+  })
+
+  it('renders extracted document images next to the chunk selected by canonical offsets', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              endOffset: 80,
+              id: 'image-section',
+              ordinal: 1,
+              sectionPath: ['Images'],
+              startOffset: 20,
+              text: 'Images\n\nThe image caption follows.',
+            }),
+          ],
+        },
+      ],
+    }
+    multimodalQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-08-07T10:00:00Z',
+      document_asset_id: 'asset-1',
+      id: 'manifest-1',
+      items: [
+        {
+          asset_url: '/console/api/knowledge-fs/image-1',
+          caption: 'Screenshot of the source configuration',
+          id: 'image-1',
+          modality: 'image',
+          section_path: ['Images'],
+          start_offset: 20,
+          thumbnail_url: '/console/api/knowledge-fs/image-1?variant=thumbnail',
+        },
+      ],
+      manifest_version: 'document-multimodal-manifest-v1',
+      version: 1,
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const image = screen.getByRole('img', { name: 'Screenshot of the source configuration' })
+    expect(image).toHaveAttribute('src', '/console/api/knowledge-fs/image-1?variant=thumbnail')
+    fireEvent.error(image)
+    expect(image).toHaveAttribute('src', '/console/api/knowledge-fs/image-1')
+    expect(screen.getByText('Screenshot of the source configuration')).toBeInTheDocument()
+    expect(screen.getByText('The image caption follows.')).toBeInTheDocument()
   })
 
   it('labels flat document chunks by their visible order', () => {

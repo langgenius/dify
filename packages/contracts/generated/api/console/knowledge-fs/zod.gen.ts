@@ -116,6 +116,13 @@ export const zKnowledgeFsDocumentMetadataPayload = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * KnowledgeFSDocumentChunkResponse
  */
 export const zKnowledgeFsDocumentChunkResponse = z.object({
@@ -123,12 +130,14 @@ export const zKnowledgeFsDocumentChunkResponse = z.object({
   document_id: z.string(),
   document_revision: z.int().gte(1),
   enabled: z.boolean(),
+  end_offset: z.int().gte(0).nullish(),
   id: z.string(),
   kind: z.enum(['chunk', 'image', 'section', 'summary', 'table']).optional().default('chunk'),
   knowledge_space_id: z.string(),
   ordinal: z.int().gte(0),
   parent_chunk_id: z.string().nullish(),
   section_path: z.array(z.string()).optional(),
+  start_offset: z.int().gte(0).nullish(),
   text: z.string(),
   token_count: z.int().gte(0),
   user_metadata: z.record(z.string(), z.unknown()),
@@ -246,13 +255,6 @@ export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
 export const zKnowledgeFsDocumentBatchDownloadPayload = z.object({
   document_ids: z.array(z.string()).min(1).max(100),
 })
-
-/**
- * BinaryFileResponse
- */
-export const zBinaryFileResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
 
 /**
  * KnowledgeFSLogicalDocumentDeletePayload
@@ -1393,6 +1395,38 @@ export const zKnowledgeFsDocumentRevisionListResponse = z.object({
 export const zKnowledgeFsLogicalDocumentListResponse = z.object({
   data: z.array(zKnowledgeFsLogicalDocumentResponse),
   next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentMultimodalItemResponse
+ */
+export const zKnowledgeFsDocumentMultimodalItemResponse = z.object({
+  asset_url: z.string().nullish(),
+  caption: z.string().nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string(),
+  modality: z.enum(['code', 'image', 'page', 'table']),
+  ocr_text: z.string().nullish(),
+  page_number: z.int().gte(1).nullish(),
+  section_path: z.array(z.string()).optional(),
+  start_offset: z.int().gte(0).nullish(),
+  text_preview: z.string().nullish(),
+  thumbnail_url: z.string().nullish(),
+  title: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentMultimodalManifestResponse
+ */
+export const zKnowledgeFsDocumentMultimodalManifestResponse = z.object({
+  artifact_hash: z.string(),
+  created_at: z.iso.datetime(),
+  document_asset_id: z.string(),
+  id: z.string(),
+  items: z.array(zKnowledgeFsDocumentMultimodalItemResponse),
+  manifest_version: z.string(),
+  updated_at: z.iso.datetime().nullish(),
+  version: z.int().gte(1),
 })
 
 /**
@@ -3123,6 +3157,40 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = 
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
   zKnowledgeFsLogicalDocumentResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * KnowledgeFS document multimodal manifest
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponse =
+  zKnowledgeFsDocumentMultimodalManifestResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+    item_id: z.string(),
+  })
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetQuery =
+  z.object({
+    variant: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[A-Za-z0-9._=-]+$/)
+      .optional(),
+  })
+
+/**
+ * KnowledgeFS document multimodal asset
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse =
+  zBinaryFileResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlinePath = z.object({
   control_space_id: z.string(),

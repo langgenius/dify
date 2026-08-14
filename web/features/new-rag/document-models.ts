@@ -54,6 +54,7 @@ export type DocumentRevisionChunk = {
   createdAt: string
   documentId: string
   documentRevision: number
+  endOffset?: number
   enabled: boolean
   id: string
   kind: NonNullable<KnowledgeFsDocumentChunkResponse['kind']>
@@ -61,6 +62,7 @@ export type DocumentRevisionChunk = {
   ordinal: number
   parentChunkId?: string
   sectionPath: string[]
+  startOffset?: number
   text: string
   tokenCount: number
   userMetadata: Record<string, unknown>
@@ -203,6 +205,7 @@ function documentChunkFromApi(chunk: KnowledgeFsDocumentChunkResponse): Document
     createdAt: chunk.created_at,
     documentId: chunk.document_id,
     documentRevision: chunk.document_revision,
+    endOffset: chunk.end_offset ?? undefined,
     enabled: chunk.enabled,
     id: chunk.id,
     kind: chunk.kind ?? 'chunk',
@@ -210,6 +213,7 @@ function documentChunkFromApi(chunk: KnowledgeFsDocumentChunkResponse): Document
     ordinal: chunk.ordinal,
     parentChunkId: chunk.parent_chunk_id ?? undefined,
     sectionPath: chunk.section_path ?? [],
+    startOffset: chunk.start_offset ?? undefined,
     text: chunk.text,
     tokenCount: chunk.token_count,
     userMetadata: chunk.user_metadata,
