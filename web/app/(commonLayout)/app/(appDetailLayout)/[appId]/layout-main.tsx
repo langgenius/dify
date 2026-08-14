@@ -75,7 +75,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
+  const routeAppDetail =
+    appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
   const pageTitle = appDetailPageTitle(pathname, t)
   const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
 

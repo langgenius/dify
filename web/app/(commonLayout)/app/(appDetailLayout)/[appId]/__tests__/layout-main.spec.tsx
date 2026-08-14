@@ -1,5 +1,5 @@
 import type { App } from '@/types/app'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -111,6 +111,27 @@ describe('AppDetailLayout', () => {
       await waitFor(() => {
         expect(document.title).toBe(`${pageTitle} · Demo App - Dify`)
       })
+    })
+
+    it('updates after a directly loaded app is renamed in the store', async () => {
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(document.title).toBe('common.appMenus.promptEng · Demo App - Dify')
+      })
+
+      act(() => {
+        useStore.getState().setAppDetail(createAppDetail({ name: 'Renamed App' }))
+      })
+
+      await waitFor(() => {
+        expect(document.title).toBe('common.appMenus.promptEng · Renamed App - Dify')
+      })
+      expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
     })
   })
 

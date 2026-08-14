@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
+import CreateDocumentsPage from '../documents/create/page'
 import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
@@ -22,6 +23,39 @@ vi.mock('@/next/navigation', () => mockNavigation)
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
+}))
+
+vi.mock('nuqs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('nuqs')>()),
+  useQueryState: () => [null, vi.fn()],
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useDefaultModel: () => ({ data: undefined }),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDefaultDataSourceListAuth: () => ({
+    data: { result: [] },
+    isLoading: false,
+    isError: false,
+  }),
+}))
+
+vi.mock('@/app/components/datasets/create/step-one', () => ({
+  default: () => <div>Create knowledge content</div>,
+}))
+
+vi.mock('@/app/components/datasets/create/step-two', () => ({
+  default: () => null,
+}))
+
+vi.mock('@/app/components/datasets/create/step-three', () => ({
+  default: () => null,
+}))
+
+vi.mock('@/app/components/datasets/create/top-bar', () => ({
+  TopBar: () => null,
 }))
 
 vi.mock('@/context/workspace-state', async () => {
@@ -118,6 +152,32 @@ describe('DatasetDetailLayout', () => {
       )
 
       expect(document.title).toBe('')
+    })
+
+    it('keeps the dataset title when the document creation route is composed', async () => {
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: Object.values(DatasetACLPermission),
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+      const page = await CreateDocumentsPage({
+        params: Promise.resolve({ datasetId: 'dataset-1' }),
+      })
+
+      render(<DatasetDetailLayout datasetId="dataset-1">{page}</DatasetDetailLayout>)
+
+      expect(screen.getByText('Create knowledge content')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.title).toBe('datasetPipeline.addDocuments.title · Dataset 1 - Dify')
+      })
     })
   })
 

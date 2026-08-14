@@ -1,5 +1,6 @@
+import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import SignIn from '../page'
+import SignInPage from '../sign-in-page'
 
 const navigationMocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
@@ -19,21 +20,20 @@ vi.mock('../one-more-step', () => ({
 
 describe('SignIn', () => {
   beforeEach(() => {
-    document.title = ''
     navigationMocks.searchParams = new URLSearchParams()
   })
 
-  it('identifies the sign-in page in the document title', () => {
-    render(<SignIn />)
+  it('renders the sign-in form by default', () => {
+    render(<SignInPage />)
 
-    expect(document.title).toBe('login.signBtn - Dify')
+    expect(screen.getByText('Sign-in form')).toBeInTheDocument()
   })
 
-  it('identifies the additional setup step in the document title', () => {
+  it('renders the additional setup step when requested', () => {
     navigationMocks.searchParams = new URLSearchParams({ step: 'next' })
 
-    render(<SignIn />)
+    render(<SignInPage />)
 
-    expect(document.title).toBe('login.oneMoreStep - Dify')
+    expect(screen.getByText('One more step')).toBeInTheDocument()
   })
 })

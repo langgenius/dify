@@ -27,7 +27,6 @@ import {
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -56,9 +55,6 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
-  useDocumentTitle(
-    t(($) => $['stepByStepTour.guides.knowledge.empty.create.title'], { ns: 'common' }),
-  )
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const datasetDetail = useDatasetDetailContextWithSelector((state) => state.dataset)
