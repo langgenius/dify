@@ -19778,6 +19778,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | app_icon | string |  | Yes |
 | app_label | object |  | Yes |
+| auto_authorize | boolean |  | Yes |
 | scope | string |  | Yes |
 
 #### OAuthProviderAuthorizeResponse
