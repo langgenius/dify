@@ -549,7 +549,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <CopyIcon
-            className="mx-0 action-btn size-6 rounded-lg p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="action-btn mx-0 size-6 rounded-lg p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             content={String(children).replace(/\n$/, '')}
           />
         </div>
