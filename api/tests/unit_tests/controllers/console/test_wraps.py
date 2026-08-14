@@ -985,6 +985,7 @@ class TestEnterpriseLicense:
 
     def test_should_allow_with_valid_license(self):
         """Test that valid licenses allow access"""
+
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
@@ -1002,6 +1003,7 @@ class TestEnterpriseLicense:
     @pytest.mark.parametrize("invalid_status", [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST])
     def test_should_reject_with_invalid_license(self, invalid_status):
         """Test that invalid licenses raise UnauthorizedAndForceLogout"""
+
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"

@@ -1325,8 +1325,7 @@ class TestPluginModelProviderCacheInvalidation:
         ):
             mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_plugin_installation_permission.return_value = SimpleNamespace(
-                plugin_installation_scope=PluginInstallationScope.ALL,
-                restrict_to_marketplace_only=False
+                plugin_installation_scope=PluginInstallationScope.ALL, restrict_to_marketplace_only=False
             )
             installer = installer_cls.return_value
             installer.fetch_plugin_manifest.return_value = MagicMock()

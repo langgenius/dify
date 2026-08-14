@@ -1252,9 +1252,7 @@ class TestAppService:
         app_id = app.id
 
         # Mock webapp auth cleanup
-        mock_external_service_dependencies[
-            "feature_service"
-        ].is_webapp_auth_enabled.return_value = True
+        mock_external_service_dependencies["feature_service"].is_webapp_auth_enabled.return_value = True
 
         # Mock the async deletion task
         with patch("services.app_service.remove_app_and_related_data_task") as mock_delete_task:
