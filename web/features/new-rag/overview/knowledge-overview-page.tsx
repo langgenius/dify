@@ -1939,11 +1939,8 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           {!empty && !showIndexing && (
             <SegmentedControl<OverviewWindow>
               aria-label={t(($) => $['newKnowledge.overview.timeRange'])}
-              value={[window]}
-              onValueChange={(values) => {
-                const nextWindow = values[0]
-                if (nextWindow) void setWindow(nextWindow)
-              }}
+              value={window}
+              onValueChange={(value) => void setWindow(value)}
             >
               {WINDOWS.map((value) => (
                 <SegmentedControlItem<OverviewWindow>

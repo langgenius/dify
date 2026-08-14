@@ -351,7 +351,7 @@ describe('RetrievalTestPage', () => {
       screen.getByRole('heading', { name: 'dataset.newKnowledge.retrievalTest.title' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('group', {
+      screen.getByRole('radiogroup', {
         name: 'dataset.newKnowledge.settings.retrievalModeLabel',
       }),
     ).toBeInTheDocument()
@@ -362,7 +362,7 @@ describe('RetrievalTestPage', () => {
       'Compare the refund policies',
     )
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('radio', {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
@@ -410,7 +410,7 @@ describe('RetrievalTestPage', () => {
       )
       if (mode !== 'fast')
         await user.click(
-          screen.getByRole('button', {
+          screen.getByRole('radio', {
             name: `dataset.newKnowledge.settings.retrievalMode.${mode}`,
           }),
         )
@@ -455,7 +455,7 @@ describe('RetrievalTestPage', () => {
       'Compare the refund policies',
     )
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('radio', {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )
@@ -503,7 +503,7 @@ describe('RetrievalTestPage', () => {
         screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
         `Run one ${mode} query`,
       )
-      if (mode === 'deep') await user.click(screen.getByRole('button', { name: label }))
+      if (mode === 'deep') await user.click(screen.getByRole('radio', { name: label }))
       const start = screen.getByRole('button', {
         name: 'dataset.newKnowledge.retrievalTest.run',
       })
@@ -599,7 +599,7 @@ describe('RetrievalTestPage', () => {
       'Anything here?',
     )
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('radio', {
         name: 'dataset.newKnowledge.settings.retrievalMode.research',
       }),
     )

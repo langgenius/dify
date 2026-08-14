@@ -32,11 +32,8 @@ export function RetrievalModeSegmentedControl({
       className={cn(
         appearance === 'composer' && 'flex min-w-46.5 gap-0.5 bg-background-section-burn',
       )}
-      value={[value]}
-      onValueChange={(values) => {
-        const nextValue = values[0]
-        if (nextValue) onChange(nextValue)
-      }}
+      value={value}
+      onValueChange={onChange}
     >
       {retrievalModes.map((mode) => (
         <SegmentedControlItem<RetrievalMode>
