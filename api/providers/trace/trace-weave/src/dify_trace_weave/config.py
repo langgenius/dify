@@ -1,7 +1,7 @@
 from pydantic import ValidationInfo, field_validator
 
 from core.ops.entities.config_entity import BaseTracingConfig
-from core.ops.utils import validate_url
+from core.ops.utils import validate_url_with_path
 
 
 class WeaveConfig(BaseTracingConfig):
@@ -19,11 +19,11 @@ class WeaveConfig(BaseTracingConfig):
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
         # Weave only allows HTTPS for endpoint
-        return validate_url(v, "https://trace.wandb.ai", allowed_schemes=("https",))
+        return validate_url_with_path(v, "https://trace.wandb.ai", allowed_schemes=("https",))
 
     @field_validator("host")
     @classmethod
     def host_validator(cls, v, info: ValidationInfo):
         if v is not None and v.strip() != "":
-            return validate_url(v, v, allowed_schemes=("https", "http"))
+            return validate_url_with_path(v, v, allowed_schemes=("https", "http"))
         return v

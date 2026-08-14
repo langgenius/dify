@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "節點",
   "agentDetail.access.workflow.table.version": "版本",
   "agentDetail.access.workflow.title": "工作流程存取",
-  "agentDetail.configure.advancedSettings.description": "面向進階使用者。環境變數、沙箱與記憶。",
+  "agentDetail.configure.advancedSettings.description": "面向進階使用者，如環境變數。",
   "agentDetail.configure.advancedSettings.envEditor.add": "新增環境變數",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "刪除 {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "隱藏 {{key}} 的值",

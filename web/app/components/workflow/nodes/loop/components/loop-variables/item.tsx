@@ -2,11 +2,11 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import { ValueType, VarType } from '@/app/components/workflow/types'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
@@ -99,9 +99,14 @@ const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable
           <FormItem nodeId={nodeId} item={item} onChange={handleUpdateItemValue} />
         </div>
       </div>
-      <ActionButton className="shrink-0" size="l" onClick={() => handleRemoveLoopVariable(item.id)}>
-        <RiDeleteBinLine className="size-4 text-text-tertiary" />
-      </ActionButton>
+      <IconButton
+        aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+        className="shrink-0"
+        size="lg"
+        onClick={() => handleRemoveLoopVariable(item.id)}
+      >
+        <RiDeleteBinLine aria-hidden="true" className="size-4 text-text-tertiary" />
+      </IconButton>
     </div>
   )
 }

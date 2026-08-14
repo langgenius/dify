@@ -1,6 +1,11 @@
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
-import type { DefaultModel, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
+import type {
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -28,13 +33,13 @@ import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-a
 
 export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
-  modelItem: ModelItem
+  modelItem: ModelSelectorModel
 }
 
 type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
-  defaultModel?: DefaultModel
+  defaultModel?: ModelSelectorValue
   model: ModelSelectorProvider
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
@@ -80,7 +85,7 @@ function PopupItem({
 
         const modelType = model.models[0]!.model_type
 
-        if (modelType) updateModelList(modelType)
+        if (modelType) updateModelList(modelType as ModelType)
       },
     })
   }

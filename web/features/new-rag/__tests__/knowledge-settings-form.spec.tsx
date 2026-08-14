@@ -99,22 +99,22 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
+  ModelSelector: ({
     ariaDescribedBy,
     ariaInvalid,
     ariaLabelledBy,
     ariaRequired,
-    defaultModel,
-    onSelect,
-    readonly,
+    value,
+    onValueChange,
+    disabled,
   }: {
     ariaDescribedBy?: string
     ariaInvalid?: boolean
     ariaLabelledBy?: string
     ariaRequired?: boolean
-    defaultModel?: { model: string; provider: string }
-    onSelect?: (model: { model: string; plugin_id: string; provider: string }) => void
-    readonly?: boolean
+    value?: { model: string; provider: string }
+    onValueChange?: (model: { model: string; plugin_id: string; provider: string }) => void
+    disabled?: boolean
   }) => {
     const popupId = `${ariaLabelledBy ?? 'model-selector'}-popup`
     return (
@@ -128,16 +128,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
           aria-invalid={ariaInvalid || undefined}
           aria-labelledby={ariaLabelledBy}
           aria-required={ariaRequired}
-          disabled={readonly}
+          disabled={disabled}
           onClick={() =>
-            onSelect?.({
+            onValueChange?.({
               model: 'openrouter/auto',
               plugin_id: 'langgenius/openrouter',
               provider: 'langgenius/openrouter/openrouter',
             })
           }
         >
-          {defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'select-model'}
+          {value ? `${value.provider}:${value.model}` : 'select-model'}
         </button>
         <span id={popupId} hidden />
       </>
@@ -897,10 +897,10 @@ describe('KnowledgeSettingsForm', () => {
     const onDraftStart = vi.fn()
     renderForm({ onDraftFinish, onDraftStart })
 
-    const reasoningSelector = screen.getByRole('button', {
+    const reasoningSelector = screen.getByRole('combobox', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
-    const rerankSelector = screen.getByRole('button', {
+    const rerankSelector = screen.getByRole('combobox', {
       name: 'common.modelProvider.rerankModel.key',
     })
     await act(async () => {
@@ -985,10 +985,10 @@ describe('KnowledgeSettingsForm', () => {
     })
     renderForm()
 
-    const reasoningSelector = screen.getByRole('button', {
+    const reasoningSelector = screen.getByRole('combobox', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
-    const rerankSelector = screen.getByRole('button', {
+    const rerankSelector = screen.getByRole('combobox', {
       name: 'common.modelProvider.rerankModel.key',
     })
     await act(async () => {
@@ -1058,7 +1058,7 @@ describe('KnowledgeSettingsForm', () => {
       renderForm()
 
       await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
-        screen.getByRole('button', {
+        screen.getByRole('combobox', {
           name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
         }),
       )

@@ -23,6 +23,7 @@ import {
 } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginCategoryEnum } from '../types'
+import { isEmbeddedMarketplaceCategory } from './category-marketplace'
 import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from './content-inset'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
@@ -87,6 +88,7 @@ const PluginsPanel = ({
   const isTriggerIntegrationPage = fixedCategory === PluginCategoryEnum.trigger
   const isAgentStrategyIntegrationPage = fixedCategory === PluginCategoryEnum.agent
   const isExtensionIntegrationPage = fixedCategory === PluginCategoryEnum.extension
+  const hasEmbeddedMarketplace = isEmbeddedMarketplaceCategory(fixedCategory)
   const isIntegrationCategoryPage =
     isToolIntegrationPage ||
     isTriggerIntegrationPage ||
@@ -197,18 +199,13 @@ const PluginsPanel = ({
   const handleHide = () => setCurrentPluginID(undefined)
   const handleBuiltinToolHide = () => setCurrentBuiltinToolID(undefined)
   const hasToolMarketplacePanel = enableMarketplace && isToolIntegrationPage
+  const categoryMarketplace =
+    enableMarketplace && hasEmbeddedMarketplace ? fixedCategory : undefined
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
     contentPaddingClassName,
   )
-  const emptyVariant = isTriggerIntegrationPage
-    ? 'integrationsTrigger'
-    : isAgentStrategyIntegrationPage
-      ? 'integrationsAgentStrategy'
-      : isExtensionIntegrationPage
-        ? 'integrationsExtension'
-        : 'default'
   const scrollAreaLabel = isTriggerIntegrationPage
     ? t(($) => $['categorySingle.trigger'], { ns: 'plugin' })
     : isAgentStrategyIntegrationPage
@@ -256,7 +253,10 @@ const PluginsPanel = ({
       {isPluginListLoading && <PluginListSkeleton contentFrameClassName={contentFrameClassName} />}
       {!isPluginListLoading && (
         <>
-          {hasVisiblePlugins || hasVisibleBuiltinTools || hasToolMarketplacePanel ? (
+          {hasVisiblePlugins ||
+          hasVisibleBuiltinTools ||
+          hasToolMarketplacePanel ||
+          hasEmbeddedMarketplace ? (
             <PluginsPanelResults
               autoLoadNextPage={isIntegrationCategoryPage}
               containerRef={containerRef}
@@ -278,7 +278,7 @@ const PluginsPanel = ({
               hasToolMarketplacePanel={hasToolMarketplacePanel}
               hasVisibleBuiltinTools={hasVisibleBuiltinTools}
               hasVisiblePlugins={hasVisiblePlugins}
-              isAgentStrategyIntegrationPage={isAgentStrategyIntegrationPage}
+              hasEmbeddedMarketplace={hasEmbeddedMarketplace}
               isFetching={isFetching}
               isLastPage={isLastPage}
               keywords={filters.searchQuery}
@@ -288,6 +288,14 @@ const PluginsPanel = ({
               tagFilterValue={filters.tags}
               canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
+              categoryEmptyState={hasEmbeddedMarketplace ? fixedCategory : undefined}
+              categoryMarketplace={categoryMarketplace}
+              showCategoryEmptyState={
+                hasEmbeddedMarketplace &&
+                !isFilteringCategory &&
+                !hasVisiblePlugins &&
+                !hasVisibleBuiltinTools
+              }
             />
           ) : isIntegrationCategorySearchEmpty ? (
             <div className={cn('min-h-0 grow bg-components-panel-bg', contentFrameClassName)} />
@@ -297,7 +305,6 @@ const PluginsPanel = ({
               contentInset={contentInset}
               onSwitchToMarketplace={onSwitchToMarketplace}
               installContextCategory={fixedCategory}
-              variant={emptyVariant}
             />
           )}
         </>

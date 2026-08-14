@@ -9,6 +9,7 @@ import type {
 import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button/variants'
 
 type ToastData = Record<string, never>
 type ToastToneStyle = {
@@ -234,10 +235,11 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
             <BaseToast.Close
               aria-label={toastCloseLabel}
               className={cn(
-                'flex h-5 w-5 items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+                iconButtonVariants({ size: 'sm' }),
+                'focus-visible:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
-              <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+              <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
             </BaseToast.Close>
           </div>
         </BaseToast.Content>

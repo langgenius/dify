@@ -38,11 +38,8 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $['newKnowledge.viewLabel'])}
-        value={[value]}
-        onValueChange={(values) => {
-          const nextValue = values[0]
-          if (nextValue === 'legacy' || nextValue === 'new') onChange(nextValue)
-        }}
+        value={value}
+        onValueChange={(value) => onChange(value)}
       >
         <SegmentedControlItem
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"

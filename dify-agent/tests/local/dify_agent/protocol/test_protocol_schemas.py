@@ -160,7 +160,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         plugin_id="langgenius/openai",
         model_provider="openai",
         model="demo-model",
-        credentials={"api_key": "secret"},
     )
     output_config = DifyOutputLayerConfig(
         json_schema={
