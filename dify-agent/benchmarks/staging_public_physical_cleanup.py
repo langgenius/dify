@@ -33,6 +33,8 @@ VendorRemainingProbe = Callable[[], "StagingVendorRemainingSample"]
 StalledResourceReplayer = Callable[[tuple[str, ...]], None]
 
 STALLED_CLEANUP_REPLAY_AFTER_SECONDS = 60
+DATABASE_CLEANUP_PROBE_ATTEMPTS = 3
+DATABASE_CLEANUP_PROBE_RETRY_SECONDS = 1
 
 
 class StagingDatabaseCleanupEvidence(BaseModel):
@@ -710,24 +712,39 @@ def _wait_for_joint_zero(
         if targets:
             if api_pod is None:
                 raise RuntimeError("database cleanup probe Pod was missing")
-            raw = _exec_private_probe(
-                runner,
-                api_pod=api_pod,
-                kube_context=kube_context,
-                namespace=namespace,
-                script=_COUNT_TARGETS_SCRIPT,
-                payload={
-                    "conversation_ids": [item.conversation_id for item in targets],
-                    "workspace_ids": [item.workspace_id for item in targets],
-                    "binding_ids": [item.binding_id for item in targets],
-                },
-            )
-            value = _parse_private_probe_json_object(raw)
-            if not isinstance(value, dict) or any(
-                isinstance(value.get(key), bool) or not isinstance(value.get(key), int) or value[key] < 0
-                for key in latest
-            ):
-                raise RuntimeError("database cleanup probe returned an invalid response")
+            value: dict[str, Any] | None = None
+            last_probe_error: RuntimeError | None = None
+            for attempt in range(DATABASE_CLEANUP_PROBE_ATTEMPTS):
+                try:
+                    raw = _exec_private_probe(
+                        runner,
+                        api_pod=api_pod,
+                        kube_context=kube_context,
+                        namespace=namespace,
+                        script=_COUNT_TARGETS_SCRIPT,
+                        payload={
+                            "conversation_ids": [item.conversation_id for item in targets],
+                            "workspace_ids": [item.workspace_id for item in targets],
+                            "binding_ids": [item.binding_id for item in targets],
+                        },
+                    )
+                    candidate = _parse_private_probe_json_object(raw)
+                    if any(
+                        isinstance(candidate.get(key), bool)
+                        or not isinstance(candidate.get(key), int)
+                        or candidate[key] < 0
+                        for key in latest
+                    ):
+                        raise RuntimeError("database cleanup probe returned an invalid response")
+                except RuntimeError as exc:
+                    last_probe_error = exc
+                    if attempt + 1 < DATABASE_CLEANUP_PROBE_ATTEMPTS:
+                        sleep(DATABASE_CLEANUP_PROBE_RETRY_SECONDS)
+                    continue
+                value = candidate
+                break
+            if value is None:
+                raise RuntimeError("database cleanup probe returned an invalid response") from last_probe_error
             latest = {key: int(value[key]) for key in latest}
         vendor_sample = vendor_remaining_probe()
         latest_vendor = vendor_sample.target_remaining
