@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Rulează agentul ca un chat finalizat, exact cum îl vor experimenta utilizatorii după publicare.",
   "agentDetail.configure.preview.empty.title": "Previzualizează {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Autentificare utilizator final",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Această rulare a Agentului a fost oprită după atingerea numărului maxim de solicitări către model. Încearcă din nou sau împarte sarcina în pași mai mici.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Această rulare a Agentului a fost oprită după atingerea limitei de timp. Încearcă din nou sau împarte sarcina în pași mai mici.",
   "agentDetail.configure.preview.inputPlaceholder": "Trimite mesaj către {{name}}",
   "agentDetail.configure.preview.restart": "Începe din nou",
