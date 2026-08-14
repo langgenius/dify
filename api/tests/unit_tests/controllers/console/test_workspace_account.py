@@ -8,7 +8,6 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from controllers.console.error import EducationDiscountTemporarilyPausedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
@@ -110,23 +109,21 @@ def _build_change_email_token(
 
 class TestEducationApi:
     @patch("controllers.console.workspace.account.BillingService.EducationIdentity.activate")
-    def test_post_returns_temporarily_paused_error_without_activating_discount(
-        self, mock_activate: MagicMock, app: Flask
-    ):
+    def test_post_activates_education_discount(self, mock_activate: MagicMock, app: Flask):
         account = _build_account("student@example.edu")
+        mock_activate.return_value = {"message": "success"}
 
-        with app.test_request_context("/account/education", method="POST", json={}):
+        with app.test_request_context(
+            "/account/education",
+            method="POST",
+            json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+        ):
             api = EducationApi()
             method = inspect.unwrap(api.post)
-            with pytest.raises(EducationDiscountTemporarilyPausedError) as exc_info:
-                method(api, account)
+            result = method(api, account)
 
-        assert exc_info.value.data == {
-            "code": "education_discount_temporarily_paused",
-            "message": "Education discount temporarily paused, while we upgrade our security measures.",
-            "status": 503,
-        }
-        mock_activate.assert_not_called()
+        assert result == {"message": "success"}
+        mock_activate.assert_called_once_with(account, "education-token", "Dify University", "Student")
 
 
 class TestChangeEmailSend:

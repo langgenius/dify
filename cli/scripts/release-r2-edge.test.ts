@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { FIXTURE_COMPAT, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
 
 const SCRIPT = fileURLToPath(new URL('./release-r2-edge.mjs', import.meta.url))

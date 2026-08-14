@@ -17,7 +17,7 @@ import {
   updateFeedback,
 } from '@/service/share'
 import { shareQueryKeys } from '@/service/use-share'
-import { CONVERSATION_ID_INFO } from '../../constants'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
 import { useChatWithHistory } from '.././hooks'
 
 vi.mock('@/hooks/use-app-favicon', () => ({
@@ -151,6 +151,7 @@ describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     localStorage.removeItem('webappSidebarCollapse')
     mockStoreState.appInfo = {
       app_id: 'app-1',
@@ -169,6 +170,7 @@ describe('useChatWithHistory', () => {
 
   afterEach(() => {
     localStorage.removeItem(CONVERSATION_ID_INFO)
+    sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     localStorage.removeItem('webappSidebarCollapse')
   })
 
@@ -297,9 +299,86 @@ describe('useChatWithHistory', () => {
     })
   })
 
-  // Scenario: conversation id updates persist to localStorage.
+  // Scenario: the active conversation is tab-scoped while the last selection is cross-tab.
   describe('Conversation id persistence', () => {
-    it('should store new conversation id in localStorage after completion', async () => {
+    it('should prefer the current tab conversation over the last conversation', async () => {
+      // Arrange
+      sessionStorage.setItem(
+        TAB_CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': {
+            'user-1': 'conversation-in-this-tab',
+            DEFAULT: 'conversation-in-this-tab',
+          },
+        }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      // Act
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('conversation-in-this-tab')
+      expect(mockFetchChatList).toHaveBeenCalledWith(
+        'conversation-in-this-tab',
+        AppSourceType.webApp,
+        'app-1',
+      )
+    })
+
+    it('should preserve a new chat selection in the current tab', async () => {
+      // Arrange
+      sessionStorage.setItem(
+        TAB_CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': {
+            'user-1': '',
+            DEFAULT: '',
+          },
+        }),
+      )
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      // Act
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('')
+      expect(mockFetchChatList).not.toHaveBeenCalled()
+    })
+
+    it('should ignore last conversation updates from another tab', async () => {
+      // Arrange
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('conversation-1')
+      })
+
+      // Act: storage events are delivered to the other tabs, not the tab that made the write.
+      act(() => {
+        setConversationIdInfo('app-1', 'conversation-from-another-tab')
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: CONVERSATION_ID_INFO,
+          }),
+        )
+      })
+
+      // Assert
+      expect(result!.current.currentConversationId).toBe('conversation-1')
+      expect(mockFetchChatList).not.toHaveBeenCalledWith(
+        'conversation-from-another-tab',
+        AppSourceType.webApp,
+        'app-1',
+      )
+    })
+
+    it('should store the current and last conversation after completion', async () => {
       // Arrange
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
@@ -319,11 +398,19 @@ describe('useChatWithHistory', () => {
 
       // Assert
       await waitFor(() => {
-        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
-        const parsed = storedValue ? JSON.parse(storedValue) : {}
-        const storedUserId = parsed['app-1']?.['user-1']
-        const storedDefaultId = parsed['app-1']?.DEFAULT
-        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+        const lastStoredValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const lastConversationIdInfo = lastStoredValue ? JSON.parse(lastStoredValue) : {}
+        const tabStoredValue = sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)
+        const tabConversationIdInfo = tabStoredValue ? JSON.parse(tabStoredValue) : {}
+
+        expect([
+          lastConversationIdInfo['app-1']?.['user-1'],
+          lastConversationIdInfo['app-1']?.DEFAULT,
+        ]).toContain('conversation-new')
+        expect([
+          tabConversationIdInfo['app-1']?.['user-1'],
+          tabConversationIdInfo['app-1']?.DEFAULT,
+        ]).toContain('conversation-new')
       })
     })
   })

@@ -212,6 +212,7 @@
   "installModal.uploadingPackage": "Tải lên {{packageName}}...",
   "installModal.viewDetails": "Xem chi tiết",
   "installPlugin": "Cài đặt plugin",
+  "list.emptyInstallFromMarketplace": "Bạn có thể cài đặt {{category}} từ <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "Không tìm thấy Chiến lược đại lý",
   "list.noExtensionFound": "Không tìm thấy Phần mở rộng",
   "list.noInstalled": "Không có plugin nào được cài đặt",

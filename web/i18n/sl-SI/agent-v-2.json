@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Nazadnje spremenjeno",
   "roster.sort.optionsLabel": "Možnosti razvrščanja",
   "roster.sort.recentlyCreated": "Nedavno ustvarjeno",
+  "roster.title": "Agenti",
   "roster.updateSuccess": "Agent posodobljen.",
   "roster.usageStatus.draft": "Osnutek"
 }

@@ -238,6 +238,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     agent_session_scope_config_version_id: str | None = None
     prompt_file_mappings: Sequence[JsonValue] = Field(default_factory=list)
+    agent_llm_gateway_enabled: bool = False
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

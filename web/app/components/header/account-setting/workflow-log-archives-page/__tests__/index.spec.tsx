@@ -1,7 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext } from '@/context/modal-context'

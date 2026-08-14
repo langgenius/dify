@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "最后修改",
   "roster.sort.optionsLabel": "排序选项",
   "roster.sort.recentlyCreated": "最近创建",
+  "roster.title": "Agent",
   "roster.updateSuccess": "Agent 已更新。",
   "roster.usageStatus.draft": "草稿"
 }

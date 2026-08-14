@@ -1,5 +1,5 @@
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
 import {

@@ -13,7 +13,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
-from models.account import Account
+from models.account import Account, Tenant
 from models.base import TypeBase
 from models.engine import db
 from models.model import App, AppMode
@@ -52,7 +52,9 @@ def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
 def _make_account(account_id: str = "u1") -> Account:
     account = Account(name="Test User", email="test@example.com")
     account.id = account_id
-    account._current_tenant = MagicMock(id="tenant-1")
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-1"
+    account._current_tenant = tenant
     return account
 
 

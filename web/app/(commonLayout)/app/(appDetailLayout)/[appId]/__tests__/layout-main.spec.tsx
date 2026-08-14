@@ -1,5 +1,5 @@
 import type { App } from '@/types/app'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -44,10 +44,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 const mockUsePathname = mockNavigation.usePathname
 const mockUseRouter = mockNavigation.useRouter
 const mockFetchAppDetailDirect = vi.mocked(fetchAppDetailDirect)
@@ -70,6 +66,7 @@ const waitForAppContent = async () => {
 describe('AppDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     mockPathname = '/app/app-1/workflow'
     mockIsRbacEnabled = true
     mockConsoleState.currentWorkspace = { id: 'workspace-1' }
@@ -83,6 +80,59 @@ describe('AppDetailLayout', () => {
     })
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail())
     useStore.getState().setAppDetail()
+  })
+
+  describe('Document title', () => {
+    it.each([
+      ['/app/app-1/workflow', 'common.appMenus.promptEng', AppModeEnum.WORKFLOW],
+      ['/app/app-1/configuration', 'common.appMenus.promptEng', AppModeEnum.CHAT],
+      ['/app/app-1/access-point', 'common.appMenus.accessPoint', AppModeEnum.WORKFLOW],
+      ['/app/app-1/develop', 'common.appMenus.apiAccess', AppModeEnum.WORKFLOW],
+      ['/app/app-1/deploy', 'common.appMenus.deploy', AppModeEnum.WORKFLOW],
+      ['/app/app-1/logs', 'common.appMenus.logs', AppModeEnum.WORKFLOW],
+      ['/app/app-1/annotations', 'common.appMenus.annotations', AppModeEnum.CHAT],
+      ['/app/app-1/overview', 'common.appMenus.overview', AppModeEnum.WORKFLOW],
+      ['/app/app-1/access-config', 'common.settings.resourceAccess', AppModeEnum.WORKFLOW],
+    ])('identifies the current detail page for %s', async (pathname, pageTitle, mode) => {
+      mockPathname = pathname
+      mockFetchAppDetailDirect.mockResolvedValue(
+        createAppDetail({
+          mode,
+          permission_keys: Object.values(AppACLPermission),
+        }),
+      )
+
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(document.title).toBe(`${pageTitle} · Demo App - Dify`)
+      })
+    })
+
+    it('updates after a directly loaded app is renamed in the store', async () => {
+      render(
+        <AppDetailLayout appId="app-1">
+          <div>App page content</div>
+        </AppDetailLayout>,
+      )
+
+      await waitFor(() => {
+        expect(document.title).toBe('common.appMenus.promptEng · Demo App - Dify')
+      })
+
+      act(() => {
+        useStore.getState().setAppDetail(createAppDetail({ name: 'Renamed App' }))
+      })
+
+      await waitFor(() => {
+        expect(document.title).toBe('common.appMenus.promptEng · Renamed App - Dify')
+      })
+      expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should keep app detail data when navigating between pages in the same app', async () => {

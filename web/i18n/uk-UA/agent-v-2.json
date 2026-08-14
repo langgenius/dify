@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Остання зміна",
   "roster.sort.optionsLabel": "Параметри сортування",
   "roster.sort.recentlyCreated": "Нещодавно створені",
+  "roster.title": "Агенти",
   "roster.updateSuccess": "Агента оновлено.",
   "roster.usageStatus.draft": "Чернетка"
 }

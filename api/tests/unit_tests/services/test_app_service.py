@@ -36,6 +36,12 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
+def _account_identity(account_id: str) -> Account:
+    account = Account(name="Current User", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
+
+
 def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App") -> App:
     app = App(
         id=str(uuid4()),
@@ -495,7 +501,7 @@ class TestAgentAppType:
         account_id = str(uuid4())
 
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=account_id)),
+            patch("services.app_service.current_user", _account_identity(account_id)),
             patch("services.app_service.app_was_updated.send"),
         ):
             updated_app = AppService().update_app(
@@ -527,7 +533,7 @@ class TestAgentAppType:
         app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_updated.send"),
         ):
             AppService().update_app(
@@ -550,7 +556,7 @@ class TestAgentAppType:
         app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_updated.send"),
         ):
             AppService().update_app(
@@ -587,7 +593,7 @@ class TestAgentAppType:
         event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
 
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_updated.send"),
         ):
             with pytest.raises(AgentNameConflictError):
@@ -634,7 +640,7 @@ class TestAgentAppType:
         event.listen(sqlite_session, "after_commit", lambda _session: events.append("commit"))
 
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=account_id)),
+            patch("services.app_service.current_user", _account_identity(account_id)),
             patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
@@ -692,9 +698,7 @@ class TestAgentAppType:
             home_snapshot_ids=["home-1", "workflow-home-1"],
         )
 
-    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(
-        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         app.mode = AppMode.WORKFLOW
         workflow_agent = Agent(
@@ -711,9 +715,13 @@ class TestAgentAppType:
         )
         sqlite_session.add(workflow_agent)
         sqlite_session.commit()
-        monkeypatch.setattr(sqlite_session, "commit", MagicMock(side_effect=RuntimeError("commit failed")))
+
+        def fail_commit(_session: Session) -> None:
+            raise RuntimeError("commit failed")
+
+        event.listen(sqlite_session, "before_commit", fail_commit, once=True)
         with (
-            patch("services.app_service.current_user", SimpleNamespace(id=str(uuid4()))),
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
