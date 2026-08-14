@@ -162,6 +162,72 @@ def test_parent_captures_private_targets_before_delete_and_waits_for_two_zero_ch
     assert "never-serialize-this-key" not in result.database.model_dump_json()
 
 
+def test_database_cleanup_probe_retries_one_transient_invalid_response(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 1)
+    clock = _Clock()
+    base_runner = _runner([])
+    count_attempts = 0
+
+    def runner(argv, stdin):
+        nonlocal count_attempts
+        if "count-targets" not in argv[-1]:
+            return base_runner(argv, stdin)
+        count_attempts += 1
+        if count_attempts == 1:
+            return json.dumps({"conversations": None, "workspaces": 0, "bindings": 0})
+        return json.dumps({"conversations": 0, "workspaces": 0, "bindings": 0})
+
+    result = reconcile_staging_public_resources(
+        allocation_journal_path=journal,
+        private_manifest_path=tmp_path / "private" / "cleanup.json",
+        invocation_id="run",
+        requested_concurrency=1,
+        service_api_base_url="https://api-staging.dify.dev/v1/",
+        service_api_key=SecretStr("key"),
+        runner=runner,
+        conversation_deleter=lambda _conversation_id, _end_user: 204,
+        vendor_remaining_probe=_vendor_probe(clock),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert result.joint.complete is True
+    assert count_attempts >= 3
+
+
+def test_database_cleanup_probe_fails_closed_after_bounded_invalid_responses(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 1)
+    clock = _Clock()
+    base_runner = _runner([])
+    count_attempts = 0
+
+    def runner(argv, stdin):
+        nonlocal count_attempts
+        if "count-targets" not in argv[-1]:
+            return base_runner(argv, stdin)
+        count_attempts += 1
+        return json.dumps({"conversations": None, "workspaces": 0, "bindings": 0})
+
+    with pytest.raises(RuntimeError, match="database cleanup probe returned an invalid response"):
+        reconcile_staging_public_resources(
+            allocation_journal_path=journal,
+            private_manifest_path=tmp_path / "private" / "cleanup.json",
+            invocation_id="run",
+            requested_concurrency=1,
+            service_api_base_url="https://api-staging.dify.dev/v1/",
+            service_api_key=SecretStr("key"),
+            runner=runner,
+            conversation_deleter=lambda _conversation_id, _end_user: 204,
+            vendor_remaining_probe=_vendor_probe(clock),
+            monotonic=clock.monotonic,
+            sleep=clock.sleep,
+        )
+
+    assert count_attempts == 3
+
+
 def test_parent_replays_exact_retired_workspaces_once_after_a_ledger_only_stall(
     tmp_path: Path,
 ) -> None:
