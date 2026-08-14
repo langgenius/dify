@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import Engine, inspect
@@ -74,6 +74,10 @@ def _persist_tenant(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Tenant:
 
 
 def _persist_account(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Account:
+    if db.caller_session.get(Tenant, tenant_id) is None:
+        tenant = Tenant(name="Tenant")
+        tenant.id = tenant_id
+        db.caller_session.add(tenant)
     account = Account(name="Account", email="account@example.com")
     account.id = ACCOUNT_ID
     join = TenantAccountJoin(
@@ -180,9 +184,9 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Mock user resolution to avoid database access
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    # Resolve a persisted account without exercising the lookup in this behavior test.
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
@@ -207,8 +211,8 @@ def test_workflow_tool_does_not_use_pause_state_config(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -235,8 +239,8 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -270,8 +274,8 @@ def test_workflow_tool_passes_parent_trace_session_id(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -312,8 +316,8 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -354,8 +358,8 @@ def test_workflow_tool_can_clear_parent_trace_context(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -379,8 +383,8 @@ def test_workflow_tool_can_clear_trace_session_id(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -413,8 +417,8 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
@@ -440,9 +444,9 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Mock user resolution to avoid database access
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    # Resolve a persisted account without exercising the lookup in this behavior test.
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
@@ -486,9 +490,9 @@ def test_workflow_tool_should_handle_empty_outputs(
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
-    # Mock user resolution to avoid database access
-    mock_user = Mock()
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+    # Resolve a persisted account without exercising the lookup in this behavior test.
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
@@ -816,7 +820,8 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: Mock())
+    user = _persist_account(sqlite_tool_db)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
