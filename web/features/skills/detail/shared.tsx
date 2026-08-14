@@ -16,6 +16,17 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { getFileIconType } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/files/file-icon'
 import { consoleClient, consoleQuery } from '@/service/client'
+import {
+  getSkillErrorCode,
+  getSkillErrorDetailNumber,
+  getSkillErrorDetailString,
+  isSkillErrorRecord,
+} from '../error'
+
+export const isRecord = isSkillErrorRecord
+export const getErrorCode = getSkillErrorCode
+export const getErrorDetailNumber = getSkillErrorDetailNumber
+export const getErrorDetailString = getSkillErrorDetailString
 
 export const SKILL_TAG_CREATE_OPTION_PREFIX = '\u0000skill-tag-create:'
 
@@ -1562,48 +1573,6 @@ export async function refreshSkillDetailAfterConflict(
   const detail = await refetchSkillDetail(skillId)
   if (options.updateCache !== false) setSkillDetailCache(queryClient, skillId, detail)
   return detail
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-export function getErrorCode(error: unknown): string | undefined {
-  if (!isRecord(error)) return undefined
-
-  if (typeof error.code === 'string') return error.code
-
-  const data = error.data
-  if (isRecord(data) && typeof data.code === 'string') return data.code
-
-  const body = error.body
-  if (isRecord(body) && typeof body.code === 'string') return body.code
-
-  return undefined
-}
-
-function getErrorDetails(error: unknown): Record<string, unknown> | undefined {
-  if (!isRecord(error)) return undefined
-
-  if (isRecord(error.details)) return error.details
-
-  const data = error.data
-  if (isRecord(data) && isRecord(data.details)) return data.details
-
-  const body = error.body
-  if (isRecord(body) && isRecord(body.details)) return body.details
-
-  return undefined
-}
-
-export function getErrorDetailNumber(error: unknown, key: string): number | undefined {
-  const value = getErrorDetails(error)?.[key]
-  return typeof value === 'number' ? value : undefined
-}
-
-export function getErrorDetailString(error: unknown, key: string): string | undefined {
-  const value = getErrorDetails(error)?.[key]
-  return typeof value === 'string' ? value : undefined
 }
 
 export function joinSkillPath(basePath: string | undefined, name: string) {

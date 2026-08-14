@@ -47,6 +47,7 @@ import { consoleQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
+import { getSkillErrorCode, getSkillErrorDetailString, normalizeSkillError } from './error'
 import { useSkillPermissions } from './permissions'
 import { skillKeywordQueryParser, skillQueryParamNames, skillTagQueryParser } from './query-params'
 import { SkillListTagManagementModal } from './skill-list-tag-management-modal'
@@ -248,9 +249,13 @@ function DeleteSkillDialog({
     (referenceCount > 0 && confirmDeleteInput !== skill.display_name)
   const description =
     referenceCount > 0
-      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
-          count: referenceCount,
-        })
+      ? t(
+          ($) =>
+            referenceCount === 1
+              ? $['skillManagement.deleteDialog.referencedDescription_one']
+              : $['skillManagement.deleteDialog.referencedDescription_other'],
+          { count: referenceCount },
+        )
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -442,7 +447,11 @@ function SkillCard({
             </div>
           </div>
           <div className="px-4 py-1 system-xs-regular text-text-tertiary">
-            <div className="line-clamp-2 min-h-8">{skill.description}</div>
+            <div className="line-clamp-2 min-h-8">
+              {skill.description.trim()
+                ? skill.description
+                : t(($) => $['skillManagement.noDescription'])}
+            </div>
           </div>
         </Link>
         <div className="relative flex h-6 shrink-0 items-start px-3">
@@ -456,9 +465,13 @@ function SkillCard({
         <div className="flex min-w-0 shrink-0 items-center px-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
-              {t(($) => $['skillManagement.referenceCount'], {
-                count: skill.reference_count ?? 0,
-              })}
+              {t(
+                ($) =>
+                  skill.reference_count === 1
+                    ? $['skillManagement.referenceCount_one']
+                    : $['skillManagement.referenceCount_other'],
+                { count: skill.reference_count ?? 0 },
+              )}
             </span>
             <span aria-hidden className="shrink-0 text-text-quaternary">
               ·
@@ -742,9 +755,15 @@ export default function SkillsPage() {
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-  const createMutation = useMutation(consoleQuery.workspaces.current.skills.post.mutationOptions())
+  const createMutation = useMutation(
+    consoleQuery.workspaces.current.skills.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const importMutation = useMutation(
-    consoleQuery.workspaces.current.skills.import.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.import.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const skillsQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({
@@ -779,8 +798,13 @@ export default function SkillsPage() {
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.createFailed']))
+        onError: async (error) => {
+          const normalizedError = await normalizeSkillError(error)
+          toast.error(
+            getSkillErrorCode(normalizedError) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : t(($) => $['skillManagement.createFailed']),
+          )
         },
       },
     )
@@ -801,7 +825,25 @@ export default function SkillsPage() {
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
-        onError: () => {
+        onError: async (error) => {
+          const normalizedError = await normalizeSkillError(error)
+          const errorCode = getSkillErrorCode(normalizedError)
+          if (errorCode === 'skill_name_conflict') {
+            toast.error(
+              t(($) => $['skillManagement.errors.nameConflict'], {
+                name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+              }),
+            )
+            return
+          }
+          if (errorCode === 'skill_limit_exceeded') {
+            toast.error(t(($) => $['skillManagement.errors.workspaceLimit']))
+            return
+          }
+          if (errorCode === 'missing_skill_md') {
+            toast.error(t(($) => $['skillManagement.errors.missingSkillMd']))
+            return
+          }
           toast.error(t(($) => $['skillManagement.importFailed']))
         },
         onSettled: () => {

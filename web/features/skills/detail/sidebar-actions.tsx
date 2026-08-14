@@ -76,9 +76,13 @@ function SkillDetailDeleteDialog({
     (referenceCount > 0 && confirmDeleteInput !== detail.display_name)
   const description =
     referenceCount > 0
-      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
-          count: referenceCount,
-        })
+      ? t(
+          ($) =>
+            referenceCount === 1
+              ? $['skillManagement.deleteDialog.referencedDescription_one']
+              : $['skillManagement.deleteDialog.referencedDescription_other'],
+          { count: referenceCount },
+        )
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {

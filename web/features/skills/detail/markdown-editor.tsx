@@ -344,9 +344,6 @@ function EditorPlaceholder({
   const shortcutIndex = text.indexOf('/')
   const beforeShortcut = shortcutIndex >= 0 ? text.slice(0, shortcutIndex) : text
   const afterShortcut = shortcutIndex >= 0 ? text.slice(shortcutIndex + 1) : ''
-  const referenceMatch = afterShortcut.match(/^(.*?)(reference files|引用文件)\s*$/i)
-  const afterTo = referenceMatch?.[1] ?? afterShortcut
-  const referenceFiles = referenceMatch?.[2] ?? ''
 
   return (
     <span
@@ -361,12 +358,7 @@ function EditorPlaceholder({
       <kbd className="inline-flex min-w-4 items-center justify-center rounded bg-components-kbd-bg-gray px-0.5 system-xs-medium text-text-quaternary">
         /
       </kbd>
-      <span>{afterTo}</span>
-      {referenceFiles && (
-        <span className="border-b border-dotted border-text-quaternary system-xs-regular">
-          {referenceFiles}
-        </span>
-      )}
+      <span>{afterShortcut}</span>
     </span>
   )
 }

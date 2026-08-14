@@ -36,6 +36,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { getSkillErrorCode } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -515,8 +516,12 @@ export function AgentSkills() {
           },
         },
         {
-          onError: () => {
-            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
+          onError: (error) => {
+            toast.error(
+              getSkillErrorCode(error) === 'too_many_agent_skills'
+                ? t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached'])
+                : t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']),
+            )
           },
           onSuccess: () => {
             invalidateAgentSkillBindings()

@@ -85,4 +85,20 @@ describe('SkillPublishBar', () => {
     await user.click(publishingButton)
     expect(onPublish).not.toHaveBeenCalled()
   })
+
+  it('keeps both status segments visible instead of truncating the timestamp', () => {
+    const longMetaLabel = 'Saved a few seconds ago after a long autosave operation'
+    render(
+      <SkillPublishBar
+        metaLabel={longMetaLabel}
+        state="draft"
+        onOpenVersions={onOpenVersions}
+        onPublish={onPublish}
+      />,
+    )
+
+    expect(screen.getByText('skill.skillManagement.detail.draft')).toBeVisible()
+    expect(screen.getByText(longMetaLabel)).toBeVisible()
+    expect(screen.getByText(longMetaLabel)).not.toHaveClass('truncate')
+  })
 })

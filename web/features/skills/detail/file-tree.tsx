@@ -1360,7 +1360,13 @@ export function FileTree({
           </div>
           <div className="flex h-8 shrink-0 items-center gap-1 px-3">
             <h2 className="min-w-0 flex-1 system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
+              {t(
+                ($) =>
+                  fileCount === 1
+                    ? $['skillManagement.detail.fileCount_one']
+                    : $['skillManagement.detail.fileCount_other'],
+                { count: fileCount },
+              )}
             </h2>
             {!readonly && (
               <DropdownMenu modal={false}>
@@ -1599,9 +1605,13 @@ export function FileTree({
                   >
                     <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
                     <span className="min-w-0 flex-1 truncate">
-                      {t(($) => $['skillManagement.detail.referencedBy'], {
-                        count: referenceCount,
-                      })}
+                      {t(
+                        ($) =>
+                          referenceCount === 1
+                            ? $['skillManagement.detail.referencedBy_one']
+                            : $['skillManagement.detail.referencedBy_other'],
+                        { count: referenceCount },
+                      )}
                     </span>
                     <span
                       aria-hidden
@@ -1615,15 +1625,23 @@ export function FileTree({
                 sideOffset={4}
                 popupClassName="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
                 popupProps={{
-                  'aria-label': t(($) => $['skillManagement.detail.referencedBy'], {
-                    count: referenceCount,
-                  }),
+                  'aria-label': t(
+                    ($) =>
+                      referenceCount === 1
+                        ? $['skillManagement.detail.referencedBy_one']
+                        : $['skillManagement.detail.referencedBy_other'],
+                    { count: referenceCount },
+                  ),
                 }}
               >
                 <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
-                  {t(($) => $['skillManagement.detail.referencedBy'], {
-                    count: referenceCount,
-                  })}
+                  {t(
+                    ($) =>
+                      referenceCount === 1
+                        ? $['skillManagement.detail.referencedBy_one']
+                        : $['skillManagement.detail.referencedBy_other'],
+                    { count: referenceCount },
+                  )}
                 </div>
                 <SkillReferencesPanel
                   compact

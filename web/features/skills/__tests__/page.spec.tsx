@@ -314,7 +314,9 @@ describe('SkillsPage', () => {
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
     expect(screen.getByText('support')).toBeInTheDocument()
-    expect(screen.getByText('skill.skillManagement.referenceCount:{"count":2}')).toBeInTheDocument()
+    expect(
+      screen.getByText('skill.skillManagement.referenceCount_other:{"count":2}'),
+    ).toBeInTheDocument()
     expect(
       screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
@@ -329,6 +331,15 @@ describe('SkillsPage', () => {
     expect(
       await screen.findByText('skill.skillManagement.editedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
+  })
+
+  it('shows guidance instead of a persisted editor placeholder when description is empty', async () => {
+    mocks.skills = [createSkill({ description: '' })]
+    mocks.skillPages = [mocks.skills]
+
+    renderSkillsPage()
+
+    expect(await screen.findByText('skill.skillManagement.noDescription')).toBeInTheDocument()
   })
 
   it('passes keyword and selected tags to the list query', async () => {
@@ -436,6 +447,18 @@ describe('SkillsPage', () => {
     invalidateQueries.mockRestore()
   })
 
+  it('explains when the workspace skill limit blocks draft creation', async () => {
+    const user = userEvent.setup()
+    mocks.createSkillMutationFn.mockRejectedValueOnce({ code: 'skill_limit_exceeded' })
+    renderSkillsPage()
+
+    await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.errors.workspaceLimit')
+    })
+  })
+
   it('imports a package file and navigates to the imported skill', async () => {
     const user = userEvent.setup()
     const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
@@ -465,6 +488,65 @@ describe('SkillsPage', () => {
     })
     expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
     invalidateQueries.mockRestore()
+  })
+
+  it.each([
+    {
+      error: {
+        data: {
+          body: {
+            code: 'skill_name_conflict',
+            details: { name: 'refund-approval' },
+          },
+        },
+      },
+      message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
+    },
+    {
+      error: { code: 'skill_limit_exceeded' },
+      message: 'skill.skillManagement.errors.workspaceLimit',
+    },
+    {
+      error: { code: 'missing_skill_md' },
+      message: 'skill.skillManagement.errors.missingSkillMd',
+    },
+    {
+      error: { message: 'Skill package must contain SKILL.md' },
+      message: 'skill.skillManagement.errors.missingSkillMd',
+    },
+    {
+      error: { message: 'Skill name "refund-approval" already exists' },
+      message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
+    },
+  ])('explains import errors for $error.code', async ({ error, message }) => {
+    const user = userEvent.setup()
+    mocks.importSkillMutationFn.mockRejectedValueOnce(error)
+    const { container } = renderSkillsPage()
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+    const file = new File(['skill'], 'refund.skill', { type: 'application/zip' })
+
+    await user.upload(fileInput!, file)
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(message)
+    })
+  })
+
+  it('explains an import error returned as a Response body', async () => {
+    const user = userEvent.setup()
+    mocks.importSkillMutationFn.mockRejectedValueOnce(
+      new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
+        status: 400,
+      }),
+    )
+    const { container } = renderSkillsPage()
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+
+    await user.upload(fileInput!, new File(['skill'], 'refund.skill', { type: 'application/zip' }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.errors.missingSkillMd')
+    })
   })
 
   it('duplicates a skill from the card action menu', async () => {
@@ -540,7 +622,7 @@ describe('SkillsPage', () => {
 
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription:{"count":2}',
+        'skill.skillManagement.deleteDialog.referencedDescription_other:{"count":2}',
       ),
     ).toBeInTheDocument()
     expect(await within(dialog).findByText('Support Agent')).toBeInTheDocument()
@@ -598,7 +680,7 @@ describe('SkillsPage', () => {
     expect(await within(dialog).findByText('Support Agent From References API')).toBeInTheDocument()
     expect(
       within(dialog).getByText(
-        'skill.skillManagement.deleteDialog.referencedDescription:{"count":1}',
+        'skill.skillManagement.deleteDialog.referencedDescription_one:{"count":1}',
       ),
     ).toBeInTheDocument()
     expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(

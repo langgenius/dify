@@ -2958,7 +2958,7 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('skill.skillManagement.detail.publishReferencesDescription:{"count":1}'),
+      screen.getByText('skill.skillManagement.detail.publishReferencesDescription_one:{"count":1}'),
     ).toBeInTheDocument()
     expect(await screen.findByText('Stale Count Agent')).toBeInTheDocument()
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
@@ -3011,12 +3011,12 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
       }),
     )
 
     const referencesPopover = await screen.findByRole('dialog', {
-      name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+      name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
     })
     const sidebarReferenceLink = within(referencesPopover).getByRole('link', {
       name: /Sidebar Agent/,
@@ -3048,7 +3048,7 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
 
     expect(
       await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
       }),
     ).toBeInTheDocument()
   })
@@ -3067,7 +3067,7 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
 
     await user.click(
       await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
+        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
       }),
     )
     expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()

@@ -770,6 +770,50 @@ describe('AgentSkills', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
+  it('explains when an agent has reached the library skill limit', async () => {
+    const user = userEvent.setup()
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce({
+      code: 'too_many_agent_skills',
+    })
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => { query?: { limit?: number } }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [createWorkspaceSkill()],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
+      )
+    })
+  })
+
   it('should open the workspace skill tag filter and show skill tags', async () => {
     const user = userEvent.setup()
     renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
