@@ -1,5 +1,4 @@
 import type { ThemeProviderProps } from 'next-themes'
-/* oxlint-disable react/only-export-components -- Next.js requires metadata and layout exports in the route file. */
 import type { Metadata, Viewport } from '@/next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'

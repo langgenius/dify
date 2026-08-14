@@ -1,4 +1,3 @@
-/* oxlint-disable react/only-export-components -- Next.js requires metadata and page exports in the route file. */
 import { getRouteMetadata } from '@/app/route-metadata'
 import RosterPage from '@/features/agent-v2/roster/page'
 

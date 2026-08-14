@@ -1,4 +1,3 @@
-/* oxlint-disable react/only-export-components -- Next.js requires metadata and page exports in the route file. */
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { getRouteMetadata } from '@/app/route-metadata'
