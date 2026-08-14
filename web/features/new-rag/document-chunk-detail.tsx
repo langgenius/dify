@@ -8,9 +8,10 @@ import type {
   LogicalDocumentRevision,
 } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import {
@@ -58,6 +59,54 @@ function ChunkMarker({ label }: { label: string }) {
     <span className="mt-0.75 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
       {label}
     </span>
+  )
+}
+
+function DocumentSectionHeading({ children, level }: { children: React.ReactNode; level: number }) {
+  const headingLevel = Math.min(6, Math.max(2, Math.trunc(level) + 1))
+  const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4' | 'h5' | 'h6'
+  return (
+    <Heading
+      className={cn(
+        'wrap-break-word text-text-primary',
+        headingLevel === 2 && 'system-xl-semibold',
+        headingLevel === 3 && 'system-sm-semibold',
+        headingLevel >= 4 && 'system-sm-semibold',
+      )}
+    >
+      {children}
+    </Heading>
+  )
+}
+
+function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation('dataset')
+  const [expanded, setExpanded] = useState(true)
+
+  return (
+    <div className="mt-3 overflow-hidden rounded-lg bg-background-section">
+      <button
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-1.5 px-3.5 pt-3 text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span aria-hidden className="i-ri-file-list-3-line size-4 shrink-0" />
+        <span className="min-w-0 flex-1">{t(($) => $['newKnowledge.documentSummary'])}</span>
+        <span
+          aria-hidden
+          className={cn(
+            'i-ri-arrow-down-s-line size-4 shrink-0 transition-transform motion-reduce:transition-none',
+            !expanded && '-rotate-90',
+          )}
+        />
+      </button>
+      {expanded && (
+        <p className="px-3.5 pt-1 pb-3 system-xs-regular wrap-break-word text-text-secondary">
+          {children}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -162,16 +211,6 @@ export function DocumentChunkDetail({
             className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:h-full xl:max-h-none xl:px-0"
             data-testid="chunk-content-scroll"
           >
-            {multimodalPlacement.unplaced.length > 0 && (
-              <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
-                <h3 className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.documentImages'])}
-                </h3>
-                {multimodalPlacement.unplaced.map((item) => (
-                  <DocumentMultimodalAsset item={item} key={item.id} />
-                ))}
-              </section>
-            )}
             {chunks.map((chunk) => {
               const content = chunkContentParts(chunk)
               const markerLabel = chunkMarkerLabels.get(chunk.id)
@@ -179,6 +218,8 @@ export function DocumentChunkDetail({
               const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
                 ? outlineNode?.summary?.trim()
                 : undefined
+              const sectionLevel =
+                outlineNode?.level ?? (chunk.sectionPath.length > 0 ? chunk.sectionPath.length : 2)
               const chunkMultimodalItems = multimodalPlacement.byChunkId.get(chunk.id) ?? []
               return (
                 <section
@@ -190,18 +231,16 @@ export function DocumentChunkDetail({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-1">
                         {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
-                        <h3 className="system-sm-semibold wrap-break-word text-text-primary">
+                        <DocumentSectionHeading level={sectionLevel}>
                           {outlineNode?.title.trim() ||
                             content.heading ||
                             t(($) => $['newKnowledge.chunkHeading'], {
                               position: chunk.ordinal + 1,
                             })}
-                        </h3>
+                        </DocumentSectionHeading>
                       </div>
                       {outlineSummary && (
-                        <p className="mt-1 text-[13px] leading-5.5 wrap-break-word text-text-tertiary">
-                          {outlineSummary}
-                        </p>
+                        <DocumentSectionSummary>{outlineSummary}</DocumentSectionSummary>
                       )}
                     </div>
                     <Button
@@ -241,6 +280,16 @@ export function DocumentChunkDetail({
                 </section>
               )
             })}
+            {multimodalPlacement.unplaced.length > 0 && (
+              <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
+                <h3 className="system-sm-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.documentImages'])}
+                </h3>
+                {multimodalPlacement.unplaced.map((item) => (
+                  <DocumentMultimodalAsset item={item} key={item.id} />
+                ))}
+              </section>
+            )}
           </div>
         ) : (
           <div className="flex min-h-72 items-center justify-center px-6 text-center body-sm-regular text-text-tertiary">

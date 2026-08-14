@@ -76,15 +76,31 @@ export function DocumentChunkTreePanel({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set())
+  const [expansionOverrides, setExpansionOverrides] = useState<{
+    collapsed: Set<string>
+    expanded: Set<string>
+  }>(() => ({ collapsed: new Set(), expanded: new Set() }))
   const [focusedNodeId, setFocusedNodeId] = useState<string>()
   const [selectedNodeId, setSelectedNodeId] = useState<string>()
   const [treeHasFocus, setTreeHasFocus] = useState(false)
   const treeScrollRef = useRef<HTMLDivElement>(null)
-  const expandedNodeIds = useMemo(
-    () => new Set([...tree.byId.keys()].filter((id) => !collapsedNodeIds.has(id))),
-    [collapsedNodeIds, tree.byId],
-  )
+  const selectedBranchNodeIds = useMemo(() => {
+    const selectedNode =
+      (selectedNodeId ? tree.byId.get(selectedNodeId) : undefined) ??
+      [...tree.byId.values()].find((node) => node.targetChunkId === selectedChunkId)
+    const branch = new Set<string>()
+    let node = selectedNode
+    while (node) {
+      branch.add(node.id)
+      node = node.parentId ? tree.byId.get(node.parentId) : undefined
+    }
+    return branch
+  }, [selectedChunkId, selectedNodeId, tree.byId])
+  const expandedNodeIds = useMemo(() => {
+    const expanded = new Set([...selectedBranchNodeIds, ...expansionOverrides.expanded])
+    for (const nodeId of expansionOverrides.collapsed) expanded.delete(nodeId)
+    return expanded
+  }, [expansionOverrides, selectedBranchNodeIds])
   const visibleNodes = useMemo(
     () => visibleDocumentChunkNodes(tree.roots, expandedNodeIds),
     [expandedNodeIds, tree.roots],
@@ -111,10 +127,19 @@ export function DocumentChunkTreePanel({
   const virtualRows = rowVirtualizer.getVirtualItems()
 
   const toggleExpanded = (nodeId: string) => {
-    setCollapsedNodeIds((current) => {
-      const next = new Set(current)
-      if (next.has(nodeId)) next.delete(nodeId)
-      else next.add(nodeId)
+    const expanded = expandedNodeIds.has(nodeId)
+    setExpansionOverrides((current) => {
+      const next = {
+        collapsed: new Set(current.collapsed),
+        expanded: new Set(current.expanded),
+      }
+      if (expanded) {
+        next.expanded.delete(nodeId)
+        next.collapsed.add(nodeId)
+      } else {
+        next.collapsed.delete(nodeId)
+        next.expanded.add(nodeId)
+      }
       return next
     })
   }
@@ -145,10 +170,10 @@ export function DocumentChunkTreePanel({
     else if (event.key === 'Home') nextId = visibleNodes[0]?.node.id
     else if (event.key === 'End') nextId = visibleNodes.at(-1)?.node.id
     else if (event.key === 'ArrowRight' && current.node.children.length) {
-      if (collapsedNodeIds.has(nodeId)) toggleExpanded(nodeId)
+      if (!expandedNodeIds.has(nodeId)) toggleExpanded(nodeId)
       else nextId = current.node.children[0]?.id
     } else if (event.key === 'ArrowLeft') {
-      if (current.node.children.length && !collapsedNodeIds.has(nodeId)) toggleExpanded(nodeId)
+      if (current.node.children.length && expandedNodeIds.has(nodeId)) toggleExpanded(nodeId)
       else if (parentId && tree.byId.has(parentId)) nextId = parentId
     } else if (event.key === 'Enter' || event.key === ' ') selectNode(current.node)
     else return
@@ -159,7 +184,7 @@ export function DocumentChunkTreePanel({
   const renderTreeItem = (item: (typeof visibleNodes)[number], style?: React.CSSProperties) => {
     const { depth, node, positionInSet, setSize } = item
     const hasChildren = node.children.length > 0
-    const expanded = !collapsedNodeIds.has(node.id)
+    const expanded = expandedNodeIds.has(node.id)
     const label = chunkTreeLabel(node.label)
     return (
       <button

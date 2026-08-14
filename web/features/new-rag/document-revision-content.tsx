@@ -188,7 +188,7 @@ function LoadedDocumentRevisionContent({
   ])
 
   return (
-    <div className="mt-7 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
+    <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
       <DocumentChunkTreePanel
         chunkCount={chunks.length}
         error={Boolean(chunksQuery.error)}

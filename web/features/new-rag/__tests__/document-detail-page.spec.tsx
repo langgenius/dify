@@ -16,6 +16,13 @@ import copy from 'copy-to-clipboard'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
 
+const multimodalAssetGet = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: multimodalAssetGet,
+}))
+
 vi.mock('../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -690,6 +697,9 @@ describe('DocumentDetailPage', () => {
     multimodalQuery.data = undefined
     multimodalQuery.error = null
     multimodalQuery.isPending = false
+    multimodalAssetGet.mockImplementation(
+      async () => new Response(new Blob(['image-bytes'], { type: 'image/png' })),
+    )
     tasksQuery.data = { pages: [{ items: [] }] }
     tasksQuery.error = null
     tasksQuery.hasNextPage = false
@@ -887,7 +897,8 @@ describe('DocumentDetailPage', () => {
     )
   })
 
-  it('renders the persisted outline tree and summaries while hiding a legacy title chunk', () => {
+  it('renders collapsible outline summaries and semantic heading levels', async () => {
+    const user = userEvent.setup()
     chunksQuery.data = {
       pages: [
         {
@@ -969,11 +980,29 @@ describe('DocumentDetailPage', () => {
     expect(within(tree).queryByRole('treeitem', { name: '#0' })).not.toBeInTheDocument()
     expect(screen.getByText('Generated guide summary.')).toBeInTheDocument()
     expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
+    const summaryButtons = screen.getAllByRole('button', {
+      name: 'dataset.newKnowledge.documentSummary',
+    })
+    expect(summaryButtons[0]).toHaveAttribute('aria-expanded', 'true')
+    await user.click(summaryButtons[0]!)
+    expect(summaryButtons[0]).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Generated guide summary.')).not.toBeInTheDocument()
+    expect(screen.getByText('Generated setup summary.')).toBeInTheDocument()
     expect(screen.getByText('Guide body')).toBeInTheDocument()
     expect(screen.getByText('Setup body')).toBeInTheDocument()
+    const article = screen.getByRole('article')
+    expect(
+      within(article).getByRole('heading', { level: 2, name: 'Guide Operating safely' }),
+    ).toBeInTheDocument()
+    expect(within(article).getByRole('heading', { level: 3, name: 'Setup' })).toBeInTheDocument()
   })
 
-  it('renders extracted document images next to the chunk selected by canonical offsets', () => {
+  it('loads protected document images next to the chunk selected by canonical offsets', async () => {
+    const createObjectUrl = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValueOnce('blob:asset')
+      .mockReturnValueOnce('blob:thumbnail')
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     chunksQuery.data = {
       pages: [
         {
@@ -1012,12 +1041,75 @@ describe('DocumentDetailPage', () => {
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    const image = screen.getByRole('img', { name: 'Screenshot of the source configuration' })
-    expect(image).toHaveAttribute('src', '/console/api/knowledge-fs/image-1?variant=thumbnail')
+    const image = await screen.findByRole('img', {
+      name: 'Screenshot of the source configuration',
+    })
+    expect(image).toHaveAttribute('src', 'blob:asset')
+    expect(multimodalAssetGet).toHaveBeenNthCalledWith(
+      1,
+      '/knowledge-fs/image-1',
+      { signal: expect.any(AbortSignal) },
+      { needAllResponseContent: true, silent: true },
+    )
     fireEvent.error(image)
-    expect(image).toHaveAttribute('src', '/console/api/knowledge-fs/image-1')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: 'Screenshot of the source configuration' }),
+      ).toHaveAttribute('src', 'blob:thumbnail'),
+    )
+    expect(multimodalAssetGet).toHaveBeenNthCalledWith(
+      2,
+      '/knowledge-fs/image-1?variant=thumbnail',
+      { signal: expect.any(AbortSignal) },
+      { needAllResponseContent: true, silent: true },
+    )
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
+    expect(createObjectUrl).toHaveBeenCalledTimes(2)
     expect(screen.getByText('Screenshot of the source configuration')).toBeInTheDocument()
     expect(screen.getByText('The image caption follows.')).toBeInTheDocument()
+  })
+
+  it('shows images without location metadata after the document chunks', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              id: 'chapter',
+              ordinal: 1,
+              sectionPath: ['Chapter'],
+              text: 'Chapter\n\nChapter body',
+            }),
+          ],
+        },
+      ],
+    }
+    multimodalQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-08-07T10:00:00Z',
+      document_asset_id: 'asset-1',
+      id: 'manifest-1',
+      items: [
+        {
+          asset_url: '/image-without-location',
+          caption: 'Screenshot without location metadata',
+          id: 'image-without-location',
+          modality: 'image',
+          section_path: [],
+        },
+      ],
+      manifest_version: 'document-multimodal-manifest-v1',
+      version: 1,
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const article = screen.getByRole('article')
+    const chunkHeading = within(article).getByRole('heading', { level: 2, name: 'Chapter' })
+    const image = screen.getByRole('img', { name: 'Screenshot without location metadata' })
+    expect(chunkHeading.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 
   it('labels flat document chunks by their visible order', () => {
@@ -1491,6 +1583,12 @@ describe('DocumentDetailPage', () => {
               text: 'Child content',
             }),
             chunk({ id: 'second', ordinal: 3, sectionPath: ['Second root'] }),
+            chunk({
+              id: 'second-child',
+              ordinal: 4,
+              parentChunkId: 'second',
+              sectionPath: ['Second root', 'Hidden child'],
+            }),
           ],
         },
       ],
@@ -1501,6 +1599,8 @@ describe('DocumentDetailPage', () => {
     const parent = screen.getByRole('treeitem', { name: /Parent node/ })
     const child = screen.getByRole('treeitem', { name: /Child node/ })
     const second = screen.getByRole('treeitem', { name: /Second root/ })
+    expect(second).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('treeitem', { name: /Hidden child/ })).not.toBeInTheDocument()
     tree.focus()
     fireEvent.keyDown(tree, { key: 'ArrowRight' })
     expect(tree).toHaveAttribute('aria-activedescendant', child.id)
