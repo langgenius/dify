@@ -99,7 +99,9 @@ const fetchTextWithRetry = async (url: string) => {
     }
   }
 
-  throw lastError
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Fetching the proxy response failed with a non-Error value.', { cause: lastError })
 }
 
 const spawnCli = (args: readonly string[], cwd: string) => {
