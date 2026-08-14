@@ -1187,6 +1187,12 @@ class Conversation(Base):
             sa.text("updated_at DESC"),
             postgresql_where=sa.text("is_deleted IS false"),
         ),
+        sa.Index(
+            "conversation_is_deleted_updated_at_idx",
+            "is_deleted",
+            "updated_at",
+            postgresql_where=sa.text("is_deleted IS true"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
