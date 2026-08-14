@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "Uploading {{packageName}}...",
   "installModal.viewDetails": "View Details",
   "installPlugin": "Install integration",
+  "list.emptyInstallFromMarketplace": "You can install {{category}} from the <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "No Agent Strategy found",
   "list.noExtensionFound": "No Extension found",
   "list.noInstalled": "No integrations installed",

@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "Încărcarea {{packageName}}...",
   "installModal.viewDetails": "Vezi detalii",
   "installPlugin": "Instalează pluginul",
+  "list.emptyInstallFromMarketplace": "Poți instala {{category}} din <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "Nu s-a găsit nicio strategie de agent",
   "list.noExtensionFound": "Nu s-a găsit nicio extensie",
   "list.noInstalled": "Nu sunt instalate plugin-uri",

@@ -312,7 +312,10 @@ class AgentRunRunner:
                     )
                     ask_human_layer = get_ask_human_layer(run)
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
-                    model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
+                    model = llm_layer.get_model(
+                        http_client=self.dify_api_http_client,
+                        agent_run_id=self.run_id,
+                    )
                     tools = await _resolve_run_tools(
                         run,
                         plugin_daemon_http_client=self.plugin_daemon_http_client,

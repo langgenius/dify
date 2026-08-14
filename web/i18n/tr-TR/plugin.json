@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "{{packageName}} yükleniyor...",
   "installModal.viewDetails": "Ayrıntıları Görüntüle",
   "installPlugin": "Eklentiyi yükle",
+  "list.emptyInstallFromMarketplace": "{{category}} öğesini <marketplace>Marketplace</marketplace> üzerinden yükleyebilirsiniz.",
   "list.noAgentStrategyFound": "Ajan Stratejisi bulunamadı",
   "list.noExtensionFound": "Uzantı bulunamadı",
   "list.noInstalled": "Yüklü eklenti yok",

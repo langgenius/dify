@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "Завантаження {{packageName}}...",
   "installModal.viewDetails": "Переглянути деталі",
   "installPlugin": "Встановити плагін",
+  "list.emptyInstallFromMarketplace": "Ви можете встановити {{category}} з <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "Стратегію агента не знайдено",
   "list.noExtensionFound": "Розширення не знайдено",
   "list.noInstalled": "Плагіни не встановлено",

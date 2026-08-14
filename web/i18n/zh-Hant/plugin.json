@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "正在上傳 {{packageName}}...",
   "installModal.viewDetails": "查看詳情",
   "installPlugin": "安裝插件",
+  "list.emptyInstallFromMarketplace": "你可以從 <marketplace>Marketplace</marketplace> 安裝{{category}}。",
   "list.noAgentStrategyFound": "未找到代理策略",
   "list.noExtensionFound": "未找到擴展",
   "list.noInstalled": "未安裝插件",

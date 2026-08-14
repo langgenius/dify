@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "{{packageName}}をアップロード中...",
   "installModal.viewDetails": "詳細を見る",
   "installPlugin": "プラグインをインストール",
+  "list.emptyInstallFromMarketplace": "<marketplace>Marketplace</marketplace> から {{category}} をインストールできます。",
   "list.noAgentStrategyFound": "エージェント戦略が見つかりません",
   "list.noExtensionFound": "拡張機能が見つかりません",
   "list.noInstalled": "プラグインはインストールされていません",

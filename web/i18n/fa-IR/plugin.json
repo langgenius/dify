@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "آپلود {{packageName}}...",
   "installModal.viewDetails": "نمایش جزئیات",
   "installPlugin": "افزونه را نصب کنید",
+  "list.emptyInstallFromMarketplace": "می‌توانید {{category}} را از <marketplace>Marketplace</marketplace> نصب کنید.",
   "list.noAgentStrategyFound": "هیچ استراتژی عاملی یافت نشد",
   "list.noExtensionFound": "هیچ افزونه‌ای یافت نشد",
   "list.noInstalled": "هیچ افزونه ای نصب نشده است",

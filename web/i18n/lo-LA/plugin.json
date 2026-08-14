@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "ກຳລັງອັບໂຫຼດ {{packageName}}...",
   "installModal.viewDetails": "ເບິ່ງລາຍລະອຽດ",
   "installPlugin": "ຕິດຕັ້ງການເຊື່ອມຕໍ່",
+  "list.emptyInstallFromMarketplace": "ທ່ານສາມາດຕິດຕັ້ງ {{category}} ຈາກ <marketplace>Marketplace</marketplace> ໄດ້.",
   "list.noAgentStrategyFound": "ບໍ່ພົບກົນລະຍຸດຕົວແທນ",
   "list.noExtensionFound": "ບໍ່ພົບສ່ວນຂະຫຍຍ",
   "list.noInstalled": "ບໍ່ມີການເຊື່ອມຕໍ່ທີ່ຕິດຕັ້ງໄວ້",

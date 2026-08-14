@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "جارٍ تحميل {{packageName}}...",
   "installModal.viewDetails": "عرض التفاصيل",
   "installPlugin": "تثبيت الإضافة",
+  "list.emptyInstallFromMarketplace": "يمكنك تثبيت {{category}} من <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "لم يتم العثور على استراتيجية وكيل",
   "list.noExtensionFound": "لم يتم العثور على ملحق",
   "list.noInstalled": "لم يتم تثبيت أي إضافات",

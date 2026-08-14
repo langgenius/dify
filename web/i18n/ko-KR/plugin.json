@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "{{packageName}} 업로드 중...",
   "installModal.viewDetails": "세부 정보 보기",
   "installPlugin": "플러그인 설치",
+  "list.emptyInstallFromMarketplace": "<marketplace>Marketplace</marketplace>에서 {{category}}을(를) 설치할 수 있습니다.",
   "list.noAgentStrategyFound": "에이전트 전략을 찾을 수 없습니다.",
   "list.noExtensionFound": "확장을 찾을 수 없습니다.",
   "list.noInstalled": "설치된 플러그인이 없습니다.",

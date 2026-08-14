@@ -214,6 +214,7 @@
   "installModal.uploadingPackage": "กําลังอัปโหลด {{packageName}}...",
   "installModal.viewDetails": "ดูรายละเอียด",
   "installPlugin": "ติดตั้งปลั๊กอิน",
+  "list.emptyInstallFromMarketplace": "คุณสามารถติดตั้ง {{category}} จาก <marketplace>Marketplace</marketplace> ได้",
   "list.noAgentStrategyFound": "ไม่พบกลยุทธ์ตัวแทน",
   "list.noExtensionFound": "ไม่พบส่วนขยาย",
   "list.noInstalled": "ไม่ได้ติดตั้งปลั๊กอิน",
