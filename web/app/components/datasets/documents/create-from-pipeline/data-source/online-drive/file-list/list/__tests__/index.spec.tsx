@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'

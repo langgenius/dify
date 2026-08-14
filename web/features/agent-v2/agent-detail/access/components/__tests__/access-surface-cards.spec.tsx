@@ -75,22 +75,6 @@ vi.mock('@/context/permission-state', async () => {
     },
   }))
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_notes: '',
-    },
-  }))
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     account: {
@@ -509,6 +493,23 @@ describe('Agent access surface cards', () => {
           }),
         )
       })
+    })
+
+    it('should not show the multi-environment settings notice', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should keep embedded disabled until the backing app id and web app token are available', () => {

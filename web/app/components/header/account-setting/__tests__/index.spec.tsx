@@ -28,11 +28,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -150,7 +145,7 @@ const baseConsoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
+    plan: null,
     role: 'owner',
   },
   isCurrentWorkspaceManager: true,
@@ -158,13 +153,6 @@ const baseConsoleState: ConsoleStateFixture = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.1.0',
-    latest_version: '0.1.0',
-    release_notes: '',
-    version: '0.1.0',
-  },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',

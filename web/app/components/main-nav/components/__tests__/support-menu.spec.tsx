@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,7 +6,6 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, screen } from '@testing-library/react'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -52,11 +51,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
@@ -79,7 +73,7 @@ describe('SupportMenu', () => {
     }
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.team },
+      plan: { type: 'team' },
     })
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -90,6 +84,9 @@ describe('SupportMenu', () => {
   const renderSupportMenu = () => {
     const { wrapper } = createConsoleQueryWrapper({
       accountProfile: mockConsoleState.current.userProfile,
+      accountProfileMeta: {
+        currentVersion: mockConsoleState.current.langGeniusVersionInfo.current_version,
+      },
       systemFeatures: { deployment_edition: deploymentEdition },
     })
     return render(
@@ -127,7 +124,7 @@ describe('SupportMenu', () => {
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -155,7 +152,7 @@ describe('SupportMenu', () => {
   it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: false,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -170,7 +167,7 @@ describe('SupportMenu', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -188,7 +185,7 @@ describe('SupportMenu', () => {
     mockConfig.zendeskWidgetKey = ''
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -198,7 +195,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(mailToSupport).toHaveBeenCalledWith(
       'user@example.com',
-      Plan.sandbox,
+      'sandbox',
       '1.0.0',
       'support@example.com',
     )
@@ -208,7 +205,7 @@ describe('SupportMenu', () => {
     deploymentEdition = 'COMMUNITY'
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -225,7 +222,7 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
-    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.team, '1.0.0', '')
+    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', 'team', '1.0.0', '')
     expect(
       screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
     ).toHaveAttribute('href', 'mailto:support@example.com')

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
 const mockSetSettingsDestination = vi.fn()
+const mockUseDocumentTitle = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -19,10 +20,14 @@ vi.mock('use-context-selector', async (importOriginal) => {
     ...actual,
     useContext: () => ({
       indexingTechnique: 'qualified',
-      dataset: { id: 'dataset-1' },
+      dataset: { id: 'dataset-1', name: 'Dataset 1' },
     }),
   }
 })
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: mockUseDocumentTitle,
+}))
 
 const mockInvalidDocumentList = vi.fn()
 const mockInvalidDocumentDetail = vi.fn()
@@ -131,6 +136,14 @@ describe('DocumentSettings', () => {
   }
 
   describe('Rendering', () => {
+    it('uses the settings, document, and knowledge names in the document title', () => {
+      render(<DocumentSettings {...defaultProps} />)
+
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith(
+        'datasetPipeline.documentSettings.title · test-document · Dataset 1',
+      )
+    })
+
     it('should render StepTwo component when data is loaded', () => {
       render(<DocumentSettings {...defaultProps} />)
 

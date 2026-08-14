@@ -13,7 +13,7 @@
   "agentDetail.access.status.outOfService": "ຢຸດໃຫ້ບໍລິການ",
   "agentDetail.access.title": "ຈຸດເຂົ້າເຖິງ",
   "agentDetail.access.toggleSurface": "ເປີດ/ປິດ ການເຂົ້າເຖິງ {{name}}",
-  "agentDetail.access.webApp.accessUrl": "URL ການເຂົ້າເຖິງ",
+  "agentDetail.access.webApp.accessUrl": "URL ເວັບແອັບ",
   "agentDetail.access.webApp.actions.accessControl": "ການຄວບຄຸມການເຂົ້າເຖິງ",
   "agentDetail.access.webApp.actions.customize": "ປັບແຕ່ງສ່ວນໜ້າເວັບ",
   "agentDetail.access.webApp.actions.embedded": "ຝັງໄວ້ໃນເວັບໄຊ",
@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "ໂນດ",
   "agentDetail.access.workflow.table.version": "ເວີຊັນ",
   "agentDetail.access.workflow.title": "ການເຂົ້າເຖິງເວີກໂຟລ",
-  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ: ຕົວປ່ຽນສະພາບແວດລ້ອມ, ແຊນບ໋ອກຊ໌ ແລະ ໜ່ວຍຄວາມຈຳ.",
+  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ ເຊັ່ນ ຕົວປ່ຽນສະພາບແວດລ້ອມ.",
   "agentDetail.configure.advancedSettings.envEditor.add": "ເພີ່ມຕົວປ່ຽນສະພາບແວດລ້ອມ",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "ລຶບ {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "ເຊື່ອງຄ່າ {{key}}",
@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "ແກ້ໄຂຫຼ້າສຸດ",
   "roster.sort.optionsLabel": "ຕົວເລືອກການຈັດລຽງ",
   "roster.sort.recentlyCreated": "ສ້າງຫຼ້າສຸດ",
+  "roster.title": "ຕົວແທນ",
   "roster.updateSuccess": "ອັບເດດຕົວແທນສຳເລັດ.",
   "roster.usageStatus.draft": "ສະບັບຮ່າງ"
 }

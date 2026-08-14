@@ -1,7 +1,7 @@
 from typing import cast
 from unittest.mock import patch
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from services.billing_service import BillingInfo
 from services.entities.feature_entities import LimitationModel
 from services.feature_service import FeatureService
@@ -11,7 +11,7 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none():
     tenant_id = "tenant-id"
     billing_info = {
         "enabled": True,
-        "subscription": {"plan": "pro", "interval": "monthly", "education": False},
+        "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": False},
         "members": {"size": 1, "limit": 10},
         "apps": {"size": 2, "limit": 20},
         "documents_upload_quota": {"size": 3, "limit": 100},

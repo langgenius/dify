@@ -11,6 +11,7 @@ This test suite covers:
 
 import json
 import uuid
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import ANY, MagicMock, patch, sentinel
@@ -353,6 +354,31 @@ class TestWorkflowService:
         workflow_id = "nonexistent-workflow"
 
         result = workflow_service.get_published_workflow_by_id(app, workflow_id, session=sqlite_session)
+
+        assert result is None
+
+    @pytest.mark.parametrize(
+        ("tenant_id", "app_id"),
+        [("other-tenant", "app-123"), ("tenant-456", "other-app")],
+    )
+    def test_get_published_workflow_by_id_rejects_foreign_workflow(
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_service: WorkflowService,
+        sqlite_session: Session,
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="workflow-123",
+            tenant_id=tenant_id,
+            app_id=app_id,
+            version="v1",
+        )
+        sqlite_session.add(workflow)
+        sqlite_session.commit()
+
+        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=sqlite_session)
 
         assert result is None
 
@@ -1057,6 +1083,104 @@ class TestWorkflowService:
         assert result.marked_comment == "Initial release"
         assert retirement_candidates == set()
 
+    def test_publish_workflow_numbers_versions_from_one(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """
+        Test publish_workflow assigns an app-scoped version number starting at #1.
+
+        The number is what users see when a version carries no name, so it has to be
+        stable and monotonic per app rather than derived from list position.
+        """
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
+        sqlite_session.add(draft)
+        sqlite_session.commit()
+
+        with (
+            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch(
+                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
+        ):
+            first, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            second, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+
+        assert first.version_number == 1
+        assert second.version_number == 2
+
+    def test_publish_workflow_does_not_reuse_a_deleted_version_number(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """
+        Test version numbers are never handed out twice, even after a version is deleted.
+
+        Deployment records and audit logs refer to versions by number, so reusing one
+        would make two different workflows share an identity.
+        """
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
+        sqlite_session.add(draft)
+        sqlite_session.commit()
+
+        with (
+            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch(
+                "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
+        ):
+            published, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            sqlite_session.flush()
+            sqlite_session.delete(published)
+            sqlite_session.flush()
+
+            republished, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+
+        assert republished.version_number == 2
+
+    def test_publish_workflow_numbers_each_app_independently(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """
+        Test the counter is scoped per app rather than global.
+
+        Every app starts its own sequence at #1; a busy neighbour must not advance it.
+        """
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+
+        published: list[Workflow] = []
+        for app_id in ("app-first", "app-second"):
+            app = TestWorkflowAssociatedDataFactory.create_app(app_id=app_id)
+            draft = TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id=f"draft-{app_id}",
+                app_id=app_id,
+                version=Workflow.VERSION_DRAFT,
+                graph=graph,
+            )
+            sqlite_session.add(draft)
+            sqlite_session.commit()
+
+            with (
+                patch("services.workflow_service.app_published_workflow_was_updated"),
+                patch(
+                    "services.workflow_service.dify_config.DEPLOYMENT_EDITION",
+                    DeploymentEdition.COMMUNITY,
+                ),
+            ):
+                workflow, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            published.append(workflow)
+
+        assert [workflow.version_number for workflow in published] == [1, 1]
+
     def test_publish_workflow_no_draft_raises_error(self, workflow_service: WorkflowService, sqlite_session: Session):
         """
         Test publish_workflow raises error when no draft exists.
@@ -1179,6 +1303,44 @@ class TestWorkflowService:
 
         assert len(workflows) == 5
         assert has_more is False
+
+    def test_get_all_published_workflow_lists_the_draft_first(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ):
+        """
+        Test the draft heads the version list no matter how old it is.
+
+        A draft is created together with its app and its `created_at` is never refreshed,
+        so ordering purely by publish time would put it last — off the first page entirely
+        once the app has accumulated enough published versions.
+        """
+        app = TestWorkflowAssociatedDataFactory.create_app(workflow_id="workflow-3")
+        app_created_at = datetime(2026, 1, 1)
+
+        sqlite_session.add(
+            TestWorkflowAssociatedDataFactory.create_workflow(
+                workflow_id="workflow-draft",
+                version=Workflow.VERSION_DRAFT,
+                created_at=app_created_at,
+            )
+        )
+        sqlite_session.add_all(
+            [
+                TestWorkflowAssociatedDataFactory.create_workflow(
+                    workflow_id=f"workflow-{i}",
+                    version=f"2026-02-0{i} 00:00:00",
+                    created_at=app_created_at + timedelta(days=i),
+                )
+                for i in range(1, 4)
+            ]
+        )
+        sqlite_session.commit()
+
+        workflows, _ = workflow_service.get_all_published_workflow(
+            session=sqlite_session, app_model=app, page=1, limit=2, user_id=None
+        )
+
+        assert [workflow.id for workflow in workflows] == ["workflow-draft", "workflow-3"]
 
     def test_get_all_published_workflow_has_more(self, workflow_service: WorkflowService, sqlite_session: Session):
         """

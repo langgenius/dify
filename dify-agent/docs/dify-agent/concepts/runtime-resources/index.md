@@ -65,6 +65,8 @@ resource registry. Its private control-plane endpoints create or destroy
 backend resources from requests made by Dify API. Redis run records and event
 streams are observability state, not the Home/Workspace/Binding ledger.
 
+When `DIFY_AGENT_API_TOKEN` is configured, every private control-plane request must carry the matching Dify API `AGENT_BACKEND_API_TOKEN` as a Bearer token.
+
 ## Creation and execution flow
 
 Agent creation does not create a Home Snapshot. A config with no logical Home
@@ -115,9 +117,11 @@ Retirement is a database transition from `ACTIVE` to `RETIRED`. It prevents new
 product use without performing network I/O inside the caller's transaction.
 Product lifecycle paths commit this transition synchronously. After the
 transaction commits, one Celery task asks Dify Agent to destroy the physical
-resources. A successful collector deletes the corresponding ledger row; a
-failed collector logs the failure and leaves the RETIRED row available for a
-future retry or reconciler.
+resources. A successful collector deletes the corresponding ledger row. If a
+collector raises, the task logs the tenant, resource type, and resource ID,
+re-raises the exception so collection stops and Celery records the task as
+failed, and leaves the RETIRED row intact. No automatic retry or reconciliation
+is performed.
 
 The unified `collect_agent_resources` task is registered on normal Celery
 workers and explicitly uses the existing `retention` queue. Standard workers

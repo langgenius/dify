@@ -1,5 +1,5 @@
 import type { ActiveContext } from '@/auth/hosts'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AppRunClient } from '@/api/app-run'
 import { AppsClient } from '@/api/apps'
 import { PermittedExternalAppsClient } from '@/api/permitted-external-apps'

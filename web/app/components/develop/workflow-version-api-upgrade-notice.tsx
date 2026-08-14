@@ -4,14 +4,13 @@ import type { PropsWithChildren } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 
 export const WorkflowVersionApiContent = ({ children }: PropsWithChildren) => {
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
 
-  if (enableBilling && (!isFetchedPlan || plan.type === Plan.sandbox)) return <div aria-hidden />
+  if (enableBilling && (!isFetchedPlan || plan.type === 'sandbox')) return <div aria-hidden />
 
   return children
 }
@@ -21,7 +20,7 @@ export const WorkflowVersionApiUpgradeNotice = () => {
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
 
-  if (!isFetchedPlan || !enableBilling || plan.type !== Plan.sandbox) return null
+  if (!isFetchedPlan || !enableBilling || plan.type !== 'sandbox') return null
 
   const title = t(($) => $['upgrade.workflowVersionRun.title'])
   const description = t(($) => $['upgrade.workflowVersionRun.description'])

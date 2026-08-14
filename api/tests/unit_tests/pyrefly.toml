@@ -858,7 +858,6 @@ project-excludes = [
   "services/test_human_input_delivery_test_service.py",
   "services/test_human_input_file_upload_service.py",
   "services/test_knowledge_retrieval_inner_service.py",
-  "services/test_knowledge_service.py",
   "services/test_message_service.py",
   "services/test_messages_clean_service.py",
   "services/test_metadata_nullable_bug.py",

@@ -1,9 +1,13 @@
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  MultimodalRetrievalGuidance,
+  MultimodalRetrievalGuidanceLearnMore,
+} from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 
 type EmbeddingModelProps = {
@@ -48,19 +52,31 @@ const EmbeddingModel = ({
     <Field
       fieldTitleProps={{
         title: t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' }),
+        subTitle: <MultimodalRetrievalGuidanceLearnMore />,
         warningDot,
       }}
     >
-      <ModelSelector
-        defaultModel={
+      <MultimodalRetrievalGuidance
+        variant="pipeline"
+        embeddingModel={
           embeddingModelConfig && {
             provider: embeddingModelConfig.providerName,
             model: embeddingModelConfig.modelName,
           }
         }
-        modelList={embeddingModelList}
-        onSelect={handleEmbeddingModelChange}
-        readonly={readonly}
+        embeddingModelList={embeddingModelList}
+        className="mb-2"
+      />
+      <ModelSelector
+        value={
+          embeddingModelConfig && {
+            provider: embeddingModelConfig.providerName,
+            model: embeddingModelConfig.modelName,
+          }
+        }
+        models={embeddingModelList}
+        onValueChange={handleEmbeddingModelChange}
+        disabled={readonly}
         showDeprecatedWarnIcon
       />
     </Field>
