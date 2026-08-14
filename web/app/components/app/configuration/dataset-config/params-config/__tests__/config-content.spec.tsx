@@ -1,4 +1,4 @@
-import type { MockedFunction, MockInstance } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'

@@ -169,6 +169,11 @@ def test_server_settings_normalizes_inner_api_url_from_env(monkeypatch: pytest.M
     assert settings.inner_api_key == "inner-secret"
 
 
+@pytest.mark.parametrize(("value", "expected"), [("", None), ("  ", None), (" secret-token ", "secret-token")])
+def test_server_settings_normalizes_api_token(value: str, expected: str | None) -> None:
+    assert ServerSettings(api_token=value).api_token == expected
+
+
 def test_server_settings_allows_inner_api_url_without_key_until_a_bridge_is_used() -> None:
     settings = ServerSettings(inner_api_key="inner-secret")
     assert settings.inner_api_key == "inner-secret"

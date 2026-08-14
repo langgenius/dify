@@ -2,7 +2,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Zendesk from '../index'
 
 // Shared state for mocks

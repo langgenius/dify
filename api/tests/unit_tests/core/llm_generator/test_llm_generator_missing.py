@@ -170,7 +170,10 @@ class TestBuildSuggestionContext:
 
         result = LLMGenerator._build_suggestion_context("tenant")
         assert "Knowledge bases:\n- kb1\n- kb2" in result
-        assert "Installed tools:\n- provider/tool1 — First tool\n- provider/tool2 — Second tool" in result
+        assert (
+            'Installed tools:\n- provider/tool1 [provider_id="provider"; tool_name="tool1"] — First tool\n'
+            '- provider/tool2 [provider_id="provider"; tool_name="tool2"] — Second tool'
+        ) in result
 
     def test_both_fail(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
         def fail_query(_orm_execute_state: object) -> None:

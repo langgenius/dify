@@ -1,6 +1,6 @@
 import type { CommandConstructor } from './command'
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { BaseError, HttpClientError, newError } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { CONTRACT } from '@/help/contract'

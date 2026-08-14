@@ -1,7 +1,7 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Website from '../index'
 

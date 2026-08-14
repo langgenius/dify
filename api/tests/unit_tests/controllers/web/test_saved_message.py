@@ -12,19 +12,26 @@ from werkzeug.exceptions import NotFound
 
 from controllers.web.error import NotCompletionAppError
 from controllers.web.saved_message import SavedMessageApi, SavedMessageListApi
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
 from services.errors.message import MessageNotExistsError
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _completion_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _chat_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Последнее изменение",
   "roster.sort.optionsLabel": "Параметры сортировки",
   "roster.sort.recentlyCreated": "Недавно созданные",
+  "roster.title": "Агенты",
   "roster.updateSuccess": "Агент обновлён.",
   "roster.usageStatus.draft": "Черновик"
 }

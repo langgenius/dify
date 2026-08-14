@@ -49,6 +49,7 @@
   "join": "参加する",
   "joinTipEnd": "チームに参加する",
   "joinTipStart": "あなたを招待します",
+  "joinWorkspace": "{{workspaceName}}に参加する",
   "license.link": "オープンソースライセンス",
   "license.tip": "GitHub のオープンソースライセンスを確認してから、Dify Community Edition を開始してください。",
   "licenseExpired": "ライセンスの有効期限が切れています",

@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "แก้ไขล่าสุด",
   "roster.sort.optionsLabel": "ตัวเลือกการเรียง",
   "roster.sort.recentlyCreated": "สร้างล่าสุด",
+  "roster.title": "ตัวแทน",
   "roster.updateSuccess": "อัปเดตตัวแทนแล้ว",
   "roster.usageStatus.draft": "ฉบับร่าง"
 }

@@ -1,4 +1,4 @@
-import type { MockedFunction, MockInstance } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vite-plus/test'
 import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

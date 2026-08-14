@@ -1,7 +1,7 @@
 import type { FileListItemProps } from '../file-list-item'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PROGRESS_ERROR } from '../../constants'
 import FileListItem from '../file-list-item'
 
