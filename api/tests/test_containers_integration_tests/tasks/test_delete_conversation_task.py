@@ -73,6 +73,7 @@ def test_cleanup_deletes_owned_storage_and_preserves_drive_file(
     preserved = db_session_with_containers.get(ToolFile, drive_file_id)
     assert preserved is not None
     assert preserved.conversation_id is None
-    assert db_session_with_containers.scalar(
-        select(AgentDriveFile).where(AgentDriveFile.file_id == drive_file_id)
-    ) is not None
+    assert (
+        db_session_with_containers.scalar(select(AgentDriveFile).where(AgentDriveFile.file_id == drive_file_id))
+        is not None
+    )
