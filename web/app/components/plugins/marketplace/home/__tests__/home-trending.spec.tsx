@@ -119,11 +119,15 @@ describe('HomeTrending', () => {
     await user.click(screen.getByRole('button', { name: 'Dify Updates' }))
 
     expect(screen.getByRole('heading', { name: 'Dify v1.9 new launch' })).toBeInTheDocument()
+    const blogSlide = screen.getByRole('group', { name: 'Dify Updates' })
+    const blogLink = within(blogSlide).getByRole('link', {
+      name: 'Read more about Dify v1.9 new launch',
+    })
+    expect(blogLink).toHaveAttribute('href', 'https://dify.ai/blog')
+    expect(within(blogSlide).getAllByRole('link')).toHaveLength(1)
     expect(
-      screen.getByRole('link', {
-        name: 'Read more about Dify v1.9 new launch',
-      }),
-    ).toHaveAttribute('href', 'https://dify.ai/blog')
+      within(blogLink).getByRole('heading', { name: 'Dify v1.9 new launch' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
 

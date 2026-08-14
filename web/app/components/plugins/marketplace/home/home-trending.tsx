@@ -234,7 +234,13 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
   const opensInNewTab = /^https?:\/\//.test(banner.content.link)
 
   return (
-    <div className="flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body">
+    <Link
+      href={banner.content.link}
+      target={opensInNewTab ? '_blank' : undefined}
+      rel={opensInNewTab ? 'noopener noreferrer' : undefined}
+      aria-label={`Read more about ${banner.content.blog_title}`}
+      className="flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+    >
       <div className="flex min-w-0 flex-1 flex-col items-start overflow-hidden px-6 py-5">
         <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
           <p className="shrink-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success">
@@ -255,16 +261,13 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
                   <span className={styles.updatesDescription}>{banner.content.description}</span>
                 </p>
               )}
-              <Link
-                href={banner.content.link}
-                target={opensInNewTab ? '_blank' : undefined}
-                rel={opensInNewTab ? 'noopener noreferrer' : undefined}
-                aria-label={`Read more about ${banner.content.blog_title}`}
+              <span
+                aria-hidden
                 className="flex shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2"
               >
                 <span>Read more</span>
-                <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
-              </Link>
+                <span className="i-ri-arrow-right-s-line size-4" />
+              </span>
             </div>
           </div>
         </div>
@@ -277,7 +280,7 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
         aria-hidden
         className={cn(styles.updatesArt, 'h-[200px] shrink-0 object-cover')}
       />
-    </div>
+    </Link>
   )
 }
 
