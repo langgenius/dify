@@ -424,14 +424,7 @@ class AgentComposerService:
                 agent_id=agent_id,
                 session=session,
             )
-        # A freshly-created agent has no build draft yet, so the load
-        # path returns an empty state (variant/draft/agent_soul=None).
-        # The debug chat can render the agent's default config in that
-        # case instead of failing validation. Regression for #40733.
-        agent_soul = state.get("agent_soul")
-        if agent_soul is None:
-            return AgentSoulConfig()
-        return AgentSoulConfig.model_validate(agent_soul)
+        return AgentSoulConfig.model_validate(state["agent_soul"])
 
     @classmethod
     def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
