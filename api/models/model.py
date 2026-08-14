@@ -2309,7 +2309,7 @@ class Site(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
-    icon = mapped_column(String(255))
+    icon: Mapped[str | None] = mapped_column(String(255))
     icon_background = mapped_column(String(255))
     description = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
