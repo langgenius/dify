@@ -1,221 +1,160 @@
-"""Account-level Step-by-step Tour persistence."""
+"""Application service for account-level Step-by-step Tour use cases."""
 
+from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
-from typing import NotRequired, TypedDict
+from typing import Protocol
 
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, scoped_session
-
-from configs import dify_config
 from libs.datetime_utils import ensure_naive_utc
-from models.account import Account
-from models.onboarding import AccountStepByStepTourState
+from machinery.context import RequestContext
+from services.account_query import AccountQuery
+from services.entities.onboarding_entities import (
+    StepByStepTourPatch,
+    StepByStepTourResult,
+    StepByStepTourState,
+)
 
-STEP_BY_STEP_TOUR_TASK_IDS = frozenset(("home", "studio", "knowledge", "integration"))
-
-
-class StepByStepTourStateResponse(TypedDict):
-    first_workspace_id: str | None
-    skipped: bool
-    completed_task_ids: list[str]
-    manually_enabled_workspace_ids: list[str]
-    manually_disabled_workspace_ids: list[str]
-    updated_at: datetime | None
+_TASK_IDS = frozenset(("home", "studio", "knowledge", "integration"))
 
 
-class StepByStepTourPatch(TypedDict):
-    action: str
-    task_id: NotRequired[str | None]
+class StepByStepTourStateRepository(Protocol):
+    def get(self, account_id: str) -> StepByStepTourState | None: ...
+
+    def initialize(self, account_id: str, first_workspace_id: str) -> StepByStepTourState: ...
+
+    def mutate(
+        self,
+        account_id: str,
+        mutation: Callable[[StepByStepTourState], StepByStepTourState],
+    ) -> StepByStepTourState: ...
 
 
 class StepByStepTourService:
-    """Coordinate persisted tour state with account eligibility rules."""
-
-    @classmethod
-    def get_state(
-        cls,
+    def __init__(
+        self,
         *,
-        account: Account,
-        current_tenant_id: str,
-        session: Session | scoped_session,
-    ) -> StepByStepTourStateResponse:
-        eligible = cls.is_eligible(account)
-        state = cls._get_state(account.id, session=session)
+        accounts: AccountQuery,
+        states: StepByStepTourStateRepository,
+        enabled: bool,
+        rollout_started_at: datetime | None,
+    ) -> None:
+        self._accounts = accounts
+        self._states = states
+        self._enabled = enabled
+        self._rollout_started_at = rollout_started_at
 
-        if eligible:
-            state = cls._ensure_state(account.id, session=session, state=state)
-            if state.first_workspace_id is None:
-                state.first_workspace_id = current_tenant_id
-                session.commit()
-                session.refresh(state)
+    def get_state(self, context: RequestContext) -> StepByStepTourResult:
+        workspace_id = self._require_workspace(context)
+        account = self._accounts.get_profile(context.account_id)
+        if account is None:
+            raise RuntimeError("Console account admission resolved an unknown account")
 
-        return cls._build_response(state=state)
+        if not self._is_eligible(account.initialized_at or account.created_at):
+            return self._to_result(self._states.get(context.account_id))
 
-    @classmethod
-    def patch_state(
-        cls,
-        *,
-        account: Account,
-        current_tenant_id: str,
-        patch: StepByStepTourPatch,
-        session: Session | scoped_session,
-    ) -> StepByStepTourStateResponse:
-        state = cls._ensure_state(account.id, session=session, state=None)
-        cls._apply_action(
-            state=state,
-            action=patch["action"],
-            task_id=patch.get("task_id"),
-            current_tenant_id=current_tenant_id,
+        return self._to_result(self._states.initialize(context.account_id, workspace_id))
+
+    def patch_state(self, context: RequestContext, patch: StepByStepTourPatch) -> StepByStepTourResult:
+        workspace_id = self._require_workspace(context)
+        state = self._states.mutate(
+            context.account_id,
+            lambda current: self._apply_action(current, patch=patch, workspace_id=workspace_id),
         )
+        return self._to_result(state)
 
-        session.commit()
-        session.refresh(state)
-        return cls._build_response(state=state)
-
-    @classmethod
-    def is_eligible(cls, account: Account) -> bool:
-        if not dify_config.ENABLE_STEP_BY_STEP_TOUR:
+    def _is_eligible(self, account_started_at: datetime) -> bool:
+        if not self._enabled or self._rollout_started_at is None:
             return False
-
-        rollout_started_at = dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT
-        if rollout_started_at is None:
-            return False
-
-        account_started_at = account.initialized_at or account.created_at
-        if account_started_at is None:
-            return False
-
-        return ensure_naive_utc(account_started_at) >= ensure_naive_utc(rollout_started_at)
-
-    @classmethod
-    def _get_state(
-        cls,
-        account_id: str,
-        *,
-        session: Session | scoped_session,
-    ) -> AccountStepByStepTourState | None:
-        stmt = select(AccountStepByStepTourState).where(AccountStepByStepTourState.account_id == account_id).limit(1)
-        return session.execute(stmt).scalar_one_or_none()
-
-    @classmethod
-    def _ensure_state(
-        cls,
-        account_id: str,
-        *,
-        session: Session | scoped_session,
-        state: AccountStepByStepTourState | None,
-    ) -> AccountStepByStepTourState:
-        if state is None:
-            state = cls._get_state(account_id, session=session)
-        if state is not None:
-            return state
-
-        state = AccountStepByStepTourState(account_id=account_id)
-        session.add(state)
-        try:
-            session.flush()
-        except IntegrityError:
-            # Another tab/device can create the account row between our read and insert.
-            session.rollback()
-            state = cls._get_state(account_id, session=session)
-            if state is None:
-                raise
-        return state
+        return ensure_naive_utc(account_started_at) >= ensure_naive_utc(self._rollout_started_at)
 
     @classmethod
     def _apply_action(
         cls,
+        state: StepByStepTourState,
         *,
-        state: AccountStepByStepTourState,
-        action: str,
-        task_id: str | None,
-        current_tenant_id: str,
-    ) -> None:
-        match action:
+        patch: StepByStepTourPatch,
+        workspace_id: str,
+    ) -> StepByStepTourState:
+        match patch.action:
             case "skip":
-                state.skipped = True
-                state.manually_enabled_workspace_ids = cls._remove_id(
-                    state.manually_enabled_workspace_ids,
-                    current_tenant_id,
+                return replace(
+                    state,
+                    skipped=True,
+                    manually_enabled_workspace_ids=cls._remove_id(
+                        state.manually_enabled_workspace_ids,
+                        workspace_id,
+                    ),
                 )
             case "complete_task":
-                if task_id is None:
-                    raise ValueError("task_id is required")
-                cls._validate_task_id(task_id)
-                state.completed_task_ids = cls._add_id(state.completed_task_ids, task_id)
+                task_id = cls._require_task_id(patch.task_id)
+                return replace(state, completed_task_ids=cls._add_id(state.completed_task_ids, task_id))
             case "uncomplete_task":
-                if task_id is None:
-                    raise ValueError("task_id is required")
-                cls._validate_task_id(task_id)
-                state.completed_task_ids = cls._remove_id(state.completed_task_ids, task_id)
+                task_id = cls._require_task_id(patch.task_id)
+                return replace(state, completed_task_ids=cls._remove_id(state.completed_task_ids, task_id))
             case "enable_current_workspace":
-                state.skipped = False
-                state.manually_enabled_workspace_ids = cls._add_id(
-                    state.manually_enabled_workspace_ids,
-                    current_tenant_id,
-                )
-                state.manually_disabled_workspace_ids = cls._remove_id(
-                    state.manually_disabled_workspace_ids,
-                    current_tenant_id,
+                return replace(
+                    state,
+                    skipped=False,
+                    manually_enabled_workspace_ids=cls._add_id(
+                        state.manually_enabled_workspace_ids,
+                        workspace_id,
+                    ),
+                    manually_disabled_workspace_ids=cls._remove_id(
+                        state.manually_disabled_workspace_ids,
+                        workspace_id,
+                    ),
                 )
             case "disable_current_workspace":
-                state.manually_enabled_workspace_ids = cls._remove_id(
-                    state.manually_enabled_workspace_ids,
-                    current_tenant_id,
-                )
-                state.manually_disabled_workspace_ids = cls._add_id(
-                    state.manually_disabled_workspace_ids,
-                    current_tenant_id,
+                return replace(
+                    state,
+                    manually_enabled_workspace_ids=cls._remove_id(
+                        state.manually_enabled_workspace_ids,
+                        workspace_id,
+                    ),
+                    manually_disabled_workspace_ids=cls._add_id(
+                        state.manually_disabled_workspace_ids,
+                        workspace_id,
+                    ),
                 )
             case _:
-                raise ValueError(f"Unsupported action: {action}")
-
-    @classmethod
-    def _build_response(
-        cls,
-        *,
-        state: AccountStepByStepTourState | None,
-    ) -> StepByStepTourStateResponse:
-        if state is None:
-            return {
-                "first_workspace_id": None,
-                "skipped": False,
-                "completed_task_ids": [],
-                "manually_enabled_workspace_ids": [],
-                "manually_disabled_workspace_ids": [],
-                "updated_at": None,
-            }
-
-        return {
-            "first_workspace_id": state.first_workspace_id,
-            "skipped": state.skipped,
-            "completed_task_ids": cls._normalize_ids(state.completed_task_ids),
-            "manually_enabled_workspace_ids": cls._normalize_ids(state.manually_enabled_workspace_ids),
-            "manually_disabled_workspace_ids": cls._normalize_ids(state.manually_disabled_workspace_ids),
-            "updated_at": state.updated_at,
-        }
+                raise ValueError(f"Unsupported action: {patch.action}")
 
     @staticmethod
-    def _validate_task_id(task_id: str) -> None:
-        if task_id not in STEP_BY_STEP_TOUR_TASK_IDS:
+    def _require_workspace(context: RequestContext) -> str:
+        if context.active_workspace_id is None:
+            raise RuntimeError("Console account admission did not resolve an active workspace")
+        return context.active_workspace_id
+
+    @staticmethod
+    def _require_task_id(task_id: str | None) -> str:
+        if task_id is None:
+            raise ValueError("task_id is required")
+        if task_id not in _TASK_IDS:
             raise ValueError(f"Unsupported task_id: {task_id}")
+        return task_id
 
     @classmethod
-    def _add_id(cls, values: list[str], value: str) -> list[str]:
+    def _add_id(cls, values: tuple[str, ...], value: str) -> tuple[str, ...]:
         normalized = cls._normalize_ids(values)
-        if value in normalized:
-            return normalized
-        return [*normalized, value]
+        return normalized if value in normalized else (*normalized, value)
 
     @classmethod
-    def _remove_id(cls, values: list[str], value: str) -> list[str]:
-        return [item for item in cls._normalize_ids(values) if item != value]
+    def _remove_id(cls, values: tuple[str, ...], value: str) -> tuple[str, ...]:
+        return tuple(item for item in cls._normalize_ids(values) if item != value)
 
     @staticmethod
-    def _normalize_ids(values: list[str]) -> list[str]:
-        normalized: list[str] = []
-        for value in values:
-            if value not in normalized:
-                normalized.append(value)
-        return normalized
+    def _normalize_ids(values: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(values))
+
+    @staticmethod
+    def _to_result(state: StepByStepTourState | None) -> StepByStepTourResult:
+        if state is None:
+            return StepByStepTourResult()
+        return StepByStepTourResult(
+            first_workspace_id=state.first_workspace_id,
+            skipped=state.skipped,
+            completed_task_ids=tuple(dict.fromkeys(state.completed_task_ids)),
+            manually_enabled_workspace_ids=tuple(dict.fromkeys(state.manually_enabled_workspace_ids)),
+            manually_disabled_workspace_ids=tuple(dict.fromkeys(state.manually_disabled_workspace_ids)),
+            updated_at=state.updated_at,
+        )
