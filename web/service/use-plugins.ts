@@ -12,10 +12,7 @@ import type {
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
 import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
-import type {
-  FormOption,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   DebugInfo as DebugInfoTypes,
@@ -46,8 +43,7 @@ import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { fetchModelProviderModelList } from '@/service/common'
-import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
 // oxlint-disable-next-line no-restricted-imports
 import { get, getMarketplace, post, postMarketplace } from './base'
@@ -1506,46 +1502,6 @@ export const useMutationCheckDependencies = () => {
     mutationFn: (appId: string) => {
       return get<{ leaked_dependencies: Dependency[] }>(`/apps/imports/${appId}/check-dependencies`)
     },
-  })
-}
-
-export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
-  const provider = currentProvider?.provider
-  return useQuery({
-    queryKey: ['modelInList', provider, modelId],
-    queryFn: async () => {
-      if (!modelId || !provider) return false
-      try {
-        const modelsData = await fetchModelProviderModelList(
-          `/workspaces/current/model-providers/${provider}/models`,
-        )
-        return !!modelId && modelsData.data.some((item) => item.model === modelId)
-      } catch {
-        return false
-      }
-    },
-    enabled: !!modelId && !!provider,
-  })
-}
-
-export const usePluginInfo = (providerName?: string) => {
-  return useQuery({
-    queryKey: ['pluginInfo', providerName],
-    queryFn: async () => {
-      if (!providerName) return null
-      const parts = providerName.split('/')
-      const org = parts[0]
-      const name = parts[1]
-      try {
-        const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
-        return response.data.plugin.category === PluginCategoryEnum.model
-          ? response.data.plugin
-          : null
-      } catch {
-        return null
-      }
-    },
-    enabled: !!providerName,
   })
 }
 

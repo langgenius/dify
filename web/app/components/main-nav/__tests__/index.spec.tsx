@@ -1316,7 +1316,12 @@ describe('MainNav', () => {
       const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
       scrollViewport.scrollTop = Number(top ?? 0)
     }
-    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    const searchButton = await screen.findByRole('button', { name: 'common.operation.search' })
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(searchButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
@@ -1329,6 +1334,19 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByPlaceholderText('common.mainNav.webApps.searchPlaceholder'),
+    ).not.toBeInTheDocument()
+
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
+      'beta',
+    )
   })
 
   it('hides the installed web apps section while installed apps are loading', () => {

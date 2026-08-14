@@ -25,7 +25,6 @@ from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, Dif
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
@@ -150,7 +149,6 @@ class AgentBackendModelConfig(BaseModel):
     plugin_id: str
     model_provider: str
     model: str
-    credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -414,7 +412,6 @@ class AgentBackendRunRequestBuilder:
                     plugin_id=run_input.model.plugin_id,
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
-                    credentials=run_input.model.credentials,
                     model_settings=_agent_model_settings(run_input.model.model_settings),
                 ),
             )
@@ -607,7 +604,6 @@ class AgentBackendRunRequestBuilder:
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
-                        credentials=run_input.model.credentials,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
                     ),
                 ),
