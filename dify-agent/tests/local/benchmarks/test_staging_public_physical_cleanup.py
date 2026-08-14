@@ -228,7 +228,7 @@ def test_database_cleanup_probe_fails_closed_after_bounded_invalid_responses(tmp
     assert count_attempts == 3
 
 
-def test_parent_replays_exact_retired_workspaces_once_after_a_ledger_only_stall(
+def test_parent_replays_exact_retired_workspaces_once_after_a_db_and_vendor_stall(
     tmp_path: Path,
 ) -> None:
     journal = tmp_path / "allocations.jsonl"
@@ -237,6 +237,12 @@ def test_parent_replays_exact_retired_workspaces_once_after_a_ledger_only_stall(
     base_runner = _runner([])
     replay_payloads: list[dict[str, object]] = []
     replayed = False
+
+    def vendor_probe() -> StagingVendorRemainingSample:
+        return StagingVendorRemainingSample(
+            timestamp=datetime(2026, 8, 13, tzinfo=timezone.utc) + timedelta(seconds=clock.value),
+            target_remaining=0 if replayed else 2,
+        )
 
     def runner(argv, stdin):
         nonlocal replayed
@@ -264,7 +270,7 @@ def test_parent_replays_exact_retired_workspaces_once_after_a_ledger_only_stall(
         benchmark_tenant_id="benchmark-tenant",
         runner=runner,
         conversation_deleter=lambda _conversation_id, _end_user: 204,
-        vendor_remaining_probe=_vendor_probe(clock),
+        vendor_remaining_probe=vendor_probe,
         cleanup_timeout_seconds=100,
         monotonic=clock.monotonic,
         sleep=clock.sleep,
