@@ -34,19 +34,10 @@ export function KnowledgeModelReadinessBanner({
     }),
   )
   const readiness = query.data
-  const isPendingValidation = readiness?.configuration_state === 'pending-validation'
-  const requestedCapabilityAvailable =
-    capability !== undefined && readiness?.capabilities[capability] === true
-  if (
-    query.isPending ||
-    isPendingValidation ||
-    (!query.isError &&
-      (requestedCapabilityAvailable ||
-        (capability === undefined &&
-          readiness?.configuration_state === 'active' &&
-          !readiness.issues.length)))
-  )
-    return null
+  const configurationComplete =
+    readiness?.configuration_state === 'active' ||
+    readiness?.configuration_state === 'pending-validation'
+  if (query.isPending || (!query.isError && configurationComplete)) return null
 
   const isFailure = query.isError || readiness?.configuration_state === 'validation-failed'
   const title = query.isError

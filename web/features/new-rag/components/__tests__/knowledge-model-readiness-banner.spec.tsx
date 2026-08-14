@@ -1,3 +1,4 @@
+import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
@@ -24,7 +25,7 @@ const queryState = vi.hoisted(() => ({
     }>,
     retrieval: null,
     revision: 1,
-  },
+  } as KnowledgeFsSettingsResponse,
   isError: false,
   isPending: false,
   refetch: vi.fn(),
@@ -82,7 +83,27 @@ describe('KnowledgeModelReadinessBanner', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('stays hidden when the requested capability is ready despite an unrelated issue', () => {
+  it('stays hidden when model configuration is complete but the first profile is not active yet', () => {
+    queryState.data = {
+      ...queryState.data,
+      active_profile_available: false,
+      active_profile_revisions: { embedding: null, retrieval: null },
+      capabilities: {
+        deep: false,
+        index: false,
+        ingest: true,
+        query: false,
+        research: false,
+        source_sync: true,
+      },
+    }
+
+    render(<KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('stays hidden when model configuration is complete despite an unrelated runtime issue', () => {
     queryState.data = {
       ...queryState.data,
       capabilities: { ...queryState.data.capabilities, research: false },
@@ -92,6 +113,30 @@ describe('KnowledgeModelReadinessBanner', () => {
     render(<KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('shows configuration guidance when model setup is required', () => {
+    queryState.data = {
+      ...queryState.data,
+      active_profile_available: false,
+      active_profile_revisions: { embedding: null, retrieval: null },
+      capabilities: {
+        deep: false,
+        index: false,
+        ingest: false,
+        query: false,
+        research: false,
+        source_sync: false,
+      },
+      configuration_state: 'setup-required',
+      issues: [{ code: 'missing', field: 'embedding', retryable: false }],
+    }
+
+    render(<KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.overview.attention.modelReadiness.profilesMissing',
+    )
   })
 
   it('shows compact recovery guidance and preserves the current page', () => {
