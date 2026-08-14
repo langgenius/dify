@@ -7,7 +7,7 @@ import MarketplaceHome from './home'
 import ListWrapper from './list/list-wrapper'
 import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 
-export type MarketplaceVariant = 'default' | 'home'
+type MarketplaceVariant = 'default' | 'home'
 
 export type MarketplaceViewProps = {
   banners: PluginBanner[]
