@@ -2082,17 +2082,32 @@ def test_load_agent_soul_for_debug_selects_requested_draft(
     assert result == agent_soul
 
 
-def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session: Session):
+def test_load_agent_soul_for_debug_returns_empty_soul_when_build_draft_missing(
+    sqlite_session: Session,
+):
+    """Regression for #40733: a freshly-created agent has no DEBUG_BUILD row.
+
+    The debug chat used to surface this as `AgentVersionNotFoundError` (which
+    Flask-RESTX appended a "did you mean ..." suggestion to, making the front
+    end toast a version error). It now returns an empty `AgentSoulConfig`
+    so the chat can render the agent's default config silently.
+    """
     session = sqlite_session
 
-    with pytest.raises(AgentVersionNotFoundError):
-        AgentComposerService.load_agent_soul_for_debug(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            account_id="account-1",
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            session=session,
-        )
+    result = AgentComposerService.load_agent_soul_for_debug(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        session=session,
+    )
+
+    assert isinstance(result, AgentSoulConfig)
+    assert result.prompt.system_prompt == ""
+    assert result.tools.dify_tools == []
+    assert result.tools.cli_tools == []
+    assert result.config_skills == []
+    assert result.config_files == []
 
 
 def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
