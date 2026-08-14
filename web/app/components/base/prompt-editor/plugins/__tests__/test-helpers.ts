@@ -4,7 +4,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $getRoot, $nodesOfType, createEditor } from 'lexical'
 import { createElement } from 'react'
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 import { CaptureEditorPlugin } from './test-utils'
 
 type RenderLexicalEditorProps = {

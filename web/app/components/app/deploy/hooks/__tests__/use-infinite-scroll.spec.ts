@@ -1,7 +1,7 @@
 import type { InfiniteScrollQuery } from '../use-infinite-scroll'
 import { act, render } from '@testing-library/react'
 import { createElement } from 'react'
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useInfiniteScroll } from '../use-infinite-scroll'
 
 let intersectionCallback: IntersectionObserverCallback | undefined

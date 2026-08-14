@@ -1,7 +1,7 @@
 import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import EndpointModal from '../endpoint-modal'
 
 const mockToastNotify = vi.fn()

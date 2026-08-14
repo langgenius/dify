@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { post } from '../base'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '../use-pipeline'

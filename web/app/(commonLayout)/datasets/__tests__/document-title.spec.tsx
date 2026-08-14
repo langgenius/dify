@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { generateMetadata as generateConnectMetadata } from '../connect/page'
 import { generateMetadata as generatePipelineMetadata } from '../create-from-pipeline/page'
 import { generateMetadata as generateCreateMetadata } from '../create/page'
