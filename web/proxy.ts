@@ -21,6 +21,17 @@ const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "'none'"
 const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
+const getHttpOrigin = (value: string | undefined) => {
+  if (!value) return ''
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : ''
+  } catch {
+    return ''
+  }
+}
+
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
 
@@ -83,6 +94,8 @@ export function proxy(request: NextRequest) {
     ? ' https://challenges.cloudflare.com'
     : ''
   const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
+  const marketplaceFrameOrigin = getHttpOrigin(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX)
+  const marketplaceFrameSrc = marketplaceFrameOrigin ? ` ${marketplaceFrameOrigin}` : ''
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
@@ -95,7 +108,7 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
-    frame-src 'self' ${scheme_source} ${whiteList};
+    frame-src 'self' ${scheme_source} ${whiteList}${marketplaceFrameSrc};
     img-src * data: blob:;
     font-src 'self';
     object-src 'none';
