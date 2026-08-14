@@ -255,7 +255,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             validating={false}
             showOnVariableMap={{}}
             isEditMode={true}
-            isAgentStrategy={true}
             fieldLabelClassName="uppercase"
             customRenderField={renderField}
             override={override}
