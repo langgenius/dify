@@ -1662,16 +1662,26 @@ class Message(Base):
         if not self.answer:
             return self.answer
 
-        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
-        matches = re.findall(pattern, self.answer)
+        # Match file URLs in three shapes the agent runtime may produce:
+        #   - Markdown link:        [text](https://.../files/tools/.../timestamp=&nonce=&sign=)
+        #   - Backticked link:      `https://.../files/tools/.../timestamp=&nonce=&sign=`
+        #   - Bare URL:             https://.../files/tools/.../timestamp=&nonce=&sign=
+        # The original implementation only matched the markdown form, so
+        # bare and backticked tool file URLs kept the long-lived
+        # INTERNAL_FILES_URL host and 5xx-ed at serve time. Refs #40788.
+        url_core = r"https?:\/\/.+?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*"
+        patterns = [
+            r"\[!?.*?\]\((" + url_core + r")\)",  # [text](url)
+            r"`(" + url_core + r")`",              # `url`
+            r"(?:^|\s|\()(" + url_core + r")(?:[\s)\].,;]|$)",  # bare url
+        ]
+        urls: set[str] = set()
+        for pattern in patterns:
+            for m in re.finditer(pattern, self.answer):
+                urls.add(m.group(1))
 
-        if not matches:
+        if not urls:
             return self.answer
-
-        urls = [match[0] for match in matches]
-
-        # remove duplicate urls
-        urls = list(set(urls))
 
         if not urls:
             return self.answer
