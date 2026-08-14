@@ -139,13 +139,36 @@ class SystemFeatureService:
     @staticmethod
     def get_trial_models() -> list[str]:
         """Return hosted trial provider ids without building the public snapshot."""
+        provider_enablement = {
+            HostedTrialProvider.OPENAI: (
+                dify_config.HOSTED_OPENAI_PAID_ENABLED,
+                dify_config.HOSTED_OPENAI_TRIAL_ENABLED,
+            ),
+            HostedTrialProvider.ANTHROPIC: (
+                dify_config.HOSTED_ANTHROPIC_PAID_ENABLED,
+                dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED,
+            ),
+            HostedTrialProvider.GEMINI: (
+                dify_config.HOSTED_GEMINI_PAID_ENABLED,
+                dify_config.HOSTED_GEMINI_TRIAL_ENABLED,
+            ),
+            HostedTrialProvider.X: (
+                dify_config.HOSTED_XAI_PAID_ENABLED,
+                dify_config.HOSTED_XAI_TRIAL_ENABLED,
+            ),
+            HostedTrialProvider.DEEPSEEK: (
+                dify_config.HOSTED_DEEPSEEK_PAID_ENABLED,
+                dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED,
+            ),
+            HostedTrialProvider.TONGYI: (
+                dify_config.HOSTED_TONGYI_PAID_ENABLED,
+                dify_config.HOSTED_TONGYI_TRIAL_ENABLED,
+            ),
+        }
         return [
             provider.value
-            for provider in HostedTrialProvider
-            if (
-                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
-                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
-            )
+            for provider, (paid_enabled, trial_enabled) in provider_enablement.items()
+            if paid_enabled and trial_enabled
         ]
 
     @classmethod

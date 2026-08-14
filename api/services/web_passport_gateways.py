@@ -41,7 +41,7 @@ class PassportTokenGateway:
         try:
             return self._passport.verify(token)
         except Unauthorized as exc:
-            description = getattr(exc, "description", None) or "Invalid token."
+            description = exc.description or "Invalid token."
             raise WebPassportUnauthorizedError(description) from exc
 
     def issue(self, payload: Mapping[str, Any]) -> str:

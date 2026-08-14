@@ -61,3 +61,12 @@ def test_passport_token_gateway_translates_unauthorized() -> None:
 
     with pytest.raises(WebPassportUnauthorizedError, match="Token has expired"):
         gateway.verify("expired-token")
+
+
+def test_passport_token_gateway_defaults_empty_unauthorized_description() -> None:
+    passport = MagicMock()
+    passport.verify.side_effect = Unauthorized("")
+    gateway = PassportTokenGateway(passport=passport)
+
+    with pytest.raises(WebPassportUnauthorizedError, match="Invalid token"):
+        gateway.verify("invalid-token")
