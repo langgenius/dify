@@ -29,23 +29,6 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const resizeObserverErrorFilterScript = `
-(() => {
-  const ignoredMessages = new Set([
-    'ResizeObserver loop completed with undelivered notifications.',
-    'ResizeObserver loop limit exceeded',
-  ]);
-  const ignore = (event) => {
-    const message = event?.message || event?.reason?.message;
-    if (!ignoredMessages.has(message)) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  };
-  window.addEventListener('error', ignore, true);
-  window.addEventListener('unhandledrejection', ignore, true);
-})();
-`
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
   const queryClient = getSystemFeaturesQueryClient()
