@@ -1,8 +1,7 @@
 from threading import Event, Thread
 from unittest.mock import patch
 
-import sqlalchemy as sa
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from models import AppMode, Conversation, ToolFile
@@ -149,7 +148,7 @@ def test_cleanup_preserves_drive_file_committed_while_waiting_for_tool_file_lock
         if "from tool_files" in normalized_statement and "for update" in normalized_statement:
             tool_file_lock_started.set()
 
-    sa.event.listen(engine, "before_cursor_execute", signal_tool_file_lock)
+    event.listen(engine, "before_cursor_execute", signal_tool_file_lock)
     cleanup_thread = Thread(target=run_cleanup)
     try:
         with patch("tasks.delete_conversation_task.storage") as storage_mock:
@@ -158,7 +157,7 @@ def test_cleanup_preserves_drive_file_committed_while_waiting_for_tool_file_lock
             drive_session.commit()
             cleanup_thread.join(timeout=5)
     finally:
-        sa.event.remove(engine, "before_cursor_execute", signal_tool_file_lock)
+        event.remove(engine, "before_cursor_execute", signal_tool_file_lock)
         drive_session.rollback()
         drive_session.close()
         cleanup_thread.join(timeout=5)
