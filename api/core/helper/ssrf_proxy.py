@@ -246,10 +246,21 @@ def make_request(
 
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
+                    # The deny ACL is usually ``to_private_networks`` (RFC1918 +
+                    # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
+                    # which specific ACL tripped from Squid's response alone, but
+                    # the actionable remediation is the same in every case:
+                    # allowlist the destination in the SSRF proxy. Tell the user
+                    # exactly which env var to set so they don't have to grep the
+                    # squid config. Mention a concrete example CIDR (e.g. the
+                    # 172.21.0.0/16 from the bug report) so they can copy-paste it.
                     response.close()
                     raise ToolSSRFError(
-                        f"Access to '{url}' was blocked by SSRF protection. "
-                        f"The URL may point to a private or local network address. "
+                        f"Access to '{url}' was blocked by SSRF protection "
+                        f"(e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
+                        f"allow 172.21.0.0/16). The URL resolves to a private, "
+                        f"loopback, link-local, or otherwise non-public network "
+                        f"address. See https://github.com/infiniflow/ragflow/issues/38443."
                     )
 
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:

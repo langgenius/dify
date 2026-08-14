@@ -965,6 +965,12 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object | Tool icon metadata keyed by tool name | No |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
 #### AppPermissionQuery
 
 | Name | Type | Description | Required |
@@ -1442,6 +1448,12 @@ Form input definition.
 | summary | string |  | No |
 | word_count | integer |  | No |
 
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
+
 #### SavedMessageCreatePayload
 
 | Name | Type | Description | Required |
@@ -1564,7 +1576,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -1628,7 +1640,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
 #### WebAppCustomConfigResponse
 
@@ -1646,6 +1658,7 @@ in form definition, or a variable while the workflow is running.
 | custom_config | [WebAppCustomConfigResponse](#webappcustomconfigresponse) |  | No |
 | enable_site | boolean |  | Yes |
 | end_user_id | string |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [WebModelConfigResponse](#webmodelconfigresponse) |  | No |
 | plan | string |  | Yes |
 | site | [WebSiteResponse](#websiteresponse) |  | Yes |

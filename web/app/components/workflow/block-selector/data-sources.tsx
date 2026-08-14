@@ -112,10 +112,10 @@ function DataSources({
   )
 
   return (
-    <div className={cn('w-[400px] max-w-full min-w-0', className)}>
+    <div className={cn('w-100 max-w-full min-w-0', className)}>
       <div
         ref={wrapElemRef}
-        className="max-h-[464px] overflow-x-hidden overflow-y-auto"
+        className="max-h-116 overflow-x-hidden overflow-y-auto"
         onScroll={() => pluginRef.current?.handleScroll()}
       >
         <Tools

@@ -1,17 +1,17 @@
-import type { ExternalAPIItem } from '@/models/datasets'
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ExternalAPIPanel from '../index'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-// Mock external contexts (only mock context providers, not base components)
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
-const mockMutateExternalKnowledgeApis = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
 let mockIsLoading = false
-let mockExternalKnowledgeApiList: ExternalAPIItem[] = []
+let mockExternalKnowledgeApiList: ExternalKnowledgeApiResponse[] = []
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -19,12 +19,30 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
-    isLoading: mockIsLoading,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({
+      data: { data: mockExternalKnowledgeApiList },
+      isLoading: mockIsLoading,
+    }),
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
@@ -33,7 +51,7 @@ vi.mock('../../external-knowledge-api-card', () => ({
     api,
     canManageExternalKnowledgeApi,
   }: {
-    api: ExternalAPIItem
+    api: ExternalKnowledgeApiResponse
     canManageExternalKnowledgeApi: boolean
   }) => (
     <div
@@ -87,10 +105,8 @@ describe('ExternalAPIPanel', () => {
     })
 
     it('should render close button', () => {
-      const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton =
-        container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
-      expect(closeButton)!.toBeInTheDocument()
+      render(<ExternalAPIPanel {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -153,11 +169,7 @@ describe('ExternalAPIPanel', () => {
     it('should call onClose when close button is clicked', () => {
       const onClose = vi.fn()
       render(<ExternalAPIPanel canManageExternalKnowledgeApi={true} onClose={onClose} />)
-      // Find the close button (ActionButton with close icon)
-      const buttons = screen.getAllByRole('button')
-      const closeButton =
-        buttons.find((btn) => btn.querySelector('svg[class*="ri-close"]')) || buttons[0]
-      fireEvent.click(closeButton!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -178,26 +190,28 @@ describe('ExternalAPIPanel', () => {
       })
     })
 
-    it('should call mutateExternalKnowledgeApis in onSaveCallback', async () => {
+    it('should invalidate the generated external API query after creation', async () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
       fireEvent.click(createButton)
 
       const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      callArgs.onSaveCallback()
+      await callArgs.onSaveCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
     })
 
-    it('should call mutateExternalKnowledgeApis in onCancelCallback', async () => {
+    it('should not refresh the query when creation is canceled', async () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const createButton = screen.getByText('dataset.createExternalAPI').closest('button')!
       fireEvent.click(createButton)
 
       const callArgs = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
-      callArgs.onCancelCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(callArgs.onCancelCallback).toBeUndefined()
+      expect(mockInvalidateQueries).not.toHaveBeenCalled()
     })
   })
 

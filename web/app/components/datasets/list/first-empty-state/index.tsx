@@ -69,7 +69,7 @@ function DatasetFirstEmptyState({
 
   return (
     <div className="flex grow flex-col overflow-hidden">
-      <div className="relative min-h-[520px] flex-1 overflow-hidden">
+      <div className="relative min-h-130 flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
           {EMPTY_PLACEHOLDER_CARD_IDS.map((id) => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
@@ -80,7 +80,7 @@ function DatasetFirstEmptyState({
           className="absolute inset-0 flex items-center justify-center overflow-hidden p-2"
           aria-labelledby="datasets-first-empty-title"
         >
-          <div className="flex w-full max-w-[520px] flex-col items-center gap-6">
+          <div className="flex w-full max-w-130 flex-col items-center gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="flex size-14 items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
                 <div className="flex size-full min-w-px items-center justify-center">
@@ -89,7 +89,7 @@ function DatasetFirstEmptyState({
               </div>
               <h2
                 id="datasets-first-empty-title"
-                className="max-w-[520px] text-center system-sm-regular whitespace-pre-line text-text-tertiary"
+                className="max-w-130 text-center system-sm-regular whitespace-pre-line text-text-tertiary"
               >
                 {t(($) => $[hasActions ? 'firstEmpty.title' : 'firstEmpty.noCreatePermission'], {
                   ns: 'dataset',

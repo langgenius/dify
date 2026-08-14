@@ -10,6 +10,7 @@ from dify_agent.protocol import (
     RunCancelledEventData,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -133,7 +134,11 @@ def test_event_adapter_maps_run_failed_to_failed_result():
         RunFailedEvent(
             id="4-0",
             run_id="run-1",
-            data=RunFailedEventData(error="boom", reason="runtime"),
+            data=RunFailedEventData(
+                error="boom",
+                error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+                reason="runtime",
+            ),
         )
     )
 
@@ -142,6 +147,7 @@ def test_event_adapter_maps_run_failed_to_failed_result():
             run_id="run-1",
             source_event_id="4-0",
             error="boom",
+            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
             reason="runtime",
         )
     ]

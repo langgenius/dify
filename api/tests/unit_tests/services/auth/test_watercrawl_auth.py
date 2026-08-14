@@ -77,6 +77,7 @@ class TestWatercrawlAuth:
         mock_get.assert_called_once_with(
             "https://app.watercrawl.dev/api/v1/core/crawl-requests/",
             headers={"Content-Type": "application/json", "X-API-KEY": "test_api_key_123"},
+            timeout=httpx.Timeout(10.0),
         )
 
     @pytest.mark.parametrize(

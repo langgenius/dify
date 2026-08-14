@@ -16,6 +16,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountInFreezeError
 from controllers.console.workspace.account import (
     AccountAvatarApi,
+    AccountAvatarQuery,
     AccountDeleteApi,
     AccountDeleteVerifyApi,
     AccountInitApi,
@@ -35,6 +36,7 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAccountJoin
 from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
@@ -118,7 +120,7 @@ class TestAccountInitApi:
 
         with (
             app.test_request_context("/account/init", json=payload),
-            patch("controllers.console.workspace.account.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.workspace.account.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.workspace.account.db.session", sqlite_session),
         ):
             resp = method(api, account)
@@ -216,7 +218,7 @@ class TestAccountAvatarApiGet:
                 return_value="https://signed/example",
             ) as sign_mock,
         ):
-            result = method(api, tenant_id, user)
+            result = method(api, AccountAvatarQuery(avatar=file_id), user)
 
         assert result == {"avatar_url": "https://signed/example"}
         sign_mock.assert_called_once_with(upload_file_id=file_id)
@@ -252,11 +254,11 @@ class TestAccountAvatarApiGet:
             patch("controllers.console.workspace.account.db.session", sqlite_session),
             patch(
                 "controllers.console.workspace.account.file_helpers.get_signed_file_url",
-                return_value="https://signed/leak",
+                return_value="https://signed/example",
             ) as sign_mock,
         ):
             with pytest.raises(NotFound):
-                method(api, tenant_id, user)
+                method(api, AccountAvatarQuery(avatar=file_id), user)
 
         sign_mock.assert_not_called()
 
@@ -265,12 +267,13 @@ class TestAccountAvatarApiGet:
         [(Account, Tenant, TenantAccountJoin, UploadFile)],
         indirect=True,
     )
-    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app: Flask, sqlite_session: Session):
+    def test_get_avatar_signed_url_when_upload_owned_by_current_account_in_other_tenant(
+        self, app: Flask, sqlite_session: Session
+    ):
         api = AccountAvatarApi()
         method = inspect.unwrap(api.get)
 
-        user, tenant = persist_account_with_tenant(sqlite_session, "acc-owner")
-        tenant_id = tenant.id
+        user, _ = persist_account_with_tenant(sqlite_session, "acc-owner")
         file_id = "550e8400-e29b-41d4-a716-446655440002"
 
         other_tenant = Tenant(name="tenant-other")
@@ -285,20 +288,19 @@ class TestAccountAvatarApiGet:
             patch("controllers.console.workspace.account.db.session", sqlite_session),
             patch(
                 "controllers.console.workspace.account.file_helpers.get_signed_file_url",
-                return_value="https://signed/leak",
+                return_value="https://signed/example",
             ) as sign_mock,
         ):
-            with pytest.raises(NotFound):
-                method(api, tenant_id, user)
+            result = method(api, AccountAvatarQuery(avatar=file_id), user)
 
-        sign_mock.assert_not_called()
+        assert result == {"avatar_url": "https://signed/example"}
+        sign_mock.assert_called_once_with(upload_file_id=file_id)
 
     def test_get_avatar_https_pass_through_without_signing(self, app: Flask):
         api = AccountAvatarApi()
         method = inspect.unwrap(api.get)
 
         user = make_account("acc-owner")
-        tenant_id = "tenant-1"
         external = "https://cdn.example/avatar.png"
 
         with (
@@ -308,7 +310,7 @@ class TestAccountAvatarApiGet:
                 return_value="https://signed/should-not-use",
             ) as sign_mock,
         ):
-            result = method(api, tenant_id, user)
+            result = method(api, AccountAvatarQuery(avatar=external), user)
 
         assert result == {"avatar_url": external}
         sign_mock.assert_not_called()

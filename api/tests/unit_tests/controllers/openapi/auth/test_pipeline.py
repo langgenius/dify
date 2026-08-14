@@ -5,8 +5,9 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
-from controllers.openapi.auth.data import AuthData, Edition
+from controllers.openapi.auth.data import AuthData
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 
 
@@ -75,9 +76,12 @@ def test_guard_edition_gate_returns_404(app):
     router = _make_router()
 
     with app.test_request_context("/test"):
-        with patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE):
+        with patch(
+            "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
+            DeploymentEdition.COMMUNITY,
+        ):
 
-            @router.guard(scope=Scope.FULL, edition=frozenset({Edition.EE}))
+            @router.guard(scope=Scope.FULL, edition=frozenset({DeploymentEdition.ENTERPRISE}))
             def view(*, auth_data):
                 pass
 
@@ -93,7 +97,10 @@ def test_guard_token_type_gate_returns_403(app):
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
             patch("controllers.openapi.auth.pipeline.emit_wrong_surface"),
-            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+            patch(
+                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
         ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
@@ -114,7 +121,10 @@ def test_guard_unregistered_token_type_returns_403(app):
         with (
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
-            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+            patch(
+                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
         ):
             identity = _fake_identity()
             identity.token_type = TokenType.OAUTH_EXTERNAL_SSO
@@ -196,14 +206,17 @@ def test_guard_resets_auth_ctx_on_exception(app):
 
 def test_router_rejects_token_type_on_wrong_edition(app):
     pipeline = AuthPipeline(prepare=[], auth=[])
-    route = PipelineRoute(pipeline, required_edition=frozenset({Edition.EE}))
+    route = PipelineRoute(pipeline, required_edition=frozenset({DeploymentEdition.ENTERPRISE}))
     router = PipelineRouter({TokenType.OAUTH_EXTERNAL_SSO: route})
 
     with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
         with (
             patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
             patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
-            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+            patch(
+                "controllers.openapi.auth.pipeline.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
         ):
             identity = _make_identity(token_type=TokenType.OAUTH_EXTERNAL_SSO)
             mock_auth.return_value.authenticate.return_value = identity

@@ -6,6 +6,7 @@ import {
   SegmentedControlDivider,
   SegmentedControlItem,
 } from '@langgenius/dify-ui/segmented-control'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { AgentConfigureClearSessionConfirmDialog } from '../confirm-clear-session-dialog'
@@ -45,7 +46,7 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
         closeDelay={200}
         aria-label={ariaLabel}
         onClick={handleClick}
-        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       >
         <span
           aria-hidden
@@ -138,6 +139,7 @@ export function AgentPreviewHeader({
   const previewTipBody = t(($) => $['agentDetail.configure.rightPanel.previewTipBody'])
   const previewDisabledTip = t(($) => $['agentDetail.configure.rightPanel.previewDisabledTip'])
   const learnMoreLabel = t(($) => $['agentDetail.configure.rightPanel.learnMore'])
+  const restartLabel = t(($) => $['agentDetail.configure.preview.restart'])
   const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
   const restartButton = (
     <button
@@ -145,7 +147,7 @@ export function AgentPreviewHeader({
       disabled={refreshDisabled}
       onClick={mode === 'preview' ? onRefresh : undefined}
       className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-      aria-label={t(($) => $['agentDetail.configure.preview.restart'])}
+      aria-label={restartLabel}
     >
       <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
     </button>
@@ -155,11 +157,8 @@ export function AgentPreviewHeader({
     <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <SegmentedControl<AgentConfigureRightPanelMode>
-          value={[mode]}
-          onValueChange={(value) => {
-            const nextMode = value[0]
-            if (nextMode && (nextMode !== 'preview' || previewEnabled)) onModeChange(nextMode)
-          }}
+          value={mode}
+          onValueChange={(value) => onModeChange(value)}
           aria-label={t(($) => $['agentDetail.configure.rightPanel.modeLabel'])}
         >
           <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
@@ -202,13 +201,22 @@ export function AgentPreviewHeader({
       </div>
       <div className="flex shrink-0 items-center">
         <div className="flex items-center gap-2">
-          {mode === 'preview' ? (
-            restartButton
-          ) : (
-            <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
-              {restartButton}
-            </AgentConfigureClearSessionConfirmDialog>
-          )}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex">
+                  {mode === 'preview' ? (
+                    restartButton
+                  ) : (
+                    <AgentConfigureClearSessionConfirmDialog onConfirm={onRefresh}>
+                      {restartButton}
+                    </AgentConfigureClearSessionConfirmDialog>
+                  )}
+                </span>
+              }
+            />
+            <TooltipContent>{restartLabel}</TooltipContent>
+          </Tooltip>
           {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"
@@ -228,7 +236,7 @@ export function AgentPreviewHeader({
             <SegmentedControlDivider className="mx-3" />
             <button
               type="button"
-              aria-pressed={isChatFeaturesOpen}
+              aria-expanded={isChatFeaturesOpen}
               onClick={onToggleChatFeatures}
               className={cn(
                 'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',

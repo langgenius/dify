@@ -1,11 +1,11 @@
 'use client'
 import type { InputProps } from '../input'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '../action-button'
 
 type InputWithCopyProps = {
   showCopyButton?: boolean
@@ -40,7 +40,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
         <input
           ref={ref}
           className={cn(
-            'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+            'w-full appearance-none border border-transparent bg-components-input-bg-normal py-1.75 text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
             'rounded-lg px-3 system-sm-regular',
             showCopyButton && 'pr-8',
             inputProps.disabled &&
@@ -55,12 +55,12 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
                     size="xs"
+                    variant="ghost"
                     aria-label={safeTooltipText}
                     onClick={handleCopy}
                     onMouseLeave={reset}
-                    className="hover:bg-components-button-ghost-bg-hover"
                   >
                     {copied ? (
                       <span
@@ -73,7 +73,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
                         aria-hidden="true"
                       />
                     )}
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>{safeTooltipText}</TooltipContent>

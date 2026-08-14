@@ -18,6 +18,9 @@ Feature: Agent v2 publish
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
+    When I switch to the Agent v2 Access Point section
+    Then Agent v2 Web app access should be in service
+    And Agent v2 Backend service API access should be in service
 
   @core @prepared @stable-model
   Scenario: Publish action follows unpublished changes
@@ -61,7 +64,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
@@ -76,7 +78,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
@@ -95,7 +96,6 @@ Feature: Agent v2 publish
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
-    And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date

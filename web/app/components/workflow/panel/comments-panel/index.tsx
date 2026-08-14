@@ -8,14 +8,14 @@ import {
   RiCloseLine,
   RiFilter3Line,
 } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
@@ -39,7 +39,11 @@ const CommentsPanel = () => {
     [handleCommentIconClick],
   )
 
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+
+    select: (data) => data.profile.id,
+  })
 
   const filteredSorted = useMemo(() => {
     let data = comments
@@ -66,7 +70,7 @@ const CommentsPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg',
+        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg',
       )}
     >
       <div className="flex items-center justify-between p-4 pb-2">
@@ -90,7 +94,7 @@ const CommentsPanel = () => {
             />
           </button>
           {showFilter && (
-            <div className="absolute top-9 right-10 z-50 min-w-[184px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
+            <div className="absolute top-9 right-10 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
               <button
                 className={cn(
                   'flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',

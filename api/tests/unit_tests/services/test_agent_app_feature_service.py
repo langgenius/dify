@@ -7,14 +7,16 @@ update_features persists those flags as a new app_model_config version without
 touching model / prompt / agent_mode.
 """
 
-from types import SimpleNamespace
-from typing import Any
-
 import pytest
+from sqlalchemy.orm import Session
 
+from models.account import Account
+from models.model import App, AppMode, AppModelConfig
 from services.agent_app_feature_service import AgentAppFeatureConfigService
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
+APP_ID = "22222222-2222-2222-2222-222222222222"
+ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
 class TestValidateFeatures:
@@ -71,45 +73,47 @@ class TestValidateFeatures:
             AgentAppFeatureConfigService.validate_features(TENANT_ID, {"suggested_questions": "nope"})
 
 
-class _FakeWriteSession:
-    def __init__(self) -> None:
-        self.added: list[Any] = []
-        self.flushed = 0
-        self.committed = 0
-
-    def add(self, obj: Any) -> None:
-        self.added.append(obj)
-
-    def flush(self) -> None:
-        self.flushed += 1
-
-    def commit(self) -> None:
-        self.committed += 1
-
-
 class TestUpdateFeatures:
-    def test_persists_new_app_model_config_version(self):
-        session = _FakeWriteSession()
-        app_model = SimpleNamespace(
-            tenant_id=TENANT_ID, id="app-1", app_model_config_id=None, updated_by=None, updated_at=None
+    @pytest.mark.parametrize("sqlite_session", [(Account, App, AppModelConfig)], indirect=True)
+    def test_persists_new_app_model_config_version(self, sqlite_session: Session):
+        app_model = App(
+            id=APP_ID,
+            tenant_id=TENANT_ID,
+            name="Agent App",
+            description="",
+            mode=AppMode.AGENT,
+            enable_site=True,
+            enable_api=True,
+            max_active_requests=0,
         )
-        account = SimpleNamespace(id="acct-1")
+        account = Account(name="Test User", email="test@example.com")
+        account.id = ACCOUNT_ID
+        sqlite_session.add_all([account, app_model])
+        sqlite_session.commit()
 
         new_config = AgentAppFeatureConfigService.update_features(
-            app_model=app_model,  # type: ignore[arg-type]
-            account=account,  # type: ignore[arg-type]
+            app_model=app_model,
+            account=account,
             config={"opening_statement": "Hi!", "suggested_questions_after_answer": {"enabled": True}},
-            session=session,
+            session=sqlite_session,
         )
+        assert not sqlite_session.in_transaction()
 
         # New row carries the features but no Soul-owned model/prompt/agent_mode.
-        assert new_config.app_id == "app-1"
+        assert new_config.app_id == APP_ID
         assert new_config.opening_statement == "Hi!"
         assert new_config.model is None
         assert new_config.agent_mode is None
         # App is repointed at the new version and the write is committed.
         assert app_model.app_model_config_id == new_config.id
-        assert app_model.updated_by == "acct-1"
-        assert new_config in session.added
-        assert session.flushed == 1
-        assert session.committed == 1
+        assert app_model.updated_by == ACCOUNT_ID
+        sqlite_session.expunge_all()
+        persisted_config = sqlite_session.get(AppModelConfig, new_config.id)
+        persisted_app = sqlite_session.get(App, APP_ID)
+        assert persisted_config is not None
+        assert persisted_config.opening_statement == "Hi!"
+        assert persisted_config.model is None
+        assert persisted_config.agent_mode is None
+        assert persisted_app is not None
+        assert persisted_app.app_model_config_id == new_config.id
+        assert persisted_app.updated_by == ACCOUNT_ID

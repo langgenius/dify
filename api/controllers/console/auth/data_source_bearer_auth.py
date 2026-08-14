@@ -17,6 +17,7 @@ from ..wraps import (
     RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -87,10 +88,10 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @model_validate(ApiKeyAuthBindingPayload)
+    def post(self, req_data: ApiKeyAuthBindingPayload, current_tenant_id: str):
         # The role of the current user in the table must be admin or owner
-        payload = ApiKeyAuthBindingPayload.model_validate(console_ns.payload)
-        data = payload.model_dump()
+        data = req_data.model_dump()
         ApiKeyAuthService.validate_api_key_auth_args(data)
         try:
             ApiKeyAuthService.create_provider_auth(current_tenant_id, data, session=db.session())

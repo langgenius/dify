@@ -40,24 +40,6 @@ from models.agent_config_entities import (
 )
 
 
-class FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        assert provider_name == "openai"
-        assert model_name == "gpt-test"
-        return {"api_key": "secret-key"}
-
-
-class CapturingCredentialsProvider:
-    def __init__(self) -> None:
-        self.provider_name: str | None = None
-        self.model_name: str | None = None
-
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        self.provider_name = provider_name
-        self.model_name = model_name
-        return {"api_key": "secret-key"}
-
-
 def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
     config = AgentSoulConfig.model_validate(
         {
@@ -203,6 +185,8 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         binding=binding,
         agent=agent,
         snapshot=snapshot,
+        binding_id="binding-1",
+        backend_binding_ref="binding-ref-1",
     )
 
 
@@ -237,7 +221,7 @@ def _uploaded_workflow_files_prompt_payload(result) -> object:
 
 
 def test_builds_create_run_request_from_agent_soul_and_node_job():
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+    result = WorkflowAgentRuntimeRequestBuilder().build(_context())
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -255,7 +239,7 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
-    assert redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["credentials"] == "[REDACTED]"
+    assert "credentials" not in redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
 
 
 def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_debugger():
@@ -275,7 +259,6 @@ def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_debu
     )
 
     result = WorkflowAgentRuntimeRequestBuilder(
-        credentials_provider=FakeCredentialsProvider(),
         dify_tools_builder=tools_builder,  # type: ignore[arg-type]
     ).build(context)
 
@@ -306,7 +289,6 @@ def test_build_forwards_service_api_invoke_from_to_injected_plugin_layer_builder
     )
 
     result = WorkflowAgentRuntimeRequestBuilder(
-        credentials_provider=FakeCredentialsProvider(),
         dify_tools_builder=tools_builder,  # type: ignore[arg-type]
     ).build(context)
 
@@ -332,7 +314,6 @@ def test_build_includes_core_tools_layer_returned_by_injected_builder():
     )
 
     result = WorkflowAgentRuntimeRequestBuilder(
-        credentials_provider=FakeCredentialsProvider(),
         dify_tools_builder=FakeCoreLayerBuilder(),  # type: ignore[arg-type]
     ).build(context)
 
@@ -341,25 +322,31 @@ def test_build_includes_core_tools_layer_returned_by_injected_builder():
     assert DIFY_PLUGIN_TOOLS_LAYER_ID not in layers
 
 
-def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
+@pytest.mark.parametrize(
+    "plugin_id",
+    [
+        pytest.param(
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            id="marketplace-unique-identifier",
+        ),
+        pytest.param("langgenius/openai/openai", id="legacy-three-segment-provider-id"),
+    ],
+)
+def test_normalizes_langgenius_model_provider_for_agent_backend_transport(plugin_id: str):
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "You are careful."},
         model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            plugin_id=plugin_id,
             model_provider="langgenius/openai/openai",
             model="gpt-test",
         ),
     )
-    credentials_provider = CapturingCredentialsProvider()
-
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=credentials_provider).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     model_config = layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
-    assert credentials_provider.provider_name == "langgenius/openai/openai"
-    assert credentials_provider.model_name == "gpt-test"
     assert model_config["plugin_id"] == "langgenius/openai"
     assert model_config["model_provider"] == "openai"
 
@@ -402,7 +389,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     dify_context = context.dify_context.model_copy(update={"invoke_from": InvokeFrom.SERVICE_API})
     context = replace(context, dify_context=dify_context, workflow_run_id=None, snapshot=snapshot, binding=binding)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -430,7 +417,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert "never invent the `reference` value" in output_description
     assert "Do not call `final_output` before the upload command succeeds" in output_description
     assert "accepted file-mapping shape and the returned `reference`" in output_description
-    assert "include the returned `download_url` in that reply" in output_description
+    assert "include the returned `public_download_url` in that reply" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
@@ -461,13 +448,13 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID]["config"]
     assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
     assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
-    assert shell_config["sandbox"] == {"provider": "independent", "config": {"cpu": 2}}
+    assert "sandbox" not in shell_config
     assert result.metadata["agent_tools"] == {
         "dify_tool_count": 0,
         "dify_tool_names": [],
@@ -520,7 +507,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
         {"name": "API_KEY", "ref": "credential-2"},
         {"name": "LEGACY_SECRET_REF", "ref": "credential-3"},
     ]
-    assert config["sandbox"] is None
+    assert "sandbox" not in config
 
 
 def test_build_shell_layer_config_maps_typed_command_field():
@@ -679,7 +666,6 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
 
     dify_tools_builder = CapturingPluginLayerBuilder()
     result = WorkflowAgentRuntimeRequestBuilder(
-        credentials_provider=FakeCredentialsProvider(),
         dify_tools_builder=cast(WorkflowAgentDifyToolsBuilder, dify_tools_builder),
     ).build(context)
 
@@ -742,7 +728,13 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                 "conditions": {
                                     "logical_operator": "and",
                                     "conditions": [
-                                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
+                                        {
+                                            "id": "cond-1",
+                                            "metadata_id": "meta-1",
+                                            "name": "category",
+                                            "comparison_operator": "contains",
+                                            "value": "auth",
+                                        }
                                     ],
                                 },
                             },
@@ -778,7 +770,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -889,7 +881,7 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
@@ -917,7 +909,7 @@ def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
     )
     context = replace(context, snapshot=snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     assert all(layer["name"] != "knowledge" for layer in dumped["composition"]["layers"])
@@ -927,7 +919,7 @@ def test_build_passes_saved_session_snapshot_to_agent_backend_request():
     session_snapshot = CompositorSessionSnapshot(layers=[])
     context = replace(_context(), session_snapshot=session_snapshot)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert result.request.session_snapshot is session_snapshot
 
@@ -944,7 +936,7 @@ def test_requires_agent_soul_model_config():
     context = replace(context, snapshot=snapshot)
 
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="Agent Soul model"):
-        WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+        WorkflowAgentRuntimeRequestBuilder().build(context)
 
 
 def test_missing_previous_node_output_fails_request_build():
@@ -966,7 +958,7 @@ def test_missing_previous_node_output_fails_request_build():
     context = replace(context, binding=binding)
 
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError) as exc_info:
-        WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+        WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert exc_info.value.error_code == "missing_previous_node_output"
 
@@ -990,7 +982,7 @@ def test_invalid_previous_node_output_ref_fails_request_build():
     context = replace(context, binding=binding)
 
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError) as exc_info:
-        WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+        WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert exc_info.value.error_code == "invalid_previous_node_output_ref"
 
@@ -1011,7 +1003,7 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
     )
     context = replace(context, binding=binding)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     output_layer = dumped["composition"]["layers"][-1]["config"]
@@ -1056,7 +1048,7 @@ def test_array_output_emits_typed_items_per_array_item():
     )
     context = replace(context, binding=binding)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     output_schema = result.request.model_dump(mode="json")["composition"]["layers"][-1]["config"]["json_schema"]
     tags_schema = output_schema["properties"]["tags"]
@@ -1129,7 +1121,7 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     layers = _request_layers(result)
     agent_soul_prompt = layers["agent_soul_prompt"]["config"]["prefix"]
@@ -1173,7 +1165,7 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert _request_layers(result)["workflow_node_job_prompt"]["config"]["user"] == (
         "Review {{#previous-node.report#}} before responding."
@@ -1207,7 +1199,7 @@ def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context():
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert _previous_node_prompt_payload(result, "previous-node.report") == {
         "transfer_method": "tool_file",
@@ -1223,7 +1215,7 @@ def test_scalar_previous_node_output_appears_in_workflow_context_section():
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     user_prompt = _workflow_user_prompt(result)
 
@@ -1240,7 +1232,7 @@ def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_fronte
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert _request_layers(result)["workflow_node_job_prompt"]["config"]["user"] == (
         "Review the current request without upstream context."
@@ -1288,7 +1280,7 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert _previous_node_prompt_payload(result, "previous-node.attachments") == [
         {
@@ -1331,7 +1323,7 @@ def test_uploaded_workflow_files_are_included_without_prompt_marker():
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     user_prompt = _workflow_user_prompt(result)
     assert "- Uploaded workflow files:" in user_prompt
@@ -1371,7 +1363,7 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
         }
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     assert _previous_node_prompt_payload(result, "previous-node.report") == {
         "transfer_method": "remote_url",
@@ -1445,7 +1437,7 @@ def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
 def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+    result = WorkflowAgentRuntimeRequestBuilder().build(_context())
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -1459,7 +1451,10 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
         "mentioned_skill_names": [],
         "mentioned_file_names": [],
     }
-    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": "runtime",
+    }
     assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] is None
 
 
@@ -1468,13 +1463,13 @@ def test_workflow_run_request_contains_config_layer():
     context = _context()
     context.snapshot.config_snapshot = _soul_with_config_assets()
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
     assert DIFY_CONFIG_LAYER_ID in layer_names
     # shell enters first; config uses that shell to materialize mentioned targets.
-    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 1
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 2
     assert layer_names.index(DIFY_CONFIG_LAYER_ID) == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
     config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
     assert config["type"] == "dify.config"
@@ -1498,18 +1493,13 @@ def test_workflow_run_request_contains_config_layer():
     }
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
-    # the config layer is non-sensitive and must survive into persistable specs
-    from dify_agent.protocol import extract_runtime_layer_specs
-
-    specs = extract_runtime_layer_specs(result.request.composition)
-    assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():
     context = _context()
     context.snapshot.config_snapshot = _soul_with_config_assets()
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
     assert soul_prompt.config.prefix == "You are careful. Use tender-analyzer and sample.pdf."
@@ -1527,7 +1517,7 @@ def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name()
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
     assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."

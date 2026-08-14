@@ -180,6 +180,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
         assert "paths" in payload
         assert "schemas" in payload["components"]
         assert isinstance(payload["components"]["schemas"], dict)
+        if route == "/console/api/openapi.json":
+            assert "/test/retrieval" not in payload["paths"]
         missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
         assert not missing_refs
         get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
@@ -574,7 +576,7 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
-def test_console_agent_debug_conversation_refresh_body_is_optional(monkeypatch: pytest.MonkeyPatch):
+def test_console_agent_debug_conversation_refresh_has_no_body(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.console import bp as console_bp
 
@@ -586,13 +588,9 @@ def test_console_agent_debug_conversation_refresh_body_is_optional(monkeypatch: 
 
     payload = app.test_client().get("/console/api/openapi.json").get_json()
     operation = payload["paths"]["/agent/{agent_id}/debug-conversation/refresh"]["post"]
-    request_body = operation["requestBody"]
 
-    assert request_body["required"] is False
-    assert request_body["content"]["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/AgentDebugConversationRefreshPayload"
-    }
-    assert "AgentDebugConversationRefreshPayload" in payload["components"]["schemas"]
+    assert "requestBody" not in operation
+    assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
 
 
 def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
@@ -634,6 +632,11 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
     console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
     operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["query"]["in"] == "query"
+    assert parameters["tags"]["in"] == "query"
+    assert parameters["tags"]["schema"]["type"] == "array"
+    assert parameters["language"]["in"] == "query"
     response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
         "#/components/schemas/"
     )
@@ -661,3 +664,114 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
     builtin_tool_schema = schemas["PluginCategoryBuiltinToolProviderResponse"]
     for field in ("plugin_unique_identifier", "team_credentials", "type", "tools"):
         assert field in builtin_tool_schema["properties"]
+
+
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/plugin/installed-ids"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["category"]["in"] == "query"
+    assert parameters["category"]["required"] is True
+    assert parameters["category"]["schema"]["enum"] == [
+        "agent-strategy",
+        "datasource",
+        "extension",
+        "model",
+        "tool",
+        "trigger",
+    ]
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    response_schema = payload["components"]["schemas"][response_ref]
+
+    assert response_schema["required"] == ["plugin_ids"]
+    assert response_schema["properties"] == {
+        "plugin_ids": {
+            "items": {"type": "string"},
+            "title": "Plugin Ids",
+            "type": "array",
+        }
+    }
+
+
+def test_console_model_provider_summary_exported_schema_is_lightweight(tmp_path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/model-providers/summary"]["get"]
+    assert operation.get("parameters", []) == []
+
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    response_schema = payload["components"]["schemas"][response_ref]
+    assert response_schema["required"] == ["data", "plugins"]
+    assert response_schema["properties"]["data"]["items"]["$ref"] == (
+        "#/components/schemas/ModelProviderSummaryResponse"
+    )
+    assert response_schema["properties"]["plugins"]["additionalProperties"]["$ref"] == (
+        "#/components/schemas/ModelProviderPluginSummaryResponse"
+    )
+
+    provider_properties = payload["components"]["schemas"]["ModelProviderSummaryResponse"]["properties"]
+    assert set(provider_properties) == {
+        "configurate_methods",
+        "custom_configuration",
+        "description",
+        "icon_small",
+        "icon_small_dark",
+        "is_configured",
+        "label",
+        "plugin_id",
+        "preferred_provider_type",
+        "provider",
+        "supported_model_types",
+        "system_configuration",
+    }
+    assert "provider_credential_schema" not in provider_properties
+    assert "model_credential_schema" not in provider_properties
+
+    custom_configuration_schema = payload["components"]["schemas"]["ModelProviderCustomConfigurationSummaryResponse"]
+    custom_configuration_properties = custom_configuration_schema["properties"]
+    assert set(custom_configuration_schema["required"]) == {
+        "available_credentials",
+        "current_credential_usable",
+        "has_custom_models",
+        "status",
+    }
+    assert set(custom_configuration_properties) == {
+        "available_credentials",
+        "current_credential_id",
+        "current_credential_name",
+        "current_credential_usable",
+        "has_custom_models",
+        "status",
+    }
+    assert custom_configuration_properties["available_credentials"]["items"]["$ref"] == (
+        "#/components/schemas/CredentialConfiguration"
+    )
+    assert "has_credentials" not in custom_configuration_properties
+
+    credential_properties = payload["components"]["schemas"]["CredentialConfiguration"]["properties"]
+    assert set(credential_properties) == {
+        "credential_id",
+        "credential_name",
+    }
+    assert "encrypted_config" not in credential_properties
+
+    plugin_properties = payload["components"]["schemas"]["ModelProviderPluginSummaryResponse"]["properties"]
+    assert set(plugin_properties) == {
+        "installation_id",
+        "plugin_id",
+        "plugin_unique_identifier",
+        "runtime_type",
+        "source",
+        "version",
+    }

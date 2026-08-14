@@ -43,6 +43,7 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.datetime_utils import to_utc_timestamp
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
 from models.workflow import WorkflowNodeExecutionTriggeredFrom, WorkflowRun
@@ -451,7 +452,7 @@ def _build_human_input_required_events(
         )
         with session_maker() as session:
             for form_id, expiration_time, form_definition in session.execute(stmt):
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
                 try:
                     definition_payload = json.loads(form_definition) if form_definition else {}
                 except (TypeError, json.JSONDecodeError):
@@ -564,13 +565,15 @@ def _build_pause_event(
     variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-        paused_nodes = state.get_paused_nodes()
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
         variable_pool = state.variable_pool
 
     resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
         pause_entity.get_pause_reasons(),
         variable_pool=variable_pool,
+    )
+    paused_nodes = list(
+        dict.fromkeys(reason.node_id for reason in resolved_pause_reasons if isinstance(reason, HumanInputRequired))
     )
     reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
@@ -594,7 +597,7 @@ def _build_pause_event(
             )
             for row in session.execute(stmt):
                 form_id, expiration_time, *_rest = row
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
+                expiration_times_by_form_id[str(form_id)] = to_utc_timestamp(expiration_time)
         # Reconnect paths must preserve the same pause-reason contract as live streams;
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(

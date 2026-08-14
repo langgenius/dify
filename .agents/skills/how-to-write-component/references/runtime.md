@@ -4,6 +4,7 @@ Read this document when a change introduces Effects, navigation side effects, me
 
 ## Effects
 
+- Keep render pure: do not read or write `ref.current` during render except for predictable null-guarded lazy initialization. Update interaction-owned refs in event handlers, synchronize external-system refs after commit, and use state or derivation for rendered values.
 - Use Effects only to synchronize with a named external system such as a browser API, subscription, timer, analytics integration, non-React widget, or imperative DOM API.
 - Do not use Effects to transform render state, handle user actions, copy query data, reset state from props, or fetch data owned by framework APIs or TanStack Query.
 - Initialize query-backed forms with keyed remounts or surface-entry hydration instead of copying data through Effects.

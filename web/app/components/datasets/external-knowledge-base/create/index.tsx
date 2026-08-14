@@ -2,7 +2,7 @@
 
 import type { CreateKnowledgeBaseReq } from './declarations'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -56,9 +56,9 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
   return (
     <div className="flex grow flex-col self-stretch rounded-t-2xl border-t border-effects-highlight bg-components-panel-bg">
       <div className="flex grow justify-center self-stretch">
-        <div className="flex w-full max-w-[960px] flex-col items-center px-14 py-0">
-          <div className="flex w-full max-w-[640px] grow flex-col items-center gap-4 pt-6 pb-8">
-            <div className="relative flex flex-col items-center gap-[2px] self-stretch py-2">
+        <div className="flex w-full max-w-240 flex-col items-center px-14 py-0">
+          <div className="flex w-full max-w-160 grow flex-col items-center gap-4 pt-6 pb-8">
+            <div className="relative flex flex-col items-center gap-0.5 self-stretch py-2">
               <div className="grow self-stretch system-xl-semibold text-text-primary">
                 {t(($) => $.connectDataset, { ns: 'dataset' })}
               </div>
@@ -78,13 +78,15 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 </a>
                 <span>{t(($) => $['connectHelper.helper5'], { ns: 'dataset' })} </span>
               </p>
-              <Button
-                className="absolute top-1 left-[-44px] flex h-8 w-8 items-center justify-center rounded-full p-2"
+              <IconButton
+                aria-label={t(($) => $['operation.back'], { ns: 'common' })}
+                className="absolute top-1 -left-11 rounded-full"
                 variant="tertiary"
+                size="lg"
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className="size-4 text-text-tertiary" />
-              </Button>
+                <span aria-hidden className="i-ri-arrow-left-line size-4 text-text-tertiary" />
+              </IconButton>
             </div>
             <KnowledgeBaseInfo
               name={formData.name}
@@ -138,7 +140,10 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 <div className="system-sm-medium text-components-button-primary-text">
                   {t(($) => $['externalKnowledgeForm.connect'], { ns: 'dataset' })}
                 </div>
-                <RiArrowRightLine className="size-4 text-components-button-primary-text" />
+                <span
+                  aria-hidden
+                  className="i-ri-arrow-right-line size-4 text-components-button-primary-text"
+                />
               </Button>
             </div>
           </div>

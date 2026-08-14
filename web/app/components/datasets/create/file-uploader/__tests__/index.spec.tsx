@@ -1,6 +1,6 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_NOT_STARTED } from '../constants'
 import FileUploader from '../index'
@@ -248,7 +248,7 @@ describe('FileUploader', () => {
     it('should have correct container width', () => {
       const { container } = render(<FileUploader {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('w-[640px]')
+      expect(wrapper).toHaveClass('w-160')
     })
 
     it('should have proper spacing', () => {

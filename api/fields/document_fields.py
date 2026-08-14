@@ -90,7 +90,7 @@ class DocumentWithSession:
         return self.document.get_doc_metadata_details(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.document, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.document, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 def document_response(document: Document, *, session: Session) -> DocumentResponse:
@@ -121,6 +121,9 @@ class DocumentStatusResponse(ResponseModel):
     completed_at: int | None
     paused_at: int | None
     error: str | None
+    error_code: str | None = None
+    estimated_vector_space_mb: int | None = None
+    vector_space_limit_mb: int | None = None
     stopped_at: int | None
     completed_segments: int | None = None
     total_segments: int | None = None

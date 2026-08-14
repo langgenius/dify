@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import InputsFormContent from '../content'
 
@@ -155,7 +155,6 @@ const MockContextProvider = ({
   const [newInputs, setNewInputs] = React.useState(value.newConversationInputs)
 
   const newInputsRef = React.useRef(newInputs)
-  newInputsRef.current = newInputs
 
   const contextValue: ChatWithHistoryContextValue = {
     ...value,
@@ -167,6 +166,7 @@ const MockContextProvider = ({
       value.setCurrentConversationInputs(v)
     },
     handleNewConversationInputsChange: (v: Record<string, unknown>) => {
+      newInputsRef.current = v
       setNewInputs(v)
       value.handleNewConversationInputsChange(v)
     },

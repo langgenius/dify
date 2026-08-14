@@ -12,6 +12,11 @@ class AgentBackendConfig(BaseSettings):
         default=None,
     )
 
+    AGENT_BACKEND_API_TOKEN: str | None = Field(
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
+        default=None,
+    )
+
     AGENT_BACKEND_USE_FAKE: bool = Field(
         description="Use the deterministic in-process fake Agent backend client.",
         default=False,
@@ -39,9 +44,8 @@ class AgentBackendConfig(BaseSettings):
 
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
-            "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
-            "Requires the agent backend to be wired with a shellctl entrypoint before "
-            "shell-using Agent runs are executed."
+            "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "
+            "Requires Dify Agent to have a deployment-selected runtime backend."
         ),
         default=True,
     )

@@ -1,4 +1,6 @@
-import type { Edge, Node, OnNodeAdd } from '../../types'
+import type { IterationNodeType } from '../../nodes/iteration/types'
+import type { LoopNodeType } from '../../nodes/loop/types'
+import type { Edge, Node, OnNodeAdd, ValueSelector } from '../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
@@ -9,6 +11,7 @@ import { useIncrementSnippetUseCountMutation } from '@/service/use-snippets'
 import { CUSTOM_EDGE, NESTED_ELEMENT_Z_INDEX, NODE_WIDTH_X_OFFSET, X_OFFSET } from '../../constants'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
+import { getNodeUsedVars, updateNodeVars } from '../../nodes/_base/components/variable/utils'
 import { BlockEnum } from '../../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
 
@@ -83,6 +86,72 @@ const getInsertAnchor = (currentNodes: Node[], insertPayload?: SnippetInsertPayl
   }
 }
 
+const remapSnippetNodeVariableReferences = (node: Node, idMapping: Map<string, string>) => {
+  return getNodeUsedVars(node).reduce((currentNode, selector) => {
+    if (!Array.isArray(selector) || !selector.length) return currentNode
+
+    const mappedNodeId = idMapping.get(selector[0]!)
+    if (!mappedNodeId) return currentNode
+
+    return updateNodeVars(currentNode, selector, [mappedNodeId, ...selector.slice(1)])
+  }, node)
+}
+
+const remapSnippetNodeId = (nodeId: string | undefined, idMapping: Map<string, string>) => {
+  if (!nodeId) return nodeId
+
+  return idMapping.get(nodeId) ?? nodeId
+}
+
+const remapSnippetValueSelector = (
+  selector: ValueSelector | undefined,
+  idMapping: Map<string, string>,
+) => {
+  if (!Array.isArray(selector) || !selector.length) return selector
+
+  const mappedNodeId = idMapping.get(selector[0]!)
+  if (!mappedNodeId) return selector
+
+  return [mappedNodeId, ...selector.slice(1)]
+}
+
+const remapSnippetNodeStructuralReferences = (node: Node, idMapping: Map<string, string>): Node => {
+  const data = {
+    ...node.data,
+    iteration_id: remapSnippetNodeId(node.data.iteration_id, idMapping),
+    loop_id: remapSnippetNodeId(node.data.loop_id, idMapping),
+  }
+
+  if (data.type === BlockEnum.Iteration) {
+    const iterationData = data as IterationNodeType
+    const remappedIterationData: IterationNodeType = {
+      ...iterationData,
+      start_node_id: remapSnippetNodeId(iterationData.start_node_id, idMapping)!,
+      output_selector: remapSnippetValueSelector(iterationData.output_selector, idMapping)!,
+    }
+
+    return {
+      ...node,
+      data: remappedIterationData,
+    }
+  }
+
+  if (data.type === BlockEnum.Loop) {
+    const loopData = data as LoopNodeType
+    const remappedLoopData: LoopNodeType = {
+      ...loopData,
+      start_node_id: remapSnippetNodeId(loopData.start_node_id, idMapping)!,
+    }
+
+    return {
+      ...node,
+      data: remappedLoopData,
+    }
+  }
+
+  return { ...node, data }
+}
+
 const remapSnippetGraph = (
   currentNodes: Node[],
   snippetNodes: Node[],
@@ -120,7 +189,7 @@ const remapSnippetGraph = (
     const nextParentId = node.parentId ? idMapping.get(node.parentId) : undefined
     const isRootNode = !node.parentId
 
-    return {
+    const remappedNode = {
       ...node,
       id: idMapping.get(node.id)!,
       parentId: nextParentId,
@@ -148,6 +217,10 @@ const remapSnippetGraph = (
         })),
       },
     }
+
+    const structurallyRemappedNode = remapSnippetNodeStructuralReferences(remappedNode, idMapping)
+
+    return remapSnippetNodeVariableReferences(structurallyRemappedNode, idMapping)
   })
 
   const edges = snippetEdges.map((edge) => ({

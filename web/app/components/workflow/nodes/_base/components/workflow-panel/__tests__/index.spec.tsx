@@ -11,7 +11,7 @@ const mockHandleNodeDataUpdate = vi.fn()
 const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockSetDetail = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
+const mockSetSettingsDestination = vi.fn()
 const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
@@ -238,11 +238,10 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
@@ -672,7 +671,7 @@ describe('workflow-panel index', () => {
 
     fireEvent.click(screen.getByText('authorized-in-datasource-node'))
 
-    expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
+    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
   })
 
   it('should react to pending single run actions', () => {

@@ -12,10 +12,10 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
@@ -64,6 +64,7 @@ const AppInfoModals = ({
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [isSecretExporting, setIsSecretExporting] = useState(false)
+  const confirmDeleteInputId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
     secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
@@ -95,13 +96,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal
-          inAppDetail
-          show
-          appDetail={appDetail}
-          onClose={closeModal}
-          onSuccess={closeModal}
-        />
+        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -153,7 +148,10 @@ const AppInfoModals = ({
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <div className="mt-2">
-                <label className="mb-1 block system-sm-regular text-text-secondary">
+                <label
+                  htmlFor={confirmDeleteInputId}
+                  className="mb-1 block system-sm-regular text-text-secondary"
+                >
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -167,6 +165,7 @@ const AppInfoModals = ({
                 </label>
                 <div className="relative">
                   <Input
+                    id={confirmDeleteInputId}
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
@@ -178,7 +177,7 @@ const AppInfoModals = ({
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteInput(appDetail.name)}
-                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/[0.06] px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/[0.1]"
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
                   >
                     {t(($) => $['operation.fill'], { ns: 'common' })}
                   </button>

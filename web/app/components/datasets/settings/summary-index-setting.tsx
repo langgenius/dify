@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 type SummaryIndexSettingProps = {
   entry?: 'knowledge-base' | 'dataset-settings' | 'create-document'
@@ -87,15 +87,15 @@ const SummaryIndexSetting = ({
               {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
             <ModelSelector
-              defaultModel={
+              value={
                 summaryIndexModelConfig && {
                   provider: summaryIndexModelConfig.providerName,
                   model: summaryIndexModelConfig.modelName,
                 }
               }
-              modelList={textGenerationModelList}
-              onSelect={handleSummaryIndexModelChange}
-              readonly={readonly}
+              models={textGenerationModelList}
+              onValueChange={handleSummaryIndexModelChange}
+              disabled={readonly}
               showDeprecatedWarnIcon
             />
             <div className="mt-3 flex h-6 items-center system-xs-medium-uppercase text-text-tertiary">
@@ -120,7 +120,7 @@ const SummaryIndexSetting = ({
     return (
       <div className="space-y-4">
         <div className="flex gap-x-1">
-          <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+          <div className="flex h-7 w-45 shrink-0 items-center pt-1">
             <div className="system-sm-semibold text-text-secondary">
               {t(($) => $['form.summaryAutoGen'], { ns: 'datasetSettings' })}
             </div>
@@ -149,29 +149,28 @@ const SummaryIndexSetting = ({
         {summaryIndexSetting?.enable && (
           <>
             <div className="flex gap-x-1">
-              <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
                 </div>
               </div>
               <div className="grow">
                 <ModelSelector
-                  defaultModel={
+                  value={
                     summaryIndexModelConfig && {
                       provider: summaryIndexModelConfig.providerName,
                       model: summaryIndexModelConfig.modelName,
                     }
                   }
-                  modelList={textGenerationModelList}
-                  onSelect={handleSummaryIndexModelChange}
-                  readonly={readonly}
+                  models={textGenerationModelList}
+                  onValueChange={handleSummaryIndexModelChange}
+                  disabled={readonly}
                   showDeprecatedWarnIcon
-                  triggerClassName="h-8"
                 />
               </div>
             </div>
             <div className="flex">
-              <div className="flex h-7 w-[180px] shrink-0 items-center pt-1">
+              <div className="flex h-7 w-45 shrink-0 items-center pt-1">
                 <div className="system-sm-medium text-text-tertiary">
                   {t(($) => $['form.summaryInstructions'], { ns: 'datasetSettings' })}
                 </div>
@@ -215,17 +214,16 @@ const SummaryIndexSetting = ({
               {t(($) => $['form.summaryModel'], { ns: 'datasetSettings' })}
             </div>
             <ModelSelector
-              defaultModel={
+              value={
                 summaryIndexModelConfig && {
                   provider: summaryIndexModelConfig.providerName,
                   model: summaryIndexModelConfig.modelName,
                 }
               }
-              modelList={textGenerationModelList}
-              onSelect={handleSummaryIndexModelChange}
-              readonly={readonly}
+              models={textGenerationModelList}
+              onValueChange={handleSummaryIndexModelChange}
+              disabled={readonly}
               showDeprecatedWarnIcon
-              triggerClassName="h-8"
             />
           </div>
           <div>

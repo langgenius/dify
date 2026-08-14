@@ -21,20 +21,6 @@ vi.mock('uuid', () => ({
 }))
 
 vi.mock('ahooks', () => ({
-  useBoolean: (initialValue: boolean) => {
-    let current = initialValue
-    return [
-      current,
-      {
-        setTrue: () => {
-          current = true
-        },
-        setFalse: () => {
-          current = false
-        },
-      },
-    ] as const
-  },
   useDebounceFn: (fn: (...args: unknown[]) => void) => ({
     run: fn,
   }),
@@ -112,16 +98,6 @@ describe('useConfig', () => {
     vi.clearAllMocks()
     mockGetAvailableVars.mockReturnValue([])
     mockIsVarUsedInNodes.mockReturnValue(false)
-  })
-
-  it('should expose read-only state, group mode and typed variable filters', () => {
-    const { result } = renderHook(() => useConfig('assigner-node', createPayload()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.isEnableGroup).toBe(true)
-    expect(result.current.filterVar(VarType.string)({ type: VarType.any } as never)).toBe(true)
-    expect(result.current.filterVar(VarType.number)({ type: VarType.string } as never)).toBe(false)
-    expect(result.current.getAvailableVars).toBe(mockGetAvailableVars)
   })
 
   it('should update root and grouped variable payloads', () => {

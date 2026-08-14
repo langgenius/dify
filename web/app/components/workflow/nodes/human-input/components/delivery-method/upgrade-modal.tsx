@@ -38,19 +38,19 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
       }}
       footer={
         <>
-          <Button className="w-[72px]" onClick={() => onOpenChange(false)}>
+          <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['nodes.humanInput.deliveryMethod.upgradeTipHide'], { ns: 'workflow' })}
           </Button>
           {deploymentEdition === 'CLOUD' && (
             <PremiumBadgeButton
               size="custom"
               color="blue"
-              className="h-8 w-[93px]"
+              className="h-8 w-23.25"
               onClick={handleUpgrade}
             >
               <SparklesSoft
                 aria-hidden="true"
-                className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+                className="flex h-3.5 w-3.5 items-center py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
               />
               <div className="system-sm-medium">
                 <span className="p-1">

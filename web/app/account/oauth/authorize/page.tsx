@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
@@ -100,6 +101,11 @@ export default function OAuthAuthorize() {
     (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
     (typeof englishAppLabel === 'string' && englishAppLabel) ||
     t(($) => $.unknownApp, { ns: 'oauth' })
+  useDocumentTitle(
+    authAppInfo
+      ? `${t(($) => $.connect, { ns: 'oauth' })} ${appLabel}`
+      : t(($) => $.connect, { ns: 'oauth' }),
+  )
 
   const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
@@ -190,7 +196,7 @@ export default function OAuthAuthorize() {
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
-        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-5.5 py-5 text-text-secondary">
           {authAppInfo!.scope
             .split(/\s+/)
             .filter(Boolean)

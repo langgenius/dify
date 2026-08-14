@@ -1,13 +1,13 @@
 'use client'
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { FC } from 'react'
 import type { ChatProps } from '../chat'
-import type { InstalledApp } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
+import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from './context'
 import Header from './header'
@@ -19,23 +19,12 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const {
-    appData,
-    appChatListDataLoading,
-    chatShouldReloadKey,
-    isMobile,
-    themeBuilder,
-    sidebarCollapseState,
-  } = useChatWithHistoryContext()
+  const { appData, appChatListDataLoading, chatShouldReloadKey, isMobile, sidebarCollapseState } =
+    useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const customConfig = appData?.custom_config
   const site = appData?.site
 
   const [showSidePanel, setShowSidePanel] = useState(false)
-
-  useEffect(() => {
-    themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-  }, [site, customConfig, themeBuilder])
 
   useEffect(() => {
     if (!isSidebarCollapsed) setShowSidePanel(false)
@@ -50,7 +39,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
       {!isMobile && (
         <div
           className={cn(
-            'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+            'flex w-59 flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
             isSidebarCollapsed && 'w-0 overflow-hidden p-0!',
           )}
         >
@@ -63,7 +52,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
           <div
             className={cn(
               'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
-              showSidePanel ? 'left-0' : 'left-[-248px]',
+              showSidePanel ? 'left-0' : '-left-62',
             )}
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
@@ -87,7 +76,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
 }
 
 type ChatWithHistoryWrapProps = {
-  installedAppInfo?: InstalledApp
+  installedAppInfo?: InstalledAppResponse
   className?: string
   isNewAgent?: boolean
   renderAgentContent?: ChatProps['renderAgentContent']
@@ -100,7 +89,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const themeBuilder = useThemeContext()
 
   const {
     appData,
@@ -141,6 +129,10 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     allInputsHidden,
     initUserVariables,
   } = useChatWithHistory(installedAppInfo)
+  const theme = createTheme(
+    appData?.site?.chat_color_theme ?? null,
+    appData?.site?.chat_color_theme_inverted ?? false,
+  )
 
   return (
     <ChatWithHistoryContext.Provider
@@ -173,7 +165,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         appId,
         handleFeedback,
         currentChatInstanceRef,
-        themeBuilder,
+        theme,
         sidebarCollapseState,
         handleSidebarCollapse,
         clearChatList,

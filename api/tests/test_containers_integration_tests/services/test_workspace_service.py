@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
@@ -24,7 +25,10 @@ class TestWorkspaceService:
             patch("services.workspace_service.dify_config") as mock_dify_config,
         ):
             # Setup default mock returns
-            mock_feature_service.get_features.return_value.can_replace_logo = True
+            feature = mock_feature_service.get_features.return_value
+            feature.can_replace_logo = True
+            feature.billing.enabled = True
+            feature.billing.subscription.plan = "professional"
             mock_tenant_service.has_roles.return_value = True
             mock_dify_config.FILES_URL = "https://example.com/files"
 
@@ -112,7 +116,7 @@ class TestWorkspaceService:
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
@@ -159,7 +163,7 @@ class TestWorkspaceService:
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.OWNER
             assert result["created_at"] == tenant.created_at
@@ -214,7 +218,7 @@ class TestWorkspaceService:
             assert result is not None
             assert result["id"] == tenant.id
             assert result["name"] == tenant.name
-            assert result["plan"] == tenant.plan
+            assert result["plan"] == "professional"
             assert result["status"] == tenant.status
             assert result["role"] == TenantAccountRole.NORMAL
             assert result["created_at"] == tenant.created_at
@@ -330,8 +334,6 @@ class TestWorkspaceService:
 
         for config in test_configs:
             # Update tenant custom config
-            import json
-
             tenant.custom_config = json.dumps(config)
             db_session_with_containers.commit()
 
@@ -502,8 +504,6 @@ class TestWorkspaceService:
 
         for config in test_configs:
             # Update tenant custom config
-            import json
-
             tenant.custom_config = json.dumps(config)
             db_session_with_containers.commit()
 
@@ -561,8 +561,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """replace_webapp_logo should be None when custom_config_dict does not have the key."""
-        import json
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
@@ -583,8 +581,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """The logo URL should use dify_config.FILES_URL as the base."""
-        import json
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
@@ -606,20 +602,23 @@ class TestWorkspaceService:
     def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """next_credit_reset_date and trial_credits should NOT appear in SELF_HOSTED mode."""
+        """Cloud-only billing data should not appear in SELF_HOSTED mode."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
         mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-        mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
+        feature = mock_external_service_dependencies["feature_service"].get_features.return_value
+        feature.can_replace_logo = False
+        feature.billing.enabled = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):
             result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
 
         assert result is not None
+        assert result["plan"] is None
         assert "next_credit_reset_date" not in result
         assert "trial_credits" not in result
         assert "trial_credits_used" not in result
@@ -773,8 +772,6 @@ class TestWorkspaceService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """When plan is SANDBOX, skip paid pool and use trial pool."""
-        from enums.cloud_plan import CloudPlan
-
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies

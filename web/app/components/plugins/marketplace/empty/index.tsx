@@ -19,7 +19,7 @@ const Empty = ({ text, lightCard, className }: Props) => {
         <div
           key={index}
           className={cn(
-            'mr-3 mb-3 h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
+            'mr-3 mb-3 h-36 w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
             index % 4 === 3 && 'mr-0',
             index > 11 && 'mb-0',
             lightCard && 'bg-background-default-lighter opacity-75',

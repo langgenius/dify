@@ -12,9 +12,9 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -93,15 +93,18 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
-                  <ActionButton onClick={onClose}>
-                    <RiCloseLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    onClick={onClose}
+                  >
+                    <RiCloseLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
@@ -164,7 +167,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                   <div className="system-sm-semibold-uppercase text-text-secondary">
                     {t(($) => $['events.output'], { ns: 'pluginTrigger' })}
                   </div>
-                  <div className="relative left-[-7px]">
+                  <div className="relative -left-1.75">
                     {outputFields.map((item) => (
                       <Field
                         key={item.name}

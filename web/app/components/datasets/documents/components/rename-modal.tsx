@@ -55,7 +55,7 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
           {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
         </DialogTitle>
 
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">
+        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
           {t(($) => $['list.table.name'], { ns: 'datasetDocuments' })}
         </div>
         <Input className="mt-2 h-10" value={newName} onChange={(e) => setNewName(e.target.value)} />

@@ -1,3 +1,4 @@
+import type { SelfHostedPlanOption } from '@/app/components/billing/pricing/plans/self-hosted-plan-item/types'
 /**
  * Integration test: Self-Hosted Plan Flow
  *
@@ -15,7 +16,6 @@ import {
   getWithPremiumUrl,
 } from '@/app/components/billing/config'
 import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
-import { SelfHostedPlan } from '@/app/components/billing/type'
 import { render } from '@/test/console/render'
 
 const originalLocation = window.location
@@ -39,7 +39,7 @@ vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () 
   ),
 }))
 
-const renderSelfHostedPlanItem = (plan: SelfHostedPlan) => {
+const renderSelfHostedPlanItem = (plan: SelfHostedPlanOption) => {
   return render(<SelfHostedPlanItem plan={plan} />)
 }
 
@@ -74,14 +74,14 @@ describe('Self-Hosted Plan Flow', () => {
   // ─── 1. Plan Rendering ──────────────────────────────────────────────────
   describe('Plan rendering', () => {
     it('should render community plan with name and description', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
+      renderSelfHostedPlanItem('community')
 
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.community\.description/i)).toBeInTheDocument()
     })
 
     it('should render premium plan with cloud provider icons', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
+      renderSelfHostedPlanItem('premium')
 
       expect(screen.getByText(/plans\.premium\.name/i)).toBeInTheDocument()
       expect(screen.getByTestId('icon-azure')).toBeInTheDocument()
@@ -89,39 +89,39 @@ describe('Self-Hosted Plan Flow', () => {
     })
 
     it('should render enterprise plan without cloud provider icons', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
+      renderSelfHostedPlanItem('enterprise')
 
       expect(screen.getByText(/plans\.enterprise\.name/i)).toBeInTheDocument()
       expect(screen.queryByTestId('icon-azure')).not.toBeInTheDocument()
     })
 
     it('should not show price tip for community (free) plan', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
+      renderSelfHostedPlanItem('community')
 
       expect(screen.queryByText(/plans\.community\.priceTip/i)).not.toBeInTheDocument()
     })
 
     it('should show price tip for premium plan', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
+      renderSelfHostedPlanItem('premium')
 
       expect(screen.getByText(/plans\.premium\.priceTip/i)).toBeInTheDocument()
     })
 
     it('should render features list for each plan', () => {
-      const { unmount: unmount1 } = renderSelfHostedPlanItem(SelfHostedPlan.community)
+      const { unmount: unmount1 } = renderSelfHostedPlanItem('community')
       expect(screen.getByTestId('self-hosted-list-community')).toBeInTheDocument()
       unmount1()
 
-      const { unmount: unmount2 } = renderSelfHostedPlanItem(SelfHostedPlan.premium)
+      const { unmount: unmount2 } = renderSelfHostedPlanItem('premium')
       expect(screen.getByTestId('self-hosted-list-premium')).toBeInTheDocument()
       unmount2()
 
-      renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
+      renderSelfHostedPlanItem('enterprise')
       expect(screen.getByTestId('self-hosted-list-enterprise')).toBeInTheDocument()
     })
 
     it('should show AWS marketplace icon for premium plan button', () => {
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
+      renderSelfHostedPlanItem('premium')
 
       expect(screen.getByTestId('icon-aws-light')).toBeInTheDocument()
     })
@@ -131,7 +131,7 @@ describe('Self-Hosted Plan Flow', () => {
   describe('Navigation flow', () => {
     it('should redirect to GitHub when clicking community plan button', async () => {
       const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
+      renderSelfHostedPlanItem('community')
 
       const button = screen.getByRole('button')
       await user.click(button)
@@ -141,7 +141,7 @@ describe('Self-Hosted Plan Flow', () => {
 
     it('should redirect to AWS Marketplace when clicking premium plan button', async () => {
       const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
+      renderSelfHostedPlanItem('premium')
 
       const button = screen.getByRole('button')
       await user.click(button)
@@ -151,7 +151,7 @@ describe('Self-Hosted Plan Flow', () => {
 
     it('should redirect to Typeform when clicking enterprise plan button', async () => {
       const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
+      renderSelfHostedPlanItem('enterprise')
 
       const button = screen.getByRole('button')
       await user.click(button)

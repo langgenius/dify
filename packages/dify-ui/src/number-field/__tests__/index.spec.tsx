@@ -1,7 +1,8 @@
 import type {
-  NumberFieldButtonProps,
   NumberFieldControlsProps,
+  NumberFieldDecrementProps,
   NumberFieldGroupProps,
+  NumberFieldIncrementProps,
   NumberFieldInputProps,
   NumberFieldUnitProps,
 } from '../index'
@@ -24,8 +25,8 @@ type RenderNumberFieldOptions = {
   inputProps?: Partial<NumberFieldInputProps>
   unitProps?: Partial<NumberFieldUnitProps> & { children?: React.ReactNode }
   controlsProps?: Partial<NumberFieldControlsProps>
-  incrementProps?: Partial<NumberFieldButtonProps>
-  decrementProps?: Partial<NumberFieldButtonProps>
+  incrementProps?: Partial<NumberFieldIncrementProps>
+  decrementProps?: Partial<NumberFieldDecrementProps>
 }
 
 const renderNumberField = ({

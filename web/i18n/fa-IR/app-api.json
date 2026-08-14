@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "این کلید مخفی حذف شود؟",
   "actionMsg.ok": "تایید",
   "apiKey": "کلید API",
-  "apiKeyModal.apiSecretKey": "کلید مخفی API",
+  "apiKeyModal.apiSecretKey": "کلید API",
   "apiKeyModal.apiSecretKeyTips": "برای جلوگیری از سوء استفاده از API، از کلید API خود محافظت کنید. از استفاده از آن به صورت متن ساده در کد فرانت‌اند خودداری کنید. :)",
   "apiKeyModal.createNewSecretKey": "ایجاد کلید مخفی جدید",
   "apiKeyModal.created": "ایجاد شده",

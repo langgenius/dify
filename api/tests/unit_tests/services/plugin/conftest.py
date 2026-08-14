@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from services.feature_service import PluginInstallationScope
+from services.entities.feature_entities import PluginInstallationScope
 
 
 def make_features(

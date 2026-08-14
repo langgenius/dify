@@ -1,5 +1,11 @@
 import type { ValidationError } from 'jsonschema'
 import type { ArrayItems, Field } from './types'
+import type {
+  EnvironmentVariable,
+  LLMEnvironmentVariableValue,
+  ModelConfig,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import * as z from 'zod'
 import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import { extractPluginId } from '../../utils/plugin'
@@ -8,6 +14,49 @@ import { ArrayType, Type } from './types'
 export enum LLMModelIssueCode {
   providerRequired = 'provider-required',
   providerPluginUnavailable = 'provider-plugin-unavailable',
+}
+
+const isLLMEnvironmentVariableValue = (value: unknown): value is LLMEnvironmentVariableValue => {
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LLMEnvironmentVariableValue>
+  return !!candidate.provider && !!candidate.name && !!candidate.mode
+}
+
+export const isEnvironmentModelSource = (modelSelector: ValueSelector | undefined) =>
+  modelSelector !== undefined && (modelSelector.length === 0 || modelSelector[0] === 'env')
+
+export const getLLMEnvironmentModel = (
+  modelSelector: ValueSelector | undefined,
+  environmentVariables: readonly EnvironmentVariable[],
+): LLMEnvironmentVariableValue | undefined => {
+  if (!modelSelector || modelSelector.length !== 2 || modelSelector[0] !== 'env') return undefined
+
+  const environmentVariable = environmentVariables.find(
+    (variable) => variable.name === modelSelector[1] && variable.value_type === 'llm',
+  )
+  if (!environmentVariable || !isLLMEnvironmentVariableValue(environmentVariable.value))
+    return undefined
+
+  return environmentVariable.value
+}
+
+export const resolveLLMNodeModel = (
+  model: ModelConfig,
+  modelSelector: ValueSelector | undefined,
+  environmentVariables: readonly EnvironmentVariable[],
+): ModelConfig | undefined => {
+  if (!isEnvironmentModelSource(modelSelector)) return model
+
+  const environmentModel = getLLMEnvironmentModel(modelSelector, environmentVariables)
+  if (!environmentModel || environmentModel.mode !== model.mode) return undefined
+
+  return {
+    ...model,
+    provider: environmentModel.provider,
+    name: environmentModel.name,
+    completion_params: environmentModel.completion_params ?? model.completion_params,
+  }
 }
 
 export const getLLMModelIssue = ({
