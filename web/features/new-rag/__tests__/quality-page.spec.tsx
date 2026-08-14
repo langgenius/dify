@@ -321,6 +321,101 @@ describe('QualityPage', () => {
     )
   })
 
+  it('keeps one evidence match policy selected and submits the chosen value', async () => {
+    serviceMock.matchEvidence.mockResolvedValue({
+      candidates: [
+        {
+          document_asset_id: 'document-1',
+          node_id: 'node-1',
+          projection_id: 'projection-1',
+          score: 0.91,
+          section_path: ['Refund policy'],
+          text: 'Customers can request a refund within 30 days.',
+        },
+        {
+          document_asset_id: 'document-2',
+          node_id: 'node-2',
+          projection_id: 'projection-2',
+          score: 0.82,
+          section_path: ['Cancellation policy'],
+          text: 'Subscriptions can be cancelled before renewal.',
+        },
+      ],
+      evidence: 'refund and cancellation policy',
+      matched: true,
+    })
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
+      'When can I request a refund?',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'The answer must cite both policies.',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.evidencePlaceholder'),
+      'refund and cancellation policy',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.findEvidence' }),
+    )
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: /Customers can request a refund within 30 days\./,
+      }),
+    )
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /Subscriptions can be cancelled before renewal\./,
+      }),
+    )
+
+    const matchPolicy = screen.getByRole('radiogroup', {
+      name: 'dataset.newKnowledge.qualityPage.matchPolicyLabel',
+    })
+    expect(matchPolicy).toBeRequired()
+    const all = within(matchPolicy).getByRole('radio', {
+      name: 'dataset.newKnowledge.qualityPage.matchPolicy.all',
+    })
+    const any = within(matchPolicy).getByRole('radio', {
+      name: 'dataset.newKnowledge.qualityPage.matchPolicy.any',
+    })
+    expect(all).toHaveAttribute('type', 'button')
+    expect(any).toHaveAttribute('type', 'button')
+    expect(all).toBeChecked()
+    expect(any).not.toBeChecked()
+
+    await user.click(all)
+    expect(all).toBeChecked()
+    await user.click(any)
+    expect(all).not.toBeChecked()
+    expect(any).toBeChecked()
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: 'The answer must cite both policies.',
+          evidence_text: 'refund and cancellation policy',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          match_policy: 'any',
+          question: 'When can I request a refund?',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+  })
+
   it('parses a CSV and sends all rows through one bulk-import mutation', async () => {
     serviceMock.bulkImport.mockResolvedValue({ active_count: 1, draft_count: 1, items: [] })
     const user = userEvent.setup()

@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import {
   Dialog,
   DialogBackdrop,
@@ -12,8 +13,10 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -21,6 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 
 type DialogMode = 'create' | 'edit' | 'promote'
+type MatchPolicy = GoldenQuestionDraft['matchPolicy']
 
 function parseTags(value: string) {
   return value
@@ -121,11 +125,6 @@ export function GoldenQuestionDialog({
   for (const candidate of matchMutation.data?.candidates ?? [])
     candidatesByNodeId.set(candidate.node_id, candidate)
   const candidates = [...candidatesByNodeId.values()]
-  const toggleEvidence = (nodeId: string) =>
-    setExpectedEvidenceIds((current) =>
-      current.includes(nodeId) ? current.filter((id) => id !== nodeId) : [...current, nodeId],
-    )
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
@@ -182,108 +181,134 @@ export function GoldenQuestionDialog({
               )}
               {!annotationInvalid && error && <FieldError match>{error}</FieldError>}
             </Field>
-            <Field name="evidence">
-              <FieldLabel>{t(($) => $['newKnowledge.qualityPage.evidence'])}</FieldLabel>
-              <Textarea
-                className="h-20 resize-y"
-                placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
-                value={evidenceText}
-                onValueChange={(value) => {
-                  setEvidenceText(value)
-                  setMatchError(undefined)
-                  matchMutation.reset()
-                }}
-              />
-              <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="system-xs-regular text-text-tertiary">
-                  {expectedEvidenceIds.length > 0
-                    ? t(($) => $['newKnowledge.qualityPage.evidenceSelected'], {
-                        count: expectedEvidenceIds.length,
-                      })
-                    : t(($) => $['newKnowledge.qualityPage.noEvidenceSelected'])}
-                </span>
-                <div className="flex gap-2">
-                  {expectedEvidenceIds.length > 0 && (
+            <div className="grid min-w-0 gap-1">
+              <Field name="evidence">
+                <FieldLabel>{t(($) => $['newKnowledge.qualityPage.evidence'])}</FieldLabel>
+                <Textarea
+                  className="h-20 resize-y"
+                  placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
+                  value={evidenceText}
+                  onValueChange={(value) => {
+                    setEvidenceText(value)
+                    setMatchError(undefined)
+                    matchMutation.reset()
+                  }}
+                />
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="system-xs-regular text-text-tertiary">
+                    {expectedEvidenceIds.length > 0
+                      ? t(($) => $['newKnowledge.qualityPage.evidenceSelected'], {
+                          count: expectedEvidenceIds.length,
+                        })
+                      : t(($) => $['newKnowledge.qualityPage.noEvidenceSelected'])}
+                  </span>
+                  <div className="flex gap-2">
+                    {expectedEvidenceIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={pending || matchMutation.isPending}
+                        onClick={() => setExpectedEvidenceIds([])}
+                      >
+                        {t(($) => $['newKnowledge.qualityPage.clearEvidence'])}
+                      </Button>
+                    )}
                     <Button
                       type="button"
-                      variant="ghost"
-                      disabled={pending || matchMutation.isPending}
-                      onClick={() => setExpectedEvidenceIds([])}
+                      loading={matchMutation.isPending}
+                      disabled={!evidenceText.trim() || pending || matchMutation.isPending}
+                      onClick={() => void findEvidence()}
                     >
-                      {t(($) => $['newKnowledge.qualityPage.clearEvidence'])}
+                      {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
                     </Button>
-                  )}
-                  <Button
-                    type="button"
-                    loading={matchMutation.isPending}
-                    disabled={!evidenceText.trim() || pending || matchMutation.isPending}
-                    onClick={() => void findEvidence()}
-                  >
-                    {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
-                  </Button>
+                  </div>
                 </div>
-              </div>
-              {matchError && (
-                <FieldError match>
-                  {matchError === 'unavailable'
-                    ? t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])
-                    : t(($) => $.unknownError)}
-                </FieldError>
-              )}
-              {matchMutation.isSuccess && (matchMutation.data?.candidates.length ?? 0) === 0 && (
-                <p className="mt-2 body-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}
-                </p>
-              )}
+                {matchError && (
+                  <FieldError match>
+                    {matchError === 'unavailable'
+                      ? t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])
+                      : t(($) => $.unknownError)}
+                  </FieldError>
+                )}
+                {matchMutation.isSuccess && (matchMutation.data?.candidates.length ?? 0) === 0 && (
+                  <p className="mt-2 body-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}
+                  </p>
+                )}
+              </Field>
               {candidates.length > 0 && (
-                <div className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2">
-                  {candidates.map((candidate) => (
-                    <label
-                      key={candidate.node_id}
-                      htmlFor={`golden-question-evidence-${candidate.node_id}`}
-                      className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-state-base-hover"
-                    >
-                      <Checkbox
-                        id={`golden-question-evidence-${candidate.node_id}`}
-                        className="mt-0.5"
-                        checked={expectedEvidenceIds.includes(candidate.node_id)}
-                        onCheckedChange={() => toggleEvidence(candidate.node_id)}
+                <Field name="expectedEvidenceIds">
+                  <Fieldset
+                    className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
+                    render={
+                      <CheckboxGroup
+                        value={expectedEvidenceIds}
+                        onValueChange={setExpectedEvidenceIds}
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="line-clamp-2 body-xs-regular text-text-secondary">
-                          {candidate.text || candidate.section_path.join(' / ')}
-                        </span>
-                        <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
-                          {candidate.section_path.join(' / ') ||
-                            t(($) => $['newKnowledge.qualityPage.evidence'])}
-                          {candidate.score !== undefined && (
-                            <>
-                              {' · '}
-                              {Math.round(candidate.score * 100)}%
-                            </>
-                          )}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                    }
+                  >
+                    <FieldsetLegend className="sr-only">
+                      {t(($) => $['newKnowledge.qualityPage.evidence'])}
+                    </FieldsetLegend>
+                    {candidates.map((candidate) => (
+                      <FieldItem key={candidate.node_id}>
+                        <FieldLabel className="flex w-full cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-state-base-hover">
+                          <Checkbox className="mt-0.5" value={candidate.node_id} />
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2 body-xs-regular text-text-secondary">
+                              {candidate.text || candidate.section_path.join(' / ')}
+                            </span>
+                            <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
+                              {candidate.section_path.join(' / ') ||
+                                t(($) => $['newKnowledge.qualityPage.evidence'])}
+                              {candidate.score !== undefined && (
+                                <>
+                                  {' · '}
+                                  {Math.round(candidate.score * 100)}%
+                                </>
+                              )}
+                            </span>
+                          </span>
+                        </FieldLabel>
+                      </FieldItem>
+                    ))}
+                  </Fieldset>
+                </Field>
               )}
-            </Field>
+            </div>
             {expectedEvidenceIds.length > 1 && (
               <Field name="matchPolicy">
-                <FieldLabel>{t(($) => $['newKnowledge.qualityPage.matchPolicyLabel'])}</FieldLabel>
-                <div className="flex gap-2">
-                  {(['all', 'any'] as const).map((policy) => (
-                    <Button
-                      key={policy}
-                      type="button"
-                      variant={matchPolicy === policy ? 'secondary' : 'ghost'}
-                      onClick={() => setMatchPolicy(policy)}
-                    >
-                      {t(($) => $[`newKnowledge.qualityPage.matchPolicy.${policy}`])}
-                    </Button>
-                  ))}
-                </div>
+                <Fieldset
+                  render={
+                    <RadioGroup<MatchPolicy>
+                      className="flex-col items-start gap-1"
+                      required
+                      value={matchPolicy}
+                      onValueChange={setMatchPolicy}
+                    />
+                  }
+                >
+                  <FieldsetLegend className="mb-0 w-fit">
+                    {t(($) => $['newKnowledge.qualityPage.matchPolicyLabel'])}
+                  </FieldsetLegend>
+                  <div className="flex gap-2">
+                    {(['all', 'any'] as const).map((policy) => (
+                      <RadioItem<MatchPolicy>
+                        key={policy}
+                        value={policy}
+                        nativeButton
+                        render={
+                          <Button
+                            type="button"
+                            variant={matchPolicy === policy ? 'secondary' : 'ghost'}
+                          />
+                        }
+                      >
+                        {t(($) => $[`newKnowledge.qualityPage.matchPolicy.${policy}`])}
+                      </RadioItem>
+                    ))}
+                  </div>
+                </Fieldset>
               </Field>
             )}
             <Field name="tags">
