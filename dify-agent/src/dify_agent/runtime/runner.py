@@ -81,7 +81,8 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
-_MAX_AGENT_STEPS_PER_RUN = 100
+_MAX_AGENT_STEPS_PER_RUN = 500
+DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
 
 
 @runtime_checkable
@@ -181,6 +182,7 @@ class AgentRunRunner:
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
     is_cancelled: Callable[[], bool]
+    run_timeout_seconds: float
 
     def __init__(
         self,
@@ -192,6 +194,7 @@ class AgentRunRunner:
         dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
+        run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
     ) -> None:
         self.sink = sink
         self.request = request
@@ -200,6 +203,7 @@ class AgentRunRunner:
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
         self.is_cancelled = is_cancelled or (lambda: False)
+        self.run_timeout_seconds = run_timeout_seconds
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
@@ -334,13 +338,22 @@ class AgentRunRunner:
                     tools=tools,
                     output_type=_resolve_agent_output_type(output_contract.output_type, ask_human_layer is not None),
                 )
-                result = await agent.run(
-                    None if deferred_tool_results is not None else normalize_user_input(user_prompts),
-                    message_history=message_history,
-                    deferred_tool_results=deferred_tool_results,
-                    event_stream_handler=handle_events,
-                    usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
-                )
+                run_timeout = asyncio.timeout(self.run_timeout_seconds)
+                try:
+                    async with run_timeout:
+                        result = await agent.run(
+                            None if deferred_tool_results is not None else normalize_user_input(user_prompts),
+                            message_history=message_history,
+                            deferred_tool_results=deferred_tool_results,
+                            event_stream_handler=handle_events,
+                            usage_limits=UsageLimits(request_limit=_MAX_AGENT_STEPS_PER_RUN),
+                        )
+                except TimeoutError as exc:
+                    if not run_timeout.expired():
+                        raise
+                    raise UsageLimitExceeded(
+                        f"Agent run exceeded the configured limit of {self.run_timeout_seconds:g} seconds"
+                    ) from exc
                 complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
                 usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
                 append_successful_run_history(history_layer, result.new_messages())
