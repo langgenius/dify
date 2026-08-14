@@ -29,6 +29,8 @@ export type DetailSidebarVisibilityOptions = Pick<
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
 const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
+const NOT_DATASET_OPERATOR: MainNavRouteVisibility = (options) =>
+  !options.isCurrentWorkspaceDatasetOperator
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -39,9 +41,9 @@ export const MAIN_NAV_ROUTES = [
     key: 'home',
     href: '/',
     labelKey: 'mainNav.home',
-    active: (path: string) => path === '/',
-    icon: 'i-custom-vender-main-nav-home',
-    activeIcon: 'i-custom-vender-main-nav-home-active',
+    active: (path: string) => path === '/' || path === '/explore/apps',
+    icon: 'i-custom-vender-main-nav-home-v2',
+    activeIcon: 'i-custom-vender-main-nav-home-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -52,8 +54,8 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/apps') ||
       isPathUnderRoute(path, '/app') ||
       isPathUnderRoute(path, '/snippets'),
-    icon: 'i-custom-vender-main-nav-studio',
-    activeIcon: 'i-custom-vender-main-nav-studio-active',
+    icon: 'i-custom-vender-main-nav-studio-v2',
+    activeIcon: 'i-custom-vender-main-nav-studio-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -61,18 +63,27 @@ export const MAIN_NAV_ROUTES = [
     href: '/agents',
     label: 'Agents',
     active: (path: string) => isPathUnderRoute(path, '/agents'),
-    icon: 'i-custom-vender-main-nav-roster',
-    activeIcon: 'i-custom-vender-main-nav-roster-active',
+    icon: 'i-custom-vender-main-nav-agent',
+    activeIcon: 'i-custom-vender-main-nav-agent-active',
     visibility: CAN_MANAGE_AGENTS,
     feature: 'agentV2',
+  },
+  {
+    key: 'skills',
+    href: '/skills',
+    labelKey: 'mainNav.skills',
+    active: (path: string) => isPathUnderRoute(path, '/skills'),
+    icon: 'i-custom-vender-main-nav-skill',
+    activeIcon: 'i-custom-vender-main-nav-skill-active',
+    visibility: NOT_DATASET_OPERATOR,
   },
   {
     key: 'datasets',
     href: '/datasets',
     labelKey: 'menus.datasets',
     active: (path: string) => isPathUnderRoute(path, '/datasets'),
-    icon: 'i-custom-vender-main-nav-knowledge',
-    activeIcon: 'i-custom-vender-main-nav-knowledge-active',
+    icon: 'i-custom-vender-main-nav-knowledge-v2',
+    activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -81,8 +92,8 @@ export const MAIN_NAV_ROUTES = [
     labelKey: 'mainNav.integrations',
     active: (path: string) =>
       isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
-    icon: 'i-custom-vender-main-nav-integrations',
-    activeIcon: 'i-custom-vender-main-nav-integrations-active',
+    icon: 'i-custom-vender-main-nav-integrations-v2',
+    activeIcon: 'i-custom-vender-main-nav-integrations-v2-active',
     visibility: VISIBLE_TO_ALL,
   },
   {
@@ -93,8 +104,8 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/marketplace') ||
       isPathUnderRoute(path, '/plugins') ||
       isPathUnderRoute(path, '/templates'),
-    icon: 'i-custom-vender-main-nav-marketplace',
-    activeIcon: 'i-custom-vender-main-nav-marketplace-active',
+    icon: 'i-custom-vender-main-nav-marketplace-v2',
+    activeIcon: 'i-custom-vender-main-nav-marketplace-v2-active',
     visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
   },
@@ -130,14 +141,21 @@ function isDatasetDetailPathname(pathname: string) {
   return true
 }
 
+function isSkillDetailPathname(pathname: string) {
+  const [section, skillId] = pathname.split('/').filter(Boolean)
+
+  return section === 'skills' && !!skillId
+}
+
 export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    section === 'datasets' &&
-    namespace === 'new' &&
-    !!knowledgeSpaceId &&
-    knowledgeSpaceId !== 'create'
+    (section === 'datasets' &&
+      namespace === 'new' &&
+      !!knowledgeSpaceId &&
+      knowledgeSpaceId !== 'create') ||
+    isSkillDetailPathname(pathname)
   )
 }
 

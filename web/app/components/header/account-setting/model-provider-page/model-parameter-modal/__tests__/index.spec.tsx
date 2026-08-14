@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ModelParameterModal from '../index'
 
+const mocks = vi.hoisted(() => ({
+  setSettingsDestination: vi.fn(),
+}))
+
 let parameterRules: Array<Record<string, unknown>> | undefined = [
   {
     name: 'temperature',
@@ -40,6 +44,14 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
     ],
   },
 ]
+
+vi.mock('nuqs', () => ({
+  parseAsStringLiteral: () => ({
+    withDefault: () => ({}),
+    withOptions: () => ({}),
+  }),
+  useQueryState: () => [null, mocks.setSettingsDestination],
+}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -94,16 +106,34 @@ vi.mock('../parameter-item', () => ({
 
 vi.mock('../../model-selector', () => ({
   default: ({
+    defaultModel,
+    modelList,
+    onConfigureEmptyState,
     onHide,
     onSelect,
   }: {
-    onHide: () => void
+    defaultModel?: { provider: string; model: string }
+    modelList?: Array<{
+      provider: string
+      models: Array<{ model: string }>
+    }>
+    onConfigureEmptyState?: () => void
+    onHide?: () => void
     onSelect: (value: { provider: string; model: string }) => void
   }) => (
-    <div data-testid="model-selector">
+    <div
+      data-testid="model-selector"
+      data-default-provider={defaultModel?.provider ?? ''}
+      data-default-model={defaultModel?.model ?? ''}
+      data-provider-count={modelList?.length ?? 0}
+    >
       <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>
         Select GPT-4.1
       </button>
+      <button onClick={() => onSelect({ provider: 'custom-provider', model: 'custom-model' })}>
+        Select custom model
+      </button>
+      <button onClick={onConfigureEmptyState}>configure-empty-model</button>
       <button onClick={onHide}>hide</button>
     </div>
   ),
@@ -235,6 +265,14 @@ describe('ModelParameterModal', () => {
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
+  it('opens provider settings from the model selector empty state', () => {
+    render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
+
+    fireEvent.click(screen.getByText('configure-empty-model'))
+
+    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('provider')
+  })
+
   it('should call onCompletionParamsChange when parameter changes and switch actions happen', () => {
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
@@ -293,6 +331,50 @@ describe('ModelParameterModal', () => {
       provider: 'openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
+    })
+  })
+
+  it('uses the provided modelList to resolve selected model metadata', () => {
+    currentProvider = undefined
+    currentModel = undefined
+    activeTextGenerationModelList = []
+
+    render(
+      <ModelParameterModal
+        {...defaultProps}
+        provider="custom-provider"
+        modelId="custom-model"
+        modelList={
+          [
+            {
+              provider: 'custom-provider',
+              label: { en_US: 'Custom Provider' },
+              models: [
+                {
+                  model: 'custom-model',
+                  label: { en_US: 'Custom Model' },
+                  model_properties: { mode: 'completion' },
+                  features: ['tool-call'],
+                },
+              ],
+            },
+          ] as never
+        }
+      />,
+    )
+
+    const selector = screen.getByTestId('model-selector')
+    expect(selector).toHaveAttribute('data-default-provider', 'custom-provider')
+    expect(selector).toHaveAttribute('data-default-model', 'custom-model')
+    expect(selector).toHaveAttribute('data-provider-count', '1')
+
+    fireEvent.click(screen.getByText('Select custom model'))
+
+    expect(defaultProps.setModel).toHaveBeenCalledWith({
+      provider: 'custom-provider',
+      modelId: 'custom-model',
+      mode: 'completion',
+      features: ['tool-call'],
     })
   })
 

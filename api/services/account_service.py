@@ -1615,7 +1615,9 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def iter_member_account_id_batches(tenant_id: str, batch_size: int, *, session: Session) -> Iterator[list[str]]:
+    def iter_member_account_id_batches(
+        tenant_id: str, batch_size: int, *, session: Session
+    ) -> Iterator[list[str]]:
         """Yield workspace member account ids in bounded, ordered batches."""
         offset = 0
         while True:

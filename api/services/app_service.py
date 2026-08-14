@@ -38,6 +38,7 @@ from models.agent import (
     AgentWorkspaceBinding,
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
+from models.skill import AgentSkillBinding
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
@@ -1000,6 +1001,14 @@ class AppService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
+        agent_ids_to_unbind = [*workflow_agent_ids]
+        if backing_agent is not None:
+            agent_ids_to_unbind.append(backing_agent.id)
+        if agent_ids_to_unbind:
+            session.query(AgentSkillBinding).filter(
+                AgentSkillBinding.tenant_id == app.tenant_id,
+                AgentSkillBinding.agent_id.in_(agent_ids_to_unbind),
+            ).delete(synchronize_session=False)
         account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()

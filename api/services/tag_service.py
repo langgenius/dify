@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
+from models.skill import Skill
 from models.snippet import CustomizedSnippet
 
 type _TagTypeLike = TagType | str
@@ -282,5 +283,13 @@ class TagService:
             )
             if not snippet:
                 raise NotFound("Snippet not found")
+        elif type == "skill":
+            skill = session.scalar(
+                select(Skill)
+                .where(Skill.tenant_id == current_user.current_tenant_id, Skill.id == target_id)
+                .limit(1)
+            )
+            if not skill:
+                raise NotFound("Skill not found")
         else:
             raise NotFound("Invalid binding type")

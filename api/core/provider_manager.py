@@ -1545,7 +1545,7 @@ class ProviderManager:
         except ValidationError:
             return SystemConfiguration(enabled=False)
 
-        if plugin_provider_entity.installation_source != PluginInstallationSource.Marketplace:
+        if plugin_provider_entity.installation_source in (None, PluginInstallationSource.Package):
             return SystemConfiguration(enabled=False)
 
         from core.plugin.plugin_service import PluginService

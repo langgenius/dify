@@ -180,6 +180,31 @@ describe('MainNavLayout', () => {
     expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
   })
 
+  it('hides the global main nav on a skill detail route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
+
+    render(
+      <MainNavLayout>
+        <div>skill detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('skill detail')
+  })
+
+  it('keeps the global main nav on the skills collection route', () => {
+    ;(usePathname as Mock).mockReturnValue('/skills')
+
+    render(
+      <MainNavLayout>
+        <div>skills collection</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+  })
+
   it.each(['/datasets/create', '/datasets/new/create', '/datasets/dataset-1/documents/create'])(
     'keeps the global main nav on collection and creation route %s',
     (pathname) => {

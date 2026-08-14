@@ -81,4 +81,28 @@ describe('PluginTypeSwitch', () => {
     expect(update?.searchParams.get('category')).toBe('model')
     expect(update?.options.scroll).toBe(false)
   })
+
+  it('exposes the selected category and updates the URL in the home variant', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderSwitch('?category=all', { variant: 'home' })
+    const categoryGroup = screen.getByRole('group', { name: 'marketplace.allPlugins' })
+
+    expect(categoryGroup).toHaveClass('w-full', 'justify-start', 'gap-1')
+    const activeCategory = screen.getByRole('button', { name: 'category.all' })
+    const inactiveCategory = screen.getByRole('button', { name: 'category.models' })
+
+    expect(activeCategory).toHaveAttribute('aria-pressed', 'true')
+    expect(activeCategory).toHaveClass(styles.homeItem!, styles.homeItemActive!)
+    expect(inactiveCategory).toHaveClass(styles.homeItem!)
+    expect(inactiveCategory).not.toHaveClass(styles.homeItemActive!)
+    expect(screen.getByRole('button', { name: 'categorySingle.datasource' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'categorySingle.agent' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'category.models' }))
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    const update = onUrlUpdate.mock.calls.at(-1)?.[0]
+    expect(update?.searchParams.get('category')).toBe('model')
+    expect(update?.options.scroll).toBe(false)
+  })
 })

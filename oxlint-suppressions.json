@@ -2712,14 +2712,6 @@
       "count": 5
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/index.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3609,14 +3601,6 @@
   },
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
       "count": 1
     }
   },

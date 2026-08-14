@@ -30,7 +30,10 @@ import { AgentKnowledgeRetrieval } from './knowledge'
 import { AgentModelField } from './model-config/field'
 import { AgentPromptEditor } from './prompt-editor'
 import { AgentConfigurePublishBar } from './publish-bar'
-import { AgentOrchestrateReadOnlyContext } from './read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from './read-only-context'
 import { AgentSkills } from './skills'
 import { AgentTools } from './tools'
 
@@ -139,45 +142,47 @@ export function AgentOrchestratePanel({
         />
       )}
 
-      <AgentOrchestrateReadOnlyContext value={readOnly}>
-        <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden">
-            <ScrollAreaViewport
-              aria-label={showHeader ? undefined : orchestrateLabel}
-              aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
-              className="overscroll-contain"
-              role="region"
-            >
-              <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
-                <AgentConfigApiContextProvider value={configApiContext}>
-                  <AgentOrchestrateAddActionsProvider>
-                    <AgentBuildDraftChangedKeysProvider
-                      changedKeys={
-                        isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
-                      }
-                    >
-                      <AgentModelField
-                        currentModel={currentModel}
-                        textGenerationModelList={textGenerationModelList}
-                        onSelect={onSelectModel}
-                      />
-                      <AgentPromptEditor />
-                      <AgentSkills />
-                      <AgentFiles />
-                      <AgentTools />
-                      {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
-                      <AgentAdvancedSettings />
-                    </AgentBuildDraftChangedKeysProvider>
-                  </AgentOrchestrateAddActionsProvider>
-                </AgentConfigApiContextProvider>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
-        </div>
-      </AgentOrchestrateReadOnlyContext>
+      <AgentOrchestrateViewingVersionContext value={!!selectedVersionSnapshot}>
+        <AgentOrchestrateReadOnlyContext value={readOnly}>
+          <div aria-readonly={readOnly} className="flex min-h-0 flex-1 flex-col">
+            <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+              <ScrollAreaViewport
+                aria-label={showHeader ? undefined : orchestrateLabel}
+                aria-labelledby={showHeader ? orchestrateHeadingId : undefined}
+                className="overscroll-contain"
+                role="region"
+              >
+                <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
+                  <AgentConfigApiContextProvider value={configApiContext}>
+                    <AgentOrchestrateAddActionsProvider>
+                      <AgentBuildDraftChangedKeysProvider
+                        changedKeys={
+                          isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                        }
+                      >
+                        <AgentModelField
+                          currentModel={currentModel}
+                          textGenerationModelList={textGenerationModelList}
+                          onSelect={onSelectModel}
+                        />
+                        <AgentPromptEditor />
+                        <AgentSkills />
+                        <AgentFiles />
+                        <AgentTools />
+                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
+                        <AgentAdvancedSettings />
+                      </AgentBuildDraftChangedKeysProvider>
+                    </AgentOrchestrateAddActionsProvider>
+                  </AgentConfigApiContextProvider>
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar className={hasBottomAction ? 'z-20' : undefined}>
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
+            </ScrollArea>
+          </div>
+        </AgentOrchestrateReadOnlyContext>
+      </AgentOrchestrateViewingVersionContext>
 
       {orchestrateBottomAction ? (
         <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>

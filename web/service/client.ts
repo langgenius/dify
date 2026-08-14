@@ -140,7 +140,7 @@ type ConsoleQueryUtils = RouterUtils<
 >
 
 function isTagType(type: string | null | undefined): type is TagType {
-  return type === 'app' || type === 'knowledge' || type === 'snippet'
+  return type === 'app' || type === 'knowledge' || type === 'skill' || type === 'snippet'
 }
 
 const defaultAppDeployInvalidationOptions = {

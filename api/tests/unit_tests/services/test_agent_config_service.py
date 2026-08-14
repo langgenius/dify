@@ -40,6 +40,7 @@ from services.agent_config_service import (
     ConfigPushPayload,
     ConfigPushSkillItem,
 )
+from services.skill_management_service import SkillManagementServiceError
 
 MODULE = "services.agent_config_service"
 TENANT = "11111111-1111-1111-1111-111111111111"
@@ -138,6 +139,7 @@ def _target(
 ) -> AgentConfigTarget:
     agent_soul = soul or _soul()
     return AgentConfigTarget(
+        tenant_id=TENANT,
         agent_id=AGENT,
         version_id=version_id,
         kind=kind,
@@ -755,6 +757,149 @@ def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: by
     assert exc_info.value.status_code == 500
 
 
+def test_pull_skill_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    workspace_archive = SimpleNamespace(
+        filename="workspace-skill.zip",
+        mime_type="application/zip",
+        payload=b"zip-bytes",
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.pull_runtime_agent_skill.return_value = workspace_archive
+        download = service.pull_skill(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert download.filename == "workspace-skill.zip"
+    assert download.mime_type == "application/zip"
+    assert download.payload == b"zip-bytes"
+    skill_management_service.return_value.pull_runtime_agent_skill.assert_called_once_with(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        name="workspace-skill",
+    )
+
+
+def test_request_download_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    expected = SimpleNamespace(
+        filename="workspace-skill.zip",
+        mime_type="application/zip",
+        size=123,
+        download_uri="/files/tools/workspace.zip?signature=1",
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+        patch.object(service, "_resolve_download_request", return_value=expected) as resolve_download_request,
+    ):
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "name": "workspace-skill",
+                "file_id": "workspace-archive-id",
+            }
+        ]
+        download = service.request_download(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            kind="skill",
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert download is expected
+    resolve_download_request.assert_called_once_with(
+        tenant_id=TENANT,
+        file_kind="tool_file",
+        file_id="workspace-archive-id",
+        filename="workspace-skill.zip",
+        default_mime_type="application/zip",
+        missing_code="config_skill_not_found",
+        missing_message="config skill payload is missing",
+    )
+
+
+def test_pull_skill_maps_missing_workspace_runtime_skill_to_config_error() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.pull_runtime_agent_skill.side_effect = SkillManagementServiceError(
+            "skill_not_found",
+            "skill not found",
+            status_code=404,
+        )
+        with pytest.raises(AgentConfigServiceError) as exc_info:
+            service.pull_skill(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="draft-1",
+                config_version_kind=AgentConfigVersionKind.DRAFT,
+                name="workspace-skill",
+                user_id=USER,
+            )
+
+    assert exc_info.value.code == "config_skill_not_found"
+    assert exc_info.value.status_code == 404
+
+
+def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=_soul(config_skills=[]))
+    archive = _zip_bytes(
+        {
+            "SKILL.md": b"---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace",
+            "references/policy.md": b"Policy",
+        }
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.pull_runtime_agent_skill.return_value = SimpleNamespace(payload=archive)
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "skill-1",
+                "name": "workspace-skill",
+                "description": "Workspace skill.",
+                "size": len(archive),
+                "hash": "hash",
+                "mime_type": "application/zip",
+            }
+        ]
+        result = service.inspect_skill(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="draft-1",
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            name="workspace-skill",
+            user_id=USER,
+        )
+
+    assert result["id"] == "skill-1"
+    assert result["source"] == "config_skill_zip"
+    assert result["skill_md"]["text"] == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
+    assert [item["path"] for item in result["files"]] == ["SKILL.md", "references", "references/policy.md"]
+
+
 def test_manifest_uses_items_shape_without_download_urls() -> None:
     target = _target(
         kind=AgentConfigVersionKind.DRAFT,
@@ -766,7 +911,9 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
         ),
     )
 
-    manifest = AgentConfigService._manifest_for_target(target)
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
+        manifest = AgentConfigService._manifest_for_target(target)
 
     assert manifest == {
         "agent_id": AGENT,
@@ -823,7 +970,9 @@ def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqli
         user_id=USER,
     )
 
-    manifest = service._manifest_for_target(target)
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
+        manifest = service._manifest_for_target(target)
 
     assert manifest["skills"]["items"][0]["is_missing"] is True  # type: ignore[index]
     assert manifest["files"]["items"][0]["is_missing"] is True  # type: ignore[index]
@@ -871,6 +1020,79 @@ def test_config_asset_refs_require_file_id_unless_marked_missing() -> None:
             file_id="workspace-file-id",
             is_missing=True,
         )
+
+
+def test_manifest_appends_published_workspace_skills() -> None:
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")]
+        ),
+    )
+
+    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            },
+            {
+                "id": "duplicate",
+                "name": "alpha",
+                "file_id": "tool-file-ignored",
+                "description": "Duplicate workspace skill",
+                "size": 456,
+                "hash": "sha256:ignored",
+                "mime_type": "application/zip",
+            },
+        ]
+        manifest = AgentConfigService._manifest_for_target(target)
+
+    assert [item["name"] for item in manifest["skills"]["items"]] == ["alpha", "beta"]
+    assert manifest["skills"]["items"][1]["file_id"] == "tool-file-2"
+
+
+def test_list_skills_excludes_workspace_skill_bindings() -> None:
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")]
+        ),
+    )
+
+    service = AgentConfigService()
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch(f"{MODULE}.SkillManagementService") as skill_management_service,
+    ):
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
+            {
+                "id": "workspace-skill-id",
+                "name": "beta",
+                "file_id": "tool-file-2",
+                "description": "Beta workspace skill",
+                "size": 123,
+                "hash": "sha256:beta",
+                "mime_type": "application/zip",
+            }
+        ]
+        result = service.list_skills(
+            tenant_id=target.tenant_id,
+            agent_id=target.agent_id,
+            config_version_id=target.version_id,
+            config_version_kind=target.kind,
+            user_id=None,
+        )
+
+    assert [item["name"] for item in result["items"]] == ["alpha"]
+    skill_management_service.return_value.list_runtime_agent_skills.assert_not_called()
 
 
 def test_preview_skill_file_returns_text_preview() -> None:
