@@ -56,14 +56,20 @@ jobs:
           - service_name: 'local-sandbox-amd64'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-            context: '{{defaultContext}}:dify-agent-runtime'
-            file: 'docker/Dockerfile'
+            context: './dify-agent-runtime'
+            file: './dify-agent-runtime/docker/Dockerfile'
+            needs_checkout: true
           - service_name: 'local-sandbox-arm64'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-            context: '{{defaultContext}}:dify-agent-runtime'
-            file: 'docker/Dockerfile'
+            context: './dify-agent-runtime'
+            file: './dify-agent-runtime/docker/Dockerfile'
+            needs_checkout: true
     steps:
+      - name: Checkout repository
+        if: ${{ matrix.needs_checkout }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Set up Depot CLI
         uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
 
@@ -92,9 +98,14 @@ jobs:
             context: '{{defaultContext}}'
             file: 'web/Dockerfile'
           - service_name: 'local-sandbox-amd64'
-            context: '{{defaultContext}}:dify-agent-runtime'
-            file: 'docker/Dockerfile'
+            context: './dify-agent-runtime'
+            file: './dify-agent-runtime/docker/Dockerfile'
+            needs_checkout: true
     steps:
+      - name: Checkout repository
+        if: ${{ matrix.needs_checkout }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 

@@ -78,19 +78,25 @@ jobs:
           - service_name: 'build-agent-local-sandbox-amd64'
             image_name_env: 'DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME'
             artifact_context: 'local-sandbox'
-            build_context: '{{defaultContext}}:dify-agent-runtime'
-            file: 'docker/Dockerfile'
+            build_context: './dify-agent-runtime'
+            file: './dify-agent-runtime/docker/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
+            needs_checkout: true
           - service_name: 'build-agent-local-sandbox-arm64'
             image_name_env: 'DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME'
             artifact_context: 'local-sandbox'
-            build_context: '{{defaultContext}}:dify-agent-runtime'
-            file: 'docker/Dockerfile'
+            build_context: './dify-agent-runtime'
+            file: './dify-agent-runtime/docker/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
+            needs_checkout: true
 
     steps:
+      - name: Checkout repository
+        if: ${{ matrix.needs_checkout }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
