@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -102,7 +102,7 @@ const renderPlan = (educationStatus = { allow_refresh: false, is_student: false 
   return render(<PlanComp loc="billing-page" />, { wrapper })
 }
 
-describe('PlanComp education discount pause', () => {
+describe('PlanComp education discount', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -124,23 +124,16 @@ describe('PlanComp education discount pause', () => {
     expect(screen.queryByRole('button', { name: 'education.toVerified' })).not.toBeInTheDocument()
   })
 
-  it('shows the pause notice instead of starting verification and closes it with OK', async () => {
+  it('starts education verification and opens the application form', async () => {
     const user = userEvent.setup()
+    mocks.mutateAsync.mockResolvedValue({ token: 'education-token' })
     renderPlan()
 
     await user.click(screen.getByRole('button', { name: 'education.toVerified' }))
 
-    const dialog = await screen.findByRole('dialog')
-    expect(dialog).toHaveTextContent('education.educationDiscountPaused.title')
-    expect(dialog).toHaveTextContent('education.educationDiscountPaused.description')
-    expect(dialog).toHaveTextContent('education.educationDiscountPaused.thanks')
-    expect(dialog).toHaveTextContent('education.educationDiscountPaused.publishedAt')
-    expect(within(dialog).getAllByRole('button')).toHaveLength(1)
-    expect(within(dialog).getByRole('button')).toHaveAccessibleName('common.operation.ok')
-    expect(mocks.mutateAsync).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mocks.mutateAsync).toHaveBeenCalledOnce()
+    await waitFor(() => {
+      expect(mocks.push).toHaveBeenCalledWith('/education-apply?token=education-token')
+    })
   })
 })
